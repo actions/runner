@@ -1,6 +1,5 @@
 ﻿using System;
 using System.ComponentModel;
-using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.Pipelines.ContextData
@@ -36,7 +35,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     {
                         foreach (var pair in mapping)
                         {
-                            var keyLiteral = TemplateUtil.AssertLiteral(pair.Key, "dictionary context data key");
+                            var keyLiteral = pair.Key.AssertString("dictionary context data key");
                             var key = keyLiteral.Value;
                             var value = pair.Value.ToContextData();
                             dictionary.Add(key, value);
@@ -56,9 +55,20 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     }
                     return array;
 
-                case TokenType.Literal:
-                    var literal = token as LiteralToken;
-                    return new StringContextData(literal.Value);
+                case TokenType.Null:
+                    return null;
+
+                case TokenType.Boolean:
+                    var boolean = token as BooleanToken;
+                    return new BooleanContextData(boolean.Value);
+
+                case TokenType.Number:
+                    var number = token as NumberToken;
+                    return new NumberContextData(number.Value);
+
+                case TokenType.String:
+                    var stringToken = token as StringToken;
+                    return new StringContextData(stringToken.Value);
 
                 default:
                     throw new NotSupportedException($"Unexpected {nameof(TemplateToken)} type '{token.Type}'");

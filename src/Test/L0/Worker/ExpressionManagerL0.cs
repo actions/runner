@@ -5,7 +5,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
 using Xunit;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -184,7 +184,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new { Condition = "eq(github.ref, 'refs/heads/master')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
                     new { Condition = "eq(github['ref'], 'refs/heads/master')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
-                    new { Condition = "eq(github.nosuch, '')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
+                    new { Condition = "github.nosuch || '' == ''", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
                     new { Condition = "eq(github['ref'], 'refs/heads/release')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
                     new { Condition = "eq(github.ref, 'refs/heads/release')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
                 };

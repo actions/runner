@@ -26,6 +26,7 @@ $targetFolders = @(
     # "DTGenerated"
     # "DTLogging"
     # "DTExpressions"
+    # "DTExpressions2"
     # "DTObjectTemplating"
     # "DTPipelines"
     # "DTWebApi"
@@ -47,6 +48,7 @@ $sourceFolders = @{
     # "DistributedTask\Client\WebApi\Generated"                                      = "DTGenerated";
     # "DistributedTask\Client\WebApi\Logging"                                        = "DTLogging";
     # "DistributedTask\Client\WebApi\Expressions"                                    = "DTExpressions";
+    # "DistributedTask\Client\WebApi\Expressions2"                                   = "DTExpressions2";
     # "DistributedTask\Client\WebApi\ObjectTemplating"                               = "DTObjectTemplating";
     # "DistributedTask\Client\WebApi\Pipelines"                                      = "DTPipelines";
     # "DistributedTask\Client\WebApi\WebApi"                                         = "DTWebApi";

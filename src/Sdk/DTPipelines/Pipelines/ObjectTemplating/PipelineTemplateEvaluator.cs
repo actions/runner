@@ -311,6 +311,58 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
         }
 
+        public ContainerResource EvaluateJobContainer(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = default(ContainerResource);
+
+            if (token != null)
+            {
+                var context = CreateContext(contextData);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.Container, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = PipelineTemplateConverter.ConvertToJobContainer(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
+
+        public Dictionary<String, ContainerResource> EvaluateJobServiceContainers(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = default(Dictionary<String, ContainerResource>);
+
+            if (token != null)
+            {
+                var context = CreateContext(contextData);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.Services, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = PipelineTemplateConverter.ConvertToJobServiceContainers(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
+
         private TemplateContext CreateContext(IDictionary<String, PipelineContextData> contextData)
         {
             var result = new TemplateContext

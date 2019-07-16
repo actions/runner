@@ -40,6 +40,8 @@ namespace GitHub.DistributedTask.Pipelines.Artifacts
             public const String DownloadTypeSingle = "single";
             public const String SpecificBuildType = "specific";
             public const String CurrentBuildType = "current";
+            public const String AutomaticMode = "automatic";
+            public const String ManualMode = "manual";
         }
 
         internal static class YamlConstants
@@ -58,8 +60,15 @@ namespace GitHub.DistributedTask.Pipelines.Artifacts
         {
             public const String Alias = "alias";
             public const String Artifact = "artifact";
+            public const String Mode = "mode";
             public const String Path = "path";
             public const String Patterns = "patterns";
+        }
+
+        public static class TraceConstants
+        {
+            public const String Area = "PipelineArtifacts";
+            public const String DownloadPipelineArtifactFeature = "DownloadPipelineArtifact";
         }
 
         public static readonly TaskDefinition DownloadTask = new TaskDefinition

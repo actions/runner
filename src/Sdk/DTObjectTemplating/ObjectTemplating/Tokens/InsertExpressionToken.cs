@@ -18,11 +18,6 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         {
         }
 
-        public override TemplateToken Clone()
-        {
-            return Clone(false);
-        }
-
         public override TemplateToken Clone(Boolean omitSource)
         {
             return omitSource ? new InsertExpressionToken(null, null, null) : new InsertExpressionToken(FileId, Line, Column);
@@ -30,7 +25,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override String ToString()
         {
-            return $"${{{{ insert }}}}";
+            return $"{TemplateConstants.OpenExpression} insert {TemplateConstants.CloseExpression}";
         }
     }
 }

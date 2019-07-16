@@ -99,6 +99,20 @@ namespace GitHub.DistributedTask.Pipelines
             set;
         }
 
+        [DataMember]
+        public TemplateToken JobContainer
+        {
+            get;
+            set;
+        }
+
+        [DataMember]
+        public TemplateToken JobServiceContainers
+        {
+            get;
+            set;
+        }
+
         public ExpandPhaseResult Expand(
             PhaseExecutionContext context,
             JobExpansionOptions options = null)
@@ -277,6 +291,26 @@ namespace GitHub.DistributedTask.Pipelines
             job.CancelTimeoutInMinutes = templateEvaluator.EvaluateJobCancelTimeout(JobCancelTimeout, contextData);
             trace.Info("Evaluating target");
             job.Target = templateEvaluator.EvaluateJobTarget(JobTarget, contextData);
+            
+            // Add container resources
+            var container = templateEvaluator.EvaluateJobContainer(JobContainer, contextData);
+            var services = templateEvaluator.EvaluateJobServiceContainers(JobServiceContainers, contextData);
+            if (container != null)
+            {
+                job.Container = container.Alias;
+                jobContext.ResourceStore.Containers.Add(container);
+                jobContext.ReferencedResources.Containers.Add(container);
+            }
+            if (services != null)
+            {
+                foreach (var service in services)
+                {
+                    job.SidecarContainers.Add(service.Key, service.Value.Alias);
+                    jobContext.ResourceStore.Containers.Add(service.Value);
+                    jobContext.ReferencedResources.Containers.Add(service.Value);
+                }
+            }
+
             jobContext.Job.Definition = job;
 
             // Resolve the queue by name
@@ -312,9 +346,7 @@ namespace GitHub.DistributedTask.Pipelines
             }
 
             // Update the execution context with the job-specific system variables
-            jobContext.Variables[WellKnownDistributedTaskVariables.JobDisplayName] = job.DisplayName;
-            jobContext.Variables[WellKnownDistributedTaskVariables.JobId] = job.Id.ToString("D");
-            jobContext.Variables[WellKnownDistributedTaskVariables.JobName] = job.Name;
+            UpdateJobContextVariablesFromJob(jobContext, job);
 
             var steps = new List<JobStep>();
             var identifier = jobContext.GetInstanceName();

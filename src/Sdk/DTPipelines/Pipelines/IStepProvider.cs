@@ -6,6 +6,7 @@ namespace GitHub.DistributedTask.Pipelines
     public interface IStepProvider
     {
         IList<TaskStep> GetPreSteps(IPipelineContext context, IReadOnlyList<JobStep> steps);
+        Dictionary<Guid, List<TaskStep>> GetPostTaskSteps(IPipelineContext context, IReadOnlyList<JobStep> steps);
         IList<TaskStep> GetPostSteps(IPipelineContext context, IReadOnlyList<JobStep> steps);
 
         /// <summary>

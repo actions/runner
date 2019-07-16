@@ -1320,6 +1320,60 @@ namespace GitHub.DistributedTask.Pipelines
                 }
             }
 
+            // Add post checkout tasks
+            // We need to do this after all other tasks are added since checkout could be injected from pre steps or phase steps.
+            var postCheckoutSteps = new Dictionary<Guid, List<TaskStep>>();
+            if (context.StepProviders != null)
+            {
+                var jobSteps = new ReadOnlyCollection<JobStep>(steps);
+
+                foreach (IStepProvider stepProvider in context.StepProviders)
+                {
+                    // This will flatten into 1 dictionary of guids to insert after and the tasks to insert
+                    Dictionary<Guid, List<TaskStep>> toAdd = stepProvider.GetPostTaskSteps(context, jobSteps);
+
+                    foreach (var key in toAdd.Keys)
+                    {
+                        if (!postCheckoutSteps.ContainsKey(key))
+                        {
+                            postCheckoutSteps[key] = new List<TaskStep>();
+                        }
+
+                        postCheckoutSteps[key].AddRange(toAdd[key]);
+                    }
+                }
+            }
+
+            if (postCheckoutSteps?.Keys.Count > 0)
+            {
+                foreach (var pair in postCheckoutSteps)
+                {
+                    Int32? indexOfLastInstanceOfTask = null;
+                    for (int i = job.Steps.Count - 1; i >= 0; i--)
+                    {
+                        var taskStep = job.Steps[i] as TaskStep;
+
+                        if (taskStep != null && taskStep.Reference.Id.Equals(pair.Key))
+                        {
+                            indexOfLastInstanceOfTask = i;
+                            break;
+                        }
+                    }
+
+                    // This will not insert after if the task doesn't exist.
+                    if (indexOfLastInstanceOfTask.HasValue)
+                    {
+                        for (Int32 i = 0; i < pair.Value.Count; i++)
+                        {
+                            // This is so that we know this was a system injected task.
+                            pair.Value[i].Name = $"__system_postcheckout_{i + 1}";
+
+                            job.Steps.Insert(indexOfLastInstanceOfTask.Value + i + 1, CreateJobTaskStep(context, this, identifier, pair.Value[i], stepProviderDemands));
+                        }
+                    }
+                }
+            }
+
             // create unique set of job demands
             AddDemands(context, job, stepProviderDemands);
             AddDemands(context, job, this.Target?.Demands);
@@ -1545,13 +1599,6 @@ namespace GitHub.DistributedTask.Pipelines
             groupStep.Steps.AddRange(stepsCopy);
 
             return groupStep;
-        }
-
-        private void UpdateJobContextVariablesFromJob(JobExecutionContext jobContext, Job job)
-        {
-            jobContext.Variables[WellKnownDistributedTaskVariables.JobDisplayName] = job.DisplayName;
-            jobContext.Variables[WellKnownDistributedTaskVariables.JobId] = job.Id.ToString("D");
-            jobContext.Variables[WellKnownDistributedTaskVariables.JobName] = job.Name;
         }
 
         [OnSerializing]

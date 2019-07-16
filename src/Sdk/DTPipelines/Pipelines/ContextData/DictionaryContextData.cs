@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Expressions = GitHub.DistributedTask.Expressions;
 
 namespace GitHub.DistributedTask.Pipelines.ContextData
 {
@@ -13,7 +14,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
     [JsonObject]
     [ClientIgnore]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class DictionaryContextData : PipelineContextData, IEnumerable<KeyValuePair<String, PipelineContextData>>, Expressions::IReadOnlyObject
+    public class DictionaryContextData : PipelineContextData, IEnumerable<KeyValuePair<String, PipelineContextData>>, IReadOnlyObject
     {
         public DictionaryContextData()
             : base(PipelineContextDataType.Dictionary)
@@ -53,7 +54,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             }
         }
 
-        IEnumerable<Object> IReadOnlyDictionary<String, Object>.Values
+        IEnumerable<Object> IReadOnlyObject.Values
         {
             get
             {
@@ -125,7 +126,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             }
         }
 
-        Object IReadOnlyDictionary<String, Object>.this[String key]
+        Object IReadOnlyObject.this[String key]
         {
             get
             {
@@ -204,24 +205,24 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             }
         }
 
-        IEnumerator<KeyValuePair<String, Object>> IEnumerable<KeyValuePair<String, Object>>.GetEnumerator()
-        {
-            if (m_list?.Count > 0)
-            {
-                foreach (var pair in m_list)
-                {
-                    yield return new KeyValuePair<String, Object>(pair.Key, pair.Value);
-                }
-            }
-        }
-
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        IEnumerator IEnumerable.GetEnumerator()
         {
             if (m_list?.Count > 0)
             {
                 foreach (var pair in m_list)
                 {
                     yield return new KeyValuePair<String, PipelineContextData>(pair.Key, pair.Value);
+                }
+            }
+        }
+
+        IEnumerator IReadOnlyObject.GetEnumerator()
+        {
+            if (m_list?.Count > 0)
+            {
+                foreach (var pair in m_list)
+                {
+                    yield return new KeyValuePair<String, Object>(pair.Key, pair.Value);
                 }
             }
         }
@@ -241,7 +242,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             return false;
         }
 
-        Boolean IReadOnlyDictionary<String, Object>.TryGetValue(
+        Boolean IReadOnlyObject.TryGetValue(
             String key,
             out Object value)
         {

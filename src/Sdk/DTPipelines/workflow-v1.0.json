@@ -8,7 +8,7 @@
       "mapping": {
         "properties": {
           "on": "any",
-          "name": "scalar",
+          "name": "string",
           "jobs": "jobs"
         }
       }
@@ -28,7 +28,7 @@
     "actions-scope-inputs": {
       "description": "Used when evaluating actions scope inputs",
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "actions-scope-input-value"
       }
     },
@@ -43,7 +43,7 @@
         "inputs"
       ],
       "one-of": [
-        "scalar",
+        "string",
         "sequence",
         "mapping"
       ]
@@ -52,7 +52,7 @@
     "actions-scope-outputs": {
       "description": "Used when evaluating actions scope outputs",
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "actions-scope-output-value"
       }
     },
@@ -66,13 +66,13 @@
         "actions",
         "inputs"
       ],
-      "scalar": {}
+      "string": {}
     },
 
     "actions-template-inputs": {
       "description": "Allowed inputs in an actions template",
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "actions-template-input-value"
       }
     },
@@ -85,7 +85,7 @@
         "parallel"
       ],
       "one-of": [
-        "scalar",
+        "string",
         "sequence",
         "mapping"
       ]
@@ -94,7 +94,7 @@
     "actions-template-outputs": {
       "description": "Output mapping for an actions template",
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "actions-template-output-value"
       }
     },
@@ -108,12 +108,12 @@
         "secrets",
         "actions"
       ],
-      "scalar": {}
+      "string": {}
     },
 
     "jobs": {
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "job"
       }
     },
@@ -123,11 +123,13 @@
         "properties": {
           "needs": "needs",
           "strategy": "strategy",
-          "name": "scalar-strategy-context",
+          "name": "string-strategy-context",
           "runs-on": "runs-on",
-          "timeout": "scalar-strategy-context",
-          "cancel-timeout": "scalar-strategy-context",
-          "continue-on-error": "non-empty-scalar",
+          "timeout": "number-strategy-context",
+          "cancel-timeout": "number-strategy-context",
+          "continue-on-error": "boolean",
+          "container": "container",
+          "services": "services",
           "actions": "actions"
         }
       }
@@ -135,8 +137,8 @@
 
     "needs": {
       "one-of": [
-        "sequence-of-non-empty-scalar",
-        "scalar"
+        "sequence-of-non-empty-string",
+        "non-empty-string"
       ]
     },
 
@@ -144,9 +146,9 @@
       "mapping": {
         "properties": {
           "fail-fast": "boolean",
-          "max-parallel": "non-empty-scalar",
+          "max-parallel": "number",
           "matrix": "matrix",
-          "parallel": "non-empty-scalar"
+          "parallel": "number"
         }
       }
     },
@@ -157,7 +159,7 @@
           "include": "matrix-include",
           "exclude": "matrix-exclude"
         },
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "sequence"
       }
     },
@@ -170,7 +172,7 @@
 
     "matrix-include-item": {
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "any"
       }
     },
@@ -183,21 +185,21 @@
 
     "matrix-exclude-item": {
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "matrix-exclude-filter-item"
       }
     },
 
     "matrix-exclude-filter-item": {
       "one-of": [
-        "scalar",
+        "string",
         "matrix-exclude-mapping-filter"
       ]
     },
 
     "matrix-exclude-mapping-filter": {
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
+        "loose-key-type": "non-empty-string",
         "loose-value-type": "matrix-exclude-filter-item"
       }
     },
@@ -209,13 +211,13 @@
         "parallel"
       ],
       "one-of": [
-        "runs-on-scalar",
+        "runs-on-string",
         "runs-on-mapping"
       ]
     },
 
-    "runs-on-scalar": {
-      "scalar": {
+    "runs-on-string": {
+      "string": {
         "require-non-empty": true
       }
     },
@@ -223,7 +225,7 @@
     "runs-on-mapping": {
       "mapping": {
         "properties": {
-          "pool": "non-empty-scalar"
+          "pool": "non-empty-string"
         }
       }
     },
@@ -261,16 +263,16 @@
     "checkout-action": {
       "mapping": {
         "properties": {
-          "name": "scalar-actions-context",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "checkout": "non-empty-scalar",
-          "path": "scalar-actions-context",
-          "clean": "scalar-actions-context",
-          "fetch-depth": "scalar-actions-context",
-          "lfs": "scalar-actions-context",
-          "submodules": "scalar-actions-context"
+          "name": "string-actions-context",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout": "number",
+          "checkout": "non-empty-string",
+          "path": "string-actions-context",
+          "clean": "boolean-actions-context",
+          "fetch-depth": "number-actions-context",
+          "lfs": "boolean-actions-context",
+          "submodules": "string-actions-context"
         }
       }
     },
@@ -278,16 +280,16 @@
     "checkout-action-in-template": {
       "mapping": {
         "properties": {
-          "name": "scalar-actions-context-in-template",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "checkout": "non-empty-scalar",
-          "path": "scalar-actions-context-in-template",
-          "clean": "scalar-actions-context-in-template",
-          "fetch-depth": "scalar-actions-context-in-template",
-          "lfs": "scalar-actions-context-in-template",
-          "submodules": "scalar-actions-context-in-template"
+          "name": "string-actions-context-in-template",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout": "number",
+          "checkout": "non-empty-string",
+          "path": "string-actions-context-in-template",
+          "clean": "boolean-actions-context-in-template",
+          "fetch-depth": "number-actions-context-in-template",
+          "lfs": "boolean-actions-context-in-template",
+          "submodules": "string-actions-context-in-template"
         }
       }
     },
@@ -295,13 +297,13 @@
     "run-action": {
       "mapping": {
         "properties": {
-          "name": "scalar-actions-context",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "run": "scalar-actions-context",
+          "name": "string-actions-context",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout": "number",
+          "run": "string-actions-context",
           "env": "action-env",
-          "working-directory": "scalar-actions-context"
+          "working-directory": "string-actions-context"
         }
       }
     },
@@ -309,13 +311,13 @@
     "run-action-in-template": {
       "mapping": {
         "properties": {
-          "name": "scalar-actions-context-in-template",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "run": "scalar-actions-context-in-template",
+          "name": "string-actions-context-in-template",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout": "number",
+          "run": "string-actions-context-in-template",
           "env": "action-env-in-template",
-          "working-directory": "scalar-actions-context-in-template"
+          "working-directory": "string-actions-context-in-template"
         }
       }
     },
@@ -323,11 +325,11 @@
     "regular-action": {
       "mapping": {
         "properties": {
-          "name": "scalar-actions-context",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "uses": "non-empty-scalar",
+          "name": "string-actions-context",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout": "number",
+          "uses": "non-empty-string",
           "with": "action-with",
           "env": "action-env"
         }
@@ -337,11 +339,11 @@
     "regular-action-in-template": {
       "mapping": {
         "properties": {
-          "name": "scalar-actions-context-in-template",
-          "id": "non-empty-scalar",
-          "if": "scalar",
-          "timeout": "non-empty-scalar",
-          "uses": "non-empty-scalar",
+          "name": "string-actions-context-in-template",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout": "number",
+          "uses": "non-empty-string",
           "with": "action-with-in-template",
           "env": "action-env-in-template"
         }
@@ -351,8 +353,8 @@
     "actions-template-reference": {
       "mapping": {
         "properties": {
-          "template": "non-empty-scalar",
-          "id": "non-empty-scalar",
+          "template": "non-empty-string",
+          "id": "non-empty-string",
           "inputs": "actions-template-reference-inputs"
         }
       }
@@ -361,8 +363,8 @@
     "actions-template-reference-in-template": {
       "mapping": {
         "properties": {
-          "template": "non-empty-scalar",
-          "id": "non-empty-scalar",
+          "template": "non-empty-string",
+          "id": "non-empty-string",
           "inputs": "actions-template-reference-inputs-in-template"
         }
       }
@@ -377,8 +379,8 @@
         "actions"
       ],
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
-        "loose-value-type": "scalar"
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
       }
     },
 
@@ -392,8 +394,8 @@
         "inputs"
       ],
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
-        "loose-value-type": "scalar"
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
       }
     },
 
@@ -403,11 +405,12 @@
         "matrix",
         "parallel",
         "secrets",
-        "actions"
+        "actions",
+        "github"
       ],
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
-        "loose-value-type": "scalar"
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
       }
     },
 
@@ -421,8 +424,8 @@
         "inputs"
       ],
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
-        "loose-value-type": "scalar"
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
       }
     },
 
@@ -432,11 +435,55 @@
         "matrix",
         "parallel",
         "secrets",
-        "actions"
+        "actions",
+        "github"
       ],
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
-        "loose-value-type": "scalar"
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "container": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel"
+      ],
+      "one-of": [
+        "non-empty-string",
+        "container-mapping"
+      ]
+    },
+
+    "container-mapping": {
+      "mapping": {
+        "properties": {
+          "image": "non-empty-string",
+          "options": "non-empty-string",
+          "env": "container-env",
+          "ports": "sequence-of-non-empty-string",
+          "volumes": "sequence-of-non-empty-string"
+        }
+      }
+    },
+
+    "services": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "container"
+      }
+    },
+
+    "container-env": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
       }
     },
 
@@ -450,65 +497,104 @@
         "inputs"
       ],
       "mapping": {
-        "loose-key-type": "non-empty-scalar",
-        "loose-value-type": "scalar"
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
       }
     },
 
-    "boolean": {
-      "one-of": [
-        "true",
-        "false"
-      ]
-    },
-
-    "true": {
-      "scalar": {
-        "constant": true,
-        "ignore-case": true
-      }
-    },
-
-    "false": {
-      "scalar": {
-        "constant": false,
-        "ignore-case": true
-      }
-    },
-
-    "non-empty-scalar": {
-      "scalar": {
+    "non-empty-string": {
+      "string": {
         "require-non-empty": true
       }
     },
 
-    "sequence-of-non-empty-scalar": {
+    "sequence-of-non-empty-string": {
       "sequence": {
-        "item-type": "non-empty-scalar"
+        "item-type": "non-empty-string"
       }
     },
 
-    "scalar-strategy-context": {
+    "number-strategy-context": {
       "context": [
         "strategy",
         "matrix",
         "parallel"
       ],
-      "scalar": {}
+      "number": {}
     },
 
-    "scalar-actions-context": {
+    "string-strategy-context": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel"
+      ],
+      "string": {}
+    },
+
+    "boolean-actions-context": {
       "context": [
         "strategy",
         "matrix",
         "parallel",
         "secrets",
-        "actions"
+        "actions",
+        "github"
       ],
-      "scalar": {}
+      "boolean": {}
     },
 
-    "scalar-actions-context-in-template": {
+    "boolean-actions-context-in-template": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "secrets",
+        "actions",
+        "github",
+        "inputs"
+      ],
+      "boolean": {}
+    },
+
+    "number-actions-context": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "secrets",
+        "actions",
+        "github"
+      ],
+      "number": {}
+    },
+
+    "number-actions-context-in-template": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "secrets",
+        "actions",
+        "github",
+        "inputs"
+      ],
+      "number": {}
+    },
+
+    "string-actions-context": {
+      "context": [
+        "strategy",
+        "matrix",
+        "parallel",
+        "secrets",
+        "actions",
+        "github"
+      ],
+      "string": {}
+    },
+
+    "string-actions-context-in-template": {
       "context": [
         "strategy",
         "matrix",
@@ -517,7 +603,7 @@
         "actions",
         "inputs"
       ],
-      "scalar": {}
+      "string": {}
     }
   }
 }

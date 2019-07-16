@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
@@ -85,10 +84,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 if (scalar is LiteralToken literal)
                 {
-                    Validate(literal, definition);
+                    Validate(ref literal, definition);
+                    return literal;
                 }
-
-                return scalar;
+                else
+                {
+                    return scalar;
+                }
             }
 
             // Sequence start
@@ -114,7 +116,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     // Error
                     m_context.Error(sequence, TemplateStrings.UnexpectedSequenceStart());
 
-                    // Skip the sequence
+                    // Skip each item
                     while (!m_unraveler.AllowSequenceEnd(expand: false))
                     {
                         m_unraveler.SkipSequenceItem();
@@ -184,11 +186,17 @@ namespace GitHub.DistributedTask.ObjectTemplating
             while (m_unraveler.AllowScalar(definition.Expand, out ScalarToken nextKeyScalar))
             {
                 // Expression
-                if (!(nextKeyScalar is LiteralToken nextKey))
+                if (nextKeyScalar is ExpressionToken)
                 {
                     var anyDefinition = new DefinitionInfo(definition, TemplateConstants.Any);
                     mapping.Add(nextKeyScalar, Evaluate(anyDefinition));
                     continue;
+                }
+
+                // Not a string, convert
+                if (!(nextKeyScalar is StringToken nextKey))
+                {
+                    nextKey = new StringToken(nextKeyScalar.FileId, nextKeyScalar.Line, nextKeyScalar.Column, nextKeyScalar.ToString());
                 }
 
                 // Duplicate
@@ -275,7 +283,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             while (m_unraveler.AllowScalar(mappingDefinition.Expand, out ScalarToken nextKeyScalar))
             {
                 // Expression
-                if (!(nextKeyScalar is LiteralToken nextKey))
+                if (nextKeyScalar is ExpressionToken)
                 {
                     if (nextKeyScalar is BasicExpressionToken)
                     {
@@ -290,6 +298,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     continue;
                 }
 
+                // Not a string
+                if (!(nextKeyScalar is StringToken nextKey))
+                {
+                    nextKey = new StringToken(nextKeyScalar.FileId, nextKeyScalar.Line, nextKeyScalar.Column, nextKeyScalar.ToString());
+                }
+
                 // Duplicate
                 if (!keys.Add(nextKey.Value))
                 {
@@ -298,7 +312,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     continue;
                 }
 
+                // Validate
                 Validate(nextKey, keyDefinition);
+
+                // Add the pair
                 var nextValue = Evaluate(valueDefinition);
                 mapping.Add(nextKey, nextValue);
             }
@@ -307,14 +324,39 @@ namespace GitHub.DistributedTask.ObjectTemplating
         }
 
         private void Validate(
-            LiteralToken literal,
+            StringToken stringToken,
             DefinitionInfo definition)
         {
-            // Find a matching definition
-            if (!definition.Get<ScalarDefinition>().Any(x => x.IsMatch(literal)))
+            var literal = stringToken as LiteralToken;
+            Validate(ref literal, definition);
+        }
+
+        private void Validate(
+            ref LiteralToken literal,
+            DefinitionInfo definition)
+        {
+            // Legal
+            var literal2 = literal;
+            if (definition.Get<ScalarDefinition>().Any(x => x.IsMatch(literal2)))
             {
-                m_context.Error(literal, TemplateStrings.UnexpectedValue(literal.Value));
+                return;
             }
+
+            // Not a string, convert
+            if (literal.Type != TokenType.String)
+            {
+                var stringToken = new StringToken(literal.FileId, literal.Line, literal.Column, literal.ToString());
+
+                // Legal
+                if (definition.Get<StringDefinition>().Any(x => x.IsMatch(stringToken)))
+                {
+                    literal = stringToken;
+                    return;
+                }
+            }
+
+            // Illegal
+            m_context.Error(literal, TemplateStrings.UnexpectedValue(literal));
         }
 
         private void ValidateEnd()

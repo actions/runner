@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;

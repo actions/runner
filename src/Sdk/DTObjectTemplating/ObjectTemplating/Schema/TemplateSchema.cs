@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -21,21 +20,36 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
         private TemplateSchema(MappingToken mapping)
         {
-            // Add built-in type: scalar
-            var scalarDefinition = new ScalarDefinition();
-            Definitions.Add(TemplateConstants.Scalar, scalarDefinition);
+            // Add built-in type: null
+            var nullDefinition = new NullDefinition();
+            Definitions.Add(TemplateConstants.Null, nullDefinition);
+
+            // Add built-in type: boolean
+            var booleanDefinition = new BooleanDefinition();
+            Definitions.Add(TemplateConstants.Boolean, booleanDefinition);
+
+            // Add built-in type: number
+            var numberDefinition = new NumberDefinition();
+            Definitions.Add(TemplateConstants.Number, numberDefinition);
+
+            // Add built-in type: string
+            var stringDefinition = new StringDefinition();
+            Definitions.Add(TemplateConstants.String, stringDefinition);
 
             // Add built-in type: sequence
             var sequenceDefinition = new SequenceDefinition { ItemType = TemplateConstants.Any };
             Definitions.Add(TemplateConstants.Sequence, sequenceDefinition);
 
             // Add built-in type: mapping
-            var mappingDefinition = new MappingDefinition { LooseKeyType = TemplateConstants.Scalar, LooseValueType = TemplateConstants.Any };
+            var mappingDefinition = new MappingDefinition { LooseKeyType = TemplateConstants.String, LooseValueType = TemplateConstants.Any };
             Definitions.Add(TemplateConstants.Mapping, mappingDefinition);
 
             // Add built-in type: any
             var anyDefinition = new OneOfDefinition();
-            anyDefinition.OneOf.Add(TemplateConstants.Scalar);
+            anyDefinition.OneOf.Add(TemplateConstants.Null);
+            anyDefinition.OneOf.Add(TemplateConstants.Boolean);
+            anyDefinition.OneOf.Add(TemplateConstants.Number);
+            anyDefinition.OneOf.Add(TemplateConstants.String);
             anyDefinition.OneOf.Add(TemplateConstants.Sequence);
             anyDefinition.OneOf.Add(TemplateConstants.Mapping);
             Definitions.Add(TemplateConstants.Any, anyDefinition);
@@ -44,28 +58,40 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
             {
                 foreach (var pair in mapping)
                 {
-                    var key = TemplateUtil.AssertLiteral(pair.Key, $"{TemplateConstants.TemplateSchema} key");
+                    var key = pair.Key.AssertString($"{TemplateConstants.TemplateSchema} key");
                     switch (key.Value)
                     {
                         case TemplateConstants.Version:
-                            var version = TemplateUtil.AssertLiteral(pair.Value, TemplateConstants.Version);
+                            var version = pair.Value.AssertString(TemplateConstants.Version);
                             Version = version.Value;
                             break;
 
                         case TemplateConstants.Definitions:
-                            var definitions = TemplateUtil.AssertMapping(pair.Value, TemplateConstants.Definitions);
+                            var definitions = pair.Value.AssertMapping(TemplateConstants.Definitions);
                             foreach (var definitionsPair in definitions)
                             {
-                                var definitionsKey = TemplateUtil.AssertLiteral(definitionsPair.Key, $"{TemplateConstants.Definitions} key");
-                                var definitionsValue = TemplateUtil.AssertMapping(definitionsPair.Value, TemplateConstants.Definition);
+                                var definitionsKey = definitionsPair.Key.AssertString($"{TemplateConstants.Definitions} key");
+                                var definitionsValue = definitionsPair.Value.AssertMapping(TemplateConstants.Definition);
                                 var definition = default(Definition);
                                 foreach (var definitionPair in definitionsValue)
                                 {
-                                    var definitionKey = TemplateUtil.AssertLiteral(definitionPair.Key, $"{TemplateConstants.Definition} key");
+                                    var definitionKey = definitionPair.Key.AssertString($"{TemplateConstants.Definition} key");
                                     switch (definitionKey.Value)
                                     {
-                                        case TemplateConstants.Scalar:
-                                            definition = new ScalarDefinition(definitionsValue);
+                                        case TemplateConstants.Null:
+                                            definition = new NullDefinition(definitionsValue);
+                                            break;
+
+                                        case TemplateConstants.Boolean:
+                                            definition = new BooleanDefinition(definitionsValue);
+                                            break;
+
+                                        case TemplateConstants.Number:
+                                            definition = new NumberDefinition(definitionsValue);
+                                            break;
+
+                                        case TemplateConstants.String:
+                                            definition = new StringDefinition(definitionsValue);
                                             break;
 
                                         case TemplateConstants.Sequence:
@@ -85,7 +111,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                             continue;
 
                                         default:
-                                            TemplateUtil.AssertUnexpectedValue(definitionKey, "definition mapping key"); // throws
+                                            definitionKey.AssertUnexpectedValue("definition mapping key"); // throws
                                             break;
                                     }
 
@@ -102,7 +128,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                             break;
 
                         default:
-                            TemplateUtil.AssertUnexpectedValue(key, $"{TemplateConstants.TemplateSchema} key"); // throws
+                            key.AssertUnexpectedValue($"{TemplateConstants.TemplateSchema} key"); // throws
                             break;
                     }
                 }
@@ -136,7 +162,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 throw new TemplateValidationException(context.Errors);
             }
 
-            var mapping = TemplateUtil.AssertMapping(value, TemplateConstants.TemplateSchema);
+            var mapping = value.AssertMapping(TemplateConstants.TemplateSchema);
             var schema = new TemplateSchema(mapping);
             schema.Validate();
             return schema;
@@ -279,127 +305,129 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 {
                     var schema = new TemplateSchema();
 
-                    ScalarDefinition scalarDefinition;
+                    StringDefinition stringDefinition;
                     SequenceDefinition sequenceDefinition;
                     MappingDefinition mappingDefinition;
                     OneOfDefinition oneOfDefinition;
 
                     // template-schema
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Version, new PropertyValue(TemplateConstants.NonEmptyScalar));
+                    mappingDefinition.Properties.Add(TemplateConstants.Version, new PropertyValue(TemplateConstants.NonEmptyString));
                     mappingDefinition.Properties.Add(TemplateConstants.Definitions, new PropertyValue(TemplateConstants.Definitions));
                     schema.Definitions.Add(TemplateConstants.TemplateSchema, mappingDefinition);
 
                     // definitions
-                    mappingDefinition = new MappingDefinition { LooseKeyType = TemplateConstants.NonEmptyScalar, LooseValueType = TemplateConstants.Definition };
+                    mappingDefinition = new MappingDefinition();
+                    mappingDefinition.LooseKeyType = TemplateConstants.NonEmptyString;
+                    mappingDefinition.LooseValueType = TemplateConstants.Definition;
                     schema.Definitions.Add(TemplateConstants.Definitions, mappingDefinition);
 
                     // definition
                     oneOfDefinition = new OneOfDefinition();
-                    oneOfDefinition.OneOf.Add(TemplateConstants.ScalarDefinition);
+                    oneOfDefinition.OneOf.Add(TemplateConstants.NullDefinition);
+                    oneOfDefinition.OneOf.Add(TemplateConstants.BooleanDefinition);
+                    oneOfDefinition.OneOf.Add(TemplateConstants.NumberDefinition);
+                    oneOfDefinition.OneOf.Add(TemplateConstants.StringDefinition);
                     oneOfDefinition.OneOf.Add(TemplateConstants.SequenceDefinition);
                     oneOfDefinition.OneOf.Add(TemplateConstants.MappingDefinition);
                     oneOfDefinition.OneOf.Add(TemplateConstants.OneOfDefinition);
                     schema.Definitions.Add(TemplateConstants.Definition, oneOfDefinition);
 
-                    // scalar-definition
+                    // null-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
-                    mappingDefinition.Properties.Add(TemplateConstants.Scalar, new PropertyValue(TemplateConstants.ScalarDefinitionProperties));
-                    schema.Definitions.Add(TemplateConstants.ScalarDefinition, mappingDefinition);
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.Null, new PropertyValue(TemplateConstants.NullDefinitionProperties));
+                    schema.Definitions.Add(TemplateConstants.NullDefinition, mappingDefinition);
 
-                    // scalar-definition-properties
+                    // null-definition-properties
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Constant, new PropertyValue(TemplateConstants.NonEmptyScalar));
+                    schema.Definitions.Add(TemplateConstants.NullDefinitionProperties, mappingDefinition);
+
+                    // boolean-definition
+                    mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.Boolean, new PropertyValue(TemplateConstants.BooleanDefinitionProperties));
+                    schema.Definitions.Add(TemplateConstants.BooleanDefinition, mappingDefinition);
+
+                    // boolean-definition-properties
+                    mappingDefinition = new MappingDefinition();
+                    schema.Definitions.Add(TemplateConstants.BooleanDefinitionProperties, mappingDefinition);
+
+                    // number-definition
+                    mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.Number, new PropertyValue(TemplateConstants.NumberDefinitionProperties));
+                    schema.Definitions.Add(TemplateConstants.NumberDefinition, mappingDefinition);
+
+                    // number-definition-properties
+                    mappingDefinition = new MappingDefinition();
+                    schema.Definitions.Add(TemplateConstants.NumberDefinitionProperties, mappingDefinition);
+
+                    // string-definition
+                    mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.String, new PropertyValue(TemplateConstants.StringDefinitionProperties));
+                    schema.Definitions.Add(TemplateConstants.StringDefinition, mappingDefinition);
+
+                    // string-definition-properties
+                    mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Constant, new PropertyValue(TemplateConstants.NonEmptyString));
                     mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(TemplateConstants.Boolean));
                     mappingDefinition.Properties.Add(TemplateConstants.RequireNonEmpty, new PropertyValue(TemplateConstants.Boolean));
-                    schema.Definitions.Add(TemplateConstants.ScalarDefinitionProperties, mappingDefinition);
+                    schema.Definitions.Add(TemplateConstants.StringDefinitionProperties, mappingDefinition);
 
                     // sequence-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
                     mappingDefinition.Properties.Add(TemplateConstants.Sequence, new PropertyValue(TemplateConstants.SequenceDefinitionProperties));
                     schema.Definitions.Add(TemplateConstants.SequenceDefinition, mappingDefinition);
 
                     // sequence-definition-properties
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.ItemType, new PropertyValue(TemplateConstants.NonEmptyScalar));
+                    mappingDefinition.Properties.Add(TemplateConstants.ItemType, new PropertyValue(TemplateConstants.NonEmptyString));
                     schema.Definitions.Add(TemplateConstants.SequenceDefinitionProperties, mappingDefinition);
 
                     // mapping-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
                     mappingDefinition.Properties.Add(TemplateConstants.Mapping, new PropertyValue(TemplateConstants.MappingDefinitionProperties));
                     schema.Definitions.Add(TemplateConstants.MappingDefinition, mappingDefinition);
 
                     // mapping-definition-properties
                     mappingDefinition = new MappingDefinition();
                     mappingDefinition.Properties.Add(TemplateConstants.Properties, new PropertyValue(TemplateConstants.Properties));
-                    mappingDefinition.Properties.Add(TemplateConstants.LooseKeyType, new PropertyValue(TemplateConstants.NonEmptyScalar));
-                    mappingDefinition.Properties.Add(TemplateConstants.LooseValueType, new PropertyValue(TemplateConstants.NonEmptyScalar));
+                    mappingDefinition.Properties.Add(TemplateConstants.LooseKeyType, new PropertyValue(TemplateConstants.NonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.LooseValueType, new PropertyValue(TemplateConstants.NonEmptyString));
                     schema.Definitions.Add(TemplateConstants.MappingDefinitionProperties, mappingDefinition);
 
                     // properties
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.LooseKeyType = TemplateConstants.NonEmptyScalar;
-                    mappingDefinition.LooseValueType = TemplateConstants.NonEmptyScalar;
+                    mappingDefinition.LooseKeyType = TemplateConstants.NonEmptyString;
+                    mappingDefinition.LooseValueType = TemplateConstants.NonEmptyString;
                     schema.Definitions.Add(TemplateConstants.Properties, mappingDefinition);
 
                     // one-of-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.Scalar));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
-                    mappingDefinition.Properties.Add(TemplateConstants.OneOf, new PropertyValue(TemplateConstants.SequenceOfNonEmptyScalar));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.OneOf, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
                     schema.Definitions.Add(TemplateConstants.OneOfDefinition, mappingDefinition);
 
-                    // scalar-constant
-                    scalarDefinition = new ScalarDefinition();
-                    scalarDefinition.Constant = TemplateConstants.Scalar;
-                    schema.Definitions.Add(TemplateConstants.ScalarConstant, scalarDefinition);
+                    // non-empty-string
+                    stringDefinition = new StringDefinition();
+                    stringDefinition.RequireNonEmpty = true;
+                    schema.Definitions.Add(TemplateConstants.NonEmptyString, stringDefinition);
 
-                    // sequence-constant
-                    scalarDefinition = new ScalarDefinition();
-                    scalarDefinition.Constant = TemplateConstants.Sequence;
-                    schema.Definitions.Add(TemplateConstants.SequenceConstant, scalarDefinition);
-
-                    // mapping-constant
-                    scalarDefinition = new ScalarDefinition();
-                    scalarDefinition.Constant = TemplateConstants.Mapping;
-                    schema.Definitions.Add(TemplateConstants.MappingConstant, scalarDefinition);
-
-                    // one-of-constant
-                    scalarDefinition = new ScalarDefinition();
-                    scalarDefinition.Constant = TemplateConstants.OneOf;
-                    schema.Definitions.Add(TemplateConstants.OneOfConstant, scalarDefinition);
-
-                    // boolean
-                    oneOfDefinition = new OneOfDefinition();
-                    oneOfDefinition.OneOf.Add(TemplateConstants.TrueConstant);
-                    oneOfDefinition.OneOf.Add(TemplateConstants.FalseConstant);
-                    schema.Definitions.Add(TemplateConstants.Boolean, oneOfDefinition);
-
-                    // true-constant
-                    scalarDefinition = new ScalarDefinition();
-                    scalarDefinition.Constant = TemplateConstants.True;
-                    schema.Definitions.Add(TemplateConstants.TrueConstant, scalarDefinition);
-
-                    // false-constant
-                    scalarDefinition = new ScalarDefinition();
-                    scalarDefinition.Constant = TemplateConstants.False;
-                    schema.Definitions.Add(TemplateConstants.FalseConstant, scalarDefinition);
-
-                    // non-empty-scalar
-                    scalarDefinition = new ScalarDefinition();
-                    scalarDefinition.RequireNonEmpty = true;
-                    schema.Definitions.Add(TemplateConstants.NonEmptyScalar, scalarDefinition);
-
-                    // sequence-of-non-empty-scalar
+                    // sequence-of-non-empty-string
                     sequenceDefinition = new SequenceDefinition();
-                    sequenceDefinition.ItemType = TemplateConstants.NonEmptyScalar;
-                    schema.Definitions.Add(TemplateConstants.SequenceOfNonEmptyScalar, sequenceDefinition);
+                    sequenceDefinition.ItemType = TemplateConstants.NonEmptyString;
+                    schema.Definitions.Add(TemplateConstants.SequenceOfNonEmptyString, sequenceDefinition);
 
                     schema.Validate();
 

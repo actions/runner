@@ -141,6 +141,9 @@ namespace GitHub.DistributedTask.Pipelines
             var result = builder.GetReferenceResources(jobInstance.Definition.Steps.OfType<Step>().ToList(), jobInstance.Definition.Target);
             jobContext.ReferencedResources.MergeWith(result);
 
+            // Update the execution context with the job-specific system variables
+            UpdateJobContextVariablesFromJob(jobContext, jobInstance.Definition);
+
             return jobContext;
         }
     }

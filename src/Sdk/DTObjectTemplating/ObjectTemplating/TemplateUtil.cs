@@ -1,77 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.ObjectTemplating
 {
-    public static class TemplateUtil
+    internal static class TemplateUtil
     {
-        public static LiteralToken AssertLiteral(
-            TemplateToken value,
-            String objectDescription)
-        {
-            if (value is LiteralToken literal)
-            {
-                return literal;
-            }
-
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(LiteralToken)}' was expected.");
-        }
-
-        public static MappingToken AssertMapping(
-            TemplateToken value,
-            String objectDescription)
-        {
-            if (value is MappingToken mapping)
-            {
-                return mapping;
-            }
-
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(MappingToken)}' was expected.");
-        }
-
-        internal static void AssertNotEmpty(
-            MappingToken mapping,
-            String objectDescription)
-        {
-            if (mapping.Count == 0)
-            {
-                throw new ArgumentException($"Unexpected empty mapping when reading '{objectDescription}'");
-            }
-        }
-
-        internal static ScalarToken AssertScalar(
-            TemplateToken value,
-            String objectDescription)
-        {
-            if (value is ScalarToken scalar)
-            {
-                return scalar;
-            }
-
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(ScalarToken)}' was expected.");
-        }
-
-        internal static SequenceToken AssertSequence(
-            TemplateToken value,
-            String objectDescription)
-        {
-            if (value is SequenceToken sequence)
-            {
-                return sequence;
-            }
-
-            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(SequenceToken)}' was expected.");
-        }
-
-        internal static void AssertUnexpectedValue(
-            LiteralToken literal,
-            String objectDescription)
-        {
-            throw new ArgumentException($"Error while reading '{objectDescription}'. Unexpected value '{literal.Value}'");
-        }
-
         /// <summary>
         /// Returns all tokens (depth first)
         /// </summary>

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.DistributedTask.Pipelines
@@ -28,6 +29,10 @@ namespace GitHub.DistributedTask.Pipelines
                 }
                 return m_resources;
             }
+            set
+            {
+                m_resources = value;
+            }
         }
 
         /// <summary>
@@ -42,6 +47,21 @@ namespace GitHub.DistributedTask.Pipelines
                     m_counters = new Dictionary<String, Int32>(StringComparer.OrdinalIgnoreCase);
                 }
                 return m_counters;
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the data value for any context needed to be passed down to the agent
+        /// </summary>
+        public IDictionary<String, PipelineContextData> Data
+        {
+            get
+            {
+                if (m_data == null)
+                {
+                    m_data = new Dictionary<String, PipelineContextData>();
+                }
+                return m_data;
             }
         }
 
@@ -136,6 +156,11 @@ namespace GitHub.DistributedTask.Pipelines
                 m_counters = null;
             }
 
+            if (m_data?.Count == 0)
+            {
+                m_data = null;
+            }
+
             if (m_userVariables?.Count == 0)
             {
                 m_userVariables = null;
@@ -154,6 +179,9 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "Counters", EmitDefaultValue = false)]
         private Dictionary<String, Int32> m_counters;
+
+        [DataMember(Name = "Data", EmitDefaultValue = false)]
+        private Dictionary<String, PipelineContextData> m_data;
 
         [DataMember(Name = "Options")]
         private ExecutionOptions m_options = new ExecutionOptions();

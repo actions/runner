@@ -6,9 +6,10 @@ using GitHub.DistributedTask.Expressions;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.DistributedTask.Pipelines.Expressions;
 using GitHub.DistributedTask.Pipelines.Validation;
 using GitHub.Services.Common;
+using RegexUtility = GitHub.DistributedTask.Pipelines.Expressions.RegexUtility;
+using WellKnownRegularExpressions = GitHub.DistributedTask.Pipelines.Expressions.WellKnownRegularExpressions;
 
 namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
@@ -34,11 +35,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     return result;
                 }
 
-                var pipelineMapping = TemplateUtil.AssertMapping(pipeline, "root");
+                var pipelineMapping = pipeline.AssertMapping("root");
 
                 foreach (var pipelinePair in pipelineMapping)
                 {
-                    var pipelineKey = TemplateUtil.AssertLiteral(pipelinePair.Key, "root key");
+                    var pipelineKey = pipelinePair.Key.AssertString("root key");
 
                     switch (pipelineKey.Value)
                     {
@@ -58,7 +59,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             break;
 
                         default:
-                            TemplateUtil.AssertUnexpectedValue(pipelineKey, "root key"); // throws
+                            pipelineKey.AssertUnexpectedValue("root key"); // throws
                             break;
                     }
                 }
@@ -94,9 +95,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return result;
             }
 
-            // Literal
-            var displayNameLiteral = TemplateUtil.AssertLiteral(displayName, $"job {PipelineTemplateConstants.Name}");
-            result = displayNameLiteral.Value;
+            // String
+            var displayNameString = displayName.AssertString($"job {PipelineTemplateConstants.Name}");
+            result = displayNameString.Value;
             return result;
         }
 
@@ -113,14 +114,14 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return result;
             }
 
-            // Literal
-            if (runsOn is LiteralToken runsOnLiteral)
+            // String
+            if (runsOn is StringToken runsOnString)
             {
-                var queueName = AgentQueueTarget.PoolNameForVMImage(runsOnLiteral.Value);
+                var queueName = AgentQueueTarget.PoolNameForVMImage(runsOnString.Value);
 
                 if (String.IsNullOrEmpty(queueName))
                 {
-                    context.Error(runsOnLiteral, $"Unexpected VM image '{runsOnLiteral.Value}'");
+                    context.Error(runsOnString, $"Unexpected VM image '{runsOnString.Value}'");
                 }
                 else
                 {
@@ -128,8 +129,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
             }
             // Mapping
-            else if (runsOn is MappingToken runsOnMapping)
+            else
             {
+                var runsOnMapping = runsOn.AssertMapping($"job {PipelineTemplateConstants.RunsOn}");
                 foreach (var runsOnProperty in runsOnMapping)
                 {
                     // Expression
@@ -138,8 +140,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         continue;
                     }
 
-                    // Literal
-                    var propertyName = TemplateUtil.AssertLiteral(runsOnProperty.Key, $"job {PipelineTemplateConstants.RunsOn} key");
+                    // String
+                    var propertyName = runsOnProperty.Key.AssertString($"job {PipelineTemplateConstants.RunsOn} key");
 
                     switch (propertyName.Value)
                     {
@@ -151,20 +153,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             }
 
                             // Literal
-                            var pool = TemplateUtil.AssertLiteral(runsOnProperty.Value, $"job {PipelineTemplateConstants.RunsOn} key");
+                            var pool = runsOnProperty.Value.AssertString($"job {PipelineTemplateConstants.RunsOn} key");
                             result.Queue = new AgentQueueReference { Name = pool.Value };
                             break;
 
                         default:
-                            TemplateUtil.AssertUnexpectedValue(propertyName, $"job {PipelineTemplateConstants.RunsOn} key"); // throws
+                            propertyName.AssertUnexpectedValue($"job {PipelineTemplateConstants.RunsOn} key"); // throws
                             break;
                     }
                 }
-            }
-            // Unexpected
-            else
-            {
-                TemplateUtil.AssertLiteral(runsOn, $"job {PipelineTemplateConstants.RunsOn}");
             }
 
             return result;
@@ -175,12 +172,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateToken token,
             Boolean allowExpressions = false)
         {
-            return ConvertToInt32(
-                context,
-                token,
-                $"job {PipelineTemplateConstants.Timeout}",
-                "Invalid timeout '{0}'",
-                allowExpressions);
+            if (allowExpressions && token is ExpressionToken)
+            {
+                return null;
+            }
+
+            var numberToken = token.AssertNumber($"job {PipelineTemplateConstants.Timeout}");
+            return (Int32)numberToken.Value;
         }
 
         internal static Int32? ConvertToJobCancelTimeout(
@@ -188,12 +186,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateToken token,
             Boolean allowExpressions = false)
         {
-            return ConvertToInt32(
-                context,
-                token,
-                $"job {PipelineTemplateConstants.CancelTimeout}",
-                "Invalid cancel timeout '{0}'",
-                allowExpressions);
+            if (allowExpressions && token is ExpressionToken)
+            {
+                return null;
+            }
+
+            var numberToken = token.AssertNumber($"job {PipelineTemplateConstants.CancelTimeout}");
+            return (Int32)numberToken.Value;
         }
 
         internal static Dictionary<String, String> ConvertToStepEnvironment(
@@ -211,7 +210,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
 
             // Mapping
-            var mapping = TemplateUtil.AssertMapping(environment, "environment");
+            var mapping = environment.AssertMapping("environment");
 
             foreach (var pair in mapping)
             {
@@ -221,8 +220,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     continue;
                 }
 
-                // Literal key
-                var key = TemplateUtil.AssertLiteral(pair.Key, "environment key");
+                // String key
+                var key = pair.Key.AssertString("environment key");
 
                 // Expression value
                 if (allowExpressions && pair.Value is ExpressionToken)
@@ -230,8 +229,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     continue;
                 }
 
-                // Literal value
-                var value = TemplateUtil.AssertLiteral(pair.Value, "environment value");
+                // String value
+                var value = pair.Value.AssertString("environment value");
                 result[key.Value] = value.Value;
             }
 
@@ -252,7 +251,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
 
             // Mapping
-            var mapping = TemplateUtil.AssertMapping(inputs, "inputs");
+            var mapping = inputs.AssertMapping("inputs");
 
             foreach (var pair in mapping)
             {
@@ -263,7 +262,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 // Literal key
-                var key = TemplateUtil.AssertLiteral(pair.Key, "inputs key");
+                var key = pair.Key.AssertString("inputs key");
 
                 // Expression value
                 if (allowExpressions && pair.Value is ExpressionToken)
@@ -272,7 +271,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 // Literal value
-                var value = TemplateUtil.AssertLiteral(pair.Value, "inputs value");
+                var value = pair.Value.AssertString("inputs value");
                 result[key.Value] = value.Value;
             }
 
@@ -293,9 +292,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return result;
             }
 
-            var strategyMapping = TemplateUtil.AssertMapping(token, PipelineTemplateConstants.Strategy);
+            var strategyMapping = token.AssertMapping(PipelineTemplateConstants.Strategy);
             var matrixBuilder = default(MatrixBuilder);
-            var parallelism = 0;
+            var parallel = 0;
             var hasExpressions = false;
 
             foreach (var strategyPair in strategyMapping)
@@ -308,7 +307,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 // Literal key
-                var strategyKey = TemplateUtil.AssertLiteral(strategyPair.Key, "strategy key");
+                var strategyKey = strategyPair.Key.AssertString("strategy key");
 
                 switch (strategyKey.Value)
                 {
@@ -320,8 +319,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             continue;
                         }
 
-                        var failFast = TemplateUtil.AssertLiteral(strategyPair.Value, $"strategy {PipelineTemplateConstants.FailFast}");
-                        result.FailFast = Boolean.Parse(failFast.Value);
+                        var failFastBooleanToken = strategyPair.Value.AssertBoolean($"strategy {PipelineTemplateConstants.FailFast}");
+                        result.FailFast = failFastBooleanToken.Value;
                         break;
 
                     // Max-Parallel
@@ -332,11 +331,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             continue;
                         }
 
-                        result.MaxParallel = ConvertToInt32(
-                            context,
-                            strategyPair.Value,
-                            $"strategy {PipelineTemplateConstants.MaxParallel}",
-                            "Invalid max parallel '{0}'");
+                        var maxParallelNumberToken = strategyPair.Value.AssertNumber($"strategy {PipelineTemplateConstants.MaxParallel}");
+                        result.MaxParallel = (Int32)maxParallelNumberToken.Value;
                         break;
 
                     // Matrix
@@ -349,7 +345,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             continue;
                         }
 
-                        var matrix = TemplateUtil.AssertMapping(strategyPair.Value, "matrix");
+                        var matrix = strategyPair.Value.AssertMapping("matrix");
                         hasExpressions = hasExpressions || TemplateUtil.GetTokens(matrix).Any(x => x is ExpressionToken);
                         matrixBuilder = new MatrixBuilder(context, jobFactoryDisplayName);
                         var hasVector = false;
@@ -363,7 +359,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                                 continue;
                             }
 
-                            var matrixKey = TemplateUtil.AssertLiteral(matrixPair.Key, "matrix key");
+                            var matrixKey = matrixPair.Key.AssertString("matrix key");
                             switch (matrixKey.Value)
                             {
                                 case PipelineTemplateConstants.Include:
@@ -372,7 +368,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                                         continue;
                                     }
 
-                                    var includeSequence = TemplateUtil.AssertSequence(matrixPair.Value, "matrix includes");
+                                    var includeSequence = matrixPair.Value.AssertSequence("matrix includes");
                                     matrixBuilder.Include(includeSequence);
                                     break;
 
@@ -382,7 +378,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                                         continue;
                                     }
 
-                                    var excludeSequence = TemplateUtil.AssertSequence(matrixPair.Value, "matrix excludes");
+                                    var excludeSequence = matrixPair.Value.AssertSequence("matrix excludes");
                                     matrixBuilder.Exclude(excludeSequence);
                                     break;
 
@@ -395,7 +391,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                                     }
 
                                     var vectorName = matrixKey.Value;
-                                    var vectorSequence = TemplateUtil.AssertSequence(matrixPair.Value, "matrix vector value");
+                                    var vectorSequence = matrixPair.Value.AssertSequence("matrix vector value");
                                     if (vectorSequence.Count == 0)
                                     {
                                         context.Error(vectorSequence, $"Matrix vector '{vectorName}' does not contain any values");
@@ -424,17 +420,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         }
 
                         // Literal
-                        parallelism = ConvertToInt32(
-                            context,
-                            strategyPair.Value,
-                            "parallel",
-                            "Invalid parallel setting '{0}'. Must be an integer greater than zero.",
-                            allowExpressions: false,
-                            minValue: 1);
+                        var parallelNumber = strategyPair.Value.AssertNumber("parallel");
+                        parallel = (Int32)parallelNumber.Value;
+                        if (parallel < 1)
+                        {
+                            context.Error(parallelNumber, "Must be an integer greater than zero");
+                        }
                         break;
 
                     default:
-                        TemplateUtil.AssertUnexpectedValue(strategyKey, "strategy key"); // throws
+                        strategyKey.AssertUnexpectedValue("strategy key"); // throws
                         break;
                 }
             }
@@ -448,12 +443,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 result.Configurations.AddRange(matrixBuilder.Build());
             }
-            else if (parallelism > 0)
+            else if (parallel > 0)
             {
                 var nameBuilder = new ReferenceNameBuilder();
                 var displayNameBuilder = new JobDisplayNameBuilder(jobFactoryDisplayName);
 
-                for (var parallelIndex = 0; parallelIndex < parallelism; parallelIndex++)
+                for (var parallelIndex = 0; parallelIndex < parallel; parallelIndex++)
                 {
                     // New configuration
                     var configuration = new StrategyConfiguration();
@@ -471,8 +466,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     context.Memory.AddBytes(configuration.DisplayName);
 
                     // Parallel context
-                    var parallel = new StringContextData(parallelism.ToString(CultureInfo.InvariantCulture));
-                    configuration.ContextData.Add(PipelineTemplateConstants.Parallel, parallel);
+                    var parallelContext = new StringContextData(parallel.ToString(CultureInfo.InvariantCulture));
+                    configuration.ContextData.Add(PipelineTemplateConstants.Parallel, parallelContext);
                     context.Memory.AddBytes(PipelineTemplateConstants.Parallel);
                     context.Memory.AddBytes(parallel, traverse: true);
 
@@ -535,30 +530,132 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        internal static ContainerResource ConvertToJobContainer(
+            TemplateContext context,
+            TemplateToken value,
+            bool allowExpressions = false)
+        {
+            var result = new ContainerResource()
+            {
+                Alias = Guid.NewGuid().ToString("N")
+            };
+            if (allowExpressions && TemplateUtil.GetTokens(value).Any(x => x is ExpressionToken))
+            {
+                return result;
+            }
+
+            if (value is StringToken containerLiteral)
+            {
+                result.Image = containerLiteral.Value;
+            }
+            else if (value is MappingToken containerMapping)
+            {
+                foreach (var containerPropertyPair in containerMapping)
+                {
+                    var propertyName = containerPropertyPair.Key.AssertString($"{PipelineTemplateConstants.Container} key");
+
+                    switch (propertyName.Value)
+                    {
+                        case ContainerPropertyNames.Image:
+                            result.Image = containerPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Container} {propertyName}").Value;
+                            break;
+                        case ContainerPropertyNames.Env:
+                            var env = containerPropertyPair.Value.AssertMapping($"{PipelineTemplateConstants.Container} {propertyName}");
+                            var envDict = new Dictionary<String, String>(env.Count);
+                            foreach (var envPair in env)
+                            {
+                                var envKey = envPair.Key.ToString();
+                                var envValue = envPair.Value.AssertString($"{PipelineTemplateConstants.Container} {propertyName} {envPair.Key.ToString()}").Value;
+                                envDict.Add(envKey, envValue);
+                            }
+                            result.Environment = envDict;
+                            break;
+                        case ContainerPropertyNames.Options:
+                            result.Options = containerPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Container} {propertyName}").Value;
+                            break;
+                        case ContainerPropertyNames.Ports:
+                            var ports = containerPropertyPair.Value.AssertSequence($"{PipelineTemplateConstants.Container} {propertyName}");
+                            var portList = new List<String>(ports.Count);
+                            foreach (var portItem in ports)
+                            {
+                                var portString = portItem.AssertString($"{PipelineTemplateConstants.Container} {propertyName} {portItem.ToString()}").Value;
+                                portList.Add(portString);
+                            }
+                            result.Ports = portList;
+                            break;
+                        case ContainerPropertyNames.Volumes:
+                            var volumes = containerPropertyPair.Value.AssertSequence($"{PipelineTemplateConstants.Container} {propertyName}");
+                            var volumeList = new List<String>(volumes.Count);
+                            foreach (var volumeItem in volumes)
+                            {
+                                var volumeString = volumeItem.AssertString($"{PipelineTemplateConstants.Container} {propertyName} {volumeItem.ToString()}").Value;
+                                volumeList.Add(volumeString);
+                            }
+                            result.Volumes = volumeList;
+                            break;
+                        default:
+                            propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Container} key");
+                            break;
+                    }
+                }
+            }
+            else if (value is ExpressionToken containerExpression)
+            {
+                result.Image = containerExpression.ToString();
+            }
+            return result;
+        }
+
+        internal static Dictionary<String, ContainerResource> ConvertToJobServiceContainers(
+            TemplateContext context,
+            TemplateToken services,
+            bool allowExpressions = false)
+        {
+            var result = new Dictionary<String, ContainerResource>(StringComparer.OrdinalIgnoreCase);
+
+            if (allowExpressions && TemplateUtil.GetTokens(services).Any(x => x is ExpressionToken))
+            {
+                return result;
+            }
+
+            var servicesMapping = services.AssertMapping("services");
+
+            foreach (var servicePair in servicesMapping)
+            {
+                var k = servicePair.Key;
+                var v = servicePair.Value;
+                var container = ConvertToJobContainer(context, v, allowExpressions);
+
+                result.Add(k.ToString(), container);
+            }
+
+            return result;
+        }
+
         private static IEnumerable<PhaseNode> ConvertToJobFactories(
             TemplateContext context,
             PipelineResources resources,
             TemplateToken workflow)
         {
-            var workflowMapping = TemplateUtil.AssertMapping(workflow, PipelineTemplateConstants.Workflow);
+            var jobsMapping = workflow.AssertMapping(PipelineTemplateConstants.Jobs);
 
-            foreach (var workflowPair in workflowMapping)
+            foreach (var jobsPair in jobsMapping)
             {
-                var workflowNameToken = TemplateUtil.AssertLiteral(workflowPair.Key, $"{PipelineTemplateConstants.Workflow} key");
-                if (!NameValidation.IsValid(workflowNameToken.Value, true))
+                var jobNameToken = jobsPair.Key.AssertString($"{PipelineTemplateConstants.Jobs} key");
+                if (!NameValidation.IsValid(jobNameToken.Value, true))
                 {
-                    context.Error(workflowNameToken, $"Job name {workflowNameToken.Value} is invalid. Names must start with a letter or '_' and contain only alphanumeric characters, '-', or '_'");
+                    context.Error(jobNameToken, $"Job name {jobNameToken.Value} is invalid. Names must start with a letter or '_' and contain only alphanumeric characters, '-', or '_'");
                 }
                 var result = new JobFactory
                 {
-                    Name = workflowNameToken.Value
+                    Name = jobNameToken.Value
                 };
 
-                var jobFactoryDefinition = TemplateUtil.AssertMapping(workflowPair.Value, $"{PipelineTemplateConstants.Workflow} value");
+                var jobFactoryDefinition = jobsPair.Value.AssertMapping($"{PipelineTemplateConstants.Jobs} value");
 
                 foreach (var jobFactoryProperty in jobFactoryDefinition)
                 {
-                    var propertyName = TemplateUtil.AssertLiteral(jobFactoryProperty.Key, $"job property name");
+                    var propertyName = jobFactoryProperty.Key.AssertString($"job property name");
 
                     switch (propertyName.Value)
                     {
@@ -567,19 +664,19 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             break;
 
                         case PipelineTemplateConstants.ContinueOnError:
-                            var continueOnError = TemplateUtil.AssertLiteral(jobFactoryProperty.Value, $"job {PipelineTemplateConstants.ContinueOnError}");
-                            result.ContinueOnError = Boolean.Parse(continueOnError.Value);
+                            var continueOnErrorBooleanToken = jobFactoryProperty.Value.AssertBoolean($"job {PipelineTemplateConstants.ContinueOnError}");
+                            result.ContinueOnError = continueOnErrorBooleanToken.Value;
                             break;
 
                         case PipelineTemplateConstants.If:
-                            var ifCondition = TemplateUtil.AssertLiteral(jobFactoryProperty.Value, $"job {PipelineTemplateConstants.If}");
+                            var ifCondition = jobFactoryProperty.Value.AssertString($"job {PipelineTemplateConstants.If}");
                             result.Condition = ConvertToIfCondition(context, ifCondition, true, true);
                             break;
 
                         case PipelineTemplateConstants.Name:
-                            var displayName = TemplateUtil.AssertScalar(jobFactoryProperty.Value, $"job {PipelineTemplateConstants.Name}");
+                            var displayName = jobFactoryProperty.Value.AssertScalar($"job {PipelineTemplateConstants.Name}");
                             ConvertToJobDisplayName(context, displayName, allowExpressions: true); // Validate early if possible
-                            if (displayName is LiteralToken)
+                            if (displayName is StringToken)
                             {
                                 result.DisplayName = displayName.ToString();
                             }
@@ -590,16 +687,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             break;
 
                         case PipelineTemplateConstants.Needs:
-                            if (jobFactoryProperty.Value is LiteralToken needsLiteral)
+                            if (jobFactoryProperty.Value is StringToken needsLiteral)
                             {
                                 result.DependsOn.Add(needsLiteral.Value);
                             }
                             else
                             {
-                                var needs = TemplateUtil.AssertSequence(jobFactoryProperty.Value, $"job {PipelineTemplateConstants.Needs}");
+                                var needs = jobFactoryProperty.Value.AssertSequence($"job {PipelineTemplateConstants.Needs}");
                                 foreach (var needsItem in needs)
                                 {
-                                    var need = TemplateUtil.AssertLiteral(needsItem, $"job {PipelineTemplateConstants.Needs} item");
+                                    var need = needsItem.AssertString($"job {PipelineTemplateConstants.Needs} item");
                                     result.DependsOn.Add(need.Value);
                                 }
                             }
@@ -632,8 +729,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             result.JobCancelTimeout = jobFactoryProperty.Value.Clone(true) as ScalarToken;
                             break;
 
+                        case PipelineTemplateConstants.Container:
+                            ConvertToJobContainer(context, jobFactoryProperty.Value, allowExpressions: true);
+                            result.JobContainer = jobFactoryProperty.Value.Clone(true);
+                            break;
+
+                        case PipelineTemplateConstants.Services:
+                            ConvertToJobServiceContainers(context, jobFactoryProperty.Value, allowExpressions: true);
+                            result.JobServiceContainers = jobFactoryProperty.Value.Clone(true);
+                            break;
+
                         default:
-                            TemplateUtil.AssertUnexpectedValue(propertyName, "job key"); // throws
+                            propertyName.AssertUnexpectedValue("job key"); // throws
                             break;
                     }
                 }
@@ -641,7 +748,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 // todo: Move "required" support into schema validation
                 if (result.JobTarget == null)
                 {
-                    context.Error(workflowMapping, $"The '{PipelineTemplateConstants.RunsOn}' property is required");
+                    context.Error(jobFactoryDefinition, $"The '{PipelineTemplateConstants.RunsOn}' property is required");
                 }
 
                 if (String.IsNullOrEmpty(result.DisplayName))
@@ -660,8 +767,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             Inputs = new MappingToken(null, null, null)
                             {
                                 {
-                                    new LiteralToken(null, null, null, PipelineConstants.ScriptStepInputs.Script),
-                                    new LiteralToken(null, null, null, "echo WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL")
+                                    new StringToken(null, null, null, PipelineConstants.ScriptStepInputs.Script),
+                                    new StringToken(null, null, null, "echo WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL")
                                 }
                             }
                         });
@@ -673,8 +780,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             Inputs = new MappingToken(null, null, null)
                             {
                                 {
-                                    new LiteralToken(null, null, null, PipelineConstants.ScriptStepInputs.Script),
-                                    new LiteralToken(null, null, null, "echo WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL")
+                                    new StringToken(null, null, null, PipelineConstants.ScriptStepInputs.Script),
+                                    new StringToken(null, null, null, "echo WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL")
                                 }
                             }
                         });
@@ -688,30 +795,30 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateContext context,
             TemplateToken scopes)
         {
-            var scopesSequence = TemplateUtil.AssertSequence(scopes, $"job {PipelineTemplateConstants.Scopes}");
+            var scopesSequence = scopes.AssertSequence($"job {PipelineTemplateConstants.Scopes}");
 
             foreach (var scopesItem in scopesSequence)
             {
                 var result = new ContextScope();
-                var scope = TemplateUtil.AssertMapping(scopesItem, $"{PipelineTemplateConstants.Scopes} item");
+                var scope = scopesItem.AssertMapping($"{PipelineTemplateConstants.Scopes} item");
 
                 foreach (var scopeProperty in scope)
                 {
-                    var propertyName = TemplateUtil.AssertLiteral(scopeProperty.Key, $"{PipelineTemplateConstants.Scopes} item key");
+                    var propertyName = scopeProperty.Key.AssertString($"{PipelineTemplateConstants.Scopes} item key");
 
                     switch (propertyName.Value)
                     {
                         case PipelineTemplateConstants.Name:
-                            var nameLiteral = TemplateUtil.AssertLiteral(scopeProperty.Value, $"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Name}");
+                            var nameLiteral = scopeProperty.Value.AssertString($"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Name}");
                             result.Name = nameLiteral.Value;
                             break;
 
                         case PipelineTemplateConstants.Inputs:
-                            result.Inputs = TemplateUtil.AssertMapping(scopeProperty.Value, $"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Inputs}");
+                            result.Inputs = scopeProperty.Value.AssertMapping($"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Inputs}");
                             break;
 
                         case PipelineTemplateConstants.Outputs:
-                            result.Outputs = TemplateUtil.AssertMapping(scopeProperty.Value, $"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Outputs}");
+                            result.Outputs = scopeProperty.Value.AssertMapping($"{PipelineTemplateConstants.Scopes} item {PipelineTemplateConstants.Outputs}");
                             break;
                     }
                 }
@@ -724,7 +831,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateContext context,
             TemplateToken actions)
         {
-            var actionsSequence = TemplateUtil.AssertSequence(actions, $"job {PipelineTemplateConstants.Actions}");
+            var actionsSequence = actions.AssertSequence($"job {PipelineTemplateConstants.Actions}");
 
             bool requireInsertCheckout = true;
             var result = new List<Step>();
@@ -760,11 +867,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 };
 
                 var inputs = new MappingToken(null, null, null);
-                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
-                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
-                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
-                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
-                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
+                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
+                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new StringToken(null, null, null, bool.TrueString));
                 checkoutAction.Inputs = inputs;
 
                 result.Insert(0, checkoutAction);
@@ -777,17 +884,17 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateContext context,
             TemplateToken actionsItem)
         {
-            var action = TemplateUtil.AssertMapping(actionsItem, $"{PipelineTemplateConstants.Actions} item");
-            var checkout = default(LiteralToken);
+            var action = actionsItem.AssertMapping($"{PipelineTemplateConstants.Actions} item");
+            var checkout = default(StringToken);
             var env = default(TemplateToken);
-            var id = default(LiteralToken);
+            var id = default(StringToken);
             var ifCondition = default(String);
-            var ifToken = default(LiteralToken);
-            var name = default(LiteralToken);
+            var ifToken = default(StringToken);
+            var name = default(ScalarToken);
             var run = default(ScalarToken);
-            var scope = default(LiteralToken);
-            var timeout = default(LiteralToken);
-            var uses = default(LiteralToken);
+            var scope = default(StringToken);
+            var timeout = default(NumberToken);
+            var uses = default(StringToken);
             var with = default(TemplateToken);
             var workingDir = default(ScalarToken);
             var path = default(ScalarToken);
@@ -799,16 +906,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             foreach (var actionProperty in action)
             {
-                var propertyName = TemplateUtil.AssertLiteral(actionProperty.Key, $"{PipelineTemplateConstants.Actions} item key");
+                var propertyName = actionProperty.Key.AssertString($"{PipelineTemplateConstants.Actions} item key");
 
                 switch (propertyName.Value)
                 {
                     case PipelineTemplateConstants.Checkout:
-                        checkout = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Checkout}");
+                        checkout = actionProperty.Value.AssertString($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Checkout}");
                         break;
 
                     case PipelineTemplateConstants.Clean:
-                        clean = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Clean}");
+                        clean = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Clean}");
                         break;
 
                     case PipelineTemplateConstants.Env:
@@ -817,11 +924,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         break;
 
                     case PipelineTemplateConstants.FetchDepth:
-                        fetchDepth = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.FetchDepth}");
+                        fetchDepth = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.FetchDepth}");
                         break;
 
                     case PipelineTemplateConstants.Id:
-                        id = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Id}");
+                        id = actionProperty.Value.AssertString($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Id}");
                         if (!NameValidation.IsValid(id.Value, true))
                         {
                             context.Error(id, $"Action id {id.Value} is invalid. Ids must start with a letter or '_' and contain only alphanumeric characters, '-', or '_'");
@@ -829,43 +936,39 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         break;
 
                     case PipelineTemplateConstants.If:
-                        ifToken = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.If}");
+                        ifToken = actionProperty.Value.AssertString($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.If}");
                         break;
 
                     case PipelineTemplateConstants.Lfs:
-                        lfs = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Lfs}");
+                        lfs = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Lfs}");
                         break;
 
                     case PipelineTemplateConstants.Name:
-                        name = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Name}");
+                        name = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Name}");
                         break;
 
                     case PipelineTemplateConstants.Path:
-                        path = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Path}");
+                        path = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Path}");
                         break;
 
                     case PipelineTemplateConstants.Run:
-                        run = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Run}");
+                        run = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Run}");
                         break;
 
                     case PipelineTemplateConstants.Scope:
-                        scope = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Scope}");
+                        scope = actionProperty.Value.AssertString($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Scope}");
                         break;
 
                     case PipelineTemplateConstants.Submodules:
-                        submodules = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Submodules}");
+                        submodules = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Submodules}");
                         break;
 
                     case PipelineTemplateConstants.Timeout:
-                        timeout = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Timeout}");
-                        break;
-
-                    case PipelineTemplateConstants.Token:
-                        token = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Token}");
+                        timeout = actionProperty.Value.AssertNumber($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Timeout}");
                         break;
 
                     case PipelineTemplateConstants.Uses:
-                        uses = TemplateUtil.AssertLiteral(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Uses}");
+                        uses = actionProperty.Value.AssertString($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.Uses}");
                         break;
 
                     case PipelineTemplateConstants.With:
@@ -874,11 +977,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         break;
 
                     case PipelineTemplateConstants.WorkingDirectory:
-                        workingDir = TemplateUtil.AssertScalar(actionProperty.Value, $"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.WorkingDirectory}");
+                        workingDir = actionProperty.Value.AssertScalar($"{PipelineTemplateConstants.Actions} item {PipelineTemplateConstants.WorkingDirectory}");
                         break;
 
                     default:
-                        TemplateUtil.AssertUnexpectedValue(propertyName, $"{PipelineTemplateConstants.Actions} item key"); // throws
+                        propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Actions} item key"); // throws
                         break;
                 }
             }
@@ -895,9 +998,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
-                    DisplayName = name?.Value,
+                    DisplayName = name?.ToString(),
                     Condition = ifCondition,
-                    TimeoutInMinutes = timeout != null ? Int32.Parse(timeout.Value) : 0,
+                    TimeoutInMinutes = (Int32)(timeout?.Value ?? 0d),
                     Environment = env?.Clone(true),
                     Reference = new ScriptReference()
                 };
@@ -914,11 +1017,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 var inputs = new MappingToken(null, null, null);
-                inputs.Add(new LiteralToken(null, null, null, PipelineConstants.ScriptStepInputs.Script), run.Clone(true));
+                inputs.Add(new StringToken(null, null, null, PipelineConstants.ScriptStepInputs.Script), run.Clone(true));
 
                 if (workingDir != null)
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.ScriptStepInputs.WorkingDirectory), workingDir.Clone(true));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.ScriptStepInputs.WorkingDirectory), workingDir.Clone(true));
                 }
 
                 result.Inputs = inputs;
@@ -931,9 +1034,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
-                    DisplayName = name?.Value,
+                    DisplayName = name?.ToString(),
                     Condition = ifCondition,
-                    TimeoutInMinutes = timeout != null ? Int32.Parse(timeout.Value) : 0,
+                    TimeoutInMinutes = (Int32)(timeout?.Value ?? 0d),
                     Environment = env?.Clone(true),
                     Reference = new PluginReference()
                     {
@@ -949,18 +1052,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var inputs = new MappingToken(null, null, null);
                 if (string.Equals(checkout.Value, bool.TrueString, StringComparison.OrdinalIgnoreCase))
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new StringToken(null, null, null, bool.TrueString));
                 }
                 else if (string.Equals(checkout.Value, bool.FalseString, StringComparison.OrdinalIgnoreCase))
                 {
                     // `- checkout: false` means not checkout, we will set the enable to false and let it get skipped.
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new LiteralToken(null, null, null, bool.TrueString));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new StringToken(null, null, null, bool.TrueString));
                     result.Enabled = false;
                 }
                 else
@@ -981,51 +1084,51 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     else
                     {
                         var repositoryName = $"{pathSegments[0]}/{pathSegments[1]}";
-                        inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new LiteralToken(null, null, null, repositoryName));
+                        inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new StringToken(null, null, null, repositoryName));
 
                         if (RegexUtility.IsMatch(gitRef, WellKnownRegularExpressions.SHA1))
                         {
-                            inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new LiteralToken(null, null, null, gitRef));
+                            inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new StringToken(null, null, null, gitRef));
                         }
                         else
                         {
-                            inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new LiteralToken(null, null, null, gitRef));
+                            inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new StringToken(null, null, null, gitRef));
                         }
                     }
                 }
 
                 if (path != null)
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Path), path.Clone(true));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Path), path.Clone(true));
                 }
 
                 if (clean != null)
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Clean), clean.Clone(true));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Clean), clean.Clone(true));
                 }
 
                 if (fetchDepth != null)
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.FetchDepth), fetchDepth.Clone(true));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.FetchDepth), fetchDepth.Clone(true));
                 }
 
                 if (lfs != null)
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Lfs), lfs.Clone(true));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Lfs), lfs.Clone(true));
                 }
 
                 if (submodules != null)
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Submodules), submodules.Clone(true));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Submodules), submodules.Clone(true));
                 }
 
                 if (token != null)
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), token.Clone(true));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), token.Clone(true));
                 }
                 else
                 {
-                    inputs.Add(new LiteralToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
+                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
                 }
 
                 result.Inputs = inputs;
@@ -1038,9 +1141,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
-                    DisplayName = name?.Value,
+                    DisplayName = name?.ToString(),
                     Condition = ifCondition,
-                    TimeoutInMinutes = timeout != null ? Int32.Parse(timeout.Value) : 0,
+                    TimeoutInMinutes = (Int32)(timeout?.Value ?? 0d),
                     Inputs = with,
                     Environment = env,
                 };
@@ -1106,7 +1209,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         private static String ConvertToIfCondition(
             TemplateContext context,
-            LiteralToken ifCondition,
+            StringToken ifCondition,
             Boolean isJob,
             Boolean isDefaultScope)
         {
@@ -1154,30 +1257,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return hasStatusFunction ? condition : $"and(succeeded(), {condition})";
         }
 
-        private static Int32 ConvertToInt32(
-            TemplateContext context,
-            TemplateToken token,
-            String objectName,
-            String errorFormat,
-            Boolean allowExpressions = false,
-            Int32 minValue = Int32.MinValue)
-        {
-            if (allowExpressions && token is BasicExpressionToken)
-            {
-                return default(Int32);
-            }
-
-            var literal = TemplateUtil.AssertLiteral(token, objectName);
-            if (Int32.TryParse(literal.Value ?? String.Empty, NumberStyles.None, CultureInfo.InvariantCulture, out var value) &&
-                value >= minValue)
-            {
-                return value;
-            }
-
-            context.Error(literal, String.Format(CultureInfo.InvariantCulture, errorFormat, literal.Value));
-            return default(Int32);
-        }
-
         /// <summary>
         /// Used for building expression parse trees.
         /// </summary>
@@ -1198,6 +1277,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Matrix),
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Parallel),
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Actions),
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.GitHub),
         };
         private static readonly INamedValueInfo[] s_actionInTemplateNamedValues = new INamedValueInfo[]
         {
@@ -1206,6 +1286,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Parallel),
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Actions),
             new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Inputs),
+            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.GitHub),
         };
         private static readonly IFunctionInfo[] s_conditionFunctions = new IFunctionInfo[]
         {

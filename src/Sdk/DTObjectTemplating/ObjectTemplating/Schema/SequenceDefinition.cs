@@ -14,31 +14,31 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         {
             foreach (var definitionPair in definition)
             {
-                var definitionKey = TemplateUtil.AssertLiteral(definitionPair.Key, $"{TemplateConstants.Definition} key");
+                var definitionKey = definitionPair.Key.AssertString($"{TemplateConstants.Definition} key");
 
                 switch (definitionKey.Value)
                 {
                     case TemplateConstants.Sequence:
-                        var mapping = TemplateUtil.AssertMapping(definitionPair.Value, $"{TemplateConstants.Definition} {TemplateConstants.Sequence}");
+                        var mapping = definitionPair.Value.AssertMapping($"{TemplateConstants.Definition} {TemplateConstants.Sequence}");
                         foreach (var mappingPair in mapping)
                         {
-                            var mappingKey = TemplateUtil.AssertLiteral(mappingPair.Key, $"{TemplateConstants.Definition} {TemplateConstants.Sequence} key");
+                            var mappingKey = mappingPair.Key.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Sequence} key");
                             switch (mappingKey.Value)
                             {
                                 case TemplateConstants.ItemType:
-                                    var itemType = TemplateUtil.AssertLiteral(mappingPair.Value, $"{TemplateConstants.Definition} {TemplateConstants.Sequence} {TemplateConstants.ItemType}");
+                                    var itemType = mappingPair.Value.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Sequence} {TemplateConstants.ItemType}");
                                     ItemType = itemType.Value;
                                     break;
 
                                 default:
-                                    TemplateUtil.AssertUnexpectedValue(mappingKey, $"{TemplateConstants.Definition} {TemplateConstants.Sequence} key");
+                                    mappingKey.AssertUnexpectedValue($"{TemplateConstants.Definition} {TemplateConstants.Sequence} key");
                                     break;
                             }
                         }
                         break;
 
                     default:
-                        TemplateUtil.AssertUnexpectedValue(definitionKey, $"{TemplateConstants.Definition} key");
+                        definitionKey.AssertUnexpectedValue($"{TemplateConstants.Definition} key");
                         break;
                 }
             }

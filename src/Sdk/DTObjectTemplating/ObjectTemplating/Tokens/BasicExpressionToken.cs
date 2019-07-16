@@ -10,7 +10,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class BasicExpressionToken : ExpressionToken
     {
-        public BasicExpressionToken(
+        internal BasicExpressionToken(
             Int32? fileId,
             Int32? line,
             Int32? column,
@@ -33,11 +33,6 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             }
         }
 
-        public override TemplateToken Clone()
-        {
-            return Clone(false);
-        }
-
         public override TemplateToken Clone(Boolean omitSource)
         {
             return omitSource ? new BasicExpressionToken(null, null, null, m_expression) : new BasicExpressionToken(FileId, Line, Column, m_expression);
@@ -45,14 +40,14 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override String ToString()
         {
-            return $"${{{{ {m_expression} }}}}";
+            return $"{TemplateConstants.OpenExpression} {m_expression} {TemplateConstants.CloseExpression}";
         }
 
-        internal LiteralToken EvaluateLiteralToken(
+        internal StringToken EvaluateStringToken(
             TemplateContext context,
             out Int32 bytes)
         {
-            return EvaluateLiteralToken(context, Expression, out bytes);
+            return EvaluateStringToken(context, Expression, out bytes);
         }
 
         internal MappingToken EvaluateMappingToken(
@@ -73,7 +68,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             TemplateContext context,
             out Int32 bytes)
         {
-            return EvaluateTemplateToken(context, Expression, true, out bytes);
+            return EvaluateTemplateToken(context, Expression, out bytes);
         }
 
         [OnSerializing]

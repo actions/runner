@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
@@ -18,13 +17,13 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
         {
             for (var i = 0; i < definition.Count; )
             {
-                var definitionKey = TemplateUtil.AssertLiteral(definition[i].Key, $"{TemplateConstants.Definition} key");
+                var definitionKey = definition[i].Key.AssertString($"{TemplateConstants.Definition} key");
                 if (String.Equals(definitionKey.Value, TemplateConstants.Context, StringComparison.Ordinal))
                 {
-                    var context = TemplateUtil.AssertSequence(definition[i].Value, $"{TemplateConstants.Context}");
+                    var context = definition[i].Value.AssertSequence($"{TemplateConstants.Context}");
                     definition.RemoveAt(i);
                     Context = context
-                        .Select(x => TemplateUtil.AssertLiteral(x, $"{TemplateConstants.Context} item").Value)
+                        .Select(x => x.AssertString($"{TemplateConstants.Context} item").Value)
                         .Distinct()
                         .ToArray();
                 }

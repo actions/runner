@@ -5,7 +5,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
     /// <summary>
     /// Wraps an ITraceWriter so it can be passed for expression evaluation.
     /// </summary>
-    internal sealed class ExpressionTraceWriter : DistributedTask.Expressions.ITraceWriter
+    internal sealed class ExpressionTraceWriter : DistributedTask.Expressions2.ITraceWriter
     {
         public ExpressionTraceWriter(ITraceWriter trace)
         {

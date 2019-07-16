@@ -200,11 +200,20 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // https://codeblog.jonskeet.uk/2011/04/05/of-memory-and-strings/
                 switch (item.Type)
                 {
-                    case TokenType.Literal:
-                        var literal = item as LiteralToken;
+                    case TokenType.Null:
+                    case TokenType.Boolean:
+                    case TokenType.Number:
                         checked
                         {
-                            result += MinObjectSize + StringBaseOverhead + ((literal.Value?.Length ?? 0) * sizeof(Char));
+                            result += MinObjectSize;
+                        }
+                        break;
+
+                    case TokenType.String:
+                        var stringToken = item as StringToken;
+                        checked
+                        {
+                            result += MinObjectSize + StringBaseOverhead + ((stringToken.Value?.Length ?? 0) * sizeof(Char));
                         }
                         break;
 

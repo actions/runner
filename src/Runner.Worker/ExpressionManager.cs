@@ -3,7 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
@@ -50,20 +51,14 @@ namespace GitHub.Runner.Worker
 
             ConditionResult result = new ConditionResult();
             var expressionTrace = new TraceWriter(Trace, hostTracingOnly ? null : executionContext);
-
-            var evaluationOptions = new EvaluationOptions
-            {
-                Converters = new ObjectTemplating.TemplateContext().ExpressionConverters,
-                UseCollectionInterfaces = true,
-            };
-
-            result.Value = tree.Evaluate<bool>(trace: expressionTrace, secretMasker: HostContext.SecretMasker, state: executionContext, options: evaluationOptions);
+            var expressionResult = tree.Evaluate(expressionTrace, HostContext.SecretMasker, state: executionContext, options: null);
+            result.Value = expressionResult.IsTruthy;
             result.Trace = expressionTrace.Trace;
 
             return result;
         }
 
-        private sealed class TraceWriter : DistributedTask.Expressions.ITraceWriter
+        private sealed class TraceWriter : DistributedTask.Expressions2.ITraceWriter
         {
             private readonly IExecutionContext _executionContext;
             private readonly Tracing _trace;
@@ -92,18 +87,20 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class AlwaysNode : FunctionNode
+        private sealed class AlwaysNode : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(EvaluationContext context, out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 return true;
             }
         }
 
-        private sealed class CanceledNode : FunctionNode
+        private sealed class CanceledNode : Function
         {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
                 var jobStatusString = executionContext.GetRunnerContext("jobstatus");
@@ -112,10 +109,11 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class FailedNode : FunctionNode
+        private sealed class FailedNode : Function
         {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
                 var jobStatusString = executionContext.GetRunnerContext("jobstatus");
@@ -124,10 +122,11 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class SucceededNode : FunctionNode
+        private sealed class SucceededNode : Function
         {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
                 var jobStatusString = executionContext.GetRunnerContext("jobstatus");
@@ -137,10 +136,11 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class SucceededOrFailedNode : FunctionNode
+        private sealed class SucceededOrFailedNode : Function
         {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext)
+            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
                 var jobStatusString = executionContext.GetRunnerContext("jobstatus");
@@ -151,61 +151,11 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class VariablesNode : NamedValueNode
+        private sealed class ContextValueNode : NamedValue
         {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext)
+            protected override Object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
-                var jobContext = evaluationContext.State as IExecutionContext;
-                ArgUtil.NotNull(jobContext, nameof(jobContext));
-                return new VariablesDictionary(jobContext.Variables);
-            }
-        }
-
-        private sealed class VariablesDictionary : IReadOnlyDictionary<string, object>
-        {
-            private readonly Variables _variables;
-
-            public VariablesDictionary(Variables variables)
-            {
-                _variables = variables;
-            }
-
-            // IReadOnlyDictionary<string object> members
-            public object this[string key] => _variables.Get(key);
-
-            public IEnumerable<string> Keys => throw new NotSupportedException();
-
-            public IEnumerable<object> Values => throw new NotSupportedException();
-
-            public bool ContainsKey(string key)
-            {
-                string val;
-                return _variables.TryGetValue(key, out val);
-            }
-
-            public bool TryGetValue(string key, out object value)
-            {
-                string s;
-                bool found = _variables.TryGetValue(key, out s);
-                value = s;
-                return found;
-            }
-
-            // IReadOnlyCollection<KeyValuePair<string, object>> members
-            public int Count => throw new NotSupportedException();
-
-            // IEnumerable<KeyValuePair<string, object>> members
-            IEnumerator<KeyValuePair<string, object>> IEnumerable<KeyValuePair<string, object>>.GetEnumerator() => throw new NotSupportedException();
-
-
-            // IEnumerable members
-            IEnumerator IEnumerable.GetEnumerator() => throw new NotSupportedException();
-        }
-
-        private sealed class ContextValueNode : NamedValueNode
-        {
-            protected override Object EvaluateCore(EvaluationContext evaluationContext)
-            {
+                resultMemory = null;
                 var jobContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(jobContext, nameof(jobContext));
                 return jobContext.ExpressionValues[Name];

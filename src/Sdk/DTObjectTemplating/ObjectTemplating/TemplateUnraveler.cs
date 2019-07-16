@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -462,7 +461,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                     {
                         m_context.Error(insertExpressionState.Value, TemplateStrings.DirectiveNotAllowed(insertExpressionState.Value.Directive));
                         m_current.Remove();
-                        m_current = insertExpressionState.ToLiteral();
+                        m_current = insertExpressionState.ToStringToken();
                     }
                     else
                     {
@@ -544,25 +543,25 @@ namespace GitHub.DistributedTask.ObjectTemplating
             //
             //   BasicExpressionState   // m_current
 
-            // The expression should evaluate to a literal
+            // The expression should evaluate to a string
             var expressionState = m_current as BasicExpressionState;
             var expression = expressionState.Value as BasicExpressionToken;
-            LiteralToken literal;
+            StringToken stringToken;
             var removeBytes = 0;
             try
             {
-                literal = expression.EvaluateLiteralToken(expressionState.Context, out removeBytes);
+                stringToken = expression.EvaluateStringToken(expressionState.Context, out removeBytes);
             }
             catch (Exception ex)
             {
                 m_context.Error(expression, ex);
-                literal = null;
+                stringToken = null;
             }
 
-            // Move to the literal
-            if (literal != null)
+            // Move to the stringToken
+            if (stringToken != null)
             {
-                m_current = expressionState.Next(literal, removeBytes);
+                m_current = expressionState.Next(stringToken, removeBytes);
             }
             // Move to the next key or mapping end
             else
@@ -603,7 +602,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             catch (Exception ex)
             {
                 m_context.Error(expression, ex);
-                value = new LiteralToken(expression.FileId, expression.Line, expression.Column, String.Empty);
+                value = new StringToken(expression.FileId, expression.Line, expression.Column, String.Empty);
             }
 
             // Move to the new value
@@ -631,7 +630,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             catch (Exception ex)
             {
                 m_context.Error(expression, ex);
-                value = new LiteralToken(expression.FileId, expression.Line, expression.Column, String.Empty);
+                value = new StringToken(expression.FileId, expression.Line, expression.Column, String.Empty);
             }
 
             // Move to the new value
@@ -765,7 +764,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
             {
                 switch (value.Type)
                 {
-                    case TokenType.Literal:
+                    case TokenType.Null:
+                    case TokenType.Boolean:
+                    case TokenType.Number:
+                    case TokenType.String:
                         return new LiteralState(parent, value as LiteralToken, context, removeBytes);
 
                     case TokenType.Sequence:
@@ -1179,9 +1181,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             /// <summary>
             /// This happens when the expression is not allowed
             /// </summary>
-            public ReaderState ToLiteral()
+            public ReaderState ToStringToken()
             {
-                var literal = new LiteralToken(Value.FileId, Value.Line, Value.Column, $"${{{{ {Value.Directive} }}}}");
+                var literal = new StringToken(Value.FileId, Value.Line, Value.Column, $"{TemplateConstants.OpenExpression} {Value.Directive} {TemplateConstants.CloseExpression}");
                 return CreateState(Parent, literal, Context);
             }
 

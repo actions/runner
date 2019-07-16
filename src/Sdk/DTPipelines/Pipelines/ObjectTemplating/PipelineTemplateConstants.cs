@@ -5,14 +5,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     internal sealed class PipelineTemplateConstants
     {
         internal const String ActionEnv = "action-env";
-        internal const String ActionWith = "action-with";
         internal const String Actions = "actions";
         internal const String ActionsScopeInputs = "actions-scope-inputs";
         internal const String ActionsScopeOutputs = "actions-scope-outputs";
         internal const String ActionsTemplateRoot = "actions-template-root";
+        internal const String ActionWith = "action-with";
         internal const String CancelTimeout = "cancel-timeout";
         internal const String Checkout = "checkout";
         internal const String Clean= "clean";
+        internal const String Container = "container";
         internal const String ContinueOnError = "continue-on-error";
         internal const String Env = "env";
         internal const String Exclude = "exclude";
@@ -41,6 +42,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String Scope = "scope";
         internal const String Scopes = "scopes";
         internal const String Secrets = "secrets";
+        internal const String Services = "services";
         internal const String Strategy = "strategy";
         internal const String Submodules = "submodules";
         internal const String Template = "template";

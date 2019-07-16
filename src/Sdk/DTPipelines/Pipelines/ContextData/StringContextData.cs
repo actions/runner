@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json.Linq;
 

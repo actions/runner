@@ -82,7 +82,7 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
                 this.ExecutionOptions.SystemTokenScope = tokenScope?.Value;
             }
 
-            Data = data;
+            m_data = data;
         }
 
         public StageInstance Stage
@@ -102,12 +102,21 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
 
         public IDictionary<String, PipelineContextData> Data
         {
-            get;
+            get
+            {
+                if (m_data == null)
+                {
+                    m_data = new Dictionary<string, PipelineContextData>(StringComparer.Ordinal);
+                }
+                return m_data;
+            }
         }
 
         internal override String GetInstanceName()
         {
             return this.IdGenerator.GetJobInstanceName(this.Stage?.Name, this.Phase.Name, this.Job.Name, this.Job.Attempt);
         }
+
+        private IDictionary<String, PipelineContextData> m_data;
     }
 }

@@ -119,6 +119,13 @@ namespace GitHub.DistributedTask.Pipelines
             return newSteps;
         }
 
+        public Dictionary<Guid, List<TaskStep>> GetPostTaskSteps(
+            IPipelineContext context,
+            IReadOnlyList<JobStep> steps)
+        {
+            return new Dictionary<Guid, List<TaskStep>>();
+        }
+
         public IList<TaskStep> GetPostSteps(
             IPipelineContext context,
             IReadOnlyList<JobStep> steps)

@@ -42,12 +42,12 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
             if (reader.TokenType == JsonToken.Float)
             {
-                return new NumberContextData((Decimal)(double)reader.Value);
+                return new NumberContextData((Double)reader.Value);
             }
 
             if (reader.TokenType == JsonToken.Integer)
             {
-                return new NumberContextData((Decimal)(Int64)reader.Value);
+                return new NumberContextData((Double)(Int64)reader.Value);
             }
 
             if (reader.TokenType != JsonToken.StartObject)
