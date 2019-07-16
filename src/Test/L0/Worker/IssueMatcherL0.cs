@@ -86,7 +86,39 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Config_Validate_Message_OnlyAllowedOnLastPattern()
+        public void Config_Validate_Loop_MustSetMessage()
+        {
+            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^file: (.+)$"",
+          ""message"": 1
+        },
+        {
+          ""regexp"": ""^file: (.+)$"",
+          ""file"": 1,
+          ""loop"": true
+        }
+      ]
+    }
+  ]
+}
+");
+
+            Assert.Throws<ArgumentException>(() => config.Validate());
+
+            config.Matchers[0].Patterns[1].Loop = false;
+            config.Validate();
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Config_Validate_Message_AllowedInFirstPattern()
         {
             var config = JsonUtility.FromString<IssueMatchersConfig>(@"
 {
@@ -107,13 +139,6 @@ namespace GitHub.Runner.Common.Tests.Worker
   ]
 }
 ");
-            Assert.Throws<ArgumentException>(() => config.Validate());
-
-            // Sanity test
-            config.Matchers[0].Patterns[0].File = 1;
-            config.Matchers[0].Patterns[0].Message = null;
-            config.Matchers[0].Patterns[1].File = null;
-            config.Matchers[0].Patterns[1].Message = 1;
             config.Validate();
         }
 

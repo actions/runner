@@ -333,6 +333,11 @@ namespace GitHub.Runner.Worker
                     ref message,
                     ref fromPath);
             }
+
+            if (message == null)
+            {
+                throw new ArgumentException($"At least one pattern must set 'message'");
+            }
         }
     }
 
@@ -394,17 +399,10 @@ namespace GitHub.Runner.Worker
                 throw new ArgumentException($"Only the last pattern in a multiline matcher may set '{_loopPropertyName}'");
             }
 
-            // Only the last pattern may set 'message'
-            if (Message != null && !isLast)
+            if (Loop && Message == null)
             {
-                throw new ArgumentException($"Only the last pattern may set '{_messagePropertyName}'");
-            }
-
-            // The last pattern must set 'message'
-            if (Message == null && isLast)
-            {
-                throw new ArgumentException($"The last pattern must set '{_messagePropertyName}'");
-            }
+                throw new ArgumentException($"The {_loopPropertyName} pattern must set '{_messagePropertyName}'");
+            }   
 
             var regex = new Regex(Pattern ?? string.Empty, RegexOptions);
             var groupCount = regex.GetGroupNumbers().Length;
