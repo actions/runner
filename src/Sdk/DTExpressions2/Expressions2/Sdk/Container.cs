@@ -15,10 +15,17 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             node.Container = this;
         }
 
-        public void ReplaceParameter(Int32 index, ExpressionNode node)
+        public override IEnumerable<IExpressionNode> GetNodes()
         {
-            m_parameters[index] = node;
-            node.Container = this;
+            yield return this;
+
+            foreach (var parameter in Parameters)
+            {
+                foreach (var node in parameter.GetNodes())
+                {
+                    yield return node;
+                }
+            }
         }
 
         private readonly List<ExpressionNode> m_parameters = new List<ExpressionNode>();
