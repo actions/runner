@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using GitHub.DistributedTask.Logging;
 
@@ -73,6 +74,14 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
                     secretMasker = null;
                 }
             }
+        }
+
+        /// <summary>
+        /// Returns all nodes
+        /// </summary>
+        public virtual IEnumerable<IExpressionNode> GetNodes()
+        {
+            yield return this;
         }
 
         /// <summary>

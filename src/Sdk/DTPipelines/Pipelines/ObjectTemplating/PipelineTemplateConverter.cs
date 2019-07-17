@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -986,11 +987,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
             }
 
-            if (ifToken != null)
-            {
-                var isDefaultScope = String.IsNullOrEmpty(scope?.Value);
-                ifCondition = ConvertToIfCondition(context, ifToken, false, isDefaultScope);
-            }
+            // Fixup the if-condition
+            var isDefaultScope = String.IsNullOrEmpty(scope?.Value);
+            ifCondition = ConvertToIfCondition(context, ifToken, false, isDefaultScope);
 
             if (run != null)
             {
@@ -1213,15 +1212,14 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             Boolean isJob,
             Boolean isDefaultScope)
         {
-            if (String.IsNullOrWhiteSpace(ifCondition.Value))
+            if (String.IsNullOrWhiteSpace(ifCondition?.Value))
             {
                 return "succeeded()";
             }
 
             var condition = ifCondition.Value;
 
-            var parserOptions = new ExpressionParserOptions() { AllowHyphens = true };
-            var expressionParser = new ExpressionParser(parserOptions);
+            var expressionParser = new ExpressionParser();
             var namedValues = default(INamedValueInfo[]);
             if (!isJob)
             {
@@ -1239,19 +1237,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return null;
             }
 
-            var hasStatusFunction = node.GetParameters<FunctionNode>().Any(x =>
+            var hasStatusFunction = node.GetNodes().Any(x =>
             {
-                switch (x.Name ?? String.Empty)
+                if (x is Function function)
                 {
-                    case "always":
-                    case "canceled":
-                    case "failed":
-                    case "succeeded":
-                    case "succeededOrFailed":
-                        return true;
-                    default:
-                        return false;
+                    return String.Equals(function.Name, "always", StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, "canceled", StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, "failed", StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, "succeeded", StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, "succeededOrFailed", StringComparison.OrdinalIgnoreCase);
                 }
+
+                return false;
             });
 
             return hasStatusFunction ? condition : $"and(succeeded(), {condition})";
@@ -1260,15 +1257,29 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         /// <summary>
         /// Used for building expression parse trees.
         /// </summary>
-        private sealed class NoOpFunction : FunctionNode
+        private sealed class NoOpFunction : Function
         {
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
+            {
+                resultMemory = null;
+                return null;
+            }
         }
 
         /// <summary>
         /// Used for building expression parse trees.
         /// </summary>
-        private sealed class NoOpValue : NamedValueNode
+        private sealed class NoOpValue : NamedValue
         {
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
+            {
+                resultMemory = null;
+                return null;
+            }
         }
 
         private static readonly INamedValueInfo[] s_actionNamedValues = new INamedValueInfo[]
