@@ -122,7 +122,7 @@ namespace GitHub.Runner.Worker
             // All containers within a job join the same network
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);
-            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
+            executionContext.SetRunnerContext("containernetwork", containerNetwork);
 
             foreach (var container in containers)
             {
@@ -268,10 +268,6 @@ namespace GitHub.Runner.Worker
 
             container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);
             ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
-            if (container.IsJobContainer)
-            {
-                executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
-            }
 
             // Start container
             int startExitCode = await _dockerManger.DockerStart(executionContext, container.ContainerId);
@@ -304,21 +300,28 @@ namespace GitHub.Runner.Worker
                 Trace.Error(ex);
             }
 
-            // Add port mappings and container id of to services context
-            if (executionContext.Container == null && !container.IsJobContainer)
+
+
+            // Add container information to job context
+            if (!container.IsJobContainer)
             {
+                var service = new DictionaryContextData()
+                {
+                    ["id"] = new StringContextData(container.ContainerId),
+                    ["ports"] = new DictionaryContextData(),
+                    ["network"] = new StringContextData(container.ContainerNetwork)
+                };
                 container.AddPortMappings(await _dockerManger.DockerPort(executionContext, container.ContainerId));
                 foreach (var port in container.PortMappings)
                 {
-                    executionContext.JobContext.Services[container.ContainerNetworkAlias] = new DictionaryContextData()
-                    {
-                        ["ports"] = new DictionaryContextData()
-                        {
-                            [port.ContainerPort] = new StringContextData(port.HostPort)
-                        },
-                        ["id"] = new StringContextData(container.ContainerId)
-                    };
+                    (service["ports"] as DictionaryContextData)[port.ContainerPort] = new StringContextData(port.HostPort);
                 }
+                executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
+            }
+            else
+            {
+                executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
+                executionContext.JobContext.Container["network"] = new StringContextData(container.ContainerNetwork);
             }
         }
 
