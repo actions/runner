@@ -183,7 +183,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             {
                 foreach (var item in m_list)
                 {
-                    json.Add(item.Key, item.Value.ToJToken());
+                    json.Add(item.Key, item.Value?.ToJToken() ?? JValue.CreateNull());
                 }
             }
             return json;

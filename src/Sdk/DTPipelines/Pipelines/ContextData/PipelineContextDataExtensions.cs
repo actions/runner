@@ -74,54 +74,6 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(NumberContextData)}' was expected.");
         }
 
-        public static void AddJToken(this DictionaryContextData context, JToken value, String propertyName, int depth, int maxDepth)
-        {
-            PipelineContextData contextValue = MapJTokenToContext(value, depth, maxDepth);
-            context[propertyName] = contextValue;
-        }
-
-        internal static PipelineContextData MapJTokenToContext(JToken value, int depth, int maxDepth)
-        {
-            if (depth < maxDepth)
-            {
-                if (value.Type == JTokenType.String)
-                {
-                    return new StringContextData((String)value);
-                }
-                else if (value.Type == JTokenType.Boolean)
-                {
-                    return new BooleanContextData((Boolean)value);
-                }
-                else if (value.Type == JTokenType.Float || value.Type == JTokenType.Integer)
-                {
-                    return new NumberContextData((Double)value);
-                }
-                else if (value.Type == JTokenType.Object)
-                {
-                    var subContext = new DictionaryContextData();
-                    var obj = (JObject)value;
-                    foreach (var property in obj.Properties())
-                    {
-                        subContext.AddJToken(property.Value, property.Name, depth + 1, maxDepth);
-                    }
-                    return subContext;
-                }
-                else if (value.Type == JTokenType.Array)
-                {
-                    var arrayContext = new ArrayContextData();
-                    var arr = (JArray)value;
-                    foreach (var element in arr)
-                    {
-                        arrayContext.Add(MapJTokenToContext(element, depth + 1, maxDepth));
-                    }
-                    return arrayContext;
-                }
-            }
-
-            // We don't understand the type or have reached our max, return as string
-            return new StringContextData(value.ToString());
-        }
-
         /// <summary>
         /// Returns all context data objects (depth first)
         /// </summary>

@@ -7,12 +7,6 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class JTokenExtensions
     {
-        public static void AddJTokenToContextData(this DictionaryContextData context, JToken value, String propertyName, int depth, int maxDepth)
-        {
-            PipelineContextData contextValue = ToPipelineContextData(value, depth, maxDepth);
-            context[propertyName] = contextValue;
-        }
-
         public static PipelineContextData ToPipelineContextData(this JToken value)
         {
             return value.ToPipelineContextData(1, 100);
@@ -43,7 +37,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     var obj = (JObject)value;
                     foreach (var property in obj.Properties())
                     {
-                        subContext.AddJTokenToContextData(property.Value, property.Name, depth + 1, maxDepth);
+                        subContext[property.Name] = ToPipelineContextData(property.Value, depth + 1, maxDepth);
                     }
                     return subContext;
                 }
@@ -56,6 +50,10 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                         arrayContext.Add(ToPipelineContextData(element, depth + 1, maxDepth));
                     }
                     return arrayContext;
+                }
+                else if (value.Type == JTokenType.Null)
+                {
+                    return null;
                 }
             }
 
