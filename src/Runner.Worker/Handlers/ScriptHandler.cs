@@ -1,9 +1,8 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
@@ -97,9 +96,9 @@ namespace GitHub.Runner.Worker.Handlers
             // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
             File.WriteAllText(scriptFilePath, contents, encoding);
 
-            ExecutionContext.Output("Script contents:");
+            ExecutionContext.Output("##[group] Script contents");
             ExecutionContext.Output(contents);
-            ExecutionContext.Output("========================== Starting Command Output ===========================");
+            ExecutionContext.Output("##[endgroup]");
 
             // Prepend PATH
             AddPrependPathToEnvironment();

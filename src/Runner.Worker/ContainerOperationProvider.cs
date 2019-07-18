@@ -1,16 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.ServiceProcess;
 using System.Threading.Tasks;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.Linq;
 using System.Threading;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
-using GitHub.Runner.Worker.Handlers;
 using GitHub.Services.Common;
-using Microsoft.Win32;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -127,7 +122,7 @@ namespace GitHub.Runner.Worker
             // All containers within a job join the same network
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);
-            executionContext.SetRunnerContext("containernetwork", containerNetwork);
+            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
 
             foreach (var container in containers)
             {
@@ -270,8 +265,13 @@ namespace GitHub.Runner.Worker
                 container.ContainerEntryPointArgs = $"-e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
             }
 
+
             container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);
             ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
+            if (container.IsJobContainer)
+            {
+                executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
+            }
 
             // Start container
             int startExitCode = await _dockerManger.DockerStart(executionContext, container.ContainerId);
@@ -304,15 +304,20 @@ namespace GitHub.Runner.Worker
                 Trace.Error(ex);
             }
 
-            // Get port mappings of running container
+            // Add port mappings and container id of to services context
             if (executionContext.Container == null && !container.IsJobContainer)
             {
                 container.AddPortMappings(await _dockerManger.DockerPort(executionContext, container.ContainerId));
                 foreach (var port in container.PortMappings)
                 {
-                    var contextVarName = $"service_{container.ContainerNetworkAlias}_ports_{port.ContainerPort}";
-                    contextVarName = contextVarName.ToUpperInvariant();
-                    executionContext.SetRunnerContext(contextVarName, port.HostPort);
+                    executionContext.JobContext.Services[container.ContainerNetworkAlias] = new DictionaryContextData()
+                    {
+                        ["ports"] = new DictionaryContextData()
+                        {
+                            [port.ContainerPort] = new StringContextData(port.HostPort)
+                        },
+                        ["id"] = new StringContextData(container.ContainerId)
+                    };
                 }
             }
         }
