@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
@@ -26,7 +26,7 @@ namespace GitHub.Runner.Worker
     public interface IActionManager : IRunnerService
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
-        Task PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
+        Task<List<JobExtensionRunner>> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
@@ -40,19 +40,27 @@ namespace GitHub.Runner.Worker
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
 
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
-
-        public async Task PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
+        public async Task<List<JobExtensionRunner>> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(steps, nameof(steps));
 
             executionContext.Output("Prepare all required actions.");
+            List<JobExtensionRunner> containerSetupSteps = new List<JobExtensionRunner>();
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             foreach (var action in actions)
             {
                 if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
                 {
-                    await DownloadContainerRegistryActionAsync(executionContext, action);
+                    ArgUtil.NotNull(action, nameof(action));
+                    var containerReference = action.Reference as Pipelines.ContainerRegistryReference;
+                    ArgUtil.NotNull(containerReference, nameof(containerReference));
+                    ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
+
+                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
+                                                                   condition: ExpressionManager.Succeeded,
+                                                                   displayName: $"Pull {containerReference.Image}",
+                                                                   data: new ContainerSetupInfo(action.Id, containerReference.Image)));
                 }
                 else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
                 {
@@ -60,22 +68,229 @@ namespace GitHub.Runner.Worker
                     await DownloadRepositoryActionAsync(executionContext, action);
 
                     // more preparation base on content in the repository (action.yml)
-                    await PrepareRepositoryActionAsync(executionContext, action);
+                    var step = PrepareRepositoryActionAsync(executionContext, action);
+                    if (step != null)
+                    {
+                        containerSetupSteps.Add(step);
+                    }
                 }
             }
+
+            return containerSetupSteps;
         }
 
-        private async Task DownloadContainerRegistryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep containerAction)
+        public Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action)
         {
+            // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(containerAction, nameof(containerAction));
+            ArgUtil.NotNull(action, nameof(action));
 
-            var containerReference = containerAction.Reference as Pipelines.ContainerRegistryReference;
-            ArgUtil.NotNull(containerReference, nameof(containerReference));
-            ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
+            // Initialize the definition wrapper object.
+            var definition = new Definition()
+            {
+                Data = new DefinitionData()
+                {
+                    Execution = new ExecutionData()
+                }
+            };
 
-            executionContext.Output($"Pull down action image '{containerReference.Image}'");
+            if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                Trace.Info("Load action that reference container from registry.");
+                CachedActionContainers.TryGetValue(action.Id, out var container);
+                ArgUtil.NotNull(container, nameof(container));
+                definition.Data.Execution.ContainerAction = new ContainerActionHandlerData()
+                {
+                    ContainerImage = container.ContainerImage
+                };
+                Trace.Info($"Using action container image: {container.ContainerImage}.");
+            }
+            else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+            {
+                string actionDirectory = null;
+                if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
+                    if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                    {
+                        actionDirectory = executionContext.GetGitHubContext("workspace");
+                        if (!string.IsNullOrEmpty(repoAction.Path))
+                        {
+                            actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
+                        }
+                    }
+                    else
+                    {
+                        actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repoAction.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repoAction.Ref);
+                        if (!string.IsNullOrEmpty(repoAction.Path))
+                        {
+                            actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
+                        }
+                    }
+                }
+                else
+                {
+                    throw new NotSupportedException(action.Reference.Type.ToString());
+                }
+
+                Trace.Info($"Load action that reference repository from '{actionDirectory}'");
+                definition.Directory = actionDirectory;
+
+                string manifestFile = Path.Combine(actionDirectory, "action.yml");
+                string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
+                if (File.Exists(manifestFile))
+                {
+                    using (var yamlInput = new StringReader(File.ReadAllText(manifestFile)))
+                    {
+                        var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().WithNamingConvention(new CamelCaseNamingConvention()).Build();
+                        var actionDefinitionData = deserializer.Deserialize<ActionDefinitionData>(yamlInput);
+
+                        definition.Data.FriendlyName = actionDefinitionData.Name;
+                        Trace.Verbose($"Action friendly name: '{definition.Data.FriendlyName}'");
+
+                        definition.Data.Description = actionDefinitionData.Description;
+                        Trace.Verbose($"Action description: '{definition.Data.Description}'");
+
+                        definition.Data.Author = actionDefinitionData.Author;
+                        Trace.Verbose($"Action author: '{definition.Data.Author}'");
+
+                        if (actionDefinitionData.Inputs != null)
+                        {
+                            List<TaskInputDefinition> inputs = new List<TaskInputDefinition>();
+                            foreach (var input in actionDefinitionData.Inputs)
+                            {
+                                Trace.Verbose($"Action input: '{input.Key}' default to '{input.Value.Default}'");
+                                inputs.Add(new TaskInputDefinition() { Name = input.Key, DefaultValue = input.Value.Default });
+                            }
+
+                            definition.Data.Inputs = inputs.ToArray();
+                        }
+
+                        if (actionDefinitionData.Outputs != null)
+                        {
+                            List<OutputVariable> outputs = new List<OutputVariable>();
+                            foreach (var output in actionDefinitionData.Outputs)
+                            {
+                                Trace.Verbose($"Action output: '{output.Key}' for '{output.Value.Description}'");
+                                outputs.Add(new OutputVariable() { Name = output.Key, Description = output.Value.Description });
+                            }
+
+                            definition.Data.OutputVariables = outputs.ToArray();
+                        }
+
+                        if (string.Equals(actionDefinitionData.Execution.ExecutionType, "docker", StringComparison.OrdinalIgnoreCase))
+                        {
+                            definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                            {
+                                Target = actionDefinitionData.Execution.Image,
+                                Arguments = actionDefinitionData.Execution.Arguments?.ToList(),
+                                Environment = actionDefinitionData.Execution.Environment,
+                                EntryPoint = actionDefinitionData.Execution.EntryPoint
+                            };
+
+                            Trace.Info($"Action container Dockerfile: {actionDefinitionData.Execution.Image}.");
+
+                            if (actionDefinitionData.Execution.Arguments != null)
+                            {
+                                Trace.Info($"Action container args: [{string.Join(", ", actionDefinitionData.Execution.Arguments)}].");
+                            }
+
+                            if (actionDefinitionData.Execution.Environment != null)
+                            {
+                                Trace.Info($"Action container env: [{string.Join(", ", actionDefinitionData.Execution.Environment.Keys)}].");
+                            }
+
+                            if (CachedActionContainers.TryGetValue(action.Id, out var container))
+                            {
+                                definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                                Trace.Info($"Using action container image: {container.ContainerImage}.");
+                            }
+                        }
+                        else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node12", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
+                        {
+                            definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData
+                            {
+                                Target = actionDefinitionData.Execution.Script
+                            };
+
+                            Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}.");
+                        }
+                        else if (!string.IsNullOrEmpty(actionDefinitionData.Execution.Plugin))
+                        {
+                            var pluginManager = HostContext.GetService<IRunnerPluginManager>();
+                            var plugin = pluginManager.GetPluginAction(actionDefinitionData.Execution.Plugin);
+
+                            ArgUtil.NotNull(plugin, actionDefinitionData.Execution.Plugin);
+                            ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, actionDefinitionData.Execution.Plugin);
+
+                            definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
+                            {
+                                Target = plugin.PluginTypeName
+                            };
+
+                            Trace.Info($"Action plugin: {plugin.PluginTypeName}.");
+                        }
+                        else
+                        {
+                            throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType);
+                        }
+                    }
+
+                }
+                else if (File.Exists(dockerFile))
+                {
+                    definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                    {
+                        Target = "Dockerfile"
+                    };
+
+                    if (CachedActionContainers.TryGetValue(action.Id, out var container))
+                    {
+                        definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                    }
+                }
+                else
+                {
+                    throw new NotSupportedException($"'{actionDirectory}' doesn't contain a valid action entrypoint.");
+                }
+            }
+            else if (action.Reference.Type == Pipelines.ActionSourceType.Script)
+            {
+                definition.Data.Execution.ScriptAction = new ScriptActionHandlerData();
+                definition.Data.FriendlyName = "Run";
+                definition.Data.Description = "Execute a script";
+                definition.Data.Author = "GitHub";
+            }
+            else if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
+            {
+                var pluginAction = action.Reference as Pipelines.PluginReference;
+                var pluginManager = HostContext.GetService<IRunnerPluginManager>();
+                var plugin = pluginManager.GetPluginAction(pluginAction.Plugin);
+
+                ArgUtil.NotNull(plugin, pluginAction.Plugin);
+                ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, pluginAction.Plugin);
+
+                definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
+                {
+                    Target = plugin.PluginTypeName
+                };
+
+                definition.Data.FriendlyName = plugin.FriendlyName;
+                definition.Data.Description = plugin.Description;
+                definition.Data.Author = plugin.Author;
+            }
+
+            return definition;
+        }
+
+        private async Task PullActionContainerAsync(IExecutionContext executionContext, object data)
+        {
+            var setupInfo = data as ContainerSetupInfo;
+            ArgUtil.NotNull(setupInfo, nameof(setupInfo));
+            ArgUtil.NotNullOrEmpty(setupInfo.Image, nameof(setupInfo.Image));
+
+            executionContext.Output($"Pull down action image '{setupInfo.Image}'");
 
             // Pull down docker image with retry up to 3 times
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
@@ -83,7 +298,7 @@ namespace GitHub.Runner.Worker
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await dockerManger.DockerPull(executionContext, containerReference.Image);
+                pullExitCode = await dockerManger.DockerPull(executionContext, setupInfo.Image);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -105,8 +320,49 @@ namespace GitHub.Runner.Worker
                 throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
             }
 
-            CachedActionContainers[containerAction.Id] = new ContainerInfo() { ContainerImage = containerReference.Image };
-            Trace.Info($"Prepared docker image '{containerReference.Image}' for action {containerAction.Id} ({containerAction.Name})");
+            CachedActionContainers[setupInfo.StepId] = new ContainerInfo() { ContainerImage = setupInfo.Image };
+            Trace.Info($"Prepared docker image '{setupInfo.Image}' for action {setupInfo.StepId} ({setupInfo.Image})");
+        }
+
+        private async Task BuildActionContainerAsync(IExecutionContext executionContext, object data)
+        {
+            var setupInfo = data as ContainerSetupInfo;
+            ArgUtil.NotNull(setupInfo, nameof(setupInfo));
+            ArgUtil.NotNullOrEmpty(setupInfo.Dockerfile, nameof(setupInfo.Dockerfile));
+
+            executionContext.Output($"Build container for action use: '{setupInfo.Dockerfile}'.");
+
+            // Build docker image with retry up to 3 times
+            var dockerManger = HostContext.GetService<IDockerCommandManager>();
+            int retryCount = 0;
+            int buildExitCode = 0;
+            var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+            while (retryCount < 3)
+            {
+                buildExitCode = await dockerManger.DockerBuild(executionContext, setupInfo.WorkingDirectory, Directory.GetParent(setupInfo.Dockerfile).FullName, imageName);
+                if (buildExitCode == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    retryCount++;
+                    if (retryCount < 3)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        executionContext.Warning($"Docker build failed with exit code {buildExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
+            }
+
+            if (retryCount == 3 && buildExitCode != 0)
+            {
+                throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
+            }
+
+            CachedActionContainers[setupInfo.StepId] = new ContainerInfo() { ContainerImage = imageName };
+            Trace.Info($"Prepared docker image '{imageName}' for action {setupInfo.StepId} ({setupInfo.Dockerfile})");
         }
 
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
@@ -320,21 +576,23 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private async Task PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
+        private JobExtensionRunner PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
         {
             var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
             if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
             {
                 Trace.Info($"Repository action is in 'self' repository.");
-                return;
+                return null;
             }
 
             string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
             string actionEntryDirectory = destDirectory;
+            string dockerFileRelativePath = repositoryReference.Name;
             ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
             if (!string.IsNullOrEmpty(repositoryReference.Path))
             {
                 actionEntryDirectory = Path.Combine(destDirectory, repositoryReference.Path);
+                dockerFileRelativePath = $"{dockerFileRelativePath}/{repositoryReference.Path}";
             }
 
             // find the docker file or action.yml file
@@ -343,16 +601,10 @@ namespace GitHub.Runner.Worker
             if (File.Exists(dockerFile))
             {
                 executionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-
-                var dockerManger = HostContext.GetService<IDockerCommandManager>();
-                var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(executionContext, destDirectory, Directory.GetParent(dockerFile).FullName, imageName);
-                if (buildExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
-                }
-
-                CachedActionContainers[repositoryAction.Id] = new ContainerInfo() { ContainerImage = imageName };
+                return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                              condition: ExpressionManager.Succeeded,
+                                              displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
+                                              data: new ContainerSetupInfo(repositoryAction.Id, dockerFile, destDirectory));
             }
             else if (File.Exists(actionManifest))
             {
@@ -369,50 +621,21 @@ namespace GitHub.Runner.Worker
                             var dockerFileFullPath = Path.Combine(actionEntryDirectory, actionDefinitionData.Execution.Image);
                             executionContext.Output($"Dockerfile for action: '{dockerFileFullPath}'.");
 
-                            var dockerManger = HostContext.GetService<IDockerCommandManager>();
-                            var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
-                            var buildExitCode = await dockerManger.DockerBuild(executionContext, destDirectory, Directory.GetParent(dockerFileFullPath).FullName, imageName);
-                            if (buildExitCode != 0)
-                            {
-                                throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
-                            }
-
-                            CachedActionContainers[repositoryAction.Id] = new ContainerInfo() { ContainerImage = imageName };
+                            return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                              condition: ExpressionManager.Succeeded,
+                                              displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
+                                              data: new ContainerSetupInfo(repositoryAction.Id, dockerFileFullPath, destDirectory));
                         }
                         else if (actionDefinitionData.Execution.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
                         {
                             var actionImage = actionDefinitionData.Execution.Image.Substring("docker://".Length);
-                            executionContext.Output($"Pull down action image '{actionImage}'");
 
-                            // Pull down docker image with retry up to 3 times
-                            var dockerManger = HostContext.GetService<IDockerCommandManager>();
-                            int retryCount = 0;
-                            int pullExitCode = 0;
-                            while (retryCount < 3)
-                            {
-                                pullExitCode = await dockerManger.DockerPull(executionContext, actionImage);
-                                if (pullExitCode == 0)
-                                {
-                                    break;
-                                }
-                                else
-                                {
-                                    retryCount++;
-                                    if (retryCount < 3)
-                                    {
-                                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                                        await Task.Delay(backOff);
-                                    }
-                                }
-                            }
+                            executionContext.Output($"Container image for action: '{actionImage}'.");
 
-                            if (retryCount == 3 && pullExitCode != 0)
-                            {
-                                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
-                            }
-
-                            CachedActionContainers[repositoryAction.Id] = new ContainerInfo() { ContainerImage = actionImage };
+                            return new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
+                                                          condition: ExpressionManager.Succeeded,
+                                                          displayName: $"Pull {actionImage}",
+                                                          data: new ContainerSetupInfo(repositoryAction.Id, actionImage));
                         }
                         else
                         {
@@ -423,10 +646,12 @@ namespace GitHub.Runner.Worker
                              string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
                     {
                         Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}, no more preparation.");
+                        return null;
                     }
                     else if (!string.IsNullOrEmpty(actionDefinitionData.Execution.Plugin))
                     {
                         Trace.Info($"Action plugin: {actionDefinitionData.Execution.Plugin}, no more preparation.");
+                        return null;
                     }
                     else
                     {
@@ -439,213 +664,7 @@ namespace GitHub.Runner.Worker
                 throw new InvalidOperationException($"'{actionEntryDirectory}' does not contains any action entry file.");
             }
         }
-
-        public Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action)
-        {
-            // Validate args.
-            Trace.Entering();
-            ArgUtil.NotNull(action, nameof(action));
-
-            // Initialize the definition wrapper object.
-            var definition = new Definition()
-            {
-                Data = new DefinitionData()
-                {
-                    Execution = new ExecutionData()
-                }
-            };
-
-            if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
-            {
-                Trace.Info("Load action that reference container from registry.");
-                CachedActionContainers.TryGetValue(action.Id, out var container);
-                ArgUtil.NotNull(container, nameof(container));
-                definition.Data.Execution.ContainerAction = new ContainerActionHandlerData()
-                {
-                    ContainerImage = container.ContainerImage
-                };
-                Trace.Info($"Using action container image: {container.ContainerImage}.");
-            }
-            else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
-            {
-                string actionDirectory = null;
-                if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
-                {
-                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
-                    if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-                    {
-                        actionDirectory = executionContext.GetGitHubContext("workspace");
-                        if (!string.IsNullOrEmpty(repoAction.Path))
-                        {
-                            actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
-                        }
-                    }
-                    else
-                    {
-                        actionDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repoAction.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repoAction.Ref);
-                        if (!string.IsNullOrEmpty(repoAction.Path))
-                        {
-                            actionDirectory = Path.Combine(actionDirectory, repoAction.Path);
-                        }
-                    }
-                }
-                else
-                {
-                    throw new NotSupportedException(action.Reference.Type.ToString());
-                }
-
-                Trace.Info($"Load action that reference repository from '{actionDirectory}'");
-                definition.Directory = actionDirectory;
-
-                string manifestFile = Path.Combine(actionDirectory, "action.yml");
-                string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
-                if (File.Exists(manifestFile))
-                {
-                    using (var yamlInput = new StringReader(File.ReadAllText(manifestFile)))
-                    {
-                        var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().WithNamingConvention(new CamelCaseNamingConvention()).Build();
-                        var actionDefinitionData = deserializer.Deserialize<ActionDefinitionData>(yamlInput);
-
-                        definition.Data.FriendlyName = actionDefinitionData.Name;
-                        Trace.Verbose($"Action friendly name: '{definition.Data.FriendlyName}'");
-
-                        definition.Data.Description = actionDefinitionData.Description;
-                        Trace.Verbose($"Action description: '{definition.Data.Description}'");
-
-                        definition.Data.Author = actionDefinitionData.Author;
-                        Trace.Verbose($"Action author: '{definition.Data.Author}'");
-
-                        if (actionDefinitionData.Inputs != null)
-                        {
-                            List<TaskInputDefinition> inputs = new List<TaskInputDefinition>();
-                            foreach (var input in actionDefinitionData.Inputs)
-                            {
-                                Trace.Verbose($"Action input: '{input.Key}' default to '{input.Value.Default}'");
-                                inputs.Add(new TaskInputDefinition() { Name = input.Key, DefaultValue = input.Value.Default });
-                            }
-
-                            definition.Data.Inputs = inputs.ToArray();
-                        }
-
-                        if (actionDefinitionData.Outputs != null)
-                        {
-                            List<OutputVariable> outputs = new List<OutputVariable>();
-                            foreach (var output in actionDefinitionData.Outputs)
-                            {
-                                Trace.Verbose($"Action output: '{output.Key}' for '{output.Value.Description}'");
-                                outputs.Add(new OutputVariable() { Name = output.Key, Description = output.Value.Description });
-                            }
-
-                            definition.Data.OutputVariables = outputs.ToArray();
-                        }
-
-                        if (string.Equals(actionDefinitionData.Execution.ExecutionType, "docker", StringComparison.OrdinalIgnoreCase))
-                        {
-                            definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
-                            {
-                                Target = actionDefinitionData.Execution.Image,
-                                Arguments = actionDefinitionData.Execution.Arguments?.ToList(),
-                                Environment = actionDefinitionData.Execution.Environment,
-                                EntryPoint = actionDefinitionData.Execution.EntryPoint
-                            };
-
-                            Trace.Info($"Action container Dockerfile: {actionDefinitionData.Execution.Image}.");
-
-                            if (actionDefinitionData.Execution.Arguments != null)
-                            {
-                                Trace.Info($"Action container args: [{string.Join(", ", actionDefinitionData.Execution.Arguments)}].");
-                            }
-
-                            if (actionDefinitionData.Execution.Environment != null)
-                            {
-                                Trace.Info($"Action container env: [{string.Join(", ", actionDefinitionData.Execution.Environment.Keys)}].");
-                            }
-
-                            if (CachedActionContainers.TryGetValue(action.Id, out var container))
-                            {
-                                definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
-                                Trace.Info($"Using action container image: {container.ContainerImage}.");
-                            }
-                        }
-                        else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node12", StringComparison.OrdinalIgnoreCase) ||
-                                 string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
-                        {
-                            definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData
-                            {
-                                Target = actionDefinitionData.Execution.Script
-                            };
-
-                            Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}.");
-                        }
-                        else if (!string.IsNullOrEmpty(actionDefinitionData.Execution.Plugin))
-                        {
-                            var pluginManager = HostContext.GetService<IRunnerPluginManager>();
-                            var plugin = pluginManager.GetPluginAction(actionDefinitionData.Execution.Plugin);
-
-                            ArgUtil.NotNull(plugin, actionDefinitionData.Execution.Plugin);
-                            ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, actionDefinitionData.Execution.Plugin);
-
-                            definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
-                            {
-                                Target = plugin.PluginTypeName
-                            };
-
-                            Trace.Info($"Action plugin: {plugin.PluginTypeName}.");
-                        }
-                        else
-                        {
-                            throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType);
-                        }
-                    }
-
-                }
-                else if (File.Exists(dockerFile))
-                {
-                    definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
-                    {
-                        Target = "Dockerfile"
-                    };
-
-                    if (CachedActionContainers.TryGetValue(action.Id, out var container))
-                    {
-                        definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
-                    }
-                }
-                else
-                {
-                    throw new NotSupportedException($"'{actionDirectory}' doesn't contain a valid action entrypoint.");
-                }
-            }
-            else if (action.Reference.Type == Pipelines.ActionSourceType.Script)
-            {
-                definition.Data.Execution.ScriptAction = new ScriptActionHandlerData();
-                definition.Data.FriendlyName = "Run";
-                definition.Data.Description = "Execute a script";
-                definition.Data.Author = "GitHub";
-            }
-            else if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
-            {
-                var pluginAction = action.Reference as Pipelines.PluginReference;
-                var pluginManager = HostContext.GetService<IRunnerPluginManager>();
-                var plugin = pluginManager.GetPluginAction(pluginAction.Plugin);
-
-                ArgUtil.NotNull(plugin, pluginAction.Plugin);
-                ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, pluginAction.Plugin);
-
-                definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
-                {
-                    Target = plugin.PluginTypeName
-                };
-
-                definition.Data.FriendlyName = plugin.FriendlyName;
-                definition.Data.Description = plugin.Description;
-                definition.Data.Author = plugin.Author;
-            }
-
-            return definition;
-        }
     }
-
     public sealed class Definition
     {
         public DefinitionData Data { get; set; }
@@ -908,4 +927,26 @@ namespace GitHub.Runner.Worker
     {
         public override int Priority => 1;
     }
+
+    public class ContainerSetupInfo
+    {
+        public ContainerSetupInfo(Guid id, string image)
+        {
+            StepId = id;
+            Image = image;
+        }
+
+        public ContainerSetupInfo(Guid id, string dockerfile, string workingDirectory)
+        {
+            StepId = id;
+            Dockerfile = dockerfile;
+            WorkingDirectory = workingDirectory;
+        }
+
+        public Guid StepId { get; set; }
+        public string Image { get; set; }
+        public string Dockerfile { get; set; }
+        public string WorkingDirectory { get; set; }
+    }
 }
+

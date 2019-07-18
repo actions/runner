@@ -33,9 +33,9 @@ namespace GitHub.Runner.Common.Util
                     case Constants.OSPlatform.Linux:
                         return "Linux";
                     case Constants.OSPlatform.OSX:
-                        return "Darwin";
+                        return "macOS";
                     case Constants.OSPlatform.Windows:
-                        return Environment.GetEnvironmentVariable("OS");
+                        return "Windows";
                     default:
                         throw new NotSupportedException(); // Should never reach here.
                 }

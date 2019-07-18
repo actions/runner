@@ -1,14 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
-using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using GitHub.Runner.Common.Util;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using System.Linq;
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Worker.Handlers;
-using System.Collections.Generic;
-using System.IO;
 
 namespace GitHub.Runner.Worker
 {
@@ -35,6 +27,7 @@ namespace GitHub.Runner.Worker
         public bool Enabled => true;
         public IExecutionContext ExecutionContext { get; set; }
         public TimeSpan? Timeout => null;
+        public object Data => _data;
 
         public async Task RunAsync()
         {

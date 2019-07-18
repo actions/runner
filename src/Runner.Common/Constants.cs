@@ -249,7 +249,6 @@ namespace GitHub.Runner.Common
                 public static readonly string Id = "agent.id";
                 public static readonly string GitUseSChannel = "agent.gituseschannel";
                 public static readonly string JobName = "agent.jobname";
-                public static readonly string JobStatus = "agent.jobstatus";
                 public static readonly string MachineName = "agent.machinename";
                 public static readonly string Name = "agent.name";
                 public static readonly string OS = "agent.os";

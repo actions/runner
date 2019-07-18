@@ -40,11 +40,6 @@ namespace GitHub.Runner.Common.Tests.Util
                 Assert.Equal(TaskResult.Succeeded, succeeded);
 
                 // Act.
-                TaskResult succeededWithIssues = TaskResultUtil.TranslateFromReturnCode(TaskResultUtil.TranslateToReturnCode(TaskResult.SucceededWithIssues));
-                // Actual
-                Assert.Equal(TaskResult.SucceededWithIssues, succeededWithIssues);
-
-                // Act.
                 TaskResult unknowReturnCode1 = TaskResultUtil.TranslateFromReturnCode(0);
                 // Actual
                 Assert.Equal(TaskResult.Failed, unknowReturnCode1);
@@ -74,10 +69,6 @@ namespace GitHub.Runner.Common.Tests.Util
                 // Actual
                 Assert.Equal(TaskResult.Succeeded, merged);
                 // Act.
-                merged = TaskResultUtil.MergeTaskResults(null, TaskResult.SucceededWithIssues);
-                // Actual
-                Assert.Equal(TaskResult.SucceededWithIssues, merged);
-                // Act.
                 merged = TaskResultUtil.MergeTaskResults(null, TaskResult.Abandoned);
                 // Actual
                 Assert.Equal(TaskResult.Abandoned, merged);
@@ -102,10 +93,6 @@ namespace GitHub.Runner.Common.Tests.Util
                 // Actual
                 Assert.Equal(TaskResult.Succeeded, merged);
                 // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.SucceededWithIssues, TaskResult.SucceededWithIssues);
-                // Actual
-                Assert.Equal(TaskResult.SucceededWithIssues, merged);
-                // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Abandoned, TaskResult.Abandoned);
                 // Actual
                 Assert.Equal(TaskResult.Abandoned, merged);
@@ -126,10 +113,6 @@ namespace GitHub.Runner.Common.Tests.Util
                 // Forward result merge
                 //
                 // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.Succeeded, TaskResult.SucceededWithIssues);
-                // Actual
-                Assert.Equal(TaskResult.SucceededWithIssues, merged);
-                // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Succeeded, TaskResult.Abandoned);
                 // Actual
                 Assert.Equal(TaskResult.Abandoned, merged);
@@ -145,62 +128,26 @@ namespace GitHub.Runner.Common.Tests.Util
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Succeeded, TaskResult.Skipped);
                 // Actual
                 Assert.Equal(TaskResult.Skipped, merged);
-                // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.SucceededWithIssues, TaskResult.Abandoned);
-                // Actual
-                Assert.Equal(TaskResult.Abandoned, merged);
-                // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.SucceededWithIssues, TaskResult.Canceled);
-                // Actual
-                Assert.Equal(TaskResult.Canceled, merged);
-                // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.SucceededWithIssues, TaskResult.Failed);
-                // Actual
-                Assert.Equal(TaskResult.Failed, merged);
-                // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.SucceededWithIssues, TaskResult.Skipped);
-                // Actual
-                Assert.Equal(TaskResult.Skipped, merged);
 
                 //
                 // No backward merge
                 //
                 // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.Abandoned, TaskResult.SucceededWithIssues);
-                // Actual
-                Assert.Equal(TaskResult.Abandoned, merged);
-                // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Abandoned, TaskResult.Succeeded);
                 // Actual
                 Assert.Equal(TaskResult.Abandoned, merged);
-                // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.Canceled, TaskResult.SucceededWithIssues);
-                // Actual
-                Assert.Equal(TaskResult.Canceled, merged);
                 // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Canceled, TaskResult.Succeeded);
                 // Actual
                 Assert.Equal(TaskResult.Canceled, merged);
                 // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.Failed, TaskResult.SucceededWithIssues);
-                // Actual
-                Assert.Equal(TaskResult.Failed, merged);
-                // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Failed, TaskResult.Succeeded);
                 // Actual
                 Assert.Equal(TaskResult.Failed, merged);
                 // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.Skipped, TaskResult.SucceededWithIssues);
-                // Actual
-                Assert.Equal(TaskResult.Skipped, merged);
-                // Act.
                 merged = TaskResultUtil.MergeTaskResults(TaskResult.Skipped, TaskResult.Succeeded);
                 // Actual
                 Assert.Equal(TaskResult.Skipped, merged);
-                // Act.
-                merged = TaskResultUtil.MergeTaskResults(TaskResult.SucceededWithIssues, TaskResult.Succeeded);
-                // Actual
-                Assert.Equal(TaskResult.SucceededWithIssues, merged);
 
                 //
                 // Worst result no change

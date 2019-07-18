@@ -44,7 +44,6 @@ namespace GitHub.Runner.Worker
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
-        // Variables TaskVariables { get; }
         HashSet<string> OutputVariables { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
@@ -54,6 +53,7 @@ namespace GitHub.Runner.Worker
         List<string> PrependPath { get; }
         ContainerInfo Container { get; }
         List<ContainerInfo> SidecarContainers { get; }
+        JobContext JobContext { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -183,6 +183,14 @@ namespace GitHub.Runner.Worker
                 }
 
                 return result;
+            }
+        }
+
+        public JobContext JobContext
+        {
+            get
+            {
+                return ExpressionValues["job"] as JobContext;
             }
         }
 
@@ -523,6 +531,7 @@ namespace GitHub.Runner.Worker
 
             ExpressionValues["secrets"] = Variables.ToSecretsContext();
             ExpressionValues["runner"] = new RunnerContext();
+            ExpressionValues["job"] = new JobContext();
 
             if (!ExpressionValues.ContainsKey("github"))
             {
@@ -633,66 +642,66 @@ namespace GitHub.Runner.Worker
             }
 
             // Proxy variables
-//             var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
-//             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
-//             {
-//                 SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
+            //             var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
+            //             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
+            //             {
+            //                 SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
 
-//                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
-//                 {
-//                     SetRunnerContext("proxyusername", agentWebProxy.ProxyUsername);
-//                 }
+            //                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
+            //                 {
+            //                     SetRunnerContext("proxyusername", agentWebProxy.ProxyUsername);
+            //                 }
 
-//                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyPassword))
-//                 {
-//                     HostContext.SecretMasker.AddValue(agentWebProxy.ProxyPassword);
-//                     SetRunnerContext("proxypassword", agentWebProxy.ProxyPassword);
-//                 }
+            //                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyPassword))
+            //                 {
+            //                     HostContext.SecretMasker.AddValue(agentWebProxy.ProxyPassword);
+            //                     SetRunnerContext("proxypassword", agentWebProxy.ProxyPassword);
+            //                 }
 
-//                 if (agentWebProxy.ProxyBypassList.Count > 0)
-//                 {
-//                     SetRunnerContext("proxybypasslist", JsonUtility.ToString(agentWebProxy.ProxyBypassList));
-//                 }
-//             }
+            //                 if (agentWebProxy.ProxyBypassList.Count > 0)
+            //                 {
+            //                     SetRunnerContext("proxybypasslist", JsonUtility.ToString(agentWebProxy.ProxyBypassList));
+            //                 }
+            //             }
 
-//             // Certificate variables
-//             var agentCert = HostContext.GetService<IRunnerCertificateManager>();
-//             if (agentCert.SkipServerCertificateValidation)
-//             {
-//                 SetRunnerContext("sslskipcertvalidation", bool.TrueString);
-//             }
+            //             // Certificate variables
+            //             var agentCert = HostContext.GetService<IRunnerCertificateManager>();
+            //             if (agentCert.SkipServerCertificateValidation)
+            //             {
+            //                 SetRunnerContext("sslskipcertvalidation", bool.TrueString);
+            //             }
 
-//             if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
-//             {
-//                 SetRunnerContext("sslcainfo", agentCert.CACertificateFile);
-//             }
+            //             if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
+            //             {
+            //                 SetRunnerContext("sslcainfo", agentCert.CACertificateFile);
+            //             }
 
-//             if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
-//                 !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
-//                 !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile))
-//             {
-//                 SetRunnerContext("clientcertfile", agentCert.ClientCertificateFile);
-//                 SetRunnerContext("clientcertprivatekey", agentCert.ClientCertificatePrivateKeyFile);
-//                 SetRunnerContext("clientcertarchive", agentCert.ClientCertificateArchiveFile);
+            //             if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
+            //                 !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
+            //                 !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile))
+            //             {
+            //                 SetRunnerContext("clientcertfile", agentCert.ClientCertificateFile);
+            //                 SetRunnerContext("clientcertprivatekey", agentCert.ClientCertificatePrivateKeyFile);
+            //                 SetRunnerContext("clientcertarchive", agentCert.ClientCertificateArchiveFile);
 
-//                 if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
-//                 {
-//                     HostContext.SecretMasker.AddValue(agentCert.ClientCertificatePassword);
-//                     SetRunnerContext("clientcertpassword", agentCert.ClientCertificatePassword);
-//                 }
-//             }
+            //                 if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
+            //                 {
+            //                     HostContext.SecretMasker.AddValue(agentCert.ClientCertificatePassword);
+            //                     SetRunnerContext("clientcertpassword", agentCert.ClientCertificatePassword);
+            //                 }
+            //             }
 
-//             // Runtime option variables
-//             var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetRunnerRuntimeOptions();
-//             if (runtimeOptions != null)
-//             {
-// #if OS_WINDOWS
-//                 if (runtimeOptions.GitUseSecureChannel)
-//                 {
-//                     SetRunnerContext("gituseschannel", runtimeOptions.GitUseSecureChannel.ToString());
-//                 }
-// #endif                
-//             }
+            //             // Runtime option variables
+            //             var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetRunnerRuntimeOptions();
+            //             if (runtimeOptions != null)
+            //             {
+            // #if OS_WINDOWS
+            //                 if (runtimeOptions.GitUseSecureChannel)
+            //                 {
+            //                     SetRunnerContext("gituseschannel", runtimeOptions.GitUseSecureChannel.ToString());
+            //                 }
+            // #endif                
+            //             }
 
             // Job timeline record.
             InitializeTimelineRecord(

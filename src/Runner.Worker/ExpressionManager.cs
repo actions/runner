@@ -103,8 +103,7 @@ namespace GitHub.Runner.Worker
                 resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
-                var jobStatusString = executionContext.GetRunnerContext("jobstatus");
-                TaskResult jobStatus = EnumUtil.TryParse<TaskResult>(jobStatusString) ?? TaskResult.Succeeded;
+                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
                 return jobStatus == TaskResult.Canceled;
             }
         }
@@ -116,8 +115,7 @@ namespace GitHub.Runner.Worker
                 resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
-                var jobStatusString = executionContext.GetRunnerContext("jobstatus");
-                TaskResult jobStatus = EnumUtil.TryParse<TaskResult>(jobStatusString) ?? TaskResult.Succeeded;
+                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
                 return jobStatus == TaskResult.Failed;
             }
         }
@@ -129,10 +127,8 @@ namespace GitHub.Runner.Worker
                 resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
-                var jobStatusString = executionContext.GetRunnerContext("jobstatus");
-                TaskResult jobStatus = EnumUtil.TryParse<TaskResult>(jobStatusString) ?? TaskResult.Succeeded;
-                return jobStatus == TaskResult.Succeeded ||
-                    jobStatus == TaskResult.SucceededWithIssues;
+                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
+                return jobStatus == TaskResult.Succeeded;
             }
         }
 
@@ -143,10 +139,8 @@ namespace GitHub.Runner.Worker
                 resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
-                var jobStatusString = executionContext.GetRunnerContext("jobstatus");
-                TaskResult jobStatus = EnumUtil.TryParse<TaskResult>(jobStatusString) ?? TaskResult.Succeeded;
+                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
                 return jobStatus == TaskResult.Succeeded ||
-                    jobStatus == TaskResult.SucceededWithIssues ||
                     jobStatus == TaskResult.Failed;
             }
         }

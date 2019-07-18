@@ -45,9 +45,8 @@ namespace GitHub.Runner.Worker
             //  Failed
             //  Skipped
             //  Succeeded
-            //  SucceededWithIssues
             CancellationTokenRegistration? jobCancelRegister = null;
-            jobContext.SetRunnerContext("jobstatus", (jobContext.Result ?? TaskResult.Succeeded).ToString());
+            jobContext.JobContext.Status = jobContext.Result ?? TaskResult.Succeeded;
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             for (var stepIndex = 0; stepIndex < steps.Count; stepIndex++)
             {
@@ -75,7 +74,7 @@ namespace GitHub.Runner.Worker
                             {
                                 // mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
-                                jobContext.SetRunnerContext("jobstatus", jobContext.Result.ToString());
+                                jobContext.JobContext.Status = jobContext.Result;
 
                                 step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                                 ConditionResult conditionReTestResult;
@@ -113,7 +112,7 @@ namespace GitHub.Runner.Worker
                             {
                                 // mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
-                                jobContext.SetRunnerContext("jobstatus", jobContext.Result.ToString());
+                                jobContext.JobContext.Status = jobContext.Result;
                             }
                         }
 
@@ -172,12 +171,11 @@ namespace GitHub.Runner.Worker
                 }
 
                 // Update the job result.
-                if (step.ExecutionContext.Result == TaskResult.SucceededWithIssues ||
-                    step.ExecutionContext.Result == TaskResult.Failed)
+                if (step.ExecutionContext.Result == TaskResult.Failed)
                 {
                     Trace.Info($"Update job result with current step result '{step.ExecutionContext.Result}'.");
                     jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, step.ExecutionContext.Result.Value);
-                    jobContext.SetRunnerContext("jobstatus", jobContext.Result.ToString());
+                    jobContext.JobContext.Status = jobContext.Result;
                 }
                 else
                 {
@@ -314,8 +312,8 @@ namespace GitHub.Runner.Worker
             // Fixup the step result if ContinueOnError.
             if (step.ExecutionContext.Result == TaskResult.Failed && step.ContinueOnError)
             {
-                step.ExecutionContext.Result = TaskResult.SucceededWithIssues;
-                Trace.Info($"Updated step result: {step.ExecutionContext.Result}");
+                step.ExecutionContext.Result = TaskResult.Succeeded;
+                Trace.Info($"Updated step result (continue on error): {step.ExecutionContext.Result}");
             }
             else
             {
