@@ -440,11 +440,11 @@ namespace GitHub.Runner.Plugins.Repository
         public async Task<Version> GitVersion(RunnerActionPluginExecutionContext context)
         {
             context.Debug("Get git version.");
-            string pipelineWorkspace = context.GetRunnerContext("pipelineWorkspace");
-            ArgUtil.Directory(pipelineWorkspace, "pipelineWorkspace");
+            string runnerWorkspace = context.GetRunnerContext("workspace");
+            ArgUtil.Directory(runnerWorkspace, "runnerWorkspace");
             Version version = null;
             List<string> outputStrings = new List<string>();
-            int exitCode = await ExecuteGitCommandAsync(context, pipelineWorkspace, "version", null, outputStrings);
+            int exitCode = await ExecuteGitCommandAsync(context, runnerWorkspace, "version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {
@@ -473,11 +473,11 @@ namespace GitHub.Runner.Plugins.Repository
         public async Task<Version> GitLfsVersion(RunnerActionPluginExecutionContext context)
         {
             context.Debug("Get git-lfs version.");
-            string pipelineWorkspace = context.GetRunnerContext("pipelineWorkspace");
-            ArgUtil.Directory(pipelineWorkspace, "pipelineWorkspace");
+            string runnerWorkspace = context.GetRunnerContext("workspace");
+            ArgUtil.Directory(runnerWorkspace, "runnerWorkspace");
             Version version = null;
             List<string> outputStrings = new List<string>();
-            int exitCode = await ExecuteGitCommandAsync(context, pipelineWorkspace, "lfs version", null, outputStrings);
+            int exitCode = await ExecuteGitCommandAsync(context, runnerWorkspace, "lfs version", null, outputStrings);
             context.Output($"{string.Join(Environment.NewLine, outputStrings)}");
             if (exitCode == 0)
             {

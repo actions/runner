@@ -208,7 +208,7 @@ namespace GitHub.Runner.Plugins.Repository
                     // prepare askpass for client cert password
                     if (!string.IsNullOrEmpty(runnerCert.ClientCertificatePassword))
                     {
-                        clientCertPrivateKeyAskPassFile = Path.Combine(executionContext.GetRunnerContext("tempdirectory"), $"{Guid.NewGuid()}.sh");
+                        clientCertPrivateKeyAskPassFile = Path.Combine(executionContext.GetRunnerContext("temp"), $"{Guid.NewGuid()}.sh");
                         List<string> askPass = new List<string>();
                         askPass.Add("#!/bin/sh");
                         askPass.Add($"echo \"{runnerCert.ClientCertificatePassword}\"");
@@ -235,7 +235,7 @@ namespace GitHub.Runner.Plugins.Repository
                             }
                         };
 
-                        string workingDirectory = executionContext.GetRunnerContext("pipelineWorkspace");
+                        string workingDirectory = executionContext.GetRunnerContext("workspace");
                         await processInvoker.ExecuteAsync(workingDirectory, toolPath, argLine, null, true, CancellationToken.None);
 #endif
                     }

@@ -76,7 +76,7 @@ namespace GitHub.Runner.Worker
                     // Set the directory variables.
                     context.Output("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
-                    context.SetRunnerContext("pipelineWorkspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
+                    context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
 
                     // Parse all actions' conditions.
@@ -108,7 +108,12 @@ namespace GitHub.Runner.Worker
 
                     // build up 3 lists of steps, pre-job, job, post-job
                     Stack<IStep> postJobStepsBuilder = new Stack<IStep>();
-                    Dictionary<Guid, Variables> taskVariablesMapping = new Dictionary<Guid, Variables>();
+
+                    // Download actions if not already in the cache
+                    Trace.Info("Downloading actions.");
+                    var actionManager = HostContext.GetService<IActionManager>();
+                    var prepareSteps = await actionManager.PrepareActionsAsync(context, message.Steps);
+                    preJobSteps.AddRange(prepareSteps);
 
                     if (context.Container != null || context.SidecarContainers.Count > 0)
                     {
@@ -188,11 +193,6 @@ namespace GitHub.Runner.Worker
                     steps.AddRange(preJobSteps);
                     steps.AddRange(jobSteps);
                     steps.AddRange(postJobSteps);
-
-                    // Download actions if not already in the cache
-                    Trace.Info("Downloading actions.");
-                    var actionManager = HostContext.GetService<IActionManager>();
-                    await actionManager.PrepareActionsAsync(context, message.Steps);
 
                     // Start agent log plugin host process
                     // var logPlugin = HostContext.GetService<IAgentLogPlugin>();

@@ -15,6 +15,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IExecutionContext> _ec;
         private ExpressionManager _expressionManager;
         private Dictionary<String, PipelineContextData> _expressions;
+        private JobContext _jobContext;
 
         [Fact]
         [Trait("Level", "L0")]
@@ -30,12 +31,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = true },
                     new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
                     new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
                 };
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
-                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    _jobContext.Status = variableSet.JobStatus;
                     IExpressionNode condition = _expressionManager.Parse(_ec.Object, "always()");
 
                     // Act.
@@ -61,13 +61,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                     new { JobStatus = (TaskResult?)null, Expected = false },
                     new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
                     new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
-                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = false },
                 };
 
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
-                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    _jobContext.Status = variableSet.JobStatus;
                     IExpressionNode condition = _expressionManager.Parse(_ec.Object, "canceled()");
 
                     // Act.
@@ -93,12 +92,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                     new { JobStatus = (TaskResult?)null, Expected = false },
                     new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
                     new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
-                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = false },
                 };
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
-                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    _jobContext.Status = variableSet.JobStatus;
                     IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failed()");
 
                     // Act.
@@ -122,14 +120,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new { JobStatus = (TaskResult?)null, Expected = true },
                     new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
                     new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
                     new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
                 };
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
-                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    _jobContext.Status = variableSet.JobStatus;
                     IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeeded()");
 
                     // Act.
@@ -153,14 +150,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new { JobStatus = (TaskResult?)null, Expected = true },
                     new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.SucceededWithIssues, Expected = true },
                     new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
                     new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
                 };
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
-                    _ec.Setup(x => x.GetRunnerContext("jobstatus")).Returns(variableSet.JobStatus?.ToString());
+                    _jobContext.Status = variableSet.JobStatus;
                     IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeededOrFailed()");
 
                     // Act.
@@ -214,10 +210,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         private void InitializeExecutionContext(TestHostContext hc)
         {
             _expressions = new Dictionary<String, PipelineContextData>();
+            _jobContext = new JobContext();
 
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.ExpressionValues).Returns(_expressions);
+            _ec.Setup(x => x.JobContext).Returns(_jobContext);
         }
     }
 }

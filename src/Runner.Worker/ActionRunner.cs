@@ -147,7 +147,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(Action.Reference, nameof(Action.Reference));
             ArgUtil.NotNull(actionDefinition.Data, nameof(actionDefinition.Data));
 
-            ExecutionContext.Output("==============================================================================");
+            ExecutionContext.Output("##[group]Action detail");
             if (!string.IsNullOrEmpty(actionDefinition.Data.FriendlyName))
             {
                 ExecutionContext.Output($"Action             : {actionDefinition.Data.FriendlyName}");
@@ -180,7 +180,8 @@ namespace GitHub.Runner.Worker
             {
                 ExecutionContext.Output($"Author             : {actionDefinition.Data.Author}");
             }
-            ExecutionContext.Output("==============================================================================");
+
+            ExecutionContext.Output("##[endgroup]");
         }
     }
 }

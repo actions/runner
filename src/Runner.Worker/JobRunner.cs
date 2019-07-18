@@ -107,6 +107,8 @@ namespace GitHub.Runner.Worker
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
+                jobContext.SetRunnerContext("os", VarUtil.OS);
+
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
                 jobContext.SetRunnerContext("toolsdirectory", toolsDirectory);

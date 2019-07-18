@@ -22,9 +22,9 @@ namespace GitHub.Runner.Plugins.Repository
 
         public async Task RunAsync(RunnerActionPluginExecutionContext executionContext, CancellationToken token)
         {
-            string pipelineWorkspace = executionContext.GetRunnerContext("pipelineWorkspace");
-            ArgUtil.Directory(pipelineWorkspace, nameof(pipelineWorkspace));
-            string tempDirectory = executionContext.GetRunnerContext("tempdirectory");
+            string runnerWorkspace = executionContext.GetRunnerContext("workspace");
+            ArgUtil.Directory(runnerWorkspace, nameof(runnerWorkspace));
+            string tempDirectory = executionContext.GetRunnerContext("temp");
             ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
 
             var repoFullName = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Repository, true);
@@ -38,16 +38,16 @@ namespace GitHub.Runner.Plugins.Repository
             var path = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Path);
             if (!string.IsNullOrEmpty(path))
             {
-                expectRepoPath = IOUtil.ResolvePath(pipelineWorkspace, path);
-                if (!expectRepoPath.StartsWith(pipelineWorkspace.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar))
+                expectRepoPath = IOUtil.ResolvePath(runnerWorkspace, path);
+                if (!expectRepoPath.StartsWith(runnerWorkspace.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar))
                 {
-                    throw new ArgumentException($"Input path '{path}' should resolve to a directory under '{pipelineWorkspace}', current resolved path '{expectRepoPath}'.");
+                    throw new ArgumentException($"Input path '{path}' should resolve to a directory under '{runnerWorkspace}', current resolved path '{expectRepoPath}'.");
                 }
             }
             else
             {
                 // When repository doesn't has path set, default to sources directory 1/repoName
-                expectRepoPath = Path.Combine(pipelineWorkspace, repoFullNameSplit[1]);
+                expectRepoPath = Path.Combine(runnerWorkspace, repoFullNameSplit[1]);
             }
 
             var workspaceRepo = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.WorkspaceRepo));

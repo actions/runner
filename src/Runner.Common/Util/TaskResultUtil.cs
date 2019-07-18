@@ -32,8 +32,7 @@ namespace GitHub.Runner.Common.Util
         }
 
         // Merge 2 TaskResults get the worst result.
-        // Succeeded -> SucceededWithIssues -> Failed/Canceled/Skipped/Abandoned
-        // SucceededWithIssues -> Failed/Canceled/Skipped/Abandoned
+        // Succeeded -> Failed/Canceled/Skipped/Abandoned
         // Failed -> Failed/Canceled
         // Canceled -> Canceled
         // Skipped -> Skipped
