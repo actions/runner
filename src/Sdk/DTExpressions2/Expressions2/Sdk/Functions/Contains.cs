@@ -23,6 +23,20 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     return leftString.IndexOf(rightString, StringComparison.OrdinalIgnoreCase) >= 0;
                 }
             }
+            else if (left.TryGetCollectionInterface(out var collection) &&
+                collection is IReadOnlyArray array &&
+                array.Count > 0)
+            {
+                var right = Parameters[1].Evaluate(context);
+                foreach (var item in array)
+                {
+                    var itemResult = EvaluationResult.CreateIntermediateResult(context, item);
+                    if (right.AbstractEqual(itemResult))
+                    {
+                        return true;
+                    }
+                }
+            }
 
             return false;
         }

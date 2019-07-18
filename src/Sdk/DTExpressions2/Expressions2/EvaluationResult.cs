@@ -138,7 +138,7 @@ namespace GitHub.DistributedTask.Expressions2
             switch (Kind)
             {
                 case ValueKind.Null:
-                    return ExpressionConstants.Null;
+                    return String.Empty;
 
                 case ValueKind.Boolean:
                     return ((Boolean)Value) ? ExpressionConstants.True : ExpressionConstants.False;
@@ -382,14 +382,14 @@ namespace GitHub.DistributedTask.Expressions2
                 canonicalLeftValue = ConvertToNumber(canonicalLeftValue);
                 leftKind = ValueKind.Number;
             }
-            // Boolean, Any
-            else if (leftKind == ValueKind.Boolean)
+            // Boolean|Null, Any
+            else if (leftKind == ValueKind.Boolean || leftKind == ValueKind.Null)
             {
                 canonicalLeftValue = ConvertToNumber(canonicalLeftValue);
                 CoerceTypes(ref canonicalLeftValue, ref canonicalRightValue, out leftKind, out rightKind);
             }
-            // Any, Boolean
-            else if (rightKind == ValueKind.Boolean)
+            // Any, Boolean|Null
+            else if (rightKind == ValueKind.Boolean || rightKind == ValueKind.Null)
             {
                 canonicalRightValue = ConvertToNumber(canonicalRightValue);
                 CoerceTypes(ref canonicalLeftValue, ref canonicalRightValue, out leftKind, out rightKind);
