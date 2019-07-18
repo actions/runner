@@ -265,7 +265,6 @@ namespace GitHub.Runner.Worker
                 container.ContainerEntryPointArgs = $"-e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
             }
 
-
             container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);
             ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
 
@@ -299,8 +298,6 @@ namespace GitHub.Runner.Worker
                 Trace.Error("Catch exception when check container log and container status.");
                 Trace.Error(ex);
             }
-
-
 
             // Add container information to job context
             if (!container.IsJobContainer)
