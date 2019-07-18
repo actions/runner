@@ -6,7 +6,7 @@ using GitHub.Services.WebApi;
 
 namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
 {
-    internal sealed class ConvertToJson : Function
+    internal sealed class ToJson : Function
     {
         protected sealed override Object EvaluateCore(
             EvaluationContext context,

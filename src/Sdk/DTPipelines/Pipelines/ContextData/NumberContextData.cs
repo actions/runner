@@ -34,7 +34,21 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
         public override JToken ToJToken()
         {
-            return (JToken)m_value;
+            if (Double.IsNaN(m_value) || m_value == Double.PositiveInfinity || m_value == Double.NegativeInfinity)
+            {
+                return (JToken)m_value;
+            }
+
+            var floored = Math.Floor(m_value);
+            if (m_value == floored && m_value <= (Double)Int32.MaxValue && m_value >= (Double)Int32.MinValue)
+            {
+                Int32 flooredInt = (Int32)floored;
+                return (JToken)flooredInt;
+            }
+            else
+            {
+                return (JToken)m_value;
+            }
         }
 
         public override String ToString()
