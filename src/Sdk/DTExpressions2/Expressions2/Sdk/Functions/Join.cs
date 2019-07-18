@@ -12,49 +12,52 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
             out ResultMemory resultMemory)
         {
             resultMemory = null;
-            var items = Parameters[1].Evaluate(context);
+            var items = Parameters[0].Evaluate(context);
 
-            // Collection
-            if (items.TryGetCollectionInterface(out var collection) && collection is IReadOnlyArray array)
+            // Array
+            if (items.TryGetCollectionInterface(out var collection) &&
+                collection is IReadOnlyArray array &&
+                array.Count > 0)
             {
-                if (array.Count > 0)
+                var result = new StringBuilder();
+                var memory = new MemoryCounter(this, context.Options.MaxMemory);
+
+                // Append the first item
+                var item = array[0];
+                var itemResult = EvaluationResult.CreateIntermediateResult(context, item);
+                var itemString = itemResult.ConvertToString();
+                memory.Add(itemString);
+                result.Append(itemString);
+
+                // More items?
+                if (array.Count > 1)
                 {
-                    var result = new StringBuilder();
-                    var memory = new MemoryCounter(this, context.Options.MaxMemory);
-
-                    // Append the first item
-                    var item = array[0];
-                    var itemResult = EvaluationResult.CreateIntermediateResult(context, item);
-                    var itemString = itemResult.ConvertToString();
-                    memory.Add(itemString);
-                    result.Append(itemString);
-
-                    // More items?
-                    if (array.Count > 1)
+                    var separator = ",";
+                    if (Parameters.Count > 1)
                     {
-                        var separator = Parameters[0].Evaluate(context).ConvertToString();
-
-                        for (var i = 1; i < array.Count; i++)
+                        var separatorResult = Parameters[1].Evaluate(context);
+                        if (separatorResult.IsPrimitive)
                         {
-                            // Append the separator
-                            memory.Add(separator);
-                            result.Append(separator);
-
-                            // Append the next item
-                            var nextItem = array[i];
-                            var nextItemResult = EvaluationResult.CreateIntermediateResult(context, nextItem);
-                            var nextItemString = nextItemResult.ConvertToString();
-                            memory.Add(nextItemString);
-                            result.Append(nextItemString);
+                            separator = separatorResult.ConvertToString();
                         }
                     }
 
-                    return result.ToString();
+                    for (var i = 1; i < array.Count; i++)
+                    {
+                        // Append the separator
+                        memory.Add(separator);
+                        result.Append(separator);
+
+                        // Append the next item
+                        var nextItem = array[i];
+                        var nextItemResult = EvaluationResult.CreateIntermediateResult(context, nextItem);
+                        var nextItemString = nextItemResult.ConvertToString();
+                        memory.Add(nextItemString);
+                        result.Append(nextItemString);
+                    }
                 }
-                else
-                {
-                    return String.Empty;
-                }
+
+                return result.ToString();
             }
             // Primitive
             else if (items.IsPrimitive)
