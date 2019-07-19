@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Threading;
@@ -9,6 +10,7 @@ using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using Microsoft.Win32;
 
 namespace GitHub.Runner.Worker
 {
