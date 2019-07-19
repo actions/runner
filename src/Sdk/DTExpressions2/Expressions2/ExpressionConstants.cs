@@ -11,11 +11,11 @@ namespace GitHub.DistributedTask.Expressions2
         static ExpressionConstants()
         {
             AddFunction<Contains>("contains", 2, 2);
-            AddFunction<ConvertToJson>("convertToJson", 1, 1);
             AddFunction<EndsWith>("endsWith", 2, 2);
             AddFunction<Format>("format", 1, Byte.MaxValue);
             AddFunction<Join>("join", 1, 2);
             AddFunction<StartsWith>("startsWith", 2, 2);
+            AddFunction<ToJson>("toJson", 1, 1);
             AddFunction<LegacyAnd>("and", 2, Int32.MaxValue);
             AddFunction<LegacyEqual>("eq", 2, 2);
             AddFunction<LegacyGreaterThan>("gt", 2, 2);
