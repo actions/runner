@@ -147,7 +147,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(Action.Reference, nameof(Action.Reference));
             ArgUtil.NotNull(actionDefinition.Data, nameof(actionDefinition.Data));
 
-            ExecutionContext.Output("##[group]Action detail");
+            ExecutionContext.Output("##[group]Action details");
             if (!string.IsNullOrEmpty(actionDefinition.Data.FriendlyName))
             {
                 ExecutionContext.Output($"Action             : {actionDefinition.Data.FriendlyName}");

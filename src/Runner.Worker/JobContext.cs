@@ -24,5 +24,37 @@ namespace GitHub.Runner.Worker
                 this["status"] = new StringContextData(value.ToString());
             }
         }
+
+        public DictionaryContextData Services
+        {
+            get
+            {
+                if (this.TryGetValue("services", out var services) && services is DictionaryContextData servicesDictionary)
+                {
+                    return servicesDictionary;
+                }
+                else
+                {
+                    this["services"] = new DictionaryContextData();
+                    return this["services"] as DictionaryContextData;
+                }
+            }
+        }
+
+        public DictionaryContextData Container
+        {
+            get
+            {
+                if (this.TryGetValue("container", out var container) && container is DictionaryContextData containerDictionary)
+                {
+                    return containerDictionary;
+                }
+                else
+                {
+                    this["container"] = new DictionaryContextData();
+                    return this["container"] as DictionaryContextData;
+                }
+            }
+        }
     }
 }

@@ -1,14 +1,13 @@
-﻿using GitHub.Runner.Common.Util;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System;
 using GitHub.Runner.Worker.Container;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -83,7 +82,10 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEntryPointArgs = Inputs.GetValueOrDefault("args");
             }
 
-            container.ContainerNetwork = ExecutionContext.GetRunnerContext("containernetwork");
+            if (ExecutionContext.JobContext.Container.TryGetValue("network", out var networkContextData) && networkContextData is StringContextData networkStringData)
+            {
+                container.ContainerNetwork = networkStringData.ToString();
+            }
 
             var defaultWorkingDirectory = ExecutionContext.GetGitHubContext("workspace");
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
