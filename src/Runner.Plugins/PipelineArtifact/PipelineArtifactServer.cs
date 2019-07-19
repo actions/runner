@@ -51,7 +51,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                 propertiesDictionary.Add(PipelineArtifactConstants.RootId, result.RootId.ValueString);
                 propertiesDictionary.Add(PipelineArtifactConstants.ProofNodes, StringUtil.ConvertToJson(result.ProofNodes.ToArray()));
                 propertiesDictionary.Add(PipelineArtifactConstants.ArtifactSize, result.ContentSize.ToString());
-                var artifact = await buildHelper.AssociateArtifact(projectId, pipelineId, name, ArtifactResourceTypes.PipelineArtifact, result.ManifestId.ValueString, propertiesDictionary, cancellationToken);
+                var artifact = await buildHelper.AssociateArtifact(projectId, pipelineId, string.Empty, name, ArtifactResourceTypes.PipelineArtifact, result.ManifestId.ValueString, propertiesDictionary, cancellationToken);
                 context.Output($"Associated artifact {artifact.Id} with build {pipelineId}");
             }
         }
@@ -235,7 +235,8 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                 IEnumerable<BuildArtifact> pipelineArtifacts = artifacts.Where(a => a.Resource.Type == PipelineArtifactConstants.PipelineArtifact);
                 if (buildArtifacts.Any())
                 {
-                    throw new NotSupportedException(string.Join(", ", buildArtifacts.Select(x => x.Name)));
+                    FileContainerProvider provider = new FileContainerProvider(connection, this.CreateTracer(context));
+                    await provider.DownloadMultipleArtifactsAsync(downloadParameters, buildArtifacts, cancellationToken);
                 }
 
                 if (pipelineArtifacts.Any())
@@ -268,8 +269,20 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                     throw new InvalidOperationException($"Invalid {nameof(downloadParameters.ProjectRetrievalOptions)}!");
                 }
 
-                ArtifactProviderFactory factory = new ArtifactProviderFactory(context, connection, this.CreateTracer(context));
-                IArtifactProvider provider = factory.GetProvider(buildArtifact);
+                IArtifactProvider provider;
+                string artifactType = buildArtifact.Resource.Type;
+                switch (artifactType)
+                {
+                    case PipelineArtifactConstants.PipelineArtifact:
+                        provider = new PipelineArtifactProvider(context, connection, this.CreateTracer(context));
+                        break;
+                    case PipelineArtifactConstants.Container:
+                        provider = new FileContainerProvider(connection, this.CreateTracer(context));
+                        break;
+                    default:
+                        throw new InvalidOperationException($"{buildArtifact} is neither of type PipelineArtifact nor BuildArtifact");
+                }
+
                 await provider.DownloadSingleArtifactAsync(downloadParameters, buildArtifact, cancellationToken);
             }
             else

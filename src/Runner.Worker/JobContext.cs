@@ -1,18 +1,18 @@
 using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Worker
 {
     public sealed class JobContext : DictionaryContextData
     {
-        public TaskResult? Status
+        public ActionResult? Status
         {
             get
             {
                 if (this.TryGetValue("status", out var status) && status is StringContextData statusString)
                 {
-                    return EnumUtil.TryParse<TaskResult>(statusString);
+                    return EnumUtil.TryParse<ActionResult>(statusString);
                 }
                 else
                 {

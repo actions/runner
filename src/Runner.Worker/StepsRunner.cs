@@ -46,7 +46,7 @@ namespace GitHub.Runner.Worker
             //  Skipped
             //  Succeeded
             CancellationTokenRegistration? jobCancelRegister = null;
-            jobContext.JobContext.Status = jobContext.Result ?? TaskResult.Succeeded;
+            jobContext.JobContext.Status = (jobContext.Result ?? TaskResult.Succeeded).ToActionResult();
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             for (var stepIndex = 0; stepIndex < steps.Count; stepIndex++)
             {
@@ -74,7 +74,7 @@ namespace GitHub.Runner.Worker
                             {
                                 // mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
-                                jobContext.JobContext.Status = jobContext.Result;
+                                jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
 
                                 step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                                 ConditionResult conditionReTestResult;
@@ -112,7 +112,7 @@ namespace GitHub.Runner.Worker
                             {
                                 // mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
-                                jobContext.JobContext.Status = jobContext.Result;
+                                jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
                             }
                         }
 
@@ -175,17 +175,12 @@ namespace GitHub.Runner.Worker
                 {
                     Trace.Info($"Update job result with current step result '{step.ExecutionContext.Result}'.");
                     jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, step.ExecutionContext.Result.Value);
-                    jobContext.JobContext.Status = jobContext.Result;
+                    jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
                 }
                 else
                 {
                     Trace.Info($"No need for updating job result with current step result '{step.ExecutionContext.Result}'.");
                 }
-
-                // if (taskStep != null)
-                // {
-                //     HostContext.WritePerfCounter($"TaskCompleted_{taskStep.Task.Reference.Name}_{stepIndex}");
-                // }
 
                 Trace.Info($"Current state: job state = '{jobContext.Result}'");
             }

@@ -24,7 +24,6 @@ namespace GitHub.Runner.Worker
     {
         public static IExpressionNode Always = new AlwaysNode();
         public static IExpressionNode Succeeded = new SucceededNode();
-        public static IExpressionNode SucceededOrFailed = new SucceededOrFailedNode();
 
         public IExpressionNode Parse(IExecutionContext executionContext, string condition)
         {
@@ -36,10 +35,12 @@ namespace GitHub.Runner.Worker
             var functions = new IFunctionInfo[]
             {
                 new FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
+                new FunctionInfo<CanceledNode>(name: Constants.Expressions.Cancelled, minParameters: 0, maxParameters: 0),
                 new FunctionInfo<CanceledNode>(name: Constants.Expressions.Canceled, minParameters: 0, maxParameters: 0),
+                new FunctionInfo<FailedNode>(name: Constants.Expressions.Failure, minParameters: 0, maxParameters: 0),
                 new FunctionInfo<FailedNode>(name: Constants.Expressions.Failed, minParameters: 0, maxParameters: 0),
+                new FunctionInfo<SucceededNode>(name: Constants.Expressions.Success, minParameters: 0, maxParameters: 0),
                 new FunctionInfo<SucceededNode>(name: Constants.Expressions.Succeeded, minParameters: 0, maxParameters: 0),
-                new FunctionInfo<SucceededOrFailedNode>(name: Constants.Expressions.SucceededOrFailed, minParameters: 0, maxParameters: 0),
             };
             return parser.CreateTree(condition, expressionTrace, namedValues, functions) ?? new SucceededNode();
         }
@@ -103,8 +104,8 @@ namespace GitHub.Runner.Worker
                 resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
-                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
-                return jobStatus == TaskResult.Canceled;
+                ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
+                return jobStatus == ActionResult.Cancelled;
             }
         }
 
@@ -115,8 +116,8 @@ namespace GitHub.Runner.Worker
                 resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
-                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
-                return jobStatus == TaskResult.Failed;
+                ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
+                return jobStatus == ActionResult.Failure;
             }
         }
 
@@ -127,21 +128,8 @@ namespace GitHub.Runner.Worker
                 resultMemory = null;
                 var executionContext = evaluationContext.State as IExecutionContext;
                 ArgUtil.NotNull(executionContext, nameof(executionContext));
-                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
-                return jobStatus == TaskResult.Succeeded;
-            }
-        }
-
-        private sealed class SucceededOrFailedNode : Function
-        {
-            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                var executionContext = evaluationContext.State as IExecutionContext;
-                ArgUtil.NotNull(executionContext, nameof(executionContext));
-                TaskResult jobStatus = executionContext.JobContext.Status ?? TaskResult.Succeeded;
-                return jobStatus == TaskResult.Succeeded ||
-                    jobStatus == TaskResult.Failed;
+                ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
+                return jobStatus == ActionResult.Success;
             }
         }
 
