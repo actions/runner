@@ -82,7 +82,7 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEntryPointArgs = Inputs.GetValueOrDefault("args");
             }
 
-            container.ContainerNetwork = ExecutionContext.GetRunnerContext("containernetwork");
+            container.ContainerNetwork = ExecutionContext.JobContext.Container["network"].ToString();
 
             var defaultWorkingDirectory = ExecutionContext.GetGitHubContext("workspace");
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);

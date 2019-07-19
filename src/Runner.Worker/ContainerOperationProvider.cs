@@ -122,7 +122,7 @@ namespace GitHub.Runner.Worker
             // All containers within a job join the same network
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);
-            executionContext.SetRunnerContext("containernetwork", containerNetwork);
+            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
 
             foreach (var container in containers)
             {
@@ -171,50 +171,31 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"User provided volume: {volume.Value}");
             }
 
-            // Build container ad-hoc from ./{DockerfilePath}
-            if (container.ContainerImage.StartsWith("./") || container.ContainerImage.StartsWith(@".\\"))
+            // Pull down docker image with retry up to 3 times
+            int retryCount = 0;
+            int pullExitCode = 0;
+            while (retryCount < 3)
             {
-                var dockerfilePath = Path.Combine(executionContext.GetGitHubContext("workspace"), container.ContainerImage);
-                ArgUtil.Directory(dockerfilePath, dockerfilePath);
-                executionContext.Output($"Building job container from Dockerfile: '{dockerfilePath}'.");
-
-                var imageName = $"{_dockerManger.DockerInstanceLabel}:{executionContext.Id.ToString("N")}";
-                var buildExitCode = await _dockerManger.DockerBuild(executionContext, executionContext.GetGitHubContext("workspace"), dockerfilePath, imageName);
-                if (buildExitCode != 0)
+                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage);
+                if (pullExitCode == 0)
                 {
-                    throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
+                    break;
                 }
-                container.ContainerImage = imageName;
+                else
+                {
+                    retryCount++;
+                    if (retryCount < 3)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
             }
-            // Pull container from registry
-            else
-            {
-                // Pull down docker image with retry up to 3 times
-                int retryCount = 0;
-                int pullExitCode = 0;
-                while (retryCount < 3)
-                {
-                    pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage);
-                    if (pullExitCode == 0)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        retryCount++;
-                        if (retryCount < 3)
-                        {
-                            var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                            executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                            await Task.Delay(backOff);
-                        }
-                    }
-                }
 
-                if (retryCount == 3 && pullExitCode != 0)
-                {
-                    throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
-                }
+            if (retryCount == 3 && pullExitCode != 0)
+            {
+                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
             }
 
             // Mount folders into container
@@ -318,7 +299,6 @@ namespace GitHub.Runner.Worker
             else
             {
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
-                executionContext.JobContext.Container["network"] = new StringContextData(container.ContainerNetwork);
             }
         }
 
