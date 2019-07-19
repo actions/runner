@@ -45,16 +45,21 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: false);
             string branchName = context.GetInput(ArtifactEventProperties.BranchName, required: false);
             string pipelineDefinition = context.GetInput(ArtifactEventProperties.PipelineDefinition, required: false);
-            string sourceRun = context.GetInput(ArtifactEventProperties.SourceRun, required: true);
+            string sourceRun = context.GetInput(ArtifactEventProperties.SourceRun, required: false);
             string pipelineTriggering = context.GetInput(ArtifactEventProperties.PipelineTriggering, required: false);
             string pipelineVersionToDownload = context.GetInput(ArtifactEventProperties.PipelineVersionToDownload, required: false);
-            string targetPath = context.GetInput(DownloadPath, required: true);
+            string targetPath = context.GetInput(DownloadPath, required: false);
             string environmentBuildId = context.Variables.GetValueOrDefault(BuildVariables.BuildId)?.Value ?? string.Empty; // BuildID provided by environment.
             string itemPattern = context.GetInput(ArtifactEventProperties.ItemPattern, required: false) ?? string.Empty;
             string projectName = context.GetInput(ArtifactEventProperties.Project, required: false);
             string tags = context.GetInput(ArtifactEventProperties.Tags, required: false) ?? string.Empty;
             string userSpecifiedpipelineId = context.GetInput(pipelineRunId, required: false);
             string defaultWorkingDirectory = context.GetGitHubContext("workspace");
+
+            if (string.IsNullOrEmpty(targetPath))
+            {
+                targetPath = artifactName;
+            }
 
             targetPath = Path.IsPathFullyQualified(targetPath) ? targetPath : Path.GetFullPath(Path.Combine(defaultWorkingDirectory, targetPath));
 
@@ -76,79 +81,36 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             PipelineArtifactServer server = new PipelineArtifactServer();
             PipelineArtifactDownloadParameters downloadParameters;
 
-            if (sourceRun == sourceRunCurrent)
+            // TODO: use a constant for project id, which is currently defined in GitHub.Services.Agent.Constants.Variables.System.TeamProjectId (Ting)
+            string projectIdStr = context.Variables.GetValueOrDefault("system.teamProjectId")?.Value;
+            if (String.IsNullOrEmpty(projectIdStr))
             {
-                // TODO: use a constant for project id, which is currently defined in GitHub.Services.Agent.Constants.Variables.System.TeamProjectId (Ting)
-                string projectIdStr = context.Variables.GetValueOrDefault("system.teamProjectId")?.Value;
-                if (String.IsNullOrEmpty(projectIdStr))
-                {
-                    throw new ArgumentNullException("Project ID cannot be null.");
-                }
-                Guid projectId = Guid.Parse(projectIdStr);
-                ArgUtil.NotEmpty(projectId, nameof(projectId));
-
-                int pipelineId = 0;
-                if (int.TryParse(environmentBuildId, out pipelineId) && pipelineId != 0)
-                {
-                    context.Output($"Download from the specified build: #{pipelineId}");
-                }
-                else
-                {
-                    // This should not happen since the build id comes from build environment. But a user may override that so we must be careful.
-                    throw new ArgumentException($"Build Id is not valid: {environmentBuildId}");
-                }
-
-                downloadParameters = new PipelineArtifactDownloadParameters
-                {
-                    ProjectRetrievalOptions = BuildArtifactRetrievalOptions.RetrieveByProjectId,
-                    ProjectId = projectId,
-                    PipelineId = pipelineId,
-                    ArtifactName = artifactName,
-                    TargetDirectory = targetPath,
-                    MinimatchFilters = minimatchPatterns,
-                    MinimatchFilterWithArtifactName = true
-                };
+                throw new ArgumentNullException("Project ID cannot be null.");
             }
-            else if (sourceRun == sourceRunSpecific)
+            Guid projectId = Guid.Parse(projectIdStr);
+            ArgUtil.NotEmpty(projectId, nameof(projectId));
+
+            int pipelineId = 0;
+            if (int.TryParse(environmentBuildId, out pipelineId) && pipelineId != 0)
             {
-                if (String.IsNullOrEmpty(projectName))
-                {
-                    throw new ArgumentNullException("Project Name cannot be null.");
-                }
-                Guid projectId = Guid.Parse(projectName);
-                int pipelineId;
-                if (pipelineVersionToDownload == pipelineVersionToDownloadLatest)
-                {
-                    pipelineId = await this.GetPipelineIdAsync(context, pipelineDefinition, pipelineVersionToDownload, projectName, tagsInput);
-                }
-                else if (pipelineVersionToDownload == pipelineVersionToDownloadSpecific)
-                {
-                    pipelineId = Int32.Parse(userSpecifiedpipelineId);
-                }
-                else if (pipelineVersionToDownload == pipelineVersionToDownloadLatestFromBranch)
-                {
-                    pipelineId = await this.GetPipelineIdAsync(context, pipelineDefinition, pipelineVersionToDownload, projectName, tagsInput, branchName);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Unreachable code!");
-                }
-                downloadParameters = new PipelineArtifactDownloadParameters
-                {
-                    ProjectRetrievalOptions = BuildArtifactRetrievalOptions.RetrieveByProjectName,
-                    ProjectName = projectName,
-                    ProjectId = projectId,
-                    PipelineId = pipelineId,
-                    ArtifactName = artifactName,
-                    TargetDirectory = targetPath,
-                    MinimatchFilters = minimatchPatterns,
-                    MinimatchFilterWithArtifactName = true
-                };
+                context.Output($"Download from the specified build: #{pipelineId}");
             }
             else
             {
-                throw new InvalidOperationException($"Build type '{sourceRun}' is not recognized.");
+                // This should not happen since the build id comes from build environment. But a user may override that so we must be careful.
+                throw new ArgumentException($"Build Id is not valid: {environmentBuildId}");
             }
+
+            downloadParameters = new PipelineArtifactDownloadParameters
+            {
+                ProjectRetrievalOptions = BuildArtifactRetrievalOptions.RetrieveByProjectId,
+                ProjectId = projectId,
+                PipelineId = pipelineId,
+                ArtifactName = artifactName,
+                TargetDirectory = targetPath,
+                MinimatchFilters = minimatchPatterns,
+                MinimatchFilterWithArtifactName = true
+            };
 
             string fullPath = this.CreateDirectoryIfDoesntExist(targetPath);
 

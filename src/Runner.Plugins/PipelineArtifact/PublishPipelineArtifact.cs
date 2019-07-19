@@ -32,6 +32,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
         {
             string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: false);
             string targetPath = context.GetInput(ArtifactEventProperties.TargetPath, required: true);
+            string fc = context.GetInput("fc");
             string defaultWorkingDirectory = context.GetGitHubContext("workspace");
 
             targetPath = Path.IsPathFullyQualified(targetPath) ? targetPath : Path.GetFullPath(Path.Combine(defaultWorkingDirectory, targetPath));
@@ -75,11 +76,39 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                 throw new FileNotFoundException($"Path does not exists {targetPath}");
             }
 
-            // Upload to BlobStore, and associate the artifact with the build.
-            context.Output($"Uploading pipeline artifact from {fullPath} for build #{buildId}");
-            PipelineArtifactServer server = new PipelineArtifactServer();
-            await server.UploadAsync(context, projectId, buildId, artifactName, fullPath, token);
-            context.Output("Uploading pipeline artifact finished.");
+            if (string.IsNullOrEmpty(fc))
+            {
+                // Upload to BlobStore, and associate the artifact with the build.
+                context.Output($"Uploading pipeline artifact from {fullPath} for build #{buildId}");
+                PipelineArtifactServer server = new PipelineArtifactServer();
+                await server.UploadAsync(context, projectId, buildId, artifactName, fullPath, token);
+                context.Output("Uploading pipeline artifact finished.");
+            }
+            else
+            {
+                // Container ID
+                string containerIdStr = context.Variables.GetValueOrDefault(BuildVariables.ContainerId)?.Value ?? string.Empty;
+                if (!long.TryParse(containerIdStr, out long containerId))
+                {
+                    throw new ArgumentException($"Container Id is not valid: {containerIdStr}");
+                }
+
+                string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
+
+                context.Output($"Uploading artifact from {fullPath} for run #{buildId}");
+
+                FileContainerServer fileContainerHelper = new FileContainerServer(context.VssConnection, projectId, containerId, artifactName);
+                long size = await fileContainerHelper.CopyToContainerAsync(context, fullPath, token);
+                var propertiesDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                propertiesDictionary.Add("artifactsize", size.ToString());
+
+                string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{artifactName}");
+                context.Output($"Uploaded '{fullPath}' to server");
+
+                BuildServer buildHelper = new BuildServer(context.VssConnection);
+                var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
+                context.Output($"Associated artifact {artifact.Id} with run {buildId}");
+            }
         }
 
         private string NormalizeJobIdentifier(string jobIdentifier)
