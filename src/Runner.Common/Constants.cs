@@ -206,7 +206,10 @@ namespace GitHub.Runner.Common
         {
             public static readonly string Always = "always";
             public static readonly string Canceled = "canceled";
+            public static readonly string Cancelled = "cancelled";
             public static readonly string Failed = "failed";
+            public static readonly string Failure = "failure";
+            public static readonly string Success = "success";
             public static readonly string Succeeded = "succeeded";
             public static readonly string SucceededOrFailed = "succeededOrFailed";
             public static readonly string Variables = "variables";

@@ -27,10 +27,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new { JobStatus = (TaskResult?)null, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
+                    new { JobStatus = (ActionResult?)null, Expected = true },
+                    new { JobStatus = (ActionResult?)ActionResult.Cancelled, Expected = true },
+                    new { JobStatus = (ActionResult?)ActionResult.Failure, Expected = true },
+                    new { JobStatus = (ActionResult?)ActionResult.Success, Expected = true },
                 };
                 foreach (var variableSet in variableSets)
                 {
@@ -50,29 +50,34 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void CanceledFunction()
+        public void CancelledFunction()
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = true },
-                    new { JobStatus = (TaskResult?)null, Expected = false },
-                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
-                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
+                    new { JobStatus = (ActionResult?)ActionResult.Cancelled, Expected = true },
+                    new { JobStatus = (ActionResult?)null, Expected = false },
+                    new { JobStatus = (ActionResult?)ActionResult.Failure, Expected = false },
+                    new { JobStatus = (ActionResult?)ActionResult.Success, Expected = false },
                 };
 
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
                     _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "canceled()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "cancelled()");
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
                     // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+
+                    // compat
+                    condition = _expressionManager.Parse(_ec.Object, "canceled()");
+                    actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
                     Assert.Equal(variableSet.Expected, actual);
                 }
             }
@@ -81,28 +86,33 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void FailedFunction()
+        public void FailureFunction()
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
-                    new { JobStatus = (TaskResult?)null, Expected = false },
-                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
-                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = false },
+                    new { JobStatus = (ActionResult?)ActionResult.Failure, Expected = true },
+                    new { JobStatus = (ActionResult?)null, Expected = false },
+                    new { JobStatus = (ActionResult?)ActionResult.Cancelled, Expected = false },
+                    new { JobStatus = (ActionResult?)ActionResult.Success, Expected = false },
                 };
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
                     _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failed()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failure()");
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
                     // Assert.
+                    Assert.Equal(variableSet.Expected, actual);
+
+                    // compat
+                    condition = _expressionManager.Parse(_ec.Object, "failed()");
+                    actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
                     Assert.Equal(variableSet.Expected, actual);
                 }
             }
@@ -111,58 +121,33 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SucceededFunction()
+        public void SuccessFunction()
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new { JobStatus = (TaskResult?)null, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
-                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = false },
+                    new { JobStatus = (ActionResult?)null, Expected = true },
+                    new { JobStatus = (ActionResult?)ActionResult.Success, Expected = true },
+                    new { JobStatus = (ActionResult?)ActionResult.Cancelled, Expected = false },
+                    new { JobStatus = (ActionResult?)ActionResult.Failure, Expected = false },
                 };
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
                     _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeeded()");
+                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "success()");
 
                     // Act.
                     bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, actual);
-                }
-            }
-        }
 
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void SucceededOrFailedFunction()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var variableSets = new[]
-                {
-                    new { JobStatus = (TaskResult?)null, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Succeeded, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Failed, Expected = true },
-                    new { JobStatus = (TaskResult?)TaskResult.Canceled, Expected = false },
-                };
-                foreach (var variableSet in variableSets)
-                {
-                    InitializeExecutionContext(hc);
-                    _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "succeededOrFailed()");
-
-                    // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
-
-                    // Assert.
+                    // compat
+                    condition = _expressionManager.Parse(_ec.Object, "succeeded()");
+                    actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
                     Assert.Equal(variableSet.Expected, actual);
                 }
             }

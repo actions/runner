@@ -58,5 +58,22 @@ namespace GitHub.Runner.Common.Util
 
             return currentResult.Value;
         }
+
+        public static ActionResult ToActionResult(this TaskResult result)
+        {
+            switch (result)
+            {
+                case TaskResult.Succeeded:
+                    return ActionResult.Success;
+                case TaskResult.Failed:
+                    return ActionResult.Failure;
+                case TaskResult.Canceled:
+                    return ActionResult.Cancelled;
+                case TaskResult.Skipped:
+                    return ActionResult.Skipped;
+                default:
+                    throw new NotSupportedException(result.ToString());
+            }
+        }
     }
 }

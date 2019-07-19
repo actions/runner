@@ -23,6 +23,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
         public async Task<BuildArtifact> AssociateArtifact(
             Guid projectId,
             int pipelineId,
+            string jobId,
             string name,
             string type,
             string data,
@@ -32,6 +33,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             BuildArtifact artifact = new BuildArtifact()
             {
                 Name = name,
+                Source = jobId,
                 Resource = new ArtifactResource()
                 {
                     Data = data,

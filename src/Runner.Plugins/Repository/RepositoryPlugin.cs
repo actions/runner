@@ -50,9 +50,9 @@ namespace GitHub.Runner.Plugins.Repository
                 expectRepoPath = Path.Combine(runnerWorkspace, repoFullNameSplit[1]);
             }
 
-            var workspaceRepo = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.WorkspaceRepo));
+            var workspaceRepo = executionContext.GetRunnerContext("repository");
             // for self repository, we need to let the worker knows where it is after checkout.
-            if (workspaceRepo)
+            if (string.Equals(workspaceRepo, repoFullName, StringComparison.OrdinalIgnoreCase))
             {
                 var workspaceRepoPath = executionContext.GetGitHubContext("workspace");
 
