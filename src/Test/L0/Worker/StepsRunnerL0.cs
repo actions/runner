@@ -40,8 +40,8 @@
 //             _contexts["actions"] = new DictionaryContextData();
 //             _ec.Setup(x => x.ExpressionValues).Returns(_contexts);
 
-//             var _actionContext = new ActionsContext();
-//             _ec.Setup(x => x.ActionsContext).Returns(_actionContext);
+//             var _stepContext = new StepsContext();
+//             _ec.Setup(x => x.StepsContext).Returns(_stepContext);
 //             _stepsRunner = new StepsRunner();
 //             _stepsRunner.Initialize(hc);
 //             return hc;

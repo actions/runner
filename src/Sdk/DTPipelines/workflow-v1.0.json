@@ -14,33 +14,34 @@
       }
     },
 
-    "actions-template-root": {
-      "description": "Actions template file",
+    "steps-template-root": {
+      "description": "Steps template file",
       "mapping": {
         "properties": {
-          "inputs": "actions-template-inputs",
-          "outputs": "actions-template-outputs",
-          "actions": "actions-in-template"
+          "inputs": "steps-template-inputs",
+          "outputs": "steps-template-outputs",
+          "steps": "steps-in-template"
         }
       }
     },
 
-    "actions-scope-inputs": {
-      "description": "Used when evaluating actions scope inputs",
+    "steps-scope-inputs": {
+      "description": "Used when evaluating steps scope inputs",
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "actions-scope-input-value"
+        "loose-value-type": "steps-scope-input-value"
       }
     },
 
-    "actions-scope-input-value": {
+    "steps-scope-input-value": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "inputs"
+        "steps",
+        "inputs",
+        "job",
+        "runner"
       ],
       "one-of": [
         "string",
@@ -49,40 +50,40 @@
       ]
     },
 
-    "actions-scope-outputs": {
-      "description": "Used when evaluating actions scope outputs",
+    "steps-scope-outputs": {
+      "description": "Used when evaluating steps scope outputs",
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "actions-scope-output-value"
+        "loose-value-type": "steps-scope-output-value"
       }
     },
 
-    "actions-scope-output-value": {
+    "steps-scope-output-value": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "inputs"
+        "steps",
+        "inputs",
+        "job",
+        "runner"
       ],
       "string": {}
     },
 
-    "actions-template-inputs": {
-      "description": "Allowed inputs in an actions template",
+    "steps-template-inputs": {
+      "description": "Allowed inputs in a steps template",
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "actions-template-input-value"
+        "loose-value-type": "steps-template-input-value"
       }
     },
 
-    "actions-template-input-value": {
-      "description": "Default input values for an actions template",
+    "steps-template-input-value": {
+      "description": "Default input values for a steps template",
       "context": [
         "strategy",
-        "matrix",
-        "parallel"
+        "matrix"
       ],
       "one-of": [
         "string",
@@ -91,22 +92,23 @@
       ]
     },
 
-    "actions-template-outputs": {
-      "description": "Output mapping for an actions template",
+    "steps-template-outputs": {
+      "description": "Output mapping for a steps template",
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "actions-template-output-value"
+        "loose-value-type": "steps-template-output-value"
       }
     },
 
-    "actions-template-output-value": {
-      "description": "Output values for an actions template",
+    "steps-template-output-value": {
+      "description": "Output values for a steps template",
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions"
+        "steps",
+        "job",
+        "runner"
       ],
       "string": {}
     },
@@ -119,6 +121,13 @@
     },
 
     "job": {
+      "one-of": [
+        "job-with-steps",
+        "job-with-actions"
+      ]
+    },
+
+    "job-with-steps": {
       "mapping": {
         "properties": {
           "needs": "needs",
@@ -130,7 +139,24 @@
           "continue-on-error": "boolean",
           "container": "container",
           "services": "services",
-          "actions": "actions"
+          "steps": "steps"
+        }
+      }
+    },
+
+    "job-with-actions": {
+      "mapping": {
+        "properties": {
+          "needs": "needs",
+          "strategy": "strategy",
+          "name": "string-strategy-context",
+          "runs-on": "runs-on",
+          "timeout": "number-strategy-context",
+          "cancel-timeout": "number-strategy-context",
+          "continue-on-error": "boolean",
+          "container": "container",
+          "services": "services",
+          "actions": "steps"
         }
       }
     },
@@ -147,8 +173,7 @@
         "properties": {
           "fail-fast": "boolean",
           "max-parallel": "number",
-          "matrix": "matrix",
-          "parallel": "number"
+          "matrix": "matrix"
         }
       }
     },
@@ -207,8 +232,7 @@
     "runs-on": {
       "context": [
         "strategy",
-        "matrix",
-        "parallel"
+        "matrix"
       ],
       "one-of": [
         "runs-on-string",
@@ -230,153 +254,162 @@
       }
     },
 
-    "actions": {
+    "steps": {
       "sequence": {
-        "item-type": "actions-item"
+        "item-type": "steps-item"
       }
     },
 
-    "actions-in-template": {
+    "steps-in-template": {
       "sequence": {
-        "item-type": "actions-item-in-template"
+        "item-type": "steps-item-in-template"
       }
     },
 
-    "actions-item": {
+    "steps-item": {
       "one-of": [
-        "checkout-action",
-        "run-action",
-        "regular-action",
-        "actions-template-reference"
+        "checkout-step",
+        "run-step",
+        "regular-step",
+        "steps-template-reference"
       ]
     },
 
-    "actions-item-in-template": {
+    "steps-item-in-template": {
       "one-of": [
-        "checkout-action-in-template",
-        "run-action-in-template",
-        "regular-action-in-template",
-        "actions-template-reference-in-template"
+        "checkout-step-in-template",
+        "run-step-in-template",
+        "regular-step-in-template",
+        "steps-template-reference-in-template"
       ]
     },
 
-    "checkout-action": {
+    "checkout-step": {
       "mapping": {
         "properties": {
-          "name": "string-actions-context",
+          "name": "string-steps-context",
           "id": "non-empty-string",
           "if": "string",
           "timeout": "number",
           "checkout": "non-empty-string",
-          "path": "string-actions-context",
-          "clean": "boolean-actions-context",
-          "fetch-depth": "number-actions-context",
-          "lfs": "boolean-actions-context",
-          "submodules": "string-actions-context"
+          "path": "string-steps-context",
+          "continue-on-error": "boolean",
+          "clean": "boolean-steps-context",
+          "fetch-depth": "number-steps-context",
+          "lfs": "boolean-steps-context",
+          "submodules": "string-steps-context"
         }
       }
     },
 
-    "checkout-action-in-template": {
+    "checkout-step-in-template": {
       "mapping": {
         "properties": {
-          "name": "string-actions-context-in-template",
+          "name": "string-steps-context-in-template",
           "id": "non-empty-string",
           "if": "string",
           "timeout": "number",
           "checkout": "non-empty-string",
-          "path": "string-actions-context-in-template",
-          "clean": "boolean-actions-context-in-template",
-          "fetch-depth": "number-actions-context-in-template",
-          "lfs": "boolean-actions-context-in-template",
-          "submodules": "string-actions-context-in-template"
+          "path": "string-steps-context-in-template",
+          "continue-on-error": "boolean",
+          "clean": "boolean-steps-context-in-template",
+          "fetch-depth": "number-steps-context-in-template",
+          "lfs": "boolean-steps-context-in-template",
+          "submodules": "string-steps-context-in-template"
         }
       }
     },
 
-    "run-action": {
+    "run-step": {
       "mapping": {
         "properties": {
-          "name": "string-actions-context",
+          "name": "string-steps-context",
           "id": "non-empty-string",
           "if": "string",
           "timeout": "number",
-          "run": "string-actions-context",
-          "env": "action-env",
-          "working-directory": "string-actions-context"
+          "run": "string-steps-context",
+          "continue-on-error": "boolean",
+          "env": "step-env",
+          "working-directory": "string-steps-context",
+          "shell": "non-empty-string"
         }
       }
     },
 
-    "run-action-in-template": {
+    "run-step-in-template": {
       "mapping": {
         "properties": {
-          "name": "string-actions-context-in-template",
+          "name": "string-steps-context-in-template",
           "id": "non-empty-string",
           "if": "string",
           "timeout": "number",
-          "run": "string-actions-context-in-template",
-          "env": "action-env-in-template",
-          "working-directory": "string-actions-context-in-template"
+          "run": "string-steps-context-in-template",
+          "continue-on-error": "boolean",
+          "env": "step-env-in-template",
+          "working-directory": "string-steps-context-in-template",
+          "shell": "non-empty-string"
         }
       }
     },
 
-    "regular-action": {
+    "regular-step": {
       "mapping": {
         "properties": {
-          "name": "string-actions-context",
+          "name": "string-steps-context",
           "id": "non-empty-string",
           "if": "string",
-          "timeout": "number",
-          "uses": "non-empty-string",
-          "with": "action-with",
-          "env": "action-env"
-        }
-      }
-    },
-
-    "regular-action-in-template": {
-      "mapping": {
-        "properties": {
-          "name": "string-actions-context-in-template",
-          "id": "non-empty-string",
-          "if": "string",
+          "continue-on-error": "boolean",
           "timeout": "number",
           "uses": "non-empty-string",
-          "with": "action-with-in-template",
-          "env": "action-env-in-template"
+          "with": "step-with",
+          "env": "step-env"
         }
       }
     },
 
-    "actions-template-reference": {
+    "regular-step-in-template": {
+      "mapping": {
+        "properties": {
+          "name": "string-steps-context-in-template",
+          "id": "non-empty-string",
+          "if": "string",
+          "continue-on-error": "boolean",
+          "timeout": "number",
+          "uses": "non-empty-string",
+          "with": "step-with-in-template",
+          "env": "step-env-in-template"
+        }
+      }
+    },
+
+    "steps-template-reference": {
       "mapping": {
         "properties": {
           "template": "non-empty-string",
           "id": "non-empty-string",
-          "inputs": "actions-template-reference-inputs"
+          "inputs": "steps-template-reference-inputs"
         }
       }
     },
 
-    "actions-template-reference-in-template": {
+    "steps-template-reference-in-template": {
       "mapping": {
         "properties": {
           "template": "non-empty-string",
           "id": "non-empty-string",
-          "inputs": "actions-template-reference-inputs-in-template"
+          "inputs": "steps-template-reference-inputs-in-template"
         }
       }
     },
 
-    "actions-template-reference-inputs": {
+    "steps-template-reference-inputs": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions"
+        "steps",
+        "job",
+        "runner"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -384,14 +417,15 @@
       }
     },
 
-    "actions-template-reference-inputs-in-template": {
+    "steps-template-reference-inputs-in-template": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "inputs"
+        "steps",
+        "inputs",
+        "job",
+        "runner"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -399,14 +433,15 @@
       }
     },
 
-    "action-env": {
+    "step-env": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "github"
+        "steps",
+        "github",
+        "job",
+        "runner"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -414,14 +449,15 @@
       }
     },
 
-    "action-env-in-template": {
+    "step-env-in-template": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "inputs"
+        "steps",
+        "inputs",
+        "job",
+        "runner"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -429,14 +465,15 @@
       }
     },
 
-    "action-with": {
+    "step-with": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "github"
+        "steps",
+        "github",
+        "job",
+        "runner"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -447,8 +484,7 @@
     "container": {
       "context": [
         "strategy",
-        "matrix",
-        "parallel"
+        "matrix"
       ],
       "one-of": [
         "non-empty-string",
@@ -471,8 +507,7 @@
     "services": {
       "context": [
         "strategy",
-        "matrix",
-        "parallel"
+        "matrix"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -487,14 +522,15 @@
       }
     },
 
-    "action-with-in-template": {
+    "step-with-in-template": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "inputs"
+        "steps",
+        "inputs",
+        "job",
+        "runner"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -517,8 +553,7 @@
     "number-strategy-context": {
       "context": [
         "strategy",
-        "matrix",
-        "parallel"
+        "matrix"
       ],
       "number": {}
     },
@@ -526,82 +561,87 @@
     "string-strategy-context": {
       "context": [
         "strategy",
-        "matrix",
-        "parallel"
+        "matrix"
       ],
       "string": {}
     },
 
-    "boolean-actions-context": {
+    "boolean-steps-context": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "github"
+        "steps",
+        "github",
+        "job",
+        "runner"
       ],
       "boolean": {}
     },
 
-    "boolean-actions-context-in-template": {
+    "boolean-steps-context-in-template": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
+        "steps",
         "github",
-        "inputs"
+        "inputs",
+        "job",
+        "runner"
       ],
       "boolean": {}
     },
 
-    "number-actions-context": {
+    "number-steps-context": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "github"
-      ],
-      "number": {}
-    },
-
-    "number-actions-context-in-template": {
-      "context": [
-        "strategy",
-        "matrix",
-        "parallel",
-        "secrets",
-        "actions",
+        "steps",
         "github",
-        "inputs"
+        "job",
+        "runner"
       ],
       "number": {}
     },
 
-    "string-actions-context": {
+    "number-steps-context-in-template": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "github"
+        "steps",
+        "github",
+        "inputs",
+        "job",
+        "runner"
+      ],
+      "number": {}
+    },
+
+    "string-steps-context": {
+      "context": [
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "github",
+        "job",
+        "runner"
       ],
       "string": {}
     },
 
-    "string-actions-context-in-template": {
+    "string-steps-context-in-template": {
       "context": [
         "strategy",
         "matrix",
-        "parallel",
         "secrets",
-        "actions",
-        "inputs"
+        "steps",
+        "inputs",
+        "job",
+        "runner"
       ],
       "string": {}
     }

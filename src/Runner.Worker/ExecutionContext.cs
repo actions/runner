@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker
         HashSet<string> OutputVariables { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
-        ActionsContext ActionsContext { get; }
+        StepsContext StepsContext { get; }
         IDictionary<String, PipelineContextData> ExpressionValues { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
@@ -132,7 +132,7 @@ namespace GitHub.Runner.Worker
         public HashSet<string> OutputVariables => _outputvariables;
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, ContextScope> Scopes { get; private set; }
-        public ActionsContext ActionsContext { get; private set; }
+        public StepsContext StepsContext { get; private set; }
         public IDictionary<String, PipelineContextData> ExpressionValues { get; } = new Dictionary<String, PipelineContextData>();
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
@@ -231,7 +231,7 @@ namespace GitHub.Runner.Worker
             // child.TaskVariables = taskVariables;
             child.EnvironmentVariables = EnvironmentVariables;
             child.Scopes = Scopes;
-            child.ActionsContext = ActionsContext;
+            child.StepsContext = StepsContext;
             foreach (var pair in ExpressionValues)
             {
                 child.ExpressionValues[pair.Key] = pair.Value;
@@ -365,7 +365,7 @@ namespace GitHub.Runner.Worker
 
             // todo: restrict multiline?
 
-            ActionsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
+            StepsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
         }
 
         public void SetTimeout(TimeSpan? timeout)
@@ -507,8 +507,8 @@ namespace GitHub.Runner.Worker
             // Environment variables shared across all actions
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
-            // Actions context (StepsRunner manages adding the scoped actions context)
-            ActionsContext = new ActionsContext();
+            // Steps context (StepsRunner manages adding the scoped steps context)
+            StepsContext = new StepsContext();
 
             // Scopes
             Scopes = new Dictionary<String, ContextScope>(StringComparer.OrdinalIgnoreCase);

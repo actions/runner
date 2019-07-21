@@ -201,6 +201,7 @@ namespace GitHub.DistributedTask.Pipelines
         {
             public static readonly String Script = "script";
             public static readonly String WorkingDirectory = "workingDirectory";
+            public static readonly String Shell = "shell";
         }
 
         public static class AgentPlugins
