@@ -10,7 +10,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker
 {
-    public sealed class ActionsContext
+    public sealed class StepsContext
     {
         private static readonly Regex _propertyRegex = new Regex("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
         private readonly DictionaryContextData _contextData = new DictionaryContextData();
@@ -38,51 +38,51 @@ namespace GitHub.Runner.Worker
 
         public void SetOutput(
             string scopeName,
-            string actionName,
+            string stepName,
             string outputName,
             string value,
             out string reference)
         {
-            var action = GetAction(scopeName, actionName);
-            var outputs = action["outputs"].AssertDictionary("outputs");
+            var step = GetStep(scopeName, stepName);
+            var outputs = step["outputs"].AssertDictionary("outputs");
             outputs[outputName] = new StringContextData(value);
             if (_propertyRegex.IsMatch(outputName))
             {
-                reference = $"actions.{actionName}.outputs.{outputName}";
+                reference = $"steps.{stepName}.outputs.{outputName}";
             }
             else
             {
-                reference = $"actions['{actionName}']['outputs']['{outputName}']";
+                reference = $"steps['{stepName}']['outputs']['{outputName}']";
             }
         }
 
         public void SetResult(
             string scopeName,
-            string actionName,
+            string stepName,
             string result)
         {
-            var action = GetAction(scopeName, actionName);
-            action["result"] = new StringContextData(result);
+            var step = GetStep(scopeName, stepName);
+            step["result"] = new StringContextData(result);
         }
 
-        private DictionaryContextData GetAction(string scopeName, string actionName)
+        private DictionaryContextData GetStep(string scopeName, string stepName)
         {
             var scope = GetScope(scopeName);
-            var action = default(DictionaryContextData);
-            if (scope.TryGetValue(actionName, out var actionValue))
+            var step = default(DictionaryContextData);
+            if (scope.TryGetValue(stepName, out var stepValue))
             {
-                action = actionValue.AssertDictionary("action");
+                step = stepValue.AssertDictionary("step");
             }
             else
             {
-                action = new DictionaryContextData
+                step = new DictionaryContextData
                 {
                     { "outputs", new DictionaryContextData() },
                 };
-                scope.Add(actionName, action);
+                scope.Add(stepName, step);
             }
 
-            return action;
+            return step;
         }
     }
 }

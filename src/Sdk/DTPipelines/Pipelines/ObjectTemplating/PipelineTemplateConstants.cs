@@ -4,12 +4,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class PipelineTemplateConstants
     {
-        internal const String ActionEnv = "action-env";
-        internal const String Actions = "actions";
-        internal const String ActionsScopeInputs = "actions-scope-inputs";
-        internal const String ActionsScopeOutputs = "actions-scope-outputs";
-        internal const String ActionsTemplateRoot = "actions-template-root";
-        internal const String ActionWith = "action-with";
         internal const String CancelTimeout = "cancel-timeout";
         internal const String Checkout = "checkout";
         internal const String Clean= "clean";
@@ -25,6 +19,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String If = "if";
         internal const String Include = "include";
         internal const String Inputs = "inputs";
+        internal const String Job = "job";
         internal const String Jobs = "jobs";
         internal const String Lfs = "lfs";
         internal const String Matrix = "matrix";
@@ -33,17 +28,24 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String Needs = "needs";
         internal const String On = "on";
         internal const String Outputs = "outputs";
-        internal const String Parallel = "parallel";
         internal const String Path = "path";
         internal const String Pool = "pool";
         internal const String Run = "run";
+        internal const String Runner = "runner";
         internal const String RunsOn = "runs-on";
-        internal const String ScalarStrategyContext = "scalar-strategy-context";
         internal const String Scope = "scope";
         internal const String Scopes = "scopes";
         internal const String Secrets = "secrets";
         internal const String Services = "services";
+        internal const String Shell = "shell";
+        internal const String StepEnv = "step-env";
+        internal const String Steps = "steps";
+        internal const String StepsScopeInputs = "steps-scope-inputs";
+        internal const String StepsScopeOutputs = "steps-scope-outputs";
+        internal const String StepsTemplateRoot = "steps-template-root";
+        internal const String StepWith = "step-with";
         internal const String Strategy = "strategy";
+        internal const String StringStrategyContext = "string-strategy-context";
         internal const String Submodules = "submodules";
         internal const String Template = "template";
         internal const String Timeout = "timeout";

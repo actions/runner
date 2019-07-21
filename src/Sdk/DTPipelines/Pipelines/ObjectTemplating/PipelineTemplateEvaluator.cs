@@ -72,7 +72,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     Name = PipelineConstants.DefaultJobName,
                     DisplayName = new JobDisplayNameBuilder(jobFactoryDisplayName).Build(),
                 };
-                configuration.ContextData.Add(PipelineTemplateConstants.Parallel, null);
                 configuration.ContextData.Add(PipelineTemplateConstants.Matrix, null);
                 configuration.ContextData.Add(
                     PipelineTemplateConstants.Strategy,
@@ -113,7 +112,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ScalarStrategyContext, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStrategyContext, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToJobDisplayName(context, token);
                 }
@@ -165,7 +164,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ScalarStrategyContext, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStrategyContext, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToJobTimeout(context, token);
                 }
@@ -191,7 +190,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ScalarStrategyContext, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStrategyContext, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToJobCancelTimeout(context, token);
                 }
@@ -217,9 +216,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ActionsScopeInputs, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsScopeInputs, token, 0, null, omitHeader: true);
                     context.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("actions scope inputs");
+                    result = token.ToContextData().AssertDictionary("steps scope inputs");
                 }
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
@@ -243,9 +242,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ActionsScopeOutputs, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsScopeOutputs, token, 0, null, omitHeader: true);
                     context.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("actions scope outputs");
+                    result = token.ToContextData().AssertDictionary("steps scope outputs");
                 }
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
@@ -270,7 +269,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ActionEnv, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepEnv, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToStepEnvironment(context, token, keyComparer);
                 }
@@ -296,7 +295,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.ActionWith, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepWith, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToStepInputs(context, token);
                 }
@@ -401,13 +400,14 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private readonly TemplateSchema m_schema;
         private readonly String[] s_contextNames = new[]
         {
-            "github", // todo: move to const
+            PipelineTemplateConstants.GitHub,
             PipelineTemplateConstants.Strategy,
             PipelineTemplateConstants.Matrix,
-            PipelineTemplateConstants.Parallel,
             PipelineTemplateConstants.Secrets,
-            PipelineTemplateConstants.Actions,
+            PipelineTemplateConstants.Steps,
             PipelineTemplateConstants.Inputs,
+            PipelineTemplateConstants.Job,
+            PipelineTemplateConstants.Runner,
         };
     }
 }

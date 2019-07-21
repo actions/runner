@@ -322,7 +322,7 @@ namespace GitHub.Runner.Worker
         private bool InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
         {
             var executionContext = step.ExecutionContext;
-            var actionsContext = executionContext.ActionsContext;
+            var stepsContext = executionContext.StepsContext;
             if (!string.IsNullOrEmpty(executionContext.ScopeName))
             {
                 // Gather uninitialized current and ancestor scopes
@@ -343,7 +343,7 @@ namespace GitHub.Runner.Worker
                 {
                     scope = scopesToInitialize.Pop();
                     executionContext.Output($"{WellKnownTags.Debug}Initializing scope '{scope.Name}'");
-                    executionContext.ExpressionValues["actions"] = actionsContext.GetScope(scope.ParentName);
+                    executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
                     executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
                     var templateTrace = executionContext.ToTemplateTraceWriter();
                     var schema = new PipelineTemplateSchemaFactory().CreateSchema();
@@ -368,7 +368,7 @@ namespace GitHub.Runner.Worker
 
             // Setup expression values
             var scopeName = executionContext.ScopeName;
-            executionContext.ExpressionValues["actions"] = actionsContext.GetScope(scopeName);
+            executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
             executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
 
             return true;
@@ -396,12 +396,12 @@ namespace GitHub.Runner.Worker
                 }
 
                 // Finalize current and ancestor scopes
-                var actionsContext = step.ExecutionContext.ActionsContext;
+                var stepsContext = step.ExecutionContext.StepsContext;
                 while (scopesToFinalize?.Count > 0)
                 {
                     scope = scopesToFinalize.Dequeue();
                     executionContext.Output($"{WellKnownTags.Debug}Finalizing scope '{scope.Name}'");
-                    executionContext.ExpressionValues["actions"] = actionsContext.GetScope(scope.Name);
+                    executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.Name);
                     executionContext.ExpressionValues["inputs"] = null;
                     var templateTrace = executionContext.ToTemplateTraceWriter();
                     var schema = new PipelineTemplateSchemaFactory().CreateSchema();
@@ -428,7 +428,7 @@ namespace GitHub.Runner.Worker
                         {
                             var outputName = pair.Key;
                             var outputValue = pair.Value.ToString();
-                            actionsContext.SetOutput(parentScopeName, contextName, outputName, outputValue, out var reference);
+                            stepsContext.SetOutput(parentScopeName, contextName, outputName, outputValue, out var reference);
                             executionContext.Output($"{WellKnownTags.Debug}{reference}='{outputValue}'");
                         }
                     }
