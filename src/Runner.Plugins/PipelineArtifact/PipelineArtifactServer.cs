@@ -269,21 +269,28 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                     throw new InvalidOperationException($"Invalid {nameof(downloadParameters.ProjectRetrievalOptions)}!");
                 }
 
-                IArtifactProvider provider;
-                string artifactType = buildArtifact.Resource.Type;
-                switch (artifactType)
+                if (buildArtifact.Resource.Type == PipelineArtifactConstants.PipelineArtifact)
                 {
-                    case PipelineArtifactConstants.PipelineArtifact:
-                        provider = new PipelineArtifactProvider(context, connection, this.CreateTracer(context));
-                        break;
-                    case PipelineArtifactConstants.Container:
-                        provider = new FileContainerProvider(connection, this.CreateTracer(context));
-                        break;
-                    default:
-                        throw new InvalidOperationException($"{buildArtifact} is neither of type PipelineArtifact nor BuildArtifact");
+                    var provider = new PipelineArtifactProvider(context, connection, this.CreateTracer(context));
+                    await provider.DownloadSingleArtifactAsync(downloadParameters, buildArtifact, cancellationToken);
                 }
+                else if (buildArtifact.Resource.Type == PipelineArtifactConstants.Container)
+                {
+                    string containerUrl = buildArtifact.Resource.Data;
+                    string[] parts = containerUrl.Split(new[] { '/' }, 3);
+                    if (parts.Length < 3 || !long.TryParse(parts[1], out long containerId))
+                    {
+                        throw new ArgumentOutOfRangeException($"Invalid container url '{containerUrl}' for artifact '{buildArtifact.Name}'");
+                    }
 
-                await provider.DownloadSingleArtifactAsync(downloadParameters, buildArtifact, cancellationToken);
+                    string containerPath = parts[2];
+                    FileContainerServer fileContainerServer = new FileContainerServer(context.VssConnection, downloadParameters.ProjectId, containerId, containerPath);
+                    await fileContainerServer.DownloadFromContainerAsync(context, downloadParameters.TargetDirectory, cancellationToken);
+                }
+                else
+                {
+                    throw new NotSupportedException($"{buildArtifact.Resource.Type}");
+                }
             }
             else
             {
