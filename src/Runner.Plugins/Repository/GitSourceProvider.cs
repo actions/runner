@@ -14,7 +14,7 @@ using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Plugins.Repository
 {
-    public sealed class GitHubSourceProvider : ISourceProvider
+    public sealed class GitHubSourceProvider
     {
         // refs prefix
         private const string _refsPrefix = "refs/heads/";
@@ -33,7 +33,7 @@ namespace GitHub.Runner.Plugins.Repository
         // min git-lfs version that support add extra auth header.
         private Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
 
-        private void RequirementCheck(RunnerActionPluginExecutionContext executionContext, GitCliManager gitCommandManager)
+        private void RequirementCheck(RunnerActionPluginExecutionContext executionContext, GitCliManager gitCommandManager, bool checkGitLfs)
         {
             // v2.9 git exist use auth header.
             gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: true);
@@ -46,9 +46,7 @@ namespace GitHub.Runner.Plugins.Repository
                 gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
             }
 #endif
-
-            bool gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Lfs));
-            if (gitLfsSupport)
+            if (checkGitLfs)
             {
                 // v2.1 git-lfs exist use auth header.
                 gitCommandManager.EnsureGitLFSVersion(_minGitLfsVersionSupportAuthHeader, throwOnNotMatch: true);
@@ -69,6 +67,14 @@ namespace GitHub.Runner.Plugins.Repository
         public async Task GetSourceAsync(
             RunnerActionPluginExecutionContext executionContext,
             string repositoryPath,
+            string repoFullName,
+            string sourceBranch,
+            string sourceVersion,
+            bool clean,
+            string submoduleInput,
+            int fetchDepth,
+            bool gitLfsSupport,
+            string accessToken,
             CancellationToken cancellationToken)
         {
             // Validate args.
@@ -80,8 +86,6 @@ namespace GitHub.Runner.Plugins.Repository
             string clientCertPrivateKeyAskPassFile = null;
             bool acceptUntrustedCerts = false;
 
-            var repoFullName = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Repository, true);
-
             executionContext.Output($"Syncing repository: {repoFullName}");
             Uri repositoryUrl = new Uri($"https://github.com/{repoFullName}");
             if (!repositoryUrl.IsAbsoluteUri)
@@ -90,10 +94,6 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             string targetPath = repositoryPath;
-            string sourceBranch = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Ref);
-            string sourceVersion = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Version);
-
-            bool clean = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean), true);
 
             // input Submodules can be ['', true, false, recursive]
             // '' or false indicate don't checkout submodules
@@ -101,7 +101,6 @@ namespace GitHub.Runner.Plugins.Repository
             // recursive indicate checkout submodules recursively 
             bool checkoutSubmodules = false;
             bool checkoutNestedSubmodules = false;
-            string submoduleInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules);
             if (!string.IsNullOrEmpty(submoduleInput))
             {
                 if (string.Equals(submoduleInput, Pipelines.PipelineConstants.CheckoutTaskInputs.SubmodulesOptions.Recursive, StringComparison.OrdinalIgnoreCase))
@@ -117,14 +116,6 @@ namespace GitHub.Runner.Plugins.Repository
 
             var runnerCert = executionContext.GetCertConfiguration();
             acceptUntrustedCerts = runnerCert?.SkipServerCertificateValidation ?? false;
-
-            int fetchDepth = 0;
-            if (!int.TryParse(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.FetchDepth), out fetchDepth) || fetchDepth < 0)
-            {
-                fetchDepth = 0;
-            }
-
-            bool gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Lfs));
 
             executionContext.Debug($"repository url={repositoryUrl}");
             executionContext.Debug($"targetPath={targetPath}");
@@ -168,9 +159,7 @@ namespace GitHub.Runner.Plugins.Repository
             // 1. git version greater than 2.9 since we need to use auth header.
             // 2. git-lfs version greater than 2.1 since we need to use auth header.
             // 3. git version greater than 2.14.2 if use SChannel for SSL backend (Windows only)
-            RequirementCheck(executionContext, gitCommandManager);
-
-            string accessToken = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Token);
+            RequirementCheck(executionContext, gitCommandManager, gitLfsSupport);
 
             // prepare credentail embedded urls
             var runnerProxy = executionContext.GetProxyConfiguration();
