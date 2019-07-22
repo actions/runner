@@ -1,8 +1,18 @@
 ## Features
-  - N/A
+  - Support image from ./path/to/Dockerfile or docker://image (#40)
+  - run-action shell option (#43)
+  - consume new expressions and object templating libraries (#46)
+  - context cleanup, add container action prepare steps. (#48)
+  - job context: ports, container, etc (#51) 
+  - rename actions to steps (#53)
+  - use checkout from github graph. (#55)
+
 
 ## Bugs
-  - Support container action's action.yml, fix server exception mapping, fix job container. #38
+  - improve action download, add L0 tests. (#44)
+  - Allow non-loop message before end (#42) 
+  - removing custom localization mechanism, more string cleanup, bug fixes (#45)
+  - fix job.status context. (#52)
 
 ## Misc
   - N/A
