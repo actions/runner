@@ -33,19 +33,26 @@ namespace GitHub.Runner.Worker.Handlers
             // container image haven't built
             if (string.IsNullOrEmpty(Data.ContainerImage))
             {
-                // ensure docker file exist
-                var dockerFile = Path.Combine(TaskDirectory, Data.Target);
-                ArgUtil.File(dockerFile, nameof(Data.Target));
-                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-
-                var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, ExecutionContext.GetGitHubContext("workspace"), Directory.GetParent(dockerFile).FullName, imageName);
-                if (buildExitCode != 0)
+                if (Data.Target.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
+                    Data.ContainerImage = Data.Target.Substring("docker://".Length);
                 }
+                else
+                {
+                    // ensure docker file exist
+                    var dockerFile = Path.Combine(TaskDirectory, Data.Target);
+                    ArgUtil.File(dockerFile, nameof(Data.Target));
+                    ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
 
-                Data.ContainerImage = imageName;
+                    var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                    var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, ExecutionContext.GetGitHubContext("workspace"), Directory.GetParent(dockerFile).FullName, imageName);
+                    if (buildExitCode != 0)
+                    {
+                        throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
+                    }
+
+                    Data.ContainerImage = imageName;
+                }
             }
 
             // run container

@@ -4,7 +4,7 @@ using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.DistributedTask.Pipelines.Expressions
 {
-    internal static class RegexUtility
+    public static class RegexUtility
     {
         /// <summary>
         /// Gets default timeout for regex

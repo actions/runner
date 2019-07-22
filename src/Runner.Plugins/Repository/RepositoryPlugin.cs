@@ -8,14 +8,10 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.IO;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Text.RegularExpressions;
+using GitHub.DistributedTask.Pipelines.Expressions;
 
 namespace GitHub.Runner.Plugins.Repository
 {
-    public interface ISourceProvider
-    {
-        Task GetSourceAsync(RunnerActionPluginExecutionContext executionContext, string repositoryPath, CancellationToken cancellationToken);
-    }
-
     public class CheckoutTask : IRunnerActionPlugin
     {
         private readonly Regex _validSha1 = new Regex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
@@ -27,7 +23,12 @@ namespace GitHub.Runner.Plugins.Repository
             string tempDirectory = executionContext.GetRunnerContext("temp");
             ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
 
-            var repoFullName = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Repository, true);
+            var repoFullName = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Repository);
+            if (string.IsNullOrEmpty(repoFullName))
+            {
+                repoFullName = executionContext.GetGitHubContext("repository");
+            }
+
             var repoFullNameSplit = repoFullName.Split("/", StringSplitOptions.RemoveEmptyEntries);
             if (repoFullNameSplit.Length != 2)
             {
@@ -88,7 +89,61 @@ namespace GitHub.Runner.Plugins.Repository
                 executionContext.SetRepositoryPath(repoFullName, expectRepoPath, true);
             }
 
-            await new GitHubSourceProvider().GetSourceAsync(executionContext, expectRepoPath, token);
+            string sourceBranch;
+            string sourceVersion;
+            string refInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Ref);
+            if (string.IsNullOrEmpty(refInput))
+            {
+                sourceBranch = executionContext.GetGitHubContext("ref");
+                sourceVersion = executionContext.GetGitHubContext("sha");
+            }
+            else
+            {
+                sourceBranch = refInput;
+                sourceVersion = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Version);  // version get removed when checkout move to repo in the graph
+                if (string.IsNullOrEmpty(sourceVersion) && RegexUtility.IsMatch(sourceBranch, WellKnownRegularExpressions.SHA1))
+                {
+                    sourceVersion = sourceBranch;
+
+                    // If Ref is a SHA and the repo is self, we need to use github.ref as source branch since it might be refs/pull/*
+                    if (string.Equals(workspaceRepo, repoFullName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        sourceBranch = executionContext.GetGitHubContext("ref");
+                    }
+                    else
+                    {
+                        sourceBranch = "refs/heads/master";
+                    }
+                }
+            }
+
+            bool clean = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean), true);
+            string submoduleInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules);
+
+            int fetchDepth = 0;
+            if (!int.TryParse(executionContext.GetInput("fetch-depth"), out fetchDepth) || fetchDepth < 0)
+            {
+                fetchDepth = 0;
+            }
+
+            bool gitLfsSupport = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Lfs));
+            string accessToken = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Token);
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                accessToken = executionContext.GetGitHubContext("token");
+            }
+
+            await new GitHubSourceProvider().GetSourceAsync(executionContext,
+                                                            expectRepoPath,
+                                                            repoFullName,
+                                                            sourceBranch,
+                                                            sourceVersion,
+                                                            clean,
+                                                            submoduleInput,
+                                                            fetchDepth,
+                                                            gitLfsSupport,
+                                                            accessToken,
+                                                            token);
         }
     }
 }
