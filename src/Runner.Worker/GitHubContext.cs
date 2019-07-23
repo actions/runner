@@ -12,7 +12,12 @@ namespace GitHub.Runner.Worker
             {
                 if (!data.Key.Equals("token") && data.Value is StringContextData value)
                 {
-                    yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", value);
+                    var camelKey = data.Key;
+		            var snakeKey = camelKey.Aggregate("", (result, ch) =>
+                        result + (result.Length > 0 && char.IsUpper(ch) ?
+						    "_" + ch.ToString().ToUpperInvariant()
+							: ch.ToString().ToUpperInvariant()));
+                    yield return new KeyValuePair<string, string>($"GITHUB_{snakeKey}", value);
                 }
             }
         }
