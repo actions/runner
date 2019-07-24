@@ -11,11 +11,6 @@ using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.ObjectTemplating.Schema;
-using System.Reflection;
-using GitHub.DistributedTask.ObjectTemplating;
-using System.Threading;
-using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker
 {

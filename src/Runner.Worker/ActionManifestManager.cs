@@ -20,11 +20,11 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(ActionManifestManager))]
     public interface IActionManifestManager : IRunnerService
     {
-        ActionDefinitionData LoadManifestFile(IExecutionContext executionContext, string manifestFile);
+        ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile);
 
-        List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<String, PipelineContextData> contextData);
+        List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, PipelineContextData> contextData);
 
-        Dictionary<String, String> EvaluateContainerEnvironments(IExecutionContext executionContext, MappingToken token, IDictionary<String, PipelineContextData> contextData);
+        Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> contextData);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -36,7 +36,7 @@ namespace GitHub.Runner.Worker
             base.Initialize(hostContext);
 
             var assembly = Assembly.GetExecutingAssembly();
-            var json = default(String);
+            var json = default(string);
             using (var stream = assembly.GetManifestResourceStream("GitHub.Runner.Worker.action_yaml.json"))
             using (var streamReader = new StreamReader(stream))
             {
@@ -49,7 +49,7 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Load schema file with definitions: {StringUtil.ConvertToJson(_actionManifestSchema.Definitions.Keys)}");
         }
 
-        public ActionDefinitionData LoadManifestFile(IExecutionContext executionContext, string manifestFile)
+        public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
             var context = CreateContext(executionContext, null);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
@@ -118,7 +118,7 @@ namespace GitHub.Runner.Worker
         public List<string> EvaluateContainerArguments(
             IExecutionContext executionContext,
             SequenceToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            IDictionary<string, PipelineContextData> contextData)
         {
             var result = new List<string>();
 
@@ -154,12 +154,12 @@ namespace GitHub.Runner.Worker
             return result;
         }
 
-        public Dictionary<String, String> EvaluateContainerEnvironments(
+        public Dictionary<string, string> EvaluateContainerEnvironment(
             IExecutionContext executionContext,
             MappingToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            IDictionary<string, PipelineContextData> contextData)
         {
-            var result = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (token != null)
             {
@@ -200,7 +200,7 @@ namespace GitHub.Runner.Worker
 
         private TemplateContext CreateContext(
             IExecutionContext executionContext,
-            IDictionary<String, PipelineContextData> contextData)
+            IDictionary<string, PipelineContextData> contextData)
         {
             var result = new TemplateContext
             {
@@ -288,8 +288,7 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "node", StringComparison.OrdinalIgnoreCase) ||
-                         string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase))
+                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
@@ -370,10 +369,10 @@ namespace GitHub.Runner.Worker
             if (EvaluateCurrent() is Scalar scalar)
             {
                 // Tag specified
-                if (!String.IsNullOrEmpty(scalar.Tag))
+                if (!string.IsNullOrEmpty(scalar.Tag))
                 {
                     // String tag
-                    if (String.Equals(scalar.Tag, c_stringTag, StringComparison.Ordinal))
+                    if (string.Equals(scalar.Tag, c_stringTag, StringComparison.Ordinal))
                     {
                         value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
                         MoveNext();
@@ -656,7 +655,7 @@ namespace GitHub.Runner.Worker
             out BooleanToken value)
         {
             // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
-            switch (scalar.Value ?? String.Empty)
+            switch (scalar.Value ?? string.Empty)
             {
                 case "true":
                 case "True":
@@ -680,7 +679,7 @@ namespace GitHub.Runner.Worker
         {
             // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
             var str = scalar.Value;
-            if (!String.IsNullOrEmpty(str))
+            if (!string.IsNullOrEmpty(str))
             {
                 // Check for [-+]?(\.inf|\.Inf|\.INF)|\.nan|\.NaN|\.NAN
                 switch (str)
@@ -801,7 +800,7 @@ namespace GitHub.Runner.Worker
         {
             // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
             var str = scalar.Value;
-            if (!String.IsNullOrEmpty(str))
+            if (!string.IsNullOrEmpty(str))
             {
                 // Check for [0-9]+
                 var firstChar = str[0];
@@ -881,7 +880,7 @@ namespace GitHub.Runner.Worker
             out NullToken value)
         {
             // YAML 1.2 "core" schema https://yaml.org/spec/1.2/spec.html#id2804923
-            switch (scalar.Value ?? String.Empty)
+            switch (scalar.Value ?? string.Empty)
             {
                 case "":
                 case "null":

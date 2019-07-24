@@ -22,10 +22,10 @@
         "input": {
             "mapping": {
                 "properties": {
-                    "description": "string",
-                    "required": "boolean",
                     "default": "string"
-                }
+                },
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "any"
             }
         },
         "runs": {

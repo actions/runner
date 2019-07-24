@@ -115,7 +115,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (Data.Environment != null)
             {
-                var evaluatedEnv = manifestManager.EvaluateContainerEnvironments(ExecutionContext, Data.Environment, evaluateContext);
+                var evaluatedEnv = manifestManager.EvaluateContainerEnvironment(ExecutionContext, Data.Environment, evaluateContext);
                 foreach (var env in evaluatedEnv)
                 {
                     if (!this.Environment.ContainsKey(env.Key))

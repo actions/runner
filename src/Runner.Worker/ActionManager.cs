@@ -136,10 +136,11 @@ namespace GitHub.Runner.Worker
 
                 string manifestFile = Path.Combine(actionDirectory, "action.yml");
                 string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
+                string dockerFileLowerCase = Path.Combine(actionDirectory, "dockerfile");
                 if (File.Exists(manifestFile))
                 {
                     var manifestManager = HostContext.GetService<IActionManifestManager>();
-                    var actionDefinitionData = manifestManager.LoadManifestFile(executionContext, manifestFile);
+                    var actionDefinitionData = manifestManager.Load(executionContext, manifestFile);
 
                     definition.Data.FriendlyName = actionDefinitionData.Name;
                     Trace.Verbose($"Action friendly name: '{definition.Data.FriendlyName}'");
@@ -222,6 +223,18 @@ namespace GitHub.Runner.Worker
                     definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
                     {
                         Target = "Dockerfile"
+                    };
+
+                    if (CachedActionContainers.TryGetValue(action.Id, out var container))
+                    {
+                        definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                    }
+                }
+                else if (File.Exists(dockerFileLowerCase))
+                {
+                    definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                    {
+                        Target = "dockerfile"
                     };
 
                     if (CachedActionContainers.TryGetValue(action.Id, out var container))
@@ -574,6 +587,7 @@ namespace GitHub.Runner.Worker
 
             // find the docker file or action.yml file
             var dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
+            var dockerFileLowerCase = Path.Combine(actionEntryDirectory, "dockerfile");
             var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
             if (File.Exists(dockerFile))
             {
@@ -583,16 +597,24 @@ namespace GitHub.Runner.Worker
                                               displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
                                               data: new ContainerSetupInfo(repositoryAction.Id, dockerFile, destDirectory));
             }
+            else if (File.Exists(dockerFileLowerCase))
+            {
+                executionContext.Output($"Dockerfile for action: '{dockerFileLowerCase}'.");
+                return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                              condition: ExpressionManager.Succeeded,
+                                              displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
+                                              data: new ContainerSetupInfo(repositoryAction.Id, dockerFileLowerCase, destDirectory));
+            }
             else if (File.Exists(actionManifest))
             {
                 executionContext.Output($"action.yml for action: '{actionManifest}'.");
                 var manifestManager = HostContext.GetService<IActionManifestManager>();
-                var actionDefinitionData = manifestManager.LoadManifestFile(executionContext, actionManifest);
+                var actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
 
                 if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
                 {
                     var containerAction = actionDefinitionData.Execution as ContainerActionExecutionData;
-                    if (containerAction.Image.EndsWith("Dockerfile"))
+                    if (containerAction.Image.EndsWith("Dockerfile") || containerAction.Image.EndsWith("dockerfile"))
                     {
                         var dockerFileFullPath = Path.Combine(actionEntryDirectory, containerAction.Image);
                         executionContext.Output($"Dockerfile for action: '{dockerFileFullPath}'.");
