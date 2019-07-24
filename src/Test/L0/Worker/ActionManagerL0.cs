@@ -904,7 +904,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node'
+  using: 'node12'
   main: 'task.js'
 ";
                 Pipelines.ActionStep instance;
