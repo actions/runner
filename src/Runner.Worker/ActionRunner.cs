@@ -68,6 +68,7 @@ namespace GitHub.Runner.Worker
             if (gitHubEvent != null)
             {
                 var workflowFile = Path.Combine(workflowDirectory, "event.json");
+                Trace.Info($"Write event payload to {workflowFile}");
                 File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
                 ExecutionContext.SetGitHubContext("event_path", workflowFile);
             }
@@ -95,23 +96,11 @@ namespace GitHub.Runner.Worker
                 var defaultInputsTemplateToken = new MappingToken(null, null, null);
                 foreach (var input in (definition.Data?.Inputs))
                 {
-                    string key = input.Name?.Trim();
-                    if (!string.IsNullOrEmpty(key) && !inputs.ContainsKey(key))
+                    string key = input.Key.AssertString("action input name").Value;
+                    string value = input.Value.AssertString("action input default value").Value;
+                    if (!inputs.ContainsKey(key))
                     {
-                        var defaultValue = input.DefaultValue?.Trim() ?? string.Empty;
-                        defaultInputsTemplateToken.Add(new StringToken(null, null, null, key), new StringToken(null, null, null, defaultValue));
-                    }
-                }
-
-                var defaultInputs = templateEvaluator.EvaluateStepInputs(defaultInputsTemplateToken, ExecutionContext.ExpressionValues);
-                if (defaultInputs.Count > 0)
-                {
-                    foreach (var defaultInput in defaultInputs)
-                    {
-                        if (!inputs.ContainsKey(defaultInput.Key))
-                        {
-                            inputs[defaultInput.Key] = defaultInput.Value;
-                        }
+                        inputs[key] = value;
                     }
                 }
             }
@@ -174,11 +163,6 @@ namespace GitHub.Runner.Worker
                 {
                     ExecutionContext.Output($"Action repository  : {repoAction.Name}@{repoAction.Ref}");
                 }
-            }
-
-            if (!string.IsNullOrEmpty(actionDefinition.Data.Author))
-            {
-                ExecutionContext.Output($"Author             : {actionDefinition.Data.Author}");
             }
 
             ExecutionContext.Output("##[endgroup]");

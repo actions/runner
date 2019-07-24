@@ -32,7 +32,6 @@ namespace GitHub.Runner.Worker
                 "checkout",
                 new RunnerPluginActionInfo()
                 {
-                    Author = "GitHub",
                     Description = "Get sources from a Git repository",
                     FriendlyName = "Get sources",
                     PluginTypeName = "GitHub.Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"
@@ -132,7 +131,6 @@ namespace GitHub.Runner.Worker
 
     public class RunnerPluginActionInfo
     {
-        public string Author { get; set; }
         public string Description { get; set; }
         public string FriendlyName { get; set; }
         public string PluginTypeName { get; set; }

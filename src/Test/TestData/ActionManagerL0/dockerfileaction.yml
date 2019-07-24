@@ -19,7 +19,7 @@ runs:
   image: 'Dockerfile'
   args:
   - '${{ inputs.greeting }}'
-  entrypoint: '${{ inputs.entryPoint }}'
+  entrypoint: 'main.sh'
   env:
     Token: foo
     Url: bar

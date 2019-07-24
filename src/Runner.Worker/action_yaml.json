@@ -1,0 +1,90 @@
+﻿{
+    "definitions": {
+        "action-root": {
+            "description": "Action file",
+            "mapping": {
+                "properties": {
+                    "name": "string",
+                    "description": "string",
+                    "inputs": "inputs",
+                    "runs": "runs"
+                },
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "any"
+            }
+        },
+        "inputs": {
+            "mapping": {
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "input"
+            }
+        },
+        "input": {
+            "mapping": {
+                "properties": {
+                    "default": "string"
+                },
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "any"
+            }
+        },
+        "runs": {
+            "one-of": [
+                "container-runs",
+                "node12-runs",
+                "plugin-runs"
+            ]
+        },
+        "container-runs": {
+            "mapping": {
+                "properties": {
+                    "using": "non-empty-string",
+                    "image": "non-empty-string",
+                    "entrypoint": "string",
+                    "args": "container-runs-args",
+                    "env": "container-runs-env"
+                }
+            }
+        },
+        "container-runs-args": {
+            "sequence": {
+                "item-type": "container-runs-context"
+            }
+        },
+        "container-runs-env": {
+            "context": [
+                "inputs"
+            ],
+            "mapping": {
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "string"
+            }
+        },
+        "node12-runs": {
+            "mapping": {
+                "properties": {
+                    "using": "non-empty-string",
+                    "main": "non-empty-string"
+                }
+            }
+        },
+        "plugin-runs": {
+            "mapping": {
+                "properties": {
+                    "plugin": "non-empty-string"
+                }
+            }
+        },
+        "container-runs-context": {
+            "context": [
+                "inputs"
+            ],
+            "string": {}
+        },
+        "non-empty-string": {
+            "string": {
+                "require-non-empty": true
+            }
+        }
+    }
+}

@@ -19,7 +19,7 @@ runs:
   image: 'docker://ubuntu:18.04'
   args:
   - '${{ inputs.greeting }}'
-  entrypoint: '${{ inputs.entryPoint }}'
+  entrypoint: 'main.sh'
   env:
     Token: foo
     Url: bar
