@@ -8,6 +8,12 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.ObjectTemplating;
+using System.Threading;
+using System.Reflection;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -72,21 +78,51 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEntryPoint = Inputs.GetValueOrDefault("entryPoint");
             }
 
+            // create inputs context for template evaluation
+            var inputsContext = new DictionaryContextData();
+            if (this.Inputs != null)
+            {
+                foreach (var input in Inputs)
+                {
+                    inputsContext.Add(input.Key, new StringContextData(input.Value));
+                }
+            }
+
+            var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+            foreach (var context in ExecutionContext.ExpressionValues)
+            {
+                evaluateContext[context.Key] = context.Value?.Clone();
+            }
+            evaluateContext["inputs"] = inputsContext;
+
+            var manifestManager = HostContext.GetService<IActionManifestManager>();
             if (Data.Arguments != null)
             {
                 container.ContainerEntryPointArgs = "";
-                foreach (var arg in Data.Arguments)
+                var evaluatedArgs = manifestManager.EvaluateContainerArguments(ExecutionContext, Data.Arguments, evaluateContext);
+                foreach (var arg in evaluatedArgs)
                 {
-                    var value = Inputs.GetValueOrDefault(arg);
-                    if (!string.IsNullOrEmpty(value))
+                    if (!string.IsNullOrEmpty(arg))
                     {
-                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{value.Replace("\"", "\\\"")}\"";
+                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\"", "\\\"")}\"";
                     }
                 }
             }
             else
             {
                 container.ContainerEntryPointArgs = Inputs.GetValueOrDefault("args");
+            }
+
+            if (Data.Environment != null)
+            {
+                var evaluatedEnv = manifestManager.EvaluateContainerEnvironments(ExecutionContext, Data.Environment, evaluateContext);
+                foreach (var env in evaluatedEnv)
+                {
+                    if (!this.Environment.ContainsKey(env.Key))
+                    {
+                        this.Environment[env.Key] = env.Value;
+                    }
+                }
             }
 
             if (ExecutionContext.JobContext.Container.TryGetValue("network", out var networkContextData) && networkContextData is StringContextData networkStringData)

@@ -1,4 +1,5 @@
-﻿using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
@@ -700,14 +701,13 @@ runs:
   image: 'Dockerfile'
   args:
   - '${{ inputs.greeting }}'
-  entrypoint: '${{ inputs.entryPoint }}'
+  entrypoint: 'main.sh'
   env:
     Token: foo
     Url: bar
 ";
                 Pipelines.ActionStep instance;
                 string directory;
-                Pipelines.RepositoryResource repository;
                 CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
                 _actionManager.CachedActionContainers[instance.Id] = new ContainerInfo() { ContainerImage = "image:1234" };
 
@@ -719,11 +719,21 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Assert.Equal(2, definition.Data.Inputs.Length);
-                Assert.Equal("greeting", definition.Data.Inputs[0].Name);
-                Assert.Equal("Hello", definition.Data.Inputs[0].DefaultValue);
-                Assert.Equal("entryPoint", definition.Data.Inputs[1].Name);
-                Assert.Null(definition.Data.Inputs[1].DefaultValue);
+
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
                 Assert.NotNull(definition.Data.Execution); // execution
 
 
@@ -732,11 +742,29 @@ runs:
                 Assert.Equal(definition.Data.Execution.ContainerAction, definition.Data.Execution.All[0]);
                 Assert.Equal("Dockerfile", definition.Data.Execution.ContainerAction.Target);
                 Assert.Equal("image:1234", definition.Data.Execution.ContainerAction.ContainerImage);
-                Assert.Equal("${{ inputs.entryPoint }}", definition.Data.Execution.ContainerAction.EntryPoint);
-                Assert.Equal("${{ inputs.greeting }}", definition.Data.Execution.ContainerAction.Arguments[0]);
-                Assert.Equal("foo", definition.Data.Execution.ContainerAction.Environment["Token"]);
-                Assert.Equal("bar", definition.Data.Execution.ContainerAction.Environment["Url"]);
+                Assert.Equal("main.sh", definition.Data.Execution.ContainerAction.EntryPoint);
 
+                foreach (var arg in definition.Data.Execution.ContainerAction.Arguments)
+                {
+                    Assert.Equal("${{ inputs.greeting }}", arg.AssertScalar("arg").ToString());
+                }
+
+                foreach (var env in definition.Data.Execution.ContainerAction.Environment)
+                {
+                    var key = env.Key.AssertString("key").Value;
+                    if (key == "Token")
+                    {
+                        Assert.Equal("foo", env.Value.AssertString("value").Value);
+                    }
+                    else if (key == "Url")
+                    {
+                        Assert.Equal("bar", env.Value.AssertString("value").Value);
+                    }
+                    else
+                    {
+                        throw new NotSupportedException(key);
+                    }
+                }
             }
             finally
             {
@@ -763,7 +791,7 @@ inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
-    default: 'Hello'
+    default: 'hello'
   entryPoint: # id of input
     description: 'optional docker entrypoint overwrite.'
     required: false
@@ -777,14 +805,13 @@ runs:
   image: 'docker://ubuntu:16.04'
   args:
   - '${{ inputs.greeting }}'
-  entrypoint: '${{ inputs.entryPoint }}'
+  entrypoint: 'main.sh'
   env:
     Token: foo
-    Url: bar
+    Url: ${{inputs.greeting}}
 ";
                 Pipelines.ActionStep instance;
                 string directory;
-                Pipelines.RepositoryResource repository;
                 CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
 
                 _actionManager.CachedActionContainers[instance.Id] = new ContainerInfo() { ContainerImage = "ubuntu:16.04" };
@@ -796,11 +823,20 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Assert.Equal(2, definition.Data.Inputs.Length);
-                Assert.Equal("greeting", definition.Data.Inputs[0].Name);
-                Assert.Equal("Hello", definition.Data.Inputs[0].DefaultValue);
-                Assert.Equal("entryPoint", definition.Data.Inputs[1].Name);
-                Assert.Null(definition.Data.Inputs[1].DefaultValue);
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
                 Assert.NotNull(definition.Data.Execution); // execution
 
 
@@ -809,10 +845,29 @@ runs:
                 Assert.Equal(definition.Data.Execution.ContainerAction, definition.Data.Execution.All[0]);
                 Assert.Equal("docker://ubuntu:16.04", definition.Data.Execution.ContainerAction.Target);
                 Assert.Equal("ubuntu:16.04", definition.Data.Execution.ContainerAction.ContainerImage);
-                Assert.Equal("${{ inputs.entryPoint }}", definition.Data.Execution.ContainerAction.EntryPoint);
-                Assert.Equal("${{ inputs.greeting }}", definition.Data.Execution.ContainerAction.Arguments[0]);
-                Assert.Equal("foo", definition.Data.Execution.ContainerAction.Environment["Token"]);
-                Assert.Equal("bar", definition.Data.Execution.ContainerAction.Environment["Url"]);
+                Assert.Equal("main.sh", definition.Data.Execution.ContainerAction.EntryPoint);
+
+                foreach (var arg in definition.Data.Execution.ContainerAction.Arguments)
+                {
+                    Assert.Equal("${{ inputs.greeting }}", arg.AssertScalar("arg").ToString());
+                }
+
+                foreach (var env in definition.Data.Execution.ContainerAction.Environment)
+                {
+                    var key = env.Key.AssertString("key").Value;
+                    if (key == "Token")
+                    {
+                        Assert.Equal("foo", env.Value.AssertString("value").Value);
+                    }
+                    else if (key == "Url")
+                    {
+                        Assert.Equal("${{ inputs.greeting }}", env.Value.AssertScalar("value").ToString());
+                    }
+                    else
+                    {
+                        throw new NotSupportedException(key);
+                    }
+                }
 
             }
             finally
@@ -854,7 +909,6 @@ runs:
 ";
                 Pipelines.ActionStep instance;
                 string directory;
-                Pipelines.RepositoryResource repository;
                 CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
 
                 // Act.
@@ -865,11 +919,20 @@ runs:
                 Assert.Equal(directory, definition.Directory);
                 Assert.NotNull(definition.Data);
                 Assert.NotNull(definition.Data.Inputs); // inputs
-                Assert.Equal(2, definition.Data.Inputs.Length);
-                Assert.Equal("greeting", definition.Data.Inputs[0].Name);
-                Assert.Equal("Hello", definition.Data.Inputs[0].DefaultValue);
-                Assert.Equal("entryPoint", definition.Data.Inputs[1].Name);
-                Assert.Null(definition.Data.Inputs[1].DefaultValue);
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
                 Assert.NotNull(definition.Data.Execution); // execution
 
 
@@ -917,6 +980,7 @@ runs:
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Variables).Returns(new Variables(_hc, new Dictionary<string, VariableValue>()));
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
+            _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
 
             _dockerManager = new Mock<IDockerCommandManager>();
             _dockerManager.Setup(x => x.DockerPull(_ec.Object, "ubuntu:16.04")).Returns(Task.FromResult(0));
@@ -927,12 +991,16 @@ runs:
             _pluginManager = new Mock<IRunnerPluginManager>();
             _pluginManager.Setup(x => x.GetPluginAction(It.IsAny<string>())).Returns(new RunnerPluginActionInfo() { PluginTypeName = "plugin.class, plugin" });
 
+            var actionManifest = new ActionManifestManager();
+            actionManifest.Initialize(_hc);
+
             // Random work folder.
             _workFolder = _hc.GetDirectory(WellKnownDirectory.Work);
 
             _hc.SetSingleton<IJobServer>(_jobServer.Object);
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IRunnerPluginManager>(_pluginManager.Object);
+            _hc.SetSingleton<IActionManifestManager>(actionManifest);
 
             var proxy = new RunnerWebProxy();
             proxy.Initialize(_hc);

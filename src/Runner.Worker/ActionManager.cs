@@ -10,15 +10,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.Common;
-using Newtonsoft.Json.Linq;
 using GitHub.Runner.Worker.Container;
 using System.Net.Http;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 using System.Net.Http.Headers;
 using System.Text;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.Runner.Worker
 {
@@ -140,103 +138,84 @@ namespace GitHub.Runner.Worker
                 string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
                 if (File.Exists(manifestFile))
                 {
-                    using (var yamlInput = new StringReader(File.ReadAllText(manifestFile)))
+                    var manifestManager = HostContext.GetService<IActionManifestManager>();
+                    var actionDefinitionData = manifestManager.LoadManifestFile(executionContext, manifestFile);
+
+                    definition.Data.FriendlyName = actionDefinitionData.Name;
+                    Trace.Verbose($"Action friendly name: '{definition.Data.FriendlyName}'");
+
+                    definition.Data.Description = actionDefinitionData.Description;
+                    Trace.Verbose($"Action description: '{definition.Data.Description}'");
+
+                    if (actionDefinitionData.Inputs != null)
                     {
-                        var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().WithNamingConvention(new CamelCaseNamingConvention()).Build();
-                        var actionDefinitionData = deserializer.Deserialize<ActionDefinitionData>(yamlInput);
-
-                        definition.Data.FriendlyName = actionDefinitionData.Name;
-                        Trace.Verbose($"Action friendly name: '{definition.Data.FriendlyName}'");
-
-                        definition.Data.Description = actionDefinitionData.Description;
-                        Trace.Verbose($"Action description: '{definition.Data.Description}'");
-
-                        definition.Data.Author = actionDefinitionData.Author;
-                        Trace.Verbose($"Action author: '{definition.Data.Author}'");
-
-                        if (actionDefinitionData.Inputs != null)
+                        foreach (var input in actionDefinitionData.Inputs)
                         {
-                            List<TaskInputDefinition> inputs = new List<TaskInputDefinition>();
-                            foreach (var input in actionDefinitionData.Inputs)
-                            {
-                                Trace.Verbose($"Action input: '{input.Key}' default to '{input.Value.Default}'");
-                                inputs.Add(new TaskInputDefinition() { Name = input.Key, DefaultValue = input.Value.Default });
-                            }
-
-                            definition.Data.Inputs = inputs.ToArray();
+                            Trace.Verbose($"Action input: '{input.Key.ToString()}' default to '{input.Value.ToString()}'");
                         }
 
-                        if (actionDefinitionData.Outputs != null)
-                        {
-                            List<OutputVariable> outputs = new List<OutputVariable>();
-                            foreach (var output in actionDefinitionData.Outputs)
-                            {
-                                Trace.Verbose($"Action output: '{output.Key}' for '{output.Value.Description}'");
-                                outputs.Add(new OutputVariable() { Name = output.Key, Description = output.Value.Description });
-                            }
-
-                            definition.Data.OutputVariables = outputs.ToArray();
-                        }
-
-                        if (string.Equals(actionDefinitionData.Execution.ExecutionType, "docker", StringComparison.OrdinalIgnoreCase))
-                        {
-                            definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
-                            {
-                                Target = actionDefinitionData.Execution.Image,
-                                Arguments = actionDefinitionData.Execution.Arguments?.ToList(),
-                                Environment = actionDefinitionData.Execution.Environment,
-                                EntryPoint = actionDefinitionData.Execution.EntryPoint
-                            };
-
-                            Trace.Info($"Action container Dockerfile: {actionDefinitionData.Execution.Image}.");
-
-                            if (actionDefinitionData.Execution.Arguments != null)
-                            {
-                                Trace.Info($"Action container args: [{string.Join(", ", actionDefinitionData.Execution.Arguments)}].");
-                            }
-
-                            if (actionDefinitionData.Execution.Environment != null)
-                            {
-                                Trace.Info($"Action container env: [{string.Join(", ", actionDefinitionData.Execution.Environment.Keys)}].");
-                            }
-
-                            if (CachedActionContainers.TryGetValue(action.Id, out var container))
-                            {
-                                definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
-                                Trace.Info($"Using action container image: {container.ContainerImage}.");
-                            }
-                        }
-                        else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node12", StringComparison.OrdinalIgnoreCase) ||
-                                 string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
-                        {
-                            definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData
-                            {
-                                Target = actionDefinitionData.Execution.Script
-                            };
-
-                            Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}.");
-                        }
-                        else if (!string.IsNullOrEmpty(actionDefinitionData.Execution.Plugin))
-                        {
-                            var pluginManager = HostContext.GetService<IRunnerPluginManager>();
-                            var plugin = pluginManager.GetPluginAction(actionDefinitionData.Execution.Plugin);
-
-                            ArgUtil.NotNull(plugin, actionDefinitionData.Execution.Plugin);
-                            ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, actionDefinitionData.Execution.Plugin);
-
-                            definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
-                            {
-                                Target = plugin.PluginTypeName
-                            };
-
-                            Trace.Info($"Action plugin: {plugin.PluginTypeName}.");
-                        }
-                        else
-                        {
-                            throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType);
-                        }
+                        definition.Data.Inputs = actionDefinitionData.Inputs;
                     }
 
+                    if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
+                    {
+                        var containerAction = actionDefinitionData.Execution as ContainerActionExecutionData;
+                        definition.Data.Execution.ContainerAction = new ContainerActionHandlerData
+                        {
+                            Target = containerAction.Image,
+                            Arguments = containerAction.Arguments,
+                            Environment = containerAction.Environment,
+                            EntryPoint = containerAction.EntryPoint
+                        };
+
+                        Trace.Info($"Action container Dockerfile: {containerAction.Image}.");
+
+                        if (containerAction.Arguments != null)
+                        {
+                            Trace.Info($"Action container args:  {StringUtil.ConvertToJson(containerAction.Arguments)}.");
+                        }
+
+                        if (containerAction.Environment != null)
+                        {
+                            Trace.Info($"Action container env: {StringUtil.ConvertToJson(containerAction.Environment)}.");
+                        }
+
+                        if (CachedActionContainers.TryGetValue(action.Id, out var container))
+                        {
+                            definition.Data.Execution.ContainerAction.ContainerImage = container.ContainerImage;
+                            Trace.Info($"Using action container image: {container.ContainerImage}.");
+                        }
+                    }
+                    else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.NodeJS)
+                    {
+                        var nodeAction = actionDefinitionData.Execution as NodeJSActionExecutionData;
+                        definition.Data.Execution.NodeAction = new NodeScriptActionHandlerData
+                        {
+                            Target = nodeAction.Script
+                        };
+
+                        Trace.Info($"Action node.js file: {nodeAction.Script}.");
+                    }
+                    else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Plugin)
+                    {
+                        var pluginAction = actionDefinitionData.Execution as PluginActionExecutionData;
+                        var pluginManager = HostContext.GetService<IRunnerPluginManager>();
+                        var plugin = pluginManager.GetPluginAction(pluginAction.Plugin);
+
+                        ArgUtil.NotNull(plugin, pluginAction.Plugin);
+                        ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, pluginAction.Plugin);
+
+                        definition.Data.Execution.RunnerPlugin = new RunnerPluginHandlerData()
+                        {
+                            Target = plugin.PluginTypeName
+                        };
+
+                        Trace.Info($"Action plugin: {plugin.PluginTypeName}.");
+                    }
+                    else
+                    {
+                        throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
+                    }
                 }
                 else if (File.Exists(dockerFile))
                 {
@@ -260,7 +239,6 @@ namespace GitHub.Runner.Worker
                 definition.Data.Execution.ScriptAction = new ScriptActionHandlerData();
                 definition.Data.FriendlyName = "Run";
                 definition.Data.Description = "Execute a script";
-                definition.Data.Author = "GitHub";
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
             {
@@ -278,7 +256,6 @@ namespace GitHub.Runner.Worker
 
                 definition.Data.FriendlyName = plugin.FriendlyName;
                 definition.Data.Description = plugin.Description;
-                definition.Data.Author = plugin.Author;
             }
 
             return definition;
@@ -609,54 +586,51 @@ namespace GitHub.Runner.Worker
             else if (File.Exists(actionManifest))
             {
                 executionContext.Output($"action.yml for action: '{actionManifest}'.");
-                using (var yamlInput = new StringReader(File.ReadAllText(actionManifest)))
+                var manifestManager = HostContext.GetService<IActionManifestManager>();
+                var actionDefinitionData = manifestManager.LoadManifestFile(executionContext, actionManifest);
+
+                if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
                 {
-                    var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().WithNamingConvention(new CamelCaseNamingConvention()).Build();
-                    var actionDefinitionData = deserializer.Deserialize<ActionDefinitionData>(yamlInput);
-
-                    if (string.Equals(actionDefinitionData.Execution.ExecutionType, "docker", StringComparison.OrdinalIgnoreCase))
+                    var containerAction = actionDefinitionData.Execution as ContainerActionExecutionData;
+                    if (containerAction.Image.EndsWith("Dockerfile"))
                     {
-                        if (actionDefinitionData.Execution.Image.EndsWith("Dockerfile"))
-                        {
-                            var dockerFileFullPath = Path.Combine(actionEntryDirectory, actionDefinitionData.Execution.Image);
-                            executionContext.Output($"Dockerfile for action: '{dockerFileFullPath}'.");
+                        var dockerFileFullPath = Path.Combine(actionEntryDirectory, containerAction.Image);
+                        executionContext.Output($"Dockerfile for action: '{dockerFileFullPath}'.");
 
-                            return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                              condition: ExpressionManager.Succeeded,
-                                              displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
-                                              data: new ContainerSetupInfo(repositoryAction.Id, dockerFileFullPath, destDirectory));
-                        }
-                        else if (actionDefinitionData.Execution.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var actionImage = actionDefinitionData.Execution.Image.Substring("docker://".Length);
-
-                            executionContext.Output($"Container image for action: '{actionImage}'.");
-
-                            return new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
-                                                          condition: ExpressionManager.Succeeded,
-                                                          displayName: $"Pull {actionImage}",
-                                                          data: new ContainerSetupInfo(repositoryAction.Id, actionImage));
-                        }
-                        else
-                        {
-                            throw new NotSupportedException(actionDefinitionData.Execution.Image);
-                        }
+                        return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                          condition: ExpressionManager.Succeeded,
+                                          displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
+                                          data: new ContainerSetupInfo(repositoryAction.Id, dockerFileFullPath, destDirectory));
                     }
-                    else if (string.Equals(actionDefinitionData.Execution.ExecutionType, "node12", StringComparison.OrdinalIgnoreCase) ||
-                             string.Equals(actionDefinitionData.Execution.ExecutionType, "node", StringComparison.OrdinalIgnoreCase))
+                    else if (containerAction.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
                     {
-                        Trace.Info($"Action node.js file: {actionDefinitionData.Execution.Script}, no more preparation.");
-                        return null;
-                    }
-                    else if (!string.IsNullOrEmpty(actionDefinitionData.Execution.Plugin))
-                    {
-                        Trace.Info($"Action plugin: {actionDefinitionData.Execution.Plugin}, no more preparation.");
-                        return null;
+                        var actionImage = containerAction.Image.Substring("docker://".Length);
+
+                        executionContext.Output($"Container image for action: '{actionImage}'.");
+
+                        return new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
+                                                      condition: ExpressionManager.Succeeded,
+                                                      displayName: $"Pull {actionImage}",
+                                                      data: new ContainerSetupInfo(repositoryAction.Id, actionImage));
                     }
                     else
                     {
-                        throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType);
+                        throw new NotSupportedException(containerAction.Image);
                     }
+                }
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.NodeJS)
+                {
+                    Trace.Info($"Action node.js file: {(actionDefinitionData.Execution as NodeJSActionExecutionData).Script}, no more preparation.");
+                    return null;
+                }
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Plugin)
+                {
+                    Trace.Info($"Action plugin: {(actionDefinitionData.Execution as PluginActionExecutionData).Plugin}, no more preparation.");
+                    return null;
+                }
+                else
+                {
+                    throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
                 }
             }
             else
@@ -665,6 +639,7 @@ namespace GitHub.Runner.Worker
             }
         }
     }
+
     public sealed class Definition
     {
         public DefinitionData Data { get; set; }
@@ -675,75 +650,58 @@ namespace GitHub.Runner.Worker
     {
         public string FriendlyName { get; set; }
         public string Description { get; set; }
-        public string HelpUrl { get; set; }
-        public string Author { get; set; }
-        public OutputVariable[] OutputVariables { get; set; }
-        public TaskInputDefinition[] Inputs { get; set; }
+        public MappingToken Inputs { get; set; }
         public ExecutionData Execution { get; set; }
     }
 
     public sealed class ActionDefinitionData
     {
-        [YamlMember]
         public string Name { get; set; }
 
-        [YamlMember]
         public string Description { get; set; }
 
-        [YamlMember]
-        public string Author { get; set; }
+        public MappingToken Inputs { get; set; }
 
-        [YamlMember]
-        public Dictionary<string, ActionInputDefinition> Inputs { get; set; }
-
-        [YamlMember]
-        public Dictionary<string, ActionOutput> Outputs { get; set; }
-
-        [YamlMember(Alias = "runs")]
         public ActionExecutionData Execution { get; set; }
     }
 
-
-    public sealed class ActionInputDefinition
+    public enum ActionExecutionType
     {
-        [YamlMember]
-        public string Default { get; set; }
+        Container,
+        NodeJS,
+        Plugin,
     }
 
-    public sealed class ActionOutput
+    public sealed class ContainerActionExecutionData : ActionExecutionData
     {
-        [YamlMember]
-        public string Description { get; set; }
-    }
+        public override ActionExecutionType ExecutionType => ActionExecutionType.Container;
 
-    public sealed class ActionExecutionData
-    {
-        [YamlMember(Alias = "using")]
-        public string ExecutionType { get; set; }
-
-        [YamlMember]
         public string Image { get; set; }
 
-        [YamlMember]
-        public string Plugin { get; set; }
-
-        [YamlMember(Alias = "main")]
-        public string Script { get; set; }
-
-        [YamlMember(Alias = "args")]
-        public string[] Arguments { get; set; }
-
-        [YamlMember(Alias = "entrypoint")]
         public string EntryPoint { get; set; }
 
-        [YamlMember(Alias = "env")]
-        public Dictionary<string, string> Environment { get; set; }
+        public SequenceToken Arguments { get; set; }
+
+        public MappingToken Environment { get; set; }
     }
 
-    public sealed class OutputVariable
+    public sealed class NodeJSActionExecutionData : ActionExecutionData
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
+        public override ActionExecutionType ExecutionType => ActionExecutionType.NodeJS;
+
+        public string Script { get; set; }
+    }
+
+    public sealed class PluginActionExecutionData : ActionExecutionData
+    {
+        public override ActionExecutionType ExecutionType => ActionExecutionType.Plugin;
+
+        public string Plugin { get; set; }
+    }
+
+    public abstract class ActionExecutionData
+    {
+        public abstract ActionExecutionType ExecutionType { get; }
     }
 
     public sealed class ExecutionData
@@ -826,8 +784,6 @@ namespace GitHub.Runner.Worker
     {
         public Dictionary<string, string> Inputs { get; }
 
-        public string[] Platforms { get; set; }
-
         [JsonIgnore]
         public abstract int Priority { get; }
 
@@ -896,8 +852,8 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public List<string> Arguments { get; set; }
-        public Dictionary<string, string> Environment { get; set; }
+        public SequenceToken Arguments { get; set; }
+        public MappingToken Environment { get; set; }
     }
 
     public sealed class NodeScriptActionHandlerData : HandlerData
