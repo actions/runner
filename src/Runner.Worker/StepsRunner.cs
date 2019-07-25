@@ -60,6 +60,12 @@ namespace GitHub.Runner.Worker
                 // Start
                 step.ExecutionContext.Start();
 
+                // Set GITHUB_ACTION
+                if (step is IActionRunner actionStep)
+                {
+                    step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                }
+
                 // Initialize scope
                 if (InitializeScope(step, scopeInputs))
                 {

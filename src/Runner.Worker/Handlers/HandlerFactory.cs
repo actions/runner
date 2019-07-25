@@ -15,7 +15,7 @@ namespace GitHub.Runner.Worker.Handlers
             IExecutionContext executionContext,
             Pipelines.ActionStepDefinitionReference action,
             IStepHost stepHost,
-            HandlerData data,
+            ActionExecutionData data,
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
@@ -28,7 +28,7 @@ namespace GitHub.Runner.Worker.Handlers
             IExecutionContext executionContext,
             Pipelines.ActionStepDefinitionReference action,
             IStepHost stepHost,
-            HandlerData data,
+            ActionExecutionData data,
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
@@ -45,31 +45,31 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Create the handler.
             IHandler handler;
-            if (data is ContainerActionHandlerData)
+            if (data.ExecutionType == ActionExecutionType.Container)
             {
                 handler = HostContext.CreateService<IContainerActionHandler>();
-                (handler as IContainerActionHandler).Data = data as ContainerActionHandlerData;
+                (handler as IContainerActionHandler).Data = data as ContainerActionExecutionData;
             }
-            else if (data is NodeScriptActionHandlerData)
+            else if (data.ExecutionType == ActionExecutionType.NodeJS)
             {
                 handler = HostContext.CreateService<INodeScriptActionHandler>();
-                (handler as INodeScriptActionHandler).Data = data as NodeScriptActionHandlerData;
+                (handler as INodeScriptActionHandler).Data = data as NodeJSActionExecutionData;
             }
-            else if (data is ScriptActionHandlerData)
+            else if (data.ExecutionType == ActionExecutionType.Script)
             {
                 handler = HostContext.CreateService<IScriptHandler>();
-                (handler as IScriptHandler).Data = data as ScriptActionHandlerData;
+                (handler as IScriptHandler).Data = data as ScriptActionExecutionData;
             }
-            else if (data is RunnerPluginHandlerData)
+            else if (data.ExecutionType == ActionExecutionType.Plugin)
             {
                 // Agent plugin
                 handler = HostContext.CreateService<IRunnerPluginHandler>();
-                (handler as IRunnerPluginHandler).Data = data as RunnerPluginHandlerData;
+                (handler as IRunnerPluginHandler).Data = data as PluginActionExecutionData;
             }
             else
             {
                 // This should never happen.
-                throw new NotSupportedException();
+                throw new NotSupportedException(data.ExecutionType.ToString());
             }
 
             handler.Environment = environment;
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Worker.Handlers
             handler.ExecutionContext = executionContext;
             handler.StepHost = stepHost;
             handler.Inputs = inputs;
-            handler.TaskDirectory = taskDirectory;
+            handler.ActionDirectory = taskDirectory;
             return handler;
         }
     }

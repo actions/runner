@@ -28,7 +28,6 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNull(jobContext, nameof(jobContext));
             ArgUtil.NotNullOrEmpty(_tempDirectory, nameof(_tempDirectory));
-            jobContext.SetRunnerContext("tempDirectory", _tempDirectory);
             jobContext.SetRunnerContext("temp", _tempDirectory);
             jobContext.Debug($"Cleaning runner temp folder: {_tempDirectory}");
             try

@@ -12,12 +12,12 @@ namespace GitHub.Runner.Worker.Handlers
     [ServiceLocator(Default = typeof(ScriptHandler))]
     public interface IScriptHandler : IHandler
     {
-        ScriptActionHandlerData Data { get; set; }
+        ScriptActionExecutionData Data { get; set; }
     }
 
     public sealed class ScriptHandler : Handler, IScriptHandler
     {
-        public ScriptActionHandlerData Data { get; set; }
+        public ScriptActionExecutionData Data { get; set; }
 
         public async Task RunAsync()
         {

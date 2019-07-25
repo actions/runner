@@ -52,7 +52,7 @@ namespace GitHub.Runner.Worker
             // Print out action metadata
             PrintActionMetaData(definition);
 
-            HandlerData handlerData = definition.Data?.Execution?.All?.Single();
+            ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -137,9 +137,9 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(actionDefinition.Data, nameof(actionDefinition.Data));
 
             ExecutionContext.Output("##[group]Action details");
-            if (!string.IsNullOrEmpty(actionDefinition.Data.FriendlyName))
+            if (!string.IsNullOrEmpty(actionDefinition.Data.Name))
             {
-                ExecutionContext.Output($"Action             : {actionDefinition.Data.FriendlyName}");
+                ExecutionContext.Output($"Action             : {actionDefinition.Data.Name}");
             }
 
             if (!string.IsNullOrEmpty(actionDefinition.Data.Description))
