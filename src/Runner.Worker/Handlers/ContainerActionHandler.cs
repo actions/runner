@@ -20,12 +20,12 @@ namespace GitHub.Runner.Worker.Handlers
     [ServiceLocator(Default = typeof(ContainerActionHandler))]
     public interface IContainerActionHandler : IHandler
     {
-        ContainerActionHandlerData Data { get; set; }
+        ContainerActionExecutionData Data { get; set; }
     }
 
     public sealed class ContainerActionHandler : Handler, IContainerActionHandler
     {
-        public ContainerActionHandlerData Data { get; set; }
+        public ContainerActionExecutionData Data { get; set; }
 
         public async Task RunAsync()
         {
@@ -34,39 +34,39 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Data, nameof(Data));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
+            // Update the env dictionary.
+            AddInputsToEnvironment();
+
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
 
-            // container image haven't built
-            if (string.IsNullOrEmpty(Data.ContainerImage))
+            // container image haven't built/pull
+            if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
             {
-                if (Data.Target.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
-                {
-                    Data.ContainerImage = Data.Target.Substring("docker://".Length);
-                }
-                else
-                {
-                    // ensure docker file exist
-                    var dockerFile = Path.Combine(TaskDirectory, Data.Target);
-                    ArgUtil.File(dockerFile, nameof(Data.Target));
-                    ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+                Data.Image = Data.Image.Substring("docker://".Length);
+            }
+            else if (Data.Image.EndsWith("Dockerfile") || Data.Image.EndsWith("dockerfile"))
+            {
+                // ensure docker file exist
+                var dockerFile = Path.Combine(ActionDirectory, Data.Image);
+                ArgUtil.File(dockerFile, nameof(Data.Image));
+                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
 
-                    var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                    var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, ExecutionContext.GetGitHubContext("workspace"), Directory.GetParent(dockerFile).FullName, imageName);
-                    if (buildExitCode != 0)
-                    {
-                        throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
-                    }
-
-                    Data.ContainerImage = imageName;
+                var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, ExecutionContext.GetGitHubContext("workspace"), Directory.GetParent(dockerFile).FullName, imageName);
+                if (buildExitCode != 0)
+                {
+                    throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
                 }
+
+                Data.Image = imageName;
             }
 
             // run container
             var container = new ContainerInfo()
             {
-                ContainerImage = Data.ContainerImage,
+                ContainerImage = Data.Image,
                 ContainerName = ExecutionContext.Id.ToString("N"),
-                ContainerDisplayName = $"{Pipelines.Validation.NameValidation.Sanitize(Data.ContainerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}",
+                ContainerDisplayName = $"{Pipelines.Validation.NameValidation.Sanitize(Data.Image)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}",
             };
 
             if (!string.IsNullOrEmpty(Data.EntryPoint))
@@ -89,10 +89,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-            foreach (var context in ExecutionContext.ExpressionValues)
-            {
-                evaluateContext[context.Key] = context.Value?.Clone();
-            }
             evaluateContext["inputs"] = inputsContext;
 
             var manifestManager = HostContext.GetService<IActionManifestManager>();

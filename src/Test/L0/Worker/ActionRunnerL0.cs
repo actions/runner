@@ -58,8 +58,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             _actionRunner.Action = action;
 
             Dictionary<string, string> finialInputs = new Dictionary<string, string>();
-            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<HandlerData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>()))
-                           .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, HandlerData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory) =>
+            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>()))
+                           .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory) =>
                            {
                                finialInputs = inputs;
                            })
@@ -104,8 +104,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             _actionRunner.Action = action;
 
             Dictionary<string, string> finialInputs = new Dictionary<string, string>();
-            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<HandlerData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>()))
-                           .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, HandlerData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory) =>
+            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>()))
+                           .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory) =>
                            {
                                finialInputs = inputs;
                            })
@@ -151,15 +151,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             var actionDefinition = new Definition()
             {
                 Directory = _hc.GetDirectory(WellKnownDirectory.Work),
-                Data = new DefinitionData()
+                Data = new ActionDefinitionData()
                 {
-                    FriendlyName = name,
+                    Name = name,
                     Description = name,
                     Inputs = actionInputs,
-                    Execution = new ExecutionData()
-                    {
-                        ScriptAction = new ScriptActionHandlerData()
-                    }
+                    Execution = new ScriptActionExecutionData()
                 }
             };
 

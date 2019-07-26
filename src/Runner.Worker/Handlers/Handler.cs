@@ -13,15 +13,12 @@ namespace GitHub.Runner.Worker.Handlers
 {
     public interface IHandler : IRunnerService
     {
-        List<ServiceEndpoint> Endpoints { get; set; }
         Dictionary<string, string> Environment { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         Variables RuntimeVariables { get; set; }
         IStepHost StepHost { get; set; }
         Dictionary<string, string> Inputs { get; set; }
-        List<SecureFile> SecureFiles { get; set; }
-        string TaskDirectory { get; set; }
-        Pipelines.TaskStepDefinitionReference Task { get; set; }
+        string ActionDirectory { get; set; }
         Task RunAsync();
     }
 
@@ -35,15 +32,12 @@ namespace GitHub.Runner.Worker.Handlers
 
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
-        public List<ServiceEndpoint> Endpoints { get; set; }
         public Dictionary<string, string> Environment { get; set; }
         public Variables RuntimeVariables { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
         public IStepHost StepHost { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
-        public List<SecureFile> SecureFiles { get; set; }
-        public string TaskDirectory { get; set; }
-        public Pipelines.TaskStepDefinitionReference Task { get; set; }
+        public string ActionDirectory { get; set; }
 
         public override void Initialize(IHostContext hostContext)
         {

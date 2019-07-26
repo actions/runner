@@ -18,12 +18,12 @@ namespace GitHub.Runner.Worker.Handlers
     [ServiceLocator(Default = typeof(RunnerPluginHandler))]
     public interface IRunnerPluginHandler : IHandler
     {
-        RunnerPluginHandlerData Data { get; set; }
+        PluginActionExecutionData Data { get; set; }
     }
 
     public sealed class RunnerPluginHandler : Handler, IRunnerPluginHandler
     {
-        public RunnerPluginHandlerData Data { get; set; }
+        public PluginActionExecutionData Data { get; set; }
 
         public async Task RunAsync()
         {
@@ -32,7 +32,7 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Data, nameof(Data));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
-            ArgUtil.NotNullOrEmpty(Data.Target, nameof(Data.Target));
+            ArgUtil.NotNullOrEmpty(Data.Plugin, nameof(Data.Plugin));
 
             // Update the env dictionary.
             AddPrependPathToEnvironment();
@@ -42,7 +42,7 @@ namespace GitHub.Runner.Worker.Handlers
             ActionCommandManager.EnablePluginInternalCommand();
             try
             {
-                await runnerPlugin.RunPluginActionAsync(ExecutionContext, Data.Target, Inputs, Environment, RuntimeVariables, OnDataReceived);
+                await runnerPlugin.RunPluginActionAsync(ExecutionContext, Data.Plugin, Inputs, Environment, RuntimeVariables, OnDataReceived);
             }
             finally
             {

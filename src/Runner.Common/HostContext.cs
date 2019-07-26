@@ -131,7 +131,7 @@ namespace GitHub.Runner.Common
             }
 
             // Enable perf counter trace
-            string perfCounterLocation = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_PERFLOG");
+            string perfCounterLocation = Environment.GetEnvironmentVariable("RUNNER_PERFLOG");
             if (!string.IsNullOrEmpty(perfCounterLocation))
             {
                 try

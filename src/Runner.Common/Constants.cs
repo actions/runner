@@ -44,7 +44,7 @@ namespace GitHub.Runner.Common
         public static readonly string PathVariable = "PATH";
 #endif
 
-        public static string ProcessLookupId = "GITHUB_PROCESS_LOOKUP_ID";
+        public static string ProcessTrackingId = "RUNNER_TRACKING_ID";
         public static string PluginTracePrefix = "##[plugin.trace]";
         public static readonly int RunnerDownloadRetryMaxAttempts = 3;
 

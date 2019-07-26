@@ -12,12 +12,12 @@ namespace GitHub.Runner.Worker.Handlers
     [ServiceLocator(Default = typeof(NodeScriptActionHandler))]
     public interface INodeScriptActionHandler : IHandler
     {
-        NodeScriptActionHandlerData Data { get; set; }
+        NodeJSActionExecutionData Data { get; set; }
     }
 
     public sealed class NodeScriptActionHandler : Handler, INodeScriptActionHandler
     {
-        public NodeScriptActionHandlerData Data { get; set; }
+        public NodeJSActionExecutionData Data { get; set; }
 
         public async Task RunAsync()
         {
@@ -26,7 +26,7 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Data, nameof(Data));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
-            ArgUtil.Directory(TaskDirectory, nameof(TaskDirectory));
+            ArgUtil.Directory(ActionDirectory, nameof(ActionDirectory));
 
             // Update the env dictionary.
             AddInputsToEnvironment();
@@ -45,20 +45,16 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Resolve the target script.
-            string target = Data.Target;
+            string target = Data.Script;
             ArgUtil.NotNullOrEmpty(target, nameof(target));
-            target = Path.Combine(TaskDirectory, target);
+            target = Path.Combine(ActionDirectory, target);
             ArgUtil.File(target, nameof(target));
 
             // Resolve the working directory.
-            string workingDirectory = Data.WorkingDirectory;
+            string workingDirectory = ExecutionContext.GetGitHubContext("workspace");
             if (string.IsNullOrEmpty(workingDirectory))
             {
-                workingDirectory = ExecutionContext.GetGitHubContext("workspace");
-                if (string.IsNullOrEmpty(workingDirectory))
-                {
-                    workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
-                }
+                workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
             string file;

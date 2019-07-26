@@ -202,8 +202,8 @@ namespace GitHub.Runner.Worker
                     _processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
                     if (_processCleanup)
                     {
-                        // Set the GITHUB_PROCESS_LOOKUP_ID env variable.
-                        Environment.SetEnvironmentVariable(Constants.ProcessLookupId, _processLookupId);
+                        // Set the RUNNER_TRACKING_ID env variable.
+                        Environment.SetEnvironmentVariable(Constants.ProcessTrackingId, _processLookupId);
                         context.Output("Start tracking orphan processes.");
 
                         // Take a snapshot of current running processes
@@ -293,7 +293,7 @@ namespace GitHub.Runner.Worker
                                 string lookupId = null;
                                 try
                                 {
-                                    lookupId = proc.Value.GetEnvironmentVariable(HostContext, Constants.ProcessLookupId);
+                                    lookupId = proc.Value.GetEnvironmentVariable(HostContext, Constants.ProcessTrackingId);
                                 }
                                 catch (Exception ex)
                                 {
