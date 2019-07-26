@@ -196,7 +196,7 @@ namespace GitHub.Runner.Worker
         {
             // Start the step.
             Trace.Info("Starting the step.");
-            step.ExecutionContext.Section($"Starting: {step.DisplayName}");
+            step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
             step.ExecutionContext.SetTimeout(timeout: step.Timeout);
 
 #if OS_WINDOWS
@@ -322,7 +322,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Complete the step context.
-            step.ExecutionContext.Section($"Finishing: {step.DisplayName}");
+            step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
         }
 
         private bool InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)

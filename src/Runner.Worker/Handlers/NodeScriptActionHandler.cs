@@ -1,11 +1,11 @@
-﻿using GitHub.Runner.Common.Util;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
+using System;
 
 namespace GitHub.Runner.Worker.Handlers
 {

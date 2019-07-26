@@ -973,12 +973,6 @@ namespace GitHub.Runner.Worker
             context.Write(WellKnownTags.Command, message);
         }
 
-        // Do not add a format string overload. See comment on ExecutionContext.Write().
-        public static void Section(this IExecutionContext context, string message)
-        {
-            context.Write(WellKnownTags.Section, message);
-        }
-
         //
         // Verbose output is enabled by setting System.Debug
         // It's meant to help the end user debug their definitions.

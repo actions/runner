@@ -36,8 +36,8 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(jobContext, nameof(jobContext));
             ArgUtil.NotNull(message, nameof(message));
 
-            // create a new timeline record node for 'Setup job'
-            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Setup Job", $"{nameof(JobExtension)}_Init", null, null);
+            // create a new timeline record node for 'Set up job'
+            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Set up job", $"{nameof(JobExtension)}_Init", null, null);
 
             List<IStep> preJobSteps = new List<IStep>();
             List<IStep> jobSteps = new List<IStep>();
@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker
                 try
                 {
                     context.Start();
-                    context.Section($"Starting: Setup Job");
+                    context.Debug($"Starting: Set up job");
 
                     // Set agent version variable.
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
@@ -131,7 +131,7 @@ namespace GitHub.Runner.Worker
                                                                           data: (object)containers));
                         postJobStepsBuilder.Push(new JobExtensionRunner(runAsync: containerProvider.StopContainersAsync,
                                                                         condition: ExpressionManager.Always,
-                                                                        displayName: "Stop Containers",
+                                                                        displayName: "Stop containers",
                                                                         data: (object)containers));
                     }
 
@@ -235,7 +235,7 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
-                    context.Section("Finishing: Setup Job");
+                    context.Debug("Finishing: Set up job");
                     context.Complete();
                 }
             }
@@ -247,13 +247,13 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(jobContext, nameof(jobContext));
 
             // create a new timeline record node for 'Finalize job'
-            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Complete Job", $"{nameof(JobExtension)}_Final", null, null);
+            IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Complete job", $"{nameof(JobExtension)}_Final", null, null);
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
                 {
                     context.Start();
-                    context.Section("Starting: Complete Job");
+                    context.Debug("Starting: Complete job");
 
                     // Wait for agent log plugin process exits
                     // var logPlugin = HostContext.GetService<IAgentLogPlugin>();
@@ -326,7 +326,7 @@ namespace GitHub.Runner.Worker
                 }
                 finally
                 {
-                    context.Section("Finishing: Complete Job");
+                    context.Debug("Finishing: Complete job");
                     context.Complete();
                 }
             }

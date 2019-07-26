@@ -71,7 +71,7 @@ namespace GitHub.Runner.Worker
                 jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
-                jobContext.Section($"Starting: {message.JobDisplayName}");
+                jobContext.Debug($"Starting: {message.JobDisplayName}");
 
                 runnerShutdownRegistration = HostContext.RunnerShutdownToken.Register(() =>
                 {
@@ -216,7 +216,7 @@ namespace GitHub.Runner.Worker
 
         private async Task<TaskResult> CompleteJobAsync(IJobServer jobServer, IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, TaskResult? taskResult = null)
         {
-            jobContext.Section($"Finishing: {message.JobDisplayName}");
+            jobContext.Debug($"Finishing: {message.JobDisplayName}");
             TaskResult result = jobContext.Complete(taskResult);
 
             try
