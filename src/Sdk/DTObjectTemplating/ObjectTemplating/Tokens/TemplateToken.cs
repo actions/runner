@@ -30,6 +30,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             Column = column;
         }
 
+        [IgnoreDataMember]
         internal Int32? FileId { get; set; }
 
         [DataMember(Name = "line", EmitDefaultValue = false)]

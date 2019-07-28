@@ -48,7 +48,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = new StrategyResult();
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(null);
                 try
@@ -107,7 +107,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(String);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
@@ -133,7 +133,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(PhaseTarget);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
@@ -159,12 +159,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(Int32?);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStrategyContext, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.NumberStrategyContext, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToJobTimeout(context, token);
                 }
@@ -185,12 +185,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(Int32?);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStrategyContext, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.NumberStrategyContext, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToJobCancelTimeout(context, token);
                 }
@@ -211,7 +211,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(DictionaryContextData);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
@@ -237,7 +237,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(DictionaryContextData);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
@@ -257,6 +257,32 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? new DictionaryContextData();
         }
 
+        public Boolean EvaluateStepContinueOnError(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = default(Boolean?);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(contextData);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.BooleanStepsContext, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = PipelineTemplateConverter.ConvertToStepContinueOnError(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? false;
+        }
+
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
             IDictionary<String, PipelineContextData> contextData,
@@ -264,7 +290,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(Dictionary<String, String>);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
@@ -290,7 +316,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(Dictionary<String, String>);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
@@ -310,13 +336,39 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
         }
 
+        public Int32 EvaluateStepTimeout(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = default(Int32?);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(contextData);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.NumberStepsContext, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = PipelineTemplateConverter.ConvertToStepTimeout(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? 0;
+        }
+
         public ContainerResource EvaluateJobContainer(
             TemplateToken token,
             IDictionary<String, PipelineContextData> contextData)
         {
             var result = default(ContainerResource);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try
@@ -342,7 +394,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = default(Dictionary<String, ContainerResource>);
 
-            if (token != null)
+            if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(contextData);
                 try

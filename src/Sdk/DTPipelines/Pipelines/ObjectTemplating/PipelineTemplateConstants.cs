@@ -4,7 +4,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal sealed class PipelineTemplateConstants
     {
-        internal const String CancelTimeout = "cancel-timeout";
+        internal const String BooleanStepsContext = "boolean-steps-context";
+        internal const String CancelTimeoutMinutes = "cancel-timeout-minutes";
         internal const String Checkout = "checkout";
         internal const String Clean= "clean";
         internal const String Container = "container";
@@ -26,6 +27,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String MaxParallel = "max-parallel";
         internal const String Name = "name";
         internal const String Needs = "needs";
+        internal const String NumberStepsContext = "number-steps-context";
+        internal const String NumberStrategyContext = "number-strategy-context";
         internal const String On = "on";
         internal const String Outputs = "outputs";
         internal const String Path = "path";
@@ -48,9 +51,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         internal const String StringStrategyContext = "string-strategy-context";
         internal const String Submodules = "submodules";
         internal const String Template = "template";
-        internal const String Timeout = "timeout";
+        internal const String TimeoutMinutes = "timeout-minutes";
         internal const String Token = "token";
         internal const String Uses = "uses";
+        internal const String VmImage = "vmImage";
         internal const String With = "with";
         internal const String Workflow = "workflow";
         internal const String Workflow_1_0 = "workflow-v1.0";

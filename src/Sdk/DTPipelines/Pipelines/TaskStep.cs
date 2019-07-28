@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.WebApi;
 using Newtonsoft.Json;
 
@@ -18,12 +19,12 @@ namespace GitHub.DistributedTask.Pipelines
 
         internal TaskStep(TaskInstance legacyTaskInstance)
         {
-            this.ContinueOnError = legacyTaskInstance.ContinueOnError;
+            this.ContinueOnError = new BooleanToken(null, null, null, legacyTaskInstance.ContinueOnError);
             this.DisplayName = legacyTaskInstance.DisplayName;
             this.Enabled = legacyTaskInstance.Enabled;
             this.Id = legacyTaskInstance.InstanceId;
             this.Name = legacyTaskInstance.RefName;
-            this.TimeoutInMinutes = legacyTaskInstance.TimeoutInMinutes;
+            this.TimeoutInMinutes = new NumberToken(null, null, null, legacyTaskInstance.TimeoutInMinutes);
             this.Reference = new TaskStepDefinitionReference()
             {
                 Id = legacyTaskInstance.Id,
@@ -115,12 +116,12 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 AlwaysRun = String.Equals(this.Condition ?? String.Empty, "succeededOrFailed()", StringComparison.Ordinal),
                 Condition = this.Condition,
-                ContinueOnError = this.ContinueOnError,
+                ContinueOnError = this.ContinueOnError?.AssertBoolean(null).Value ?? false,
                 DisplayName = this.DisplayName,
                 Enabled = this.Enabled,
                 InstanceId = this.Id,
                 RefName = this.Name,
-                TimeoutInMinutes = this.TimeoutInMinutes,
+                TimeoutInMinutes = (Int32)(this.TimeoutInMinutes?.AssertNumber(null).Value ?? 0d),
                 Id = this.Reference.Id,
                 Name = this.Reference.Name,
                 Version = this.Reference.Version,

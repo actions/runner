@@ -9,8 +9,7 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.Validation;
 using GitHub.Services.Common;
-using RegexUtility = GitHub.DistributedTask.Pipelines.Expressions.RegexUtility;
-using WellKnownRegularExpressions = GitHub.DistributedTask.Pipelines.Expressions.WellKnownRegularExpressions;
+using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
@@ -118,16 +117,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             // String
             if (runsOn is StringToken runsOnString)
             {
-                var queueName = AgentQueueTarget.PoolNameForVMImage(runsOnString.Value);
-
-                if (String.IsNullOrEmpty(queueName))
+                result.Queue = new AgentQueueReference { Name = "GitHub Actions" };
+                result.AgentSpecification = new JObject
                 {
-                    context.Error(runsOnString, $"Unexpected VM image '{runsOnString.Value}'");
-                }
-                else
-                {
-                    result.Queue = new AgentQueueReference { Name = queueName };
-                }
+                    { PipelineTemplateConstants.VmImage, runsOnString.Value }
+                };
             }
             // Mapping
             else
@@ -178,7 +172,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return null;
             }
 
-            var numberToken = token.AssertNumber($"job {PipelineTemplateConstants.Timeout}");
+            var numberToken = token.AssertNumber($"job {PipelineTemplateConstants.TimeoutMinutes}");
             return (Int32)numberToken.Value;
         }
 
@@ -192,8 +186,22 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return null;
             }
 
-            var numberToken = token.AssertNumber($"job {PipelineTemplateConstants.CancelTimeout}");
+            var numberToken = token.AssertNumber($"job {PipelineTemplateConstants.CancelTimeoutMinutes}");
             return (Int32)numberToken.Value;
+        }
+
+        internal static Boolean? ConvertToStepContinueOnError(
+            TemplateContext context,
+            TemplateToken token,
+            Boolean allowExpressions = false)
+        {
+            if (allowExpressions && token is ExpressionToken)
+            {
+                return null;
+            }
+
+            var booleanToken = token.AssertBoolean($"step {PipelineTemplateConstants.ContinueOnError}");
+            return booleanToken.Value;
         }
 
         internal static Dictionary<String, String> ConvertToStepEnvironment(
@@ -277,6 +285,20 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
 
             return result;
+        }
+
+        internal static Int32? ConvertToStepTimeout(
+            TemplateContext context,
+            TemplateToken token,
+            Boolean allowExpressions = false)
+        {
+            if (allowExpressions && token is ExpressionToken)
+            {
+                return null;
+            }
+
+            var numberToken = token.AssertNumber($"step {PipelineTemplateConstants.TimeoutMinutes}");
+            return (Int32)numberToken.Value;
         }
 
         internal static StrategyResult ConvertToStrategy(
@@ -675,12 +697,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             result.Strategy = jobFactoryProperty.Value.Clone(true);
                             break;
 
-                        case PipelineTemplateConstants.Timeout:
+                        case PipelineTemplateConstants.TimeoutMinutes:
                             ConvertToJobTimeout(context, jobFactoryProperty.Value, allowExpressions: true); // Validate early if possible
                             result.JobTimeout = jobFactoryProperty.Value.Clone(true) as ScalarToken;
                             break;
 
-                        case PipelineTemplateConstants.CancelTimeout:
+                        case PipelineTemplateConstants.CancelTimeoutMinutes:
                             ConvertToJobCancelTimeout(context, jobFactoryProperty.Value, allowExpressions: true); // Validate early if possible
                             result.JobCancelTimeout = jobFactoryProperty.Value.Clone(true) as ScalarToken;
                             break;
@@ -789,48 +811,17 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var stepsSequence = steps.AssertSequence($"job {PipelineTemplateConstants.Steps}");
 
-            bool requireInsertCheckout = true;
             var result = new List<Step>();
             foreach (var stepsItem in stepsSequence)
             {
                 var step = ConvertToStep(context, stepsItem);
                 if (step != null) // step = null means we are hitting error during step conversion, there should be an error in context.errors
                 {
-                    if (requireInsertCheckout &&
-                        step.Reference is PluginReference agentPlugin &&
-                        agentPlugin.Plugin == PipelineConstants.AgentPlugins.Checkout)
-                    {
-                        requireInsertCheckout = false;
-                    }
-
                     if (step.Enabled)
                     {
                         result.Add(step);
                     }
                 }
-            }
-
-            if (requireInsertCheckout)
-            {
-                var checkoutStep = new ActionStep
-                {
-                    DisplayName = "Checkout",
-                    Enabled = true,
-                    Reference = new PluginReference
-                    {
-                        Plugin = PipelineConstants.AgentPlugins.Checkout
-                    }
-                };
-
-                var inputs = new MappingToken(null, null, null);
-                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
-                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
-                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
-                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
-                inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new StringToken(null, null, null, bool.TrueString));
-                checkoutStep.Inputs = inputs;
-
-                result.Insert(0, checkoutStep);
             }
 
             return result;
@@ -841,8 +832,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateToken stepsItem)
         {
             var step = stepsItem.AssertMapping($"{PipelineTemplateConstants.Steps} item");
-            var checkout = default(StringToken);
-            var continueOnError = default(BooleanToken);
+            var continueOnError = default(ScalarToken);
             var env = default(TemplateToken);
             var id = default(StringToken);
             var ifCondition = default(String);
@@ -850,7 +840,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var name = default(ScalarToken);
             var run = default(ScalarToken);
             var scope = default(StringToken);
-            var timeout = default(NumberToken);
+            var timeoutMinutes = default(ScalarToken);
             var uses = default(StringToken);
             var with = default(TemplateToken);
             var workingDir = default(ScalarToken);
@@ -859,7 +849,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var fetchDepth = default(ScalarToken);
             var lfs = default(ScalarToken);
             var submodules = default(ScalarToken);
-            var token = default(ScalarToken);
             var shell = default(ScalarToken);
 
             foreach (var stepProperty in step)
@@ -868,17 +857,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 switch (propertyName.Value)
                 {
-                    case PipelineTemplateConstants.Checkout:
-                        checkout = stepProperty.Value.AssertString($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Checkout}");
-                        break;
-
                     case PipelineTemplateConstants.Clean:
                         clean = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Clean}");
                         break;
 
                     case PipelineTemplateConstants.ContinueOnError:
-                        var continueOnErrorBooleanToken = stepProperty.Value.AssertBoolean($"{PipelineTemplateConstants.Steps} {PipelineTemplateConstants.ContinueOnError}");
-                        continueOnError = continueOnErrorBooleanToken;
+                        ConvertToStepContinueOnError(context, stepProperty.Value, allowExpressions: true); // Validate early if possible
+                        continueOnError = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} {PipelineTemplateConstants.ContinueOnError}");
                         break;
 
                     case PipelineTemplateConstants.Env:
@@ -930,8 +915,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         submodules = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Submodules}");
                         break;
 
-                    case PipelineTemplateConstants.Timeout:
-                        timeout = stepProperty.Value.AssertNumber($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Timeout}");
+                    case PipelineTemplateConstants.TimeoutMinutes:
+                        ConvertToStepTimeout(context, stepProperty.Value, allowExpressions: true); // Validate early if possible
+                        timeoutMinutes = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.TimeoutMinutes}");
                         break;
 
                     case PipelineTemplateConstants.Uses:
@@ -963,10 +949,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
-                    ContinueOnError = continueOnError?.Value ?? false,
+                    ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
                     DisplayName = name?.ToString(),
                     Condition = ifCondition,
-                    TimeoutInMinutes = (Int32)(timeout?.Value ?? 0d),
+                    TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Environment = env?.Clone(true),
                     Reference = new ScriptReference()
                 };
@@ -999,124 +985,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 return result;
             }
-            else if (checkout != null)
-            {
-                var result = new ActionStep
-                {
-                    ScopeName = scope?.Value,
-                    ContextName = id?.Value,
-                    ContinueOnError = continueOnError?.Value ?? false,
-                    DisplayName = name?.ToString(),
-                    Condition = ifCondition,
-                    TimeoutInMinutes = (Int32)(timeout?.Value ?? 0d),
-                    Environment = env?.Clone(true),
-                    Reference = new PluginReference()
-                    {
-                        Plugin = PipelineConstants.AgentPlugins.Checkout
-                    }
-                };
-
-                if (String.IsNullOrEmpty(result.DisplayName))
-                {
-                    result.DisplayName = "Checkout";
-                }
-
-                var inputs = new MappingToken(null, null, null);
-                if (string.Equals(checkout.Value, bool.TrueString, StringComparison.OrdinalIgnoreCase))
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new StringToken(null, null, null, bool.TrueString));
-                }
-                else if (string.Equals(checkout.Value, bool.FalseString, StringComparison.OrdinalIgnoreCase))
-                {
-                    // `- checkout: false` means not checkout, we will set the enable to false and let it get skipped.
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new BasicExpressionToken(null, null, null, "github.repository"));
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new BasicExpressionToken(null, null, null, "github.ref"));
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new BasicExpressionToken(null, null, null, "github.sha"));
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.WorkspaceRepo), new StringToken(null, null, null, bool.TrueString));
-                    result.Enabled = false;
-                }
-                else
-                {
-                    var checkoutSegments = checkout.Value.Split('@');
-                    var pathSegments = checkoutSegments[0].Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-                    var gitRef = checkoutSegments.Length == 2 ? checkoutSegments[1] : String.Empty;
-
-                    if (checkoutSegments.Length != 2 ||
-                        pathSegments.Length != 2 ||
-                        String.IsNullOrEmpty(pathSegments[0]) ||
-                        String.IsNullOrEmpty(pathSegments[1]) ||
-                        String.IsNullOrEmpty(gitRef))
-                    {
-                        // todo: loc
-                        context.Error(uses, $"Expected format {{org}}/{{repo}}@ref. Actual '{uses.Value}'");
-                    }
-                    else
-                    {
-                        var repositoryName = $"{pathSegments[0]}/{pathSegments[1]}";
-                        inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Repository), new StringToken(null, null, null, repositoryName));
-
-                        if (RegexUtility.IsMatch(gitRef, WellKnownRegularExpressions.SHA1))
-                        {
-                            inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Version), new StringToken(null, null, null, gitRef));
-                        }
-                        else
-                        {
-                            inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Ref), new StringToken(null, null, null, gitRef));
-                        }
-                    }
-                }
-
-                if (path != null)
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Path), path.Clone(true));
-                }
-
-                if (clean != null)
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Clean), clean.Clone(true));
-                }
-
-                if (fetchDepth != null)
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.FetchDepth), fetchDepth.Clone(true));
-                }
-
-                if (lfs != null)
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Lfs), lfs.Clone(true));
-                }
-
-                if (submodules != null)
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Submodules), submodules.Clone(true));
-                }
-
-                if (token != null)
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), token.Clone(true));
-                }
-                else
-                {
-                    inputs.Add(new StringToken(null, null, null, PipelineConstants.CheckoutTaskInputs.Token), new BasicExpressionToken(null, null, null, "github.token"));
-                }
-
-                result.Inputs = inputs;
-
-                return result;
-            }
             else if (uses != null)
             {
                 var result = new ActionStep
                 {
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
-                    ContinueOnError = continueOnError?.Value ?? false,
+                    ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
                     DisplayName = name?.ToString(),
                     Condition = ifCondition,
-                    TimeoutInMinutes = (Int32)(timeout?.Value ?? 0d),
+                    TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Inputs = with,
                     Environment = env,
                 };
@@ -1188,7 +1066,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             if (String.IsNullOrWhiteSpace(ifCondition?.Value))
             {
-                return "succeeded()";
+                return "success()";
             }
 
             var condition = ifCondition.Value;
@@ -1216,16 +1094,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 if (x is Function function)
                 {
                     return String.Equals(function.Name, "always", StringComparison.OrdinalIgnoreCase) ||
-                        String.Equals(function.Name, "canceled", StringComparison.OrdinalIgnoreCase) ||
-                        String.Equals(function.Name, "failed", StringComparison.OrdinalIgnoreCase) ||
-                        String.Equals(function.Name, "succeeded", StringComparison.OrdinalIgnoreCase) ||
-                        String.Equals(function.Name, "succeededOrFailed", StringComparison.OrdinalIgnoreCase);
+                        String.Equals(function.Name, "cancelled", StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, "failure", StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, "success", StringComparison.OrdinalIgnoreCase);
                 }
 
                 return false;
             });
 
-            return hasStatusFunction ? condition : $"and(succeeded(), {condition})";
+            return hasStatusFunction ? condition : $"and(success(), {condition})";
         }
 
         /// <summary>
@@ -1278,10 +1155,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private static readonly IFunctionInfo[] s_conditionFunctions = new IFunctionInfo[]
         {
             new FunctionInfo<NoOpFunction>("always", 0, 0),
-            new FunctionInfo<NoOpFunction>("canceled", 0, 0),
-            new FunctionInfo<NoOpFunction>("failed", 0, 0),
-            new FunctionInfo<NoOpFunction>("succeeded", 0, 0),
-            new FunctionInfo<NoOpFunction>("succeededOrFailed", 0, 0),
+            new FunctionInfo<NoOpFunction>("cancelled", 0, 0),
+            new FunctionInfo<NoOpFunction>("failure", 0, 0),
+            new FunctionInfo<NoOpFunction>("success", 0, 0),
         };
     }
 }

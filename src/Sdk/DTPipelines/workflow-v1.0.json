@@ -134,8 +134,8 @@
           "strategy": "strategy",
           "name": "string-strategy-context",
           "runs-on": "runs-on",
-          "timeout": "number-strategy-context",
-          "cancel-timeout": "number-strategy-context",
+          "timeout-minutes": "number-strategy-context",
+          "cancel-timeout-minutes": "number-strategy-context",
           "continue-on-error": "boolean",
           "container": "container",
           "services": "services",
@@ -151,8 +151,8 @@
           "strategy": "strategy",
           "name": "string-strategy-context",
           "runs-on": "runs-on",
-          "timeout": "number-strategy-context",
-          "cancel-timeout": "number-strategy-context",
+          "timeout-minutes": "number-strategy-context",
+          "cancel-timeout-minutes": "number-strategy-context",
           "continue-on-error": "boolean",
           "container": "container",
           "services": "services",
@@ -268,7 +268,6 @@
 
     "steps-item": {
       "one-of": [
-        "checkout-step",
         "run-step",
         "regular-step",
         "steps-template-reference"
@@ -277,47 +276,10 @@
 
     "steps-item-in-template": {
       "one-of": [
-        "checkout-step-in-template",
         "run-step-in-template",
         "regular-step-in-template",
         "steps-template-reference-in-template"
       ]
-    },
-
-    "checkout-step": {
-      "mapping": {
-        "properties": {
-          "name": "string-steps-context",
-          "id": "non-empty-string",
-          "if": "string",
-          "timeout": "number",
-          "checkout": "non-empty-string",
-          "path": "string-steps-context",
-          "continue-on-error": "boolean",
-          "clean": "boolean-steps-context",
-          "fetch-depth": "number-steps-context",
-          "lfs": "boolean-steps-context",
-          "submodules": "string-steps-context"
-        }
-      }
-    },
-
-    "checkout-step-in-template": {
-      "mapping": {
-        "properties": {
-          "name": "string-steps-context-in-template",
-          "id": "non-empty-string",
-          "if": "string",
-          "timeout": "number",
-          "checkout": "non-empty-string",
-          "path": "string-steps-context-in-template",
-          "continue-on-error": "boolean",
-          "clean": "boolean-steps-context-in-template",
-          "fetch-depth": "number-steps-context-in-template",
-          "lfs": "boolean-steps-context-in-template",
-          "submodules": "string-steps-context-in-template"
-        }
-      }
     },
 
     "run-step": {
@@ -326,9 +288,9 @@
           "name": "string-steps-context",
           "id": "non-empty-string",
           "if": "string",
-          "timeout": "number",
+          "timeout-minutes": "number-steps-context",
           "run": "string-steps-context",
-          "continue-on-error": "boolean",
+          "continue-on-error": "boolean-steps-context",
           "env": "step-env",
           "working-directory": "string-steps-context",
           "shell": "non-empty-string"
@@ -342,9 +304,9 @@
           "name": "string-steps-context-in-template",
           "id": "non-empty-string",
           "if": "string",
-          "timeout": "number",
+          "timeout-minutes": "number-steps-context-in-template",
           "run": "string-steps-context-in-template",
-          "continue-on-error": "boolean",
+          "continue-on-error": "boolean-steps-context-in-template",
           "env": "step-env-in-template",
           "working-directory": "string-steps-context-in-template",
           "shell": "non-empty-string"
@@ -358,8 +320,8 @@
           "name": "string-steps-context",
           "id": "non-empty-string",
           "if": "string",
-          "continue-on-error": "boolean",
-          "timeout": "number",
+          "continue-on-error": "boolean-steps-context",
+          "timeout-minutes": "number-steps-context",
           "uses": "non-empty-string",
           "with": "step-with",
           "env": "step-env"
@@ -373,8 +335,8 @@
           "name": "string-steps-context-in-template",
           "id": "non-empty-string",
           "if": "string",
-          "continue-on-error": "boolean",
-          "timeout": "number",
+          "continue-on-error": "boolean-steps-context-in-template",
+          "timeout-minutes": "number-steps-context-in-template",
           "uses": "non-empty-string",
           "with": "step-with-in-template",
           "env": "step-env-in-template"
