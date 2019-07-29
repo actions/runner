@@ -717,8 +717,8 @@ namespace GitHub.Runner.Worker
             _logger = HostContext.CreateService<IPagingLogger>();
             _logger.Setup(_mainTimelineId, _record.Id);
 
-            // Verbosity (from system.debug).
-            WriteDebug = true;
+            // Verbosity (from GitHub.RunnerDebug).
+            WriteDebug = Variables.Runner_Debug ?? false;
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
@@ -980,7 +980,7 @@ namespace GitHub.Runner.Worker
         }
 
         //
-        // Verbose output is enabled by setting System.Debug
+        // Verbose output is enabled by setting GitHub_Runner_Debug
         // It's meant to help the end user debug their definitions.
         // Why are my inputs not working?  It's not meant for dev debugging which is diag
         //
@@ -1015,13 +1015,13 @@ namespace GitHub.Runner.Worker
 
         public void Info(string format, params Object[] args)
         {
-            _executionContext.Output(string.Format(CultureInfo.CurrentCulture, $"{WellKnownTags.Debug}{format}", args));
+            _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, $"{format}", args));
         }
 
         public void Verbose(string format, params Object[] args)
         {
-            // // todo: switch to verbose? how to set system.debug?
-            // _executionContext.Output(string.Format(CultureInfo.CurrentCulture, $"{WellKnownTags.Debug}{format}", args));
+            // // todo: switch to verbose? how to set GitHub_Runner_Debug?
+            // _executionContext.Debug(string.Format(CultureInfo.CurrentCulture, $"{format}", args));
         }
     }
 

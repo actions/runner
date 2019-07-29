@@ -307,6 +307,14 @@ namespace GitHub.Runner.Common
                 public static readonly string SyncSources = "build.syncSources";
             }
 
+            public static class GitHub
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly string RunnerDebug = "GITHUB_RUNNER_DEBUG";
+            }
+
             public static class System
             {
                 //
@@ -316,7 +324,6 @@ namespace GitHub.Runner.Common
                 public static readonly string ArtifactsDirectory = "system.artifactsdirectory";
                 public static readonly string CollectionId = "system.collectionid";
                 public static readonly string Culture = "system.culture";
-                public static readonly string Debug = "system.debug";
                 public static readonly string DefaultWorkingDirectory = "system.defaultworkingdirectory";
                 public static readonly string DefinitionId = "system.definitionid";
                 public static readonly string EnableAccessToken = "system.enableAccessToken";

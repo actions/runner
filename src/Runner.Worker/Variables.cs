@@ -75,7 +75,7 @@ namespace GitHub.Runner.Worker
 
         public string System_CollectionId => Get(Constants.Variables.System.CollectionId);
 
-        public bool? System_Debug => GetBoolean(Constants.Variables.System.Debug);
+        public bool? Runner_Debug => GetBoolean(Constants.Variables.GitHub.RunnerDebug);
 
         public string System_DefinitionId => Get(Constants.Variables.System.DefinitionId);
 

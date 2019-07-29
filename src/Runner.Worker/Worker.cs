@@ -21,6 +21,11 @@ namespace GitHub.Runner.Worker
     public sealed class Worker : RunnerService, IWorker
     {
         private readonly TimeSpan _workerStartTimeout = TimeSpan.FromSeconds(30);
+        
+        // Do not mask the values of these secrets
+        private static String[] SecretVariableMaskWhitelist = new string[]{ 
+            Constants.Variables.GitHub.RunnerDebug
+            };
 
         public async Task<int> RunAsync(string pipeIn, string pipeOut)
         {
@@ -113,7 +118,8 @@ namespace GitHub.Runner.Worker
             // Add mask hints for secret variables
             foreach (var variable in (message.Variables ?? new Dictionary<string, VariableValue>()))
             {
-                if (variable.Value.IsSecret)
+                // Need to ignore values on whitelist
+                if (variable.Value.IsSecret && Array.FindIndex(SecretVariableMaskWhitelist, item => item.Equals(variable.Key, StringComparison.OrdinalIgnoreCase)) == -1)
                 {
                     var value = variable.Value.Value?.Trim() ?? string.Empty;
 

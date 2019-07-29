@@ -342,7 +342,7 @@ namespace GitHub.Runner.Worker
                 while (scopesToInitialize?.Count > 0)
                 {
                     scope = scopesToInitialize.Pop();
-                    executionContext.Output($"{WellKnownTags.Debug}Initializing scope '{scope.Name}'");
+                    executionContext.Debug($"Initializing scope '{scope.Name}'");
                     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
                     executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
                     var templateTrace = executionContext.ToTemplateTraceWriter();
@@ -400,7 +400,7 @@ namespace GitHub.Runner.Worker
                 while (scopesToFinalize?.Count > 0)
                 {
                     scope = scopesToFinalize.Dequeue();
-                    executionContext.Output($"{WellKnownTags.Debug}Finalizing scope '{scope.Name}'");
+                    executionContext.Debug($"Finalizing scope '{scope.Name}'");
                     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.Name);
                     executionContext.ExpressionValues["inputs"] = null;
                     var templateTrace = executionContext.ToTemplateTraceWriter();
@@ -429,7 +429,7 @@ namespace GitHub.Runner.Worker
                             var outputName = pair.Key;
                             var outputValue = pair.Value.ToString();
                             stepsContext.SetOutput(parentScopeName, contextName, outputName, outputValue, out var reference);
-                            executionContext.Output($"{WellKnownTags.Debug}{reference}='{outputValue}'");
+                            executionContext.Debug($"{reference}='{outputValue}'");
                         }
                     }
                 }
