@@ -6,6 +6,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -18,6 +19,92 @@ namespace GitHub.Runner.Worker.Handlers
     public sealed class ScriptHandler : Handler, IScriptHandler
     {
         public ScriptActionExecutionData Data { get; set; }
+
+        public override void PrintActionDetails()
+        {
+            Inputs.TryGetValue("script", out string contents);
+            contents = contents ?? string.Empty;
+            if (Action.Type == Pipelines.ActionSourceType.Script)
+            {
+                var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
+                var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
+                if (firstNewLine >= 0)
+                {
+                    firstLine = firstLine.Substring(0, firstNewLine);
+                }
+
+                ExecutionContext.Output($"##[group]Run {firstLine}");
+            }
+            else
+            {
+                throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
+            }
+
+            var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+            foreach (var line in multiLines)
+            {
+                // Bright Cyan color
+                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
+            }
+
+            string argFormat;
+            string shellCommand;
+            string shellCommandPath = null;
+            bool validateShellOnHost = !(StepHost is ContainerStepHost);
+            Inputs.TryGetValue("shell", out var shell);
+            if (string.IsNullOrEmpty(shell))
+            {
+#if OS_WINDOWS
+                shellCommand = "cmd";
+                if(validateShellOnHost)
+                {
+                    shellCommandPath = System.Environment.GetEnvironmentVariable("ComSpec");
+                }
+#else
+                shellCommand = "sh";
+                if (validateShellOnHost)
+                {
+                    shellCommandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true, Trace);
+                }
+#endif
+                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+            }
+            else
+            {
+                var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
+                shellCommand = parsed.shellCommand;
+                if (validateShellOnHost)
+                {
+                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace);
+                }
+
+                argFormat = $"{parsed.shellArgs}".TrimStart();
+                if (string.IsNullOrEmpty(argFormat))
+                {
+                    argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(shellCommandPath))
+            {
+                ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
+            }
+            else
+            {
+                ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
+            }
+
+            if (this.Environment?.Count > 0)
+            {
+                ExecutionContext.Output("env:");
+                foreach (var env in this.Environment)
+                {
+                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
+                }
+            }
+
+            ExecutionContext.Output("##[endgroup]");
+        }
 
         public async Task RunAsync()
         {
@@ -51,7 +138,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
 #else
                 shellCommand = "sh";
-                commandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true);
+                commandPath = WhichUtil.Which("bash", false, Trace) ?? WhichUtil.Which("sh", true, Trace);
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
@@ -60,7 +147,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
                 shellCommand = parsed.shellCommand;
                 // For non-ContainerStepHost, the command must be located on the host by Which
-                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost);
+                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace);
                 argFormat = $"{parsed.shellArgs}".TrimStart();
                 if (string.IsNullOrEmpty(argFormat))
                 {
@@ -96,10 +183,6 @@ namespace GitHub.Runner.Worker.Handlers
             // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
             File.WriteAllText(scriptFilePath, contents, encoding);
 
-            ExecutionContext.Output("##[group] Script contents");
-            ExecutionContext.Output(contents);
-            ExecutionContext.Output("##[endgroup]");
-
             // Prepend PATH
             AddPrependPathToEnvironment();
 
@@ -117,7 +200,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             // dump out the command
             var fileName = isContainerStepHost ? shellCommand : commandPath;
-            ExecutionContext.Command($"{fileName} {arguments}");
+            ExecutionContext.Debug($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))

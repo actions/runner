@@ -13,6 +13,7 @@ namespace GitHub.Runner.Worker.Handlers
 {
     public interface IHandler : IRunnerService
     {
+        Pipelines.ActionStepDefinitionReference Action { get; set; }
         Dictionary<string, string> Environment { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         Variables RuntimeVariables { get; set; }
@@ -20,6 +21,7 @@ namespace GitHub.Runner.Worker.Handlers
         Dictionary<string, string> Inputs { get; set; }
         string ActionDirectory { get; set; }
         Task RunAsync();
+        void PrintActionDetails();
     }
 
     public abstract class Handler : RunnerService
@@ -32,12 +34,73 @@ namespace GitHub.Runner.Worker.Handlers
 
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
+        public Pipelines.ActionStepDefinitionReference Action { get; set; }
         public Dictionary<string, string> Environment { get; set; }
         public Variables RuntimeVariables { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
         public IStepHost StepHost { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public string ActionDirectory { get; set; }
+
+        public virtual void PrintActionDetails()
+        {
+            string groupName = "";
+            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                var registryAction = Action as Pipelines.ContainerRegistryReference;
+                groupName = $"Run docker://{registryAction.Image}";
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Repository)
+            {
+                var repoAction = Action as Pipelines.RepositoryPathReference;
+                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    groupName = $"Run {repoAction.Path}";
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(repoAction.Path))
+                    {
+                        groupName = $"Run {repoAction.Name}@{repoAction.Ref}";
+                    }
+                    else
+                    {
+                        groupName = $"Run {repoAction.Name}/{repoAction.Path}@{repoAction.Ref}";
+                    }
+                }
+            }
+            else
+            {
+                // this should never happen
+                Trace.Error($"Can't generate default folding group name for action {Action.Type.ToString()}");
+                groupName = "Action details";
+            }
+
+            ExecutionContext.Output($"##[group]{groupName}");
+
+            if (this.Inputs?.Count > 0)
+            {
+                ExecutionContext.Output("with:");
+                foreach (var input in this.Inputs)
+                {
+                    if (!string.IsNullOrEmpty(input.Value))
+                    {
+                        ExecutionContext.Output($"  {input.Key}: {input.Value}");
+                    }
+                }
+            }
+
+            if (this.Environment?.Count > 0)
+            {
+                ExecutionContext.Output("env:");
+                foreach (var env in this.Environment)
+                {
+                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
+                }
+            }
+
+            ExecutionContext.Output("##[endgroup]");
+        }
 
         public override void Initialize(IHostContext hostContext)
         {

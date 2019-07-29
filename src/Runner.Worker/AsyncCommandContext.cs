@@ -64,7 +64,7 @@ namespace GitHub.Runner.Worker
             Trace.Entering();
             // start flushing output queue
             Trace.Info("Start flush buffered output.");
-            _executionContext.Section($"Async Command Start: {Name}");
+            _executionContext.Debug($"Async Command Start: {Name}");
             OutputMessage output;
             while (!this.Task.IsCompleted)
             {
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            _executionContext.Section($"Async Command End: {Name}");
+            _executionContext.Debug($"Async Command End: {Name}");
             Trace.Info("Finsh flush buffered output.");
 
             // wait for the async command task

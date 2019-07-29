@@ -49,9 +49,6 @@ namespace GitHub.Runner.Worker
             Definition definition = taskManager.LoadAction(ExecutionContext, Action);
             ArgUtil.NotNull(definition, nameof(definition));
 
-            // Print out action metadata
-            PrintActionMetaData(definition);
-
             ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
 
@@ -124,48 +121,13 @@ namespace GitHub.Runner.Worker
                             inputs,
                             environment,
                             ExecutionContext.Variables,
-                            taskDirectory: definition.Directory);
+                            actionDirectory: definition.Directory);
+
+            // Print out action details
+            handler.PrintActionDetails();
 
             // Run the task.
             await handler.RunAsync();
-        }
-
-        private void PrintActionMetaData(Definition actionDefinition)
-        {
-            ArgUtil.NotNull(Action, nameof(Action));
-            ArgUtil.NotNull(Action.Reference, nameof(Action.Reference));
-            ArgUtil.NotNull(actionDefinition.Data, nameof(actionDefinition.Data));
-
-            ExecutionContext.Output("##[group]Action details");
-            if (!string.IsNullOrEmpty(actionDefinition.Data.Name))
-            {
-                ExecutionContext.Output($"Action             : {actionDefinition.Data.Name}");
-            }
-
-            if (!string.IsNullOrEmpty(actionDefinition.Data.Description))
-            {
-                ExecutionContext.Output($"Description        : {actionDefinition.Data.Description}");
-            }
-
-            if (Action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
-            {
-                var registryAction = Action.Reference as Pipelines.ContainerRegistryReference;
-                ExecutionContext.Output($"Action image       : {registryAction.Image}");
-            }
-            else if (Action.Reference.Type == Pipelines.ActionSourceType.Repository)
-            {
-                var repoAction = Action.Reference as Pipelines.RepositoryPathReference;
-                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-                {
-                    ExecutionContext.Output($"Action repository  : {Pipelines.PipelineConstants.SelfAlias}");
-                }
-                else
-                {
-                    ExecutionContext.Output($"Action repository  : {repoAction.Name}@{repoAction.Ref}");
-                }
-            }
-
-            ExecutionContext.Output("##[endgroup]");
         }
     }
 }

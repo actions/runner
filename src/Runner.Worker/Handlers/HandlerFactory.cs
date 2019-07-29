@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Handlers
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
-            string taskDirectory);
+            string actionDirectory);
     }
 
     public sealed class HandlerFactory : RunnerService, IHandlerFactory
@@ -32,7 +32,7 @@ namespace GitHub.Runner.Worker.Handlers
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
-            string taskDirectory)
+            string actionDirectory)
         {
             // Validate args.
             Trace.Entering();
@@ -72,12 +72,13 @@ namespace GitHub.Runner.Worker.Handlers
                 throw new NotSupportedException(data.ExecutionType.ToString());
             }
 
+            handler.Action = action;
             handler.Environment = environment;
             handler.RuntimeVariables = runtimeVariables;
             handler.ExecutionContext = executionContext;
             handler.StepHost = stepHost;
             handler.Inputs = inputs;
-            handler.ActionDirectory = taskDirectory;
+            handler.ActionDirectory = actionDirectory;
             return handler;
         }
     }

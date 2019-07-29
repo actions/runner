@@ -8,12 +8,6 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.ObjectTemplating;
-using System.Threading;
-using System.Reflection;
-using GitHub.DistributedTask.Pipelines.ObjectTemplating;
-using GitHub.DistributedTask.ObjectTemplating.Schema;
 
 namespace GitHub.Runner.Worker.Handlers
 {
