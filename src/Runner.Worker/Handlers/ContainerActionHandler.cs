@@ -28,6 +28,9 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Data, nameof(Data));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
+#if OS_WINDOWS || OS_OSX
+            throw new NotSupportedException($"Container action is only supported on Linux");
+#else
             // Update the env dictionary.
             AddInputsToEnvironment();
 
@@ -171,6 +174,9 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Result = TaskResult.Failed;
                 }
             }
+#endif
         }
+
     }
+
 }
