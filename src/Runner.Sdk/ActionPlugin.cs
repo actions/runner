@@ -22,7 +22,7 @@ namespace GitHub.Runner.Sdk
 
     public class RunnerActionPluginExecutionContext : ITraceWriter
     {
-        private readonly string DebugEnvironmentalVariable = "GITHUB_RUNNER_DEBUG";
+        private readonly string DebugEnvironmentalVariable = "ACTIONS_STEP_DEBUG";
         private VssConnection _connection;
         private readonly object _stdoutLock = new object();
         private readonly ITraceWriter _trace; // for unit tests
@@ -155,7 +155,8 @@ namespace GitHub.Runner.Sdk
 
         public void Debug(string message)
         {
-            if (!string.IsNullOrEmpty(Variables.GetValueOrDefault(DebugEnvironmentalVariable)?.Value))
+            var debugString = Variables.GetValueOrDefault(DebugEnvironmentalVariable)?.Value;
+            if (StringUtil.ConvertToBoolean(debugString))
             {
                 Output($"##[debug]{Escape(message)}");
             }

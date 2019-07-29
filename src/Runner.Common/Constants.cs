@@ -236,6 +236,14 @@ namespace GitHub.Runner.Common
             public static readonly string MacroPrefix = "$(";
             public static readonly string MacroSuffix = ")";
 
+            public static class Actions
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
+            }
+
             public static class Agent
             {
                 //
@@ -307,13 +315,6 @@ namespace GitHub.Runner.Common
                 public static readonly string SyncSources = "build.syncSources";
             }
 
-            public static class GitHub
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string RunnerDebug = "GITHUB_RUNNER_DEBUG";
-            }
 
             public static class System
             {
