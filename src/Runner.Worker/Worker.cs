@@ -119,7 +119,7 @@ namespace GitHub.Runner.Worker
             foreach (var variable in (message.Variables ?? new Dictionary<string, VariableValue>()))
             {
                 // Need to ignore values on whitelist
-                if (variable.Value.IsSecret && SecretVariableMaskWhitelist.Contains(variable.Key))
+                if (variable.Value.IsSecret && !SecretVariableMaskWhitelist.Contains(variable.Key))
                 {
                     var value = variable.Value.Value?.Trim() ?? string.Empty;
 

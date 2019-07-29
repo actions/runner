@@ -137,15 +137,7 @@ namespace GitHub.Runner.Sdk
 
         public void Verbose(string message)
         {
-#if DEBUG
             Debug(message);
-#else
-            string actionsRunnerTrace = Variables.GetValueOrDefault(DebugEnvironmentalVariable)?.Value;
-            if (!string.IsNullOrEmpty(actionsRunnerTrace))
-            {
-                Debug(message);
-            }
-#endif
         }
 
         public void Error(string message)
