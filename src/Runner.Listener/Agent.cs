@@ -195,7 +195,7 @@ namespace GitHub.Runner.Listener
                     // Fix the work folder setting on Linux
                     if (settings.WorkFolder.Contains("vsts", StringComparison.OrdinalIgnoreCase))
                     {
-                        var unix = HostContext.GetService<UnixUtil>();
+                        var unix = HostContext.GetService<IUnixUtil>();
 
                         // create new work folder /runner/work
                         await unix.ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "sh", "-c \"sudo mkdir -p /runner/work\"");
