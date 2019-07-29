@@ -99,7 +99,7 @@ namespace GitHub.Runner.Sdk
 
                     if (matches != null && matches.Length > 0)
                     {
-                        trace?.Info("Location: '{matches.First()}'");
+                        trace?.Info($"Location: '{matches.First()}'");
                         return matches.First();
                     }
 #endif

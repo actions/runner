@@ -160,7 +160,6 @@ namespace GitHub.Runner.Listener
                 // Run runner
                 if (command.Run) // this line is current break machine provisioner.
                 {
-
                     // Error if runner not configured.
                     if (!configManager.IsConfigured())
                     {
@@ -191,6 +190,25 @@ namespace GitHub.Runner.Listener
                             startType = StartupType.Manual;
                         }
                     }
+
+#if !OS_WINDOWS
+                    // Fix the work folder setting on Linux
+                    if (settings.WorkFolder.Contains("vsts", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var workFolder = "/runner/work";
+                        var unix = HostContext.GetService<IUnixUtil>();
+
+                        // create new work folder /runner/work
+                        await unix.ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "sh", $"-c \"sudo mkdir -p {workFolder}\"");
+
+                        // fix permission
+                        await unix.ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "sh", $"-c \"sudo chown -R $USER {workFolder}\"");
+
+                        // update settings
+                        settings.WorkFolder = workFolder;
+                        store.SaveSettings(settings);
+                    }
+#endif
 
                     Trace.Info($"Set runner startup type - {startType}");
                     HostContext.StartupType = startType;
