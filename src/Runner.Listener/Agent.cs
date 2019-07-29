@@ -195,16 +195,17 @@ namespace GitHub.Runner.Listener
                     // Fix the work folder setting on Linux
                     if (settings.WorkFolder.Contains("vsts", StringComparison.OrdinalIgnoreCase))
                     {
+                        var workFolder = "/runner/work";
                         var unix = HostContext.GetService<IUnixUtil>();
 
                         // create new work folder /runner/work
-                        await unix.ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "sh", "-c \"sudo mkdir -p /runner/work\"");
+                        await unix.ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "sh", $"-c \"sudo mkdir -p {workFolder}\"");
 
                         // fix permission
-                        await unix.ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "sh", $"-c \"sudo chown -R {Environment.UserName} /runner/work\"");
+                        await unix.ExecAsync(HostContext.GetDirectory(WellKnownDirectory.Root), "sh", $"-c \"sudo chown -R $USER {workFolder}\"");
 
                         // update settings
-                        settings.WorkFolder = "/runner/work";
+                        settings.WorkFolder = workFolder;
                         store.SaveSettings(settings);
                     }
 #endif
