@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker
                              string.Equals(actionCommand.Command, _stopToken, StringComparison.OrdinalIgnoreCase))
                     {
                         context.Output(input);
-                        context.Output($"{WellKnownTags.Debug}Resume processing commands");
+                        context.Debug("Resume processing commands");
                         _registeredCommands.Remove(_stopToken);
                         _stopProcessCommand = false;
                         _stopToken = null;
@@ -98,7 +98,7 @@ namespace GitHub.Runner.Worker
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
                         context.Output(input);
-                        context.Output($"{WellKnownTags.Debug}Paused processing commands until '##[{actionCommand.Data}]' is received");
+                        context.Debug("Paused processing commands until '##[{actionCommand.Data}]' is received");
                         _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Worker
                         if (!omitEcho)
                         {
                             context.Output(input);
-                            context.Output($"{WellKnownTags.Debug}Processed command");
+                            context.Debug($"Processed command");
                         }
 
                     }
@@ -191,7 +191,7 @@ namespace GitHub.Runner.Worker
 
             context.EnvironmentVariables[envName] = command.Data;
             context.Output(line);
-            context.Output($"{WellKnownTags.Debug}{envName}='{command.Data}'");
+            context.Debug($"{envName}='{command.Data}'");
             omitEcho = true;
         }
 
@@ -216,7 +216,7 @@ namespace GitHub.Runner.Worker
 
             context.SetOutput(outputName, command.Data, out var reference);
             context.Output(line);
-            context.Output($"{WellKnownTags.Debug}{reference}='{command.Data}'");
+            context.Debug($"{reference}='{command.Data}'");
             omitEcho = true;
         }
 

@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Load the inputs.
-            ExecutionContext.Output($"{WellKnownTags.Debug}Loading inputs");
+            ExecutionContext.Debug("Loading inputs");
             var templateTrace = ExecutionContext.ToTemplateTraceWriter();
             var schema = new PipelineTemplateSchemaFactory().CreateSchema();
             var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
@@ -103,7 +103,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Load the task environment.
-            ExecutionContext.Output($"{WellKnownTags.Debug}Loading env");
+            ExecutionContext.Debug("Loading env");
             var environment = templateEvaluator.EvaluateStepEnvironment(Action.Environment, ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
 
             // Apply environment set using ##[set-env]

@@ -236,6 +236,14 @@ namespace GitHub.Runner.Common
             public static readonly string MacroPrefix = "$(";
             public static readonly string MacroSuffix = ")";
 
+            public static class Actions
+            {
+                //
+                // Keep alphabetical
+                //
+                public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
+            }
+
             public static class Agent
             {
                 //
@@ -307,6 +315,7 @@ namespace GitHub.Runner.Common
                 public static readonly string SyncSources = "build.syncSources";
             }
 
+
             public static class System
             {
                 //
@@ -316,7 +325,6 @@ namespace GitHub.Runner.Common
                 public static readonly string ArtifactsDirectory = "system.artifactsdirectory";
                 public static readonly string CollectionId = "system.collectionid";
                 public static readonly string Culture = "system.culture";
-                public static readonly string Debug = "system.debug";
                 public static readonly string DefaultWorkingDirectory = "system.defaultworkingdirectory";
                 public static readonly string DefinitionId = "system.definitionid";
                 public static readonly string EnableAccessToken = "system.enableAccessToken";
