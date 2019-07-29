@@ -140,7 +140,7 @@ namespace GitHub.Runner.Sdk
 #if DEBUG
             Debug(message);
 #else
-            string actionsRunnerTrace = Variables.GetValueOrDefault(DebugEnvironmentalVariable)?.Value);
+            string actionsRunnerTrace = Variables.GetValueOrDefault(DebugEnvironmentalVariable)?.Value;
             if (!string.IsNullOrEmpty(actionsRunnerTrace))
             {
                 Debug(message);
