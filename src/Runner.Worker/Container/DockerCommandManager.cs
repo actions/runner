@@ -300,19 +300,8 @@ namespace GitHub.Runner.Worker.Container
                 }
             };
 
-#if OS_WINDOWS
-            context.Output("");
-            context.Output("                        ##         .");
-            context.Output("                  ## ## ##        ==");
-            context.Output("               ## ## ## ## ##    ===");
-            context.Output("           /\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\\___/ ===");
-            context.Output("      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~~ ~ /  ===- ~~~");
-            context.Output("           \\______ o           __/");
-            context.Output("             \\    \\         __/");
-            context.Output("              \\____\\_______/");
-            context.Output("");
-            await Task.Delay(1000);
-            return 0;
+#if OS_WINDOWS || OS_OSX
+            throw new NotSupportedException($"Container operation is only supported on Linux");
 #else
             return await processInvoker.ExecuteAsync(
                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
@@ -350,19 +339,9 @@ namespace GitHub.Runner.Worker.Container
             processInvoker.OutputDataReceived += stdoutDataReceived;
             processInvoker.ErrorDataReceived += stderrDataReceived;
 
-#if OS_WINDOWS
-            context.Output("");
-            context.Output("                        ##         .");
-            context.Output("                  ## ## ##        ==");
-            context.Output("               ## ## ## ## ##    ===");
-            context.Output("           /\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\\___/ ===");
-            context.Output("      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~~ ~ /  ===- ~~~");
-            context.Output("           \\______ o           __/");
-            context.Output("             \\    \\         __/");
-            context.Output("              \\____\\_______/");
-            context.Output("");
-            await Task.Delay(1000);
-            return 0;
+
+#if OS_WINDOWS || OS_OSX
+            throw new NotSupportedException($"Container operation is only supported on Linux");
 #else
             return await processInvoker.ExecuteAsync(
                 workingDirectory: context.GetGitHubContext("workspace"),
@@ -392,19 +371,8 @@ namespace GitHub.Runner.Worker.Container
                 context.Output(message.Data);
             };
 
-#if OS_WINDOWS
-            context.Output("");
-            context.Output("                        ##         .");
-            context.Output("                  ## ## ##        ==");
-            context.Output("               ## ## ## ## ##    ===");
-            context.Output("           /\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\\___/ ===");
-            context.Output("      ~~~ {~~ ~~~~ ~~~ ~~~~ ~~~ ~ /  ===- ~~~");
-            context.Output("           \\______ o           __/");
-            context.Output("             \\    \\         __/");
-            context.Output("              \\____\\_______/");
-            context.Output("");
-            await Task.Delay(1000);
-            return 0;
+#if OS_WINDOWS || OS_OSX
+            throw new NotSupportedException($"Container operation is only supported on Linux");
 #else
             return await processInvoker.ExecuteAsync(
                 workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
