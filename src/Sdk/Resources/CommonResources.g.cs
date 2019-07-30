@@ -31,13 +31,13 @@ namespace GitHub.Services.Common.Internal
 
         public static string InvalidPropertyName(object arg0)
         {
-            const string Format = @"TF400458: Invalid property name: '{0}'. Property names cannot contain leading or trailing whitespace.";
+            const string Format = @"Invalid property name: '{0}'. Property names cannot contain leading or trailing whitespace.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string InvalidPropertyValueSize(object arg0, object arg1, object arg2)
         {
-            const string Format = @"TF20509: The value of property '{0}' exceeds the maximum size allowed. '{1}' values must not exceed '{2}' bytes.";
+            const string Format = @"The value of property '{0}' exceeds the maximum size allowed. '{1}' values must not exceed '{2}' bytes.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1, arg2);
         }
 
@@ -49,7 +49,7 @@ namespace GitHub.Services.Common.Internal
 
         public static string PropertyArgumentExceededMaximumSizeAllowed(object arg0, object arg1)
         {
-            const string Format = @"TF20508: The argument '{0}' is too long. It must not contain more than '{1}' characters.";
+            const string Format = @"The argument '{0}' is too long. It must not contain more than '{1}' characters.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1);
         }
 
@@ -79,7 +79,7 @@ namespace GitHub.Services.Common.Internal
 
         public static string VssInvalidUnicodeCharacter(object arg0)
         {
-            const string Format = @"TF20507: The string argument contains a character that is not valid:'u{0:X4}'. Correct the argument, and then try the operation again.";
+            const string Format = @"The string argument contains a character that is not valid:'u{0:X4}'. Correct the argument, and then try the operation again.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
@@ -121,13 +121,13 @@ namespace GitHub.Services.Common.Internal
 
         public static string VssUnauthorized(object arg0)
         {
-            const string Format = @"VS30063: You are not authorized to access {0}.";
+            const string Format = @"You are not authorized to access {0}.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string VssUnauthorizedUnknownServer()
         {
-            const string Format = @"VS30064: You are not authorized to access the server.";
+            const string Format = @"You are not authorized to access the server.";
             return Format;
         }
 
@@ -457,31 +457,31 @@ namespace GitHub.Services.Common.Internal
 
         public static string UriUtility_AbsoluteUriRequired(object arg0)
         {
-            const string Format = @"TF205013: The following URL is not valid: {0}. You must specify an absolute path.";
+            const string Format = @"The following URL is not valid: {0}. You must specify an absolute path.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string UriUtility_RelativePathInvalid(object arg0)
         {
-            const string Format = @"TF205014: The following relative path is not valid: {0}. It must be both well formed and relative. It might be an absolute path.";
+            const string Format = @"The following relative path is not valid: {0}. It must be both well formed and relative. It might be an absolute path.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string UriUtility_UriNotAllowed(object arg0)
         {
-            const string Format = @"TF205012: The following URL is not valid: {0}. It must begin with http or https.";
+            const string Format = @"The following URL is not valid: {0}. It must begin with http or https.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string UriUtility_MustBeAuthorityOnlyUri(object arg0, object arg1)
         {
-            const string Format = @"TF253018: The following URL is not valid: {0}. Try removing any relative path information from the URL (for example, {1}).";
+            const string Format = @"The following URL is not valid: {0}. Try removing any relative path information from the URL (for example, {1}).";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1);
         }
 
         public static string UrlNotValid()
         {
-            const string Format = @"TF249010: The URL that you specified is not valid. The URL must begin with either HTTP or HTTPS and be a valid address.";
+            const string Format = @"The URL that you specified is not valid. The URL must begin with either HTTP or HTTPS and be a valid address.";
             return Format;
         }
 

@@ -271,13 +271,13 @@ namespace GitHub.DistributedTask.Pipelines
 
         public static string QueueNotFound(object arg0)
         {
-            const string Format = @"Could not find a pool with ID {0}. The pool does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"Could not find a pool with ID {0}. The pool does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string QueueNotFoundByName(object arg0)
         {
-            const string Format = @"Could not find a pool with name {0}. The pool does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"Could not find a pool with name {0}. The pool does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
@@ -289,25 +289,25 @@ namespace GitHub.DistributedTask.Pipelines
 
         public static string SecureFileNotFound(object arg0)
         {
-            const string Format = @"A secure file with name {0} could not be found. The secure file does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"A secure file with name {0} could not be found. The secure file does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string SecureFileNotFoundForInput(object arg0, object arg1, object arg2, object arg3)
         {
-            const string Format = @"Job {0}: Step {1} input {2} references secure file {3} which could not be found. The secure file does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"Job {0}: Step {1} input {2} references secure file {3} which could not be found. The secure file does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1, arg2, arg3);
         }
 
         public static string ServiceEndpointNotFound(object arg0)
         {
-            const string Format = @"A service connection with name {0} could not be found. The service connection does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"A service connection with name {0} could not be found. The service connection does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string ServiceEndpointNotFoundForInput(object arg0, object arg1, object arg2, object arg3)
         {
-            const string Format = @"Job {0}: Step {1} input {2} references service connection {3} which could not be found. The service connection does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"Job {0}: Step {1} input {2} references service connection {3} which could not be found. The service connection does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1, arg2, arg3);
         }
 
@@ -421,13 +421,13 @@ namespace GitHub.DistributedTask.Pipelines
 
         public static string VariableGroupNotFound(object arg0)
         {
-            const string Format = @"Variable group {0} was not found or is not authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"Variable group {0} was not found or is not authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string VariableGroupNotFoundForPhase(object arg0, object arg1)
         {
-            const string Format = @"Job {0}: Variable group {1} could not be found. The variable group does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz";
+            const string Format = @"Job {0}: Variable group {1} could not be found. The variable group does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1);
         }
 
@@ -493,7 +493,7 @@ namespace GitHub.DistributedTask.Pipelines
 
         public static string ServiceConnectionUsedInVariableGroupNotValid(object arg0, object arg1)
         {
-            const string Format = @"Service connection : {0} used in variable group : {1} is not valid. Either service connection does not exist or has not been authorized for use. For authorization details, refer to https://aka.ms/yamlauthz.";
+            const string Format = @"Service connection : {0} used in variable group : {1} is not valid. Either service connection does not exist or has not been authorized for use.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1);
         }
     }

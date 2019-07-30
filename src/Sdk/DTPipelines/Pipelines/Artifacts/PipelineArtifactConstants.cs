@@ -80,7 +80,7 @@ namespace GitHub.DistributedTask.Pipelines.Artifacts
             RunsOn = { TaskRunsOnConstants.RunsOnAgent },
             Version = new TaskVersion("1.0.0"),
             Description = "Downloads pipeline type artifacts.",
-            HelpMarkDown = "[More Information](https://go.microsoft.com/fwlink/?LinkId=798199)",
+            HelpMarkDown = "[More Information]()",
             Inputs = {
                 new TaskInputDefinition()
                 {

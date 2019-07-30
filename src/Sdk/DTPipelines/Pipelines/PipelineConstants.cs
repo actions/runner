@@ -138,7 +138,7 @@ namespace GitHub.DistributedTask.Pipelines
             RunsOn = { TaskRunsOnConstants.RunsOnAgent },
             Version = new TaskVersion("1.0.0"),
             Description = "Get sources from a repository. Supports Git, TfsVC, and SVN repositories.",
-            HelpMarkDown = "[More Information](https://go.microsoft.com/fwlink/?LinkId=798199)",
+            HelpMarkDown = "[More Information]()",
             Inputs = {
                 new TaskInputDefinition()
                 {

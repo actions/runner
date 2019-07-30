@@ -57,7 +57,7 @@ namespace GitHub.Runner.Listener.Configuration
             var tenantAuthorityUrl = GetTenantAuthorityUrl(context, serverUrl);
             if (tenantAuthorityUrl == null)
             {
-                throw new NotSupportedException($"This Azure DevOps organization '{serverUrl}' is not backed by Azure Active Directory.");
+                throw new NotSupportedException($"'{serverUrl}' is not backed by Azure Active Directory.");
             }
 
             LoggerCallbackHandler.LogCallback = ((LogLevel level, string message, bool containsPii) =>
