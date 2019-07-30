@@ -31,7 +31,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
         public override String ToString()
         {
-            return m_value.ToString("G17", CultureInfo.InvariantCulture);
+            return m_value.ToString("G15", CultureInfo.InvariantCulture);
         }
 
         Double INumber.GetNumber()
