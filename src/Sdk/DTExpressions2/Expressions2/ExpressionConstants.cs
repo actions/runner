@@ -40,7 +40,7 @@ namespace GitHub.DistributedTask.Expressions2
         internal static readonly String NaN = "NaN";
         internal static readonly String NegativeInfinity = "-Infinity";
         internal static readonly String Null = "null";
-        internal static readonly String NumberFormat = "G17";
+        internal static readonly String NumberFormat = "G15";
         internal static readonly String True = "true";
         internal static readonly Dictionary<String, IFunctionInfo> WellKnownFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
 
