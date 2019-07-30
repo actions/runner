@@ -13,7 +13,7 @@ namespace GitHub.Services.WebApi
 
         public static string InvalidPermissionsException(object arg0, object arg1)
         {
-            const string Format = @"VS403284: Invalid operation. Unable to set bits '{1}' in security namespace '{0}' as it is reserved by the system.";
+            const string Format = @"Invalid operation. Unable to set bits '{1}' in security namespace '{0}' as it is reserved by the system.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1);
         }
     }

@@ -61,13 +61,13 @@ namespace GitHub.DistributedTask.Expressions
 
         public static string ParseErrorWithFwlink(object arg0)
         {
-            const string Format = @"{0}. For more help, refer to https://go.microsoft.com/fwlink/?linkid=842996";
+            const string Format = @"{0}.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
         public static string ParseErrorWithTokenInfo(object arg0, object arg1, object arg2, object arg3)
         {
-            const string Format = @"{0}: '{1}'. Located at position {2} within expression: {3}. For more help, refer to https://go.microsoft.com/fwlink/?linkid=842996";
+            const string Format = @"{0}: '{1}'. Located at position {2} within expression: {3}.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1, arg2, arg3);
         }
 

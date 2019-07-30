@@ -13,7 +13,7 @@ namespace GitHub.Services.Content.Common
 
         public static string ArtifactBillingException()
         {
-            const string Format = @"Artifact cannot be uploaded because max quantity has been exceeded or the payment instrument is invalid. https://aka.ms/artbilling for details.";
+            const string Format = @"Artifact cannot be uploaded because max quantity has been exceeded or the payment instrument is invalid.";
             return Format;
         }
     }

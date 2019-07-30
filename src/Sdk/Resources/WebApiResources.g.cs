@@ -61,13 +61,13 @@ namespace GitHub.Services.WebApi
 
         public static string RelativeLocationMappingErrorMessage()
         {
-            const string Format = @"TF205038: You cannot add location mappings to service definitions that are not part of the FullyQualified type.";
+            const string Format = @"You cannot add location mappings to service definitions that are not part of the FullyQualified type.";
             return Format;
         }
 
         public static string InvalidAccessMappingLocationServiceUrl()
         {
-            const string Format = @"TF205035: The access mapping is not valid and cannot be registered. The location service URL cannot be null or empty.";
+            const string Format = @"The access mapping is not valid and cannot be registered. The location service URL cannot be null or empty.";
             return Format;
         }
 
@@ -79,7 +79,7 @@ namespace GitHub.Services.WebApi
 
         public static string ServiceDefinitionWithNoLocations(object arg0)
         {
-            const string Format = @"TF205046: The service with the following type does not have a location mapping: {0}. You must provide at least one location in order to configure locations for an external service.";
+            const string Format = @"The service with the following type does not have a location mapping: {0}. You must provide at least one location in order to configure locations for an external service.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
@@ -235,7 +235,7 @@ namespace GitHub.Services.WebApi
 
         public static string CollectionDoesNotExistException(object arg0)
         {
-            const string Format = @"VS402844: Collection with name {0} does not exist.";
+            const string Format = @"Collection with name {0} does not exist.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 
@@ -259,7 +259,7 @@ namespace GitHub.Services.WebApi
 
         public static string GetServiceArgumentError(object arg0)
         {
-            const string Format = @"TF400776: '{0}' must be a non-abstract class with a public parameterless or default constructor in order to use it as parameter 'T' in GetService<T>().";
+            const string Format = @"'{0}' must be a non-abstract class with a public parameterless or default constructor in order to use it as parameter 'T' in GetService<T>().";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
 

@@ -12,8 +12,7 @@ namespace GitHub.Services.Content.Common
     public class ArtifactBillingException : VssServiceException
     {
         public const string DefaultExceptionMessage =
-            "Artifact cannot be uploaded because max quantity has been exceeded or the payment instrument is invalid. " +
-            "https://aka.ms/artbilling for details.";
+            "Artifact cannot be uploaded because max quantity has been exceeded or the payment instrument is invalid.";
 
         /// <inheritdoc />
         /// <summary>

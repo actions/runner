@@ -24,6 +24,6 @@ namespace GitHub.Services.WebApi
             this.HelpLink = HelpLinkUrl;
         }
 
-        private const string HelpLinkUrl = "https://go.microsoft.com/fwlink/?LinkID=324097";
+        private const string HelpLinkUrl = "";
     }
 }
