@@ -27,6 +27,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             Directive = directive;
         }
 
+        [DataMember(Name = "directive", EmitDefaultValue = false)]
         internal String Directive { get; }
 
         internal static Boolean IsValidExpression(

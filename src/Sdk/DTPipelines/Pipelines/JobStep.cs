@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Newtonsoft.Json;
 
 namespace GitHub.DistributedTask.Pipelines
@@ -19,8 +20,8 @@ namespace GitHub.DistributedTask.Pipelines
             : base(stepToClone)
         {
             this.Condition = stepToClone.Condition;
-            this.ContinueOnError = stepToClone.ContinueOnError;
-            this.TimeoutInMinutes = stepToClone.TimeoutInMinutes;
+            this.ContinueOnError = stepToClone.ContinueOnError?.Clone();
+            this.TimeoutInMinutes = stepToClone.TimeoutInMinutes?.Clone();
         }
 
         [DataMember(EmitDefaultValue = false)]
@@ -31,14 +32,14 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         [DataMember(EmitDefaultValue = false)]
-        public Boolean ContinueOnError
+        public TemplateToken ContinueOnError
         {
             get;
             set;
         }
 
         [DataMember(EmitDefaultValue = false)]
-        public Int32 TimeoutInMinutes
+        public TemplateToken TimeoutInMinutes
         {
             get;
             set;

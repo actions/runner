@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
@@ -17,11 +18,10 @@ namespace GitHub.Runner.Worker
     public interface IStep
     {
         IExpressionNode Condition { get; set; }
-        bool ContinueOnError { get; }
+        TemplateToken ContinueOnError { get; }
         string DisplayName { get; }
-        bool Enabled { get; }
         IExecutionContext ExecutionContext { get; set; }
-        TimeSpan? Timeout { get; }
+        TemplateToken Timeout { get; }
         Task RunAsync();
     }
 
@@ -52,8 +52,7 @@ namespace GitHub.Runner.Worker
             {
                 var step = steps[stepIndex];
                 var nextStep = stepIndex + 1 < steps.Count ? steps[stepIndex + 1] : null;
-                Trace.Info($"Processing step: DisplayName='{step.DisplayName}', ContinueOnError={step.ContinueOnError}, Enabled={step.Enabled}");
-                ArgUtil.Equal(true, step.Enabled, nameof(step.Enabled));
+                Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
                 ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
 
@@ -197,7 +196,26 @@ namespace GitHub.Runner.Worker
             // Start the step.
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
-            step.ExecutionContext.SetTimeout(timeout: step.Timeout);
+
+            // Set the timeout
+            var timeoutMinutes = 0;
+            var templateEvaluator = CreateTemplateEvaluator(step.ExecutionContext);
+            try
+            {
+                timeoutMinutes = templateEvaluator.EvaluateStepTimeout(step.Timeout, step.ExecutionContext.ExpressionValues);
+            }
+            catch (Exception ex)
+            {
+                Trace.Info("An error occurred when attempting to determine the step timeout.");
+                Trace.Error(ex);
+                step.ExecutionContext.Error("An error occurred when attempting to determine the step timeout.");
+                step.ExecutionContext.Error(ex);
+            }
+            if (timeoutMinutes > 0)
+            {
+                var timeout = TimeSpan.FromMinutes(timeoutMinutes);
+                step.ExecutionContext.SetTimeout(timeout);
+            }
 
 #if OS_WINDOWS
             try
@@ -311,15 +329,28 @@ namespace GitHub.Runner.Worker
             }
 
             // Fixup the step result if ContinueOnError.
-            if (step.ExecutionContext.Result == TaskResult.Failed && step.ContinueOnError)
+            if (step.ExecutionContext.Result == TaskResult.Failed)
             {
-                step.ExecutionContext.Result = TaskResult.Succeeded;
-                Trace.Info($"Updated step result (continue on error): {step.ExecutionContext.Result}");
+                var continueOnError = false;
+                try
+                {
+                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("The step failed and an error occurred when attempting to determine whether to continue on error.");
+                    Trace.Error(ex);
+                    step.ExecutionContext.Error("The step failed and an error occurred when attempting to determine whether to continue on error.");
+                    step.ExecutionContext.Error(ex);
+                }
+
+                if (continueOnError)
+                {
+                    step.ExecutionContext.Result = TaskResult.Succeeded;
+                    Trace.Info($"Updated step result (continue on error)");
+                }
             }
-            else
-            {
-                Trace.Info($"Step result: {step.ExecutionContext.Result}");
-            }
+            Trace.Info($"Step result: {step.ExecutionContext.Result}");
 
             // Complete the step context.
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
@@ -351,9 +382,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Debug($"Initializing scope '{scope.Name}'");
                     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
                     executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
-                    var templateTrace = executionContext.ToTemplateTraceWriter();
-                    var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-                    var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                    var templateEvaluator = CreateTemplateEvaluator(executionContext);
                     var inputs = default(DictionaryContextData);
                     try
                     {
@@ -409,9 +438,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Debug($"Finalizing scope '{scope.Name}'");
                     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.Name);
                     executionContext.ExpressionValues["inputs"] = null;
-                    var templateTrace = executionContext.ToTemplateTraceWriter();
-                    var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-                    var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                    var templateEvaluator = CreateTemplateEvaluator(executionContext);
                     var outputs = default(DictionaryContextData);
                     try
                     {
@@ -442,6 +469,13 @@ namespace GitHub.Runner.Worker
             }
 
             executionContext.Complete(result, resultCode: resultCode);
+        }
+
+        private PipelineTemplateEvaluator CreateTemplateEvaluator(IExecutionContext executionContext)
+        {
+            var templateTrace = executionContext.ToTemplateTraceWriter();
+            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+            return new PipelineTemplateEvaluator(templateTrace, schema);
         }
     }
 }

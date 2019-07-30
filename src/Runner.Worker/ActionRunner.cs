@@ -24,17 +24,15 @@ namespace GitHub.Runner.Worker
     {
         public IExpressionNode Condition { get; set; }
 
-        public bool ContinueOnError => Action?.ContinueOnError ?? default(bool);
+        public TemplateToken ContinueOnError => Action?.ContinueOnError;
 
         public string DisplayName => Action?.DisplayName;
-
-        public bool Enabled => Action?.Enabled ?? default(bool);
 
         public IExecutionContext ExecutionContext { get; set; }
 
         public Pipelines.ActionStep Action { get; set; }
 
-        public TimeSpan? Timeout => (Action?.TimeoutInMinutes ?? 0) > 0 ? (TimeSpan?)TimeSpan.FromMinutes(Action.TimeoutInMinutes) : null;
+        public TemplateToken Timeout => Action?.TimeoutInMinutes;
 
         public async Task RunAsync()
         {

@@ -15,7 +15,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
         {
             get
             {
-                return false;
+                return true;
             }
         }
 
@@ -30,9 +30,22 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             Object existingValue,
             JsonSerializer serializer)
         {
-            if (reader.TokenType != JsonToken.StartObject)
+            switch (reader.TokenType)
             {
-                return null;
+                case JsonToken.String:
+                    return new StringToken(null, null, null, reader.Value.ToString());
+                case JsonToken.Boolean:
+                    return new BooleanToken(null, null, null, (Boolean)reader.Value);
+                case JsonToken.Float:
+                    return new NumberToken(null, null, null, (Double)reader.Value);
+                case JsonToken.Integer:
+                    return new NumberToken(null, null, null, (Double)(Int64)reader.Value);
+                case JsonToken.Null:
+                    return new NullToken(null, null, null);
+                case JsonToken.StartObject:
+                    break;
+                default:
+                    return null;
             }
 
             Int32? type = null;
@@ -102,7 +115,218 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             Object value,
             JsonSerializer serializer)
         {
-            throw new NotSupportedException();
+            base.WriteJson(writer, value, serializer);
+            if (value is TemplateToken token)
+            {
+                switch (token.Type)
+                {
+                    case TokenType.Null:
+                        if (token.Line == null && token.Column == null)
+                        {
+                            writer.WriteNull();
+                        }
+                        else
+                        {
+                            writer.WriteStartObject();
+                            writer.WritePropertyName("type");
+                            writer.WriteValue(token.Type);
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("line");
+                                writer.WriteValue(token.Line);
+                            }
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("col");
+                                writer.WriteValue(token.Column);
+                            }
+                            writer.WriteEndObject();
+                        }
+                        return;
+
+                    case TokenType.Boolean:
+                        var booleanToken = token as BooleanToken;
+                        if (token.Line == null && token.Column == null)
+                        {
+                            writer.WriteValue(booleanToken.Value);
+                        }
+                        else
+                        {
+                            writer.WriteStartObject();
+                            writer.WritePropertyName("type");
+                            writer.WriteValue(token.Type);
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("line");
+                                writer.WriteValue(token.Line);
+                            }
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("col");
+                                writer.WriteValue(token.Column);
+                            }
+                            writer.WritePropertyName("bool");
+                            writer.WriteValue(booleanToken.Value);
+                            writer.WriteEndObject();
+                        }
+                        return;
+
+                    case TokenType.Number:
+                        var numberToken = token as NumberToken;
+                        if (token.Line == null && token.Column == null)
+                        {
+                            writer.WriteValue(numberToken.Value);
+                        }
+                        else
+                        {
+                            writer.WriteStartObject();
+                            writer.WritePropertyName("type");
+                            writer.WriteValue(token.Type);
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("line");
+                                writer.WriteValue(token.Line);
+                            }
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("col");
+                                writer.WriteValue(token.Column);
+                            }
+                            writer.WritePropertyName("num");
+                            writer.WriteValue(numberToken.Value);
+                            writer.WriteEndObject();
+                        }
+                        return;
+
+                    case TokenType.String:
+                        var stringToken = token as StringToken;
+                        if (token.Line == null && token.Column == null)
+                        {
+                            writer.WriteValue(stringToken.Value);
+                        }
+                        else
+                        {
+                            writer.WriteStartObject();
+                            writer.WritePropertyName("type");
+                            writer.WriteValue(token.Type);
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("line");
+                                writer.WriteValue(token.Line);
+                            }
+                            if (token.Line != null)
+                            {
+                                writer.WritePropertyName("col");
+                                writer.WriteValue(token.Column);
+                            }
+                            writer.WritePropertyName("lit");
+                            writer.WriteValue(stringToken.Value);
+                            writer.WriteEndObject();
+                        }
+                        return;
+
+                    case TokenType.BasicExpression:
+                        var basicExpressionToken = token as BasicExpressionToken;
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("type");
+                        writer.WriteValue(token.Type);
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("line");
+                            writer.WriteValue(token.Line);
+                        }
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("col");
+                            writer.WriteValue(token.Column);
+                        }
+                        if (!String.IsNullOrEmpty(basicExpressionToken.Expression))
+                        {
+                            writer.WritePropertyName("expr");
+                            writer.WriteValue(basicExpressionToken.Expression);
+                        }
+                        writer.WriteEndObject();
+                        return;
+
+                    case TokenType.InsertExpression:
+                        var insertExpressionToken = token as InsertExpressionToken;
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("type");
+                        writer.WriteValue(token.Type);
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("line");
+                            writer.WriteValue(token.Line);
+                        }
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("col");
+                            writer.WriteValue(token.Column);
+                        }
+                        writer.WritePropertyName("directive");
+                        writer.WriteValue(insertExpressionToken.Directive);
+                        writer.WriteEndObject();
+                        return;
+
+                    case TokenType.Sequence:
+                        var sequenceToken = token as SequenceToken;
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("type");
+                        writer.WriteValue(token.Type);
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("line");
+                            writer.WriteValue(token.Line);
+                        }
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("col");
+                            writer.WriteValue(token.Column);
+                        }
+                        if (sequenceToken.Count > 0)
+                        {
+                            writer.WritePropertyName("seq");
+                            writer.WriteStartArray();
+                            foreach (var item in sequenceToken)
+                            {
+                                serializer.Serialize(writer, item);
+                            }
+                            writer.WriteEndArray();
+                        }
+                        writer.WriteEndObject();
+                        return;
+
+                    case TokenType.Mapping:
+                        var mappingToken = token as MappingToken;
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("type");
+                        writer.WriteValue(token.Type);
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("line");
+                            writer.WriteValue(token.Line);
+                        }
+                        if (token.Line != null)
+                        {
+                            writer.WritePropertyName("col");
+                            writer.WriteValue(token.Column);
+                        }
+                        if (mappingToken.Count > 0)
+                        {
+                            writer.WritePropertyName("map");
+                            writer.WriteStartArray();
+                            foreach (var item in mappingToken)
+                            {
+                                serializer.Serialize(writer, item);
+                            }
+                            writer.WriteEndArray();
+                        }
+                        writer.WriteEndObject();
+                        return;
+                }
+            }
+
+            throw new NotSupportedException($"Unexpected type '{value?.GetType().FullName}' when serializing template token");
         }
     }
 }

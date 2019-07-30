@@ -20,7 +20,7 @@ namespace GitHub.DistributedTask.Pipelines
         /// </summary>
         public static readonly String AdvancedCheckoutMinAgentVersion = "2.137.0";
 
-        public static readonly String AgentVersionDemandName = "Agent.Version";
+        public static readonly String AgentVersionDemandName = "Runner.Version";
 
         public static readonly String AgentName = "Agent.Name";
 

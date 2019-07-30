@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.Runner.Worker
 {
@@ -22,11 +23,10 @@ namespace GitHub.Runner.Worker
         }
 
         public IExpressionNode Condition { get; set; }
-        public bool ContinueOnError => false;
+        public TemplateToken ContinueOnError => new BooleanToken(null, null, null, false);
         public string DisplayName { get; private set; }
-        public bool Enabled => true;
         public IExecutionContext ExecutionContext { get; set; }
-        public TimeSpan? Timeout => null;
+        public TemplateToken Timeout => new NumberToken(null, null, null, 0);
         public object Data => _data;
 
         public async Task RunAsync()
