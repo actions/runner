@@ -141,7 +141,7 @@ stages:
     # Create agent release on Github
     - powershell: |
         Write-Host "Creating github release."
-        $releaseNotes = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\releaseNote.md").Replace("<AGENT_VERSION>","$(ReleaseAgentVersion)")
+        $releaseNotes = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\releaseNote.md").Replace("<RUNNER_VERSION>","$(ReleaseAgentVersion)")
         $releaseData = @{
           tag_name = "v$(ReleaseAgentVersion)";
           target_commitish = "$(Build.SourceVersion)";
@@ -154,7 +154,7 @@ stages:
           Uri = "https://api.github.com/repos/actions/runner/releases";
           Method = 'POST';
           Headers = @{
-            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
+            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("github:$(GithubToken)"));
           }
           ContentType = 'application/json';
           Body = (ConvertTo-Json $releaseData -Compress)
@@ -163,12 +163,12 @@ stages:
         $releaseCreated = Invoke-RestMethod @releaseParams
         Write-Host $releaseCreated
         $releaseId = $releaseCreated.id
-        $assets = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\assets.json").Replace("<AGENT_VERSION>","$(ReleaseAgentVersion)")
+        $assets = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\assets.json").Replace("<RUNNER_VERSION>","$(ReleaseAgentVersion)")
         $assetsParams = @{
           Uri = "https://uploads.github.com/repos/actions/runner/releases/$releaseId/assets?name=assets.json"
           Method = 'POST';
           Headers = @{
-            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("vsts:$(GithubToken)"));
+            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("github:$(GithubToken)"));
           }
           ContentType = 'application/octet-stream';
           Body = [system.Text.Encoding]::UTF8.GetBytes($assets)
