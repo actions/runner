@@ -242,6 +242,7 @@ namespace GitHub.Runner.Common
                 // Keep alphabetical
                 //
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
+                public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
             }
 
             public static class Agent
@@ -255,7 +256,6 @@ namespace GitHub.Runner.Common
                 public static readonly string BuildDirectory = "agent.builddirectory";
                 public static readonly string ContainerId = "agent.containerid";
                 public static readonly string ContainerNetwork = "agent.containernetwork";
-                public static readonly string Diagnostic = "agent.diagnostic";
                 public static readonly string HomeDirectory = "agent.homedirectory";
                 public static readonly string Id = "agent.id";
                 public static readonly string GitUseSChannel = "agent.gituseschannel";
