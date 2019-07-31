@@ -634,11 +634,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Contains("Removing issue matcher 'email'", _issues[1].Item1.Message);
                 Assert.Equal("this error", _issues[2].Item1.Message);
                 Assert.Equal(0, _commands.Count);
-                Assert.Equal(4, _messages.Count);
-                Assert.StartsWith("##[debug]Timeout processing issue matcher", _messages[0]);
-                Assert.StartsWith("##[debug]Timeout processing issue matcher", _messages[1]);
-                Assert.Equal("t@t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.c%20", _messages[2]);
-                Assert.Equal("jane.doe@contoso.com", _messages[3]);
+                Assert.Equal(2, _messages.Where(x => x.StartsWith("##[debug]Timeout processing issue matcher")).Count());
+                Assert.Equal(1, _messages.Where(x => x.Equals("t@t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.t.c%20")).Count());
+                Assert.Equal(1, _messages.Where(x => x.StartsWith("jane.doe@contoso.com")).Count());
             }
         }
 
@@ -667,7 +665,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 .Returns(true);
             _executionContext.Setup(x => x.Variables)
                 .Returns(_variables);
-            _executionContext.Setup(x =>  x.GetMatchers())
+            _executionContext.Setup(x => x.GetMatchers())
                 .Returns(matchers?.Matchers ?? new List<IssueMatcherConfig>());
             _executionContext.Setup(x => x.Add(It.IsAny<OnMatcherChanged>()))
                 .Callback((OnMatcherChanged handler) =>
@@ -683,6 +681,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 .Callback((string tag, string message) =>
                 {
                     _messages.Add($"{tag}{message}");
+                    hostContext.GetTrace().Info($"{tag}{message}");
                 });
 
             _commandManager = new Mock<IActionCommandManager>();

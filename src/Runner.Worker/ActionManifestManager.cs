@@ -111,7 +111,16 @@ namespace GitHub.Runner.Worker
                 throw new ArgumentException($"Fail to load {manifestFile}");
             }
 
-            Trace.Verbose($"Loaded action.yml file: {StringUtil.ConvertToJson(actionDefinition)}");
+            if (actionDefinition.Execution == null)
+            {
+                executionContext.Debug($"Loaded action.yml file: {StringUtil.ConvertToJson(actionDefinition)}");
+                throw new ArgumentException($"Top level 'run:' section is required for {manifestFile}");
+            }
+            else
+            {
+                Trace.Info($"Loaded action.yml file: {StringUtil.ConvertToJson(actionDefinition)}");
+            }
+
             return actionDefinition;
         }
 

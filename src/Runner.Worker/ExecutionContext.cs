@@ -983,7 +983,14 @@ namespace GitHub.Runner.Worker
         {
             if (context.WriteDebug)
             {
-                context.Write(WellKnownTags.Debug, message);
+                var multilines = message?.Replace("\r\n", "\n")?.Split("\n");
+                if (multilines != null)
+                {
+                    foreach (var line in multilines)
+                    {
+                        context.Write(WellKnownTags.Debug, line);
+                    }
+                }
             }
         }
 
