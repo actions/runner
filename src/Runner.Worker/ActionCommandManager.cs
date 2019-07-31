@@ -401,7 +401,7 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, out bool omitEcho)
         {
-            omitEcho = false;
+            omitEcho = true;
             command.Properties.TryGetValue(IssueCommandProperties.File, out string file);
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
