@@ -277,7 +277,7 @@ namespace GitHub.Runner.Worker
 
                         try
                         {
-                            await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: context, message: message, jobStartTimeUtc: jobStartTimeUtc);
+                            await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: context, parentContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
 
                             Trace.Info("Support log upload complete.");
                             context.Output("Completed runner diagnostic log upload.");

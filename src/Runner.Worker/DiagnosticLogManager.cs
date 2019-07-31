@@ -26,8 +26,9 @@ namespace GitHub.Runner.Worker
     public interface IDiagnosticLogManager : IRunnerService
     {
         Task UploadDiagnosticLogsAsync(IExecutionContext executionContext,
-                                  Pipelines.AgentJobRequestMessage message,
-                                  DateTime jobStartTimeUtc);
+                                    IExecutionContext parentContext,
+                                    Pipelines.AgentJobRequestMessage message,
+                                    DateTime jobStartTimeUtc);
     }
 
     // This class manages gathering data for support logs, zipping the data, and uploading it.
@@ -41,8 +42,9 @@ namespace GitHub.Runner.Worker
     {
         private static string DateTimeFormat = "yyyyMMdd-HHmmss";
         public async Task UploadDiagnosticLogsAsync(IExecutionContext executionContext,
-                                         Pipelines.AgentJobRequestMessage message,
-                                         DateTime jobStartTimeUtc)
+                                                IExecutionContext parentContext, 
+                                                Pipelines.AgentJobRequestMessage message,
+                                                DateTime jobStartTimeUtc)
         {
             executionContext.Debug("Starting diagnostic file upload.");
 
@@ -111,9 +113,10 @@ namespace GitHub.Runner.Worker
 
             IOUtil.SaveObject(new DiagnosticLogMetadata(runnerName, runnerId, poolId, phaseName, diagnosticsZipFileName, phaseResult), metadataFilePath);
 
-            executionContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: metadataFileName, filePath: metadataFilePath);
+            // TODO: Remove the parentContext Parameter and replace this with executioncontext. Currently a bug exists where these files do not upload correctly using that context.
+            parentContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: metadataFileName, filePath: metadataFilePath);
 
-            executionContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
+            parentContext.QueueAttachFile(type: CoreAttachmentType.DiagnosticLog, name: diagnosticsZipFileName, filePath: diagnosticsZipFilePath);
 
             executionContext.Debug("Diagnostic file upload complete.");
         }
