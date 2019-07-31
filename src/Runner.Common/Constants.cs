@@ -217,17 +217,19 @@ namespace GitHub.Runner.Common
 
         public static class Path
         {
+            public static readonly string ActionsDirectory = "_actions";
+            public static readonly string ActionManifestFile = "action.yml";
             public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
+            public static readonly string RunnerDiagnosticLogPrefix = "Runner_";
             public static readonly string TempDirectory = "_temp";
             public static readonly string TeeDirectory = "tee";
             public static readonly string ToolDirectory = "_tool";
             public static readonly string TaskJsonFile = "task.json";
-            public static readonly string ActionManifestFile = "action.yml";
-            public static readonly string ActionsDirectory = "_actions";
             public static readonly string UpdateDirectory = "_update";
             public static readonly string WorkDirectory = "_work";
+            public static readonly string WorkerDiagnosticLogPrefix = "Worker_";
         }
 
         // Related to definition variables.
@@ -241,6 +243,7 @@ namespace GitHub.Runner.Common
                 //
                 // Keep alphabetical
                 //
+                public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
 
@@ -255,7 +258,6 @@ namespace GitHub.Runner.Common
                 public static readonly string BuildDirectory = "agent.builddirectory";
                 public static readonly string ContainerId = "agent.containerid";
                 public static readonly string ContainerNetwork = "agent.containernetwork";
-                public static readonly string Diagnostic = "agent.diagnostic";
                 public static readonly string HomeDirectory = "agent.homedirectory";
                 public static readonly string Id = "agent.id";
                 public static readonly string GitUseSChannel = "agent.gituseschannel";

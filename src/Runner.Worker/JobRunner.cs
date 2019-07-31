@@ -178,30 +178,10 @@ namespace GitHub.Runner.Worker
                 finally
                 {
                     Trace.Info("Finalize job.");
-                    await jobExtension.FinalizeJob(jobContext);
+                    await jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
                 }
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");
-
-                // if (jobContext.Variables.GetBoolean(Constants.Variables.Agent.Diagnostic) ?? false)
-                // {
-                //     Trace.Info("Support log upload starting.");
-
-                //     IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
-
-                //     try
-                //     {
-                //         await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
-
-                //         Trace.Info("Support log upload complete.");
-                //     }
-                //     catch (Exception ex)
-                //     {
-                //         // Log the error but make sure we continue gracefully.
-                //         Trace.Info("Error uploading support logs.");
-                //         Trace.Error(ex);
-                //     }
-                // }
 
                 Trace.Info("Completing the job execution context.");
                 return await CompleteJobAsync(jobServer, jobContext, message);

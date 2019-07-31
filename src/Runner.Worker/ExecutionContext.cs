@@ -717,7 +717,7 @@ namespace GitHub.Runner.Worker
             _logger = HostContext.CreateService<IPagingLogger>();
             _logger.Setup(_mainTimelineId, _record.Id);
 
-            // Verbosity (from GitHub.RunnerDebug).
+            // Verbosity (from GitHub.Step_Debug).
             WriteDebug = Variables.Step_Debug ?? false;
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.

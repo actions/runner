@@ -160,6 +160,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        // TODO: Move these tests over to JobExtensionL0.cs
         // [Fact]
         // [Trait("Level", "L0")]
         // [Trait("Category", "Worker")]
@@ -167,14 +168,16 @@ namespace GitHub.Runner.Common.Tests.Worker
         // {
         //     using (TestHostContext hc = CreateTestContext())
         //     {
-        //         _message.Variables[Constants.Variables.Agent.Diagnostic] = "true";
+        //         _message.Variables[Constants.Variables.Actions.RunnerDebug] = "true";
 
         //         await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-        //         _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
-        //                                                                  It.IsAny<Pipelines.AgentJobRequestMessage>(),
-        //                                                                  It.IsAny<DateTime>()),
-        //                                      Times.Once);
+        //         _diagnosticLogManager.Verify(x =>
+        //             x.UploadDiagnosticLogsAsync(
+        //                 It.IsAny<IExecutionContext>(),
+        //                 It.IsAny<Pipelines.AgentJobRequestMessage>(),
+        //                 It.IsAny<DateTime>()),
+        //             Times.Once);
         //     }
         // }
 
@@ -185,14 +188,16 @@ namespace GitHub.Runner.Common.Tests.Worker
         // {
         //     using (TestHostContext hc = CreateTestContext())
         //     {
-        //         _message.Variables[Constants.Variables.Agent.Diagnostic] = "false";
+        //         _message.Variables[Constants.Variables.Actions.RunnerDebug] = "false";
 
         //         await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-        //         _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
-        //                                                                  It.IsAny<Pipelines.AgentJobRequestMessage>(),
-        //                                                                  It.IsAny<DateTime>()),
-        //                                      Times.Never);
+        //         _diagnosticLogManager.Verify(x =>
+        //             x.UploadDiagnosticLogsAsync(
+        //                 It.IsAny<IExecutionContext>(),
+        //                 It.IsAny<Pipelines.AgentJobRequestMessage>(),
+        //                 It.IsAny<DateTime>()),
+        //             Times.Never);
         //     }
         // }
 
@@ -205,10 +210,12 @@ namespace GitHub.Runner.Common.Tests.Worker
         //     {
         //         await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-        //         _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
-        //                                                                  It.IsAny<Pipelines.AgentJobRequestMessage>(),
-        //                                                                  It.IsAny<DateTime>()),
-        //                                      Times.Never);
+        //         _diagnosticLogManager.Verify(x =>
+        //             x.UploadDiagnosticLogsAsync(
+        //                 It.IsAny<IExecutionContext>(),
+        //                 It.IsAny<Pipelines.AgentJobRequestMessage>(),
+        //                 It.IsAny<DateTime>()),
+        //             Times.Never);
         //     }
         // }
     }
