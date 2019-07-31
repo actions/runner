@@ -171,10 +171,12 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
-                                                                         It.IsAny<Pipelines.AgentJobRequestMessage>(),
-                                                                         It.IsAny<DateTime>()),
-                                             Times.Once);
+                _diagnosticLogManager.Verify(x =>
+                    x.UploadDiagnosticLogsAsync(
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                        It.IsAny<DateTime>()),
+                    Times.Once);
             }
         }
 
@@ -189,10 +191,12 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
-                                                                         It.IsAny<Pipelines.AgentJobRequestMessage>(),
-                                                                         It.IsAny<DateTime>()),
-                                             Times.Never);
+                _diagnosticLogManager.Verify(x =>
+                    x.UploadDiagnosticLogsAsync(
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                        It.IsAny<DateTime>()),
+                    Times.Never);
             }
         }
 
@@ -205,10 +209,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
-                _diagnosticLogManager.Verify(x => x.UploadDiagnosticLogsAsync(It.IsAny<IExecutionContext>(),
-                                                                         It.IsAny<Pipelines.AgentJobRequestMessage>(),
-                                                                         It.IsAny<DateTime>()),
-                                             Times.Never);
+                _diagnosticLogManager.Verify(x =>
+                    x.UploadDiagnosticLogsAsync(
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                        It.IsAny<DateTime>()),
+                    Times.Never);
             }
         }
     }
