@@ -18,7 +18,7 @@ namespace GitHub.Runner.Worker
     public interface IJobExtension : IRunnerService
     {
         Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message);
-        Task FinalizeJob(IExecutionContext jobContext);
+        Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
     }
 
     public sealed class JobExtension : RunnerService, IJobExtension
@@ -241,7 +241,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public async Task FinalizeJob(IExecutionContext jobContext)
+        public async Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
         {
             Trace.Entering();
             ArgUtil.NotNull(jobContext, nameof(jobContext));
@@ -267,6 +267,26 @@ namespace GitHub.Runner.Worker
                     //     Trace.Error($"Caught exception from log plugin finalization: {ex}");
                     //     context.Output(ex.Message);
                     // }
+
+                    if (jobContext.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
+                    {
+                        Trace.Info("Support log upload starting.");
+
+                        IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
+
+                        try
+                        {
+                            await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
+
+                            Trace.Info("Support log upload complete.");
+                        }
+                        catch (Exception ex)
+                        {
+                            // Log the error but make sure we continue gracefully.
+                            Trace.Info("Error uploading support logs.");
+                            Trace.Error(ex);
+                        }
+                    }
 
                     if (_processCleanup)
                     {
