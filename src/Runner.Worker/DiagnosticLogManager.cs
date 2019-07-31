@@ -68,15 +68,6 @@ namespace GitHub.Runner.Worker
             string runnerName = settings.AgentName;
             int poolId = settings.PoolId;
 
-            executionContext.Debug("Creating diagnostic log environment file.");
-            string environmentFile = Path.Combine(supportFilesFolder, "environment.txt");
-#if OS_WINDOWS            
-            string content = await GetEnvironmentContent(runnerId, runnerName, message.Steps);
-#else            
-            string content = GetEnvironmentContent(runnerId, runnerName, message.Steps);
-#endif            
-            File.WriteAllText(environmentFile, content);
-
             // Copy worker diagnostic log files
             List<string> workerDiagnosticLogFiles = GetWorkerDiagnosticLogFiles(HostContext.GetDirectory(WellKnownDirectory.Diag), jobStartTimeUtc);
             executionContext.Debug($"Copying {workerDiagnosticLogFiles.Count()} worker diagnostic logs.");
@@ -211,80 +202,5 @@ namespace GitHub.Runner.Worker
 
             return runnerLogFiles;
         }
-
-#if OS_WINDOWS
-        private async Task<string> GetEnvironmentContent(int runnerId, string runnerName, IList<Pipelines.JobStep> steps)
-        {
-            var builder = new StringBuilder();
-
-            builder.AppendLine($"Environment file created at(UTC): {DateTime.UtcNow}"); // TODO: Format this like we do in other places.
-            builder.AppendLine($"Runner Version: {BuildConstants.RunnerPackage.Version}");
-            builder.AppendLine($"Runner Id: {runnerId}");
-            builder.AppendLine($"Runner Name: {runnerName}");
-            builder.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
-            builder.AppendLine("Steps:");
-
-            foreach (Pipelines.ActionStep action in steps.OfType<Pipelines.ActionStep>())
-            {
-                builder.AppendLine($"\tName: {action.Name} Id: {action.Id}");
-            }
-
-            // windows defender on/off
-            builder.AppendLine($"Defender enabled: {IsDefenderEnabled()}");
-
-            // firewall on/off
-            builder.AppendLine($"Firewall enabled: {IsFirewallEnabled()}");
-
-            return builder.ToString();
-        }
-
-        // Returns whether or not Windows Defender is running.
-        private bool IsDefenderEnabled()
-        {
-            return Process.GetProcessesByName("MsMpEng.exe").FirstOrDefault() != null;
-        }
-
-        // Returns whether or not the Windows firewall is enabled.
-        private bool IsFirewallEnabled()
-        {
-            try
-            {
-                using (RegistryKey key = Registry.LocalMachine.OpenSubKey("System\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile"))
-                {
-                    if (key == null) { return false; }
-
-                    Object o = key.GetValue("EnableFirewall");
-                    if (o == null) { return false; }
-
-                    int firewall = (int)o;
-                    if (firewall == 1) { return true; }
-                    return false;
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-#else
-        private string GetEnvironmentContent(int runnerId, string runnerName, IList<Pipelines.JobStep> steps)
-        {
-            var builder = new StringBuilder();
-
-            builder.AppendLine($"Environment file created at(UTC): {DateTime.UtcNow}"); // TODO: Format this like we do in other places.
-            builder.AppendLine($"Runner Version: {BuildConstants.RunnerPackage.Version}");
-            builder.AppendLine($"Runner Id: {runnerId}");
-            builder.AppendLine($"Runner Name: {runnerName}");
-            builder.AppendLine($"OS: {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
-            builder.AppendLine("Steps:");
-
-            foreach (Pipelines.ActionStep action in steps.OfType<Pipelines.ActionStep>())
-            {
-                builder.AppendLine($"\tName: {action.Name} Id: {action.Id}");
-            }
-
-            return builder.ToString();
-        }
-#endif
     }
 }

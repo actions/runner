@@ -268,22 +268,25 @@ namespace GitHub.Runner.Worker
                     //     context.Output(ex.Message);
                     // }
 
-                    if (jobContext.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
+                    if (context.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
                     {
                         Trace.Info("Support log upload starting.");
+                        context.Output("Uploading runner diagnostic logs.");
 
                         IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
 
                         try
                         {
-                            await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
+                            await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: context, message: message, jobStartTimeUtc: jobStartTimeUtc);
 
                             Trace.Info("Support log upload complete.");
+                            context.Output("Completed runner diagnostic log upload.");
                         }
                         catch (Exception ex)
                         {
                             // Log the error but make sure we continue gracefully.
                             Trace.Info("Error uploading support logs.");
+                            context.Output("Error uploading runner diagnostic logs.");
                             Trace.Error(ex);
                         }
                     }
