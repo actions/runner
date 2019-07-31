@@ -73,7 +73,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             if (!isFile && !isDir)
             {
                 // if local path is neither file nor folder
-                throw new FileNotFoundException($"Path does not exists {targetPath}");
+                throw new FileNotFoundException($"Path does not exist {targetPath}");
             }
 
             if (string.IsNullOrEmpty(fc))

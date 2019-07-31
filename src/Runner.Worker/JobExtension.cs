@@ -60,14 +60,14 @@ namespace GitHub.Runner.Worker
                     }
 
                     // Give job extension a chance to initialize
-                    Trace.Info($"Prepare pipelines directory");
+                    Trace.Info($"Prepare workflow directory");
                     // We only support checkout one repository at this time.
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
                     context.Debug($"Primary repository: {repoFullName}.");
 
-                    // Prepare the pipeline directory.
-                    context.Output("Prepare pipeline directory.");
+                    // Prepare the workflow directory.
+                    context.Output("Prepare workflow directory.");
                     var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
                     TrackingConfig trackingConfig = directoryManager.PrepareDirectory(
                         context,

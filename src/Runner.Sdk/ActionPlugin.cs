@@ -150,7 +150,14 @@ namespace GitHub.Runner.Sdk
             var debugString = Variables.GetValueOrDefault(DebugEnvironmentalVariable)?.Value;
             if (StringUtil.ConvertToBoolean(debugString))
             {
-                Output($"##[debug]{Escape(message)}");
+                var multilines = message?.Replace("\r\n", "\n")?.Split("\n");
+                if (multilines != null)
+                {
+                    foreach (var line in multilines)
+                    {
+                        Output($"##[debug]{Escape(line)}");
+                    }
+                }
             }
         }
 
