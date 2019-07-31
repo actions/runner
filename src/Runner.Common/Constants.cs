@@ -241,8 +241,8 @@ namespace GitHub.Runner.Common
                 //
                 // Keep alphabetical
                 //
-                public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
+                public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
 
             public static class Agent
