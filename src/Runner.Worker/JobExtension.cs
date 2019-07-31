@@ -74,7 +74,7 @@ namespace GitHub.Runner.Worker
                         message.Workspace);
 
                     // Set the directory variables.
-                    context.Output("Update context data");
+                    context.Debug("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));

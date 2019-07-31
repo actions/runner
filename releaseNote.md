@@ -1,13 +1,10 @@
 ## Features
-  - Template evaluation in action.yml (#56)
-  - Add inputs for container action, more cleanup, more l0 tests. (#58)
-  - Allow expression for step continue-on-error and step timeout (#61)
+  - Add RunnerDebug secret keyword to enable diag log upload (#69) 
 
 ## Bugs
-  - Fix working folder for hosted linux/mac pool (#63) 
-  - Error when using container action on linux (#65)
-  - Action log clean up. (#60)
-  - Disable Debug by default, add ACTIONS_STEP_DEBUG to enable (#64)
+  - Remove fwlinks, aka.ms and TF/VS error codes (#66)
+  - Use G15 instead of G17 for Double ToString() (#68)
+  - Handle multiline debug, better error on invalid action.yml. (#67)
 
 ## Misc
   - N/A
