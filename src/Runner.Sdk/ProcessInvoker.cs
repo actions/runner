@@ -268,6 +268,9 @@ namespace GitHub.Runner.Sdk
                 }
             }
 
+            // Indicate GitHub Actions process.
+            _proc.StartInfo.Environment["GITHUB_ACTIONS"] = "true";
+
             // Hook up the events.
             _proc.EnableRaisingEvents = true;
             _proc.Exited += ProcessExitedHandler;
