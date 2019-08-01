@@ -1,10 +1,8 @@
 ## Features
-  - Add RunnerDebug secret keyword to enable diag log upload (#69) 
+  - prefer FC artifact. (#70)
 
 ## Bugs
-  - Remove fwlinks, aka.ms and TF/VS error codes (#66)
-  - Use G15 instead of G17 for Double ToString() (#68)
-  - Handle multiline debug, better error on invalid action.yml. (#67)
+  - N/A
 
 ## Misc
   - N/A
