@@ -20,7 +20,8 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
         // Properties set by tasks
         private static class ArtifactEventProperties
         {
-            public static readonly string ArtifactName = "name";
+            public static readonly string ArtifactName = "artifactName";
+            public static readonly string Name = "name";
             public static readonly string TargetPath = "path";
         }
 
@@ -30,7 +31,11 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             RunnerActionPluginExecutionContext context,
             CancellationToken token)
         {
-            string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: true);
+            string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: false);  // Back compat since we rename input `artifactName` to `name`
+            if (string.IsNullOrEmpty(artifactName))
+            {
+                artifactName = context.GetInput(ArtifactEventProperties.Name, required: true);
+            }
             string targetPath = context.GetInput(ArtifactEventProperties.TargetPath, required: true);
             string artifactService = context.GetInput("as");
             string defaultWorkingDirectory = context.GetGitHubContext("workspace");
