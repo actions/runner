@@ -20,7 +20,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
         // Properties set by tasks
         private static class ArtifactEventProperties
         {
-            public static readonly string ArtifactName = "artifactName";
+            public static readonly string ArtifactName = "name";
             public static readonly string TargetPath = "path";
         }
 
@@ -30,9 +30,9 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             RunnerActionPluginExecutionContext context,
             CancellationToken token)
         {
-            string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: false);
+            string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: true);
             string targetPath = context.GetInput(ArtifactEventProperties.TargetPath, required: true);
-            string fc = context.GetInput("fc");
+            string artifactService = context.GetInput("as");
             string defaultWorkingDirectory = context.GetGitHubContext("workspace");
 
             targetPath = Path.IsPathFullyQualified(targetPath) ? targetPath : Path.GetFullPath(Path.Combine(defaultWorkingDirectory, targetPath));
@@ -76,7 +76,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
                 throw new FileNotFoundException($"Path does not exist {targetPath}");
             }
 
-            if (string.IsNullOrEmpty(fc))
+            if (!string.IsNullOrEmpty(artifactService))
             {
                 // Upload to BlobStore, and associate the artifact with the build.
                 context.Output($"Uploading pipeline artifact from {fullPath} for build #{buildId}");

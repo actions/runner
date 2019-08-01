@@ -33,7 +33,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             public static readonly string PipelineVersionToDownload = "runVersion";
             public static readonly string BranchName = "runBranch";
             public static readonly string Tags = "tags";
-            public static readonly string ArtifactName = "artifact";
+            public static readonly string ArtifactName = "name";
             public static readonly string ItemPattern = "patterns";
         }
 
@@ -42,7 +42,7 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             CancellationToken token)
         {
             ArgUtil.NotNull(context, nameof(context));
-            string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: false);
+            string artifactName = context.GetInput(ArtifactEventProperties.ArtifactName, required: true);
             string branchName = context.GetInput(ArtifactEventProperties.BranchName, required: false);
             string pipelineDefinition = context.GetInput(ArtifactEventProperties.PipelineDefinition, required: false);
             string sourceRun = context.GetInput(ArtifactEventProperties.SourceRun, required: false);
