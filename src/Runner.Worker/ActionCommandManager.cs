@@ -67,7 +67,8 @@ namespace GitHub.Runner.Worker
 
             // TryParse input to Command
             ActionCommand actionCommand;
-            if (!ActionCommand.TryParse(input, _registeredCommands, out actionCommand))
+            if (!ActionCommand.TryParseV2(input, _registeredCommands, out actionCommand) &&
+                !ActionCommand.TryParse(input, _registeredCommands, out actionCommand))
             {
                 return false;
             }
