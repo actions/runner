@@ -378,6 +378,19 @@ namespace GitHub.Runner.Worker
         }
     }
 
+    public sealed class DebugCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "debug";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, out bool omitEcho)
+        {
+            omitEcho = true;
+            context.Debug(command.Data);
+        }
+    }
+
     public sealed class WarningCommandExtension : IssueCommandExtension
     {
         public override IssueType Type => IssueType.Warning;

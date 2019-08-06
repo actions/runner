@@ -11,6 +11,7 @@ using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker
 {
@@ -102,10 +103,17 @@ namespace GitHub.Runner.Worker
 
             // Load the task environment.
             ExecutionContext.Debug("Loading env");
-            var environment = templateEvaluator.EvaluateStepEnvironment(Action.Environment, ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
+            var environment = new Dictionary<String, String>(VarUtil.EnvironmentVariableKeyComparer);
 
-            // Apply environment set using ##[set-env]
+            // Apply environment set using ##[set-env] first since these are job level env
             foreach (var env in ExecutionContext.EnvironmentVariables)
+            {
+                environment[env.Key] = env.Value ?? string.Empty;
+            }
+
+            // Apply action's env block later.
+            var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(Action.Environment, ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
+            foreach (var env in actionEnvironment)
             {
                 environment[env.Key] = env.Value ?? string.Empty;
             }
