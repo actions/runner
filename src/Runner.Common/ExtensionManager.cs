@@ -54,6 +54,7 @@ namespace GitHub.Runner.Common
                     Add<T>(extensions, "GitHub.Runner.Worker.RemoveMatcherCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.WarningCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.ErrorCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.DebugCommandExtension, Runner.Worker");
                     break;
                 default:
                     // This should never happen.
