@@ -1,8 +1,8 @@
 ## Features
-  - prefer FC artifact. (#70)
+  - N/A
 
 ## Bugs
-  - N/A
+  - handle ##[debug] from actions, not overwrite action env with set-env. (#72)
 
 ## Misc
   - N/A
