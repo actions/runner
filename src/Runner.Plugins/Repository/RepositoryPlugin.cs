@@ -9,6 +9,7 @@ using System.IO;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Text.RegularExpressions;
 using GitHub.DistributedTask.Pipelines.Expressions;
+using System.Text;
 
 namespace GitHub.Runner.Plugins.Repository
 {
@@ -133,17 +134,42 @@ namespace GitHub.Runner.Plugins.Repository
                 accessToken = executionContext.GetGitHubContext("token");
             }
 
-            await new GitHubSourceProvider().GetSourceAsync(executionContext,
-                                                            expectRepoPath,
-                                                            repoFullName,
-                                                            sourceBranch,
-                                                            sourceVersion,
-                                                            clean,
-                                                            submoduleInput,
-                                                            fetchDepth,
-                                                            gitLfsSupport,
-                                                            accessToken,
-                                                            token);
+            // register problem matcher
+            string problemMatcher = @"    
+{
+    ""problemMatcher"": [
+        {
+            ""owner"": ""checkout-git"",
+            ""pattern"": [
+                {
+                    ""regexp"": ""^fatal: (.*)$"",
+                    ""message"": 1
+                }
+            ]
+        }
+    ]
+}";
+            string matcherFile = Path.Combine(tempDirectory, $"git_{Guid.NewGuid()}.json");
+            File.WriteAllText(matcherFile, problemMatcher, new UTF8Encoding(false));
+            executionContext.Output($"##[add-matcher]{matcherFile}");
+            try
+            {
+                await new GitHubSourceProvider().GetSourceAsync(executionContext,
+                                                                expectRepoPath,
+                                                                repoFullName,
+                                                                sourceBranch,
+                                                                sourceVersion,
+                                                                clean,
+                                                                submoduleInput,
+                                                                fetchDepth,
+                                                                gitLfsSupport,
+                                                                accessToken,
+                                                                token);
+            }
+            finally
+            {
+                executionContext.Output("##[remove-matcher owner=checkout-git]");
+            }
         }
     }
 }
