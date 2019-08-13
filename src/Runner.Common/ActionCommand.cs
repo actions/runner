@@ -58,22 +58,22 @@ namespace GitHub.Runner.Common
 
             try
             {
-                // Get the index of the keyword.
-                int startIndex = message.IndexOf(_commandKey);
-                if (startIndex < 0)
+                // the message needs to start with the keyword after trim leading space.
+                message = message.TrimStart();
+                if (!message.StartsWith(_commandKey))
                 {
                     return false;
                 }
 
                 // Get the index of the separator between the command info and the data.
-                int endIndex = message.IndexOf(_commandKey, startIndex + _commandKey.Length);
+                int endIndex = message.IndexOf(_commandKey, _commandKey.Length);
                 if (endIndex < 0)
                 {
                     return false;
                 }
 
                 // Get the command info (command and properties).
-                int cmdIndex = startIndex + _commandKey.Length;
+                int cmdIndex = _commandKey.Length;
                 string cmdInfo = message.Substring(cmdIndex, endIndex - cmdIndex);
 
                 // Get the command name

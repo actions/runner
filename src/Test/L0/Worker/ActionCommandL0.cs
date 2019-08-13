@@ -141,8 +141,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 message = "";
                 test = null;
                 verify = null;
-                //>>>   ::do-something k1=v1,::
-                message = ">>>   ::do-something k1=v1,::msg";
+                //   ::do-something k1=v1,::
+                message = "   ::do-something k1=v1,::msg";
                 test = new ActionCommand("do-something")
                 {
                     Data = "msg",
@@ -150,6 +150,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 test.Properties.Add("k1", "v1");
                 Assert.True(ActionCommand.TryParseV2(message, commands, out verify));
                 Assert.True(IsEqualCommand(hc, test, verify));
+
+                message = "";
+                verify = null;
+                //   >>>   ::do-something k1=v1,::
+                message = "   >>>   ::do-something k1=v1,::msg";
+                Assert.False(ActionCommand.TryParseV2(message, commands, out verify));
             }
         }
 
