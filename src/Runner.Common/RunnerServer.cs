@@ -71,9 +71,15 @@ namespace GitHub.Runner.Common
                 return;
             }
 
-            _genericConnection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(100));
-            _messageConnection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
-            _requestConnection = await EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
+            var createGenericConnection = EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(100));
+            var createMessageConnection = EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
+            var createRequestConnection = EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
+
+            await Task.WhenAll(createGenericConnection, createMessageConnection, createRequestConnection);
+
+            _genericConnection = await createGenericConnection;
+            _messageConnection = await createMessageConnection;
+            _requestConnection = await createRequestConnection;
 
             _genericTaskAgentClient = _genericConnection.GetClient<TaskAgentHttpClient>();
             _messageTaskAgentClient = _messageConnection.GetClient<TaskAgentHttpClient>();

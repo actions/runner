@@ -43,7 +43,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(steps, nameof(steps));
 
-            executionContext.Output("Prepare all required actions.");
+            executionContext.Output("Prepare all required actions");
             List<JobExtensionRunner> containerSetupSteps = new List<JobExtensionRunner>();
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             foreach (var action in actions)
@@ -231,7 +231,8 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    throw new NotSupportedException($"Can't find 'action.yml' or 'Dockerfile' under '{actionDirectory}'.");
+                    var fullPath = IOUtil.ResolvePath(actionDirectory, "."); // resolve full path without access filesystem.
+                    throw new NotSupportedException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'.");
                 }
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.Script)
@@ -379,6 +380,7 @@ namespace GitHub.Runner.Worker
                 // make sure we get an clean folder ready to use.
                 IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
                 Directory.CreateDirectory(destDirectory);
+                executionContext.Output($"Download action repository '{repositoryReference.Name}@{repositoryReference.Ref}'");
             }
 
 #if OS_WINDOWS
@@ -578,7 +580,7 @@ namespace GitHub.Runner.Worker
             var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
             if (File.Exists(dockerFile))
             {
-                executionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+                executionContext.Debug($"Dockerfile for action: '{dockerFile}'.");
                 return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
                                               condition: ExpressionManager.Succeeded,
                                               displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
@@ -586,7 +588,7 @@ namespace GitHub.Runner.Worker
             }
             else if (File.Exists(dockerFileLowerCase))
             {
-                executionContext.Output($"Dockerfile for action: '{dockerFileLowerCase}'.");
+                executionContext.Debug($"Dockerfile for action: '{dockerFileLowerCase}'.");
                 return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
                                               condition: ExpressionManager.Succeeded,
                                               displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
@@ -594,7 +596,7 @@ namespace GitHub.Runner.Worker
             }
             else if (File.Exists(actionManifest))
             {
-                executionContext.Output($"action.yml for action: '{actionManifest}'.");
+                executionContext.Debug($"action.yml for action: '{actionManifest}'.");
                 var manifestManager = HostContext.GetService<IActionManifestManager>();
                 var actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
 
@@ -604,7 +606,7 @@ namespace GitHub.Runner.Worker
                     if (containerAction.Image.EndsWith("Dockerfile") || containerAction.Image.EndsWith("dockerfile"))
                     {
                         var dockerFileFullPath = Path.Combine(actionEntryDirectory, containerAction.Image);
-                        executionContext.Output($"Dockerfile for action: '{dockerFileFullPath}'.");
+                        executionContext.Debug($"Dockerfile for action: '{dockerFileFullPath}'.");
 
                         return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
                                           condition: ExpressionManager.Succeeded,
@@ -615,7 +617,7 @@ namespace GitHub.Runner.Worker
                     {
                         var actionImage = containerAction.Image.Substring("docker://".Length);
 
-                        executionContext.Output($"Container image for action: '{actionImage}'.");
+                        executionContext.Debug($"Container image for action: '{actionImage}'.");
 
                         return new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
                                                       condition: ExpressionManager.Succeeded,
@@ -644,7 +646,8 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                throw new InvalidOperationException($"Can't find 'action.yml' or 'Dockerfile' under '{actionEntryDirectory}'.");
+                var fullPath = IOUtil.ResolvePath(actionEntryDirectory, "."); // resolve full path without access filesystem.
+                throw new InvalidOperationException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'.");
             }
         }
     }

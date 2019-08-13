@@ -64,10 +64,10 @@ namespace GitHub.Runner.Worker
                     // We only support checkout one repository at this time.
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
-                    context.Debug($"Primary repository: {repoFullName}.");
+                    context.Debug($"Primary repository: {repoFullName}");
 
                     // Prepare the workflow directory.
-                    context.Output("Prepare workflow directory.");
+                    context.Output("Prepare workflow directory");
                     var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
                     TrackingConfig trackingConfig = directoryManager.PrepareDirectory(
                         context,
@@ -204,7 +204,7 @@ namespace GitHub.Runner.Worker
                     {
                         // Set the RUNNER_TRACKING_ID env variable.
                         Environment.SetEnvironmentVariable(Constants.ProcessTrackingId, _processLookupId);
-                        context.Output("Start tracking orphan processes.");
+                        context.Debug("Collect running processes for tracking orphan processes.");
 
                         // Take a snapshot of current running processes
                         Dictionary<int, Process> processes = SnapshotProcesses();
@@ -271,7 +271,7 @@ namespace GitHub.Runner.Worker
                     if (context.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
                     {
                         Trace.Info("Support log upload starting.");
-                        context.Output("Uploading runner diagnostic logs.");
+                        context.Output("Uploading runner diagnostic logs");
 
                         IDiagnosticLogManager diagnosticLogManager = HostContext.GetService<IDiagnosticLogManager>();
 
@@ -280,20 +280,20 @@ namespace GitHub.Runner.Worker
                             await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: context, parentContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
 
                             Trace.Info("Support log upload complete.");
-                            context.Output("Completed runner diagnostic log upload.");
+                            context.Output("Completed runner diagnostic log upload");
                         }
                         catch (Exception ex)
                         {
                             // Log the error but make sure we continue gracefully.
                             Trace.Info("Error uploading support logs.");
-                            context.Output("Error uploading runner diagnostic logs.");
+                            context.Output("Error uploading runner diagnostic logs");
                             Trace.Error(ex);
                         }
                     }
 
                     if (_processCleanup)
                     {
-                        context.Output("Start cleaning up orphan processes.");
+                        context.Output("Cleaning up orphan processes");
 
                         // Only check environment variable for any process that doesn't run before we invoke our process.
                         Dictionary<int, Process> currentProcesses = SnapshotProcesses();
