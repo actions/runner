@@ -6,7 +6,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Services.WebApi;
 using GitHub.Build.WebApi;
 
-namespace GitHub.Runner.Plugins.PipelineArtifact
+namespace GitHub.Runner.Plugins.Artifact
 {
     // A client wrapper interacting with Build's Artifact API
     public class BuildServer
@@ -53,32 +53,6 @@ namespace GitHub.Runner.Plugins.PipelineArtifact
             CancellationToken cancellationToken)
         {
             return await _buildHttpClient.GetArtifactAsync(projectId, pipelineId, name, cancellationToken: cancellationToken);
-        }
-
-        public Task<List<BuildArtifact>> GetArtifactsAsync(
-            Guid project,
-            int pipelineId,
-            CancellationToken cancellationToken)
-        {
-            return _buildHttpClient.GetArtifactsAsync(project, pipelineId, userState: null, cancellationToken: cancellationToken);
-        }
-
-        //Get artifact with project name.
-        public async Task<BuildArtifact> GetArtifactWithProjectNameAsync(
-            string project,
-            int pipelineId,
-            string name,
-            CancellationToken cancellationToken)
-        {
-            return await _buildHttpClient.GetArtifactAsync(project, pipelineId, name, cancellationToken: cancellationToken);
-        }
-
-        public Task<List<BuildArtifact>> GetArtifactsWithProjectNameAsync(
-            string project,
-            int pipelineId,
-            CancellationToken cancellationToken)
-        {
-            return _buildHttpClient.GetArtifactsAsync(project, pipelineId, userState: null, cancellationToken: cancellationToken);
         }
     }
 }

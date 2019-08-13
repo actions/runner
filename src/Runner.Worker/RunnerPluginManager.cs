@@ -41,14 +41,14 @@ namespace GitHub.Runner.Worker
                 "publish",
                 new RunnerPluginActionInfo()
                 {
-                    PluginTypeName = "GitHub.Runner.Plugins.PipelineArtifact.PublishPipelineArtifact, Runner.Plugins"
+                    PluginTypeName = "GitHub.Runner.Plugins.Artifact.PublishArtifact, Runner.Plugins"
                 }
             },
             {
                 "download",
                 new RunnerPluginActionInfo()
                 {
-                    PluginTypeName = "GitHub.Runner.Plugins.PipelineArtifact.DownloadPipelineArtifact, Runner.Plugins"
+                    PluginTypeName = "GitHub.Runner.Plugins.Artifact.DownloadArtifact, Runner.Plugins"
                 }
             }
         };

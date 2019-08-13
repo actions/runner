@@ -14,7 +14,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Services.FileContainer;
 using GitHub.Services.Common;
 
-namespace GitHub.Runner.Plugins.PipelineArtifact
+namespace GitHub.Runner.Plugins.Artifact
 {
     public class FileContainerServer
     {
