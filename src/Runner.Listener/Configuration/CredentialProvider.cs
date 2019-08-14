@@ -10,6 +10,7 @@ using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Services.OAuth;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -152,6 +153,41 @@ namespace GitHub.Runner.Listener.Configuration
 
                 return null;
             }
+        }
+    }
+
+    public sealed class OAuthAccessTokenCredential : CredentialProvider
+    {
+        public OAuthAccessTokenCredential() : base(Constants.Configuration.OAuthAccessToken) { }
+
+        public override VssCredentials GetVssCredentials(IHostContext context)
+        {
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(OAuthAccessTokenCredential));
+            trace.Info(nameof(GetVssCredentials));
+            ArgUtil.NotNull(CredentialData, nameof(CredentialData));
+            string token;
+            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Token, out token))
+            {
+                token = null;
+            }
+
+            ArgUtil.NotNullOrEmpty(token, nameof(token));
+
+            trace.Info("token retrieved: {0} chars", token.Length);
+            VssCredentials creds = new VssCredentials(null, new VssOAuthAccessTokenCredential(token), CredentialPromptType.DoNotPrompt);
+            trace.Info("cred created");
+
+            return creds;
+        }
+
+        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
+        {
+            ArgUtil.NotNull(context, nameof(context));
+            Tracing trace = context.GetTrace(nameof(OAuthAccessTokenCredential));
+            trace.Info(nameof(EnsureCredential));
+            ArgUtil.NotNull(command, nameof(command));
+            CredentialData.Data[Constants.Runner.CommandLine.Args.Token] = command.GetToken();
         }
     }
 

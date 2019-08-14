@@ -136,6 +136,9 @@ namespace GitHub.Runner.Plugins.Repository
             // Initialize git command manager with additional environment variables.
             Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+            // Disable prompting for git credential manager
+            gitEnv["GCM_INTERACTIVE"] = "Never";
+
             // Git-lfs will try to pull down asset if any of the local/user/system setting exist.
             // If customer didn't enable `LFS` in their pipeline definition, we will use ENV to disable LFS fetch/checkout.
             if (!gitLfsSupport)
