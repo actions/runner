@@ -347,7 +347,6 @@ namespace GitHub.Runner.Worker
                         hasDefault = true;
                         var inputDefault = metadata.Value.AssertString("input default");
                         inputs.Add(inputName, inputDefault);
-                        break;
                     }
                     else if (string.Equals(metadataName, "deprecationMessage", StringComparison.OrdinalIgnoreCase))
                     {

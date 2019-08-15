@@ -89,7 +89,10 @@ namespace GitHub.Runner.Worker
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
-                var defaultInputsTemplateToken = new MappingToken(null, null, null);
+                if (definition.Data?.Deprecated == null)
+                {
+                    definition.Data.Deprecated = new Dictionary<String, String>();
+                }
                 foreach (var input in (definition.Data?.Inputs))
                 {
                     string key = input.Key.AssertString("action input name").Value;
@@ -98,12 +101,10 @@ namespace GitHub.Runner.Worker
                     {
                         inputs[key] = value;
                     }
-                }
-                foreach (KeyValuePair<string, string> entry in (definition.Data?.Deprecated))
-                {
-                    if (inputs.ContainsKey(entry.Key))
+                    String message = "";
+                    if (definition.Data.Deprecated.TryGetValue(key, out message))
                     {
-                        Trace.Warning("Property '{0}' has been deprecated with message: {1}", entry.Key, entry.Value);
+                        Trace.Warning("Property '{0}' has been deprecated with message: {1}", key, message);
                     }
                 }
             }
