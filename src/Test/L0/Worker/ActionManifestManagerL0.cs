@@ -210,6 +210,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
                 Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
                 Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal(result.Deprecated.Count, 1);
+
+                Assert.True(result.Deprecated.ContainsKey("greeting"));
+                string value = "";
+                result.Deprecated.TryGetValue("greeting", out value);
+                Assert.Equal(value, "This property has been deprecated");
 
                 Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.NodeJS);
 

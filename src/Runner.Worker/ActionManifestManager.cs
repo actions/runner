@@ -82,7 +82,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "inputs":
-                            actionDefinition.Inputs = ConvertInputs(context, actionPair.Value);
+                            actionDefinition = ConvertInputs(context, actionPair.Value, actionDefinition);
                             break;
 
                         case "runs":
@@ -327,11 +327,12 @@ namespace GitHub.Runner.Worker
             throw new NotSupportedException(nameof(ConvertRuns));
         }
 
-        private MappingToken ConvertInputs(
+        private ActionDefinitionData ConvertInputs(
             TemplateContext context,
-            TemplateToken inputsToken)
+            TemplateToken inputsToken,
+            ActionDefinitionData actionDefinition)
         {
-            var result = new MappingToken(null, null, null);
+            var inputs = new MappingToken(null, null, null);
             var inputsMapping = inputsToken.AssertMapping("inputs");
             foreach (var input in inputsMapping)
             {
@@ -345,18 +346,28 @@ namespace GitHub.Runner.Worker
                     {
                         hasDefault = true;
                         var inputDefault = metadata.Value.AssertString("input default");
-                        result.Add(inputName, inputDefault);
+                        inputs.Add(inputName, inputDefault);
                         break;
+                    }
+                    else if (string.Equals(metadataName, "deprecationMessage", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (actionDefinition.Deprecated == null)
+                        {
+                            actionDefinition.Deprecated = new Dictionary<String, String>();
+                        }
+                        var message = metadata.Value.AssertString("input deprecationMessage");
+                        actionDefinition.Deprecated.Add(inputName.Value, message.Value);
                     }
                 }
 
                 if (!hasDefault)
                 {
-                    result.Add(inputName, new StringToken(null, null, null, string.Empty));
+                    inputs.Add(inputName, new StringToken(null, null, null, string.Empty));
                 }
             }
 
-            return result;
+            actionDefinition.Inputs = inputs;
+            return actionDefinition;
         }
     }
 

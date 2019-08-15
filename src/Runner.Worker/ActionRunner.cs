@@ -99,6 +99,13 @@ namespace GitHub.Runner.Worker
                         inputs[key] = value;
                     }
                 }
+                foreach (KeyValuePair<string, string> entry in (definition.Data?.Deprecated))
+                {
+                    if (inputs.ContainsKey(entry.Key))
+                    {
+                        Trace.Warning("Property '{0}' has been deprecated with message: {1}", entry.Key, entry.Value);
+                    }
+                }
             }
 
             // Load the task environment.
