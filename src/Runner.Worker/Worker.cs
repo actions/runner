@@ -21,6 +21,7 @@ namespace GitHub.Runner.Worker
     public sealed class Worker : RunnerService, IWorker
     {
         private readonly TimeSpan _workerStartTimeout = TimeSpan.FromSeconds(30);
+        private ManualResetEvent _completedCommand = new ManualResetEvent(false);
         
         // Do not mask the values of these secrets
         private static HashSet<String> SecretVariableMaskWhitelist = new HashSet<String>(StringComparer.OrdinalIgnoreCase){ 
@@ -30,83 +31,93 @@ namespace GitHub.Runner.Worker
 
         public async Task<int> RunAsync(string pipeIn, string pipeOut)
         {
-            // Validate args.
-            ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
-            ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
-            var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
-            var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
-            VssUtil.InitializeVssClientSettings(HostContext.UserAgent, runnerWebProxy.WebProxy, runnerCertManager.VssClientCertificateManager);
-
-            var jobRunner = HostContext.CreateService<IJobRunner>();
-
-            using (var channel = HostContext.CreateService<IProcessChannel>())
-            using (var jobRequestCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken))
-            using (var channelTokenSource = new CancellationTokenSource())
+            try
             {
-                // Start the channel.
-                channel.StartClient(pipeIn, pipeOut);
+                // Setup way to handle SIGTERM/unloading signals
+                _completedCommand.Reset();
+                HostContext.Unloading += Worker_Unloading;
 
-                // Wait for up to 30 seconds for a message from the channel.
-                HostContext.WritePerfCounter("WorkerWaitingForJobMessage");
-                Trace.Info("Waiting to receive the job message from the channel.");
-                WorkerMessage channelMessage;
-                using (var csChannelMessage = new CancellationTokenSource(_workerStartTimeout))
+                // Validate args.
+                ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
+                ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
+                var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
+                var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, runnerWebProxy.WebProxy, runnerCertManager.VssClientCertificateManager);
+                var jobRunner = HostContext.CreateService<IJobRunner>();
+
+                using (var channel = HostContext.CreateService<IProcessChannel>())
+                using (var jobRequestCancellationToken = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken))
+                using (var channelTokenSource = new CancellationTokenSource())
                 {
-                    channelMessage = await channel.ReceiveAsync(csChannelMessage.Token);
+                    // Start the channel.
+                    channel.StartClient(pipeIn, pipeOut);
+
+                    // Wait for up to 30 seconds for a message from the channel.
+                    HostContext.WritePerfCounter("WorkerWaitingForJobMessage");
+                    Trace.Info("Waiting to receive the job message from the channel.");
+                    WorkerMessage channelMessage;
+                    using (var csChannelMessage = new CancellationTokenSource(_workerStartTimeout))
+                    {
+                        channelMessage = await channel.ReceiveAsync(csChannelMessage.Token);
+                    }
+
+                    // Deserialize the job message.
+                    Trace.Info("Message received.");
+                    ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
+                    ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
+                    var jobMessage = JsonUtility.ConvertFromJson<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
+                    ArgUtil.NotNull(jobMessage, nameof(jobMessage));
+                    HostContext.WritePerfCounter($"WorkerJobMessageReceived_{jobMessage.RequestId.ToString()}");
+
+                    // Initialize the secret masker and set the thread culture.
+                    InitializeSecretMasker(jobMessage);
+                    SetCulture(jobMessage);
+
+                    // Start the job.
+                    Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(WorkerUtilities.ScrubPiiData(jobMessage))}");
+                    Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage, jobRequestCancellationToken.Token);
+
+                    // Start listening for a cancel message from the channel.
+                    Trace.Info("Listening for cancel message from the channel.");
+                    Task<WorkerMessage> channelTask = channel.ReceiveAsync(channelTokenSource.Token);
+
+                    // Wait for one of the tasks to complete.
+                    Trace.Info("Waiting for the job to complete or for a cancel message from the channel.");
+                    Task.WaitAny(jobRunnerTask, channelTask);
+                    // Handle if the job completed.
+                    if (jobRunnerTask.IsCompleted)
+                    {
+                        Trace.Info("Job completed.");
+                        channelTokenSource.Cancel(); // Cancel waiting for a message from the channel.
+                        return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
+                    }
+
+                    // Otherwise a cancel message was received from the channel.
+                    Trace.Info("Cancellation/Shutdown message received.");
+                    channelMessage = await channelTask;
+                    switch (channelMessage.MessageType)
+                    {
+                        case MessageType.CancelRequest:
+                            jobRequestCancellationToken.Cancel();   // Expire the host cancellation token.
+                            break;
+                        case MessageType.RunnerShutdown:
+                            HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
+                            break;
+                        case MessageType.OperatingSystemShutdown:
+                            HostContext.ShutdownRunner(ShutdownReason.OperatingSystemShutdown);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(channelMessage.MessageType), channelMessage.MessageType, nameof(channelMessage.MessageType));
+                    }
+
+                    // Await the job.
+                        return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
                 }
-
-                // Deserialize the job message.
-                Trace.Info("Message received.");
-                ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
-                ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
-                var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
-                ArgUtil.NotNull(jobMessage, nameof(jobMessage));
-                HostContext.WritePerfCounter($"WorkerJobMessageReceived_{jobMessage.RequestId.ToString()}");
-
-                // Initialize the secret masker and set the thread culture.
-                InitializeSecretMasker(jobMessage);
-                SetCulture(jobMessage);
-
-                // Start the job.
-                Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(WorkerUtilities.ScrubPiiData(jobMessage))}");
-                Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage, jobRequestCancellationToken.Token);
-
-                // Start listening for a cancel message from the channel.
-                Trace.Info("Listening for cancel message from the channel.");
-                Task<WorkerMessage> channelTask = channel.ReceiveAsync(channelTokenSource.Token);
-
-                // Wait for one of the tasks to complete.
-                Trace.Info("Waiting for the job to complete or for a cancel message from the channel.");
-                Task.WaitAny(jobRunnerTask, channelTask);
-
-                // Handle if the job completed.
-                if (jobRunnerTask.IsCompleted)
-                {
-                    Trace.Info("Job completed.");
-                    channelTokenSource.Cancel(); // Cancel waiting for a message from the channel.
-                    return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
-                }
-
-                // Otherwise a cancel message was received from the channel.
-                Trace.Info("Cancellation/Shutdown message received.");
-                channelMessage = await channelTask;
-                switch (channelMessage.MessageType)
-                {
-                    case MessageType.CancelRequest:
-                        jobRequestCancellationToken.Cancel();   // Expire the host cancellation token.
-                        break;
-                    case MessageType.RunnerShutdown:
-                        HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
-                        break;
-                    case MessageType.OperatingSystemShutdown:
-                        HostContext.ShutdownRunner(ShutdownReason.OperatingSystemShutdown);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(channelMessage.MessageType), channelMessage.MessageType, nameof(channelMessage.MessageType));
-                }
-
-                // Await the job.
-                return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
+            }
+            finally
+            {
+                HostContext.Unloading -= Worker_Unloading;
+                _completedCommand.Set();
             }
         }
 
@@ -189,6 +200,16 @@ namespace GitHub.Runner.Worker
             {
                 // Set the default thread culture.
                 HostContext.SetDefaultCulture(culture.Value);
+            }
+        }
+
+        private void Worker_Unloading(object sender, EventArgs e)
+        {
+            if (!HostContext.RunnerShutdownToken.IsCancellationRequested)
+            {
+                HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
+                _completedCommand.WaitOne(Constants.Runner.ExitOnUnloadTimeout);
+                // should probs just wait on jobRequestCancellationToken
             }
         }
     }
