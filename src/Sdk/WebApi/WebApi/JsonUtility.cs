@@ -17,6 +17,13 @@ namespace GitHub.Services.WebApi
 
         public static T FromString<T>(String toDeserialize)
         {
+            return FromString<T>(toDeserialize, s_serializerSettings.Value);
+        }
+
+        public static T FromString<T>(
+            String toDeserialize,
+            JsonSerializerSettings settings)
+        {
             if (String.IsNullOrEmpty(toDeserialize))
             {
                 return default(T);
@@ -25,7 +32,7 @@ namespace GitHub.Services.WebApi
             using (StringReader sr = new StringReader(toDeserialize))
             using (JsonTextReader jsonReader = new JsonTextReader(sr))
             {
-                JsonSerializer s = JsonSerializer.Create(s_serializerSettings.Value);
+                JsonSerializer s = JsonSerializer.Create(settings);
                 return s.Deserialize<T>(jsonReader);
             }
         }
@@ -102,6 +109,13 @@ namespace GitHub.Services.WebApi
 
         public static T Deserialize<T>(Byte[] toDeserialize)
         {
+            return Deserialize<T>(toDeserialize, s_serializerSettings.Value);
+        }
+
+        public static T Deserialize<T>(
+            Byte[] toDeserialize,
+            JsonSerializerSettings settings)
+        {
             if (toDeserialize == null || toDeserialize.Length == 0)
             {
                 return default(T);
@@ -118,7 +132,7 @@ namespace GitHub.Services.WebApi
                 using (StreamReader sr = new StreamReader(streamToRead, s_UTF8NoBOM, true))
                 using (JsonTextReader jsonReader = new JsonTextReader(sr))
                 {
-                    JsonSerializer s = JsonSerializer.Create(s_serializerSettings.Value);
+                    JsonSerializer s = JsonSerializer.Create(settings);
                     return s.Deserialize<T>(jsonReader);
                 }
             }

@@ -390,8 +390,7 @@ namespace GitHub.Runner.Listener
                                     Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
                                 }
                             }
-                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.AgentJobRequest, StringComparison.OrdinalIgnoreCase) ||
-                                    string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
+                            else if (string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
                             {
                                 if (autoUpdateInProgress || runOnceJobReceived)
                                 {
@@ -400,19 +399,8 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
-                                    Pipelines.AgentJobRequestMessage pipelineJobMessage = null;
-                                    switch (message.MessageType)
-                                    {
-                                        case JobRequestMessageTypes.AgentJobRequest:
-                                            var legacyJobMessage = JsonUtility.FromString<AgentJobRequestMessage>(message.Body);
-                                            pipelineJobMessage = Pipelines.AgentJobRequestMessageUtil.Convert(legacyJobMessage);
-                                            break;
-                                        case JobRequestMessageTypes.PipelineAgentJobRequest:
-                                            pipelineJobMessage = JsonUtility.FromString<Pipelines.AgentJobRequestMessage>(message.Body);
-                                            break;
-                                    }
-
-                                    jobDispatcher.Run(pipelineJobMessage, runOnce);
+                                    var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
+                                    jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
                                     {
                                         Trace.Info("One time used runner received job message.");
