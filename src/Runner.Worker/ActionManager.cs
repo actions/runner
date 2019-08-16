@@ -44,6 +44,9 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(steps, nameof(steps));
 
             executionContext.Output("Prepare all required actions");
+            Dictionary<string, List<Guid>> imagesToPull = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, List<Guid>> imagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, ActionContainer> imagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase);
             List<JobExtensionRunner> containerSetupSteps = new List<JobExtensionRunner>();
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             foreach (var action in actions)
@@ -55,10 +58,13 @@ namespace GitHub.Runner.Worker
                     ArgUtil.NotNull(containerReference, nameof(containerReference));
                     ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
 
-                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
-                                                                   condition: ExpressionManager.Succeeded,
-                                                                   displayName: $"Pull {containerReference.Image}",
-                                                                   data: new ContainerSetupInfo(action.Id, containerReference.Image)));
+                    if (!imagesToPull.ContainsKey(containerReference.Image))
+                    {
+                        imagesToPull[containerReference.Image] = new List<Guid>();
+                    }
+
+                    Trace.Info($"Action {action.Name} ({action.Id}) needs to pull image '{containerReference.Image}'");
+                    imagesToPull[containerReference.Image].Add(action.Id);
                 }
                 else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
                 {
@@ -66,11 +72,58 @@ namespace GitHub.Runner.Worker
                     await DownloadRepositoryActionAsync(executionContext, action);
 
                     // more preparation base on content in the repository (action.yml)
-                    var step = PrepareRepositoryActionAsync(executionContext, action);
-                    if (step != null)
+                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
+                    if (setupInfo != null)
                     {
-                        containerSetupSteps.Add(step);
+                        if (!string.IsNullOrEmpty(setupInfo.Image))
+                        {
+                            if (!imagesToPull.ContainsKey(setupInfo.Image))
+                            {
+                                imagesToPull[setupInfo.Image] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
+                            imagesToPull[setupInfo.Image].Add(action.Id);
+                        }
+                        else
+                        {
+                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
+
+                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
+                            {
+                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
+                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
+                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
+                        }
                     }
+                }
+            }
+
+            if (imagesToPull.Count > 0)
+            {
+                foreach (var imageToPull in imagesToPull)
+                {
+                    Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
+                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
+                                                                   condition: ExpressionManager.Succeeded,
+                                                                   displayName: $"Pull {imageToPull.Key}",
+                                                                   data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
+                }
+            }
+
+            if (imagesToBuild.Count > 0)
+            {
+                foreach (var imageToBuild in imagesToBuild)
+                {
+                    var setupInfo = imagesToBuildInfo[imageToBuild.Key];
+                    Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
+                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                                                   condition: ExpressionManager.Succeeded,
+                                                                   displayName: $"Build {setupInfo.ActionRepository}",
+                                                                   data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
                 }
             }
 
@@ -270,9 +323,9 @@ namespace GitHub.Runner.Worker
         {
             var setupInfo = data as ContainerSetupInfo;
             ArgUtil.NotNull(setupInfo, nameof(setupInfo));
-            ArgUtil.NotNullOrEmpty(setupInfo.Image, nameof(setupInfo.Image));
+            ArgUtil.NotNullOrEmpty(setupInfo.Container.Image, nameof(setupInfo.Container.Image));
 
-            executionContext.Output($"Pull down action image '{setupInfo.Image}'");
+            executionContext.Output($"Pull down action image '{setupInfo.Container.Image}'");
 
             // Pull down docker image with retry up to 3 times
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
@@ -280,7 +333,7 @@ namespace GitHub.Runner.Worker
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await dockerManger.DockerPull(executionContext, setupInfo.Image);
+                pullExitCode = await dockerManger.DockerPull(executionContext, setupInfo.Container.Image);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -302,17 +355,20 @@ namespace GitHub.Runner.Worker
                 throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
             }
 
-            CachedActionContainers[setupInfo.StepId] = new ContainerInfo() { ContainerImage = setupInfo.Image };
-            Trace.Info($"Prepared docker image '{setupInfo.Image}' for action {setupInfo.StepId} ({setupInfo.Image})");
+            foreach (var stepId in setupInfo.StepIds)
+            {
+                CachedActionContainers[stepId] = new ContainerInfo() { ContainerImage = setupInfo.Container.Image };
+                Trace.Info($"Prepared docker image '{setupInfo.Container.Image}' for action {stepId} ({setupInfo.Container.Image})");
+            }
         }
 
         private async Task BuildActionContainerAsync(IExecutionContext executionContext, object data)
         {
             var setupInfo = data as ContainerSetupInfo;
             ArgUtil.NotNull(setupInfo, nameof(setupInfo));
-            ArgUtil.NotNullOrEmpty(setupInfo.Dockerfile, nameof(setupInfo.Dockerfile));
+            ArgUtil.NotNullOrEmpty(setupInfo.Container.Dockerfile, nameof(setupInfo.Container.Dockerfile));
 
-            executionContext.Output($"Build container for action use: '{setupInfo.Dockerfile}'.");
+            executionContext.Output($"Build container for action use: '{setupInfo.Container.Dockerfile}'.");
 
             // Build docker image with retry up to 3 times
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
@@ -321,7 +377,7 @@ namespace GitHub.Runner.Worker
             var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
             while (retryCount < 3)
             {
-                buildExitCode = await dockerManger.DockerBuild(executionContext, setupInfo.WorkingDirectory, Directory.GetParent(setupInfo.Dockerfile).FullName, imageName);
+                buildExitCode = await dockerManger.DockerBuild(executionContext, setupInfo.Container.WorkingDirectory, Directory.GetParent(setupInfo.Container.Dockerfile).FullName, imageName);
                 if (buildExitCode == 0)
                 {
                     break;
@@ -343,8 +399,11 @@ namespace GitHub.Runner.Worker
                 throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
             }
 
-            CachedActionContainers[setupInfo.StepId] = new ContainerInfo() { ContainerImage = imageName };
-            Trace.Info($"Prepared docker image '{imageName}' for action {setupInfo.StepId} ({setupInfo.Dockerfile})");
+            foreach (var stepId in setupInfo.StepIds)
+            {
+                CachedActionContainers[stepId] = new ContainerInfo() { ContainerImage = imageName };
+                Trace.Info($"Prepared docker image '{imageName}' for action {stepId} ({setupInfo.Container.Dockerfile})");
+            }
         }
 
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
@@ -555,7 +614,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private JobExtensionRunner PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
+        private ActionContainer PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
         {
             var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
             if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
@@ -564,6 +623,7 @@ namespace GitHub.Runner.Worker
                 return null;
             }
 
+            var setupInfo = new ActionContainer();
             string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
             string actionEntryDirectory = destDirectory;
             string dockerFileRelativePath = repositoryReference.Name;
@@ -572,6 +632,11 @@ namespace GitHub.Runner.Worker
             {
                 actionEntryDirectory = Path.Combine(destDirectory, repositoryReference.Path);
                 dockerFileRelativePath = $"{dockerFileRelativePath}/{repositoryReference.Path}";
+                setupInfo.ActionRepository = $"{repositoryReference.Name}/{repositoryReference.Path}@{repositoryReference.Ref}";
+            }
+            else
+            {
+                setupInfo.ActionRepository = $"{repositoryReference.Name}@{repositoryReference.Ref}";
             }
 
             // find the docker file or action.yml file
@@ -581,18 +646,16 @@ namespace GitHub.Runner.Worker
             if (File.Exists(dockerFile))
             {
                 executionContext.Debug($"Dockerfile for action: '{dockerFile}'.");
-                return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                              condition: ExpressionManager.Succeeded,
-                                              displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
-                                              data: new ContainerSetupInfo(repositoryAction.Id, dockerFile, destDirectory));
+                setupInfo.Dockerfile = dockerFile;
+                setupInfo.WorkingDirectory = destDirectory;
+                return setupInfo;
             }
             else if (File.Exists(dockerFileLowerCase))
             {
                 executionContext.Debug($"Dockerfile for action: '{dockerFileLowerCase}'.");
-                return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                              condition: ExpressionManager.Succeeded,
-                                              displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
-                                              data: new ContainerSetupInfo(repositoryAction.Id, dockerFileLowerCase, destDirectory));
+                setupInfo.Dockerfile = dockerFileLowerCase;
+                setupInfo.WorkingDirectory = destDirectory;
+                return setupInfo;
             }
             else if (File.Exists(actionManifest))
             {
@@ -608,10 +671,9 @@ namespace GitHub.Runner.Worker
                         var dockerFileFullPath = Path.Combine(actionEntryDirectory, containerAction.Image);
                         executionContext.Debug($"Dockerfile for action: '{dockerFileFullPath}'.");
 
-                        return new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                          condition: ExpressionManager.Succeeded,
-                                          displayName: $"Build {dockerFileRelativePath}@{repositoryReference.Ref}",
-                                          data: new ContainerSetupInfo(repositoryAction.Id, dockerFileFullPath, destDirectory));
+                        setupInfo.Dockerfile = dockerFileFullPath;
+                        setupInfo.WorkingDirectory = destDirectory;
+                        return setupInfo;
                     }
                     else if (containerAction.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
                     {
@@ -619,10 +681,8 @@ namespace GitHub.Runner.Worker
 
                         executionContext.Debug($"Container image for action: '{actionImage}'.");
 
-                        return new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
-                                                      condition: ExpressionManager.Succeeded,
-                                                      displayName: $"Pull {actionImage}",
-                                                      data: new ContainerSetupInfo(repositoryAction.Id, actionImage));
+                        setupInfo.Image = actionImage;
+                        return setupInfo;
                     }
                     else
                     {
@@ -716,23 +776,36 @@ namespace GitHub.Runner.Worker
 
     public class ContainerSetupInfo
     {
-        public ContainerSetupInfo(Guid id, string image)
+        public ContainerSetupInfo(List<Guid> ids, string image)
         {
-            StepId = id;
-            Image = image;
+            StepIds = ids;
+            Container = new ActionContainer()
+            {
+                Image = image
+            };
         }
 
-        public ContainerSetupInfo(Guid id, string dockerfile, string workingDirectory)
+        public ContainerSetupInfo(List<Guid> ids, string dockerfile, string workingDirectory)
         {
-            StepId = id;
-            Dockerfile = dockerfile;
-            WorkingDirectory = workingDirectory;
+            StepIds = ids;
+            Container = new ActionContainer()
+            {
+                Dockerfile = dockerfile,
+                WorkingDirectory = workingDirectory
+            };
         }
 
-        public Guid StepId { get; set; }
+        public List<Guid> StepIds { get; set; }
+
+        public ActionContainer Container { get; set; }
+    }
+
+    public class ActionContainer
+    {
         public string Image { get; set; }
         public string Dockerfile { get; set; }
         public string WorkingDirectory { get; set; }
+        public string ActionRepository { get; set; }
     }
 }
 

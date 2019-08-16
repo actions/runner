@@ -99,6 +99,10 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\"", "\\\"")}\"";
                     }
+                    else
+                    {
+                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + " \"\"";
+                    }
                 }
             }
             else
