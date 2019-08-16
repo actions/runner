@@ -65,7 +65,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info("Message received.");
                     ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
                     ArgUtil.NotNullOrEmpty(channelMessage.Body, nameof(channelMessage.Body));
-                    var jobMessage = JsonUtility.ConvertFromJson<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
+                    var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(channelMessage.Body);
                     ArgUtil.NotNull(jobMessage, nameof(jobMessage));
                     HostContext.WritePerfCounter($"WorkerJobMessageReceived_{jobMessage.RequestId.ToString()}");
 
