@@ -181,8 +181,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepId, actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Image, "ubuntu:16.04");
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:16.04");
             }
             finally
             {
@@ -340,9 +340,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepId, actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"));
             }
             finally
             {
@@ -385,9 +385,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepId, actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "images/cli", "Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "images/cli", "Dockerfile"));
             }
             finally
             {
@@ -430,9 +430,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepId, actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "Dockerfile"));
             }
             finally
             {
@@ -476,9 +476,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepId, actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "images/Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "images/Dockerfile"));
             }
             finally
             {
@@ -520,8 +520,167 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepId, actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Image, "ubuntu:18.04");
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_NotPullOrBuildImagesMultipleTimes()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                var actionId1 = Guid.NewGuid();
+                var actionId2 = Guid.NewGuid();
+                var actionId3 = Guid.NewGuid();
+                var actionId4 = Guid.NewGuid();
+                var actionId5 = Guid.NewGuid();
+                var actionId6 = Guid.NewGuid();
+                var actionId7 = Guid.NewGuid();
+                var actionId8 = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId1,
+                        Reference = new Pipelines.ContainerRegistryReference()
+                        {
+                            Image = "ubuntu:16.04"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId2,
+                        Reference = new Pipelines.ContainerRegistryReference()
+                        {
+                            Image = "ubuntu:18.04"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId3,
+                        Reference = new Pipelines.ContainerRegistryReference()
+                        {
+                            Image = "ubuntu:18.04"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId4,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "notexist/no",
+                            Ref = "notexist",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId5,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/test",
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId6,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/test",
+                            Ref = "release",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId7,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/test",
+                            Ref = "release",
+                            RepositoryType = "GitHub"
+                        }
+                    },
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId8,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/test",
+                            Ref = "master",
+                            Path = "images/cli",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
+                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
+                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
+                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
+                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerhubaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
+
+                watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "master.completed");
+                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
+                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
+                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
+                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"), "Fake Dockerfile");
+
+                watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "release.completed");
+                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
+                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
+                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "release"));
+                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "release", "Dockerfile"), "Fake Dockerfile");
+
+                watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "master.completed");
+                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
+                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
+                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images/cli"));
+                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images/cli/Dockerfile"), "Fake Dockerfile");
+
+                //Act
+                var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId1);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:16.04");
+
+                Assert.True((steps[1].Data as ContainerSetupInfo).StepIds.Contains(actionId2));
+                Assert.True((steps[1].Data as ContainerSetupInfo).StepIds.Contains(actionId3));
+                Assert.True((steps[1].Data as ContainerSetupInfo).StepIds.Contains(actionId4));
+                Assert.Equal((steps[1].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
+
+                Assert.Equal((steps[2].Data as ContainerSetupInfo).StepIds[0], actionId5);
+                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
+                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"));
+
+                Assert.True((steps[3].Data as ContainerSetupInfo).StepIds.Contains(actionId6));
+                Assert.True((steps[3].Data as ContainerSetupInfo).StepIds.Contains(actionId7));
+                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "release"));
+                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "release", "Dockerfile"));
+
+                Assert.Equal((steps[4].Data as ContainerSetupInfo).StepIds[0], actionId8);
+                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
+                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "images/cli", "Dockerfile"));
             }
             finally
             {
