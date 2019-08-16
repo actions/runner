@@ -1,11 +1,13 @@
 ## Features
-  - N/A
+  - New command keyword `::` with back compat for `##[` (#71)
+  - Support oauthaccesstoken auth schema, add problem matcher for git checkout. (#74)
 
 ## Bugs
-  - handle ##[debug] from actions, not overwrite action env with set-env. (#72)
+  - Preserve date strings in github event payload (#77)
+  - Stop pull and build docker image for action multiple times (#79)
 
 ## Misc
-  - N/A
+  - Remove code for uploading artifact to artifact service (#78)
 
 ## Agent Downloads  
 
