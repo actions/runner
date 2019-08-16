@@ -209,7 +209,6 @@ namespace GitHub.Runner.Worker
             {
                 HostContext.ShutdownRunner(ShutdownReason.UserCancelled);
                 _completedCommand.WaitOne(Constants.Runner.ExitOnUnloadTimeout);
-                // should probs just wait on jobRequestCancellationToken
             }
         }
     }
