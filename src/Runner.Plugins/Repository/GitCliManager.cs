@@ -118,7 +118,7 @@ namespace GitHub.Runner.Plugins.Repository
             return await ExecuteGitCommandAsync(context, repositoryPath, "init", StringUtil.Format($"{repoRootEscapeSpace}"));
         }
 
-        // git fetch --tags --prune --progress --no-recurse-submodules [--depth=15] origin [+refs/pull/*:refs/remote/pull/*]
+        // git fetch --no-tags --prune --progress --no-recurse-submodules [--depth=15] origin [+refs/pull/*:refs/remote/pull/*] [+refs/tags/1:refs/tags/1]
         public async Task<int> GitFetch(RunnerActionPluginExecutionContext context, string repositoryPath, string remoteName, int fetchDepth, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken)
         {
             context.Debug($"Fetch git repository at: {repositoryPath} remote: {remoteName}.");
@@ -128,20 +128,20 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             // default options for git fetch.
-            string options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules {remoteName} {string.Join(" ", refSpec)}");
+            string options = StringUtil.Format($"--no-tags --prune --progress --no-recurse-submodules {remoteName} {string.Join(" ", refSpec)}");
 
             // If shallow fetch add --depth arg
             // If the local repository is shallowed but there is no fetch depth provide for this build,
             // add --unshallow to convert the shallow repository to a complete repository
             if (fetchDepth > 0)
             {
-                options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules --depth={fetchDepth} {remoteName} {string.Join(" ", refSpec)}");
+                options = StringUtil.Format($"--no-tags --prune --progress --no-recurse-submodules --depth={fetchDepth} {remoteName} {string.Join(" ", refSpec)}");
             }
             else
             {
                 if (File.Exists(Path.Combine(repositoryPath, ".git", "shallow")))
                 {
-                    options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules --unshallow {remoteName} {string.Join(" ", refSpec)}");
+                    options = StringUtil.Format($"--no-tags --prune --progress --no-recurse-submodules --unshallow {remoteName} {string.Join(" ", refSpec)}");
                 }
             }
 
@@ -175,20 +175,17 @@ namespace GitHub.Runner.Plugins.Repository
             return fetchExitCode;
         }
 
-        // git lfs fetch origin [ref]
-        public async Task<int> GitLFSFetch(RunnerActionPluginExecutionContext context, string repositoryPath, string remoteName, string refSpec, string additionalCommandLine, CancellationToken cancellationToken)
+        // git lfs pull
+        public async Task<int> GitLFSPull(RunnerActionPluginExecutionContext context, string repositoryPath, string additionalCommandLine, CancellationToken cancellationToken)
         {
-            context.Debug($"Fetch LFS objects for git repository at: {repositoryPath} remote: {remoteName}.");
-
-            // default options for git lfs fetch.
-            string options = StringUtil.Format($"fetch origin {refSpec}");
+            context.Debug($"Download LFS objects for git repository at: {repositoryPath}.");
 
             int retryCount = 0;
-            int fetchExitCode = 0;
+            int pullExitCode = 0;
             while (retryCount < 3)
             {
-                fetchExitCode = await ExecuteGitCommandAsync(context, repositoryPath, "lfs", options, additionalCommandLine, cancellationToken);
-                if (fetchExitCode == 0)
+                pullExitCode = await ExecuteGitCommandAsync(context, repositoryPath, "lfs", "pull", additionalCommandLine, cancellationToken);
+                if (pullExitCode == 0)
                 {
                     break;
                 }
@@ -197,13 +194,20 @@ namespace GitHub.Runner.Plugins.Repository
                     if (++retryCount < 3)
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                        context.Warning($"Git lfs fetch failed with exit code {fetchExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        context.Warning($"Git lfs pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
                         await Task.Delay(backOff);
                     }
                 }
             }
 
-            return fetchExitCode;
+            return pullExitCode;
+        }
+
+        // git symbolic-ref -q <HEAD>
+        public async Task<int> GitSymbolicRefHEAD(RunnerActionPluginExecutionContext context, string repositoryPath)
+        {
+            context.Debug($"Check whether HEAD is detached HEAD.");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "symbolic-ref", "-q HEAD");
         }
 
         // git checkout -f --progress <commitId/branch>
@@ -220,6 +224,24 @@ namespace GitHub.Runner.Plugins.Repository
             else
             {
                 options = StringUtil.Format("--force {0}", committishOrBranchSpec);
+            }
+
+            return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", options, cancellationToken);
+        }
+
+        public async Task<int> GitCheckoutB(RunnerActionPluginExecutionContext context, string repositoryPath, string newBranch, string startPoint, CancellationToken cancellationToken)
+        {
+            context.Debug($"Checkout -B {newBranch} {startPoint}.");
+
+            // Git 2.7 support report checkout progress to stderr during stdout/err redirect.
+            string options;
+            if (gitVersion >= new Version(2, 7))
+            {
+                options = $"--progress --force -B {newBranch} {startPoint}";
+            }
+            else
+            {
+                options = $"--force -B {newBranch} {startPoint}";
             }
 
             return await ExecuteGitCommandAsync(context, repositoryPath, "checkout", options, cancellationToken);
@@ -244,11 +266,11 @@ namespace GitHub.Runner.Plugins.Repository
             return await ExecuteGitCommandAsync(context, repositoryPath, "clean", options);
         }
 
-        // git reset --hard HEAD
-        public async Task<int> GitReset(RunnerActionPluginExecutionContext context, string repositoryPath)
+        // git reset --hard <commit>
+        public async Task<int> GitReset(RunnerActionPluginExecutionContext context, string repositoryPath, string commit = "HEAD")
         {
             context.Debug($"Undo any changes to tracked files in the working tree for repository at {repositoryPath}.");
-            return await ExecuteGitCommandAsync(context, repositoryPath, "reset", "--hard HEAD");
+            return await ExecuteGitCommandAsync(context, repositoryPath, "reset", $"--hard {commit}");
         }
 
         // get remote set-url <origin> <url>
