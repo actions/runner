@@ -58,6 +58,8 @@ namespace GitHub.Runner.Common
         private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
         private object _perfLock = new object();
 
+        private object shutdownLock = new object();
+
         private RunMode _runMode = RunMode.Normal;
         private Tracing _trace;
         private Tracing _vssTrace;
@@ -389,10 +391,16 @@ namespace GitHub.Runner.Common
 
         public void ShutdownRunner(ShutdownReason reason)
         {
-            ArgUtil.NotNull(reason, nameof(reason));
-            _trace.Info($"Runner will be shutdown for {reason.ToString()}");
-            RunnerShutdownReason = reason;
-            _runnerShutdownTokenSource.Cancel();
+            lock(shutdownLock)
+            {
+                if(!_runnerShutdownTokenSource.IsCancellationRequested)
+                {
+                    ArgUtil.NotNull(reason, nameof(reason));
+                    _trace.Info($"Runner will be shutdown for {reason.ToString()}");
+                    RunnerShutdownReason = reason;
+                    _runnerShutdownTokenSource.Cancel(); 
+                }
+            }
         }
 
         public override void Dispose()
