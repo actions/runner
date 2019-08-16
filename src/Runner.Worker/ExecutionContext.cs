@@ -822,7 +822,7 @@ namespace GitHub.Runner.Worker
                 var owners = config.Matchers.Select(x => $"'{x.Owner}'");
                 var joinedOwners = string.Join(", ", owners);
                 // todo: loc
-                this.Output($"Added matchers: {joinedOwners}");
+                this.Output($"Added matchers: {joinedOwners}. Problem matchers scan action output for known warning or error strings and report these inline.");
             }
         }
 
