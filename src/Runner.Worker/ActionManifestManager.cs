@@ -82,7 +82,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "inputs":
-                            actionDefinition = ConvertInputs(context, actionPair.Value, actionDefinition);
+                            ConvertInputs(context, actionPair.Value, actionDefinition);
                             break;
 
                         case "runs":
@@ -327,12 +327,12 @@ namespace GitHub.Runner.Worker
             throw new NotSupportedException(nameof(ConvertRuns));
         }
 
-        private ActionDefinitionData ConvertInputs(
+        private void ConvertInputs(
             TemplateContext context,
             TemplateToken inputsToken,
             ActionDefinitionData actionDefinition)
         {
-            var inputs = new MappingToken(null, null, null);
+            actionDefinition.Inputs = new MappingToken(null, null, null);
             var inputsMapping = inputsToken.AssertMapping("inputs");
             foreach (var input in inputsMapping)
             {
@@ -346,7 +346,7 @@ namespace GitHub.Runner.Worker
                     {
                         hasDefault = true;
                         var inputDefault = metadata.Value.AssertString("input default");
-                        inputs.Add(inputName, inputDefault);
+                        actionDefinition.Inputs.Add(inputName, inputDefault);
                     }
                     else if (string.Equals(metadataName, "deprecationMessage", StringComparison.OrdinalIgnoreCase))
                     {
@@ -361,12 +361,9 @@ namespace GitHub.Runner.Worker
 
                 if (!hasDefault)
                 {
-                    inputs.Add(inputName, new StringToken(null, null, null, string.Empty));
+                    actionDefinition.Inputs.Add(inputName, new StringToken(null, null, null, string.Empty));
                 }
             }
-
-            actionDefinition.Inputs = inputs;
-            return actionDefinition;
         }
     }
 
