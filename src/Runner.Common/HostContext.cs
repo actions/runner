@@ -57,9 +57,6 @@ namespace GitHub.Runner.Common
         private readonly ProductInfoHeaderValue _userAgent = new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version);
         private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
         private object _perfLock = new object();
-
-        private object shutdownLock = new object();
-
         private RunMode _runMode = RunMode.Normal;
         private Tracing _trace;
         private Tracing _vssTrace;
@@ -391,15 +388,19 @@ namespace GitHub.Runner.Common
 
         public void ShutdownRunner(ShutdownReason reason)
         {
-            lock(shutdownLock)
+            ArgUtil.NotNull(reason, nameof(reason));
+            _trace.Info($"Runner will be shutdown for {reason.ToString()}");
+            RunnerShutdownReason = reason;
+            try
             {
-                if(!_runnerShutdownTokenSource.IsCancellationRequested)
-                {
-                    ArgUtil.NotNull(reason, nameof(reason));
-                    _trace.Info($"Runner will be shutdown for {reason.ToString()}");
-                    RunnerShutdownReason = reason;
-                    _runnerShutdownTokenSource.Cancel(); 
-                }
+                _runnerShutdownTokenSource.Cancel(); 
+            }
+            catch(AggregateException e)
+            {
+                // Trap exceptions thrown by cancellation listeners, 
+                // We may want to refactor to ensure listeners should not throw
+                _trace.Warning($"Caught exception when shutting down runner: {e.ToString()}");
+                return;
             }
         }
 
