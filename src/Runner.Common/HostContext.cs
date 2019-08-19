@@ -391,17 +391,7 @@ namespace GitHub.Runner.Common
             ArgUtil.NotNull(reason, nameof(reason));
             _trace.Info($"Runner will be shutdown for {reason.ToString()}");
             RunnerShutdownReason = reason;
-            try
-            {
-                _runnerShutdownTokenSource.Cancel(); 
-            }
-            catch(AggregateException e)
-            {
-                // Trap exceptions thrown by cancellation listeners, 
-                // We may want to refactor to ensure listeners should not throw
-                _trace.Warning($"Caught exception when shutting down runner: {e.ToString()}");
-                return;
-            }
+            _runnerShutdownTokenSource.Cancel(); 
         }
 
         public override void Dispose()
