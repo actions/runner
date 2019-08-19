@@ -391,7 +391,7 @@ namespace GitHub.Runner.Common
             ArgUtil.NotNull(reason, nameof(reason));
             _trace.Info($"Runner will be shutdown for {reason.ToString()}");
             RunnerShutdownReason = reason;
-            _runnerShutdownTokenSource.Cancel(); 
+            _runnerShutdownTokenSource.Cancel();
         }
 
         public override void Dispose()
