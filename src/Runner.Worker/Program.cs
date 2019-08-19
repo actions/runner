@@ -19,6 +19,7 @@ namespace GitHub.Runner.Worker
 
         public static async Task<int> MainAsync(IHostContext context, string[] args)
         {
+            // We may want to consider registering this handler in Worker.cs, similiar to the unloading/SIGTERM handler
             //ITerminal registers a CTRL-C handler, which keeps the Runner.Worker process running
             //and lets the Runner.Listener handle gracefully the exit.
             var term = context.GetService<ITerminal>();

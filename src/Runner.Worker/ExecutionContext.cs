@@ -203,7 +203,14 @@ namespace GitHub.Runner.Worker
 
         public void CancelToken()
         {
-            _cancellationTokenSource.Cancel();
+            try
+            {
+                _cancellationTokenSource.Cancel();
+            }
+            catch (ObjectDisposedException e)
+            {
+                Trace.Info($"Attempted to cancel a disposed token, the execution is already complete: {e.ToString()}");
+            }
         }
 
         public void ForceTaskComplete()
