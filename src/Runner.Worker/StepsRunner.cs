@@ -107,7 +107,15 @@ namespace GitHub.Runner.Worker
                                 {
                                     // Cancel the step.
                                     Trace.Info("Cancel current running step.");
-                                    step.ExecutionContext.CancelToken();
+                                    try
+                                    {
+                                        step.ExecutionContext.CancelToken();
+                                    }
+                                    catch(ObjectDisposedException e)
+                                    {
+                                        Trace.Warning("Attempted to cancel Step after it has already finished");
+                                        step.ExecutionContext.Result = TaskResult.Canceled;
+                                    }
                                 }
                             });
                         }
