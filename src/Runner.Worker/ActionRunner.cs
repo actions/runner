@@ -27,7 +27,7 @@ namespace GitHub.Runner.Worker
 
         public TemplateToken ContinueOnError => Action?.ContinueOnError;
 
-        public string DisplayName => Action?.DisplayName;
+        public string DisplayName { get; set; }
 
         public IExecutionContext ExecutionContext { get; set; }
 

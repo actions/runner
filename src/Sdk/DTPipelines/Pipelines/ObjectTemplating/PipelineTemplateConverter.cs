@@ -287,6 +287,20 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        internal static String ConvertToStepDisplayName(
+            TemplateContext context,
+            TemplateToken token,
+            Boolean allowExpressions = false)
+        {
+            if (allowExpressions && token is ExpressionToken)
+            {
+                return null;
+            }
+
+            var stringToken = token.AssertString($"step {PipelineTemplateConstants.StringStrategyContext}");
+            return stringToken.Value;
+        }
+
         internal static Int32? ConvertToStepTimeout(
             TemplateContext context,
             TemplateToken token,
@@ -741,7 +755,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         new ActionStep
                         {
                             Reference = new ScriptReference(),
-                            DisplayName = "WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL",
+                            DisplayName = new StringToken(null, null, null, "WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL"),
                             Inputs = new MappingToken(null, null, null)
                             {
                                 {
@@ -754,7 +768,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         new ActionStep
                         {
                             Reference = new ScriptReference(),
-                            DisplayName = "WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL",
+                            DisplayName = new StringToken(null, null, null, "WARNING: TEMPLATES ARE HIGHLY EXPERIMENTAL"),
                             Inputs = new MappingToken(null, null, null)
                             {
                                 {
@@ -950,16 +964,23 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToString(),
+                    DisplayName = name,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Environment = env?.Clone(true),
                     Reference = new ScriptReference()
                 };
 
-                if (String.IsNullOrEmpty(result.DisplayName))
+                if (String.IsNullOrEmpty(result.DisplayName?.ToString()))
                 {
-                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{run.ToDisplayString()}";
+                    var combinationToken = new SequenceToken(null, null, null);
+                    combinationToken.Add(new StringToken(null, null, null, $"{PipelineTemplateConstants.RunDisplayPrefix}"));
+                    combinationToken.Add(run?.Clone(true) as ScalarToken);
+                    if (run is BasicExpressionToken basicToken)
+                    {
+                        result.DisplayName = new BasicExpressionToken(null, null, null, $"{PipelineTemplateConstants.RunDisplayPrefix}");
+                    }
+                    result.DisplayName = combinationToken;
                 }
 
                 var inputs = new MappingToken(null, null, null);
@@ -986,16 +1007,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToString(),
+                    DisplayName = name?.Clone(true) as ScalarToken,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Inputs = with,
                     Environment = env,
                 };
 
-                if (String.IsNullOrEmpty(result.DisplayName))
+                if (String.IsNullOrEmpty(result.DisplayName?.ToString()))
                 {
-                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{uses.Value}";
+                    result.DisplayName = new StringToken(null, null, null, $"{PipelineTemplateConstants.RunDisplayPrefix}{uses.Value}");
                 }
 
                 if (uses.Value.StartsWith("docker://", StringComparison.Ordinal))

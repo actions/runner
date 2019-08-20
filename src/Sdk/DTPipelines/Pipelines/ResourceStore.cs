@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Orchestration.Server.Artifacts;
 using GitHub.DistributedTask.Pipelines.Artifacts;
 using GitHub.DistributedTask.Pipelines.Runtime;
@@ -587,7 +588,7 @@ namespace GitHub.DistributedTask.Pipelines
                     var checkoutTask = new TaskStep()
                     {
                         Enabled = true,
-                        DisplayName = PipelineConstants.CheckoutTask.FriendlyName,
+                        DisplayName = new StringToken(null, null, null, PipelineConstants.CheckoutTask.FriendlyName),
                         Reference = new TaskStepDefinitionReference()
                         {
                             Id = PipelineConstants.CheckoutTask.Id,

@@ -10,6 +10,7 @@ using GitHub.DistributedTask.Pipelines.Runtime;
 using GitHub.DistributedTask.Pipelines.Validation;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.Pipelines
 {
@@ -577,9 +578,9 @@ namespace GitHub.DistributedTask.Pipelines
 
                 stepsToName.Add(step);
 
-                if (String.IsNullOrEmpty(step.DisplayName))
+                if (String.IsNullOrEmpty(step.DisplayName?.ToString()))
                 {
-                    step.DisplayName = defaultName;
+                    step.DisplayName = new StringToken(null, null, null, defaultName);
                 }
             }
             else
@@ -624,9 +625,9 @@ namespace GitHub.DistributedTask.Pipelines
                 }
 
                 // If the name was specified but the display name is empty, default the display name to the name
-                if (String.IsNullOrEmpty(step.DisplayName))
+                if (String.IsNullOrEmpty(step.DisplayName?.ToString()))
                 {
-                    step.DisplayName = step.Name;
+                    step.DisplayName = new StringToken(null, null, null, step.Name);
                 }
             }
 
@@ -1540,7 +1541,8 @@ namespace GitHub.DistributedTask.Pipelines
             jobStep.Id = context.IdGenerator.GetInstanceId(taskIdentifier);
 
             // Update the display name of task steps
-            jobStep.DisplayName = context.ExpandVariables(jobStep.DisplayName, maskSecrets: true);
+            jobStep.DisplayName = new StringToken(null, null, null,
+                context.ExpandVariables(jobStep.DisplayName?.ToString(), maskSecrets: true));
 
             // Now resolve any resources referenced by inputs
             var taskDefinition = context.TaskStore.ResolveTask(jobStep.Reference.Id, jobStep.Reference.Version);
@@ -1586,7 +1588,8 @@ namespace GitHub.DistributedTask.Pipelines
             groupStep.Id = context.IdGenerator.GetInstanceId(groupIdentifier);
 
             // Update the display name of step group
-            groupStep.DisplayName = context.ExpandVariables(groupStep.DisplayName, maskSecrets: true);
+            groupStep.DisplayName = new StringToken(null, null, null,
+                context.ExpandVariables(groupStep.DisplayName?.ToString(), maskSecrets: true));
 
             // Now resolve every task steps within step group
             var stepsCopy = new List<TaskStep>();

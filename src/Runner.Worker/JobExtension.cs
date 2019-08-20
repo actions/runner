@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
+using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.Runner.Common.Util;
+using System.Linq;
+using System.Diagnostics;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
@@ -128,6 +133,7 @@ namespace GitHub.Runner.Worker
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
                             actionRunner.Condition = step.Condition;
+                            actionRunner.DisplayName = ExpandStepDisplayName(context, step);
                             jobSteps.Add(actionRunner);
                         }
                     }
@@ -337,6 +343,23 @@ namespace GitHub.Runner.Worker
                     context.Complete();
                 }
             }
+        }
+
+        private String ExpandStepDisplayName(IExecutionContext context, Pipelines.JobStep step)
+        {
+            var templateTrace = context.ToTemplateTraceWriter();
+            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+            var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+            var displayName = templateEvaluator.EvaluateStepDisplayName(step.DisplayName, context.ExpressionValues);
+
+            var firstLine = displayName.TrimStart(' ', '\t', '\r', '\n');
+            var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
+            if (firstNewLine >= 0)
+            {
+                firstLine = firstLine.Substring(0, firstNewLine);
+            }
+            // How should we handle default name? In a case where a user specifies -name: ${{github.abc}} and that does not exist when executed
+            return String.IsNullOrEmpty(firstLine) ? $"Run Unnamed Step" : firstLine;
         }
 
         private Dictionary<int, Process> SnapshotProcesses()

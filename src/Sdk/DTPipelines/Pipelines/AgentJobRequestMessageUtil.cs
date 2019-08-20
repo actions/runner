@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.WebApi;
 
@@ -47,7 +48,7 @@ namespace GitHub.DistributedTask.Pipelines
                     // construct checkout task
                     var checkoutStep = new TaskStep();
                     checkoutStep.Id = Guid.NewGuid();
-                    checkoutStep.DisplayName = PipelineConstants.CheckoutTask.FriendlyName;
+                    checkoutStep.DisplayName = new StringToken(null, null, null, PipelineConstants.CheckoutTask.FriendlyName);
                     checkoutStep.Name = "__system_checkout";
                     checkoutStep.Reference = new TaskStepDefinitionReference()
                     {
