@@ -97,11 +97,15 @@ namespace GitHub.Runner.Worker
                     {
                         inputs[key] = value;
                     }
-                    string message = "";
-                    if (definition.Data?.Deprecated?.TryGetValue(key, out message)==true)
-                    {
-                        ExecutionContext.Warning(String.Format("Property '{0}' has been deprecated with message: {1}", key, message));
-                    }
+                }
+            }
+
+            foreach (KeyValuePair<string, string> input in inputs)
+            {
+                string message = "";
+                if (definition.Data?.Deprecated?.TryGetValue(input.Key, out message)==true)
+                {
+                    ExecutionContext.Warning(String.Format("Property '{0}' has been deprecated with message: {1}", input.Key, message));
                 }
             }
 
