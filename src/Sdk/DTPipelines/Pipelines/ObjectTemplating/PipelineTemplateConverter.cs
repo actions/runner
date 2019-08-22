@@ -976,10 +976,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     var combinationToken = new SequenceToken(null, null, null);
                     combinationToken.Add(new StringToken(null, null, null, $"{PipelineTemplateConstants.RunDisplayPrefix}"));
                     combinationToken.Add(run?.Clone(true) as ScalarToken);
-                    if (run is BasicExpressionToken basicToken)
-                    {
-                        result.DisplayName = new BasicExpressionToken(null, null, null, $"{PipelineTemplateConstants.RunDisplayPrefix}");
-                    }
                     result.DisplayName = combinationToken;
                 }
 
