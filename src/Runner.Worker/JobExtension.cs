@@ -358,8 +358,7 @@ namespace GitHub.Runner.Worker
             {
                 firstLine = firstLine.Substring(0, firstNewLine);
             }
-            // How should we handle default name? In a case where a user specifies -name: ${{github.abc}} and that does not exist when executed
-            return String.IsNullOrEmpty(firstLine) ? $"Run Unnamed Step" : firstLine;
+            return String.IsNullOrWhiteSpace(firstLine) ? "Run Unnamed Step" : firstLine;
         }
 
         private Dictionary<int, Process> SnapshotProcesses()

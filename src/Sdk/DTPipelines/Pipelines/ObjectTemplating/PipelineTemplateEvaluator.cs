@@ -237,7 +237,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 context.Errors.Check();
             }
 
-            return $"{prefix}{result}";
+            return String.IsNullOrWhiteSpace(result) ? String.Empty : $"{prefix}{result}";
         }
 
         public DictionaryContextData EvaluateStepScopeInputs(
