@@ -42,7 +42,6 @@ namespace GitHub.Runner.Plugins.Artifact
 
             // Project ID
             Guid projectId = new Guid(context.Variables.GetValueOrDefault(BuildVariables.TeamProjectId)?.Value ?? Guid.Empty.ToString());
-            ArgUtil.NotEmpty(projectId, nameof(projectId));
 
             // Build ID
             string buildIdStr = context.Variables.GetValueOrDefault(BuildVariables.BuildId)?.Value ?? string.Empty;
