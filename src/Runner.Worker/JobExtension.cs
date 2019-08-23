@@ -358,7 +358,7 @@ namespace GitHub.Runner.Worker
             {
                 firstLine = firstLine.Substring(0, firstNewLine);
             }
-            return String.IsNullOrWhiteSpace(firstLine) ? "Run Unnamed Step" : firstLine;
+            return String.IsNullOrWhiteSpace(firstLine) ? step.DisplayName?.ToString() : firstLine;
         }
 
         private Dictionary<int, Process> SnapshotProcesses()

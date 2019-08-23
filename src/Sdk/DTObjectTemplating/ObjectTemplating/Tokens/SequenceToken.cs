@@ -136,6 +136,11 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             m_items.RemoveAt(index);
         }
 
+        public override String ToString()
+        {
+            return m_items.Count > 0 ? string.Join(String.Empty, m_items) : String.Empty;
+        }
+
         [OnSerializing]
         private void OnSerializing(StreamingContext context)
         {
