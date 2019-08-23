@@ -19,6 +19,12 @@ if exist "%SH_PATH%" (
   goto run
 )
 
+ rem Check well-known locations.
+set SH_PATH=%LOCALAPPDATA%\Programs\Git\bin\sh.exe
+if exist "%SH_PATH%" (
+  goto run
+)
+
 echo Unable to resolve location of sh.exe. 1>&2
 exit /b 1
 
