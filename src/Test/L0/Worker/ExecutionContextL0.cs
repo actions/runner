@@ -144,6 +144,50 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void InitializeJob_InitializesBaseExpressionValues()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                JobEnvironment environment = new JobEnvironment();
+                environment.SystemConnection = new ServiceEndpoint();
+                List<TaskInstance> tasks = new List<TaskInstance>();
+                Guid JobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks));
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+                jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>())).Callback((Guid id, string msg) => { hc.GetTrace().Info(msg); });
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                // Assert: Expression parser uses available context keys to define valid keywords
+                Assert.NotNull(ec.ExpressionValues["github"]);
+                Assert.NotNull(ec.ExpressionValues["steps"]);
+                Assert.NotNull(ec.ExpressionValues["job"]);
+                Assert.NotNull(ec.ExpressionValues["runner"]);
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);

@@ -27,8 +27,8 @@ namespace GitHub.Runner.Worker
         private bool _processCleanup;
         private string _processLookupId = $"github_{Guid.NewGuid()}";
 
-        // download all required tasks.
-        // make sure all task's condition inputs are valid.
+        // download all required actions.
+        // make sure all step condition inputs are valid.
         // build up three list of steps for jobrunner. (pre-job, job, post-job)
         public async Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message)
         {
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Worker
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
 
                     // Parse all actions' conditions.
-                    Trace.Info("Parsing all action's condition inputs.");
+                    Trace.Info("Parsing all step condition inputs.");
                     var expression = HostContext.GetService<IExpressionManager>();
                     Dictionary<Guid, IExpressionNode> actionConditionMap = new Dictionary<Guid, IExpressionNode>();
                     foreach (var step in message.Steps)
