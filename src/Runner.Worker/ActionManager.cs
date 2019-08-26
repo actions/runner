@@ -54,7 +54,7 @@ namespace GitHub.Runner.Worker
             // Log even if we aren't using it to ensure users know.
             if (!string.IsNullOrEmpty(executionContext.Variables.Get("PREVIEW_ACTION_TOKEN")))
             {
-                executionContext.Warning("The secret: 'PREVIEW_ACTION_TOKEN' is depreciated and will be removed");
+                executionContext.Warning("The 'PREVIEW_ACTION_TOKEN' secret is depreciated. Please remove it from the repository's secrets");
             }
 
             foreach (var action in actions)
