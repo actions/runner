@@ -75,7 +75,8 @@ namespace GitHub.Runner.Worker.Handlers
             var line = e.Data;
 
             // ## commands
-            if (!String.IsNullOrEmpty(line) && line.IndexOf(ActionCommand.Prefix) >= 0)
+            if (!String.IsNullOrEmpty(line) && 
+                (line.IndexOf(ActionCommand.Prefix) >= 0 || line.IndexOf(ActionCommand._commandKey) >= 0))
             {
                 // This does not need to be inside of a critical section.
                 // The logging queues and command handlers are thread-safe.
