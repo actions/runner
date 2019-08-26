@@ -49,6 +49,14 @@ namespace GitHub.Runner.Worker
             Dictionary<string, ActionContainer> imagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase);
             List<JobExtensionRunner> containerSetupSteps = new List<JobExtensionRunner>();
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
+
+            // TODO: Depreciate the PREVIEW_ACTION_TOKEN
+            // Log even if we aren't using it to ensure users know.
+            if (!string.IsNullOrEmpty(executionContext.Variables.Get("PREVIEW_ACTION_TOKEN")))
+            {
+                executionContext.Warning("The 'PREVIEW_ACTION_TOKEN' secret is depreciated. Please remove it from the repository's secrets");
+            }
+
             foreach (var action in actions)
             {
                 if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
@@ -482,6 +490,7 @@ namespace GitHub.Runner.Worker
                                 var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
                                 if (string.IsNullOrEmpty(authToken))
                                 {
+                                    // TODO: Depreciate the PREVIEW_ACTION_TOKEN
                                     authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
                                 }
 
