@@ -233,7 +233,7 @@ namespace GitHub.DistributedTask.Pipelines
 
                 // Set the system variables populated while running an individual task
                 context.Variables[WellKnownDistributedTaskVariables.TaskInstanceId] = task.Id.ToString("D");
-                context.Variables[WellKnownDistributedTaskVariables.TaskDisplayName] = task.DisplayName?.ToString() ?? task.Name;
+                context.Variables[WellKnownDistributedTaskVariables.TaskDisplayName] = task.DisplayName ?? task.Name;
                 context.Variables[WellKnownDistributedTaskVariables.TaskInstanceName] = task.Name;
             }
 

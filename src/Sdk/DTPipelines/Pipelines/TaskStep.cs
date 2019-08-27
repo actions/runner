@@ -20,7 +20,7 @@ namespace GitHub.DistributedTask.Pipelines
         internal TaskStep(TaskInstance legacyTaskInstance)
         {
             this.ContinueOnError = new BooleanToken(null, null, null, legacyTaskInstance.ContinueOnError);
-            this.DisplayName = new StringToken(null, null, null, legacyTaskInstance.DisplayName);
+            this.DisplayName = legacyTaskInstance.DisplayName;
             this.Enabled = legacyTaskInstance.Enabled;
             this.Id = legacyTaskInstance.InstanceId;
             this.Name = legacyTaskInstance.RefName;
@@ -117,7 +117,7 @@ namespace GitHub.DistributedTask.Pipelines
                 AlwaysRun = String.Equals(this.Condition ?? String.Empty, "succeededOrFailed()", StringComparison.Ordinal),
                 Condition = this.Condition,
                 ContinueOnError = this.ContinueOnError?.AssertBoolean(null).Value ?? false,
-                DisplayName = this.DisplayName?.ToString(),
+                DisplayName = this.DisplayName,
                 Enabled = this.Enabled,
                 InstanceId = this.Id,
                 RefName = this.Name,

@@ -2,7 +2,6 @@
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.Pipelines
 {
@@ -49,7 +48,7 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         [DataMember(EmitDefaultValue = false)]
-        public TemplateToken DisplayName
+        public String DisplayName
         {
             get;
             set;

@@ -206,40 +206,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? PipelineConstants.DefaultJobCancelTimeoutInMinutes;
         }
 
-        public String EvaluateStepDisplayName(
-            TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
-        {
-            var result = default(String);
-
-            // Some display names need a prefix attached to them
-            var prefix = String.Empty;
-            if (token is SequenceToken sequenceToken && sequenceToken.Count == 2)
-            {
-                prefix = sequenceToken[0].ToString();
-                token = sequenceToken[1];
-            }
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStepsContext, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = PipelineTemplateConverter.ConvertToStepDisplayName(context, token);
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return String.IsNullOrWhiteSpace(result) ? String.Empty : $"{prefix}{result}";
-        }
-
         public DictionaryContextData EvaluateStepScopeInputs(
             TemplateToken token,
             IDictionary<String, PipelineContextData> contextData)
