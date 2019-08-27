@@ -86,10 +86,18 @@ namespace GitHub.Runner.Worker
             var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
             var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues);
 
+            foreach (KeyValuePair<string, string> input in inputs)
+            {
+                string message = "";
+                if (definition.Data?.Deprecated?.TryGetValue(input.Key, out message)==true)
+                {
+                    ExecutionContext.Warning(String.Format("Input '{0}' has been deprecated with message: {1}", input.Key, message));
+                }
+            }
+
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
-                var defaultInputsTemplateToken = new MappingToken(null, null, null);
                 foreach (var input in (definition.Data?.Inputs))
                 {
                     string key = input.Key.AssertString("action input name").Value;

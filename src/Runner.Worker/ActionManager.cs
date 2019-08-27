@@ -736,6 +736,8 @@ namespace GitHub.Runner.Worker
         public MappingToken Inputs { get; set; }
 
         public ActionExecutionData Execution { get; set; }
+
+        public Dictionary<String, String> Deprecated { get; set; }
     }
 
     public enum ActionExecutionType
