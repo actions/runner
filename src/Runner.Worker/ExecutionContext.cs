@@ -539,7 +539,7 @@ namespace GitHub.Runner.Worker
             ExpressionValues["secrets"] = Variables.ToSecretsContext();
             ExpressionValues["runner"] = new RunnerContext();
             ExpressionValues["job"] = new JobContext();
-            ExpressionValues["steps"] = new DictionaryContextData();
+            ExpressionValues["steps"] = StepsContext.GetScope(ScopeName);
 
             if (!ExpressionValues.ContainsKey("github"))
             {
