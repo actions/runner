@@ -293,7 +293,7 @@ namespace GitHub.Runner.Worker
                 else
                 {
                     var fullPath = IOUtil.ResolvePath(actionDirectory, "."); // resolve full path without access filesystem.
-                    throw new NotSupportedException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'.");
+                    throw new NotSupportedException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
                 }
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.Script)
@@ -716,7 +716,7 @@ namespace GitHub.Runner.Worker
             else
             {
                 var fullPath = IOUtil.ResolvePath(actionEntryDirectory, "."); // resolve full path without access filesystem.
-                throw new InvalidOperationException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'.");
+                throw new InvalidOperationException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
             }
         }
     }
