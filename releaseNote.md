@@ -2,7 +2,6 @@
   - Gracefully handle sigterm (#81)
   - Depreciate the preview action token (#86) 
   - Add deprecationMessage property (#80)
-  - Make actions/checkout landed on a local branch instead of a detached HEAD. (#82)
 
 ## Bugs
   - Make sure we check string that contains `::` (#87)
