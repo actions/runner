@@ -181,9 +181,9 @@ namespace GitHub.Runner.Sdk
             }
         }
 
-        public void SetSecret(string secret)
+        public void AddMask(string secret)
         {
-            //Output($"##[set-secret]{Escape(secret)}");
+            Output($"##[add-mask]{Escape(secret)}");
         }
 
         public void Command(string command)

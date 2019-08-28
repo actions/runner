@@ -249,6 +249,28 @@ namespace GitHub.Runner.Worker
         }
     }
 
+    public sealed class AddMaskCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "add-mask";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        {
+            if (string.IsNullOrWhiteSpace(command.Data))
+            {
+                context.Warning("Can't add secret mask for empty string.");
+            }
+            else
+            {
+                HostContext.SecretMasker.AddValue(command.Data);
+                Trace.Info($"Add new secret mask with length of {command.Data.Length}");
+            }
+
+            omitEcho = true;
+        }
+    }
+
     public sealed class AddPathCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "add-path";
