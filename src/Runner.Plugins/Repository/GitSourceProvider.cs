@@ -61,7 +61,7 @@ namespace GitHub.Runner.Plugins.Repository
             string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
 
             // add base64 encoding auth header into secretMasker.
-            executionContext.SetSecret(base64encodedAuthHeader);
+            executionContext.AddMask(base64encodedAuthHeader);
             return $"basic {base64encodedAuthHeader}";
         }
 
