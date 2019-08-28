@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -55,6 +56,27 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             catch (Exception exception)
             {
                 result = false;
+                ex = exception;
+            }
+
+            return result;
+        }
+
+        internal static List<NamedValue> GetExpressionNamedValues(
+            String expression,
+            out Exception ex)
+        {
+            ExpressionNode root = null;
+            List<NamedValue> result = null;
+            try
+            {
+                root = new ExpressionParser().ValidateSyntax(expression, null) as ExpressionNode;
+                result = root.Traverse().OfType<NamedValue>().ToList();
+                ex = null;
+            }
+            catch (Exception exception)
+            {
+                result = new List<NamedValue>();
                 ex = exception;
             }
 

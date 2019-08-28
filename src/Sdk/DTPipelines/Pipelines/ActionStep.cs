@@ -37,6 +37,8 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         [DataMember(EmitDefaultValue = false)]
+        public TemplateToken DisplayNameToken { get; set; }
+        [DataMember(EmitDefaultValue = false)]
         public String ScopeName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
@@ -284,6 +285,42 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? false;
         }
 
+
+        public String EvaluateStepDisplayName(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = String.Empty;
+
+            switch (token)
+            {
+                case SequenceToken sequenceToken:
+                    foreach (TemplateToken templateToken in sequenceToken)
+                    {
+                        var tokenString = EvaluateStepDisplayNamePart(templateToken, contextData);
+                        // If we recieve null, it means we were unable to evaluate the string so we should abort
+                        if (tokenString == null)
+                        {
+                            return String.Empty;
+                        }
+                        // Check for an empty string 
+                        else if (String.IsNullOrEmpty(tokenString)) 
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            result = String.Concat(result, tokenString);
+                        }
+                    }
+                    break;
+                default:
+                    result = EvaluateStepDisplayNamePart(token, contextData);
+                    break;
+            }
+            return String.IsNullOrEmpty(result) ? String.Empty : result;
+        }
+
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
             IDictionary<String, PipelineContextData> contextData,
@@ -444,6 +481,47 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     result.ExpressionValues[name] = null;
                 }
+            }
+
+            return result;
+        }
+
+        private String EvaluateStepDisplayNamePart(TemplateToken token, IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = default(String);
+            var context = CreateContext(contextData);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                // We should only evaluate basic expressions if we are sure we have context on all the Named Values
+                // Otherwise return and use a default name
+                if (token is BasicExpressionToken expressionToken)
+                {
+                    Exception ex = null;
+                    var namedValues = ExpressionToken.GetExpressionNamedValues(expressionToken.Expression, out ex);
+                    if (ex != null)
+                    {
+                        context.Errors.Add(ex);
+                        context.Errors.Check();
+                    }
+                    if (!namedValues.Distinct().All(value => contextData.ContainsKey(value.Name)))
+                    {
+                        return null;
+                    }
+                }
+
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStepsContext, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = PipelineTemplateConverter.ConvertToStepDisplayName(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
             }
 
             return result;

@@ -4,8 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -18,6 +20,7 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(ActionRunner))]
     public interface IActionRunner : IStep, IRunnerService
     {
+        Boolean TryExpandDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context = null);
         Pipelines.ActionStep Action { get; set; }
     }
 
@@ -34,6 +37,8 @@ namespace GitHub.Runner.Worker
         public Pipelines.ActionStep Action { get; set; }
 
         public TemplateToken Timeout => Action?.TimeoutInMinutes;
+
+        private Boolean HasExpandedDisplayName = false;
 
         public async Task RunAsync()
         {
@@ -142,6 +147,50 @@ namespace GitHub.Runner.Worker
 
             // Run the task.
             await handler.RunAsync();
+        }
+
+        public Boolean TryExpandDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context = null)
+        {
+            var executionContext = context ?? ExecutionContext;
+            ArgUtil.NotNull(executionContext, nameof(context));
+            ArgUtil.NotNull(Action, nameof(Action));
+
+            if (HasExpandedDisplayName)
+            {
+                return true;
+            }
+
+            if (Action.DisplayNameToken == null){
+                return false;
+            }
+
+            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+            var templateEvaluator = new PipelineTemplateEvaluator(executionContext.ToTemplateTraceWriter(), schema);
+            var displayName = String.Empty;
+
+            try 
+            {
+                displayName = templateEvaluator.EvaluateStepDisplayName(Action.DisplayNameToken, contextData);
+            }
+            catch (TemplateValidationException e){
+                Trace.Warning(e.Message);
+                return false;
+            }
+
+            var firstLine = displayName.TrimStart(' ', '\t', '\r', '\n');
+            var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
+            if (firstNewLine >= 0)
+            {
+                firstLine = firstLine.Substring(0, firstNewLine);
+            }
+            
+            if (!String.IsNullOrWhiteSpace(firstLine))
+            {
+                DisplayName = HostContext.SecretMasker.MaskSecrets(firstLine);
+                HasExpandedDisplayName = true;
+                return true;
+            }
+            return false;
         }
     }
 }

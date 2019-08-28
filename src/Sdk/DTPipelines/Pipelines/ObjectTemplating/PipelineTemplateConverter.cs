@@ -204,6 +204,20 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return booleanToken.Value;
         }
 
+        internal static String ConvertToStepDisplayName(
+            TemplateContext context,
+            TemplateToken token,
+            Boolean allowExpressions = false)
+        {
+            if (allowExpressions && token is ExpressionToken)
+            {
+                return null;
+            }
+
+            var stringToken = token.AssertString($"step {PipelineTemplateConstants.Name}");
+            return stringToken.Value;
+        }
+
         internal static Dictionary<String, String> ConvertToStepEnvironment(
             TemplateContext context,
             TemplateToken environment,

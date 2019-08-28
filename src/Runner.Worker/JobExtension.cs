@@ -133,7 +133,8 @@ namespace GitHub.Runner.Worker
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
                             actionRunner.Condition = step.Condition;
-                            actionRunner.DisplayName = ExpandStepDisplayName(context, step);
+                            actionRunner.DisplayName = action.DisplayName;
+                            actionRunner.TryExpandDisplayName(message.ContextData, jobContext);
                             jobSteps.Add(actionRunner);
                         }
                     }
@@ -343,22 +344,6 @@ namespace GitHub.Runner.Worker
                     context.Complete();
                 }
             }
-        }
-
-        private String ExpandStepDisplayName(IExecutionContext context, Pipelines.JobStep step)
-        {
-            var templateTrace = context.ToTemplateTraceWriter();
-            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-            var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
-            var displayName = templateEvaluator.EvaluateStepDisplayName(step.DisplayName, context.ExpressionValues);
-
-            var firstLine = displayName.TrimStart(' ', '\t', '\r', '\n');
-            var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
-            if (firstNewLine >= 0)
-            {
-                firstLine = firstLine.Substring(0, firstNewLine);
-            }
-            return String.IsNullOrWhiteSpace(firstLine) ? step.DisplayName?.ToString() : firstLine;
         }
 
         private Dictionary<int, Process> SnapshotProcesses()
