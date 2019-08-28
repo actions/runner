@@ -1,13 +1,15 @@
 ## Features
-  - New command keyword `::` with back compat for `##[` (#71)
-  - Support oauthaccesstoken auth schema, add problem matcher for git checkout. (#74)
+  - Gracefully handle sigterm (#81)
+  - Depreciate the preview action token (#86) 
+  - Add deprecationMessage property (#80)
+  - Make actions/checkout landed on a local branch instead of a detached HEAD. (#82)
 
 ## Bugs
-  - Preserve date strings in github event payload (#77)
-  - Stop pull and build docker image for action multiple times (#79)
+  - Make sure we check string that contains `::` (#87)
+  - Use add-mask command for git auth header. (#89)
 
 ## Misc
-  - Remove code for uploading artifact to artifact service (#78)
+  - Relax project id restriction, prepare for remove TFS dependency (#84)
 
 ## Agent Downloads  
 
