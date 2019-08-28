@@ -21,7 +21,6 @@ namespace GitHub.Runner.Plugins.Repository
         private const string _remoteRefsPrefix = "refs/remotes/origin/";
         private const string _pullRefsPrefix = "refs/pull/";
         private const string _remotePullRefsPrefix = "refs/remotes/pull/";
-        private const string _tagRefsPrefix = "refs/tags/";
 
         // min git version that support add extra auth header.
         private Version _minGitVersionSupportAuthHeader = new Version(2, 9);
@@ -69,7 +68,8 @@ namespace GitHub.Runner.Plugins.Repository
             RunnerActionPluginExecutionContext executionContext,
             string repositoryPath,
             string repoFullName,
-            string refInput,
+            string sourceBranch,
+            string sourceVersion,
             bool clean,
             string submoduleInput,
             int fetchDepth,
@@ -85,8 +85,6 @@ namespace GitHub.Runner.Plugins.Repository
             bool useClientCert = false;
             string clientCertPrivateKeyAskPassFile = null;
             bool acceptUntrustedCerts = false;
-            string github_ref = executionContext.GetGitHubContext("ref");
-            string github_sha = executionContext.GetGitHubContext("sha");
 
             executionContext.Output($"Syncing repository: {repoFullName}");
             Uri repositoryUrl = new Uri($"https://github.com/{repoFullName}");
@@ -120,19 +118,9 @@ namespace GitHub.Runner.Plugins.Repository
             acceptUntrustedCerts = runnerCert?.SkipServerCertificateValidation ?? false;
 
             executionContext.Debug($"repository url={repositoryUrl}");
-            if (!string.IsNullOrEmpty(refInput))
-            {
-                // user provide what ref to checkout
-                executionContext.Debug($"ref={refInput}");
-            }
-            else
-            {
-                // default to checkout github_ref and github_sha
-                executionContext.Debug($"github_ref={github_ref}");
-                executionContext.Debug($"github_sha={github_sha}");
-            }
-
             executionContext.Debug($"targetPath={targetPath}");
+            executionContext.Debug($"sourceBranch={sourceBranch}");
+            executionContext.Debug($"sourceVersion={sourceVersion}");
             executionContext.Debug($"clean={clean}");
             executionContext.Debug($"checkoutSubmodules={checkoutSubmodules}");
             executionContext.Debug($"checkoutNestedSubmodules={checkoutNestedSubmodules}");
@@ -353,13 +341,8 @@ namespace GitHub.Runner.Plugins.Repository
 
             // if the folder contains a .git folder, it means the folder contains a git repo that matches the remote url and in a clean state.
             // we will run git fetch to update the repo.
-            bool freshRepository = false;
             if (!Directory.Exists(Path.Combine(targetPath, ".git")))
             {
-                // newly created repository.
-                // we don't need to worry about there are any local refs left from previous runs.
-                freshRepository = true;
-
                 // init git repository
                 int exitCode_init = await gitCommandManager.GitInit(executionContext, targetPath);
                 if (exitCode_init != 0)
@@ -455,130 +438,7 @@ namespace GitHub.Runner.Plugins.Repository
                 additionalLfsFetchArgs.Add("-c http.sslbackend=\"schannel\"");
             }
 #endif
-
-            List<string> additionalFetchSpecs = new List<string>();
-            additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
-
-            string fetchRef = string.IsNullOrEmpty(refInput) ? github_ref : refInput;
-
-            // fetchRef better starts with refs/heads/, refs/pull/ or refs/tags/
-            if (fetchRef.StartsWith(_pullRefsPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                additionalFetchSpecs.Add($"+{fetchRef}:{GetRemoteRefName(fetchRef)}");
-            }
-            else if (fetchRef.StartsWith(_tagRefsPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                // we need to add +refs/tags/foo:refs/tags/foo to fetch the tag since we won't fetch tags by default to save fetch time.
-                additionalFetchSpecs.Add($"+{fetchRef}:{fetchRef}");
-            }
-
-            int exitCode_fetch = await gitCommandManager.GitFetch(executionContext, targetPath, "origin", fetchDepth, additionalFetchSpecs, string.Join(" ", additionalFetchArgs), cancellationToken);
-            if (exitCode_fetch != 0)
-            {
-                throw new InvalidOperationException($"Git fetch failed with exit code: {exitCode_fetch}");
-            }
-
-            // Checkout
-            // 1. when user provide refInput: 
-            //    - refInput startswith refs/tags/:
-            //        git checkout refInput 
-            //    - refInput startswith refs/heads/ or refs/pull:
-            //        git checkout -B refInput remote(refInput)
-            //    - git checkout refInput 
-            //        on existing repo:
-            //        if HEAD is not detached (we are on a local branch)
-            //        - git checkout -B refInput remote(refInput)
-            // 2. When user doesn't provide refInput, we use github_ref and github_sha:
-            //    - github_ref startswith refs/tags/:
-            //        git checkout github_ref
-            //    - github_ref startswith refs/heads/ or refs/pull:
-            //        git checkout -B github_ref remote(github_ref) & git reset --hard github_sha
-            cancellationToken.ThrowIfCancellationRequested();
-            int exitCode_checkout = 0;
-            int exitCode_checkoutReset = 0;
-            if (!string.IsNullOrEmpty(refInput))
-            {
-                if (refInput.StartsWith(_tagRefsPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    exitCode_checkout = await gitCommandManager.GitCheckout(executionContext, targetPath, refInput, cancellationToken);
-                    if (exitCode_checkout != 0)
-                    {
-                        throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
-                    }
-                }
-                else if (refInput.StartsWith(_refsPrefix, StringComparison.OrdinalIgnoreCase) || refInput.StartsWith(_pullRefsPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    exitCode_checkout = await gitCommandManager.GitCheckoutB(executionContext, targetPath, refInput, GetRemoteRefName(refInput), cancellationToken);
-                    if (exitCode_checkout != 0)
-                    {
-                        throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
-                    }
-                }
-                else
-                {
-                    exitCode_checkout = await gitCommandManager.GitCheckout(executionContext, targetPath, refInput, cancellationToken);
-                    if (exitCode_checkout != 0)
-                    {
-                        throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
-                    }
-
-                    if (!freshRepository)
-                    {
-                        // if we are not on a fresh repo and the checkout ref input is a branch name, like 'master' or 'users/branch'
-                        // we need to recreate the local branch to keep it updated with it's remote ref
-                        int exitCode_symbolicRef = await gitCommandManager.GitSymbolicRefHEAD(executionContext, targetPath);
-                        if (exitCode_symbolicRef != 0)
-                        {
-                            executionContext.Debug("HEAD is not a symbolic ref but a detached HEAD");
-                        }
-                        else
-                        {
-                            exitCode_checkout = await gitCommandManager.GitCheckoutB(executionContext, targetPath, refInput, GetRemoteRefName(refInput), cancellationToken);
-                            if (exitCode_checkout != 0)
-                            {
-                                throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (github_ref.StartsWith(_tagRefsPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    exitCode_checkout = await gitCommandManager.GitCheckout(executionContext, targetPath, github_ref, cancellationToken);
-                    if (exitCode_checkout != 0)
-                    {
-                        throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
-                    }
-                }
-                else if (github_ref.StartsWith(_refsPrefix, StringComparison.OrdinalIgnoreCase) || github_ref.StartsWith(_pullRefsPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    exitCode_checkout = await gitCommandManager.GitCheckoutB(executionContext, targetPath, github_ref, GetRemoteRefName(github_ref), cancellationToken);
-                    if (exitCode_checkout != 0)
-                    {
-                        throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
-                    }
-
-                    exitCode_checkoutReset = await gitCommandManager.GitReset(executionContext, targetPath, github_sha);
-                    if (exitCode_checkoutReset != 0)
-                    {
-                        // local repository is shallow repository, reset may fail due to lack of commits history.
-                        // this will happen when the reset commit is older than tip -> fetchDepth
-                        if (fetchDepth > 0)
-                        {
-                            executionContext.Warning($"Git reset failed on shallow repository, this might because of git fetch with depth '{fetchDepth}' doesn't include the checkout commit '{github_sha}'.");
-                        }
-
-                        throw new InvalidOperationException($"Git reset failed with exit code: {exitCode_checkoutReset}");
-                    }
-                }
-                else
-                {
-                    throw new ArgumentOutOfRangeException($"GITHUB_REF ('{github_ref}') is not start with 'refs/tags/', 'refs/heads' or 'refs/pull'.");
-                }
-            }
-
+            // Prepare gitlfs url for fetch and checkout
             if (gitLfsSupport)
             {
                 // Initialize git lfs by execute 'git lfs install'
@@ -594,14 +454,70 @@ namespace GitHub.Runner.Plugins.Repository
                     string authorityUrl = repositoryUrl.AbsoluteUri.Replace(repositoryUrl.PathAndQuery, string.Empty);
                     additionalLfsFetchArgs.Add($"-c http.{authorityUrl}.extraheader=\"AUTHORIZATION: {GenerateBasicAuthHeader(executionContext, accessToken)}\"");
                 }
+            }
 
-                int exitCode_lfsPull = await gitCommandManager.GitLFSPull(executionContext, targetPath, string.Join(" ", additionalLfsFetchArgs), cancellationToken);
-                if (exitCode_lfsPull != 0)
+            List<string> additionalFetchSpecs = new List<string>();
+            additionalFetchSpecs.Add("+refs/heads/*:refs/remotes/origin/*");
+
+            if (IsPullRequest(sourceBranch))
+            {
+                additionalFetchSpecs.Add($"+{sourceBranch}:{GetRemoteRefName(sourceBranch)}");
+            }
+
+            int exitCode_fetch = await gitCommandManager.GitFetch(executionContext, targetPath, "origin", fetchDepth, additionalFetchSpecs, string.Join(" ", additionalFetchArgs), cancellationToken);
+            if (exitCode_fetch != 0)
+            {
+                throw new InvalidOperationException($"Git fetch failed with exit code: {exitCode_fetch}");
+            }
+
+            // Checkout
+            // sourceToBuild is used for checkout
+            // if sourceBranch is a PR branch or sourceVersion is null, make sure branch name is a remote branch. we need checkout to detached head. 
+            // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leave it as it when the branch name doesn't contain refs/...)
+            // if sourceVersion provide, just use that for checkout, since when you checkout a commit, it will end up in detached head.
+            cancellationToken.ThrowIfCancellationRequested();
+            string sourcesToBuild;
+            if (IsPullRequest(sourceBranch) || string.IsNullOrEmpty(sourceVersion))
+            {
+                sourcesToBuild = GetRemoteRefName(sourceBranch);
+            }
+            else
+            {
+                sourcesToBuild = sourceVersion;
+            }
+
+            // fetch lfs object upfront, this will avoid fetch lfs object during checkout which cause checkout taking forever
+            // since checkout will fetch lfs object 1 at a time, while git lfs fetch will fetch lfs object in parallel.
+            if (gitLfsSupport)
+            {
+                int exitCode_lfsFetch = await gitCommandManager.GitLFSFetch(executionContext, targetPath, "origin", sourcesToBuild, string.Join(" ", additionalLfsFetchArgs), cancellationToken);
+                if (exitCode_lfsFetch != 0)
                 {
+                    // local repository is shallow repository, lfs fetch may fail due to lack of commits history.
+                    // this will happen when the checkout commit is older than tip -> fetchDepth
+                    if (fetchDepth > 0)
+                    {
+                        executionContext.Warning($"Git lfs fetch failed on shallow repository, this might because of git fetch with depth '{fetchDepth}' doesn't include the lfs fetch commit '{sourcesToBuild}'.");
+                    }
+
                     // git lfs fetch failed, get lfs log, the log is critical for debug.
                     int exitCode_lfsLogs = await gitCommandManager.GitLFSLogs(executionContext, targetPath);
-                    throw new InvalidOperationException($"Git lfs fetch failed with exit code: {exitCode_lfsPull}. Git lfs logs returned with exit code: {exitCode_lfsLogs}.");
+                    throw new InvalidOperationException($"Git lfs fetch failed with exit code: {exitCode_lfsFetch}. Git lfs logs returned with exit code: {exitCode_lfsLogs}.");
                 }
+            }
+
+            // Finally, checkout the sourcesToBuild (if we didn't find a valid git object this will throw)
+            int exitCode_checkout = await gitCommandManager.GitCheckout(executionContext, targetPath, sourcesToBuild, cancellationToken);
+            if (exitCode_checkout != 0)
+            {
+                // local repository is shallow repository, checkout may fail due to lack of commits history.
+                // this will happen when the checkout commit is older than tip -> fetchDepth
+                if (fetchDepth > 0)
+                {
+                    executionContext.Warning($"Git checkout failed on shallow repository, this might because of git fetch with depth '{fetchDepth}' doesn't include the checkout commit '{sourcesToBuild}'.");
+                }
+
+                throw new InvalidOperationException($"Git checkout failed with exit code: {exitCode_checkout}");
             }
 
             // Submodule update
@@ -751,9 +667,26 @@ namespace GitHub.Runner.Plugins.Repository
             }
         }
 
+        private bool IsPullRequest(string sourceBranch)
+        {
+            return !string.IsNullOrEmpty(sourceBranch) &&
+                (sourceBranch.StartsWith(_pullRefsPrefix, StringComparison.OrdinalIgnoreCase) ||
+                 sourceBranch.StartsWith(_remotePullRefsPrefix, StringComparison.OrdinalIgnoreCase));
+        }
+
         private string GetRemoteRefName(string refName)
         {
-            if (refName.StartsWith(_refsPrefix, StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(refName))
+            {
+                // If the refName is empty return the remote name for master
+                refName = _remoteRefsPrefix + "master";
+            }
+            else if (refName.Equals("master", StringComparison.OrdinalIgnoreCase))
+            {
+                // If the refName is master return the remote name for master
+                refName = _remoteRefsPrefix + refName;
+            }
+            else if (refName.StartsWith(_refsPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 // If the refName is refs/heads change it to the remote version of the name
                 refName = _remoteRefsPrefix + refName.Substring(_refsPrefix.Length);
@@ -762,15 +695,6 @@ namespace GitHub.Runner.Plugins.Repository
             {
                 // If the refName is refs/pull change it to the remote version of the name
                 refName = refName.Replace(_pullRefsPrefix, _remotePullRefsPrefix);
-            }
-            else if (refName.StartsWith(_tagRefsPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                // Do nothing if the refName starts with refs/tags/
-            }
-            else
-            {
-                // Add refs/remotes/origin/ in front
-                refName = _remoteRefsPrefix + refName.TrimStart('/');
             }
 
             return refName;
