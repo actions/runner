@@ -25,6 +25,7 @@ namespace GitHub.DistributedTask.Pipelines
             Inputs = actionToClone.Inputs?.Clone();
             ContextName = actionToClone?.ContextName;
             ScopeName = actionToClone?.ScopeName;
+            DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
         }
 
         public override StepType Type => StepType.Action;
