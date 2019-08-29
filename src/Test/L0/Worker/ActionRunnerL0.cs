@@ -118,6 +118,108 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Verify(x => x.SetGitHubContext("event_path", Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "_github_workflow", "event.json")), Times.Once);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateLegacyDisplayName()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var actionDisplayName = "Run echo hello world";
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                DisplayName = actionDisplayName,
+            };
+
+            _actionRunner.Action = action;
+
+            var matrixData = new DictionaryContextData
+            {
+                ["node"] = new NumberContextData(8)
+            };
+            _context.Add("matrix", matrixData);
+
+            // Act
+            // Should not do anything if we don't have a displayNameToken to expand
+            var didUpdateDisplayName = _actionRunner.TryExpandDisplayName(_context);
+
+            // Assert
+            Assert.False(didUpdateDisplayName);
+            Assert.Equal(actionDisplayName, _actionRunner.DisplayName);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpansionOfDisplayNameToken()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var displayName = "Run echo hello world";
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                DisplayName = displayName,
+                DisplayNameToken = new BasicExpressionToken(null, null, null, "matrix.node")
+            };
+
+            _actionRunner.Action = action;
+            var expectedString = "8";
+
+            var matrixData = new DictionaryContextData
+            {
+                ["node"] = new StringContextData(expectedString)
+            };
+            _context.Add("matrix", matrixData);
+
+            // Act
+            // Should expand the displaynameToken and set the display name to that
+            var didUpdateDisplayName = _actionRunner.TryExpandDisplayName(_context);
+
+            // Assert
+            Assert.True(didUpdateDisplayName);
+            Assert.Equal(expectedString, _actionRunner.DisplayName);
+        }
+
+                [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateDisplayNameWithoutContext()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var actionDisplayName = "Run echo hello world";
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                DisplayName = actionDisplayName,
+                DisplayNameToken = new BasicExpressionToken(null, null, null, "github.sha")
+            };
+
+            _actionRunner.Action = action;
+
+            var matrixData = new DictionaryContextData
+            {
+                ["node"] = new StringContextData("8")
+            };
+            _context.Add("matrix", matrixData);
+
+            // Act
+            // Should not do anything if we don't have context on the display name
+            var didUpdateDisplayName = _actionRunner.TryExpandDisplayName(_context);
+
+            // Assert
+            Assert.False(didUpdateDisplayName);
+            Assert.Equal(actionDisplayName, _actionRunner.DisplayName);
+        }
+
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
             directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");

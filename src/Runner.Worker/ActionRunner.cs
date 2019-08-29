@@ -30,15 +30,13 @@ namespace GitHub.Runner.Worker
 
         public TemplateToken ContinueOnError => Action?.ContinueOnError;
 
-        public string DisplayName { get; set; }
+        public string DisplayName => String.IsNullOrEmpty(_ExpandedDisplayName) ? Action?.DisplayName : _ExpandedDisplayName;
 
         public IExecutionContext ExecutionContext { get; set; }
 
         public Pipelines.ActionStep Action { get; set; }
 
         public TemplateToken Timeout => Action?.TimeoutInMinutes;
-
-        private Boolean HasExpandedDisplayName = false;
 
         public async Task RunAsync()
         {
@@ -155,7 +153,8 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(executionContext, nameof(context));
             ArgUtil.NotNull(Action, nameof(Action));
 
-            if (HasExpandedDisplayName)
+            // If we have already expanded the display name, there is no need to expand it again
+            if (!String.IsNullOrEmpty(_ExpandedDisplayName))
             {
                 return true;
             }
@@ -188,11 +187,12 @@ namespace GitHub.Runner.Worker
             
             if (!String.IsNullOrWhiteSpace(firstLine))
             {
-                DisplayName = HostContext.SecretMasker.MaskSecrets(firstLine);
-                HasExpandedDisplayName = true;
+                _ExpandedDisplayName = HostContext.SecretMasker.MaskSecrets(firstLine);
                 return true;
             }
             return false;
         }
+
+        private String _ExpandedDisplayName = null;
     }
 }

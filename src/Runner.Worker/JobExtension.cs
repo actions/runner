@@ -133,7 +133,6 @@ namespace GitHub.Runner.Worker
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
                             actionRunner.Condition = step.Condition;
-                            actionRunner.DisplayName = action.DisplayName;
                             actionRunner.TryExpandDisplayName(message.ContextData, jobContext);
                             jobSteps.Add(actionRunner);
                         }
