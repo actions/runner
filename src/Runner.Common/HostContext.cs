@@ -81,9 +81,16 @@ namespace GitHub.Runner.Common
             _loadContext = AssemblyLoadContext.GetLoadContext(typeof(HostContext).GetTypeInfo().Assembly);
             _loadContext.Unloading += LoadContext_Unloading;
 
+            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscape);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift3);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift4);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift5);
             this.SecretMasker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.XmlDataEscape);
 
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
