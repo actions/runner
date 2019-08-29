@@ -160,7 +160,8 @@ namespace GitHub.Runner.Worker
                 return true;
             }
 
-            if (Action.DisplayNameToken == null){
+            if (Action.DisplayNameToken == null)
+            {
                 return false;
             }
 
@@ -172,7 +173,8 @@ namespace GitHub.Runner.Worker
             {
                 displayName = templateEvaluator.EvaluateStepDisplayName(Action.DisplayNameToken, contextData);
             }
-            catch (TemplateValidationException e){
+            catch (TemplateValidationException e)
+            {
                 Trace.Warning(e.Message);
                 return false;
             }

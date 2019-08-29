@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker
     {
         string Condition { get; set; }
         TemplateToken ContinueOnError { get; }
-        string DisplayName { get; set;}
+        string DisplayName { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         TemplateToken Timeout { get; }
         Task RunAsync();
