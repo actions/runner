@@ -298,19 +298,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     foreach (TemplateToken templateToken in sequenceToken)
                     {
                         var tokenString = EvaluateStepDisplayNamePart(templateToken, contextData);
-                        // If we recieve null, it means we were unable to evaluate the string so we should abort
-                        if (tokenString == null)
+                        // Abort if we recieve an empty string, so we don't end up with something like "Run "
+                        if (String.IsNullOrEmpty(tokenString))
                         {
                             return String.Empty;
                         }
-                        // Check for an empty string 
-                        else if (String.IsNullOrEmpty(tokenString)) 
-                        {
-                            continue;
-                        }
                         else
                         {
-                            result = String.Concat(result, tokenString);
+                            
+                            result = String.IsNullOrEmpty(result) ? tokenString : String.Concat(result, tokenString);
                         }
                     }
                     break;
