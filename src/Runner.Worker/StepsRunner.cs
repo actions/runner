@@ -419,8 +419,8 @@ namespace GitHub.Runner.Worker
                 var scopesToFinalize = default(Queue<ContextScope>);
                 var nextStepScopeName = nextStep?.ExecutionContext.ScopeName;
                 while (scope != null &&
-                    !string.Equals(nextStep.ExecutionContext.ScopeName, scope.Name, StringComparison.OrdinalIgnoreCase) &&
-                    !(nextStep.ExecutionContext.ScopeName ?? string.Empty).StartsWith($"{scope.Name}.", StringComparison.OrdinalIgnoreCase))
+                    !string.Equals(nextStepScopeName, scope.Name, StringComparison.OrdinalIgnoreCase) &&
+                    !(nextStepScopeName ?? string.Empty).StartsWith($"{scope.Name}.", StringComparison.OrdinalIgnoreCase))
                 {
                     if (scopesToFinalize == null)
                     {
