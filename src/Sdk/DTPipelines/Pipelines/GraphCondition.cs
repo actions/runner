@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Text;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.Expressions;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.Pipelines.Runtime;
-using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.DistributedTask.Pipelines
 {
@@ -17,9 +18,7 @@ namespace GitHub.DistributedTask.Pipelines
         {
             m_condition = !String.IsNullOrEmpty(condition) ? condition : Default;
             m_parser = new ExpressionParser();
-            m_parsedCondition = m_parser.CreateTree(m_condition, new ConditionTraceWriter(), s_namedValueInfo, s_functionInfo);
-            m_requiresOutputs = new Lazy<Boolean>(HasOutputsReferences);
-            m_requiresVariables = new Lazy<Boolean>(HasVariablesReference);
+            m_parsedCondition = m_parser.CreateTree(m_condition, new ConditionTraceWriter(), s_namedValueInfo, FunctionInfo);
         }
 
         /// <summary>
@@ -29,90 +28,87 @@ namespace GitHub.DistributedTask.Pipelines
         {
             get
             {
-                return "succeeded()";
+                return $"{PipelineTemplateConstants.Success}()";
             }
         }
 
         /// <summary>
-        /// Gets a value indicating whether or not dependency outputs are used within the condition.
+        /// Gets a value indicating whether the event payload is used within the condition
+        /// </summary>
+        public Boolean RequiresEventPayload
+        {
+            get
+            {
+                CheckRequiredProperties();
+                return m_requiresEventPayload.Value;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether dependency outputs are used within the condition
         /// </summary>
         public Boolean RequiresOutputs
         {
             get
             {
+                CheckRequiredProperties();
                 return m_requiresOutputs.Value;
             }
         }
 
         /// <summary>
-        /// Gets a value indicating whether or not variables are used within the condition.
+        /// Gets a value indicating whether variables are used within the condition
         /// </summary>
         public Boolean RequiresVariables
         {
             get
             {
-                return m_requiresVariables.Value;
-            }
-        }
-
-        private Boolean HasOutputsReferences()
-        {
-            var dependencies = m_parsedCondition.GetParameters<DependenciesContextNode<TInstance>>().ToList();
-            if (dependencies.Count == 0)
-            {
                 return false;
             }
-
-            foreach (var dependencyNode in dependencies)
-            {
-                var propertyIndexer = dependencyNode.Container?.Container;
-                if (propertyIndexer != null)
-                {
-                    var propertyName = propertyIndexer.Parameters.OfType<LiteralValueNode>().FirstOrDefault();
-                    if (propertyName != null)
-                    {
-                        if (propertyName.Kind == ValueKind.String)
-                        {
-                            var propertyNameValue = (String)propertyName.Value;
-                            return propertyNameValue.Equals("outputs", StringComparison.OrdinalIgnoreCase);
-                        }
-                    }
-                }
-            }
-
-            return false;
         }
 
-        private Boolean HasVariablesReference()
+        private void CheckRequiredProperties()
         {
-            return m_parsedCondition.GetParameters<VariablesContextNode>().Any();
+            var matches = m_parsedCondition.CheckReferencesContext(PipelineTemplateConstants.EventPattern, PipelineTemplateConstants.OutputsPattern);
+            m_requiresEventPayload = matches[0];
+            m_requiresOutputs = matches[1];
         }
 
-        private static IEnumerable<IGraphNodeInstance> GetNodesForEvaluation(
-            FunctionNode function,
+        private static IEnumerable<DictionaryContextData> GetNeeds(
+            IReadOnlyList<ExpressionNode> parameters,
             EvaluationContext context,
             GraphExecutionContext<TInstance> expressionContext)
         {
-            if (function.Parameters.Count == 0)
+            if (expressionContext.Data.TryGetValue(PipelineTemplateConstants.Needs, out var needsData) &&
+                needsData is DictionaryContextData needs)
             {
-                foreach (var dependency in expressionContext.Dependencies)
+                if (parameters.Count == 0)
                 {
-                    yield return dependency.Value;
-                }
-            }
-            else
-            {
-                foreach (var dependencyName in function.Parameters)
-                {
-                    TInstance node;
-                    var dependencyNameValue = dependencyName.EvaluateString(context);
-                    if (!expressionContext.Dependencies.TryGetValue(dependencyNameValue, out node))
+                    foreach (var pair in needs)
                     {
-                        yield return default;
+                        yield return pair.Value as DictionaryContextData;
                     }
-                    else
+                }
+                else
+                {
+                    foreach (var parameter in parameters)
                     {
-                        yield return node;
+                        var parameterResult = parameter.Evaluate(context);
+                        var dependencyName = default(String);
+                        if (parameterResult.IsPrimitive)
+                        {
+                            dependencyName = parameterResult.ConvertToString();
+                        }
+
+                        if (!String.IsNullOrEmpty(dependencyName) &&
+                            needs.TryGetValue(dependencyName, out var need))
+                        {
+                            yield return need as DictionaryContextData;
+                        }
+                        else
+                        {
+                            yield return default;
+                        }
                     }
                 }
             }
@@ -120,24 +116,22 @@ namespace GitHub.DistributedTask.Pipelines
 
         private readonly String m_condition;
         private readonly ExpressionParser m_parser;
+        private Boolean? m_requiresEventPayload;
+        private Boolean? m_requiresOutputs;
         protected readonly IExpressionNode m_parsedCondition;
-        private readonly Lazy<Boolean> m_requiresOutputs;
-        private readonly Lazy<Boolean> m_requiresVariables;
 
         private static readonly INamedValueInfo[] s_namedValueInfo = new INamedValueInfo[]
         {
-            Expressions.ExpressionConstants.PipelineNamedValue,
-            Expressions.ExpressionConstants.VariablesNamedValue,
-            new NamedValueInfo<DependenciesContextNode<TInstance>>(Expressions.ExpressionConstants.Dependencies),
+            new NamedValueInfo<GraphConditionNamedValue<TInstance>>(PipelineTemplateConstants.GitHub),
+            new NamedValueInfo<GraphConditionNamedValue<TInstance>>(PipelineTemplateConstants.Needs),
         };
 
-        private static readonly IFunctionInfo[] s_functionInfo = new IFunctionInfo[]
+        public static readonly IFunctionInfo[] FunctionInfo = new IFunctionInfo[]
         {
-            new FunctionInfo<AlwaysNode>("always", 0, 0),
-            new FunctionInfo<FailedNode>("failed", 0, Int32.MaxValue),
-            new FunctionInfo<CanceledNode>("canceled", 0, 0),
-            new FunctionInfo<SucceededNode>("succeeded", 0, Int32.MaxValue),
-            new FunctionInfo<SucceededOrFailedNode>("succeededOrFailed", 0, Int32.MaxValue),
+            new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0),
+            new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, Int32.MaxValue),
+            new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0),
+            new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, Int32.MaxValue),
         };
 
         protected sealed class ConditionTraceWriter : ITraceWriter
@@ -163,27 +157,36 @@ namespace GitHub.DistributedTask.Pipelines
             private StringBuilder m_info = new StringBuilder();
         }
 
-        private sealed class AlwaysNode : FunctionNode
+        private sealed class AlwaysFunction : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 return true;
             }
         }
 
-        private sealed class CanceledNode : FunctionNode
+        private sealed class CancelledFunction : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var conditionContext = context.State as GraphExecutionContext<TInstance>;
                 return conditionContext.State == PipelineState.Canceling;
             }
         }
 
-        private sealed class FailedNode : FunctionNode
+        private sealed class FailureFunction : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var conditionContext = context.State as GraphExecutionContext<TInstance>;
                 if (conditionContext.State != PipelineState.InProgress)
                 {
@@ -191,14 +194,16 @@ namespace GitHub.DistributedTask.Pipelines
                 }
 
                 Boolean anyFailed = false;
-                foreach (var node in GetNodesForEvaluation(this, context, conditionContext))
+                foreach (var need in GetNeeds(Parameters, context, conditionContext))
                 {
-                    if (node == null)
+                    if (need == null ||
+                        !need.TryGetValue(PipelineTemplateConstants.Result, out var resultData) ||
+                        !(resultData is StringContextData resultString))
                     {
                         return false;
                     }
 
-                    if (node.Result == TaskResult.Failed)
+                    if (String.Equals(resultString, PipelineTemplateConstants.Failure, StringComparison.OrdinalIgnoreCase))
                     {
                         anyFailed = true;
                         break;
@@ -209,10 +214,13 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
-        private sealed class SucceededNode : FunctionNode
+        private sealed class SuccessFunction : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var conditionContext = context.State as GraphExecutionContext<TInstance>;
                 if (conditionContext.State != PipelineState.InProgress)
                 {
@@ -220,51 +228,19 @@ namespace GitHub.DistributedTask.Pipelines
                 }
 
                 Boolean allSucceeded = true;
-                foreach (var node in GetNodesForEvaluation(this, context, conditionContext))
+                foreach (var need in GetNeeds(Parameters, context, conditionContext))
                 {
-                    if (!allSucceeded || node == null)
+                    if (!allSucceeded ||
+                        need == null ||
+                        !need.TryGetValue(PipelineTemplateConstants.Result, out var resultData) ||
+                        !(resultData is StringContextData resultString) ||
+                        !String.Equals(resultString, PipelineTemplateConstants.Success, StringComparison.OrdinalIgnoreCase))
                     {
                         return false;
                     }
-
-                    allSucceeded &= (node.Result == TaskResult.Succeeded || node.Result == TaskResult.SucceededWithIssues);
                 }
 
-                return allSucceeded;
-            }
-        }
-
-        private sealed class SucceededOrFailedNode : FunctionNode
-        {
-            protected override Object EvaluateCore(EvaluationContext context)
-            {
-                var conditionContext = context.State as GraphExecutionContext<TInstance>;
-                if (conditionContext.State != PipelineState.InProgress)
-                {
-                    return false;
-                }
-
-                Boolean anyFailed = false;
-                Boolean allSucceeded = true;
-                foreach (var node in GetNodesForEvaluation(this, context, conditionContext))
-                {
-                    if (node == null)
-                    {
-                        return false;
-                    }
-
-                    if (node.Result == TaskResult.Failed)
-                    {
-                        anyFailed = true;
-                        break;
-                    }
-                    else
-                    {
-                        allSucceeded = (node.Result == TaskResult.Succeeded || node.Result == TaskResult.SucceededWithIssues);
-                    }
-                }
-
-                return anyFailed || allSucceeded;
+                return true;
             }
         }
     }

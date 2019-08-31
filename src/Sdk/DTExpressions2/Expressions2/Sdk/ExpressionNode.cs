@@ -77,14 +77,6 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
         }
 
         /// <summary>
-        /// Returns all nodes
-        /// </summary>
-        public virtual IEnumerable<IExpressionNode> GetNodes()
-        {
-            yield return this;
-        }
-
-        /// <summary>
         /// This function is intended only for ExpressionNode authors to call. The EvaluationContext
         /// caches result-state specific to the evaluation instance.
         /// </summary>

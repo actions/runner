@@ -2,7 +2,8 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Pipelines.Expressions;
 using GitHub.DistributedTask.Pipelines.Runtime;
 using GitHub.DistributedTask.WebApi;
@@ -27,7 +28,7 @@ namespace GitHub.DistributedTask.Pipelines
         {
             get
             {
-                return "succeeded()";
+                return "success()";
             }
         }
 
@@ -42,13 +43,13 @@ namespace GitHub.DistributedTask.Pipelines
         public ConditionResult Evaluate(JobExecutionContext context)
         {
             var traceWriter = new ConditionTraceWriter();
-            var result = m_parsedCondition.Evaluate<Boolean>(traceWriter, context.SecretMasker, context, context.ExpressionOptions);
-            return new ConditionResult() { Value = result, Trace = traceWriter.Trace };
+            var evaluationResult = m_parsedCondition.Evaluate(traceWriter, context.SecretMasker, context, context.ExpressionOptions);
+            return new ConditionResult() { Value = evaluationResult.IsTruthy, Trace = traceWriter.Trace };
         }
 
         private Boolean HasVariablesReference()
         {
-            return m_parsedCondition.GetParameters<VariablesContextNode>().Any();
+            return false;
         }
 
         private readonly String m_condition;
@@ -58,16 +59,14 @@ namespace GitHub.DistributedTask.Pipelines
 
         private static readonly INamedValueInfo[] s_namedValueInfo = new INamedValueInfo[]
         {
-            Expressions.ExpressionConstants.VariablesNamedValue,
         };
 
         private static readonly IFunctionInfo[] s_functionInfo = new IFunctionInfo[]
         {
             new FunctionInfo<AlwaysNode>("always", 0, 0),
-            new FunctionInfo<FailedNode>("failed", 0, 0),
-            new FunctionInfo<CanceledNode>("canceled", 0, 0),
-            new FunctionInfo<SucceededNode>("succeeded", 0, 0),
-            new FunctionInfo<SucceededOrFailedNode>("succeededOrFailed", 0, 0),
+            new FunctionInfo<FailureNode>("failure", 0, 0),
+            new FunctionInfo<CancelledNode>("cancelled", 0, 0),
+            new FunctionInfo<SuccessNode>("success", 0, 0),
         };
 
         private sealed class ConditionTraceWriter : ITraceWriter
@@ -93,27 +92,36 @@ namespace GitHub.DistributedTask.Pipelines
             private StringBuilder m_info = new StringBuilder();
         }
 
-        private sealed class AlwaysNode : FunctionNode
+        private sealed class AlwaysNode : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 return true;
             }
         }
 
-        private sealed class CanceledNode : FunctionNode
+        private sealed class CancelledNode : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var conditionContext = context.State as JobExecutionContext;
                 return conditionContext.State == PipelineState.Canceling;
             }
         }
 
-        private sealed class FailedNode : FunctionNode
+        private sealed class FailureNode : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var executionContext = context.State as JobExecutionContext;
                 if (executionContext.State != PipelineState.InProgress)
                 {
@@ -131,10 +139,13 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
-        private sealed class SucceededNode : FunctionNode
+        private sealed class SuccessNode : Function
         {
-            protected override Object EvaluateCore(EvaluationContext context)
+            protected override Object EvaluateCore(
+                EvaluationContext context,
+                out ResultMemory resultMemory)
             {
+                resultMemory = null;
                 var executionContext = context.State as JobExecutionContext;
                 if (executionContext.State != PipelineState.InProgress)
                 {
@@ -149,16 +160,6 @@ namespace GitHub.DistributedTask.Pipelines
                 }
 
                 return result == TaskResult.Succeeded || result == TaskResult.SucceededWithIssues;
-            }
-        }
-
-        private sealed class SucceededOrFailedNode : FunctionNode
-        {
-            protected override Object EvaluateCore(EvaluationContext context)
-            {
-                // No reason to look at the status, we just need to know that we're not being cancelled
-                var executionContext = context.State as JobExecutionContext;
-                return executionContext.State != PipelineState.Canceling;
             }
         }
     }

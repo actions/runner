@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 
@@ -63,6 +64,13 @@ namespace GitHub.DistributedTask.Pipelines
                 }
                 return m_data;
             }
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public TemplateToken EnvironmentVariables
+        {
+            get;
+            set;
         }
 
         /// <summary>

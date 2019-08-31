@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.Runtime;
 using GitHub.DistributedTask.Pipelines.Validation;
 using GitHub.DistributedTask.WebApi;
@@ -184,7 +185,7 @@ namespace GitHub.DistributedTask.Pipelines
             PipelineBuildContext context = null;
             if (m_context == null)
             {
-                context = new PipelineBuildContext(options, this.CounterStore, this.ResourceStore, this.StepProviders, this.TaskStore, packageStore, new InputValidator(), null, this.ExpressionOptions, this.PhaseProviders);
+                context = new PipelineBuildContext(options, null, this.CounterStore, this.ResourceStore, this.StepProviders, this.TaskStore, packageStore, new InputValidator(), null, this.ExpressionOptions, this.PhaseProviders);
                 SetVariables(context, includeSecrets: includeSecrets);
                 context.EnvironmentVersion = this.EnvironmentVersion;
             }
@@ -198,8 +199,8 @@ namespace GitHub.DistributedTask.Pipelines
 
         public StageExecutionContext CreateStageExecutionContext(
             StageInstance stage,
-            IDictionary<String, StageInstance> dependencies = null,
             PipelineState state = PipelineState.InProgress,
+            DictionaryContextData data = null,
             Boolean includeSecrets = false,
             IPipelineTraceWriter trace = null,
             ExecutionOptions executionOptions = null)
@@ -209,7 +210,7 @@ namespace GitHub.DistributedTask.Pipelines
                 throw new NotSupportedException();
             }
 
-            var context = new StageExecutionContext(stage, dependencies, state, this.CounterStore, this.PackageStore, this.ResourceStore, this.TaskStore, this.StepProviders, this.IdGenerator, trace, this.ExpressionOptions, executionOptions);
+            var context = new StageExecutionContext(stage, state, data, this.CounterStore, this.PackageStore, this.ResourceStore, this.TaskStore, this.StepProviders, this.IdGenerator, trace, this.ExpressionOptions, executionOptions);
             SetVariables(context, stage, includeSecrets: includeSecrets);
             context.EnvironmentVersion = this.EnvironmentVersion;
             return context;
@@ -218,8 +219,8 @@ namespace GitHub.DistributedTask.Pipelines
         public PhaseExecutionContext CreatePhaseExecutionContext(
             StageInstance stage,
             PhaseInstance phase,
-            IDictionary<String, PhaseInstance> dependencies = null,
             PipelineState state = PipelineState.InProgress,
+            DictionaryContextData data = null,
             Boolean includeSecrets = false,
             IPipelineTraceWriter trace = null,
             ExecutionOptions executionOptions = null)
@@ -229,7 +230,7 @@ namespace GitHub.DistributedTask.Pipelines
                 throw new NotSupportedException();
             }
 
-            var context = new PhaseExecutionContext(stage, phase, dependencies, state, this.CounterStore, this.PackageStore, this.ResourceStore, this.TaskStore, this.StepProviders, this.IdGenerator, trace, this.ExpressionOptions, executionOptions);
+            var context = new PhaseExecutionContext(stage, phase, state, data, this.CounterStore, this.PackageStore, this.ResourceStore, this.TaskStore, this.StepProviders, this.IdGenerator, trace, this.ExpressionOptions, executionOptions);
             SetVariables(context, stage, phase, includeSecrets);
             context.EnvironmentVersion = this.EnvironmentVersion;
             return context;

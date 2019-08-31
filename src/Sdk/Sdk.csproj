@@ -31,6 +31,7 @@
         <PackageReference Include="DotNet.Glob" Version="2.0.3" />
         <PackageReference Include="Minimatch" Version="2.0.0" />
         <PackageReference Include="RuntimeContracts" Version="0.1.7.2" />
+        <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
     </ItemGroup>
 
     <ItemGroup>

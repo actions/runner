@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
-using System.Linq;
-using System.Diagnostics;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using System.IO;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -27,16 +28,16 @@ namespace GitHub.Runner.Worker
         private bool _processCleanup;
         private string _processLookupId = $"github_{Guid.NewGuid()}";
 
-        // download all required tasks.
-        // make sure all task's condition inputs are valid.
-        // build up three list of steps for jobrunner. (pre-job, job, post-job)
+        // Download all required actions.
+        // Make sure all condition inputs are valid.
+        // Build up three list of steps for jobrunner (pre-job, job, post-job).
         public async Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message)
         {
             Trace.Entering();
             ArgUtil.NotNull(jobContext, nameof(jobContext));
             ArgUtil.NotNull(message, nameof(message));
 
-            // create a new timeline record node for 'Set up job'
+            // Create a new timeline record for 'Set up job'
             IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Set up job", $"{nameof(JobExtension)}_Init", null, null);
 
             List<IStep> preJobSteps = new List<IStep>();
@@ -48,9 +49,10 @@ namespace GitHub.Runner.Worker
                 {
                     context.Start();
                     context.Debug($"Starting: Set up job");
-
-                    // Set agent version variable.
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
+                    var repoFullName = context.GetGitHubContext("repository");
+                    ArgUtil.NotNull(repoFullName, nameof(repoFullName));
+                    context.Debug($"Primary repository: {repoFullName}");
 
                     // Print proxy setting information for better diagnostic experience
                     var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
@@ -59,62 +61,43 @@ namespace GitHub.Runner.Worker
                         context.Output($"Runner is running behind proxy server: '{runnerWebProxy.ProxyAddress}'");
                     }
 
-                    // Give job extension a chance to initialize
-                    Trace.Info($"Prepare workflow directory");
-                    // We only support checkout one repository at this time.
-                    var repoFullName = context.GetGitHubContext("repository");
-                    ArgUtil.NotNull(repoFullName, nameof(repoFullName));
-                    context.Debug($"Primary repository: {repoFullName}");
-
-                    // Prepare the workflow directory.
+                    // Prepare the workflow directory
                     context.Output("Prepare workflow directory");
                     var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
                     TrackingConfig trackingConfig = directoryManager.PrepareDirectory(
                         context,
                         message.Workspace);
 
-                    // Set the directory variables.
+                    // Set the directory variables
                     context.Debug("Update context data");
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
 
-                    // Parse all actions' conditions.
-                    Trace.Info("Parsing all action's condition inputs.");
-                    var expression = HostContext.GetService<IExpressionManager>();
-                    Dictionary<Guid, IExpressionNode> actionConditionMap = new Dictionary<Guid, IExpressionNode>();
-                    foreach (var step in message.Steps)
-                    {
-                        IExpressionNode condition;
-                        if (string.IsNullOrEmpty(step.Condition))
-                        {
-                            condition = ExpressionManager.Succeeded;
-                        }
-                        else
-                        {
-                            context.Debug($"Step '{step.DisplayName}' has following condition: '{step.Condition}'.");
-                            if (step.Type == Pipelines.StepType.Action)
-                            {
-                                condition = expression.Parse(context, step.Condition);
-                            }
-                            else
-                            {
-                                throw new NotSupportedException(step.Type.ToString());
-                            }
-                        }
+                    // Build up 3 lists of steps, pre-job, job, post-job
+                    var postJobStepsBuilder = new Stack<IStep>();
 
-                        actionConditionMap[step.Id] = condition;
+                    // Evaluate the job-level environment variables
+                    jobContext.Debug("Evaluating job-level environment variablesLoading inputs");
+                    var templateTrace = jobContext.ToTemplateTraceWriter();
+                    var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+                    var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                    foreach (var token in message.EnvironmentVariables)
+                    {
+                        var environmentVariables = templateEvaluator.EvaluateStepEnvironment(token, jobContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
+                        foreach (var pair in environmentVariables)
+                        {
+                            context.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
+                        }
                     }
 
-                    // build up 3 lists of steps, pre-job, job, post-job
-                    Stack<IStep> postJobStepsBuilder = new Stack<IStep>();
-
-                    // Download actions if not already in the cache
+                    // Download actions not already in the cache
                     Trace.Info("Downloading actions.");
                     var actionManager = HostContext.GetService<IActionManager>();
                     var prepareSteps = await actionManager.PrepareActionsAsync(context, message.Steps);
                     preJobSteps.AddRange(prepareSteps);
 
+                    // Add start-container steps, record and stop-container steps
                     if (context.Container != null || context.SidecarContainers.Count > 0)
                     {
                         var containerProvider = HostContext.GetService<IContainerOperationProvider>();
@@ -126,15 +109,16 @@ namespace GitHub.Runner.Worker
                         containers.AddRange(context.SidecarContainers);
 
                         preJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
-                                                                          condition: ExpressionManager.Succeeded,
+                                                                          condition: $"{PipelineTemplateConstants.Success}()",
                                                                           displayName: "Initialize containers",
                                                                           data: (object)containers));
                         postJobStepsBuilder.Push(new JobExtensionRunner(runAsync: containerProvider.StopContainersAsync,
-                                                                        condition: ExpressionManager.Always,
+                                                                        condition: $"{PipelineTemplateConstants.Always}()",
                                                                         displayName: "Stop containers",
                                                                         data: (object)containers));
                     }
 
+                    // Add action steps
                     foreach (var step in message.Steps)
                     {
                         if (step.Type == Pipelines.StepType.Action)
@@ -143,12 +127,12 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Adding {action.DisplayName}.");
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
-                            actionRunner.Condition = actionConditionMap[action.Id];
+                            actionRunner.Condition = step.Condition;
                             jobSteps.Add(actionRunner);
                         }
                     }
 
-                    // create execution context for all pre-job steps
+                    // Create execution context for pre-job steps
                     foreach (var step in preJobSteps)
                     {
                         if (step is JobExtensionRunner)
@@ -160,7 +144,7 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // create task execution context for all job steps from task
+                    // Create execution context for job steps
                     foreach (var step in jobSteps)
                     {
                         if (step is IActionRunner actionStep)
@@ -170,14 +154,14 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Add post-job steps from Tasks
-                    Trace.Info("Adding post-job steps from tasks.");
+                    // Add post-job steps
+                    Trace.Info("Adding post-job steps");
                     while (postJobStepsBuilder.Count > 0)
                     {
                         postJobSteps.Add(postJobStepsBuilder.Pop());
                     }
 
-                    // create task execution context for all post-job steps from task
+                    // Create execution context for post-job steps
                     foreach (var step in postJobSteps)
                     {
                         if (step is JobExtensionRunner)

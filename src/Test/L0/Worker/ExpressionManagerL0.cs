@@ -36,10 +36,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "always()");
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+                    bool actual = _expressionManager.Evaluate(_ec.Object, "always()").Value;
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, actual);
@@ -67,17 +66,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "cancelled()");
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+                    bool actual = _expressionManager.Evaluate(_ec.Object, "cancelled()").Value;
 
                     // Assert.
-                    Assert.Equal(variableSet.Expected, actual);
-
-                    // compat
-                    condition = _expressionManager.Parse(_ec.Object, "canceled()");
-                    actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
                     Assert.Equal(variableSet.Expected, actual);
                 }
             }
@@ -102,17 +95,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "failure()");
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+                    bool actual = _expressionManager.Evaluate(_ec.Object, "failure()").Value;
 
                     // Assert.
-                    Assert.Equal(variableSet.Expected, actual);
-
-                    // compat
-                    condition = _expressionManager.Parse(_ec.Object, "failed()");
-                    actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
                     Assert.Equal(variableSet.Expected, actual);
                 }
             }
@@ -137,17 +124,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     InitializeExecutionContext(hc);
                     _jobContext.Status = variableSet.JobStatus;
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, "success()");
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+                    bool actual = _expressionManager.Evaluate(_ec.Object, "success()").Value;
 
                     // Assert.
-                    Assert.Equal(variableSet.Expected, actual);
-
-                    // compat
-                    condition = _expressionManager.Parse(_ec.Object, "succeeded()");
-                    actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
                     Assert.Equal(variableSet.Expected, actual);
                 }
             }
@@ -163,20 +144,19 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new { Condition = "eq(github.ref, 'refs/heads/master')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
-                    new { Condition = "eq(github['ref'], 'refs/heads/master')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
+                    new { Condition = "github.ref == 'refs/heads/master'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
+                    new { Condition = "github['ref'] == 'refs/heads/master'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
                     new { Condition = "github.nosuch || '' == ''", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
-                    new { Condition = "eq(github['ref'], 'refs/heads/release')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
-                    new { Condition = "eq(github.ref, 'refs/heads/release')", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
+                    new { Condition = "github['ref'] == 'refs/heads/release'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
+                    new { Condition = "github.ref == 'refs/heads/release'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
                 };
                 foreach (var variableSet in variableSets)
                 {
                     InitializeExecutionContext(hc);
                     _ec.Object.ExpressionValues["github"] = new GitHubContext() { { variableSet.VariableName, new StringContextData(variableSet.VariableValue) } };
-                    IExpressionNode condition = _expressionManager.Parse(_ec.Object, variableSet.Condition);
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, condition).Value;
+                    bool actual = _expressionManager.Evaluate(_ec.Object, variableSet.Condition).Value;
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, actual);

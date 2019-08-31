@@ -6,57 +6,55 @@ using System.Text;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
-using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
+using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
 
 namespace GitHub.Runner.Worker
 {
     [ServiceLocator(Default = typeof(ExpressionManager))]
     public interface IExpressionManager : IRunnerService
     {
-        IExpressionNode Parse(IExecutionContext context, string condition);
-        ConditionResult Evaluate(IExecutionContext context, IExpressionNode tree, bool hostTracingOnly = false);
+        ConditionResult Evaluate(IExecutionContext context, string condition, bool hostTracingOnly = false);
     }
 
     public sealed class ExpressionManager : RunnerService, IExpressionManager
     {
-        public static IExpressionNode Always = new AlwaysNode();
-        public static IExpressionNode Succeeded = new SucceededNode();
-
-        public IExpressionNode Parse(IExecutionContext executionContext, string condition)
+        public ConditionResult Evaluate(IExecutionContext executionContext, string condition, bool hostTracingOnly = false)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
-            var expressionTrace = new TraceWriter(Trace, executionContext);
-            var parser = new ExpressionParser();
-            var namedValues = executionContext.ExpressionValues.Keys.Select(x => new NamedValueInfo<ContextValueNode>(x)).ToArray();
-
-            var functions = new IFunctionInfo[]
-            {
-                new FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
-                new FunctionInfo<CanceledNode>(name: Constants.Expressions.Cancelled, minParameters: 0, maxParameters: 0),
-                new FunctionInfo<CanceledNode>(name: Constants.Expressions.Canceled, minParameters: 0, maxParameters: 0),
-                new FunctionInfo<FailedNode>(name: Constants.Expressions.Failure, minParameters: 0, maxParameters: 0),
-                new FunctionInfo<FailedNode>(name: Constants.Expressions.Failed, minParameters: 0, maxParameters: 0),
-                new FunctionInfo<SucceededNode>(name: Constants.Expressions.Success, minParameters: 0, maxParameters: 0),
-                new FunctionInfo<SucceededNode>(name: Constants.Expressions.Succeeded, minParameters: 0, maxParameters: 0),
-            };
-            return parser.CreateTree(condition, expressionTrace, namedValues, functions) ?? new SucceededNode();
-        }
-
-        public ConditionResult Evaluate(IExecutionContext executionContext, IExpressionNode tree, bool hostTracingOnly = false)
-        {
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(tree, nameof(tree));
 
             ConditionResult result = new ConditionResult();
             var expressionTrace = new TraceWriter(Trace, hostTracingOnly ? null : executionContext);
+            var tree = Parse(executionContext, expressionTrace, condition);
             var expressionResult = tree.Evaluate(expressionTrace, HostContext.SecretMasker, state: executionContext, options: null);
             result.Value = expressionResult.IsTruthy;
             result.Trace = expressionTrace.Trace;
 
             return result;
+        }
+
+        private static IExpressionNode Parse(IExecutionContext executionContext, TraceWriter expressionTrace, string condition)
+        {
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+
+            if (string.IsNullOrWhiteSpace(condition))
+            {
+                condition = $"{PipelineTemplateConstants.Success}()";
+            }
+
+            var parser = new ExpressionParser();
+            var namedValues = executionContext.ExpressionValues.Keys.Select(x => new NamedValueInfo<ContextValueNode>(x)).ToArray();
+            var functions = new IFunctionInfo[]
+            {
+                new FunctionInfo<AlwaysNode>(name: Constants.Expressions.Always, minParameters: 0, maxParameters: 0),
+                new FunctionInfo<CancelledNode>(name: Constants.Expressions.Cancelled, minParameters: 0, maxParameters: 0),
+                new FunctionInfo<FailureNode>(name: Constants.Expressions.Failure, minParameters: 0, maxParameters: 0),
+                new FunctionInfo<SuccessNode>(name: Constants.Expressions.Success, minParameters: 0, maxParameters: 0),
+            };
+            return parser.CreateTree(condition, expressionTrace, namedValues, functions) ?? new SuccessNode();
         }
 
         private sealed class TraceWriter : DistributedTask.Expressions2.ITraceWriter
@@ -97,7 +95,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class CanceledNode : Function
+        private sealed class CancelledNode : Function
         {
             protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
@@ -109,7 +107,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class FailedNode : Function
+        private sealed class FailureNode : Function
         {
             protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
@@ -121,7 +119,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private sealed class SucceededNode : Function
+        private sealed class SuccessNode : Function
         {
             protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {

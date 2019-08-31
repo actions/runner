@@ -5,7 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Serialization;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.Runtime;
 using GitHub.DistributedTask.Pipelines.Validation;
 using GitHub.DistributedTask.WebApi;
@@ -643,8 +643,8 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 try
                 {
-                    var parser = new ExpressionParser();
-                    parser.ValidateSyntax(stepCondition, context.Trace);
+                    var parser = new DistributedTask.Expressions.ExpressionParser();
+                    parser.ValidateSyntax(stepCondition, null);
                 }
                 catch (ParseException ex)
                 {
@@ -1031,10 +1031,10 @@ namespace GitHub.DistributedTask.Pipelines
             var inputContext = new InputValidationContext
             {
                 Evaluate = true,
-                EvaluationOptions = context.ExpressionOptions,
+                EvaluationOptions = new DistributedTask.Expressions.EvaluationOptions(),
                 Expression = input.Validation.Expression,
                 SecretMasker = context.SecretMasker,
-                TraceWriter = context.Trace,
+                TraceWriter = null,
                 Value = expandedInputValue,
             };
 

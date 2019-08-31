@@ -17,7 +17,7 @@ namespace GitHub.Runner.Worker
 {
     public interface IStep
     {
-        IExpressionNode Condition { get; set; }
+        string Condition { get; set; }
         TemplateToken ContinueOnError { get; }
         string DisplayName { get; }
         IExecutionContext ExecutionContext { get; set; }

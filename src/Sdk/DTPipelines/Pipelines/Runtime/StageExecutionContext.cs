@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.DistributedTask.Pipelines.Runtime
 {
@@ -14,18 +14,8 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
     {
         public StageExecutionContext(
             StageInstance stage = default,
-            IList<StageInstance> dependencies = null)
-            : this(stage, dependencies?.ToDictionary(x => x.Name, x => x, StringComparer.OrdinalIgnoreCase))
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new <c>PipelineExecutionContext</c> instance.
-        /// </summary>
-        public StageExecutionContext(
-            StageInstance stage,
-            IDictionary<String, StageInstance> dependencies)
-            : this(stage, dependencies, PipelineState.InProgress, new CounterStore(), new PackageStore(), new ResourceStore(), new TaskStore(), null, null, null, null, null)
+            DictionaryContextData data = null)
+            : this(stage, PipelineState.InProgress, data, new CounterStore(), new PackageStore(), new ResourceStore(), new TaskStore(), null, null, null, null, null)
         {
         }
 
@@ -36,8 +26,8 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
         /// <param name="resources">The additional pre-defined resources which should be utilized for resource resolution, like: Container</param>
         public StageExecutionContext(
             StageInstance stage,
-            IDictionary<String, StageInstance> dependencies,
             PipelineState state,
+            DictionaryContextData data,
             ICounterStore counterStore,
             IPackageStore packageStore,
             IResourceStore resourceStore,
@@ -47,7 +37,7 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
             IPipelineTraceWriter trace,
             EvaluationOptions expressionOptions,
             ExecutionOptions executionOptions)
-            : base(stage, dependencies, state, counterStore, packageStore, resourceStore, taskStore, stepProviders, idGenerator, trace, expressionOptions, executionOptions)
+            : base(stage, state, data, counterStore, packageStore, resourceStore, taskStore, stepProviders, idGenerator, trace, expressionOptions, executionOptions)
         {
             this.Stage.Identifier = this.IdGenerator.GetStageIdentifier(stage.Name);
         }

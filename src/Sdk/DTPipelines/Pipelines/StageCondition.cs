@@ -15,8 +15,8 @@ namespace GitHub.DistributedTask.Pipelines
         public ConditionResult Evaluate(StageExecutionContext context)
         {
             var traceWriter = new ConditionTraceWriter();
-            var result = m_parsedCondition.Evaluate<Boolean>(traceWriter, context.SecretMasker, context, context.ExpressionOptions);
-            return new ConditionResult() { Value = result, Trace = traceWriter.Trace };
+            var evaluationResult = m_parsedCondition.Evaluate(traceWriter, context.SecretMasker, context, context.ExpressionOptions);
+            return new ConditionResult() { Value = evaluationResult.IsTruthy, Trace = traceWriter.Trace };
         }
     }
 }

@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.DistributedTask.Pipelines.Runtime
 {
@@ -16,6 +17,7 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
         }
 
         private protected PipelineExecutionContext(
+            DictionaryContextData data,
             ICounterStore counterStore,
             IPackageStore packageStore,
             IResourceStore resourceStore,
@@ -26,7 +28,7 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
             IPipelineTraceWriter trace = null,
             EvaluationOptions expressionOptions = null,
             ExecutionOptions executionOptions = null)
-            : base(counterStore, packageStore, resourceStore, taskStore, stepProviders, idGenerator, trace, expressionOptions)
+            : base(data, counterStore, packageStore, resourceStore, taskStore, stepProviders, idGenerator, trace, expressionOptions)
         {
             this.State = state;
             this.ExecutionOptions = executionOptions ?? new ExecutionOptions();

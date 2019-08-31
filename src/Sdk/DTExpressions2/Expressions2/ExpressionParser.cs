@@ -8,6 +8,7 @@ using GitHub.DistributedTask.Expressions2.Tokens;
 namespace GitHub.DistributedTask.Expressions2
 {
     using GitHub.DistributedTask.Expressions2.Sdk;
+    using GitHub.DistributedTask.Expressions2.Sdk.Functions;
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class ExpressionParser
@@ -20,6 +21,15 @@ namespace GitHub.DistributedTask.Expressions2
         {
             var context = new ParseContext(expression, trace, namedValues, functions);
             context.Trace.Info($"Parsing expression: <{expression}>");
+            return CreateTree(context);
+        }
+
+        public IExpressionNode ValidateSyntax(
+            String expression,
+            ITraceWriter trace)
+        {
+            var context = new ParseContext(expression, trace, namedValues: null, functions: null, allowUnknownKeywords: true);
+            context.Trace.Info($"Validating expression syntax: <{expression}>");
             return CreateTree(context);
         }
 
@@ -101,23 +111,40 @@ namespace GitHub.DistributedTask.Expressions2
                 // Function
                 case TokenKind.Function:
                     var function = context.Token.RawValue;
-                    if (!TryGetFunctionInfo(context, function, out var functionInfo))
+                    if (TryGetFunctionInfo(context, function, out var functionInfo))
+                    {
+                        node = functionInfo.CreateNode();
+                        node.Name = function;
+                    }
+                    else if (context.AllowUnknownKeywords)
+                    {
+                        node = new NoOperation();
+                        node.Name = function;
+                    }
+                    else
                     {
                         throw new ParseException(ParseExceptionKind.UnrecognizedFunction, context.Token, context.Expression);
                     }
-                    node = functionInfo.CreateNode();
-                    node.Name = function;
                     break;
 
                 // Named-value
                 case TokenKind.NamedValue:
                     var name = context.Token.RawValue;
-                    if (!context.ExtensionNamedValues.TryGetValue(name, out var namedValueInfo))
+                    if (context.ExtensionNamedValues.TryGetValue(name, out var namedValueInfo))
+                    {
+                        node = namedValueInfo.CreateNode();
+                        node.Name = name;
+
+                    }
+                    else if (context.AllowUnknownKeywords)
+                    {
+                        node = new NoOperationNamedValue();
+                        node.Name = name;
+                    }
+                    else
                     {
                         throw new ParseException(ParseExceptionKind.UnrecognizedNamedValue, context.Token, context.Expression);
                     }
-                    node = namedValueInfo.CreateNode();
-                    node.Name = name;
                     break;
 
                 // Otherwise simple
@@ -310,7 +337,11 @@ namespace GitHub.DistributedTask.Expressions2
 
             // Check min/max parameter count
             TryGetFunctionInfo(context, function.Name, out var functionInfo);
-            if (function.Parameters.Count < functionInfo.MinParameters)
+            if (functionInfo == null && context.AllowUnknownKeywords)
+            {
+                // Don't check min/max
+            }
+            else if (function.Parameters.Count < functionInfo.MinParameters)
             {
                 throw new ParseException(ParseExceptionKind.TooFewParameters, token: @operator, expression: context.Expression);
             }
@@ -386,6 +417,7 @@ namespace GitHub.DistributedTask.Expressions2
 
         private sealed class ParseContext
         {
+            public Boolean AllowUnknownKeywords;
             public readonly String Expression;
             public readonly Dictionary<String, IFunctionInfo> ExtensionFunctions = new Dictionary<String, IFunctionInfo>(StringComparer.OrdinalIgnoreCase);
             public readonly Dictionary<String, INamedValueInfo> ExtensionNamedValues = new Dictionary<String, INamedValueInfo>(StringComparer.OrdinalIgnoreCase);
@@ -400,7 +432,8 @@ namespace GitHub.DistributedTask.Expressions2
                 String expression,
                 ITraceWriter trace,
                 IEnumerable<INamedValueInfo> namedValues,
-                IEnumerable<IFunctionInfo> functions)
+                IEnumerable<IFunctionInfo> functions,
+                Boolean allowUnknownKeywords = false)
             {
                 Expression = expression ?? String.Empty;
                 if (Expression.Length > ExpressionConstants.MaxLength)
@@ -420,6 +453,7 @@ namespace GitHub.DistributedTask.Expressions2
                 }
 
                 LexicalAnalyzer = new LexicalAnalyzer(Expression);
+                AllowUnknownKeywords = allowUnknownKeywords;
             }
 
             private class NoOperationTraceWriter : ITraceWriter

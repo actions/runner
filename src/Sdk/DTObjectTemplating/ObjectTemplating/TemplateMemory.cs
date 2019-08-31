@@ -192,7 +192,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             TemplateToken value,
             Boolean traverse = false)
         {
-            var enumerable = traverse ? TemplateUtil.GetTokens(value) : new[] { value };
+            var enumerable = traverse ? value.Traverse() : new[] { value };
             var result = 0;
             foreach (var item in enumerable)
             {

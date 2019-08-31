@@ -30,29 +30,25 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             Object existingValue,
             JsonSerializer serializer)
         {
-            if (reader.TokenType == JsonToken.String)
+            switch (reader.TokenType)
             {
-                return new StringContextData(reader.Value.ToString());
-            }
+                case JsonToken.String:
+                    return new StringContextData(reader.Value.ToString());
 
-            if (reader.TokenType == JsonToken.Boolean)
-            {
-                return new BooleanContextData((Boolean)reader.Value);
-            }
+                case JsonToken.Boolean:
+                    return new BooleanContextData((Boolean)reader.Value);
 
-            if (reader.TokenType == JsonToken.Float)
-            {
-                return new NumberContextData((Double)reader.Value);
-            }
+                case JsonToken.Float:
+                    return new NumberContextData((Double)reader.Value);
 
-            if (reader.TokenType == JsonToken.Integer)
-            {
-                return new NumberContextData((Double)(Int64)reader.Value);
-            }
+                case JsonToken.Integer:
+                    return new NumberContextData((Double)(Int64)reader.Value);
 
-            if (reader.TokenType != JsonToken.StartObject)
-            {
-                return null;
+                case JsonToken.StartObject:
+                    break;
+
+                default:
+                    return null;
             }
 
             Int32? type = null;

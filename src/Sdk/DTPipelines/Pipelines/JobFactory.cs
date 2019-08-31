@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
@@ -64,50 +65,89 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public TemplateToken Strategy
         {
             get;
             set;
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public ScalarToken JobDisplayName
         {
             get;
             set;
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public TemplateToken JobTarget
         {
             get;
             set;
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public ScalarToken JobTimeout
         {
             get;
             set;
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public ScalarToken JobCancelTimeout
         {
             get;
             set;
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public TemplateToken JobContainer
         {
             get;
             set;
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public TemplateToken JobServiceContainers
+        {
+            get;
+            set;
+        }
+
+        public void CheckExpandReferences(
+            out bool isEventReferenced,
+            out bool isOutputsReferenced)
+        {
+            isEventReferenced = false;
+            isOutputsReferenced = false;
+            var expressionTokens = Strategy.Traverse()
+                .Concat(JobDisplayName.Traverse())
+                .Concat(JobTarget.Traverse())
+                .Concat(JobTimeout.Traverse())
+                .Concat(JobCancelTimeout.Traverse())
+                .OfType<BasicExpressionToken>()
+                .ToArray();
+            var parser = new ExpressionParser();
+            foreach (var expressionToken in expressionTokens)
+            {
+                var tree = parser.ValidateSyntax(expressionToken.Expression, null);
+                var isReferenced = tree.CheckReferencesContext(
+                    PipelineTemplateConstants.EventPattern,
+                    PipelineTemplateConstants.OutputsPattern);
+                if (!isEventReferenced)
+                {
+                    isEventReferenced = isReferenced[0];
+                }
+
+                if (!isOutputsReferenced)
+                {
+                    isOutputsReferenced = isReferenced[1];
+                }
+            }
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public TemplateToken EnvironmentVariables
         {
             get;
             set;
@@ -125,7 +165,7 @@ namespace GitHub.DistributedTask.Pipelines
 
             trace.Info("Evaluating strategy");
             var displayName = JobDisplayName is ExpressionToken ? null : DisplayName;
-            var strategy = templateEvaluator.EvaluateStrategy(Strategy, displayName);
+            var strategy = templateEvaluator.EvaluateStrategy(Strategy, context.Data, displayName);
 
             foreach (var jobContext in ExpandContexts(context, options, strategy, trace, templateEvaluator))
             {
@@ -169,7 +209,7 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 trace.Info("Evaluating strategy");
                 var displayName = JobDisplayName is ExpressionToken ? null : DisplayName;
-                strategy = templateEvaluator.EvaluateStrategy(Strategy, displayName);
+                strategy = templateEvaluator.EvaluateStrategy(Strategy, context.Data, displayName);
             }
 
             // Check max jobs
@@ -274,7 +314,7 @@ namespace GitHub.DistributedTask.Pipelines
             if (JobDisplayName is ExpressionToken)
             {
                 trace.Info("Evaluating display name");
-                job.DisplayName = templateEvaluator.EvaluateJobDisplayName(JobDisplayName, contextData, DisplayName);
+                job.DisplayName = templateEvaluator.EvaluateJobDisplayName(JobDisplayName, jobContext.Data, DisplayName);
             }
             else if (!String.IsNullOrEmpty(configurationDisplayName))
             {
@@ -286,15 +326,15 @@ namespace GitHub.DistributedTask.Pipelines
             }
 
             trace.Info("Evaluating timeout");
-            job.TimeoutInMinutes = templateEvaluator.EvaluateJobTimeout(JobTimeout, contextData);
+            job.TimeoutInMinutes = templateEvaluator.EvaluateJobTimeout(JobTimeout, jobContext.Data);
             trace.Info("Evaluating cancel timeout");
-            job.CancelTimeoutInMinutes = templateEvaluator.EvaluateJobCancelTimeout(JobCancelTimeout, contextData);
+            job.CancelTimeoutInMinutes = templateEvaluator.EvaluateJobCancelTimeout(JobCancelTimeout, jobContext.Data);
             trace.Info("Evaluating target");
-            job.Target = templateEvaluator.EvaluateJobTarget(JobTarget, contextData);
+            job.Target = templateEvaluator.EvaluateJobTarget(JobTarget, jobContext.Data);
             
             // Add container resources
-            var container = templateEvaluator.EvaluateJobContainer(JobContainer, contextData);
-            var services = templateEvaluator.EvaluateJobServiceContainers(JobServiceContainers, contextData);
+            var container = templateEvaluator.EvaluateJobContainer(JobContainer, jobContext.Data);
+            var services = templateEvaluator.EvaluateJobServiceContainers(JobServiceContainers, jobContext.Data);
             if (container != null)
             {
                 job.Container = container.Alias;
@@ -352,16 +392,7 @@ namespace GitHub.DistributedTask.Pipelines
             var identifier = jobContext.GetInstanceName();
             foreach (var step in Steps)
             {
-                if (step.Type == StepType.Task)
-                {
-                    // We don't need to add to demands here since they are already part of the plan.
-                    job.Steps.Add(Phase.CreateJobTaskStep(jobContext, this, identifier, step as TaskStep));
-                }
-                else if (step.Type == StepType.Group)
-                {
-                    job.Steps.Add(Phase.CreateJobStepGroup(jobContext, this, identifier, step as GroupStep));
-                }
-                else if (step.Type == StepType.Action)
+                if (step.Type == StepType.Action)
                 {
                     job.Steps.Add(Phase.CreateJobActionStep(jobContext, identifier, step as ActionStep));
                 }
@@ -395,7 +426,7 @@ namespace GitHub.DistributedTask.Pipelines
 
         private sealed class JobFactoryTrace : DistributedTask.ObjectTemplating.ITraceWriter
         {
-            public JobFactoryTrace(DistributedTask.Expressions.ITraceWriter trace)
+            public JobFactoryTrace(DistributedTask.Expressions2.ITraceWriter trace)
             {
                 m_trace = trace;
             }
@@ -441,7 +472,7 @@ namespace GitHub.DistributedTask.Pipelines
                 }
             }
 
-            private DistributedTask.Expressions.ITraceWriter m_trace;
+            private DistributedTask.Expressions2.ITraceWriter m_trace;
         }
 
         [DataMember(Name = "Scopes", EmitDefaultValue = false)]

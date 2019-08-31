@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace GitHub.DistributedTask.Pipelines.Expressions
 {
-    public static class WellKnownRegularExpressions
+    internal static class WellKnownRegularExpressions
     {
         public const String Email = nameof(Email);
         public const String IPv4Address = nameof(IPv4Address);

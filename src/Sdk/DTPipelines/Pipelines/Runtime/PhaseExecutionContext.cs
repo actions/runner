@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.DistributedTask.Pipelines.Runtime
 {
@@ -15,24 +15,10 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
         public PhaseExecutionContext(
             StageInstance stage = null,
             PhaseInstance phase = null,
-            IList<PhaseInstance> dependencies = null,
+            DictionaryContextData data = null,
             EvaluationOptions expressionOptions = null,
             ExecutionOptions executionOptions = null)
-            : this(stage, phase, dependencies?.ToDictionary(x => x.Name, x => x, StringComparer.OrdinalIgnoreCase),
-                  expressionOptions, executionOptions)
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new <c>PipelineExecutionContext</c> instance.
-        /// </summary>
-        public PhaseExecutionContext(
-            StageInstance stage,
-            PhaseInstance phase,
-            IDictionary<String, PhaseInstance> dependencies,
-            EvaluationOptions expressionOptions,
-            ExecutionOptions executionOptions)
-            : this(stage, phase, dependencies, PipelineState.InProgress,
+            : this(stage, phase, PipelineState.InProgress, data,
                   new CounterStore(), new PackageStore(), new ResourceStore(), new TaskStore(),
                   null, null, null, expressionOptions, executionOptions)
         {
@@ -46,8 +32,8 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
         public PhaseExecutionContext(
             StageInstance stage,
             PhaseInstance phase,
-            IDictionary<String, PhaseInstance> dependencies,
             PipelineState state,
+            DictionaryContextData data,
             ICounterStore counterStore,
             IPackageStore packageStore,
             IResourceStore resourceStore,
@@ -57,7 +43,7 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
             IPipelineTraceWriter trace,
             EvaluationOptions expressionOptions,
             ExecutionOptions executionOptions)
-            : base(phase, dependencies, state, counterStore, packageStore, resourceStore, taskStore, stepProviders, idGenerator, trace, expressionOptions, executionOptions)
+            : base(phase, state, data, counterStore, packageStore, resourceStore, taskStore, stepProviders, idGenerator, trace, expressionOptions, executionOptions)
         {
             this.Stage = stage;
             if (this.Stage != null)

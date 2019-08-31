@@ -151,7 +151,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
             // Test if valid keyword character sequence.
             var length = m_index - startIndex;
             var str = m_expression.Substring(startIndex, length);
-            if (TestKeyword(str))
+            if (ExpressionUtility.IsLegalKeyword(str))
             {
                 // Test if follows property dereference operator.
                 if (m_lastToken != null && m_lastToken.Kind == TokenKind.Dereference)
@@ -290,43 +290,6 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
             var length = m_index - startIndex;
             raw = m_expression.Substring(startIndex, length);
             return CreateToken(TokenKind.Unexpected, raw, startIndex);
-        }
-
-        private static Boolean TestKeyword(String str)
-        {
-            if (String.IsNullOrEmpty(str))
-            {
-                return false;
-            }
-
-            var first = str[0];
-            if ((first >= 'a' && first <= 'z') ||
-                (first >= 'A' && first <= 'Z') ||
-                first == '_')
-            {
-                for (var i = 1 ; i < str.Length ; i++)
-                {
-                    var c = str[i];
-                    if ((c >= 'a' && c <= 'z') ||
-                        (c >= 'A' && c <= 'Z') ||
-                        (c >= '0' && c <= '9') ||
-                        c == '_' ||
-                        c == '-')
-                    {
-                        // OK
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         private static Boolean TestTokenBoundary(Char c)

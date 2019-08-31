@@ -23,7 +23,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class ActionRunner : RunnerService, IActionRunner
     {
-        public IExpressionNode Condition { get; set; }
+        public string Condition { get; set; }
 
         public TemplateToken ContinueOnError => Action?.ContinueOnError;
 

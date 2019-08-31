@@ -12,7 +12,7 @@ namespace GitHub.Runner.Worker
 
         public JobExtensionRunner(
             Func<IExecutionContext, object, Task> runAsync,
-            IExpressionNode condition,
+            string condition,
             string displayName,
             object data)
         {
@@ -22,7 +22,7 @@ namespace GitHub.Runner.Worker
             _data = data;
         }
 
-        public IExpressionNode Condition { get; set; }
+        public string Condition { get; set; }
         public TemplateToken ContinueOnError => new BooleanToken(null, null, null, false);
         public string DisplayName { get; private set; }
         public IExecutionContext ExecutionContext { get; set; }

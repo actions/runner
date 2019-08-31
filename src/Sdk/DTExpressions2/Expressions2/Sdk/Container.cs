@@ -15,19 +15,6 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             node.Container = this;
         }
 
-        public override IEnumerable<IExpressionNode> GetNodes()
-        {
-            yield return this;
-
-            foreach (var parameter in Parameters)
-            {
-                foreach (var node in parameter.GetNodes())
-                {
-                    yield return node;
-                }
-            }
-        }
-
         private readonly List<ExpressionNode> m_parameters = new List<ExpressionNode>();
     }
 }

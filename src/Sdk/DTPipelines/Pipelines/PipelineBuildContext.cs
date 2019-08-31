@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.Validation;
 using GitHub.DistributedTask.WebApi;
 using Newtonsoft.Json.Linq;
@@ -27,6 +28,7 @@ namespace GitHub.DistributedTask.Pipelines
 
         public PipelineBuildContext(
             BuildOptions buildOptions,
+            DictionaryContextData data = null,
             ICounterStore counterStore = null,
             IResourceStore resourceStore = null,
             IList<IStepProvider> stepProviders = null,
@@ -36,7 +38,7 @@ namespace GitHub.DistributedTask.Pipelines
             IPipelineTraceWriter trace = null,
             EvaluationOptions expressionOptions = null,
             IList<IPhaseProvider> phaseProviders = null)
-            : base(counterStore, packageStore, resourceStore, taskStore, stepProviders, null, trace, expressionOptions)
+            : base(data, counterStore, packageStore, resourceStore, taskStore, stepProviders, null, trace, expressionOptions)
         {
             m_buildOptions = buildOptions ?? new BuildOptions();
             m_inputValidator = inputValidator;

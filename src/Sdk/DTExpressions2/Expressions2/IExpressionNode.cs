@@ -9,11 +9,6 @@ namespace GitHub.DistributedTask.Expressions2
     public interface IExpressionNode
     {
         /// <summary>
-        /// Returns all nodes
-        /// </summary>
-        IEnumerable<IExpressionNode> GetNodes();
-
-        /// <summary>
         /// Evaluates the expression and returns the result, wrapped in a helper
         /// for converting, comparing, and traversing objects.
         /// </summary>

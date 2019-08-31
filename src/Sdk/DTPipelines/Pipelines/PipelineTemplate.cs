@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.Pipelines
 {
@@ -27,6 +28,13 @@ namespace GitHub.DistributedTask.Pipelines
                 }
                 return m_resources;
             }
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public TemplateToken EnvironmentVariables
+        {
+            get;
+            set;
         }
 
         public IList<IVariable> Variables

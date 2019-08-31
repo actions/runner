@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker
                     }
 
                     // Await the job.
-                        return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
+                    return TaskResultUtil.TranslateToReturnCode(await jobRunnerTask);
                 }
             }
             finally

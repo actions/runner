@@ -11,11 +11,26 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Operators
 
         internal sealed override String ConvertToExpression()
         {
-            return String.Format(
-                CultureInfo.InvariantCulture,
-                "{0}[{1}]",
-                Parameters[0].ConvertToExpression(),
-                Parameters[1].ConvertToExpression());
+            // Verify if we can simplify the expression, we would rather return 
+            // github.sha then github['sha'] so we check if this is a simple case.
+            if (Parameters[1] is Literal literal &&
+                literal.Value is String literalString &&
+                ExpressionUtility.IsLegalKeyword(literalString))
+            {
+                return String.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}.{1}",
+                    Parameters[0].ConvertToExpression(),
+                    literalString);
+            }
+            else
+            {
+                return String.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0}[{1}]",
+                    Parameters[0].ConvertToExpression(),
+                    Parameters[1].ConvertToExpression());
+            }
         }
 
         internal sealed override String ConvertToRealizedExpression(EvaluationContext context)
