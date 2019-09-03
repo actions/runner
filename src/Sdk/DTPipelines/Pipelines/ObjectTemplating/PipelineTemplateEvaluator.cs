@@ -44,13 +44,14 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public StrategyResult EvaluateStrategy(
             TemplateToken token,
+            DictionaryContextData contextData,
             String jobFactoryDisplayName)
         {
             var result = new StrategyResult();
 
             if (token != null && token.Type != TokenType.Null)
             {
-                var context = CreateContext(null);
+                var context = CreateContext(contextData);
                 try
                 {
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.Strategy, token, 0, null, omitHeader: true);
@@ -79,19 +80,19 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     {
                         {
                             "fail-fast",
-                            new StringContextData(result.FailFast.ToString(CultureInfo.InvariantCulture).ToLowerInvariant())
+                            new BooleanContextData(result.FailFast)
                         },
                         {
                             "job-index",
-                            new StringContextData("0")
+                            new NumberContextData(0)
                         },
                         {
                             "job-total",
-                            new StringContextData("1")
+                            new NumberContextData(1)
                         },
                         {
                             "max-parallel",
-                            new StringContextData("1")
+                            new NumberContextData(1)
                         }
                     });
                 result.Configurations.Add(configuration);
@@ -102,7 +103,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public String EvaluateJobDisplayName(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData,
+            DictionaryContextData contextData,
             String defaultDisplayName)
         {
             var result = default(String);
@@ -129,7 +130,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public PhaseTarget EvaluateJobTarget(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(PhaseTarget);
 
@@ -155,7 +156,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Int32 EvaluateJobTimeout(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(Int32?);
 
@@ -181,7 +182,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Int32 EvaluateJobCancelTimeout(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(Int32?);
 
@@ -364,7 +365,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public ContainerResource EvaluateJobContainer(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(ContainerResource);
 
@@ -390,7 +391,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Dictionary<String, ContainerResource> EvaluateJobServiceContainers(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(Dictionary<String, ContainerResource>);
 
@@ -414,7 +415,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        private TemplateContext CreateContext(IDictionary<String, PipelineContextData> contextData)
+        private TemplateContext CreateContext(IEnumerable<KeyValuePair<string, PipelineContextData>> contextData)
         {
             var result = new TemplateContext
             {
@@ -428,7 +429,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 TraceWriter = m_trace,
             };
 
-            if (contextData?.Count > 0)
+            if (contextData != null)
             {
                 foreach (var pair in contextData)
                 {

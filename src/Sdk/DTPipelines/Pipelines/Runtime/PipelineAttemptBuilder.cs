@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Net;
 using GitHub.DistributedTask.Pipelines.Validation;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;

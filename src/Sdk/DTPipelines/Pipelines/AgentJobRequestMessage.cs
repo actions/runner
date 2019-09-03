@@ -20,6 +20,10 @@ namespace GitHub.DistributedTask.Pipelines
         {
         }
 
+        /// <summary>
+        /// Job request message sent to the runner
+        /// </summary>
+        /// <param name="environmentVariables">Hierarchy of environment variables to overlay, last wins.</param>
         public AgentJobRequestMessage(
             TaskOrchestrationPlanReference plan,
             TimelineReference timeline,
@@ -28,10 +32,11 @@ namespace GitHub.DistributedTask.Pipelines
             String jobName,
             String jobContainer,
             IDictionary<String, String> jobSidecarContainers,
+            IList<TemplateToken> environmentVariables,
             IDictionary<String, VariableValue> variables,
             IList<MaskHint> maskHints,
             JobResources jobResources,
-            IDictionary<String, PipelineContextData> contextData,
+            DictionaryContextData contextData,
             WorkspaceOptions workspaceOptions,
             IEnumerable<JobStep> steps,
             IEnumerable<ContextScope> scopes)
@@ -44,7 +49,6 @@ namespace GitHub.DistributedTask.Pipelines
             this.JobContainer = jobContainer;
             this.Timeline = timeline;
             this.Resources = jobResources;
-            this.ContextData = contextData;
             this.Workspace = workspaceOptions;
 
             m_variables = new Dictionary<String, VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
@@ -59,6 +63,20 @@ namespace GitHub.DistributedTask.Pipelines
             if (jobSidecarContainers?.Count > 0)
             {
                 m_jobSidecarContainers = new Dictionary<String, String>(jobSidecarContainers, StringComparer.OrdinalIgnoreCase);
+            }
+
+            if (environmentVariables?.Count > 0)
+            {
+                m_environmentVariables = new List<TemplateToken>(environmentVariables);
+            }
+
+            this.ContextData = new Dictionary<String, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+            if (contextData?.Count > 0)
+            {
+                foreach (var pair in contextData)
+                {
+                    this.ContextData[pair.Key] = pair.Value;
+                }
             }
         }
 
@@ -163,6 +181,21 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
+        /// Gets the hierarchy of environment variables to overlay, last wins.
+        /// </summary>
+        public IList<TemplateToken> EnvironmentVariables
+        {
+            get
+            {
+                if (m_environmentVariables == null)
+                {
+                    m_environmentVariables = new List<TemplateToken>();
+                }
+                return m_environmentVariables;
+            }
+        }
+
+        /// <summary>
         /// Gets the collection of variables associated with the current context.
         /// </summary>
         public IDictionary<String, VariableValue> Variables
@@ -227,6 +260,11 @@ namespace GitHub.DistributedTask.Pipelines
         [OnSerializing]
         private void OnSerializing(StreamingContext context)
         {
+            if (m_environmentVariables?.Count == 0)
+            {
+                m_environmentVariables = null;
+            }
+
             if (m_maskHints?.Count == 0)
             {
                 m_maskHints = null;
@@ -251,6 +289,9 @@ namespace GitHub.DistributedTask.Pipelines
                 m_jobSidecarContainers = null;
             }
         }
+
+        [DataMember(Name = "EnvironmentVariables", EmitDefaultValue = false)]
+        private List<TemplateToken> m_environmentVariables;
 
         [DataMember(Name = "Mask", EmitDefaultValue = false)]
         private List<MaskHint> m_maskHints;

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 
@@ -14,7 +13,7 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
         public JobExecutionContext(
             PipelineState state,
             IPipelineIdGenerator idGenerator = null)
-            : base(null, null, null, null, null, state, idGenerator)
+            : base(null, null, null, null, null, null, state, idGenerator)
         {
         }
 
@@ -82,7 +81,13 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
                 this.ExecutionOptions.SystemTokenScope = tokenScope?.Value;
             }
 
-            m_data = data;
+            if (data?.Count > 0)
+            {
+                foreach (var pair in data)
+                {
+                    Data[pair.Key] = pair.Value;
+                }
+            }
         }
 
         public StageInstance Stage
@@ -100,23 +105,9 @@ namespace GitHub.DistributedTask.Pipelines.Runtime
             get;
         }
 
-        public IDictionary<String, PipelineContextData> Data
-        {
-            get
-            {
-                if (m_data == null)
-                {
-                    m_data = new Dictionary<string, PipelineContextData>(StringComparer.Ordinal);
-                }
-                return m_data;
-            }
-        }
-
         internal override String GetInstanceName()
         {
             return this.IdGenerator.GetJobInstanceName(this.Stage?.Name, this.Phase.Name, this.Job.Name, this.Job.Attempt);
         }
-
-        private IDictionary<String, PipelineContextData> m_data;
     }
 }

@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Logging;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using Newtonsoft.Json.Linq;
 
@@ -15,6 +16,8 @@ namespace GitHub.DistributedTask.Pipelines
     public interface IPipelineContext
     {
         ICounterStore CounterStore { get; }
+
+        DictionaryContextData Data { get; }
 
         Int32 EnvironmentVersion { get; }
 

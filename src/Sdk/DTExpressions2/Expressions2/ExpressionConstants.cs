@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using GitHub.DistributedTask.Expressions2.Sdk;
-using GitHub.DistributedTask.Expressions2.Sdk.LegacyFunctions;
 using GitHub.DistributedTask.Expressions2.Sdk.Functions;
 
 namespace GitHub.DistributedTask.Expressions2
@@ -16,15 +15,6 @@ namespace GitHub.DistributedTask.Expressions2
             AddFunction<Join>("join", 1, 2);
             AddFunction<StartsWith>("startsWith", 2, 2);
             AddFunction<ToJson>("toJson", 1, 1);
-            AddFunction<LegacyAnd>("and", 2, Int32.MaxValue);
-            AddFunction<LegacyEqual>("eq", 2, 2);
-            AddFunction<LegacyGreaterThan>("gt", 2, 2);
-            AddFunction<LegacyGreaterThanOrEqual>("ge", 2, 2);
-            AddFunction<LegacyLessThan>("lt", 2, 2);
-            AddFunction<LegacyLessThanOrEqual>("le", 2, 2);
-            AddFunction<LegacyNot>("not", 1, 1);
-            AddFunction<LegacyNotEqual>("ne", 2, 2);
-            AddFunction<LegacyOr>("or", 2, Int32.MaxValue);
         }
 
         private static void AddFunction<T>(String name, Int32 minParameters, Int32 maxParameters)

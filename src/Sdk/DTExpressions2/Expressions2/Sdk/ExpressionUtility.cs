@@ -134,6 +134,44 @@ namespace GitHub.DistributedTask.Expressions2.Sdk
             }
         }
 
+        internal static bool IsLegalKeyword(String str)
+        {
+            if (String.IsNullOrEmpty(str))
+            {
+                return false;
+            }
+
+            var first = str[0];
+            if ((first >= 'a' && first <= 'z') ||
+                (first >= 'A' && first <= 'Z') ||
+                first == '_')
+            {
+                for (var i = 1; i < str.Length; i++)
+                {
+                    var c = str[i];
+                    if ((c >= 'a' && c <= 'z') ||
+                        (c >= 'A' && c <= 'Z') ||
+                        (c >= '0' && c <= '9') ||
+                        c == '_' ||
+                        c == '-')
+                    {
+                        // OK
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+
+        }
+
         internal static Boolean IsPrimitive(ValueKind kind)
         {
             switch (kind)

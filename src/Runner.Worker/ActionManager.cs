@@ -1,22 +1,23 @@
-﻿using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Services.Common;
-using GitHub.Runner.Worker.Container;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
+using GitHub.Services.Common;
+using Newtonsoft.Json;
+using Pipelines = GitHub.DistributedTask.Pipelines;
+using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
 
 namespace GitHub.Runner.Worker
 {
@@ -116,7 +117,7 @@ namespace GitHub.Runner.Worker
                 {
                     Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
                     containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
-                                                                   condition: ExpressionManager.Succeeded,
+                                                                   condition: $"{PipelineTemplateConstants.Success}()",
                                                                    displayName: $"Pull {imageToPull.Key}",
                                                                    data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
                 }
@@ -129,7 +130,7 @@ namespace GitHub.Runner.Worker
                     var setupInfo = imagesToBuildInfo[imageToBuild.Key];
                     Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
                     containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                                                   condition: ExpressionManager.Succeeded,
+                                                                   condition: $"{PipelineTemplateConstants.Success}()",
                                                                    displayName: $"Build {setupInfo.ActionRepository}",
                                                                    data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
                 }

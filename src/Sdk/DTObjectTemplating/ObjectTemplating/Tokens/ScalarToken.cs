@@ -16,5 +16,21 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             : base(type, fileId, line, column)
         {
         }
+
+        public virtual String ToDisplayString()
+        {
+            return TrimDisplayString(ToString());
+        }
+
+        protected String TrimDisplayString(String displayString)
+        {
+            var firstLine = displayString.TrimStart(' ', '\t', '\r', '\n');
+            var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
+            if (firstNewLine >= 0)
+            {
+                firstLine = firstLine.Substring(0, firstNewLine);
+            }
+            return firstLine;
+        }
     }
 }

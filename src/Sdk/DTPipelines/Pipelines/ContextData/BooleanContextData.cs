@@ -38,7 +38,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
 
         public override String ToString()
         {
-            return m_value.ToString().ToLower();
+            return m_value ? "true" : "false";
         }
 
         Boolean IBoolean.GetBoolean()

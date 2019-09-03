@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.Runtime;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
@@ -181,7 +183,8 @@ namespace GitHub.DistributedTask.Pipelines
         /// <returns>A <c>PipelineBuildResult</c> which contains a runnable pipeline process</returns>
         public PipelineBuildResult Build(
             IList<Stage> stages,
-            BuildOptions options = null)
+            BuildOptions options = null,
+            TemplateToken environmentVariables = null)
         {
             var context = CreateBuildContext(options);
 
@@ -207,6 +210,7 @@ namespace GitHub.DistributedTask.Pipelines
             environment.Resources.MergeWith(context.ResourceStore.GetAuthorizedResources());
             environment.UserVariables.AddRange(m_contextBuilder.UserVariables);
             environment.SystemVariables.AddRange(m_contextBuilder.SystemVariables);
+            environment.EnvironmentVariables = environmentVariables;
 
             return new PipelineBuildResult(result.Environment, process, result);
         }
@@ -221,24 +225,24 @@ namespace GitHub.DistributedTask.Pipelines
         public PhaseExecutionContext CreatePhaseExecutionContext(
             StageInstance stage,
             PhaseInstance phase,
-            IDictionary<String, PhaseInstance> dependencies = null,
             PipelineState state = PipelineState.InProgress,
+            DictionaryContextData data = null,
             Boolean includeSecrets = false,
             IPipelineTraceWriter trace = null,
             ExecutionOptions executionOptions = null)
         {
-            return m_contextBuilder.CreatePhaseExecutionContext(stage, phase, dependencies, state, includeSecrets, trace, executionOptions);
+            return m_contextBuilder.CreatePhaseExecutionContext(stage, phase, state, data, includeSecrets, trace, executionOptions);
         }
 
         public StageExecutionContext CreateStageExecutionContext(
             StageInstance stage,
-            IDictionary<String, StageInstance> dependencies = null,
             PipelineState state = PipelineState.InProgress,
+            DictionaryContextData data = null,
             Boolean includeSecrets = false,
             IPipelineTraceWriter trace = null,
             ExecutionOptions executionOptions = null)
         {
-            return m_contextBuilder.CreateStageExecutionContext(stage, dependencies, state, includeSecrets, trace, executionOptions);
+            return m_contextBuilder.CreateStageExecutionContext(stage, state, data, includeSecrets, trace, executionOptions);
         }
 
         public IList<PipelineValidationError> Validate(

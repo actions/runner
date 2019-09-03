@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
+using GitHub.DistributedTask.Expressions2.Sdk.Functions;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -49,9 +50,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         case PipelineTemplateConstants.Name:
                             break;
 
-                        // todo: remove support for "workflow" in master during M154
-                        case PipelineTemplateConstants.Workflow:
-                            defaultStage.Phases.AddRange(ConvertToJobFactories(context, result.Resources, pipelinePair.Value));
+                        case PipelineTemplateConstants.Env:
+                            result.EnvironmentVariables = pipelinePair.Value;
                             break;
 
                         case PipelineTemplateConstants.Jobs:
@@ -368,7 +368,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         }
 
                         var matrix = strategyPair.Value.AssertMapping("matrix");
-                        hasExpressions = hasExpressions || TemplateUtil.GetTokens(matrix).Any(x => x is ExpressionToken);
+                        hasExpressions = hasExpressions || matrix.Traverse().Any(x => x is ExpressionToken);
                         matrixBuilder = new MatrixBuilder(context, jobFactoryDisplayName);
                         var hasVector = false;
 
@@ -457,15 +457,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     {
                         "fail-fast",
-                        new StringContextData(result.FailFast.ToString(CultureInfo.InvariantCulture).ToLowerInvariant())
+                        new BooleanContextData(result.FailFast)
                     },
                     {
                         "job-index",
-                        new StringContextData(i.ToString(CultureInfo.InvariantCulture))
+                        new NumberContextData(i)
                     },
                     {
                         "job-total",
-                        new StringContextData(result.Configurations.Count.ToString(CultureInfo.InvariantCulture))
+                        new NumberContextData(result.Configurations.Count)
                     }
                 };
 
@@ -473,14 +473,14 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     strategy.Add(
                         "max-parallel",
-                        new StringContextData(result.MaxParallel.ToString(CultureInfo.InvariantCulture))
+                        new NumberContextData(result.MaxParallel)
                     );
                 }
                 else
                 {
                     strategy.Add(
                         "max-parallel",
-                        new StringContextData(result.Configurations.Count.ToString(CultureInfo.InvariantCulture))
+                        new NumberContextData(result.Configurations.Count)
                     );
                 }
 
@@ -507,7 +507,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 Alias = Guid.NewGuid().ToString("N")
             };
-            if (allowExpressions && TemplateUtil.GetTokens(value).Any(x => x is ExpressionToken))
+            if (allowExpressions && value.Traverse().Any(x => x is ExpressionToken))
             {
                 return result;
             }
@@ -587,7 +587,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             var result = new Dictionary<String, ContainerResource>(StringComparer.OrdinalIgnoreCase);
 
-            if (allowExpressions && TemplateUtil.GetTokens(services).Any(x => x is ExpressionToken))
+            if (allowExpressions && services.Traverse().Any(x => x is ExpressionToken))
             {
                 return result;
             }
@@ -959,13 +959,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 if (String.IsNullOrEmpty(result.DisplayName))
                 {
-                    var firstLine = run.ToString().TrimStart(' ', '\t', '\r', '\n');
-                    var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
-                    if (firstNewLine >= 0)
-                    {
-                        firstLine = firstLine.Substring(0, firstNewLine);
-                    }
-                    result.DisplayName = $"Run: {firstLine}";
+                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{run.ToDisplayString()}";
                 }
 
                 var inputs = new MappingToken(null, null, null);
@@ -1001,8 +995,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 if (String.IsNullOrEmpty(result.DisplayName))
                 {
-                    // todo: loc
-                    result.DisplayName = $"Action: {uses.Value}";
+                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{uses.Value}";
                 }
 
                 if (uses.Value.StartsWith("docker://", StringComparison.Ordinal))
@@ -1066,22 +1059,29 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             if (String.IsNullOrWhiteSpace(ifCondition?.Value))
             {
-                return "success()";
+                return $"{PipelineTemplateConstants.Success}()";
             }
 
             var condition = ifCondition.Value;
 
             var expressionParser = new ExpressionParser();
+            var functions = default(IFunctionInfo[]);
             var namedValues = default(INamedValueInfo[]);
-            if (!isJob)
+            if (isJob)
+            {
+                namedValues = s_jobIfNamedValues;
+                functions = PhaseCondition.FunctionInfo;
+            }
+            else
             {
                 namedValues = isDefaultScope ? s_stepNamedValues : s_stepInTemplateNamedValues;
+                functions = s_stepConditionFunctions;
             }
 
             var node = default(ExpressionNode);
             try
             {
-                node = expressionParser.CreateTree(condition, null, namedValues, s_conditionFunctions) as ExpressionNode;
+                node = expressionParser.CreateTree(condition, null, namedValues, functions) as ExpressionNode;
             }
             catch (Exception ex)
             {
@@ -1089,75 +1089,56 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 return null;
             }
 
-            var hasStatusFunction = node.GetNodes().Any(x =>
+            if (node == null)
+            {
+                return $"{PipelineTemplateConstants.Success}()";
+            }
+
+            var hasStatusFunction = node.Traverse().Any(x =>
             {
                 if (x is Function function)
                 {
-                    return String.Equals(function.Name, "always", StringComparison.OrdinalIgnoreCase) ||
-                        String.Equals(function.Name, "cancelled", StringComparison.OrdinalIgnoreCase) ||
-                        String.Equals(function.Name, "failure", StringComparison.OrdinalIgnoreCase) ||
-                        String.Equals(function.Name, "success", StringComparison.OrdinalIgnoreCase);
+                    return String.Equals(function.Name, PipelineTemplateConstants.Always, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, PipelineTemplateConstants.Cancelled, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, PipelineTemplateConstants.Failure, StringComparison.OrdinalIgnoreCase) ||
+                        String.Equals(function.Name, PipelineTemplateConstants.Success, StringComparison.OrdinalIgnoreCase);
                 }
 
                 return false;
             });
 
-            return hasStatusFunction ? condition : $"and(success(), {condition})";
+            return hasStatusFunction ? condition : $"{PipelineTemplateConstants.Success}() && ({condition})";
         }
 
-        /// <summary>
-        /// Used for building expression parse trees.
-        /// </summary>
-        private sealed class NoOpFunction : Function
+        private static readonly INamedValueInfo[] s_jobIfNamedValues = new INamedValueInfo[]
         {
-            protected override Object EvaluateCore(
-                EvaluationContext context,
-                out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Used for building expression parse trees.
-        /// </summary>
-        private sealed class NoOpValue : NamedValue
-        {
-            protected override Object EvaluateCore(
-                EvaluationContext context,
-                out ResultMemory resultMemory)
-            {
-                resultMemory = null;
-                return null;
-            }
-        }
-
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
+        };
         private static readonly INamedValueInfo[] s_stepNamedValues = new INamedValueInfo[]
         {
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Strategy),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Matrix),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Steps),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.GitHub),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Job),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Runner),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Strategy),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
         };
         private static readonly INamedValueInfo[] s_stepInTemplateNamedValues = new INamedValueInfo[]
         {
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Strategy),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Matrix),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Steps),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Inputs),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.GitHub),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Job),
-            new NamedValueInfo<NoOpValue>(PipelineTemplateConstants.Runner),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Strategy),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Inputs),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
         };
-        private static readonly IFunctionInfo[] s_conditionFunctions = new IFunctionInfo[]
+        private static readonly IFunctionInfo[] s_stepConditionFunctions = new IFunctionInfo[]
         {
-            new FunctionInfo<NoOpFunction>("always", 0, 0),
-            new FunctionInfo<NoOpFunction>("cancelled", 0, 0),
-            new FunctionInfo<NoOpFunction>("failure", 0, 0),
-            new FunctionInfo<NoOpFunction>("success", 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Always, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Cancelled, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Failure, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Success, 0, 0),
         };
     }
 }

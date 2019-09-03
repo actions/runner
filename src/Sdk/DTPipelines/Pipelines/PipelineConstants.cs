@@ -43,7 +43,7 @@ namespace GitHub.DistributedTask.Pipelines
         /// <summary>
         /// The default job timeout in minutes.
         /// </summary>
-        public static readonly Int32 DefaultJobTimeoutInMinutes = 60;
+        public static readonly Int32 DefaultJobTimeoutInMinutes = 360;
 
         /// <summary>
         /// The max length for a node within a pipeline - e.g. a stage name or a job name.
@@ -138,7 +138,7 @@ namespace GitHub.DistributedTask.Pipelines
             RunsOn = { TaskRunsOnConstants.RunsOnAgent },
             Version = new TaskVersion("1.0.0"),
             Description = "Get sources from a repository. Supports Git, TfsVC, and SVN repositories.",
-            HelpMarkDown = "[More Information]()",
+            HelpMarkDown = "[More Information](https://github.com)",
             Inputs = {
                 new TaskInputDefinition()
                 {

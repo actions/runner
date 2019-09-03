@@ -88,17 +88,24 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // Gather segments for name and display name
                     foreach (var matrixData in matrix.Traverse(omitKeys: true))
                     {
-                        if (!(matrixData is StringContextData matrixStringData) ||
-                            String.IsNullOrEmpty(matrixStringData.Value))
+                        var segment = default(String);
+                        switch (matrixData?.Type)
                         {
-                            continue;
+                            case PipelineContextDataType.Boolean:
+                            case PipelineContextDataType.Number:
+                            case PipelineContextDataType.String:
+                                segment = matrixData.ToString();
+                                break;
                         }
 
-                        // Name segment
-                        nameBuilder.AppendSegment(matrixStringData.Value);
+                        if (!String.IsNullOrEmpty(segment))
+                        {
+                            // Name segment
+                            nameBuilder.AppendSegment(segment);
 
-                        // Display name segment
-                        displayNameBuilder.AppendSegment(matrixStringData.Value);
+                            // Display name segment
+                            displayNameBuilder.AppendSegment(segment);
+                        }
                     }
 
                     // Name

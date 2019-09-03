@@ -1,4 +1,5 @@
-﻿using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Collections.Generic;
@@ -60,6 +61,15 @@ namespace GitHub.Runner.Worker
             scrubbedJobResources.Repositories.AddRange(scrubbedRepositories);
             scrubbedJobResources.SecureFiles.AddRange(message.Resources.SecureFiles);
 
+            var contextData = new DictionaryContextData();
+            if (message.ContextData?.Count > 0)
+            {
+                foreach (var pair in message.ContextData)
+                {
+                    contextData[pair.Key] = pair.Value;
+                }
+            }
+
             // Reconstitute a new agent job request message from the scrubbed parts
             return new Pipelines.AgentJobRequestMessage(
                 plan: message.Plan,
@@ -69,10 +79,11 @@ namespace GitHub.Runner.Worker
                 jobName: message.JobName,
                 jobContainer: message.JobContainer,
                 jobSidecarContainers: message.JobSidecarContainers,
+                environmentVariables: message.EnvironmentVariables,
                 variables: scrubbedVariables,
                 maskHints: message.MaskHints,
                 jobResources: scrubbedJobResources,
-                contextData: message.ContextData,
+                contextData: contextData,
                 workspaceOptions: message.Workspace,
                 steps: message.Steps,
                 scopes: message.Scopes);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.Serialization;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.Runtime;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
@@ -83,6 +84,13 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public Boolean ContinueOnError
+        {
+            get;
+            set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public TemplateToken EnvironmentVariables
         {
             get;
             set;

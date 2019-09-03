@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using GitHub.DistributedTask.Expressions;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Logging;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using Newtonsoft.Json.Linq;
@@ -24,7 +25,6 @@ namespace GitHub.DistributedTask.Pipelines
             m_referencedResources = context.ReferencedResources?.Clone();
 
             this.CounterStore = context.CounterStore;
-            this.ExpressionOptions = context.ExpressionOptions ?? new EvaluationOptions();
             this.IdGenerator = context.IdGenerator ?? new PipelineIdGenerator();
             this.PackageStore = context.PackageStore;
             this.ResourceStore = context.ResourceStore;
@@ -34,9 +34,19 @@ namespace GitHub.DistributedTask.Pipelines
 
             // This is a copy, don't dynamically set pipeline decorators, they are already set.
             this.StepProviders = context.StepProviders;
+
+            if (context.Data?.Count > 0)
+            {
+                m_data = new DictionaryContextData();
+                foreach (var pair in context.Data)
+                {
+                    m_data[pair.Key] = pair.Value;
+                }
+            }
         }
 
         private protected PipelineContextBase(
+            DictionaryContextData data,
             ICounterStore counterStore,
             IPackageStore packageStore,
             IResourceStore resourceStore,
@@ -46,6 +56,7 @@ namespace GitHub.DistributedTask.Pipelines
             IPipelineTraceWriter trace = null,
             EvaluationOptions expressionOptions = null)
         {
+            m_data = data;
             this.CounterStore = counterStore;
             this.ExpressionOptions = expressionOptions ?? new EvaluationOptions();
             this.IdGenerator = idGenerator ?? new PipelineIdGenerator();
@@ -79,6 +90,19 @@ namespace GitHub.DistributedTask.Pipelines
         public ICounterStore CounterStore
         {
             get;
+        }
+
+        // Gets the available context when evaluating expressions
+        public DictionaryContextData Data
+        {
+            get
+            {
+                if (m_data == null)
+                {
+                    m_data = new DictionaryContextData();
+                }
+                return m_data;
+            }
         }
 
         /// <summary>
@@ -347,7 +371,8 @@ namespace GitHub.DistributedTask.Pipelines
             }
 
             this.ResetSecretsAccessed();
-            return new ExpressionResult<T>(parsedExpression.Evaluate<T>(this.Trace, this.SecretMasker, this, this.ExpressionOptions), this.SecretsAccessed);
+            var evaluationResult = parsedExpression.Evaluate(this.Trace, this.SecretMasker, this, this.ExpressionOptions);
+            throw new NotSupportedException();
         }
 
         protected virtual void ResetSecretsAccessed()
@@ -357,13 +382,12 @@ namespace GitHub.DistributedTask.Pipelines
 
         protected virtual IEnumerable<IFunctionInfo> GetSupportedFunctions()
         {
-            yield return Expressions.ExpressionConstants.CounterFunction;
+            return Enumerable.Empty<IFunctionInfo>();
         }
 
         protected virtual IEnumerable<INamedValueInfo> GetSupportedNamedValues()
         {
-            yield return Expressions.ExpressionConstants.PipelineNamedValue;
-            yield return Expressions.ExpressionConstants.VariablesNamedValue;
+            return Enumerable.Empty<INamedValueInfo>();
         }
 
         internal void SetSystemVariables(IEnumerable<Variable> variables)
@@ -405,6 +429,7 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
+        private DictionaryContextData m_data;
         private VariablesDictionary m_variables;
         private HashSet<String> m_systemVariables;
         private Lazy<ISecretMasker> m_secretMasker;

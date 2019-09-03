@@ -8,11 +8,6 @@ namespace GitHub.DistributedTask.Pipelines.Expressions
     public static class ExpressionConstants
     {
         /// <summary>
-        /// Gets the name of the dependencies node.
-        /// </summary>
-        public static readonly String Dependencies = "dependencies";
-
-        /// <summary>
         /// Gets the name of the variables node.
         /// </summary>
         public static readonly String Variables = "variables";
