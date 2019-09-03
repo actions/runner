@@ -1,14 +1,13 @@
 ## Features
-  - Gracefully handle sigterm (#81)
-  - Depreciate the preview action token (#86) 
-  - Add deprecationMessage property (#80)
+  - Make actiosn/checkout landed on a local branch instead of a detached HEAD. (#82)
+  - Best effort mask base64 and xml encoded secret. (#92)
+  - Env at root of file (#94)
 
 ## Bugs
-  - Make sure we check string that contains `::` (#87)
-  - Use add-mask command for git auth header. (#89)
+  - N/A
 
 ## Misc
-  - Relax project id restriction, prepare for remove TFS dependency (#84)
+  - N/A
 
 ## Agent Downloads  
 
