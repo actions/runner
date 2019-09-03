@@ -195,7 +195,7 @@ namespace GitHub.Runner.Worker
         {
             // Check to see if we can expand the display name
             if (step is IActionRunner actionRunner){
-                if (actionRunner.TryExpandDisplayName(step.ExecutionContext.ExpressionValues))
+                if (actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues))
                 {
                     step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
                 }

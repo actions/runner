@@ -125,6 +125,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             // Arrange
             Setup();
+            var actionInputs = new MappingToken(null, null, null);
+            actionInputs.Add(new StringToken(null, null, null, "script"), new StringToken(null, null, null, "echo hello world"));
             var actionId = Guid.NewGuid();
             var actionDisplayName = "Run echo hello world";
             var action = new Pipelines.ActionStep()
@@ -132,6 +134,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Name = "action",
                 Id = actionId,
                 DisplayName = actionDisplayName,
+                Inputs = actionInputs,
             };
 
             _actionRunner.Action = action;
@@ -144,7 +147,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should not do anything if we don't have a displayNameToken to expand
-            var didUpdateDisplayName = _actionRunner.TryExpandDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
 
             // Assert
             Assert.False(didUpdateDisplayName);
@@ -159,13 +162,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Arrange
             Setup();
             var actionId = Guid.NewGuid();
-            var displayName = "Run echo hello world";
             var action = new Pipelines.ActionStep()
             {
                 Name = "action",
                 Id = actionId,
-                DisplayName = displayName,
-                DisplayNameToken = new BasicExpressionToken(null, null, null, "matrix.node")
+                DisplayName = "Run echo hello world",
+                DisplayNameToken = new BasicExpressionToken(null, null, null, "matrix.node"),
+                ShouldEvaluateDisplayName = true
             };
 
             _actionRunner.Action = action;
@@ -179,28 +182,32 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryExpandDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
 
             // Assert
             Assert.True(didUpdateDisplayName);
             Assert.Equal(expectedString, _actionRunner.DisplayName);
         }
 
-                [Fact]
+        [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void EvaluateDisplayNameWithoutContext()
+        public void EvaluateExpansionOfScriptDisplayName()
         {
             // Arrange
             Setup();
+            var actionInputs = new MappingToken(null, null, null);
+            actionInputs.Add(new StringToken(null, null, null, "script"), new BasicExpressionToken(null, null, null, "matrix.node"));
             var actionId = Guid.NewGuid();
-            var actionDisplayName = "Run echo hello world";
+            var displayName = "Run echo hello world";
             var action = new Pipelines.ActionStep()
             {
                 Name = "action",
                 Id = actionId,
-                DisplayName = actionDisplayName,
-                DisplayNameToken = new BasicExpressionToken(null, null, null, "github.sha")
+                DisplayName = displayName,
+                Inputs = actionInputs,
+                ShouldEvaluateDisplayName = true,
+                Reference = new Pipelines.ScriptReference()
             };
 
             _actionRunner.Action = action;
@@ -212,12 +219,102 @@ namespace GitHub.Runner.Common.Tests.Worker
             _context.Add("matrix", matrixData);
 
             // Act
+            // Should expand the displaynameToken and set the display name to that
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+
+            // Assert
+            Assert.True(didUpdateDisplayName);
+            Assert.Equal("Run 8", _actionRunner.DisplayName);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpansionOfContainerDisplayName()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                DisplayName = "Run echo hello world",
+                ShouldEvaluateDisplayName = true,
+                Reference = new Pipelines.ContainerRegistryReference()
+                {
+                    Image = "TestImageName:latest"
+                }
+            };
+            _actionRunner.Action = action;
+
+            // Act
+            // Should expand the displaynameToken and set the display name to that
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+
+            // Assert
+            Assert.True(didUpdateDisplayName);
+            Assert.Equal("Run TestImageName:latest", _actionRunner.DisplayName);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateExpansionOfAgentDisplayName()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                DisplayName = "Run echo hello world",
+                ShouldEvaluateDisplayName = true,
+                Reference = new Pipelines.PluginReference()
+                {
+                    Plugin = "Test Plugin"
+                }
+            };
+            _actionRunner.Action = action;
+
+            // Act
+            // Should expand the displaynameToken and set the display name to that
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+
+            // Assert
+            Assert.True(didUpdateDisplayName);
+            Assert.Equal("Run Test Plugin", _actionRunner.DisplayName);
+        }
+
+                [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EvaluateDisplayNameWithoutContext()
+        {
+            // Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                DisplayName = "Run echo hello world",
+                DisplayNameToken = new BasicExpressionToken(null, null, null, "matrix.node"),
+                ShouldEvaluateDisplayName = true,
+            };
+
+            _actionRunner.Action = action;
+            _context.Remove("matrix");
+
+            // Act
             // Should not do anything if we don't have context on the display name
-            var didUpdateDisplayName = _actionRunner.TryExpandDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
 
             // Assert
             Assert.False(didUpdateDisplayName);
-            Assert.Equal(actionDisplayName, _actionRunner.DisplayName);
+            // Should use default display name
+            Assert.Equal("run", _actionRunner.DisplayName);
         }
 
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)

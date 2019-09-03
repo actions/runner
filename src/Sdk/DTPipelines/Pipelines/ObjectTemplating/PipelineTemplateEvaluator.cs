@@ -8,6 +8,7 @@ using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using ExpressionConstants = GitHub.DistributedTask.Expressions2.ExpressionConstants;
 
 namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
@@ -285,38 +286,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? false;
         }
 
-
-        public String EvaluateStepDisplayName(
-            TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
-        {
-            var result = String.Empty;
-
-            switch (token)
-            {
-                case SequenceToken sequenceToken:
-                    foreach (TemplateToken templateToken in sequenceToken)
-                    {
-                        var tokenString = EvaluateStepDisplayNamePart(templateToken, contextData);
-                        // Abort if we recieve an empty string, so we don't end up with something like "Run "
-                        if (String.IsNullOrEmpty(tokenString))
-                        {
-                            return String.Empty;
-                        }
-                        else
-                        {
-                            
-                            result = String.IsNullOrEmpty(result) ? tokenString : String.Concat(result, tokenString);
-                        }
-                    }
-                    break;
-                default:
-                    result = EvaluateStepDisplayNamePart(token, contextData);
-                    break;
-            }
-            return String.IsNullOrEmpty(result) ? String.Empty : result;
-        }
-
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
             IDictionary<String, PipelineContextData> contextData,
@@ -448,48 +417,17 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        private TemplateContext CreateContext(IEnumerable<KeyValuePair<string, PipelineContextData>> contextData)
-        {
-            var result = new TemplateContext
-            {
-                CancellationToken = CancellationToken.None,
-                Errors = new TemplateValidationErrors(MaxErrors, MaxErrorMessageLength),
-                Memory = new TemplateMemory(
-                    maxDepth: MaxDepth,
-                    maxEvents: MaxEvents,
-                    maxBytes: MaxResultSize),
-                Schema = m_schema,
-                TraceWriter = m_trace,
-            };
-
-            if (contextData != null)
-            {
-                foreach (var pair in contextData)
-                {
-                    result.ExpressionValues[pair.Key] = pair.Value;
-                }
-            }
-
-            // Compat for new agent against old server
-            foreach (var name in s_contextNames)
-            {
-                if (!result.ExpressionValues.ContainsKey(name))
-                {
-                    result.ExpressionValues[name] = null;
-                }
-            }
-
-            return result;
-        }
-
-        private String EvaluateStepDisplayNamePart(TemplateToken token, IDictionary<String, PipelineContextData> contextData)
+        public Boolean TryEvaluateStepDisplayName(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData,
+            ref String stepName)
         {
             var result = default(String);
             var context = CreateContext(contextData);
 
             if (token != null && token.Type != TokenType.Null)
             {
-                // We should only evaluate basic expressions if we are sure we have context on all the Named Values
+                // We should only evaluate basic expressions if we are sure we have context on all the Named Values and functions
                 // Otherwise return and use a default name
                 if (token is BasicExpressionToken expressionToken)
                 {
@@ -502,7 +440,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
                     if (!namedValues.Distinct().All(value => contextData.ContainsKey(value.Name)))
                     {
-                        return null;
+                        return false;
+                    }
+
+                    var functions = ExpressionToken.GetExpressionFunctions(expressionToken.Expression, out ex);
+                    if (ex != null)
+                    {
+                        context.Errors.Add(ex);
+                        context.Errors.Check();
+                    }
+                    if (!functions.Distinct().All(value => ExpressionConstants.WellKnownFunctions.ContainsKey(value)))
+                    {
+                        return false;
                     }
                 }
 
@@ -518,6 +467,40 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 context.Errors.Check();
+            }
+            stepName = result;
+            return true;
+        }
+
+        private TemplateContext CreateContext(IDictionary<String, PipelineContextData> contextData)
+        {
+            var result = new TemplateContext
+            {
+                CancellationToken = CancellationToken.None,
+                Errors = new TemplateValidationErrors(MaxErrors, MaxErrorMessageLength),
+                Memory = new TemplateMemory(
+                    maxDepth: MaxDepth,
+                    maxEvents: MaxEvents,
+                    maxBytes: MaxResultSize),
+                Schema = m_schema,
+                TraceWriter = m_trace,
+            };
+
+            if (contextData?.Count > 0)
+            {
+                foreach (var pair in contextData)
+                {
+                    result.ExpressionValues[pair.Key] = pair.Value;
+                }
+            }
+
+            // Compat for new agent against old server
+            foreach (var name in s_contextNames)
+            {
+                if (!result.ExpressionValues.ContainsKey(name))
+                {
+                    result.ExpressionValues[name] = null;
+                }
             }
 
             return result;

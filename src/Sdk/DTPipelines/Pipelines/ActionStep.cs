@@ -26,6 +26,7 @@ namespace GitHub.DistributedTask.Pipelines
             ContextName = actionToClone?.ContextName;
             ScopeName = actionToClone?.ScopeName;
             DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
+            ShouldEvaluateDisplayName = actionToClone.ShouldEvaluateDisplayName;
         }
 
         public override StepType Type => StepType.Action;
@@ -39,6 +40,9 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken DisplayNameToken { get; set; }
+        [DataMember(EmitDefaultValue = false)]
+        public Boolean ShouldEvaluateDisplayName { get; set; }
+
         [DataMember(EmitDefaultValue = false)]
         public String ScopeName { get; set; }
 
