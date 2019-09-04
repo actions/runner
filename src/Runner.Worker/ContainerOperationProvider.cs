@@ -23,7 +23,6 @@ namespace GitHub.Runner.Worker
 
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
-        private const string _nodeJsPathLabel = "github.actions.runner.node.path";
         private IDockerCommandManager _dockerManger;
 
         public override void Initialize(IHostContext hostContext)
@@ -230,22 +229,8 @@ namespace GitHub.Runner.Worker
 
             if (container.IsJobContainer)
             {
-                // See if this container brings its own Node.js
-                container.ContainerBringNodePath = await _dockerManger.DockerInspect(context: executionContext,
-                                                                    dockerObject: container.ContainerImage,
-                                                                    options: $"--format=\"{{{{index .Config.Labels \\\"{_nodeJsPathLabel}\\\"}}}}\"");
-
-                string node;
-                if (!string.IsNullOrEmpty(container.ContainerBringNodePath))
-                {
-                    node = container.ContainerBringNodePath;
-                }
-                else
-                {
-                    node = container.TranslateToContainerPath(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}"));
-                }
-                container.ContainerEntryPoint = node;
-                container.ContainerEntryPointArgs = $"-e \"setInterval(function(){{}}, 24 * 60 * 60 * 1000);\"";
+                container.ContainerEntryPoint = "tail";
+                container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
             }
 
             container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);
