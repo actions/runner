@@ -78,7 +78,7 @@ namespace GitHub.Runner.Worker
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
-        void UpdateTimelineRecordDisplayName(String displayName);
+        void UpdateTimelineRecordDisplayName(string displayName);
 
         // matchers
         void Add(OnMatcherChanged handler);
@@ -490,7 +490,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void UpdateTimelineRecordDisplayName(String displayName)
+        public void UpdateTimelineRecordDisplayName(string displayName)
         {
             ArgUtil.NotNull(displayName, nameof(displayName));
             _record.Name = displayName;

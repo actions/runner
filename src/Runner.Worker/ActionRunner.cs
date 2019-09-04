@@ -166,7 +166,7 @@ namespace GitHub.Runner.Worker
 
             // If we have already expanded the display name, there is no need to expand it again
             // TODO: Remove the ShouldEvaluateDisplayName check and field, we should do it by default once the server is updated
-            if (_didFullyEvaluateDisplayName || !String.IsNullOrEmpty(Action.DisplayName))
+            if (_didFullyEvaluateDisplayName || !string.IsNullOrEmpty(Action.DisplayName))
             {
                 return false;
             }
