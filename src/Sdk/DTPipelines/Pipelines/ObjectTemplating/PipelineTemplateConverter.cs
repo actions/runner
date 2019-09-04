@@ -964,11 +964,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToString(),
+                    DisplayName = name?.ToDisplayString(),
+                    DisplayNameToken = name?.Clone(true) as ScalarToken,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Environment = env?.Clone(true),
-                    Reference = new ScriptReference()
+                    Reference = new ScriptReference(),
+                    ShouldEvaluateDisplayName = true
                 };
 
                 if (String.IsNullOrEmpty(result.DisplayName))
@@ -1000,11 +1002,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToString(),
+                    DisplayName = name?.ToDisplayString(),
+                    DisplayNameToken = name?.Clone(true) as ScalarToken,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Inputs = with,
                     Environment = env,
+                    ShouldEvaluateDisplayName = true
                 };
 
                 if (String.IsNullOrEmpty(result.DisplayName))

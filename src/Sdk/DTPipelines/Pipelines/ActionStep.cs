@@ -38,8 +38,10 @@ namespace GitHub.DistributedTask.Pipelines
             set;
         }
 
+        // TODO: After TFS and legacy phases/steps/ect are removed, lets replace the DisplayName in the base class with this value and remove this additional prop
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken DisplayNameToken { get; set; }
+        // TODO: Remove this "feature flag" field and make the corresponding updates on the runner to do this by default
         [DataMember(EmitDefaultValue = false)]
         public Boolean ShouldEvaluateDisplayName { get; set; }
 
