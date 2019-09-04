@@ -313,8 +313,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Assert
             Assert.False(didUpdateDisplayName);
-            // Should use default display name
-            Assert.Equal("run", _actionRunner.DisplayName);
+            // Should use the pretty display name until we can eval
+            Assert.Equal("${{ matrix.node }}", _actionRunner.DisplayName);
         }
 
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)

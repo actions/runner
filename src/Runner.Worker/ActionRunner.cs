@@ -165,7 +165,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(Action, nameof(Action));
 
             // If we have already expanded the display name, there is no need to expand it again
-            // TODO: Remove the ShouldEvaluateDisplayName check and field, we should do it by default
+            // TODO: Remove the ShouldEvaluateDisplayName check and field, we should do it by default once the server is updated
             if (_didFullyEvaluateDisplayName || !Action.ShouldEvaluateDisplayName)
             {
                 return false;
@@ -235,8 +235,7 @@ namespace GitHub.Runner.Worker
             var templateEvaluator = new PipelineTemplateEvaluator(executionContext.ToTemplateTraceWriter(), schema);
             try 
             {
-                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, ref displayName);
-                
+                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, ref displayName);  
             }
             catch (TemplateValidationException e)
             {
