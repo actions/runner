@@ -964,19 +964,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToDisplayString(),
                     DisplayNameToken = name?.Clone(true) as ScalarToken,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Environment = env?.Clone(true),
-                    Reference = new ScriptReference(),
-                    ShouldEvaluateDisplayName = true
+                    Reference = new ScriptReference()
                 };
-
-                if (String.IsNullOrEmpty(result.DisplayName))
-                {
-                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{run.ToDisplayString()}";
-                }
 
                 var inputs = new MappingToken(null, null, null);
                 inputs.Add(new StringToken(null, null, null, PipelineConstants.ScriptStepInputs.Script), run.Clone(true));
@@ -1002,19 +995,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToDisplayString(),
                     DisplayNameToken = name?.Clone(true) as ScalarToken,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Inputs = with,
-                    Environment = env,
-                    ShouldEvaluateDisplayName = true
+                    Environment = env
                 };
-
-                if (String.IsNullOrEmpty(result.DisplayName))
-                {
-                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{uses.Value}";
-                }
 
                 if (uses.Value.StartsWith("docker://", StringComparison.Ordinal))
                 {

@@ -34,10 +34,10 @@ namespace GitHub.Runner.Worker
         {
             get 
             {
-                // TODO: remove this check, currently done for back compat with older server versions
-                if (!Action.ShouldEvaluateDisplayName)
+                // TODO: remove the Action.DisplayName check, it is done for back compat for older servers
+                if (!string.IsNullOrEmpty(Action?.DisplayName))
                 {
-                    return Action.DisplayName;
+                    return Action?.DisplayName;
                 }
                 return string.IsNullOrEmpty(_displayName) ? "run" : _displayName;
             }
@@ -166,7 +166,7 @@ namespace GitHub.Runner.Worker
 
             // If we have already expanded the display name, there is no need to expand it again
             // TODO: Remove the ShouldEvaluateDisplayName check and field, we should do it by default once the server is updated
-            if (_didFullyEvaluateDisplayName || !Action.ShouldEvaluateDisplayName)
+            if (_didFullyEvaluateDisplayName || !String.IsNullOrEmpty(Action.DisplayName))
             {
                 return false;
             }

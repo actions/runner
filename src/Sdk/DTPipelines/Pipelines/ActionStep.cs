@@ -26,7 +26,6 @@ namespace GitHub.DistributedTask.Pipelines
             ContextName = actionToClone?.ContextName;
             ScopeName = actionToClone?.ScopeName;
             DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
-            ShouldEvaluateDisplayName = actionToClone.ShouldEvaluateDisplayName;
         }
 
         public override StepType Type => StepType.Action;
@@ -41,9 +40,6 @@ namespace GitHub.DistributedTask.Pipelines
         // TODO: After TFS and legacy phases/steps/ect are removed, lets replace the DisplayName in the base class with this value and remove this additional prop
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken DisplayNameToken { get; set; }
-        // TODO: Remove this "feature flag" field and make the corresponding updates on the runner to do this by default
-        [DataMember(EmitDefaultValue = false)]
-        public Boolean ShouldEvaluateDisplayName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public String ScopeName { get; set; }

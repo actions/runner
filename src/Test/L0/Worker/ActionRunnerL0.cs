@@ -166,9 +166,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Name = "action",
                 Id = actionId,
-                DisplayName = "Run echo hello world",
                 DisplayNameToken = new BasicExpressionToken(null, null, null, "matrix.node"),
-                ShouldEvaluateDisplayName = true
             };
 
             _actionRunner.Action = action;
@@ -199,14 +197,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             var actionInputs = new MappingToken(null, null, null);
             actionInputs.Add(new StringToken(null, null, null, "script"), new BasicExpressionToken(null, null, null, "matrix.node"));
             var actionId = Guid.NewGuid();
-            var displayName = "Run echo hello world";
             var action = new Pipelines.ActionStep()
             {
                 Name = "action",
                 Id = actionId,
-                DisplayName = displayName,
                 Inputs = actionInputs,
-                ShouldEvaluateDisplayName = true,
                 Reference = new Pipelines.ScriptReference()
             };
 
@@ -239,8 +234,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Name = "action",
                 Id = actionId,
-                DisplayName = "Run echo hello world",
-                ShouldEvaluateDisplayName = true,
                 Reference = new Pipelines.ContainerRegistryReference()
                 {
                     Image = "TestImageName:latest"
@@ -269,8 +262,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Name = "action",
                 Id = actionId,
-                DisplayName = "Run echo hello world",
-                ShouldEvaluateDisplayName = true,
                 Reference = new Pipelines.PluginReference()
                 {
                     Plugin = "Test Plugin"
@@ -299,9 +290,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Name = "action",
                 Id = actionId,
-                DisplayName = "Run echo hello world",
                 DisplayNameToken = new BasicExpressionToken(null, null, null, "matrix.node"),
-                ShouldEvaluateDisplayName = true,
             };
 
             _actionRunner.Action = action;
