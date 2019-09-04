@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using GitHub.DistributedTask.Expressions2.Sdk.Functions;
 using GitHub.DistributedTask.Expressions2.Sdk.Operators;
 using GitHub.DistributedTask.Expressions2.Tokens;
 

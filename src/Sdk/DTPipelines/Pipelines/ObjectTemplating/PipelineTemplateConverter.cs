@@ -973,13 +973,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 if (String.IsNullOrEmpty(result.DisplayName))
                 {
-                    var firstLine = run.ToString().TrimStart(' ', '\t', '\r', '\n');
-                    var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
-                    if (firstNewLine >= 0)
-                    {
-                        firstLine = firstLine.Substring(0, firstNewLine);
-                    }
-                    result.DisplayName = $"Run: {firstLine}";
+                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{run.ToDisplayString()}";
                 }
 
                 var inputs = new MappingToken(null, null, null);
@@ -1015,8 +1009,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 if (String.IsNullOrEmpty(result.DisplayName))
                 {
-                    // todo: loc
-                    result.DisplayName = $"Action: {uses.Value}";
+                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{uses.Value}";
                 }
 
                 if (uses.Value.StartsWith("docker://", StringComparison.Ordinal))

@@ -472,7 +472,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return true;
         }
 
-        private TemplateContext CreateContext(IDictionary<String, PipelineContextData> contextData)
+        private TemplateContext CreateContext(IEnumerable<KeyValuePair<string, PipelineContextData>> contextData)
         {
             var result = new TemplateContext
             {
@@ -486,7 +486,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 TraceWriter = m_trace,
             };
 
-            if (contextData?.Count > 0)
+            if (contextData != null)
             {
                 foreach (var pair in contextData)
                 {
