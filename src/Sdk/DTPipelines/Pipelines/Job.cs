@@ -26,12 +26,14 @@ namespace GitHub.DistributedTask.Pipelines
             this.Id = jobToCopy.Id;
             this.Name = jobToCopy.Name;
             this.DisplayName = jobToCopy.DisplayName;
-            this.Container = jobToCopy.Container;
+            this.Container = jobToCopy.Container?.Clone();
+            this.ServiceContainers = jobToCopy.ServiceContainers?.Clone();
             this.ContinueOnError = jobToCopy.ContinueOnError;
             this.TimeoutInMinutes = jobToCopy.TimeoutInMinutes;
             this.CancelTimeoutInMinutes = jobToCopy.CancelTimeoutInMinutes;
             this.Workspace = jobToCopy.Workspace?.Clone();
             this.Target = jobToCopy.Target?.Clone();
+            this.EnvironmentVariables = jobToCopy.EnvironmentVariables?.Clone();
 
             if (jobToCopy.m_demands != null && jobToCopy.m_demands.Count > 0)
             {
@@ -76,7 +78,14 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         [DataMember(EmitDefaultValue = false)]
-        public String Container
+        public TemplateToken Container
+        {
+            get;
+            set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public TemplateToken ServiceContainers
         {
             get;
             set;

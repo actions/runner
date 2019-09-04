@@ -57,7 +57,7 @@ namespace GitHub.Runner.Sdk
         IDictionary<string, VariableValue> Variables { get; }
 
         // all context
-        Dictionary<String, PipelineContextData> Context { get; }
+        DictionaryContextData Context { get; }
 
         // agent log
         void Trace(string message);
@@ -100,7 +100,7 @@ namespace GitHub.Runner.Sdk
         public IDictionary<string, VariableValue> Variables { get; }
 
         // all context
-        public Dictionary<String, PipelineContextData> Context { get; set; }
+        public DictionaryContextData Context { get; set; }
 
         public RunnerLogPluginContext(
             string pluginNme,
@@ -108,7 +108,7 @@ namespace GitHub.Runner.Sdk
             IList<Pipelines.ActionStepDefinitionReference> steps,
             IList<ServiceEndpoint> endpoints,
             IDictionary<string, VariableValue> variables,
-            Dictionary<String, PipelineContextData> Context,
+            DictionaryContextData Context,
             IRunnerLogPluginTrace trace)
         {
             _pluginName = pluginNme;
@@ -139,7 +139,7 @@ namespace GitHub.Runner.Sdk
         public List<String> PluginAssemblies { get; set; }
         public List<ServiceEndpoint> Endpoints { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
-        public Dictionary<String, PipelineContextData> Context { get; set; }
+        public DictionaryContextData Context { get; set; }
         public Dictionary<string, Pipelines.ActionStepDefinitionReference> Steps { get; set; }
 
         [JsonIgnore]

@@ -31,7 +31,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext _hc;
         private ActionRunner _actionRunner;
         private string _workFolder;
-        private Dictionary<string, PipelineContextData> _context = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+        private DictionaryContextData _context = new DictionaryContextData();
 
         [Fact]
         [Trait("Level", "L0")]

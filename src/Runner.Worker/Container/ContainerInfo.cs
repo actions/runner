@@ -22,20 +22,19 @@ namespace GitHub.Runner.Worker.Container
 
         }
 
-        public ContainerInfo(IHostContext hostContext, Pipelines.ContainerResource container, Boolean isJobContainer = true)
+        public ContainerInfo(IHostContext hostContext, Pipelines.JobContainer container, bool isJobContainer = true, string networkAlias = null)
         {
             this.ContainerName = container.Alias;
 
-            string containerImage = container.Properties.Get<string>("image");
+            string containerImage = container.Image;
             ArgUtil.NotNullOrEmpty(containerImage, nameof(containerImage));
 
             this.ContainerImage = containerImage;
             this.ContainerDisplayName = $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
-            this.ContainerCreateOptions = container.Properties.Get<string>("options");
+            this.ContainerCreateOptions = container.Options;
             _environmentVariables = container.Environment;
-            this.ContainerEntryPoint = container.Properties.Get<string>("entrypoint", defaultValue: "");
-            this.ContainerWorkDirectory = container.Properties.Get<string>("workdir", defaultValue: "");
             this.IsJobContainer = isJobContainer;
+            this.ContainerNetworkAlias = networkAlias;
 
 #if OS_WINDOWS
             _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));

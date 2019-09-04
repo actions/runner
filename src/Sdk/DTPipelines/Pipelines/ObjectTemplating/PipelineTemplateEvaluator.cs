@@ -212,7 +212,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public DictionaryContextData EvaluateStepScopeInputs(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(DictionaryContextData);
 
@@ -238,7 +238,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public DictionaryContextData EvaluateStepScopeOutputs(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(DictionaryContextData);
 
@@ -264,7 +264,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Boolean EvaluateStepContinueOnError(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(Boolean?);
 
@@ -290,7 +290,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData,
+            DictionaryContextData contextData,
             StringComparer keyComparer)
         {
             var result = default(Dictionary<String, String>);
@@ -317,7 +317,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Dictionary<String, String> EvaluateStepInputs(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(Dictionary<String, String>);
 
@@ -343,7 +343,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Int32 EvaluateStepTimeout(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData)
+            DictionaryContextData contextData)
         {
             var result = default(Int32?);
 
@@ -367,11 +367,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result ?? 0;
         }
 
-        public ContainerResource EvaluateJobContainer(
+        public JobContainer EvaluateJobContainer(
             TemplateToken token,
             DictionaryContextData contextData)
         {
-            var result = default(ContainerResource);
+            var result = default(JobContainer);
 
             if (token != null && token.Type != TokenType.Null)
             {
@@ -393,11 +393,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        public Dictionary<String, ContainerResource> EvaluateJobServiceContainers(
+        public IList<KeyValuePair<String, JobContainer>> EvaluateJobServiceContainers(
             TemplateToken token,
             DictionaryContextData contextData)
         {
-            var result = default(Dictionary<String, ContainerResource>);
+            var result = default(List<KeyValuePair<String, JobContainer>>);
 
             if (token != null && token.Type != TokenType.Null)
             {
@@ -421,7 +421,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Boolean TryEvaluateStepDisplayName(
             TemplateToken token,
-            IDictionary<String, PipelineContextData> contextData,
+            DictionaryContextData contextData,
             out String stepName)
         {
             stepName = default(String);
@@ -474,7 +474,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return true;
         }
 
-        private TemplateContext CreateContext(IEnumerable<KeyValuePair<string, PipelineContextData>> contextData)
+        private TemplateContext CreateContext(DictionaryContextData contextData)
         {
             var result = new TemplateContext
             {

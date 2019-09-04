@@ -120,7 +120,8 @@
 
     "workflow-env": {
       "context": [
-        "github"
+        "github",
+        "secrets"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -254,6 +255,7 @@
     "job-env": {
       "context": [
         "github",
+        "secrets",
         "strategy",
         "matrix"
       ],

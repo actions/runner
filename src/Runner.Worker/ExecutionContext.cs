@@ -48,11 +48,11 @@ namespace GitHub.Runner.Worker
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
         StepsContext StepsContext { get; }
-        IDictionary<String, PipelineContextData> ExpressionValues { get; }
+        DictionaryContextData ExpressionValues { get; }
         List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
-        ContainerInfo Container { get; }
-        List<ContainerInfo> SidecarContainers { get; }
+        ContainerInfo Container { get; set; }
+        List<ContainerInfo> ServiceContainers { get; }
         JobContext JobContext { get; }
 
         // Initialize
@@ -135,11 +135,11 @@ namespace GitHub.Runner.Worker
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, ContextScope> Scopes { get; private set; }
         public StepsContext StepsContext { get; private set; }
-        public IDictionary<String, PipelineContextData> ExpressionValues { get; } = new Dictionary<String, PipelineContextData>();
+        public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
-        public ContainerInfo Container { get; private set; }
-        public List<ContainerInfo> SidecarContainers { get; private set; }
+        public ContainerInfo Container { get; set; }
+        public List<ContainerInfo> ServiceContainers { get; private set; }
 
         public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
 
@@ -250,7 +250,7 @@ namespace GitHub.Runner.Worker
             child._parentExecutionContext = this;
             child.PrependPath = PrependPath;
             child.Container = Container;
-            child.SidecarContainers = SidecarContainers;
+            child.ServiceContainers = ServiceContainers;
             child._outputForward = outputForward;
 
             child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
@@ -523,6 +523,9 @@ namespace GitHub.Runner.Worker
             // Environment variables shared across all actions
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
+            // Service container info
+            ServiceContainers = new List<ContainerInfo>();
+
             // Steps context (StepsRunner manages adding the scoped steps context)
             StepsContext = new StepsContext();
 
@@ -549,113 +552,18 @@ namespace GitHub.Runner.Worker
             ExpressionValues["runner"] = new RunnerContext();
             ExpressionValues["job"] = new JobContext();
 
-            if (!ExpressionValues.ContainsKey("github"))
+            Trace.Info("Initialize GitHub context");
+            var githubContext = new GitHubContext();
+            githubContext["token"] = new StringContextData(Variables.Get("system.github.token"));
+            var githubDictionary = ExpressionValues["github"].AssertDictionary("github");
+            foreach (var pair in githubDictionary)
             {
-                var githubContext = new GitHubContext();
-                ExpressionValues["github"] = githubContext;
-
-                // Populate action environment variables
-                var selfRepo = message.Resources.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
-
-                // GITHUB_ACTOR=ericsciple
-                githubContext["actor"] = new StringContextData(selfRepo.Properties.Get<Pipelines.VersionInfo>(Pipelines.RepositoryPropertyNames.VersionInfo)?.Author ?? string.Empty);
-
-                // GITHUB_REPOSITORY=bryanmacfarlane/actionstest
-                githubContext["repository"] = new StringContextData(selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Name, string.Empty));
-
-                // GITHUB_WORKSPACE=/github/workspace
-
-                // GITHUB_SHA=1a204f473f6001b7fac9c6453e76702f689a41a9
-                githubContext["sha"] = new StringContextData(selfRepo.Version);
-
-                // GITHUB_REF=refs/heads/master
-                githubContext["ref"] = new StringContextData(selfRepo.Properties.Get<string>(Pipelines.RepositoryPropertyNames.Ref, string.Empty));
-
-                // GITHUB_TOKEN=TOKEN
-                if (selfRepo.Endpoint != null)
-                {
-                    var repoEndpoint = message.Resources.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
-                    if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
-                    {
-                        var githubAccessToken = repoEndpoint.Authorization.Parameters["accessToken"];
-                        githubContext["token"] = new StringContextData(githubAccessToken);
-                        var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
-                        HostContext.SecretMasker.AddValue(base64EncodingToken);
-                    }
-                }
-
-                // HOME=/github/home
-                // Environment["HOME"] = "/github/home";
-
-                // GITHUB_WORKFLOW=test on push
-                githubContext["workflow"] = new StringContextData(Variables.Build_DefinitionName);
-
-                // GITHUB_EVENT_NAME=push
-                githubContext["event_name"] = new StringContextData(Variables.Get("build.reason"));
-
-                // GITHUB_ACTION=dump.env
-                githubContext["action"] = new StringContextData(Variables.Build_Number);
-
-                // GITHUB_EVENT_PATH=/github/workflow/event.json
+                githubContext[pair.Key] = pair.Value;
             }
-            else
-            {
-                var githubContext = new GitHubContext();
-                var ghDictionary = (DictionaryContextData)ExpressionValues["github"];
-                Trace.Info("Initialize GitHub context");
-                foreach (var pair in ghDictionary)
-                {
-                    githubContext.Add(pair.Key, pair.Value);
-                }
-
-                // GITHUB_TOKEN=TOKEN
-                var githubAccessToken = Variables.Get("system.github.token");
-                if (!string.IsNullOrEmpty(githubAccessToken))
-                {
-                    githubContext["token"] = new StringContextData(githubAccessToken);
-                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
-                    HostContext.SecretMasker.AddValue(base64EncodingToken);
-                }
-                else
-                {
-                    var selfRepo = message.Resources.Repositories.Single(x => string.Equals(x.Alias, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase));
-                    if (selfRepo.Endpoint != null)
-                    {
-                        var repoEndpoint = message.Resources.Endpoints.FirstOrDefault(x => x.Id == selfRepo.Endpoint.Id);
-                        if (repoEndpoint?.Authorization?.Parameters != null && repoEndpoint.Authorization.Parameters.ContainsKey("accessToken"))
-                        {
-                            githubAccessToken = repoEndpoint.Authorization.Parameters["accessToken"];
-                            githubContext["token"] = new StringContextData(githubAccessToken);
-                            var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
-                            HostContext.SecretMasker.AddValue(base64EncodingToken);
-                        }
-                    }
-                }
-                ExpressionValues["github"] = githubContext;
-            }
+            ExpressionValues["github"] = githubContext;
 
             // Prepend Path
             PrependPath = new List<string>();
-
-            // Docker (JobContainer)
-            if (!string.IsNullOrEmpty(message.JobContainer))
-            {
-                Container = new ContainerInfo(HostContext, message.Resources.Containers.Single(x => string.Equals(x.Alias, message.JobContainer, StringComparison.OrdinalIgnoreCase)));
-            }
-            else
-            {
-                Container = null;
-            }
-
-            // Docker (Sidecar Containers)
-            SidecarContainers = new List<ContainerInfo>();
-            foreach (var sidecar in message.JobSidecarContainers)
-            {
-                var networkAlias = sidecar.Key;
-                var containerResourceAlias = sidecar.Value;
-                var containerResource = message.Resources.Containers.Single(c => string.Equals(c.Alias, containerResourceAlias, StringComparison.OrdinalIgnoreCase));
-                SidecarContainers.Add(new ContainerInfo(HostContext, containerResource, isJobContainer: false) { ContainerNetworkAlias = networkAlias });
-            }
 
             // Proxy variables
             //             var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();

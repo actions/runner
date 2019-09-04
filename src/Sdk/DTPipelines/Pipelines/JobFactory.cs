@@ -114,6 +114,13 @@ namespace GitHub.DistributedTask.Pipelines
             set;
         }
 
+        [DataMember(EmitDefaultValue = false)]
+        public TemplateToken EnvironmentVariables
+        {
+            get;
+            set;
+        }
+
         public void CheckExpandReferences(
             out bool isEventReferenced,
             out bool isOutputsReferenced)
@@ -144,13 +151,6 @@ namespace GitHub.DistributedTask.Pipelines
                     isOutputsReferenced = isReferenced[1];
                 }
             }
-        }
-
-        [DataMember(EmitDefaultValue = false)]
-        public TemplateToken EnvironmentVariables
-        {
-            get;
-            set;
         }
 
         public ExpandPhaseResult Expand(
@@ -308,7 +308,10 @@ namespace GitHub.DistributedTask.Pipelines
             var job = new Job
             {
                 Id = jobContext.GetInstanceId(),
-                Name = jobContext.Job.Name
+                Name = jobContext.Job.Name,
+                EnvironmentVariables = EnvironmentVariables,
+                Container = JobContainer,
+                ServiceContainers = JobServiceContainers,
             };
 
             if (JobDisplayName is ExpressionToken)
@@ -332,26 +335,19 @@ namespace GitHub.DistributedTask.Pipelines
             trace.Info("Evaluating target");
             job.Target = templateEvaluator.EvaluateJobTarget(JobTarget, jobContext.Data);
             
-            // Add container resources
-            var container = templateEvaluator.EvaluateJobContainer(JobContainer, jobContext.Data);
-            var services = templateEvaluator.EvaluateJobServiceContainers(JobServiceContainers, jobContext.Data);
-            if (container != null)
+            jobContext.Job.Definition = job;
+
+            // Resolve the pool by name
+            if (job.Target is AgentPoolTarget pool &&
+                pool.Pool?.Id == 0 &&
+                !String.IsNullOrEmpty(pool.Pool.Name?.Literal))
             {
-                job.Container = container.Alias;
-                jobContext.ResourceStore.Containers.Add(container);
-                jobContext.ReferencedResources.Containers.Add(container);
-            }
-            if (services != null)
-            {
-                foreach (var service in services)
+                var resolved = jobContext.ResourceStore.GetPool(pool.Pool.Name.Literal);
+                if (resolved != null)
                 {
-                    job.SidecarContainers.Add(service.Key, service.Value.Alias);
-                    jobContext.ResourceStore.Containers.Add(service.Value);
-                    jobContext.ReferencedResources.Containers.Add(service.Value);
+                    pool.Pool = new AgentPoolReference { Id = resolved.Id, Name = resolved.Name };
                 }
             }
-
-            jobContext.Job.Definition = job;
 
             // Resolve the queue by name
             if (job.Target is AgentQueueTarget queue &&

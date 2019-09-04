@@ -515,7 +515,7 @@ namespace GitHub.Runner.Common.Tests.LogPluginHost
                 PluginAssemblies = new List<string>(),
                 Variables = new Dictionary<string, VariableValue>(),
                 Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>(),
-                Context = new Dictionary<string, Pipelines.ContextData.PipelineContextData>() { { "runner", new Pipelines.ContextData.DictionaryContextData() } }
+                Context = new Pipelines.ContextData.DictionaryContextData() { { "runner", new Pipelines.ContextData.DictionaryContextData() } }
             };
 
             hostContext.Steps[Guid.Empty.ToString("D")] = new Pipelines.RepositoryPathReference()

@@ -36,7 +36,9 @@ namespace GitHub.Runner.Common.Tests.Listener
             List<TaskInstance> tasks = new List<TaskInstance>();
             Guid JobId = Guid.NewGuid();
             var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, "someJob", "someJob", environment, tasks);
-            return Pipelines.AgentJobRequestMessageUtil.Convert(jobRequest);
+            var result = Pipelines.AgentJobRequestMessageUtil.Convert(jobRequest);
+            result.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+            return result;
         }
 
         [Fact]

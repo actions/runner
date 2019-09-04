@@ -88,6 +88,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Id = "github",
                 Version = "sha1"
             });
+            _message.ContextData.Add("github", new Pipelines.ContextData.DictionaryContextData());
 
             _initResult.Clear();
 

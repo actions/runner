@@ -85,18 +85,6 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
-        public IList<PipelineSchedule> Schedules
-        {
-            get
-            {
-                if (m_schedules == null)
-                {
-                    m_schedules = new List<PipelineSchedule>();
-                }
-                return m_schedules;
-            }
-        }
-
         [DataMember(EmitDefaultValue = false)]
         public String InitializationLog
         {
@@ -139,11 +127,6 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 m_variables = null;
             }
-
-            if (m_schedules?.Count == 0)
-            {
-                m_schedules = null;
-            }
         }
 
         [DataMember(Name = "Stages", EmitDefaultValue = false)]
@@ -160,8 +143,5 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "Variables", EmitDefaultValue = false)]
         private List<IVariable> m_variables;
-
-        [DataMember(Name = "Schedules", EmitDefaultValue = false)]
-        private List<PipelineSchedule> m_schedules;
     }
 }

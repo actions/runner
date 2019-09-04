@@ -106,7 +106,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateToken runsOn,
             Boolean allowExpressions = false)
         {
-            var result = new AgentQueueTarget();
+            var result = new AgentPoolTarget();
 
             // Expression
             if (allowExpressions && runsOn is ExpressionToken)
@@ -117,7 +117,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             // String
             if (runsOn is StringToken runsOnString)
             {
-                result.Queue = new AgentQueueReference { Name = "GitHub Actions" };
+                result.Pool = new AgentPoolReference { Name = "GitHub Actions" };
                 result.AgentSpecification = new JObject
                 {
                     { PipelineTemplateConstants.VmImage, runsOnString.Value }
@@ -149,7 +149,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                             // Literal
                             var pool = runsOnProperty.Value.AssertString($"job {PipelineTemplateConstants.RunsOn} key");
-                            result.Queue = new AgentQueueReference { Name = pool.Value };
+                            result.Pool = new AgentPoolReference { Name = pool.Value };
                             break;
 
                         default:
@@ -512,15 +512,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        internal static ContainerResource ConvertToJobContainer(
+        internal static JobContainer ConvertToJobContainer(
             TemplateContext context,
             TemplateToken value,
             bool allowExpressions = false)
         {
-            var result = new ContainerResource()
-            {
-                Alias = Guid.NewGuid().ToString("N")
-            };
+            var result = new JobContainer();
             if (allowExpressions && value.Traverse().Any(x => x is ExpressionToken))
             {
                 return result;
@@ -530,18 +527,19 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             {
                 result.Image = containerLiteral.Value;
             }
-            else if (value is MappingToken containerMapping)
+            else
             {
+                var containerMapping = value.AssertMapping($"{PipelineTemplateConstants.Container}");
                 foreach (var containerPropertyPair in containerMapping)
                 {
                     var propertyName = containerPropertyPair.Key.AssertString($"{PipelineTemplateConstants.Container} key");
 
                     switch (propertyName.Value)
                     {
-                        case ContainerPropertyNames.Image:
+                        case PipelineTemplateConstants.Image:
                             result.Image = containerPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Container} {propertyName}").Value;
                             break;
-                        case ContainerPropertyNames.Env:
+                        case PipelineTemplateConstants.Env:
                             var env = containerPropertyPair.Value.AssertMapping($"{PipelineTemplateConstants.Container} {propertyName}");
                             var envDict = new Dictionary<String, String>(env.Count);
                             foreach (var envPair in env)
@@ -552,10 +550,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             }
                             result.Environment = envDict;
                             break;
-                        case ContainerPropertyNames.Options:
+                        case PipelineTemplateConstants.Options:
                             result.Options = containerPropertyPair.Value.AssertString($"{PipelineTemplateConstants.Container} {propertyName}").Value;
                             break;
-                        case ContainerPropertyNames.Ports:
+                        case PipelineTemplateConstants.Ports:
                             var ports = containerPropertyPair.Value.AssertSequence($"{PipelineTemplateConstants.Container} {propertyName}");
                             var portList = new List<String>(ports.Count);
                             foreach (var portItem in ports)
@@ -565,7 +563,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             }
                             result.Ports = portList;
                             break;
-                        case ContainerPropertyNames.Volumes:
+                        case PipelineTemplateConstants.Volumes:
                             var volumes = containerPropertyPair.Value.AssertSequence($"{PipelineTemplateConstants.Container} {propertyName}");
                             var volumeList = new List<String>(volumes.Count);
                             foreach (var volumeItem in volumes)
@@ -581,25 +579,26 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
                 }
             }
-            else if (value is ExpressionToken containerExpression)
-            {
-                result.Image = containerExpression.ToString();
-            }
 
             if (result.Image.StartsWith("docker://", StringComparison.Ordinal))
             {
                 result.Image = result.Image.Substring("docker://".Length);
             }
 
+            if (String.IsNullOrEmpty(result.Image))
+            {
+                context.Error(value, "Container image cannot be empty");
+            }
+
             return result;
         }
 
-        internal static Dictionary<String, ContainerResource> ConvertToJobServiceContainers(
+        internal static List<KeyValuePair<String, JobContainer>> ConvertToJobServiceContainers(
             TemplateContext context,
             TemplateToken services,
             bool allowExpressions = false)
         {
-            var result = new Dictionary<String, ContainerResource>(StringComparer.OrdinalIgnoreCase);
+            var result = new List<KeyValuePair<String, JobContainer>>();
 
             if (allowExpressions && services.Traverse().Any(x => x is ExpressionToken))
             {
@@ -610,11 +609,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             foreach (var servicePair in servicesMapping)
             {
-                var k = servicePair.Key;
-                var v = servicePair.Value;
-                var container = ConvertToJobContainer(context, v, allowExpressions);
-
-                result.Add(k.ToString(), container);
+                var networkAlias = servicePair.Key.AssertString("services key").Value;
+                var container = ConvertToJobContainer(context, servicePair.Value);
+                result.Add(new KeyValuePair<String, JobContainer>(networkAlias, container));
             }
 
             return result;
@@ -647,10 +644,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                     switch (propertyName.Value)
                     {
-                        case "actions": // todo: remove before July 31
-                            result.Steps.AddRange(ConvertToSteps(context, jobFactoryProperty.Value));
-                            break;
-
                         case PipelineTemplateConstants.ContinueOnError:
                             var continueOnErrorBooleanToken = jobFactoryProperty.Value.AssertBoolean($"job {PipelineTemplateConstants.ContinueOnError}");
                             result.ContinueOnError = continueOnErrorBooleanToken.Value;
@@ -729,6 +722,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         case PipelineTemplateConstants.Services:
                             ConvertToJobServiceContainers(context, jobFactoryProperty.Value, allowExpressions: true);
                             result.JobServiceContainers = jobFactoryProperty.Value.Clone(true);
+                            break;
+
+                        case PipelineTemplateConstants.Env:
+                            result.EnvironmentVariables = jobFactoryProperty.Value.Clone(true);
                             break;
 
                         default:
