@@ -118,7 +118,7 @@ namespace GitHub.Runner.Plugins.Repository
             return await ExecuteGitCommandAsync(context, repositoryPath, "init", StringUtil.Format($"{repoRootEscapeSpace}"));
         }
 
-        // git fetch --no-tags --prune --progress --no-recurse-submodules [--depth=15] origin [+refs/pull/*:refs/remote/pull/*] [+refs/tags/1:refs/tags/1]
+        // git fetch --tags --prune --progress --no-recurse-submodules [--depth=15] origin [+refs/pull/*:refs/remote/pull/*] [+refs/tags/1:refs/tags/1]
         public async Task<int> GitFetch(RunnerActionPluginExecutionContext context, string repositoryPath, string remoteName, int fetchDepth, List<string> refSpec, string additionalCommandLine, CancellationToken cancellationToken)
         {
             context.Debug($"Fetch git repository at: {repositoryPath} remote: {remoteName}.");
@@ -128,20 +128,20 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             // default options for git fetch.
-            string options = StringUtil.Format($"--no-tags --prune --progress --no-recurse-submodules {remoteName} {string.Join(" ", refSpec)}");
+            string options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules {remoteName} {string.Join(" ", refSpec)}");
 
             // If shallow fetch add --depth arg
             // If the local repository is shallowed but there is no fetch depth provide for this build,
             // add --unshallow to convert the shallow repository to a complete repository
             if (fetchDepth > 0)
             {
-                options = StringUtil.Format($"--no-tags --prune --progress --no-recurse-submodules --depth={fetchDepth} {remoteName} {string.Join(" ", refSpec)}");
+                options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules --depth={fetchDepth} {remoteName} {string.Join(" ", refSpec)}");
             }
             else
             {
                 if (File.Exists(Path.Combine(repositoryPath, ".git", "shallow")))
                 {
-                    options = StringUtil.Format($"--no-tags --prune --progress --no-recurse-submodules --unshallow {remoteName} {string.Join(" ", refSpec)}");
+                    options = StringUtil.Format($"--tags --prune --progress --no-recurse-submodules --unshallow {remoteName} {string.Join(" ", refSpec)}");
                 }
             }
 

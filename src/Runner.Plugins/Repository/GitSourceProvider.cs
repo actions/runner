@@ -467,11 +467,11 @@ namespace GitHub.Runner.Plugins.Repository
             {
                 additionalFetchSpecs.Add($"+{fetchRef}:{GetRemoteRefName(fetchRef)}");
             }
-            else if (fetchRef.StartsWith(_tagRefsPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                // we need to add +refs/tags/foo:refs/tags/foo to fetch the tag since we won't fetch tags by default to save fetch time.
-                additionalFetchSpecs.Add($"+{fetchRef}:{fetchRef}");
-            }
+            // else if (fetchRef.StartsWith(_tagRefsPrefix, StringComparison.OrdinalIgnoreCase))
+            // {
+            //     // we need to add +refs/tags/foo:refs/tags/foo to fetch the tag since we won't fetch tags by default to save fetch time.
+            //     additionalFetchSpecs.Add($"+{fetchRef}:{fetchRef}");
+            // }
 
             int exitCode_fetch = await gitCommandManager.GitFetch(executionContext, targetPath, "origin", fetchDepth, additionalFetchSpecs, string.Join(" ", additionalFetchArgs), cancellationToken);
             if (exitCode_fetch != 0)
