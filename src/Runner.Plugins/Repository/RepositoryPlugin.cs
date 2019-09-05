@@ -90,7 +90,34 @@ namespace GitHub.Runner.Plugins.Repository
                 executionContext.SetRepositoryPath(repoFullName, expectRepoPath, true);
             }
 
+            string sourceBranch;
+            string sourceVersion;
             string refInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Ref);
+            if (string.IsNullOrEmpty(refInput))
+            {
+                sourceBranch = executionContext.GetGitHubContext("ref");
+                sourceVersion = executionContext.GetGitHubContext("sha");
+            }
+            else
+            {
+                sourceBranch = refInput;
+                sourceVersion = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Version);  // version get removed when checkout move to repo in the graph
+                if (string.IsNullOrEmpty(sourceVersion) && RegexUtility.IsMatch(sourceBranch, WellKnownRegularExpressions.SHA1))
+                {
+                    sourceVersion = sourceBranch;
+
+                    // If Ref is a SHA and the repo is self, we need to use github.ref as source branch since it might be refs/pull/*
+                    if (string.Equals(workspaceRepo, repoFullName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        sourceBranch = executionContext.GetGitHubContext("ref");
+                    }
+                    else
+                    {
+                        sourceBranch = "refs/heads/master";
+                    }
+                }
+            }
+
             bool clean = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean), true);
             string submoduleInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules);
 
@@ -115,8 +142,8 @@ namespace GitHub.Runner.Plugins.Repository
             ""owner"": ""checkout-git"",
             ""pattern"": [
                 {
-                    ""regexp"": ""^(fatal|error): (.*)$"",
-                    ""message"": 2
+                    ""regexp"": ""^fatal: (.*)$"",
+                    ""message"": 1
                 }
             ]
         }
@@ -130,7 +157,8 @@ namespace GitHub.Runner.Plugins.Repository
                 await new GitHubSourceProvider().GetSourceAsync(executionContext,
                                                                 expectRepoPath,
                                                                 repoFullName,
-                                                                refInput,
+                                                                sourceBranch,
+                                                                sourceVersion,
                                                                 clean,
                                                                 submoduleInput,
                                                                 fetchDepth,
