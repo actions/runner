@@ -235,12 +235,27 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
-            if (!command.Properties.TryGetValue(SetSecretCommandProperties.Name, out string secretName) || string.IsNullOrEmpty(secretName))
+            if (!command.Properties.TryGetValue(SetSecretCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-secret] command.");
             }
 
-            throw new NotSupportedException("Not supported yet");
+            // Mask secret
+            if (string.IsNullOrWhiteSpace(command.Data))
+            {
+                context.Warning("Can't add secret mask for empty string.");
+            }
+            else
+            {
+                HostContext.SecretMasker.AddValue(command.Data);
+                Trace.Info($"Add new secret mask with length of {command.Data.Length}");
+            }
+
+            // Set secret as output
+            context.SetOutput(outputName, command.Data, out var reference);
+            context.Output(line);
+            context.Debug($"{reference}='{command.Data}'");
+            omitEcho = true;
         }
 
         private static class SetSecretCommandProperties
