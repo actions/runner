@@ -1,14 +1,12 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
-using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -30,11 +28,12 @@ namespace GitHub.Runner.Worker
         public string Condition { get; set; }
 
         public TemplateToken ContinueOnError => Action?.ContinueOnError;
+
         public string DisplayName
         {
             get 
             {
-                // TODO: remove the Action.DisplayName check, it is done for back compat for older servers
+                // TODO: remove the Action.DisplayName check post m158 deploy, it is done for back compat for older servers
                 if (!string.IsNullOrEmpty(Action?.DisplayName))
                 {
                     return Action?.DisplayName;
@@ -165,7 +164,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(Action, nameof(Action));
 
             // If we have already expanded the display name, there is no need to expand it again
-            // TODO: Remove the ShouldEvaluateDisplayName check and field, we should do it by default once the server is updated
+            // TODO: Remove the ShouldEvaluateDisplayName check and field post m158 deploy, we should do it by default once the server is updated
             if (_didFullyEvaluateDisplayName || !string.IsNullOrEmpty(Action.DisplayName))
             {
                 return false;

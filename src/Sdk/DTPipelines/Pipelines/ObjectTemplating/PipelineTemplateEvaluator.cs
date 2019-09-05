@@ -1,14 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using ExpressionConstants = GitHub.DistributedTask.Expressions2.ExpressionConstants;
+using ITraceWriter = GitHub.DistributedTask.ObjectTemplating.ITraceWriter;
 
 namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
@@ -431,27 +433,28 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 // Otherwise return and use a default name
                 if (token is BasicExpressionToken expressionToken)
                 {
-                    Exception ex = null;
-                    var namedValues = ExpressionToken.GetExpressionNamedValues(expressionToken.Expression, out ex);
-                    if (ex != null)
+                    ExpressionNode root = null;
+                    try
                     {
-                        context.Errors.Add(ex);
+                        root = new ExpressionParser().ValidateSyntax(expressionToken.Expression, null) as ExpressionNode;
+                    }
+                    catch (Exception exception)
+                    {
+                        context.Errors.Add(exception);
                         context.Errors.Check();
                     }
-                    if (!namedValues.Distinct().All(value => contextData.ContainsKey(value.Name)))
+                    foreach (var node in root.Traverse())
                     {
-                        return false;
-                    }
-
-                    var functions = ExpressionToken.GetExpressionFunctions(expressionToken.Expression, out ex);
-                    if (ex != null)
-                    {
-                        context.Errors.Add(ex);
-                        context.Errors.Check();
-                    }
-                    if (!functions.Distinct().All(value => ExpressionConstants.WellKnownFunctions.ContainsKey(value)))
-                    {
-                        return false;
+                        if (node is NamedValue namedValue && !contextData.ContainsKey(namedValue.Name))
+                        {
+                            return false;
+                        }
+                        else if (node is Function function &&
+                            !(context.ExpressionFunctions.Any(item => String.Equals(item.Name, function.Name)) ||
+                            ExpressionConstants.WellKnownFunctions.ContainsKey(function.Name)))
+                        {
+                            return false;
+                        }
                     }
                 }
 

@@ -61,47 +61,5 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
             return result;
         }
-
-        internal static List<NamedValue> GetExpressionNamedValues(
-            String expression,
-            out Exception ex)
-        {
-            ExpressionNode root = null;
-            List<NamedValue> result = null;
-            try
-            {
-                root = new ExpressionParser().ValidateSyntax(expression, null) as ExpressionNode;
-                result = root.Traverse().OfType<NamedValue>().ToList();
-                ex = null;
-            }
-            catch (Exception exception)
-            {
-                result = new List<NamedValue>();
-                ex = exception;
-            }
-
-            return result;
-        }
-
-        internal static List<String> GetExpressionFunctions(
-            String expression,
-            out Exception ex)
-        {
-            ExpressionNode root = null;
-            List<String> result = null;
-            try
-            {
-                root = new ExpressionParser().ValidateSyntax(expression, null) as ExpressionNode;
-                result = root.Traverse().OfType<IFunctionInfo>().Select(function => function.Name).ToList();
-                ex = null;
-            }
-            catch (Exception exception)
-            {
-                result = new List<String>();
-                ex = exception;
-            }
-
-            return result;
-        }
     }
 }
