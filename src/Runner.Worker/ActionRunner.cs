@@ -236,7 +236,7 @@ namespace GitHub.Runner.Worker
             }
             catch (TemplateValidationException e)
             {
-                executionContext.Warning(e.Message);
+                executionContext.Warning($"Encountered an error when evaluating display name {tokenToParse.ToString()}. {e.Message}");
                 return false;
             }
 
