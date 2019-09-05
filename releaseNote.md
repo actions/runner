@@ -1,5 +1,4 @@
 ## Features
-  - Make actiosn/checkout landed on a local branch instead of a detached HEAD. (#82)
   - Best effort mask base64 and xml encoded secret. (#92)
   - Env at root of file (#94)
 
