@@ -209,17 +209,16 @@ namespace GitHub.Runner.Worker
                 foreach (var pair in inputs)
                 {
                     var propertyName = pair.Key.AssertString($"{PipelineTemplateConstants.Steps}");
-                    switch (propertyName.Value)
+                    if (string.Equals(propertyName.Value, "script", StringComparison.OrdinalIgnoreCase))
                     {
-                        case "script":
-                            tokenToParse = pair.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Run}");
-                            break;
+                        tokenToParse = pair.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Run}");
+                        break;
                     }
                 }
             }
             else 
             {
-                Trace.Error($"Encountered an unknown action reference type when evaluating the display name: {Action.Reference?.Type}");
+                executionContext.Error($"Encountered an unknown action reference type when evaluating the display name: {Action.Reference?.Type}");
                 return false;
             }
 
@@ -228,17 +227,16 @@ namespace GitHub.Runner.Worker
             {
                 return false;
             }
-
             // Try evaluating fully
             var schema = new PipelineTemplateSchemaFactory().CreateSchema();
             var templateEvaluator = new PipelineTemplateEvaluator(executionContext.ToTemplateTraceWriter(), schema);
             try 
             {
-                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, ref displayName);  
+                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, out displayName);  
             }
             catch (TemplateValidationException e)
             {
-                Trace.Warning(e.Message);
+                executionContext.Warning(e.Message);
                 return false;
             }
 
@@ -253,7 +251,7 @@ namespace GitHub.Runner.Worker
             }
 
             displayName = FormatStepName(prefix, displayName);
-
+            executionContext.Debug($"Setting step {Action.Name} display name to: '{displayName}'");
             _displayName = displayName;
             _didFullyEvaluateDisplayName = didFullyEvaluate;
             return didFullyEvaluate;

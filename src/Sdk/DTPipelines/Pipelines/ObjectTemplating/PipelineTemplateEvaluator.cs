@@ -422,9 +422,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public Boolean TryEvaluateStepDisplayName(
             TemplateToken token,
             IDictionary<String, PipelineContextData> contextData,
-            ref String stepName)
+            out String stepName)
         {
-            var result = default(String);
+            stepName = default(String);
             var context = CreateContext(contextData);
 
             if (token != null && token.Type != TokenType.Null)
@@ -450,8 +450,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             return false;
                         }
                         else if (node is Function function &&
-                            !(context.ExpressionFunctions.Any(item => String.Equals(item.Name, function.Name)) ||
-                            ExpressionConstants.WellKnownFunctions.ContainsKey(function.Name)))
+                            !context.ExpressionFunctions.Any(item => String.Equals(item.Name, function.Name)) &&
+                            !ExpressionConstants.WellKnownFunctions.ContainsKey(function.Name))
                         {
                             return false;
                         }
@@ -462,7 +462,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 {
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStepsContext, token, 0, null, omitHeader: true);
                     context.Errors.Check();
-                    result = PipelineTemplateConverter.ConvertToStepDisplayName(context, token);
+                    stepName = PipelineTemplateConverter.ConvertToStepDisplayName(context, token);
                 }
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
@@ -471,7 +471,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 context.Errors.Check();
             }
-            stepName = result;
             return true;
         }
 
