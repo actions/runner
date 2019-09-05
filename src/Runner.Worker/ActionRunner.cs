@@ -251,7 +251,7 @@ namespace GitHub.Runner.Worker
             }
 
             displayName = FormatStepName(prefix, displayName);
-            executionContext.Debug($"Setting step {Action.Name} display name to: '{displayName}'");
+            executionContext.Debug($"Setting step '{Action.Name}' display name to: '{displayName}'");
             _displayName = displayName;
             _didFullyEvaluateDisplayName = didFullyEvaluate;
             return didFullyEvaluate;
