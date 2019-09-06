@@ -653,21 +653,7 @@ namespace GitHub.Runner.Worker
             var dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
             var dockerFileLowerCase = Path.Combine(actionEntryDirectory, "dockerfile");
             var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
-            if (File.Exists(dockerFile))
-            {
-                executionContext.Debug($"Dockerfile for action: '{dockerFile}'.");
-                setupInfo.Dockerfile = dockerFile;
-                setupInfo.WorkingDirectory = destDirectory;
-                return setupInfo;
-            }
-            else if (File.Exists(dockerFileLowerCase))
-            {
-                executionContext.Debug($"Dockerfile for action: '{dockerFileLowerCase}'.");
-                setupInfo.Dockerfile = dockerFileLowerCase;
-                setupInfo.WorkingDirectory = destDirectory;
-                return setupInfo;
-            }
-            else if (File.Exists(actionManifest))
+            if (File.Exists(actionManifest))
             {
                 executionContext.Debug($"action.yml for action: '{actionManifest}'.");
                 var manifestManager = HostContext.GetService<IActionManifestManager>();
@@ -713,6 +699,20 @@ namespace GitHub.Runner.Worker
                 {
                     throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
                 }
+            }
+            else if (File.Exists(dockerFile))
+            {
+                executionContext.Debug($"Dockerfile for action: '{dockerFile}'.");
+                setupInfo.Dockerfile = dockerFile;
+                setupInfo.WorkingDirectory = destDirectory;
+                return setupInfo;
+            }
+            else if (File.Exists(dockerFileLowerCase))
+            {
+                executionContext.Debug($"Dockerfile for action: '{dockerFileLowerCase}'.");
+                setupInfo.Dockerfile = dockerFileLowerCase;
+                setupInfo.WorkingDirectory = destDirectory;
+                return setupInfo;
             }
             else
             {
