@@ -532,6 +532,50 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_RepositoryActionWithActionfileAndDockerfile()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "notexist/no",
+                            Ref = "notexist",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
+                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
+                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
+                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
+                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerhubaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
+                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "Dockerfile"), "Fake Dockerfile");
+
+                //Act
+                var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_NotPullOrBuildImagesMultipleTimes()
         {
             try
