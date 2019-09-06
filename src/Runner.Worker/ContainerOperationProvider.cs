@@ -225,10 +225,10 @@ namespace GitHub.Runner.Worker
             container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
             container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
 
-            container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
 
             if (container.IsJobContainer)
             {
+                container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
                 container.ContainerEntryPoint = "tail";
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
             }
