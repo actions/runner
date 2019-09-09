@@ -215,7 +215,7 @@ namespace GitHub.Runner.Worker
                 throw new Exception("Required field 'name' is missing in ##[set-output] command.");
             }
 
-            if (commandProperties.TryGetValue(SetOutputCommandProperties.Name, out string isSecretString) && Boolean.TryParse(isSecretString, out Boolean isSecret) && isSecret)
+            if (command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string isSecretString) && Boolean.TryParse(isSecretString, out Boolean isSecret) && isSecret)
             {
                 // Mask secret
                 if (string.IsNullOrWhiteSpace(command.Data))
@@ -237,7 +237,6 @@ namespace GitHub.Runner.Worker
                 context.Debug($"{reference}='{command.Data}'");
             }
 
-            
             omitEcho = true;
         }
 
