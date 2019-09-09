@@ -147,7 +147,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should not do anything if we don't have a displayNameToken to expand
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
 
             // Assert
             Assert.False(didUpdateDisplayName);
@@ -180,7 +180,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
 
             // Assert
             Assert.True(didUpdateDisplayName);
@@ -215,7 +215,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
 
             // Assert
             Assert.True(didUpdateDisplayName);
@@ -243,7 +243,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
 
             // Assert
             Assert.True(didUpdateDisplayName);
@@ -271,7 +271,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
 
             // Assert
             Assert.True(didUpdateDisplayName);
@@ -298,7 +298,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Act
             // Should not do anything if we don't have context on the display name
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context);
+            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
 
             // Assert
             Assert.False(didUpdateDisplayName);

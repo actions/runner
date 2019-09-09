@@ -19,12 +19,16 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(ActionRunner))]
     public interface IActionRunner : IStep, IRunnerService
     {
-        Boolean TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context = null);
+        Boolean TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context);
         Pipelines.ActionStep Action { get; set; }
     }
 
     public sealed class ActionRunner : RunnerService, IActionRunner
     {
+        private bool _didFullyEvaluateDisplayName = false;
+
+        private string _displayName;
+
         public string Condition { get; set; }
 
         public TemplateToken ContinueOnError => Action?.ContinueOnError;
@@ -157,10 +161,9 @@ namespace GitHub.Runner.Worker
             await handler.RunAsync();
         }
 
-        public bool TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context = null)
+        public bool TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context)
         {
-            var executionContext = context ?? ExecutionContext;
-            ArgUtil.NotNull(executionContext, nameof(context));
+            ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(Action, nameof(Action));
 
             // If we have already expanded the display name, there is no need to expand it again
@@ -170,42 +173,59 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
+            bool didFullyEvaluate;
+            _displayName = ActionRunner.GenerateDisplayName(Action, contextData, context, out didFullyEvaluate);
+
+            // If we evaluated fully mask any secrets
+            if (didFullyEvaluate)
+            {
+                _displayName = HostContext.SecretMasker.MaskSecrets(_displayName);
+            }
+            context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
+            _didFullyEvaluateDisplayName = didFullyEvaluate;
+            return didFullyEvaluate;
+        }
+
+        public static string GenerateDisplayName(ActionStep action, IDictionary<String, PipelineContextData> contextData, IExecutionContext context, out bool didFullyEvaluate)
+        {
+            ArgUtil.NotNull(context, nameof(context));
+            ArgUtil.NotNull(action, nameof(action));
+
             var displayName = string.Empty;
             var prefix = string.Empty;
-            var didFullyEvaluate = false;
             var tokenToParse = default(ScalarToken);
-
+            didFullyEvaluate = false;
             // Get the token we need to parse
             // It could be passed in as the Display Name, or we have to pull it from various parts of the Action.
-            if (Action.DisplayNameToken != null)
+            if (action.DisplayNameToken != null)
             {
-                tokenToParse = Action.DisplayNameToken as ScalarToken;
+                tokenToParse = action.DisplayNameToken as ScalarToken;
             }
-            else if (Action.Reference?.Type == ActionSourceType.Repository)
+            else if (action.Reference?.Type == ActionSourceType.Repository)
             {
                 prefix = PipelineTemplateConstants.RunDisplayPrefix;
-                var repositoryReference = Action.Reference as RepositoryPathReference;
+                var repositoryReference = action.Reference as RepositoryPathReference;
                 var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
                 var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
                     $"{repositoryReference.Name}{pathString}@{repositoryReference.Ref}";
                 tokenToParse = new StringToken(null, null, null, repoString);
             } 
-            else if (Action.Reference?.Type == ActionSourceType.ContainerRegistry)
+            else if (action.Reference?.Type == ActionSourceType.ContainerRegistry)
             {
                 prefix = PipelineTemplateConstants.RunDisplayPrefix;
-                var containerReference = Action.Reference as ContainerRegistryReference;
+                var containerReference = action.Reference as ContainerRegistryReference;
                 tokenToParse = new StringToken(null, null, null, containerReference.Image);
             }
-            else if (Action.Reference?.Type == ActionSourceType.AgentPlugin)
+            else if (action.Reference?.Type == ActionSourceType.AgentPlugin)
             {
                 prefix = PipelineTemplateConstants.RunDisplayPrefix;
-                var pluginReference = Action.Reference as PluginReference;
+                var pluginReference = action.Reference as PluginReference;
                 tokenToParse = new StringToken(null, null, null, pluginReference.Plugin);
             }
-            else if (Action.Reference?.Type == ActionSourceType.Script)
+            else if (action.Reference?.Type == ActionSourceType.Script)
             {
                 prefix = PipelineTemplateConstants.RunDisplayPrefix;
-                var inputs = Action.Inputs.AssertMapping(null);
+                var inputs = action.Inputs.AssertMapping(null);
                 foreach (var pair in inputs)
                 {
                     var propertyName = pair.Key.AssertString($"{PipelineTemplateConstants.Steps}");
@@ -218,46 +238,39 @@ namespace GitHub.Runner.Worker
             }
             else 
             {
-                executionContext.Error($"Encountered an unknown action reference type when evaluating the display name: {Action.Reference?.Type}");
-                return false;
+                context.Error($"Encountered an unknown action reference type when evaluating the display name: {action.Reference?.Type}");
+                return displayName;
             }
 
             // If we have nothing to parse, abort
             if (tokenToParse == null)
             {
-                return false;
+                return displayName;
             }
             // Try evaluating fully
             var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-            var templateEvaluator = new PipelineTemplateEvaluator(executionContext.ToTemplateTraceWriter(), schema);
+            var templateEvaluator = new PipelineTemplateEvaluator(context.ToTemplateTraceWriter(), schema);
             try 
             {
                 didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, out displayName);  
             }
             catch (TemplateValidationException e)
             {
-                executionContext.Warning($"Encountered an error when evaluating display name {tokenToParse.ToString()}. {e.Message}");
-                return false;
+                context.Warning($"Encountered an error when evaluating display name {tokenToParse.ToString()}. {e.Message}");
+                return displayName;
             }
 
-            // If we evaluated fully mask any secrets
-            if (didFullyEvaluate)
-            {
-                displayName = HostContext.SecretMasker.MaskSecrets(displayName);
-            }
-            else // Otherwise default to prettified token
+            // Default to a prettified token if we could not evaluate
+            if (!didFullyEvaluate)
             {
                 displayName = tokenToParse.ToDisplayString();
             }
 
             displayName = FormatStepName(prefix, displayName);
-            executionContext.Debug($"Setting step '{Action.Name}' display name to: '{displayName}'");
-            _displayName = displayName;
-            _didFullyEvaluateDisplayName = didFullyEvaluate;
-            return didFullyEvaluate;
+            return displayName;
         }
 
-        private string FormatStepName(string prefix, string stepName)
+        private static string FormatStepName(string prefix, string stepName)
         {
             if (string.IsNullOrEmpty(stepName))
             {
@@ -272,7 +285,5 @@ namespace GitHub.Runner.Worker
             }
             return $"{prefix}{result}";
         }
-        private string _displayName;
-        private bool _didFullyEvaluateDisplayName = false;
     }
 }

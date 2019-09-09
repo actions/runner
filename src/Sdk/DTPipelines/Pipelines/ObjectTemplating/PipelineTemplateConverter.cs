@@ -968,7 +968,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Environment = env?.Clone(true),
-                    Reference = new ScriptReference()
+                    Reference = new ScriptReference(),
                 };
 
                 var inputs = new MappingToken(null, null, null);
@@ -999,7 +999,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Inputs = with,
-                    Environment = env
+                    Environment = env,
                 };
 
                 if (uses.Value.StartsWith("docker://", StringComparison.Ordinal))
