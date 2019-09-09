@@ -186,7 +186,7 @@ namespace GitHub.Runner.Worker
             return didFullyEvaluate;
         }
 
-        private static string GenerateDisplayName(ActionStep action, IDictionary<String, PipelineContextData> contextData, IExecutionContext context, out bool didFullyEvaluate)
+        private string GenerateDisplayName(ActionStep action, IDictionary<String, PipelineContextData> contextData, IExecutionContext context, out bool didFullyEvaluate)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(action, nameof(action));
