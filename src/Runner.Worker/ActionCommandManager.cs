@@ -235,7 +235,7 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
-            if (!command.Properties.TryGetValue(SetSecretCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
+            if (!command.Properties.TryGetValue(SetSecretCommandProperties.Name, out string secretName) || string.IsNullOrEmpty(secretName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-secret] command.");
             }
@@ -252,9 +252,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Set secret as output
-            context.SetOutput(outputName, command.Data, out var reference);
-            context.Output(line);
-            context.Debug($"{reference}='{command.Data}'");
+            context.SetSecret(secretName, command.Data);
             omitEcho = true;
         }
 

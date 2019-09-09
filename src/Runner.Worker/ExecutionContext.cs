@@ -73,6 +73,7 @@ namespace GitHub.Runner.Worker
         string GetGitHubContext(string name);
         void SetGitHubContext(string name, string value);
         void SetOutput(string name, string value, out string reference);
+        void SetSecret(string name, string value);
         void SetTimeout(TimeSpan? timeout);
         void AddIssue(Issue issue, string message = null);
         void Progress(int percentage, string currentOperation = null);
@@ -373,6 +374,14 @@ namespace GitHub.Runner.Worker
             // todo: restrict multiline?
 
             StepsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
+        }
+
+        public void SetSecret(string name, string value)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            var secrets = ExpressionValues["secrets"] as DictionaryContextData;
+            secrets[name] = new StringContextData(value);
+            ExpressionValues["secrets"] = secrets;
         }
 
         public void SetTimeout(TimeSpan? timeout)
