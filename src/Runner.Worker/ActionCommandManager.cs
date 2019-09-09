@@ -215,15 +215,36 @@ namespace GitHub.Runner.Worker
                 throw new Exception("Required field 'name' is missing in ##[set-output] command.");
             }
 
-            context.SetOutput(outputName, command.Data, out var reference);
-            context.Output(line);
-            context.Debug($"{reference}='{command.Data}'");
+            if (commandProperties.TryGetValue(SetOutputCommandProperties.Name, out string isSecretString) && Boolean.TryParse(isSecretString, out Boolean isSecret) && isSecret)
+            {
+                // Mask secret
+                if (string.IsNullOrWhiteSpace(command.Data))
+                {
+                    context.Warning("Can't add secret mask for empty string.");
+                }
+                else
+                {
+                    HostContext.SecretMasker.AddValue(command.Data);
+                    Trace.Info($"Add new secret mask with length of {command.Data.Length}");
+                }
+
+                context.SetOutput(outputName, command.Data, out var reference);
+            }
+            else
+            {
+                context.SetOutput(outputName, command.Data, out var reference);
+                context.Output(line);
+                context.Debug($"{reference}='{command.Data}'");
+            }
+
+            
             omitEcho = true;
         }
 
         private static class SetOutputCommandProperties
         {
             public const String Name = "name";
+            public const String IsSecret = "isSecret";
         }
     }
 
