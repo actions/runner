@@ -174,7 +174,7 @@ namespace GitHub.Runner.Worker
             }
 
             bool didFullyEvaluate;
-            _displayName = ActionRunner.GenerateDisplayName(Action, contextData, context, out didFullyEvaluate);
+            _displayName = GenerateDisplayName(Action, contextData, context, out didFullyEvaluate);
 
             // If we evaluated fully mask any secrets
             if (didFullyEvaluate)
