@@ -193,6 +193,15 @@ namespace GitHub.Runner.Worker
 
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)
         {
+            // Check to see if we can expand the display name
+            if (step is IActionRunner actionRunner)
+            {
+                if (actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
+                {
+                    step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
+                }
+            }
+            
             // Start the step.
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");

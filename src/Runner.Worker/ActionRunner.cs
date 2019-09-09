@@ -1,10 +1,11 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Handlers;
@@ -18,16 +19,32 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(ActionRunner))]
     public interface IActionRunner : IStep, IRunnerService
     {
+        Boolean TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context);
         Pipelines.ActionStep Action { get; set; }
     }
 
     public sealed class ActionRunner : RunnerService, IActionRunner
     {
+        private bool _didFullyEvaluateDisplayName = false;
+
+        private string _displayName;
+
         public string Condition { get; set; }
 
         public TemplateToken ContinueOnError => Action?.ContinueOnError;
 
-        public string DisplayName => Action?.DisplayName;
+        public string DisplayName
+        {
+            get 
+            {
+                // TODO: remove the Action.DisplayName check post m158 deploy, it is done for back compat for older servers
+                if (!string.IsNullOrEmpty(Action?.DisplayName))
+                {
+                    return Action?.DisplayName;
+                }
+                return string.IsNullOrEmpty(_displayName) ? "run" : _displayName;
+            }
+        }
 
         public IExecutionContext ExecutionContext { get; set; }
 
@@ -142,6 +159,131 @@ namespace GitHub.Runner.Worker
 
             // Run the task.
             await handler.RunAsync();
+        }
+
+        public bool TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context)
+        {
+            ArgUtil.NotNull(context, nameof(context));
+            ArgUtil.NotNull(Action, nameof(Action));
+
+            // If we have already expanded the display name, there is no need to expand it again
+            // TODO: Remove the ShouldEvaluateDisplayName check and field post m158 deploy, we should do it by default once the server is updated
+            if (_didFullyEvaluateDisplayName || !string.IsNullOrEmpty(Action.DisplayName))
+            {
+                return false;
+            }
+
+            bool didFullyEvaluate;
+            _displayName = GenerateDisplayName(Action, contextData, context, out didFullyEvaluate);
+
+            // If we evaluated fully mask any secrets
+            if (didFullyEvaluate)
+            {
+                _displayName = HostContext.SecretMasker.MaskSecrets(_displayName);
+            }
+            context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
+            _didFullyEvaluateDisplayName = didFullyEvaluate;
+            return didFullyEvaluate;
+        }
+
+        private string GenerateDisplayName(ActionStep action, IDictionary<String, PipelineContextData> contextData, IExecutionContext context, out bool didFullyEvaluate)
+        {
+            ArgUtil.NotNull(context, nameof(context));
+            ArgUtil.NotNull(action, nameof(action));
+
+            var displayName = string.Empty;
+            var prefix = string.Empty;
+            var tokenToParse = default(ScalarToken);
+            didFullyEvaluate = false;
+            // Get the token we need to parse
+            // It could be passed in as the Display Name, or we have to pull it from various parts of the Action.
+            if (action.DisplayNameToken != null)
+            {
+                tokenToParse = action.DisplayNameToken as ScalarToken;
+            }
+            else if (action.Reference?.Type == ActionSourceType.Repository)
+            {
+                prefix = PipelineTemplateConstants.RunDisplayPrefix;
+                var repositoryReference = action.Reference as RepositoryPathReference;
+                var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
+                var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
+                    $"{repositoryReference.Name}{pathString}@{repositoryReference.Ref}";
+                tokenToParse = new StringToken(null, null, null, repoString);
+            } 
+            else if (action.Reference?.Type == ActionSourceType.ContainerRegistry)
+            {
+                prefix = PipelineTemplateConstants.RunDisplayPrefix;
+                var containerReference = action.Reference as ContainerRegistryReference;
+                tokenToParse = new StringToken(null, null, null, containerReference.Image);
+            }
+            else if (action.Reference?.Type == ActionSourceType.AgentPlugin)
+            {
+                prefix = PipelineTemplateConstants.RunDisplayPrefix;
+                var pluginReference = action.Reference as PluginReference;
+                tokenToParse = new StringToken(null, null, null, pluginReference.Plugin);
+            }
+            else if (action.Reference?.Type == ActionSourceType.Script)
+            {
+                prefix = PipelineTemplateConstants.RunDisplayPrefix;
+                var inputs = action.Inputs.AssertMapping(null);
+                foreach (var pair in inputs)
+                {
+                    var propertyName = pair.Key.AssertString($"{PipelineTemplateConstants.Steps}");
+                    if (string.Equals(propertyName.Value, "script", StringComparison.OrdinalIgnoreCase))
+                    {
+                        tokenToParse = pair.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Run}");
+                        break;
+                    }
+                }
+            }
+            else 
+            {
+                context.Error($"Encountered an unknown action reference type when evaluating the display name: {action.Reference?.Type}");
+                return displayName;
+            }
+
+            // If we have nothing to parse, abort
+            if (tokenToParse == null)
+            {
+                return displayName;
+            }
+            // Try evaluating fully
+            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+            var templateEvaluator = new PipelineTemplateEvaluator(context.ToTemplateTraceWriter(), schema);
+            try 
+            {
+                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, out displayName);  
+            }
+            catch (TemplateValidationException e)
+            {
+                context.Warning($"Encountered an error when evaluating display name {tokenToParse.ToString()}. {e.Message}");
+                return displayName;
+            }
+
+            // Default to a prettified token if we could not evaluate
+            if (!didFullyEvaluate)
+            {
+                displayName = tokenToParse.ToDisplayString();
+            }
+
+            displayName = FormatStepName(prefix, displayName);
+            return displayName;
+        }
+
+        private static string FormatStepName(string prefix, string stepName)
+        {
+            if (string.IsNullOrEmpty(stepName))
+            {
+                return string.Empty;
+            }
+
+            var result = stepName.TrimStart(' ', '\t', '\r', '\n');
+            var firstNewLine = result.IndexOfAny(new[] { '\r', '\n' });
+            if (firstNewLine >= 0)
+            {
+                result = result.Substring(0, firstNewLine);
+            }
+            return $"{prefix}{result}";
         }
     }
 }

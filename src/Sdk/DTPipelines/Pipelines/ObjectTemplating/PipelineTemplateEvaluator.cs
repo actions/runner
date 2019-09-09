@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Globalization;
+using System.Linq;
 using System.Threading;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using ExpressionConstants = GitHub.DistributedTask.Expressions2.ExpressionConstants;
+using ITraceWriter = GitHub.DistributedTask.ObjectTemplating.ITraceWriter;
 
 namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
@@ -413,6 +417,61 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
 
             return result;
+        }
+
+        public Boolean TryEvaluateStepDisplayName(
+            TemplateToken token,
+            IDictionary<String, PipelineContextData> contextData,
+            out String stepName)
+        {
+            stepName = default(String);
+            var context = CreateContext(contextData);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                // We should only evaluate basic expressions if we are sure we have context on all the Named Values and functions
+                // Otherwise return and use a default name
+                if (token is BasicExpressionToken expressionToken)
+                {
+                    ExpressionNode root = null;
+                    try
+                    {
+                        root = new ExpressionParser().ValidateSyntax(expressionToken.Expression, null) as ExpressionNode;
+                    }
+                    catch (Exception exception)
+                    {
+                        context.Errors.Add(exception);
+                        context.Errors.Check();
+                    }
+                    foreach (var node in root.Traverse())
+                    {
+                        if (node is NamedValue namedValue && !contextData.ContainsKey(namedValue.Name))
+                        {
+                            return false;
+                        }
+                        else if (node is Function function &&
+                            !context.ExpressionFunctions.Any(item => String.Equals(item.Name, function.Name)) &&
+                            !ExpressionConstants.WellKnownFunctions.ContainsKey(function.Name))
+                        {
+                            return false;
+                        }
+                    }
+                }
+
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StringStepsContext, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    stepName = PipelineTemplateConverter.ConvertToStepDisplayName(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+            return true;
         }
 
         private TemplateContext CreateContext(IEnumerable<KeyValuePair<string, PipelineContextData>> contextData)

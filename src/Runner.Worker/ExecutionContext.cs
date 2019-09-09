@@ -78,6 +78,8 @@ namespace GitHub.Runner.Worker
         void Progress(int percentage, string currentOperation = null);
         void UpdateDetailTimelineRecord(TimelineRecord record);
 
+        void UpdateTimelineRecordDisplayName(string displayName);
+
         // matchers
         void Add(OnMatcherChanged handler);
         void Remove(OnMatcherChanged handler);
@@ -486,6 +488,13 @@ namespace GitHub.Runner.Worker
                 _detailRecords[record.Id] = record;
                 _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record);
             }
+        }
+
+        public void UpdateTimelineRecordDisplayName(string displayName)
+        {
+            ArgUtil.NotNull(displayName, nameof(displayName));
+            _record.Name = displayName;
+            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
         public void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token)

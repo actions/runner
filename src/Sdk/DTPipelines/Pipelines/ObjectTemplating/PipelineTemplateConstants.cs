@@ -59,6 +59,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String StepsTemplateRoot = "steps-template-root";
         public const String StepWith = "step-with";
         public const String Strategy = "strategy";
+        public const String StringStepsContext = "string-steps-context";
         public const String StringStrategyContext = "string-strategy-context";
         public const String Submodules = "submodules";
         public const String Success = "success";

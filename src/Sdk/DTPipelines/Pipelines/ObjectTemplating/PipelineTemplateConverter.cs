@@ -204,6 +204,20 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return booleanToken.Value;
         }
 
+        internal static String ConvertToStepDisplayName(
+            TemplateContext context,
+            TemplateToken token,
+            Boolean allowExpressions = false)
+        {
+            if (allowExpressions && token is ExpressionToken)
+            {
+                return null;
+            }
+
+            var stringToken = token.AssertString($"step {PipelineTemplateConstants.Name}");
+            return stringToken.Value;
+        }
+
         internal static Dictionary<String, String> ConvertToStepEnvironment(
             TemplateContext context,
             TemplateToken environment,
@@ -950,17 +964,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToString(),
+                    DisplayNameToken = name?.Clone(true) as ScalarToken,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Environment = env?.Clone(true),
-                    Reference = new ScriptReference()
+                    Reference = new ScriptReference(),
                 };
-
-                if (String.IsNullOrEmpty(result.DisplayName))
-                {
-                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{run.ToDisplayString()}";
-                }
 
                 var inputs = new MappingToken(null, null, null);
                 inputs.Add(new StringToken(null, null, null, PipelineConstants.ScriptStepInputs.Script), run.Clone(true));
@@ -986,17 +995,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError?.Clone(true) as ScalarToken,
-                    DisplayName = name?.ToString(),
+                    DisplayNameToken = name?.Clone(true) as ScalarToken,
                     Condition = ifCondition,
                     TimeoutInMinutes = timeoutMinutes?.Clone(true) as ScalarToken,
                     Inputs = with,
                     Environment = env,
                 };
-
-                if (String.IsNullOrEmpty(result.DisplayName))
-                {
-                    result.DisplayName = $"{PipelineTemplateConstants.RunDisplayPrefix}{uses.Value}";
-                }
 
                 if (uses.Value.StartsWith("docker://", StringComparison.Ordinal))
                 {
