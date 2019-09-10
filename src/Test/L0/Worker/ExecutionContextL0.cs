@@ -35,6 +35,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Id = "github",
                     Version = "sha1"
                 });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
 
                 // Arrange: Setup the paging logger.
                 var pagingLogger = new Mock<IPagingLogger>();
@@ -113,6 +114,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     Id = "github",
                     Version = "sha1"
                 });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
                 jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
 
                 // Arrange: Setup the paging logger.

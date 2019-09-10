@@ -1,4 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.Runner.Worker;
 using Moq;
 using System;
@@ -50,11 +51,27 @@ namespace GitHub.Runner.Common.Tests.Worker
                 }
             });
             Guid JobId = Guid.NewGuid();
-            var sidecarContainers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            var sidecarContainers = new MappingToken(null, null, null)
             {
-                ["nginx"] = "nginx"
+                {
+                    new StringToken(null, null, null, "nginx"),
+                    new MappingToken(null, null, null)
+                    {
+                        {
+                            new StringToken(null, null, null, "image"),
+                            new StringToken(null, null, null, "nginx")
+                        },
+                    }
+                },
             };
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, "ubuntu", sidecarContainers, null, variables, new List<MaskHint>(), resources, null, null, tasks, null);
+            var context = new Pipelines.ContextData.DictionaryContextData
+            {
+                {
+                    "github",
+                    new Pipelines.ContextData.DictionaryContextData()
+                },
+            };
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, new StringToken(null, null, null, "ubuntu"), sidecarContainers, null, variables, new List<MaskHint>(), resources, context, null, tasks, null);
             return jobRequest;
         }
 
@@ -240,7 +257,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 return false;
             }
-            if (source.JobContainer != target.JobContainer)
+            if (JsonUtility.ToString(source.JobContainer) != JsonUtility.ToString(target.JobContainer))
             {
                 return false;
             }

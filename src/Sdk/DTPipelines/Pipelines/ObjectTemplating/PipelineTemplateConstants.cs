@@ -25,6 +25,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String GitHub = "github";
         public const String Id = "id";
         public const String If = "if";
+        public const String Image = "image";
         public const String Include = "include";
         public const String Inputs = "inputs";
         public const String Job = "job";
@@ -37,10 +38,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String NumberStepsContext = "number-steps-context";
         public const String NumberStrategyContext = "number-strategy-context";
         public const String On = "on";
+        public const String Options = "options";
         public const String Outputs = "outputs";
         public const String OutputsPattern = "needs.*.outputs";
         public const String Path = "path";
         public const String Pool = "pool";
+        public const String Ports = "ports";
         public const String Result = "result";
         public const String RunDisplayPrefix = "Run ";
         public const String Run = "run";
@@ -68,6 +71,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Token = "token";
         public const String Uses = "uses";
         public const String VmImage = "vmImage";
+        public const String Volumes = "volumes";
         public const String With = "with";
         public const String Workflow = "workflow";
         public const String Workflow_1_0 = "workflow-v1.0";

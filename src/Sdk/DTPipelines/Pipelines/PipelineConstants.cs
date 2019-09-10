@@ -36,7 +36,7 @@ namespace GitHub.DistributedTask.Pipelines
         public static readonly String DefaultJobName = "__default";
 
         /// <summary>
-        /// The default job display name. For when the user doesn't specify names for anything. 
+        /// The default job display name. For when the user doesn't specify names for anything.
         /// </summary>
         public static readonly String DefaultJobDisplayName = "Job";
 
@@ -235,11 +235,6 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 return false;
             }
-        }
-
-        public static class ScheduleType
-        {
-            public static readonly String Cron = "Cron";
         }
     }
 }

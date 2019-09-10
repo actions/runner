@@ -14,7 +14,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private Mock<IExecutionContext> _ec;
         private ExpressionManager _expressionManager;
-        private Dictionary<String, PipelineContextData> _expressions;
+        private DictionaryContextData _expressions;
         private JobContext _jobContext;
 
         [Fact]
@@ -174,7 +174,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private void InitializeExecutionContext(TestHostContext hc)
         {
-            _expressions = new Dictionary<String, PipelineContextData>();
+            _expressions = new DictionaryContextData();
             _jobContext = new JobContext();
 
             _ec = new Mock<IExecutionContext>();

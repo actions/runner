@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(ActionRunner))]
     public interface IActionRunner : IStep, IRunnerService
     {
-        Boolean TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context);
+        Boolean TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context);
         Pipelines.ActionStep Action { get; set; }
     }
 
@@ -161,7 +161,7 @@ namespace GitHub.Runner.Worker
             await handler.RunAsync();
         }
 
-        public bool TryEvaluateDisplayName(IDictionary<String, PipelineContextData> contextData, IExecutionContext context)
+        public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(Action, nameof(Action));
@@ -186,7 +186,7 @@ namespace GitHub.Runner.Worker
             return didFullyEvaluate;
         }
 
-        private string GenerateDisplayName(ActionStep action, IDictionary<String, PipelineContextData> contextData, IExecutionContext context, out bool didFullyEvaluate)
+        private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)
         {
             ArgUtil.NotNull(context, nameof(context));
             ArgUtil.NotNull(action, nameof(action));

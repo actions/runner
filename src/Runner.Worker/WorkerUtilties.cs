@@ -78,7 +78,7 @@ namespace GitHub.Runner.Worker
                 jobDisplayName: message.JobDisplayName,
                 jobName: message.JobName,
                 jobContainer: message.JobContainer,
-                jobSidecarContainers: message.JobSidecarContainers,
+                jobServiceContainers: message.JobServiceContainers,
                 environmentVariables: message.EnvironmentVariables,
                 variables: scrubbedVariables,
                 maskHints: message.MaskHints,

@@ -130,7 +130,7 @@ namespace GitHub.Runner.Worker
                     Endpoints = context.Endpoints,
                     Variables = new Dictionary<string, VariableValue>(),
                     Steps = new Dictionary<string, Pipelines.ActionStepDefinitionReference>(),
-                    Context = context.ExpressionValues as Dictionary<string, PipelineContextData>
+                    Context = context.ExpressionValues
                 };
 
                 // plugins 

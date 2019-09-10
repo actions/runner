@@ -236,13 +236,13 @@ namespace GitHub.DistributedTask.Pipelines
         public static WebApi.AgentJobRequestMessage Convert(AgentJobRequestMessage message)
         {
             // Old agent can't handle container(s)
-            if (!String.IsNullOrEmpty(message.JobContainer))
+            if (message.JobContainer != null)
             {
-                throw new NotSupportedException(message.JobContainer);
+                throw new NotSupportedException("Job containers are not supported");
             }
-            if (message.JobSidecarContainers?.Count > 0)
+            if (message.JobServiceContainers != null)
             {
-                throw new NotSupportedException(String.Join(", ", message.JobSidecarContainers.Keys));
+                throw new NotSupportedException("Job service containers are not supported");
             }
 
             // Old agent can't handle more than 1 repository

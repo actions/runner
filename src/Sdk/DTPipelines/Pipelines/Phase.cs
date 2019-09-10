@@ -91,7 +91,7 @@ namespace GitHub.DistributedTask.Pipelines
             jobContext.ReferencedResources.MergeWith(result);
 
             // Update the execution context with referenced job containers
-            var containerAlias = jobInstance.Definition.Container;
+            var containerAlias = (jobInstance.Definition.Container as DistributedTask.ObjectTemplating.Tokens.StringToken)?.Value;
             if (!String.IsNullOrEmpty(containerAlias))
             {
                 UpdateJobContextReferencedContainers(jobContext, containerAlias);
@@ -1203,7 +1203,7 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 var containerAlias = container.GetValue(context).Value;
                 var outputAlias = ResolveContainerResource(context, containerAlias);
-                job.Container = outputAlias;
+                job.Container = new DistributedTask.ObjectTemplating.Tokens.StringToken(null, null, null, outputAlias);
                 UpdateJobContextReferencedContainers(context, outputAlias);
             }
             if (sidecarContainers != null)

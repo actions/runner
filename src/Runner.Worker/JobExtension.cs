@@ -74,12 +74,9 @@ namespace GitHub.Runner.Worker
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
 
-                    // Build up 3 lists of steps, pre-job, job, post-job
-                    var postJobStepsBuilder = new Stack<IStep>();
-
                     // Evaluate the job-level environment variables
-                    jobContext.Debug("Evaluating job-level environment variablesLoading inputs");
-                    var templateTrace = jobContext.ToTemplateTraceWriter();
+                    context.Debug("Evaluating job-level environment variables");
+                    var templateTrace = context.ToTemplateTraceWriter();
                     var schema = new PipelineTemplateSchemaFactory().CreateSchema();
                     var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
                     foreach (var token in message.EnvironmentVariables)
@@ -91,22 +88,46 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Evaluate the job container
+                    context.Debug("Evaluating job container");
+                    var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues);
+                    if (container != null)
+                    {
+                        jobContext.Container = new Container.ContainerInfo(HostContext, container);
+                    }
+
+                    // Evaluate the job service containers
+                    context.Debug("Evaluating job service containers");
+                    var serviceContainers = templateEvaluator.EvaluateJobServiceContainers(message.JobServiceContainers, jobContext.ExpressionValues);
+                    if (serviceContainers?.Count > 0)
+                    {
+                        foreach (var pair in serviceContainers)
+                        {
+                            var networkAlias = pair.Key;
+                            var serviceContainer = pair.Value;
+                            jobContext.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias));
+                        }
+                    }
+
+                    // Build up 3 lists of steps, pre-job, job, post-job
+                    var postJobStepsBuilder = new Stack<IStep>();
+
                     // Download actions not already in the cache
-                    Trace.Info("Downloading actions.");
+                    Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
                     var prepareSteps = await actionManager.PrepareActionsAsync(context, message.Steps);
                     preJobSteps.AddRange(prepareSteps);
 
                     // Add start-container steps, record and stop-container steps
-                    if (context.Container != null || context.SidecarContainers.Count > 0)
+                    if (jobContext.Container != null || jobContext.ServiceContainers.Count > 0)
                     {
                         var containerProvider = HostContext.GetService<IContainerOperationProvider>();
                         var containers = new List<Container.ContainerInfo>();
-                        if (context.Container != null)
+                        if (jobContext.Container != null)
                         {
-                            containers.Add(context.Container);
+                            containers.Add(jobContext.Container);
                         }
-                        containers.AddRange(context.SidecarContainers);
+                        containers.AddRange(jobContext.ServiceContainers);
 
                         preJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
                                                                           condition: $"{PipelineTemplateConstants.Success}()",
@@ -128,7 +149,16 @@ namespace GitHub.Runner.Worker
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
                             actionRunner.Condition = step.Condition;
-                            actionRunner.TryEvaluateDisplayName(message.ContextData, context);
+                            var contextData = new Pipelines.ContextData.DictionaryContextData();
+                            if (message.ContextData?.Count > 0)
+                            {
+                                foreach (var pair in message.ContextData)
+                                {
+                                    contextData[pair.Key] = pair.Value;
+                                }
+                            }
+
+                            actionRunner.TryEvaluateDisplayName(contextData, context);
                             jobSteps.Add(actionRunner);
                         }
                     }

@@ -91,7 +91,7 @@ namespace GitHub.Runner.Worker
             {
                 Inputs = inputs,
                 Endpoints = context.Endpoints,
-                Context = context.ExpressionValues as Dictionary<string, PipelineContextData>
+                Context = context.ExpressionValues
             };
 
             // variables

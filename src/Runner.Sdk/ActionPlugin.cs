@@ -38,14 +38,13 @@ namespace GitHub.Runner.Sdk
             this.Inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             this.TaskVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
-            this.Context = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
         public Dictionary<string, VariableValue> TaskVariables { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
-        public Dictionary<String, PipelineContextData> Context { get; set; }
+        public DictionaryContextData Context { get; set; } = new DictionaryContextData();
 
         [JsonIgnore]
         public VssConnection VssConnection
