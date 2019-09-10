@@ -554,7 +554,7 @@ namespace GitHub.Runner.Worker
 
             Trace.Info("Initialize GitHub context");
             var githubAccessToken = new StringContextData(Variables.Get("system.github.token"));
-            var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-tokn:{githubAccessToken}"));
+            var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
             HostContext.SecretMasker.AddValue(base64EncodedToken);
             var githubContext = new GitHubContext();
             githubContext["token"] = githubAccessToken;
