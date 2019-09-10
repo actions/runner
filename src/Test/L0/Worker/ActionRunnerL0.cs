@@ -294,7 +294,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             };
 
             _actionRunner.Action = action;
-            _context.Remove("matrix");
 
             // Act
             // Should not do anything if we don't have context on the display name
