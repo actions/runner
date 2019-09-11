@@ -188,6 +188,8 @@ namespace GitHub.Runner.Worker
                     HostContext.SecretMasker.AddValue(file.Ticket);
                 }
             }
+
+            HostContext.SecretMasker.AddRegex(@"https?:\/\/([a-zA-Z\d\-._~\!$&'()*+,;=%]+):([a-zA-Z\d\-._~\!$&'()*+,;=:%]*)@");
         }
 
         private void SetCulture(Pipelines.AgentJobRequestMessage message)
