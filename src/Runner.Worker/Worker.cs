@@ -188,7 +188,7 @@ namespace GitHub.Runner.Worker
                     HostContext.SecretMasker.AddValue(file.Ticket);
                 }
             }
-
+            // TODO: evaluate where this lives long term as we evaluate longer term secret detection
             HostContext.SecretMasker.AddRegex(@"https?:\/\/([a-zA-Z\d\-._~\!$&'()*+,;=%]+):([a-zA-Z\d\-._~\!$&'()*+,;=:%]*)@");
         }
 
