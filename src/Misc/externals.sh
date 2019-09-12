@@ -29,7 +29,7 @@ function checkRC() {
 function acquireExternalTool() {
     local download_source=$1 # E.g. https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
     local target_dir="$LAYOUT_DIR/externals/$2" # E.g. $LAYOUT_DIR/externals/vswhere
-    local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory. 
+    local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory.
 
     # Extract the portion of the URL after the protocol. E.g. github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
     local relative_url="${download_source#*://}"
@@ -122,6 +122,34 @@ function acquireExternalTool() {
     fi
 }
 
+# TODO
+# Alpine support for Node.js is experimental so there are no offical distrbutions, (see: https://github.com/nodejs/node/blob/master/BUILDING.md#platform-list)
+# function acquireNodeFromDocker() {
+#     set -x
+
+#     local node_image="node:$NODE12_VERSION-alpine"
+#     if [[ "$PRECACHE" != "" ]]; then
+#         echo "Pre-pulling $node_image"
+#         docker pull "$node_image"
+#         checkRC "docker pull $node_image"
+#     else
+#         echo "Pulling $node_image"
+#         docker pull "$node_image"
+#         checkRC "docker pull $node_image"
+#         local tmp_container_id
+#         tmp_container_id=$(docker create "$node_image")
+#         checkRC "docker create $node_image"
+
+#         # Copy node installation from container
+#         docker cp "$tmp_container_id":/usr/local "$LAYOUT_DIR/externals/node12_alpine"
+
+#         echo "Removing temporary container"
+#         docker rm "$tmp_container_id"
+#     fi
+
+#     set +x
+# }
+
 # Download the external tools only for Windows.
 if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/win-x64/node.exe" node12/bin
@@ -133,14 +161,16 @@ fi
 
 # Download the external tools only for OSX.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir        
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir
 fi
 
 # Download the external tools common across Linux PACKAGERUNTIMEs (excluding OSX).
-if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "rhel.6-x64" ]]; then  
+if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "rhel.6-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
+    # TODO
+    # acquireNodeFromDocker
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir	
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir
 fi

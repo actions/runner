@@ -31,5 +31,19 @@ namespace GitHub.Runner.Worker.Container
             }
             return portMappings;
         }
+
+        public static string ParsePathFromConfigEnv(IList<string> configEnvLines)
+        {
+            // Config format is VAR=value per line
+            foreach (var line in configEnvLines)
+            {
+                var keyValue = line.Split("=", 2);
+                if (keyValue.Length == 2 && string.Equals(keyValue[0], "PATH", StringComparison.OrdinalIgnoreCase))
+                {
+                    return keyValue[1];
+                }
+            }
+            return "";
+        }
     }
 }
