@@ -1,4 +1,4 @@
-using GitHub.DistributedTask.Pipelines;
+﻿using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using System;
@@ -240,7 +240,18 @@ namespace GitHub.Runner.Worker
                 throw new Exception("Required field 'name' is missing in ##[set-secret] command.");
             }
 
-            throw new NotSupportedException("Not supported yet");
+            // TODO: Later we will add the data to secret context after we figure out how secret works with set-output
+            if (string.IsNullOrWhiteSpace(command.Data))
+            {
+                context.Warning("Can't add secret mask for empty string.");
+            }
+            else
+            {
+                HostContext.SecretMasker.AddValue(command.Data);
+                Trace.Info($"Add new secret mask with length of {command.Data.Length}");
+            }
+
+            omitEcho = true;
         }
 
         private static class SetSecretCommandProperties
