@@ -218,7 +218,7 @@ bash ./Misc/externals.sh $RUNTIME_ID "Pre-Cache" || checkRC "externals.sh Pre-Ca
 
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     vswhere=$(find "$DOWNLOAD_DIR" -name vswhere.exe | head -1)
-    vs_location=$("$vswhere" -latest -property installationPath)
+    vs_location=$("$vswhere" -prerelease -latest -property installationPath)
     msbuild_location="$vs_location""\MSBuild\15.0\Bin\msbuild.exe"
 
     if [[ ! -e "${msbuild_location}" ]]; then
