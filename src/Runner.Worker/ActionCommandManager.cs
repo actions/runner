@@ -260,6 +260,30 @@ namespace GitHub.Runner.Worker
         }
     }
 
+    public sealed class SaveStateCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "save-state";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        {
+            if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
+            {
+                throw new Exception("Required field 'name' is missing in ##[save-state] command.");
+            }
+
+            context.IntraActionState[stateName] = command.Data;
+            context.Debug($"Save intra-action state {stateName} = {command.Data}");
+            omitEcho = true;
+        }
+
+        private static class SaveStateCommandProperties
+        {
+            public const String Name = "name";
+        }
+    }
+
     public sealed class AddMaskCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "add-mask";

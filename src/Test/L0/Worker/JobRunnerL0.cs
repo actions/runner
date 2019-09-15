@@ -139,7 +139,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
                 Assert.Equal(TaskResult.Failed, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.IsAny<IList<IStep>>()), Times.Never);
+                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>()), Times.Never);
             }
         }
 
@@ -157,7 +157,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _jobRunner.RunAsync(_message, _tokenSource.Token);
 
                 Assert.Equal(TaskResult.Canceled, _jobEc.Result);
-                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>(), It.IsAny<IList<IStep>>()), Times.Never);
+                _stepRunner.Verify(x => x.RunAsync(It.IsAny<IExecutionContext>()), Times.Never);
             }
         }
 

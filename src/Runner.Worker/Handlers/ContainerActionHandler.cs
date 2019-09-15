@@ -21,7 +21,7 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public ContainerActionExecutionData Data { get; set; }
 
-        public async Task RunAsync()
+        public async Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
             Trace.Entering();
@@ -66,13 +66,22 @@ namespace GitHub.Runner.Worker.Handlers
                 ContainerDisplayName = $"{Pipelines.Validation.NameValidation.Sanitize(Data.Image)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}",
             };
 
-            if (!string.IsNullOrEmpty(Data.EntryPoint))
+            if (stage == ActionRunStage.Main)
             {
-                container.ContainerEntryPoint = Inputs.GetValueOrDefault(Data.EntryPoint);
+                if (!string.IsNullOrEmpty(Data.EntryPoint))
+                {
+                    // use entrypoint from action.yml
+                    container.ContainerEntryPoint = Data.EntryPoint;
+                }
+                else
+                {
+                    // use entrypoint input, this is for action v1 which doesn't have action.yml
+                    container.ContainerEntryPoint = Inputs.GetValueOrDefault("entryPoint");
+                }
             }
-            else
+            else if (stage == ActionRunStage.Post)
             {
-                container.ContainerEntryPoint = Inputs.GetValueOrDefault("entryPoint");
+                container.ContainerEntryPoint = Data.Cleanup;
             }
 
             // create inputs context for template evaluation
@@ -180,7 +189,5 @@ namespace GitHub.Runner.Worker.Handlers
             }
 #endif
         }
-
     }
-
 }

@@ -59,10 +59,6 @@ namespace GitHub.DistributedTask.Pipelines
                     case ActionSourceType.Script:
                         reference = new ScriptReference();
                         break;
-
-                    case ActionSourceType.AgentPlugin:
-                        reference = new PluginReference();
-                        break;
                 }
 
                 using (var objectReader = value.CreateReader())

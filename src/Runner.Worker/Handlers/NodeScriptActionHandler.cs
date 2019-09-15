@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public NodeJSActionExecutionData Data { get; set; }
 
-        public async Task RunAsync()
+        public async Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
             Trace.Entering();
@@ -45,7 +45,16 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Resolve the target script.
-            string target = Data.Script;
+            string target = null;
+            if (stage == ActionRunStage.Main)
+            {
+                target = Data.Script;
+            }
+            else if (stage == ActionRunStage.Post)
+            {
+                target = Data.Cleanup;
+            }
+
             ArgUtil.NotNullOrEmpty(target, nameof(target));
             target = Path.Combine(ActionDirectory, target);
             ArgUtil.File(target, nameof(target));

@@ -11,12 +11,10 @@ using System.Text.RegularExpressions;
 using GitHub.DistributedTask.Pipelines.Expressions;
 using System.Text;
 
-namespace GitHub.Runner.Plugins.Repository
+namespace GitHub.Runner.Plugins.Repository.v1_1
 {
     public class CheckoutTask : IRunnerActionPlugin
     {
-        private readonly Regex _validSha1 = new Regex(@"\b[0-9a-f]{40}\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled, TimeSpan.FromSeconds(2));
-
         public async Task RunAsync(RunnerActionPluginExecutionContext executionContext, CancellationToken token)
         {
             string runnerWorkspace = executionContext.GetRunnerContext("workspace");
@@ -90,34 +88,7 @@ namespace GitHub.Runner.Plugins.Repository
                 executionContext.SetRepositoryPath(repoFullName, expectRepoPath, true);
             }
 
-            string sourceBranch;
-            string sourceVersion;
             string refInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Ref);
-            if (string.IsNullOrEmpty(refInput))
-            {
-                sourceBranch = executionContext.GetGitHubContext("ref");
-                sourceVersion = executionContext.GetGitHubContext("sha");
-            }
-            else
-            {
-                sourceBranch = refInput;
-                sourceVersion = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Version);  // version get removed when checkout move to repo in the graph
-                if (string.IsNullOrEmpty(sourceVersion) && RegexUtility.IsMatch(sourceBranch, WellKnownRegularExpressions.SHA1))
-                {
-                    sourceVersion = sourceBranch;
-
-                    // If Ref is a SHA and the repo is self, we need to use github.ref as source branch since it might be refs/pull/*
-                    if (string.Equals(workspaceRepo, repoFullName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        sourceBranch = executionContext.GetGitHubContext("ref");
-                    }
-                    else
-                    {
-                        sourceBranch = "refs/heads/master";
-                    }
-                }
-            }
-
             bool clean = StringUtil.ConvertToBoolean(executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Clean), true);
             string submoduleInput = executionContext.GetInput(Pipelines.PipelineConstants.CheckoutTaskInputs.Submodules);
 
@@ -135,36 +106,43 @@ namespace GitHub.Runner.Plugins.Repository
             }
 
             // register problem matcher
-            string problemMatcher = @"    
-{
-    ""problemMatcher"": [
-        {
-            ""owner"": ""checkout-git"",
-            ""pattern"": [
-                {
-                    ""regexp"": ""^fatal: (.*)$"",
-                    ""message"": 1
-                }
-            ]
-        }
-    ]
-}";
             string matcherFile = Path.Combine(tempDirectory, $"git_{Guid.NewGuid()}.json");
-            File.WriteAllText(matcherFile, problemMatcher, new UTF8Encoding(false));
+            File.WriteAllText(matcherFile, GitHubSourceProvider.ProblemMatcher, new UTF8Encoding(false));
             executionContext.Output($"##[add-matcher]{matcherFile}");
             try
             {
                 await new GitHubSourceProvider().GetSourceAsync(executionContext,
                                                                 expectRepoPath,
                                                                 repoFullName,
-                                                                sourceBranch,
-                                                                sourceVersion,
+                                                                refInput,
                                                                 clean,
                                                                 submoduleInput,
                                                                 fetchDepth,
                                                                 gitLfsSupport,
                                                                 accessToken,
                                                                 token);
+            }
+            finally
+            {
+                executionContext.Output("##[remove-matcher owner=checkout-git]");
+            }
+        }
+    }
+
+    public class CleanupTask : IRunnerActionPlugin
+    {
+        public async Task RunAsync(RunnerActionPluginExecutionContext executionContext, CancellationToken token)
+        {
+            string tempDirectory = executionContext.GetRunnerContext("temp");
+            ArgUtil.Directory(tempDirectory, nameof(tempDirectory));
+
+            // register problem matcher
+            string matcherFile = Path.Combine(tempDirectory, $"git_{Guid.NewGuid()}.json");
+            File.WriteAllText(matcherFile, GitHubSourceProvider.ProblemMatcher, new UTF8Encoding(false));
+            executionContext.Output($"##[add-matcher]{matcherFile}");
+            try
+            {
+                await new GitHubSourceProvider().CleanupAsync(executionContext);
             }
             finally
             {

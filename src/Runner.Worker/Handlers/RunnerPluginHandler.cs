@@ -16,14 +16,25 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public PluginActionExecutionData Data { get; set; }
 
-        public async Task RunAsync()
+        public async Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
             Trace.Entering();
             ArgUtil.NotNull(Data, nameof(Data));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
-            ArgUtil.NotNullOrEmpty(Data.Plugin, nameof(Data.Plugin));
+
+            string plugin = null;
+            if (stage == ActionRunStage.Main)
+            {
+                plugin = Data.Plugin;
+            }
+            else if (stage == ActionRunStage.Post)
+            {
+                plugin = Data.Cleanup;
+            }
+
+            ArgUtil.NotNullOrEmpty(plugin, nameof(plugin));
 
             // Update the env dictionary.
             AddPrependPathToEnvironment();
@@ -35,7 +46,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ActionCommandManager.EnablePluginInternalCommand();
                 try
                 {
-                    await runnerPlugin.RunPluginActionAsync(ExecutionContext, Data.Plugin, Inputs, Environment, RuntimeVariables, outputManager.OnDataReceived);
+                    await runnerPlugin.RunPluginActionAsync(ExecutionContext, plugin, Inputs, Environment, RuntimeVariables, outputManager.OnDataReceived);
                 }
                 finally
                 {

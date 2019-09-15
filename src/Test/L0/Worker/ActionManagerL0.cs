@@ -843,40 +843,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void LoadsPluginActionDefinition()
-        {
-            try
-            {
-                //Arrange
-                Setup();
-
-                Pipelines.ActionStep instance = new Pipelines.ActionStep()
-                {
-                    Id = Guid.NewGuid(),
-                    Reference = new Pipelines.PluginReference()
-                    {
-                        Plugin = "my-plugin"
-                    }
-                };
-
-                // Act.
-                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
-
-                // Assert.
-                Assert.NotNull(definition);
-                Assert.NotNull(definition.Data);
-                Assert.True(definition.Data.Execution.ExecutionType == ActionExecutionType.Plugin);
-                Assert.Equal("plugin.class, plugin", (definition.Data.Execution as PluginActionExecutionData).Plugin);
-            }
-            finally
-            {
-                Teardown();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void LoadsContainerActionDefinitionDockerfile()
         {
             try
@@ -1408,6 +1374,245 @@ runs:
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadsNodeActionDefinition_Cleanup()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                const string Content = @"
+# Container action
+name: 'Hello World'
+description: 'Greet the world and record the time'
+author: 'GitHub'
+inputs: 
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'node12'
+  main: 'task.js'
+  post: 'cleanup.js'
+";
+                Pipelines.ActionStep instance;
+                string directory;
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
+
+                // Act.
+                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
+                Assert.NotNull(definition.Data.Execution); // execution
+
+                Assert.NotNull((definition.Data.Execution as NodeJSActionExecutionData));
+                Assert.Equal("task.js", (definition.Data.Execution as NodeJSActionExecutionData).Script);
+                Assert.Equal("cleanup.js", (definition.Data.Execution as NodeJSActionExecutionData).Cleanup);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadsContainerActionDefinitionDockerfile_Cleanup()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                // Prepare the task.json content.
+                const string Content = @"
+# Container action
+name: 'Hello World'
+description: 'Greet the world and record the time'
+author: 'GitHub'
+inputs: 
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+  - '${{ inputs.greeting }}'
+  entrypoint: 'main.sh'
+  env:
+    Token: foo
+    Url: bar
+  post-entrypoint: 'cleanup.sh'
+";
+                Pipelines.ActionStep instance;
+                string directory;
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
+                _actionManager.CachedActionContainers[instance.Id] = new ContainerInfo() { ContainerImage = "image:1234" };
+
+                // Act.
+                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
+                Assert.NotNull(definition.Data.Execution); // execution
+
+                Assert.NotNull((definition.Data.Execution as ContainerActionExecutionData)); // execution.Node
+                Assert.Equal("image:1234", (definition.Data.Execution as ContainerActionExecutionData).Image);
+                Assert.Equal("main.sh", (definition.Data.Execution as ContainerActionExecutionData).EntryPoint);
+                Assert.Equal("cleanup.sh", (definition.Data.Execution as ContainerActionExecutionData).Cleanup);
+
+                foreach (var arg in (definition.Data.Execution as ContainerActionExecutionData).Arguments)
+                {
+                    Assert.Equal("${{ inputs.greeting }}", arg.AssertScalar("arg").ToString());
+                }
+
+                foreach (var env in (definition.Data.Execution as ContainerActionExecutionData).Environment)
+                {
+                    var key = env.Key.AssertString("key").Value;
+                    if (key == "Token")
+                    {
+                        Assert.Equal("foo", env.Value.AssertString("value").Value);
+                    }
+                    else if (key == "Url")
+                    {
+                        Assert.Equal("bar", env.Value.AssertString("value").Value);
+                    }
+                    else
+                    {
+                        throw new NotSupportedException(key);
+                    }
+                }
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadsPluginActionDefinition()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                const string Content = @"
+name: 'Hello World'
+description: 'Greet the world and record the time'
+author: 'Test Corporation'
+inputs: 
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  plugin: 'someplugin'
+";
+                Pipelines.ActionStep instance;
+                string directory;
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
+
+                // Act.
+                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
+                Assert.NotNull(definition.Data.Execution); // execution
+
+                Assert.NotNull((definition.Data.Execution as PluginActionExecutionData));
+                Assert.Equal("plugin.class, plugin", (definition.Data.Execution as PluginActionExecutionData).Plugin);
+                Assert.Equal("plugin.cleanup, plugin", (definition.Data.Execution as PluginActionExecutionData).Cleanup);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
             directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
@@ -1470,7 +1675,7 @@ runs:
             _dockerManager.Setup(x => x.DockerBuild(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(0));
 
             _pluginManager = new Mock<IRunnerPluginManager>();
-            _pluginManager.Setup(x => x.GetPluginAction(It.IsAny<string>())).Returns(new RunnerPluginActionInfo() { PluginTypeName = "plugin.class, plugin" });
+            _pluginManager.Setup(x => x.GetPluginAction(It.IsAny<string>())).Returns(new RunnerPluginActionInfo() { PluginTypeName = "plugin.class, plugin", PostPluginTypeName = "plugin.cleanup, plugin" });
 
             var actionManifest = new ActionManifestManager();
             actionManifest.Initialize(_hc);

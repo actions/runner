@@ -34,7 +34,17 @@ namespace GitHub.Runner.Worker
                 {
                     Description = "Get sources from a Git repository",
                     FriendlyName = "Get sources",
-                    PluginTypeName = "GitHub.Runner.Plugins.Repository.CheckoutTask, Runner.Plugins"
+                    PluginTypeName = "GitHub.Runner.Plugins.Repository.v1_0.CheckoutTask, Runner.Plugins"
+                }
+            },
+            {
+                "checkoutV1_1",
+                new RunnerPluginActionInfo()
+                {
+                    Description = "Get sources from a Git repository",
+                    FriendlyName = "Get sources",
+                    PluginTypeName = "GitHub.Runner.Plugins.Repository.v1_1.CheckoutTask, Runner.Plugins",
+                    PostPluginTypeName = "GitHub.Runner.Plugins.Repository.v1_1.CleanupTask, Runner.Plugins"
                 }
             },
             {
@@ -70,7 +80,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(plugin, nameof(plugin));
 
             // Only allow plugins we defined
-            if (!_actionPlugins.Any(x => x.Value.PluginTypeName == plugin))
+            if (!_actionPlugins.Any(x => x.Value.PluginTypeName == plugin || x.Value.PostPluginTypeName == plugin))
             {
                 throw new NotSupportedException(plugin);
             }
@@ -134,5 +144,6 @@ namespace GitHub.Runner.Worker
         public string Description { get; set; }
         public string FriendlyName { get; set; }
         public string PluginTypeName { get; set; }
+        public string PostPluginTypeName { get; set; }
     }
 }

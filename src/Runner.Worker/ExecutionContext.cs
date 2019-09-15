@@ -44,6 +44,7 @@ namespace GitHub.Runner.Worker
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
+        Dictionary<string, string> IntraActionState { get; }
         HashSet<string> OutputVariables { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
@@ -55,10 +56,13 @@ namespace GitHub.Runner.Worker
         List<ContainerInfo> ServiceContainers { get; }
         JobContext JobContext { get; }
 
+        // Only job level ExecutionContext has JobSteps
+        Queue<IStep> JobSteps { get; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Variables taskVariables = null, bool outputForward = false);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null);
 
         // logging
         bool WriteDebug { get; }
@@ -89,6 +93,7 @@ namespace GitHub.Runner.Worker
 
         // others
         void ForceTaskComplete();
+        void RegisterPostJobAction(string displayName, Pipelines.ActionStep action);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -106,12 +111,10 @@ namespace GitHub.Runner.Worker
 
         private IssueMatcherConfig[] _matchers;
 
-        private IRunnerLogPlugin _logPlugin;
         private IPagingLogger _logger;
         private IJobServerQueue _jobServerQueue;
         private ExecutionContext _parentExecutionContext;
 
-        private bool _outputForward = false;
         private Guid _mainTimelineId;
         private Guid _detailTimelineId;
         private int _childTimelineRecordOrder = 0;
@@ -130,7 +133,7 @@ namespace GitHub.Runner.Worker
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public List<SecureFile> SecureFiles { get; private set; }
         public Variables Variables { get; private set; }
-        // public Variables TaskVariables { get; private set; }
+        public Dictionary<string, string> IntraActionState { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, ContextScope> Scopes { get; private set; }
@@ -140,6 +143,9 @@ namespace GitHub.Runner.Worker
         public List<string> PrependPath { get; private set; }
         public ContainerInfo Container { get; set; }
         public List<ContainerInfo> ServiceContainers { get; private set; }
+
+        // Only job level ExecutionContext has JobSteps
+        public Queue<IStep> JobSteps { get; private set; }
 
         public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
 
@@ -225,7 +231,30 @@ namespace GitHub.Runner.Worker
             });
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Variables taskVariables = null, bool outputForward = false)
+        public void RegisterPostJobAction(string displayName, Pipelines.ActionStep action)
+        {
+            if (action.Reference.Type != ActionSourceType.Repository)
+            {
+                throw new NotSupportedException("Only action that has `action.yml` can define post job execution.");
+            }
+
+            var repositoryReference = action.Reference as RepositoryPathReference;
+            var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
+            var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
+                $"{repositoryReference.Name}{pathString}@{repositoryReference.Ref}";
+
+            this.Debug($"Register post job cleanup for action: {repoString}");
+
+            var actionRunner = HostContext.CreateService<IActionRunner>();
+            actionRunner.Action = action;
+            actionRunner.Stage = ActionRunStage.Post;
+            actionRunner.Condition = $"{Constants.Expressions.Always}()";
+            actionRunner.DisplayName = displayName;
+            actionRunner.ExecutionContext = Root.CreateChild(Guid.NewGuid(), displayName, $"{actionRunner.Action.Name}_post", null, null, IntraActionState);
+            Root.JobSteps.Enqueue(actionRunner);
+        }
+
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null)
         {
             Trace.Entering();
 
@@ -237,7 +266,14 @@ namespace GitHub.Runner.Worker
             child.Variables = Variables;
             child.Endpoints = Endpoints;
             child.SecureFiles = SecureFiles;
-            // child.TaskVariables = taskVariables;
+            if (intraActionState == null)
+            {
+                child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                child.IntraActionState = intraActionState;
+            }
             child.EnvironmentVariables = EnvironmentVariables;
             child.Scopes = Scopes;
             child.StepsContext = StepsContext;
@@ -251,7 +287,6 @@ namespace GitHub.Runner.Worker
             child.PrependPath = PrependPath;
             child.Container = Container;
             child.ServiceContainers = ServiceContainers;
-            child._outputForward = outputForward;
 
             child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
 
@@ -568,6 +603,9 @@ namespace GitHub.Runner.Worker
             // Prepend Path
             PrependPath = new List<string>();
 
+            // JobSteps for job ExecutionContext
+            JobSteps = new Queue<IStep>();
+
             // Proxy variables
             //             var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
             //             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
@@ -671,17 +709,6 @@ namespace GitHub.Runner.Worker
                 {
                     _parentExecutionContext._logger.Write(msg);
                 }
-            }
-
-            // write to plugin daemon, 
-            if (_outputForward)
-            {
-                if (_logPlugin == null)
-                {
-                    _logPlugin = HostContext.GetService<IRunnerLogPlugin>();
-                }
-
-                _logPlugin.Write(_record.Id, msg);
             }
 
             _jobServerQueue.QueueWebConsoleLine(_record.Id, msg);

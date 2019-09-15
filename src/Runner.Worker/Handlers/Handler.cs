@@ -20,8 +20,8 @@ namespace GitHub.Runner.Worker.Handlers
         IStepHost StepHost { get; set; }
         Dictionary<string, string> Inputs { get; set; }
         string ActionDirectory { get; set; }
-        Task RunAsync();
-        void PrintActionDetails();
+        Task RunAsync(ActionRunStage stage);
+        void PrintActionDetails(ActionRunStage stage);
     }
 
     public abstract class Handler : RunnerService
@@ -42,8 +42,14 @@ namespace GitHub.Runner.Worker.Handlers
         public Dictionary<string, string> Inputs { get; set; }
         public string ActionDirectory { get; set; }
 
-        public virtual void PrintActionDetails()
+        public virtual void PrintActionDetails(ActionRunStage stage)
         {
+            if (stage == ActionRunStage.Post)
+            {
+                ExecutionContext.Output($"Post job cleanup.");
+                return;
+            }
+
             string groupName = "";
             if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {

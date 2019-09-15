@@ -46,6 +46,7 @@
     Possible values:
         - dotnet     - the Microsoft.NETCore.App shared runtime
         - aspnetcore - the Microsoft.AspNetCore.App shared runtime
+        - windowsdesktop - the Microsoft.WindowsDesktop.App shared runtime
 .PARAMETER DryRun
     If set it will not perform installation but instead display what command line to use to consistently install
     currently requested version of dotnet cli. In example if you specify version 'latest' it will display a link
@@ -83,7 +84,7 @@ param(
    [string]$Version="Latest",
    [string]$InstallDir="<auto>",
    [string]$Architecture="<auto>",
-   [ValidateSet("dotnet", "aspnetcore", IgnoreCase = $false)]
+   [ValidateSet("dotnet", "aspnetcore", "windowsdesktop", IgnoreCase = $false)]
    [string]$Runtime,
    [Obsolete("This parameter may be removed in a future version of this script. The recommended alternative is '-Runtime dotnet'.")]
    [switch]$SharedRuntime,
@@ -268,6 +269,10 @@ function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel, [bool]$Co
     elseif ($Runtime -eq "aspnetcore") {
         $VersionFileUrl = "$UncachedFeed/aspnetcore/Runtime/$Channel/latest.version"
     }
+    # Currently, the WindowsDesktop runtime is manufactured with the .Net core runtime
+    elseif ($Runtime -eq "windowsdesktop") {
+        $VersionFileUrl = "$UncachedFeed/Runtime/$Channel/latest.version"
+    }
     elseif (-not $Runtime) {
         if ($Coherent) {
             $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.coherent.version"
@@ -324,6 +329,9 @@ function Get-Download-Link([string]$AzureFeed, [string]$SpecificVersion, [string
     }
     elseif ($Runtime -eq "aspnetcore") {
         $PayloadURL = "$AzureFeed/aspnetcore/Runtime/$SpecificVersion/aspnetcore-runtime-$SpecificVersion-win-$CLIArchitecture.zip"
+    }
+    elseif ($Runtime -eq "windowsdesktop") {
+        $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/windowsdesktop-runtime-$SpecificVersion-win-$CLIArchitecture.zip"
     }
     elseif (-not $Runtime) {
         $PayloadURL = "$AzureFeed/Sdk/$SpecificVersion/dotnet-sdk-$SpecificVersion-win-$CLIArchitecture.zip"
@@ -563,6 +571,10 @@ if ($Runtime -eq "dotnet") {
 elseif ($Runtime -eq "aspnetcore") {
     $assetName = "ASP.NET Core Runtime"
     $dotnetPackageRelativePath = "shared\Microsoft.AspNetCore.App"
+}
+elseif ($Runtime -eq "windowsdesktop") {
+    $assetName = ".NET Core Windows Desktop Runtime"
+    $dotnetPackageRelativePath = "shared\Microsoft.WindowsDesktop.App"
 }
 elseif (-not $Runtime) {
     $assetName = ".NET Core SDK"
