@@ -266,7 +266,7 @@ namespace GitHub.Runner.Worker
                 Trace.Error(ex);
             }
 
-            // Add container information to job context
+            // Gather runtime container information
             if (!container.IsJobContainer)
             {
                 var service = new DictionaryContextData()
@@ -284,6 +284,9 @@ namespace GitHub.Runner.Worker
             }
             else
             {
+                var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
+                var containerEnv = await _dockerManger.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
+                container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
             }
         }
@@ -383,7 +386,7 @@ namespace GitHub.Runner.Worker
         private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
-            string serviceHealth = await _dockerManger.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck);
+            string serviceHealth = (await _dockerManger.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
             {
                 // Container has no HEALTHCHECK
@@ -395,7 +398,7 @@ namespace GitHub.Runner.Worker
                 TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
                 executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
                 await Task.Delay(backoff, executionContext.CancellationToken);
-                serviceHealth = await _dockerManger.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck);
+                serviceHealth = (await _dockerManger.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
                 retryCount++;
             }
             if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))

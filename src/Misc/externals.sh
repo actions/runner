@@ -29,7 +29,7 @@ function checkRC() {
 function acquireExternalTool() {
     local download_source=$1 # E.g. https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
     local target_dir="$LAYOUT_DIR/externals/$2" # E.g. $LAYOUT_DIR/externals/vswhere
-    local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory. 
+    local fix_nested_dir=$3 # Flag that indicates whether to move nested contents up one directory.
 
     # Extract the portion of the URL after the protocol. E.g. github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe
     local relative_url="${download_source#*://}"
@@ -133,14 +133,16 @@ fi
 
 # Download the external tools only for OSX.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir        
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir
 fi
 
 # Download the external tools common across Linux PACKAGERUNTIMEs (excluding OSX).
-if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "rhel.6-x64" ]]; then  
+if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "rhel.6-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
+    # TODO: Repath this blob to use a consistent version format (_ vs .)
+    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12_4_0/alpine/node-v${NODE12_VERSION}-alpine.tar.gz" node12_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir	
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir
 fi

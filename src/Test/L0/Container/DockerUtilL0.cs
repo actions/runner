@@ -65,5 +65,66 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             );
             Assert.NotNull(result2Port6379Mapping);
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RegexParsesPathFromDockerConfigEnv()
+        {
+            // Arrange
+            var configOutput0 = new List<string>
+            {
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "MY_VAR=test"
+            };
+            var configOutput1 = new List<string>
+            {
+                "PATH=/bad idea:/really,bad,idea:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "MY_VAR=test"
+            };
+            var configOutput2 = new List<string>();
+            var configOutput3 = new List<string>
+            {
+                "NOT_A_PATH=/bad idea:/really,bad,idea:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "MY_VAR=test"
+            };
+            var configOutput4 = new List<string>
+            {
+                "PATH",
+                "PATH="
+            };
+            var configOutput5 = new List<string>
+            {
+                "PATH=/foo/bar:/baz",
+                "Path=/no/where"
+            };
+
+            // Act
+            var result0 = DockerUtil.ParsePathFromConfigEnv(configOutput0);
+            var result1 = DockerUtil.ParsePathFromConfigEnv(configOutput1);
+            var result2 = DockerUtil.ParsePathFromConfigEnv(configOutput2);
+            var result3 = DockerUtil.ParsePathFromConfigEnv(configOutput3);
+            var result4 = DockerUtil.ParsePathFromConfigEnv(configOutput4);
+            var result5 = DockerUtil.ParsePathFromConfigEnv(configOutput5);
+
+            // Assert
+            Assert.NotNull(result0);
+            Assert.Equal("/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", result0);
+
+            Assert.NotNull(result1);
+            Assert.Equal("/bad idea:/really,bad,idea:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", result1);
+
+            Assert.NotNull(result2);
+            Assert.Equal("", result2);
+
+            Assert.NotNull(result3);
+            Assert.Equal("", result3);
+
+            Assert.NotNull(result4);
+            Assert.Equal("", result4);
+
+            Assert.NotNull(result5);
+            Assert.Equal("/foo/bar:/baz", result5);
+        }
     }
 }

@@ -23,6 +23,8 @@ namespace GitHub.Runner.Worker.Handlers
 
         string ResolvePathForStepHost(string path);
 
+        Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext);
+
         Task<int> ExecuteAsync(string workingDirectory,
                                string fileName,
                                string arguments,
@@ -54,6 +56,11 @@ namespace GitHub.Runner.Worker.Handlers
         public string ResolvePathForStepHost(string path)
         {
             return path;
+        }
+
+        public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext)
+        {
+            return Task.FromResult<string>("node12");
         }
 
         public async Task<int> ExecuteAsync(string workingDirectory,
@@ -116,6 +123,36 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
+        public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext)
+        {
+            // Best effort to determine a compatible node runtime
+            // There may be more variation in which libraries are linked than just musl/glibc,
+            // so determine based on known distribtutions instead
+            var osReleaseIdCmd = "sh -c \"cat /etc/*release | grep ^ID\"";
+            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+
+            var output = new List<string>();
+            var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
+            string nodeExternal;
+            if (execExitCode == 0)
+            {
+                foreach (var line in output)
+                {
+                    executionContext.Debug(line);
+                    if (line.ToLower().Contains("alpine"))
+                    {
+                        nodeExternal = "node12_alpine";
+                        executionContext.Output($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+                        return nodeExternal;
+                    }
+                }
+            }
+            // Optimistically use the default
+            nodeExternal = "node12";
+            executionContext.Output($"Running JavaScript Action with default external tool: {nodeExternal}");
+            return nodeExternal;
+        }
+
         public async Task<int> ExecuteAsync(string workingDirectory,
                                             string fileName,
                                             string arguments,
@@ -130,8 +167,8 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Container, nameof(Container));
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
 
-            var dockerManger = HostContext.GetService<IDockerCommandManager>();
-            string dockerClientPath = dockerManger.DockerPath;
+            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            string dockerClientPath = dockerManager.DockerPath;
 
             // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
             IList<string> dockerCommandArgs = new List<string>();
@@ -145,6 +182,12 @@ namespace GitHub.Runner.Worker.Handlers
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
                 // the value directly in the command
                 dockerCommandArgs.Add($"-e {env.Key}");
+            }
+            if (!string.IsNullOrEmpty(PrependPath))
+            {
+                // Prepend tool paths to container's PATH
+                var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
+                dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
             }
 
             // CONTAINER

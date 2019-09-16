@@ -29,7 +29,7 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerNetworkPrune(IExecutionContext context);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs);
-        Task<string> DockerInspect(IExecutionContext context, string dockerObject, string options);
+        Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options);
         Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId);
     }
 
@@ -314,9 +314,9 @@ namespace GitHub.Runner.Worker.Container
 #endif
         }
 
-        public async Task<string> DockerInspect(IExecutionContext context, string dockerObject, string options)
+        public async Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
         {
-            return (await ExecuteDockerCommandAsync(context, "inspect", $"{options} {dockerObject}")).FirstOrDefault();
+            return await ExecuteDockerCommandAsync(context, "inspect", $"{options} {dockerObject}");
         }
 
         public async Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId)

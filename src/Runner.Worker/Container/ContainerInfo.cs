@@ -76,6 +76,7 @@ namespace GitHub.Runner.Worker.Container
         public string ContainerEntryPoint { get; set; }
         public string ContainerWorkDirectory { get; set; }
         public string ContainerCreateOptions { get; private set; }
+        public string ContainerRuntimePath { get; set; }
         public bool IsJobContainer { get; set; }
 
         public IDictionary<string, string> ContainerEnvironmentVariables
