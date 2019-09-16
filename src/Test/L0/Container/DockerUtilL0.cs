@@ -93,12 +93,19 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
                 "PATH",
                 "PATH="
             };
+            var configOutput5 = new List<string>
+            {
+                "PATH=/foo/bar:/baz",
+                "Path=/no/where"
+            };
 
             // Act
             var result0 = DockerUtil.ParsePathFromConfigEnv(configOutput0);
             var result1 = DockerUtil.ParsePathFromConfigEnv(configOutput1);
             var result2 = DockerUtil.ParsePathFromConfigEnv(configOutput2);
             var result3 = DockerUtil.ParsePathFromConfigEnv(configOutput3);
+            var result4 = DockerUtil.ParsePathFromConfigEnv(configOutput4);
+            var result5 = DockerUtil.ParsePathFromConfigEnv(configOutput5);
 
             // Assert
             Assert.NotNull(result0);
@@ -112,6 +119,12 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
 
             Assert.NotNull(result3);
             Assert.Equal("", result3);
+
+            Assert.NotNull(result4);
+            Assert.Equal("", result4);
+
+            Assert.NotNull(result5);
+            Assert.Equal("/foo/bar:/baz", result5);
         }
     }
 }

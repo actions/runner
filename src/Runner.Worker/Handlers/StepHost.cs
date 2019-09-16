@@ -138,6 +138,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 foreach (var line in output)
                 {
+                    executionContext.Debug(line);
                     if (line.ToLower().Contains("alpine"))
                     {
                         nodeExternal = "node12_alpine";

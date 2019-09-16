@@ -38,7 +38,7 @@ namespace GitHub.Runner.Worker.Container
             foreach (var line in configEnvLines)
             {
                 var keyValue = line.Split("=", 2);
-                if (keyValue.Length == 2 && string.Equals(keyValue[0], "PATH", StringComparison.OrdinalIgnoreCase))
+                if (keyValue.Length == 2 && string.Equals(keyValue[0], "PATH"))
                 {
                     return keyValue[1];
                 }
