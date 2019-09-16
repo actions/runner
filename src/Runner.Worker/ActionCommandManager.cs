@@ -527,7 +527,7 @@ namespace GitHub.Runner.Worker
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
         {
             var data = this is GroupCommandExtension ? command.Data : string.Empty;
-            context.Output($"##[{Command}]${data}");
+            context.Output($"##[{Command}]{data}");
             omitEcho = true;
         }
     }
