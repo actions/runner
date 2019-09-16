@@ -506,5 +506,28 @@ namespace GitHub.Runner.Worker
             public const String Line = "line";
             public const String Column = "col";
         }
+
+    }
+
+    public sealed class GroupCommandExtension : GroupingCommandExtension
+    {
+        public override string Command => "group";
+    }
+
+    public sealed class EndGroupCommandExtension : GroupingCommandExtension
+    {
+        public override string Command => "endgroup";
+    }
+
+    public abstract class GroupingCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public abstract string Command { get; }
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        {
+            context.Output($"##[{Command}]");
+            omitEcho = true;
+        }
     }
 }
