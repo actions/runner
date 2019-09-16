@@ -58,9 +58,9 @@ namespace GitHub.Runner.Worker.Handlers
             return path;
         }
 
-        public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext)
+        public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext)
         {
-            return await Task.FromResult<string>("node12");
+            return Task.FromResult<string>("node12");
         }
 
         public async Task<int> ExecuteAsync(string workingDirectory,
@@ -98,7 +98,6 @@ namespace GitHub.Runner.Worker.Handlers
         public string PrependPath { get; set; }
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
-        private string CachedNodeRuntimeVersion;
 
         public string ResolvePathForStepHost(string path)
         {
@@ -126,10 +125,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext)
         {
-            if (!string.IsNullOrEmpty(CachedNodeRuntimeVersion))
-            {
-                return CachedNodeRuntimeVersion;
-            }
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
@@ -138,20 +133,23 @@ namespace GitHub.Runner.Worker.Handlers
 
             var output = new List<string>();
             var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
+            string nodeExternal;
             if (execExitCode == 0)
             {
                 foreach (var line in output)
                 {
                     if (line.ToLower().Contains("alpine"))
                     {
-                        CachedNodeRuntimeVersion = "node12_alpine";
-                        return CachedNodeRuntimeVersion;
+                        nodeExternal = "node12_alpine";
+                        executionContext.Output($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+                        return nodeExternal;
                     }
                 }
             }
             // Optimistically use the default
-            CachedNodeRuntimeVersion = "node12";
-            return CachedNodeRuntimeVersion;
+            nodeExternal = "node12";
+            executionContext.Output($"Running JavaScript Action with default external tool: {nodeExternal}");
+            return nodeExternal;
         }
 
         public async Task<int> ExecuteAsync(string workingDirectory,
