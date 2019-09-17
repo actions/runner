@@ -1,12 +1,17 @@
 ## Features
-  - Best effort mask base64 and xml encoded secret. (#92)
-  - Env at root of file (#94)
+  - Users/thboop/evaluate step display name (#83)
+  - expand job container on runner side (#101)
+  - Support more containers for javascript actions (#105)
 
 ## Bugs
-  - N/A
+  - Add set-secret to only mask secret (#98)
+  - prefer action.yml over dockerfile in repository. (#99)
+  - Dont overwrite workingdir for service containers (#100)
+  - add group and endgroup commands (#106)
 
 ## Misc
-  - N/A
+  - Simplify container start / keep-alive script (#97)
+  - Allow vswhere to find VS pre-releases (#104)
 
 ## Agent Downloads  
 
