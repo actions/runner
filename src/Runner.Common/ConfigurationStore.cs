@@ -44,6 +44,9 @@ namespace GitHub.Runner.Common
         public string ServerUrl { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
+        public string GitHubUrl { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public string WorkFolder { get; set; }
 
         [DataMember(EmitDefaultValue = false)]

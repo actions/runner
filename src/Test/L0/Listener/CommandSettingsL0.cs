@@ -500,7 +500,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Token, // argName
-                        "personal access token", // description
+                        "GitHub PAT", // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -527,7 +527,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "GitHub organization URL", // description
+                        "GitHub Repository URL", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -665,7 +665,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "GitHub organization URL", // description
+                        "GitHub Repository URL", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -694,7 +694,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "GitHub organization URL", // description
+                        "GitHub Repository URL", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
