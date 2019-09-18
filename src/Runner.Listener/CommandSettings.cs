@@ -214,7 +214,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Token,
-                description: "personal access token",
+                description: "GitHub PAT",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -230,7 +230,7 @@ namespace GitHub.Runner.Listener
 
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Url,
-                description: "GitHub organization URL",
+                description: "GitHub Repository URL",
                 defaultValue: string.Empty,
                 validator: Validators.ServerUrlValidator);
         }

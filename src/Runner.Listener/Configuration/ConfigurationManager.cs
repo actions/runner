@@ -16,6 +16,9 @@ using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -67,6 +70,29 @@ namespace GitHub.Runner.Listener.Configuration
 
         public async Task ConfigureAsync(CommandSettings command)
         {
+#if !OS_WINDOWS
+            _term.WriteLine("\x1b[1;97m┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃        ____ _ _   _   _       _          _        _   _                      ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃                                                                              ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃                       \x1b[1;34mSelf-hosted runner registration\x1b[1;97m                        ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┃                                                                              ┃\x1b[0m");
+            _term.WriteLine("\x1b[1;97m┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\x1b[0m");
+#else
+            _term.WriteLine("--------------------------------------------------------------------------------");
+            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |");
+            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |");
+            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |");
+            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |");
+            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |");
+            _term.WriteLine("|                                                                              |");
+            _term.WriteLine("|                       Self-hosted runner registration                        |");
+            _term.WriteLine("|                                                                              |");
+            _term.WriteLine("--------------------------------------------------------------------------------");
+#endif
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
@@ -150,12 +176,25 @@ namespace GitHub.Runner.Listener.Configuration
             while (true)
             {
                 // Get the URL
-                runnerSettings.ServerUrl = command.GetUrl();
+                var inputUrl = command.GetUrl();
+                if (!inputUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    runnerSettings.ServerUrl = inputUrl;
+                    // Get the credentials
+                    credProvider = GetCredentialProvider(command, runnerSettings.ServerUrl);
+                    creds = credProvider.GetVssCredentials(HostContext);
+                    Trace.Info("legacy vss cred retrieved");
+                }
+                else
+                {
+                    runnerSettings.GitHubUrl = inputUrl;
+                    var githubToken = command.GetToken();
+                    GitHubAuthResult authResult = await GetTenantCredential(inputUrl, githubToken);
+                    runnerSettings.ServerUrl = authResult.TenantUrl;
+                    creds = authResult.ToVssCredentials();
+                    Trace.Info("cred retrieved via GitHub auth");
+                }
 
-                // Get the credentials
-                credProvider = GetCredentialProvider(command, runnerSettings.ServerUrl);
-                creds = credProvider.GetVssCredentials(HostContext);
-                Trace.Info("cred retrieved");
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
@@ -440,9 +479,20 @@ namespace GitHub.Runner.Listener.Configuration
                     var credentialManager = HostContext.GetService<ICredentialManager>();
 
                     // Get the credentials
-                    var credProvider = GetCredentialProvider(command, settings.ServerUrl);
-                    VssCredentials creds = credProvider.GetVssCredentials(HostContext);
-                    Trace.Info("cred retrieved");
+                    VssCredentials creds = null;
+                    if (string.IsNullOrEmpty(settings.GitHubUrl))
+                    {
+                        var credProvider = GetCredentialProvider(command, settings.ServerUrl);
+                        creds = credProvider.GetVssCredentials(HostContext);
+                        Trace.Info("legacy vss cred retrieved");
+                    }
+                    else
+                    {
+                        var githubToken = command.GetToken();
+                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken);
+                        creds = authResult.ToVssCredentials();
+                        Trace.Info("cred retrieved via GitHub auth");
+                    }
 
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     bool isHostedServer = await IsHostedServer(settings.ServerUrl, creds);
@@ -611,6 +661,36 @@ namespace GitHub.Runner.Listener.Configuration
                 // It's more likely to be Hosted since OnPremises is always behind and customer can update their agent if are on-prem
                 Trace.Error(ex);
                 return true;
+            }
+        }
+
+        private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken)
+        {
+            var gitHubUrl = new UriBuilder(githubUrl);
+            var githubApiUrl = $"https://api.github.com/repos/{gitHubUrl.Path.Trim('/')}/actions-runners/registration";
+            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+            using (var httpClient = new HttpClient(httpClientHandler))
+            {
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
+                httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.shuri-preview+json"));
+                var response = await httpClient.PostAsync(githubApiUrl, new StringContent("", null, "application/json"));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
+                }
+                else
+                {
+                    _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                    var errorResponse = await response.Content.ReadAsStringAsync();
+                    _term.WriteError(errorResponse);
+                    response.EnsureSuccessStatusCode();
+                    return null;
+                }
             }
         }
     }
