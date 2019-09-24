@@ -16,11 +16,9 @@ namespace GitHub.Runner.Common
         bool Silent { get; set; }
         string ReadLine();
         string ReadSecret();
-        void Write(string message);
-        void Write(string message, ConsoleColor colorCode);
+        void Write(string message, ConsoleColor? colorCode = null);
         void WriteLine();
-        void WriteLine(string line);
-        void WriteLine(string line, ConsoleColor colorCode);
+        void WriteLine(string line, ConsoleColor? colorCode = null);
         void WriteError(Exception ex);
         void WriteError(string line);
         void WriteSection(string message);
@@ -93,23 +91,20 @@ namespace GitHub.Runner.Common
             return val;
         }
 
-        public void Write(string message)
+        public void Write(string message, ConsoleColor? colorCode = null)
         {
             Trace.Info($"WRITE: {message}");
             if (!Silent)
             {
-                Console.Write(message);
-            }
-        }
-
-        public void Write(string message, ConsoleColor colorCode)
-        {
-            Trace.Info($"WRITE: {message}");
-            if (!Silent)
-            {
-                Console.ForegroundColor = colorCode;
-                Console.Write(message);
-                Console.ResetColor();
+                if(colorCode != null)
+                {
+                    Console.ForegroundColor = colorCode.Value;
+                    Console.Write(message);
+                    Console.ResetColor();
+                }
+                else {
+                    Console.Write(message);
+                }
             }
         }
 
@@ -120,23 +115,20 @@ namespace GitHub.Runner.Common
 
         // Do not add a format string overload. Terminal messages are user facing and therefore
         // should be localized. Use the Loc method in the StringUtil class.
-        public void WriteLine(string line)
+        public void WriteLine(string line, ConsoleColor? colorCode = null)
         {
             Trace.Info($"WRITE LINE: {line}");
             if (!Silent)
             {
-                Console.WriteLine(line);
-            }
-        }
-
-        public void WriteLine(string line, ConsoleColor colorCode)
-        {
-            Trace.Info($"WRITE LINE: {line}");
-            if (!Silent)
-            {
-                Console.ForegroundColor = colorCode;
-                Console.WriteLine(line);
-                Console.ResetColor();
+                if(colorCode != null)
+                {
+                    Console.ForegroundColor = colorCode.Value;
+                    Console.WriteLine(line);
+                    Console.ResetColor();
+                }
+                else {
+                    Console.WriteLine(line);
+                }
             }
         }
 

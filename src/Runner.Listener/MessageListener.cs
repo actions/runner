@@ -60,7 +60,6 @@ namespace GitHub.Runner.Listener
             Trace.Info(_settings);
 
             // Capabilities.
-            //_term.WriteLine("Scanning for tool capabilities.");
             Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(_settings, token);
 
             // Create connection.
