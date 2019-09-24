@@ -177,7 +177,7 @@ namespace GitHub.Runner.Common
         public void WriteSuccessMessage(string message)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.Write("✔ ");
+            Console.Write("√ ");
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine(message);
             Console.ResetColor();
