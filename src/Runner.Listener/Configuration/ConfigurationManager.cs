@@ -218,26 +218,19 @@ namespace GitHub.Runner.Listener.Configuration
 
             _term.WriteSection("Runner Registration");
 
-            try
-            {
-                string poolName = "default";
+            //Get all the agent pools, and select the first private pool
+            List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
+            TaskAgentPool agentPool = agentPools?.Where(x => x.IsHosted == false).FirstOrDefault();
 
-                TaskAgentPool agentPool = (await _runnerServer.GetAgentPoolsAsync(poolName)).FirstOrDefault();
-                if (agentPool == null)
-                {
-                    throw new TaskAgentPoolNotFoundException($"Runner pool not found: '{poolName}'");
-                }
-                else
-                {
-                    Trace.Info("Found pool {0} with id {1} and name {2}", poolName, agentPool.Id, agentPool.Name);
-                    runnerSettings.PoolId = agentPool.Id;
-                    runnerSettings.PoolName = agentPool.Name;
-                }
-            }
-            catch (Exception e) when (!command.Unattended)
+            if (agentPool == null)
             {
-                _term.WriteError(e);
-                _term.WriteError("Failed to find pool name. Try again or ctrl-c to quit");
+                throw new TaskAgentPoolNotFoundException($"Could not find any private pool. Contact support.");
+            }
+            else
+            {
+                Trace.Info("Found a private pool with id {1} and name {2}", agentPool.Id, agentPool.Name);
+                runnerSettings.PoolId = agentPool.Id;
+                runnerSettings.PoolName = agentPool.Name;
             }
 
             TaskAgent agent;
@@ -249,7 +242,6 @@ namespace GitHub.Runner.Listener.Configuration
                 Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(runnerSettings, CancellationToken.None);
 
                 _term.WriteLine();
-                //_term.WriteSuccessMessage("Scanned tool capabilities");
                 
                 var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
                 Trace.Verbose("Returns {0} agents", agents.Count);

@@ -29,7 +29,7 @@ namespace GitHub.Runner.Common
         // Configuration
         Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
         Task DeleteAgentAsync(int agentPoolId, int agentId);
-        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, TaskAgentPoolType poolType = TaskAgentPoolType.Automation);
+        Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName = null, TaskAgentPoolType poolType = TaskAgentPoolType.Automation);
         Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null);
         Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent);
 
@@ -239,7 +239,7 @@ namespace GitHub.Runner.Common
         // Configuration
         //-----------------------------------------------------------------
 
-        public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName, TaskAgentPoolType poolType = TaskAgentPoolType.Automation)
+        public Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName = null, TaskAgentPoolType poolType = TaskAgentPoolType.Automation)
         {
             CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.GetAgentPoolsAsync(agentPoolName, poolType: poolType);
