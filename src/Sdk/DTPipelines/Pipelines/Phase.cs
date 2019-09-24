@@ -353,11 +353,6 @@ namespace GitHub.DistributedTask.Pipelines
                 var repoAction = actionStep.Reference as RepositoryPathReference;
                 defaultActionName = NameValidation.Sanitize(repoAction.Name ?? PipelineConstants.SelfAlias, context.BuildOptions.AllowHyphenNames);
             }
-            else if (actionStep.Reference.Type == ActionSourceType.AgentPlugin)
-            {
-                var pluginAction = actionStep.Reference as PluginReference;
-                defaultActionName = NameValidation.Sanitize(pluginAction.Plugin);
-            }
             else if (actionStep.Reference.Type == ActionSourceType.Script)
             {
                 defaultActionName = "run";

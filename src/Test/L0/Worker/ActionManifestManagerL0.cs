@@ -65,6 +65,51 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Load_ContainerAction_Dockerfile_Post()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                //Act
+                var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "dockerfileaction_cleanup.yml"));
+
+                //Assert
+
+                Assert.Equal(result.Name, "Hello World");
+                Assert.Equal(result.Description, "Greet the world and record the time");
+                Assert.Equal(result.Inputs.Count, 2);
+                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
+                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
+                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
+                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+
+                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.Container);
+
+                var containerAction = result.Execution as ContainerActionExecutionData;
+
+                Assert.Equal(containerAction.Image, "Dockerfile");
+                Assert.Equal(containerAction.EntryPoint, "main.sh");
+                Assert.Equal(containerAction.Cleanup, "cleanup.sh");
+                Assert.Equal(containerAction.Arguments[0].ToString(), "bzz");
+                Assert.Equal(containerAction.Environment[0].Key.ToString(), "Token");
+                Assert.Equal(containerAction.Environment[0].Value.ToString(), "foo");
+                Assert.Equal(containerAction.Environment[1].Key.ToString(), "Url");
+                Assert.Equal(containerAction.Environment[1].Value.ToString(), "bar");
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Load_ContainerAction_NoArgsNoEnv()
         {
             try
@@ -221,6 +266,49 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var nodeAction = result.Execution as NodeJSActionExecutionData;
 
                 Assert.Equal(nodeAction.Script, "main.js");
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_NodeAction_Cleanup()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                //Act
+                var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "nodeaction_cleanup.yml"));
+
+                //Assert
+                Assert.Equal(result.Name, "Hello World");
+                Assert.Equal(result.Description, "Greet the world and record the time");
+                Assert.Equal(result.Inputs.Count, 2);
+                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
+                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
+                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
+                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal(result.Deprecated.Count, 1);
+
+                Assert.True(result.Deprecated.ContainsKey("greeting"));
+                result.Deprecated.TryGetValue("greeting", out string value);
+                Assert.Equal(value, "This property has been deprecated");
+
+                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.NodeJS);
+
+                var nodeAction = result.Execution as NodeJSActionExecutionData;
+
+                Assert.Equal(nodeAction.Script, "main.js");
+                Assert.Equal(nodeAction.Cleanup, "cleanup.js");
             }
             finally
             {

@@ -40,9 +40,10 @@
                 "properties": {
                     "using": "non-empty-string",
                     "image": "non-empty-string",
-                    "entrypoint": "string",
+                    "entrypoint": "non-empty-string",
                     "args": "container-runs-args",
-                    "env": "container-runs-env"
+                    "env": "container-runs-env",
+                    "post-entrypoint": "non-empty-string"
                 }
             }
         },
@@ -64,7 +65,8 @@
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
-                    "main": "non-empty-string"
+                    "main": "non-empty-string",
+                    "post": "non-empty-string"
                 }
             }
         },

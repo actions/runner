@@ -148,6 +148,7 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Adding {action.DisplayName}.");
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
+                            actionRunner.Stage = ActionRunStage.Main;
                             actionRunner.Condition = step.Condition;
                             var contextData = new Pipelines.ContextData.DictionaryContextData();
                             if (message.ContextData?.Count > 0)
@@ -181,7 +182,7 @@ namespace GitHub.Runner.Worker
                         if (step is IActionRunner actionStep)
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName, outputForward: true);
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName);
                         }
                     }
 

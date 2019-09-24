@@ -229,6 +229,16 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Action container env: {StringUtil.ConvertToJson(containerAction.Environment)}.");
                         }
 
+                        if (!string.IsNullOrEmpty(containerAction.EntryPoint))
+                        {
+                            Trace.Info($"Action container entrypoint: {containerAction.EntryPoint}.");
+                        }
+
+                        if (!string.IsNullOrEmpty(containerAction.Cleanup))
+                        {
+                            Trace.Info($"Action container cleanup entrypoint: {containerAction.Cleanup}.");
+                        }
+
                         if (CachedActionContainers.TryGetValue(action.Id, out var container))
                         {
                             Trace.Info($"Image '{containerAction.Image}' already built/pulled, use image: {container.ContainerImage}.");
@@ -239,6 +249,7 @@ namespace GitHub.Runner.Worker
                     {
                         var nodeAction = definition.Data.Execution as NodeJSActionExecutionData;
                         Trace.Info($"Action node.js file: {nodeAction.Script}.");
+                        Trace.Info($"Action cleanup node.js file: {nodeAction.Cleanup ?? "N/A"}.");
                     }
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Plugin)
                     {
@@ -251,6 +262,12 @@ namespace GitHub.Runner.Worker
 
                         pluginAction.Plugin = plugin.PluginTypeName;
                         Trace.Info($"Action plugin: {plugin.PluginTypeName}.");
+
+                        if (!string.IsNullOrEmpty(plugin.PostPluginTypeName))
+                        {
+                            pluginAction.Cleanup = plugin.PostPluginTypeName;
+                            Trace.Info($"Action cleanup plugin: {plugin.PluginTypeName}.");
+                        }
                     }
                     else
                     {
@@ -302,23 +319,6 @@ namespace GitHub.Runner.Worker
                 definition.Data.Execution = new ScriptActionExecutionData();
                 definition.Data.Name = "Run";
                 definition.Data.Description = "Execute a script";
-            }
-            else if (action.Reference.Type == Pipelines.ActionSourceType.AgentPlugin)
-            {
-                var pluginAction = action.Reference as Pipelines.PluginReference;
-                var pluginManager = HostContext.GetService<IRunnerPluginManager>();
-                var plugin = pluginManager.GetPluginAction(pluginAction.Plugin);
-
-                ArgUtil.NotNull(plugin, pluginAction.Plugin);
-                ArgUtil.NotNullOrEmpty(plugin.PluginTypeName, pluginAction.Plugin);
-
-                definition.Data.Execution = new PluginActionExecutionData()
-                {
-                    Plugin = plugin.PluginTypeName
-                };
-
-                definition.Data.Name = plugin.FriendlyName;
-                definition.Data.Description = plugin.Description;
             }
             else
             {
@@ -753,6 +753,8 @@ namespace GitHub.Runner.Worker
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Container;
 
+        public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
+
         public string Image { get; set; }
 
         public string EntryPoint { get; set; }
@@ -760,30 +762,44 @@ namespace GitHub.Runner.Worker
         public SequenceToken Arguments { get; set; }
 
         public MappingToken Environment { get; set; }
+
+        public string Cleanup { get; set; }
     }
 
     public sealed class NodeJSActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.NodeJS;
 
+        public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
+
         public string Script { get; set; }
+
+        public string Cleanup { get; set; }
     }
 
     public sealed class PluginActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Plugin;
 
+        public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
+
         public string Plugin { get; set; }
+
+        public string Cleanup { get; set; }
     }
 
     public sealed class ScriptActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Script;
+
+        public override bool HasCleanup => false;
     }
 
     public abstract class ActionExecutionData
     {
         public abstract ActionExecutionType ExecutionType { get; }
+
+        public abstract bool HasCleanup { get; }
     }
 
     public class ContainerSetupInfo

@@ -253,34 +253,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void EvaluateExpansionOfAgentDisplayName()
-        {
-            // Arrange
-            Setup();
-            var actionId = Guid.NewGuid();
-            var action = new Pipelines.ActionStep()
-            {
-                Name = "action",
-                Id = actionId,
-                Reference = new Pipelines.PluginReference()
-                {
-                    Plugin = "Test Plugin"
-                }
-            };
-            _actionRunner.Action = action;
-
-            // Act
-            // Should expand the displaynameToken and set the display name to that
-            var didUpdateDisplayName = _actionRunner.TryEvaluateDisplayName(_context, _actionRunner.ExecutionContext);
-
-            // Assert
-            Assert.True(didUpdateDisplayName);
-            Assert.Equal("Run Test Plugin", _actionRunner.DisplayName);
-        }
-
-                [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void EvaluateDisplayNameWithoutContext()
         {
             // Arrange
@@ -360,6 +332,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.ExpressionValues).Returns(_context);
+            _ec.Setup(x => x.IntraActionState).Returns(new Dictionary<string, string>());
             _ec.Setup(x => x.EnvironmentVariables).Returns(new Dictionary<string, string>());
             _ec.Setup(x => x.SetGitHubContext(It.IsAny<string>(), It.IsAny<string>()));
             _ec.Setup(x => x.GetGitHubContext(It.IsAny<string>())).Returns("{\"foo\":\"bar\"}");

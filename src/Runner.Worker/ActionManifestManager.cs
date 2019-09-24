@@ -246,6 +246,8 @@ namespace GitHub.Runner.Worker
             var envToken = default(MappingToken);
             var mainToken = default(StringToken);
             var pluginToken = default(StringToken);
+            var postToken = default(StringToken);
+            var postEntrypointToken = default(StringToken);
             foreach (var run in runsMapping)
             {
                 var runsKey = run.Key.AssertString("runs key").Value;
@@ -272,6 +274,12 @@ namespace GitHub.Runner.Worker
                     case "plugin":
                         pluginToken = run.Value.AssertString("plugin");
                         break;
+                    case "post":
+                        postToken = run.Value.AssertString("post");
+                        break;
+                    case "post-entrypoint":
+                        postEntrypointToken = run.Value.AssertString("post-entrypoint");
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -293,7 +301,8 @@ namespace GitHub.Runner.Worker
                             Image = imageToken.Value,
                             Arguments = argsToken,
                             EntryPoint = entrypointToken?.Value,
-                            Environment = envToken
+                            Environment = envToken,
+                            Cleanup = postEntrypointToken?.Value
                         };
                     }
                 }
@@ -307,7 +316,8 @@ namespace GitHub.Runner.Worker
                     {
                         return new NodeJSActionExecutionData()
                         {
-                            Script = mainToken.Value
+                            Script = mainToken.Value,
+                            Cleanup = postToken?.Value
                         };
                     }
                 }

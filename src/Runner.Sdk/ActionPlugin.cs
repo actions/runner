@@ -36,13 +36,11 @@ namespace GitHub.Runner.Sdk
             _trace = trace;
             this.Endpoints = new List<ServiceEndpoint>();
             this.Inputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            this.TaskVariables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
             this.Variables = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
         }
 
         public List<ServiceEndpoint> Endpoints { get; set; }
         public Dictionary<string, VariableValue> Variables { get; set; }
-        public Dictionary<string, VariableValue> TaskVariables { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public DictionaryContextData Context { get; set; } = new DictionaryContextData();
 
@@ -193,6 +191,11 @@ namespace GitHub.Runner.Sdk
         public void SetRepositoryPath(string repoName, string path, bool workspaceRepo)
         {
             Output($"##[internal-set-repo-path repoFullName={repoName};workspaceRepo={workspaceRepo.ToString()}]{path}");
+        }
+
+        public void SetIntraActionState(string name, string value)
+        {
+            Output($"##[save-state name={Escape(name)}]{Escape(value)}");
         }
 
         public String GetRunnerContext(string contextName)

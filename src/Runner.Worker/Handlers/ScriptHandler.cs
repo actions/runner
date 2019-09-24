@@ -20,8 +20,13 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public ScriptActionExecutionData Data { get; set; }
 
-        public override void PrintActionDetails()
+        public override void PrintActionDetails(ActionRunStage stage)
         {
+            if (stage == ActionRunStage.Post)
+            {
+                throw new NotSupportedException("Script action should not have 'Post' job action.");
+            }
+
             Inputs.TryGetValue("script", out string contents);
             contents = contents ?? string.Empty;
             if (Action.Type == Pipelines.ActionSourceType.Script)
@@ -106,8 +111,13 @@ namespace GitHub.Runner.Worker.Handlers
             ExecutionContext.Output("##[endgroup]");
         }
 
-        public async Task RunAsync()
+        public async Task RunAsync(ActionRunStage stage)
         {
+            if (stage == ActionRunStage.Post)
+            {
+                throw new NotSupportedException("Script action should not have 'Post' job action.");
+            }
+
             // Validate args
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));

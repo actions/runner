@@ -16,9 +16,16 @@ using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker
 {
+    public enum ActionRunStage
+    {
+        Main,
+        Post,
+    }
+
     [ServiceLocator(Default = typeof(ActionRunner))]
     public interface IActionRunner : IStep, IRunnerService
     {
+        ActionRunStage Stage { get; set; }
         Boolean TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context);
         Pipelines.ActionStep Action { get; set; }
     }
@@ -29,13 +36,15 @@ namespace GitHub.Runner.Worker
 
         private string _displayName;
 
+        public ActionRunStage Stage { get; set; }
+
         public string Condition { get; set; }
 
         public TemplateToken ContinueOnError => Action?.ContinueOnError;
 
         public string DisplayName
         {
-            get 
+            get
             {
                 // TODO: remove the Action.DisplayName check post m158 deploy, it is done for back compat for older servers
                 if (!string.IsNullOrEmpty(Action?.DisplayName))
@@ -43,6 +52,10 @@ namespace GitHub.Runner.Worker
                     return Action?.DisplayName;
                 }
                 return string.IsNullOrEmpty(_displayName) ? "run" : _displayName;
+            }
+            set
+            {
+                _displayName = value;
             }
         }
 
@@ -67,6 +80,22 @@ namespace GitHub.Runner.Worker
 
             ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
+
+            // The action has post cleanup defined.
+            // we need to create timeline record for them and add them to the step list that StepRunner is using
+            if (handlerData.HasCleanup && Stage == ActionRunStage.Main)
+            {
+                string postDisplayName = null;
+                if (this.DisplayName.StartsWith(PipelineTemplateConstants.RunDisplayPrefix))
+                {
+                    postDisplayName = $"Post {this.DisplayName.Substring(PipelineTemplateConstants.RunDisplayPrefix.Length)}";
+                }
+                else
+                {
+                    postDisplayName = $"Post {this.DisplayName}";
+                }
+                ExecutionContext.RegisterPostJobAction(postDisplayName, Action);
+            }
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
 
@@ -106,7 +135,7 @@ namespace GitHub.Runner.Worker
             foreach (KeyValuePair<string, string> input in inputs)
             {
                 string message = "";
-                if (definition.Data?.Deprecated?.TryGetValue(input.Key, out message)==true)
+                if (definition.Data?.Deprecated?.TryGetValue(input.Key, out message) == true)
                 {
                     ExecutionContext.Warning(String.Format("Input '{0}' has been deprecated with message: {1}", input.Key, message));
                 }
@@ -126,7 +155,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            // Load the task environment.
+            // Load the action environment.
             ExecutionContext.Debug("Loading env");
             var environment = new Dictionary<String, String>(VarUtil.EnvironmentVariableKeyComparer);
 
@@ -143,6 +172,12 @@ namespace GitHub.Runner.Worker
                 environment[env.Key] = env.Value ?? string.Empty;
             }
 
+            // Apply action's intra-action state at last
+            foreach (var state in ExecutionContext.IntraActionState)
+            {
+                environment[$"STATE_{state.Key}"] = state.Value ?? string.Empty;
+            }
+
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                             ExecutionContext,
@@ -155,10 +190,10 @@ namespace GitHub.Runner.Worker
                             actionDirectory: definition.Directory);
 
             // Print out action details
-            handler.PrintActionDetails();
+            handler.PrintActionDetails(Stage);
 
             // Run the task.
-            await handler.RunAsync();
+            await handler.RunAsync(Stage);
         }
 
         public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)
@@ -209,18 +244,12 @@ namespace GitHub.Runner.Worker
                 var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
                     $"{repositoryReference.Name}{pathString}@{repositoryReference.Ref}";
                 tokenToParse = new StringToken(null, null, null, repoString);
-            } 
+            }
             else if (action.Reference?.Type == ActionSourceType.ContainerRegistry)
             {
                 prefix = PipelineTemplateConstants.RunDisplayPrefix;
                 var containerReference = action.Reference as ContainerRegistryReference;
                 tokenToParse = new StringToken(null, null, null, containerReference.Image);
-            }
-            else if (action.Reference?.Type == ActionSourceType.AgentPlugin)
-            {
-                prefix = PipelineTemplateConstants.RunDisplayPrefix;
-                var pluginReference = action.Reference as PluginReference;
-                tokenToParse = new StringToken(null, null, null, pluginReference.Plugin);
             }
             else if (action.Reference?.Type == ActionSourceType.Script)
             {
@@ -236,7 +265,7 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
-            else 
+            else
             {
                 context.Error($"Encountered an unknown action reference type when evaluating the display name: {action.Reference?.Type}");
                 return displayName;
@@ -250,9 +279,9 @@ namespace GitHub.Runner.Worker
             // Try evaluating fully
             var schema = new PipelineTemplateSchemaFactory().CreateSchema();
             var templateEvaluator = new PipelineTemplateEvaluator(context.ToTemplateTraceWriter(), schema);
-            try 
+            try
             {
-                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, out displayName);  
+                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, out displayName);
             }
             catch (TemplateValidationException e)
             {

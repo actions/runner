@@ -164,7 +164,12 @@ namespace GitHub.Runner.Worker
                 var stepsRunner = HostContext.GetService<IStepsRunner>();
                 try
                 {
-                    await stepsRunner.RunAsync(jobContext, jobSteps);
+                    foreach (var step in jobSteps)
+                    {
+                        jobContext.JobSteps.Enqueue(step);
+                    }
+
+                    await stepsRunner.RunAsync(jobContext);
                 }
                 catch (Exception ex)
                 {

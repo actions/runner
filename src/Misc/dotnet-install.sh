@@ -148,7 +148,7 @@ get_linux_platform_name() {
             return 0
         elif [ -e /etc/redhat-release ]; then
             local redhatRelease=$(</etc/redhat-release)
-            if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
+            if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux "*" release 6."* ]]; then
                 echo "rhel.6"
                 return 0
             fi
@@ -612,6 +612,9 @@ copy_files_or_dirs_from_list() {
         local target="$out_path/$path"
         if [ "$override" = true ] || (! ([ -d "$target" ] || [ -e "$target" ])); then
             mkdir -p "$out_path/$(dirname "$path")"
+            if [ -d "$target" ]; then
+                rm -rf "$target"
+            fi
             cp -R $override_switch "$root_path/$path" "$target"
         fi
     done
@@ -868,6 +871,9 @@ do
             runtime="$1"
             if [[ "$runtime" != "dotnet" ]] && [[ "$runtime" != "aspnetcore" ]]; then
                 say_err "Unsupported value for --runtime: '$1'. Valid values are 'dotnet' and 'aspnetcore'."
+                if [[ "$runtime" == "windowsdesktop" ]]; then
+                    say_err "WindowsDesktop archives are manufactured for Windows platforms only."
+                fi
                 exit 1
             fi
             ;;

@@ -204,30 +204,11 @@ namespace GitHub.DistributedTask.Pipelines
             public static readonly String Shell = "shell";
         }
 
-        public static class AgentPlugins
-        {
-            public static readonly String Checkout = "checkout";
-        }
-
         public static Boolean IsCheckoutTask(this Step step)
         {
             if (step is TaskStep task &&
                 task.Reference.Id == PipelineConstants.CheckoutTask.Id &&
                 task.Reference.Version == PipelineConstants.CheckoutTask.Version)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        public static Boolean IsCheckoutAction(this Step step)
-        {
-            if (step is ActionStep action &&
-                action.Reference is PluginReference agentPlugin &&
-                agentPlugin.Plugin == PipelineConstants.AgentPlugins.Checkout)
             {
                 return true;
             }

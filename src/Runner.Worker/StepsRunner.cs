@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker
     {
         string Condition { get; set; }
         TemplateToken ContinueOnError { get; }
-        string DisplayName { get; }
+        string DisplayName { get; set; }
         IExecutionContext ExecutionContext { get; set; }
         TemplateToken Timeout { get; }
         Task RunAsync();
@@ -28,16 +28,16 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(StepsRunner))]
     public interface IStepsRunner : IRunnerService
     {
-        Task RunAsync(IExecutionContext Context, IList<IStep> steps);
+        Task RunAsync(IExecutionContext Context);
     }
 
     public sealed class StepsRunner : RunnerService, IStepsRunner
     {
         // StepsRunner should never throw exception to caller
-        public async Task RunAsync(IExecutionContext jobContext, IList<IStep> steps)
+        public async Task RunAsync(IExecutionContext jobContext)
         {
             ArgUtil.NotNull(jobContext, nameof(jobContext));
-            ArgUtil.NotNull(steps, nameof(steps));
+            ArgUtil.NotNull(jobContext.JobSteps, nameof(jobContext.JobSteps));
 
             // TaskResult:
             //  Abandoned (Server set this.)
@@ -48,10 +48,15 @@ namespace GitHub.Runner.Worker
             CancellationTokenRegistration? jobCancelRegister = null;
             jobContext.JobContext.Status = (jobContext.Result ?? TaskResult.Succeeded).ToActionResult();
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-            for (var stepIndex = 0; stepIndex < steps.Count; stepIndex++)
+            while (jobContext.JobSteps.Count > 0)
             {
-                var step = steps[stepIndex];
-                var nextStep = stepIndex + 1 < steps.Count ? steps[stepIndex + 1] : null;
+                var step = jobContext.JobSteps.Dequeue();
+                IStep nextStep = null;
+                if (jobContext.JobSteps.Count > 0)
+                {
+                    nextStep = jobContext.JobSteps.Peek();
+                }
+
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
                 ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
@@ -194,14 +199,13 @@ namespace GitHub.Runner.Worker
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)
         {
             // Check to see if we can expand the display name
-            if (step is IActionRunner actionRunner)
+            if (step is IActionRunner actionRunner && 
+                actionRunner.Stage == ActionRunStage.Main && 
+                actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
             {
-                if (actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
-                {
-                    step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
-                }
+                step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
             }
-            
+
             // Start the step.
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
