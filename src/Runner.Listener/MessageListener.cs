@@ -60,7 +60,7 @@ namespace GitHub.Runner.Listener
             Trace.Info(_settings);
 
             // Capabilities.
-            _term.WriteLine("Scanning for tool capabilities.");
+            //_term.WriteLine("Scanning for tool capabilities.");
             Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(_settings, token);
 
             // Create connection.
@@ -81,7 +81,6 @@ namespace GitHub.Runner.Listener
             string errorMessage = string.Empty;
             bool encounteringError = false;
 
-            _term.WriteLine("Connecting to the server.");
             while (true)
             {
                 token.ThrowIfCancellationRequested();
@@ -91,6 +90,10 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Connecting to the Agent Server...");
                     await _runnerServer.ConnectAsync(new Uri(serverUrl), creds);
                     Trace.Info("VssConnection created");
+                    
+                    _term.WriteLine();
+                    _term.WriteSuccessMessage("Connected to Github");
+                    _term.WriteLine();
 
                     _session = await _runnerServer.CreateAgentSessionAsync(
                                                         _settings.PoolId,

@@ -17,10 +17,14 @@ namespace GitHub.Runner.Common
         string ReadLine();
         string ReadSecret();
         void Write(string message);
+        void Write(string message, ConsoleColor colorCode);
         void WriteLine();
         void WriteLine(string line);
+        void WriteLine(string line, ConsoleColor colorCode);
         void WriteError(Exception ex);
         void WriteError(string line);
+        void WriteSection(string message);
+        void WriteSuccessMessage(string message);
     }
 
     public sealed class Terminal : RunnerService, ITerminal
@@ -98,6 +102,17 @@ namespace GitHub.Runner.Common
             }
         }
 
+        public void Write(string message, ConsoleColor colorCode)
+        {
+            Trace.Info($"WRITE: {message}");
+            if (!Silent)
+            {
+                Console.ForegroundColor = colorCode;
+                Console.Write(message);
+                Console.ResetColor();
+            }
+        }
+
         public void WriteLine()
         {
             WriteLine(string.Empty);
@@ -114,13 +129,26 @@ namespace GitHub.Runner.Common
             }
         }
 
+        public void WriteLine(string line, ConsoleColor colorCode)
+        {
+            Trace.Info($"WRITE LINE: {line}");
+            if (!Silent)
+            {
+                Console.ForegroundColor = colorCode;
+                Console.WriteLine(line);
+                Console.ResetColor();
+            }
+        }
+
         public void WriteError(Exception ex)
         {
             Trace.Error("WRITE ERROR (exception):");
             Trace.Error(ex);
             if (!Silent)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(ex.Message);
+                Console.ResetColor();
             }
         }
 
@@ -131,8 +159,28 @@ namespace GitHub.Runner.Common
             Trace.Error($"WRITE ERROR: {line}");
             if (!Silent)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(line);
+                Console.ResetColor();
             }
+        }
+
+        public void WriteSection(string message)
+        {
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($"# {message}");
+            Console.ResetColor();
+            Console.WriteLine();
+        }
+
+        public void WriteSuccessMessage(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("✔ ");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine(message);
+            Console.ResetColor();
         }
 
         private void Dispose(bool disposing)
