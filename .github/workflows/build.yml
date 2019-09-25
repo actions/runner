@@ -1,4 +1,4 @@
-name: Runner CI & PR
+name: Runner CI
 
 on: 
   push:
