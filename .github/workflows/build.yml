@@ -1,0 +1,52 @@
+name: Runner CI
+
+on: 
+  push:
+    branches: 
+    - master
+  pull_request:
+    branches: 
+    - '*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        include:
+        - os: ubuntu-latest
+          devScript: ./dev.sh
+        - os: macOS-latest
+          devScript: ./dev.sh
+        - os: windows-latest
+          devScript: dev.cmd
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+    
+    # Build runner layout
+    - name: Build & Layout Release
+      run: |
+        ${{ matrix.devScript }} layout Release
+      working-directory: src
+
+    # Run tests
+    - name: L0
+      run: |
+        ${{ matrix.devScript }} test
+      working-directory: src
+  
+    # Create runner package tar.gz/zip
+    - name: Package Release
+      if: github.event_name != 'pull_request'
+      run: |
+        ${{ matrix.devScript }} package Release
+      working-directory: src
+      
+    # Upload runner package tar.gz/zip as artifact
+    - name: Publish Artifact
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v1
+      with:
+        name: runner-package-${{ matrix.os }} 
+        path: _package
