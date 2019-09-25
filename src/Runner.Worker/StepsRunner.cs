@@ -48,8 +48,20 @@ namespace GitHub.Runner.Worker
             CancellationTokenRegistration? jobCancelRegister = null;
             jobContext.JobContext.Status = (jobContext.Result ?? TaskResult.Succeeded).ToActionResult();
             var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-            while (jobContext.JobSteps.Count > 0)
+            bool checkPostJobActions = false;
+            while (jobContext.JobSteps.Count > 0 || !checkPostJobActions)
             {
+                if (jobContext.JobSteps.Count == 0 && !checkPostJobActions)
+                {
+                    checkPostJobActions = true;
+                    while (jobContext.PostJobSteps.TryPop(out var postStep))
+                    {
+                        jobContext.JobSteps.Enqueue(postStep);
+                    }
+
+                    continue;
+                }
+
                 var step = jobContext.JobSteps.Dequeue();
                 IStep nextStep = null;
                 if (jobContext.JobSteps.Count > 0)
@@ -199,8 +211,8 @@ namespace GitHub.Runner.Worker
         private async Task RunStepAsync(IStep step, CancellationToken jobCancellationToken)
         {
             // Check to see if we can expand the display name
-            if (step is IActionRunner actionRunner && 
-                actionRunner.Stage == ActionRunStage.Main && 
+            if (step is IActionRunner actionRunner &&
+                actionRunner.Stage == ActionRunStage.Main &&
                 actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
             {
                 step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
