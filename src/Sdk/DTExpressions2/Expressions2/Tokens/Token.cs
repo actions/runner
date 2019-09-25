@@ -154,7 +154,7 @@ namespace GitHub.DistributedTask.Expressions2.Tokens
             {
                 case TokenKind.StartIndex:          // "["
                 case TokenKind.Dereference:         // "."
-                    return new Index();
+                    return new Sdk.Operators.Index();
 
                 case TokenKind.LogicalOperator:
                     switch (RawValue)
