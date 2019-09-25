@@ -9,7 +9,7 @@ on:
     - '*'
 
 jobs:
-  build & test:
+  build:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
