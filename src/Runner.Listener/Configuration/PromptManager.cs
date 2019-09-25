@@ -79,11 +79,12 @@ namespace GitHub.Runner.Listener.Configuration
             while (true)
             {
                 // Write the message prompt.
-                string prompt =
-                    string.IsNullOrEmpty(defaultValue)
-                    ? $"Enter {description}"
-                    : $"Enter {description} (press enter for {defaultValue})";
-                _terminal.Write($"{prompt} > ");
+                _terminal.Write($"{description} ", ConsoleColor.White);
+
+                if(!string.IsNullOrEmpty(defaultValue))
+                {
+                    _terminal.Write($"[press Enter for {defaultValue}] ");
+                }
 
                 // Read and trim the value.
                 value = secret ? _terminal.ReadSecret() : _terminal.ReadLine();
@@ -107,7 +108,7 @@ namespace GitHub.Runner.Listener.Configuration
                     else
                     {
                         Trace.Info("Invalid value.");
-                        _terminal.WriteLine($"Enter a valid value for {description}.");
+                        _terminal.WriteLine("Entered value is invalid", ConsoleColor.Yellow);
                     }
                 }
             }

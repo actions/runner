@@ -152,7 +152,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.Replace,
-                description: "replace? (Y/N)",
+                description: "Do you like to replace existing runner? (Y/N)",
                 defaultValue: false);
         }
 
@@ -160,7 +160,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.RunAsService,
-                description: "run runner as service? (Y/N)",
+                description: "Do you like to run runner as service? (Y/N)",
                 defaultValue: false);
         }
 
@@ -168,7 +168,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.LaunchBrowser,
-                description: "to launch browser for AAD Device Code Flow? (Y/N)",
+                description: "Do you like to launch browser for AAD Device Code Flow? (Y/N)",
                 defaultValue: true);
         }
         //
@@ -178,7 +178,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Agent,
-                description: "runner name",
+                description: "Enter the name of runner:",
                 defaultValue: Environment.MachineName ?? "myagent",
                 validator: Validators.NonEmptyValidator);
         }
@@ -187,7 +187,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Auth,
-                description: "authentication type",
+                description: "How would you like to authenticate?",
                 defaultValue: defaultValue,
                 validator: Validators.AuthSchemeValidator);
         }
@@ -196,7 +196,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Password,
-                description: "password",
+                description: "What is your Github password?",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -205,7 +205,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Pool,
-                description: "runner pool",
+                description: "Enter the name of runner pool:",
                 defaultValue: "default",
                 validator: Validators.NonEmptyValidator);
         }
@@ -214,7 +214,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Token,
-                description: "GitHub PAT",
+                description: "Enter your personal access token:",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -230,7 +230,7 @@ namespace GitHub.Runner.Listener
 
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Url,
-                description: "GitHub Repository URL",
+                description: "What is the URL of your respository?",
                 defaultValue: string.Empty,
                 validator: Validators.ServerUrlValidator);
         }
@@ -239,7 +239,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.UserName,
-                description: "user name",
+                description: "What is your Github username?",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -266,7 +266,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Work,
-                description: "work folder",
+                description: "Enter name of work folder:",
                 defaultValue: Constants.Path.WorkDirectory,
                 validator: Validators.NonEmptyValidator);
         }

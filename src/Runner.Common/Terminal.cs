@@ -16,11 +16,13 @@ namespace GitHub.Runner.Common
         bool Silent { get; set; }
         string ReadLine();
         string ReadSecret();
-        void Write(string message);
+        void Write(string message, ConsoleColor? colorCode = null);
         void WriteLine();
-        void WriteLine(string line);
+        void WriteLine(string line, ConsoleColor? colorCode = null);
         void WriteError(Exception ex);
         void WriteError(string line);
+        void WriteSection(string message);
+        void WriteSuccessMessage(string message);
     }
 
     public sealed class Terminal : RunnerService, ITerminal
@@ -89,12 +91,20 @@ namespace GitHub.Runner.Common
             return val;
         }
 
-        public void Write(string message)
+        public void Write(string message, ConsoleColor? colorCode = null)
         {
             Trace.Info($"WRITE: {message}");
             if (!Silent)
             {
-                Console.Write(message);
+                if(colorCode != null)
+                {
+                    Console.ForegroundColor = colorCode.Value;
+                    Console.Write(message);
+                    Console.ResetColor();
+                }
+                else {
+                    Console.Write(message);
+                }
             }
         }
 
@@ -105,12 +115,20 @@ namespace GitHub.Runner.Common
 
         // Do not add a format string overload. Terminal messages are user facing and therefore
         // should be localized. Use the Loc method in the StringUtil class.
-        public void WriteLine(string line)
+        public void WriteLine(string line, ConsoleColor? colorCode = null)
         {
             Trace.Info($"WRITE LINE: {line}");
             if (!Silent)
             {
-                Console.WriteLine(line);
+                if(colorCode != null)
+                {
+                    Console.ForegroundColor = colorCode.Value;
+                    Console.WriteLine(line);
+                    Console.ResetColor();
+                }
+                else {
+                    Console.WriteLine(line);
+                }
             }
         }
 
@@ -120,7 +138,9 @@ namespace GitHub.Runner.Common
             Trace.Error(ex);
             if (!Silent)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(ex.Message);
+                Console.ResetColor();
             }
         }
 
@@ -131,8 +151,28 @@ namespace GitHub.Runner.Common
             Trace.Error($"WRITE ERROR: {line}");
             if (!Silent)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.Error.WriteLine(line);
+                Console.ResetColor();
             }
+        }
+
+        public void WriteSection(string message)
+        {
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine($"# {message}");
+            Console.ResetColor();
+            Console.WriteLine();
+        }
+
+        public void WriteSuccessMessage(string message)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("√ ");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine(message);
+            Console.ResetColor();
         }
 
         private void Dispose(bool disposing)

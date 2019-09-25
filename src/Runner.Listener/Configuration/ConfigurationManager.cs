@@ -70,29 +70,20 @@ namespace GitHub.Runner.Listener.Configuration
 
         public async Task ConfigureAsync(CommandSettings command)
         {
-#if !OS_WINDOWS
-            _term.WriteLine("\x1b[1;97m┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃        ____ _ _   _   _       _          _        _   _                      ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃                                                                              ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃                       \x1b[1;34mSelf-hosted runner registration\x1b[1;97m                        ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┃                                                                              ┃\x1b[0m");
-            _term.WriteLine("\x1b[1;97m┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\x1b[0m");
-#else
-            _term.WriteLine("--------------------------------------------------------------------------------");
-            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |");
-            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |");
-            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |");
-            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |");
-            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |");
-            _term.WriteLine("|                                                                              |");
-            _term.WriteLine("|                       Self-hosted runner registration                        |");
-            _term.WriteLine("|                                                                              |");
-            _term.WriteLine("--------------------------------------------------------------------------------");
-#endif
+            _term.WriteLine();
+            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
+            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |", ConsoleColor.White);
+            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |", ConsoleColor.White);
+            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |", ConsoleColor.White);
+            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |", ConsoleColor.White);
+            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |", ConsoleColor.White);
+            _term.WriteLine("|                                                                              |", ConsoleColor.White);
+            _term.Write("|                       ", ConsoleColor.White);
+            _term.Write("Self-hosted runner registration", ConsoleColor.Cyan);
+            _term.WriteLine("                        |", ConsoleColor.White);
+            _term.WriteLine("|                                                                              |", ConsoleColor.White);
+            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
+
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
@@ -172,7 +163,7 @@ namespace GitHub.Runner.Listener.Configuration
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
-            WriteSection("Connect");
+            _term.WriteSection("Authentication");
             while (true)
             {
                 // Get the URL
@@ -201,8 +192,11 @@ namespace GitHub.Runner.Listener.Configuration
                     isHostedServer = await IsHostedServer(runnerSettings.ServerUrl, creds);
 
                     // Validate can connect.
-                    _term.WriteLine("Connecting to server ...");
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
+
+                    _term.WriteLine();
+                    _term.WriteSuccessMessage("Connected to Github");
+
                     Trace.Info("Test Connection complete.");
                     break;
                 }
@@ -210,6 +204,7 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     _term.WriteError(e);
                     _term.WriteError("Failed to connect.  Try again or ctrl-c to quit");
+                    _term.WriteLine();
                 }
             }
 
@@ -221,34 +216,21 @@ namespace GitHub.Runner.Listener.Configuration
                 publicKey = rsa.ExportParameters(false);
             }
 
-            // Loop getting agent name and pool name
-            WriteSection("Register Runner");
+            _term.WriteSection("Runner Registration");
 
-            while (true)
+            //Get all the agent pools, and select the first private pool
+            List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
+            TaskAgentPool agentPool = agentPools?.Where(x => x.IsHosted == false).FirstOrDefault();
+
+            if (agentPool == null)
             {
-                try
-                {
-                    string poolName = command.GetPool();
-
-                    TaskAgentPool agentPool = (await _runnerServer.GetAgentPoolsAsync(poolName)).FirstOrDefault();
-                    if (agentPool == null)
-                    {
-                        throw new TaskAgentPoolNotFoundException($"Runner pool not found: '{poolName}'");
-                    }
-                    else
-                    {
-                        Trace.Info("Found pool {0} with id {1} and name {2}", poolName, agentPool.Id, agentPool.Name);
-                        runnerSettings.PoolId = agentPool.Id;
-                        runnerSettings.PoolName = agentPool.Name;
-                    }
-
-                    break;
-                }
-                catch (Exception e) when (!command.Unattended)
-                {
-                    _term.WriteError(e);
-                    _term.WriteError("Failed to find pool name. Try again or ctrl-c to quit");
-                }
+                throw new TaskAgentPoolNotFoundException($"Could not find any private pool. Contact support.");
+            }
+            else
+            {
+                Trace.Info("Found a private pool with id {1} and name {2}", agentPool.Id, agentPool.Name);
+                runnerSettings.PoolId = agentPool.Id;
+                runnerSettings.PoolName = agentPool.Name;
             }
 
             TaskAgent agent;
@@ -257,15 +239,16 @@ namespace GitHub.Runner.Listener.Configuration
                 runnerSettings.AgentName = command.GetAgentName();
 
                 // Get the system capabilities.
-                _term.WriteLine("Scanning for tool capabilities.");
                 Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(runnerSettings, CancellationToken.None);
 
-                _term.WriteLine("Connecting to the server.");
+                _term.WriteLine();
+                
                 var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
                 Trace.Verbose("Returns {0} agents", agents.Count);
                 agent = agents.FirstOrDefault();
                 if (agent != null)
                 {
+                    _term.WriteLine("A runner exists with the same name", ConsoleColor.Yellow);
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version and SystemCapabilities.
@@ -274,7 +257,7 @@ namespace GitHub.Runner.Listener.Configuration
                         try
                         {
                             agent = await _runnerServer.UpdateAgentAsync(runnerSettings.PoolId, agent);
-                            _term.WriteLine("Successfully replaced the runner");
+                            _term.WriteSuccessMessage("Successfully replaced the runner");
                             break;
                         }
                         catch (Exception e) when (!command.Unattended)
@@ -297,7 +280,7 @@ namespace GitHub.Runner.Listener.Configuration
                     try
                     {
                         agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
-                        _term.WriteLine("Successfully added the runner");
+                        _term.WriteSuccessMessage("Runner successfully added");
                         break;
                     }
                     catch (Exception e) when (!command.Unattended)
@@ -369,12 +352,12 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             // Testing agent connection, detect any protential connection issue, like local clock skew that cause OAuth token expired.
-            _term.WriteLine("Testing runner connection.");
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials credential = credMgr.LoadCredentials();
             try
             {
                 await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
+                _term.WriteSuccessMessage("Runner connection is good");
             }
             catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
             {
@@ -385,6 +368,8 @@ namespace GitHub.Runner.Listener.Configuration
                 Trace.Error(ex);
                 throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
             }
+
+            _term.WriteSection("Runner settings");
 
             // We will Combine() what's stored with root.  Defaults to string a relative path
             runnerSettings.WorkFolder = command.GetWork();
@@ -410,7 +395,9 @@ namespace GitHub.Runner.Listener.Configuration
                 (runnerCertManager as RunnerCertificateManager).SaveCertificateSetting();
             }
 
-            _term.WriteLine($"{DateTime.UtcNow:u}: Settings Saved.");
+            _term.WriteLine();
+            _term.WriteSuccessMessage("Settings Saved.");
+            _term.WriteLine();
 
             bool saveRuntimeOptions = false;
             var runtimeOptions = new RunnerRuntimeOptions();
@@ -448,6 +435,9 @@ namespace GitHub.Runner.Listener.Configuration
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             string currentAction = string.Empty;
+            
+            _term.WriteSection("Runner removal");
+
             try
             {
                 //stop, uninstall service and remove service config file
@@ -458,7 +448,9 @@ namespace GitHub.Runner.Listener.Configuration
 #if OS_WINDOWS
                     var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
                     serviceControlManager.UnconfigureService();
-                    _term.WriteLine("Succeeded: " + currentAction);
+
+                    _term.WriteLine();
+                    _term.WriteSuccessMessage("Runner service removed");
 #elif OS_LINUX
                     // unconfig system D service first
                     throw new Exception("Unconfigure service first");
@@ -470,7 +462,6 @@ namespace GitHub.Runner.Listener.Configuration
 
                 //delete agent from the server
                 currentAction = "Removing runner from the server";
-                _term.WriteLine(currentAction);
                 bool isConfigured = _store.IsConfigured();
                 bool hasCredentials = _store.HasCredentials();
                 if (isConfigured && hasCredentials)
@@ -496,7 +487,6 @@ namespace GitHub.Runner.Listener.Configuration
 
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     bool isHostedServer = await IsHostedServer(settings.ServerUrl, creds);
-                    _term.WriteLine("Connecting to server ...");
                     await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
                     var agents = await _runnerServer.GetAgentsAsync(settings.PoolId, settings.AgentName);
@@ -509,7 +499,9 @@ namespace GitHub.Runner.Listener.Configuration
                     else
                     {
                         await _runnerServer.DeleteAgentAsync(settings.PoolId, settings.AgentId);
-                        _term.WriteLine("Succeeded: " + currentAction);
+                        
+                        _term.WriteLine();
+                        _term.WriteSuccessMessage("Runner removed successfully");
                     }
                 }
                 else
@@ -519,13 +511,12 @@ namespace GitHub.Runner.Listener.Configuration
 
                 //delete credential config files               
                 currentAction = "Removing .credentials";
-                _term.WriteLine(currentAction);
                 if (hasCredentials)
                 {
                     _store.DeleteCredential();
                     var keyManager = HostContext.GetService<IRSAKeyManager>();
                     keyManager.DeleteKey();
-                    _term.WriteLine("Succeeded: " + currentAction);
+                    _term.WriteSuccessMessage("Removed .credentials");
                 }
                 else
                 {
@@ -534,7 +525,6 @@ namespace GitHub.Runner.Listener.Configuration
 
                 //delete settings config file                
                 currentAction = "Removing .runner";
-                _term.WriteLine(currentAction);
                 if (isConfigured)
                 {
                     // delete proxy setting
@@ -547,7 +537,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _store.DeleteRunnerRuntimeOptions();
 
                     _store.DeleteSettings();
-                    _term.WriteLine("Succeeded: " + currentAction);
+                    _term.WriteSuccessMessage("Removed .runner");
                 }
                 else
                 {
@@ -556,9 +546,11 @@ namespace GitHub.Runner.Listener.Configuration
             }
             catch (Exception)
             {
-                _term.WriteLine("Failed: " + currentAction);
+                _term.WriteError("Failed: " + currentAction);
                 throw;
             }
+
+            _term.WriteLine();
         }
 
         private ICredentialProvider GetCredentialProvider(CommandSettings command, string serverUrl)
@@ -634,13 +626,6 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             return agent;
-        }
-
-        private void WriteSection(string message)
-        {
-            _term.WriteLine();
-            _term.WriteLine($">> {message}:");
-            _term.WriteLine();
         }
 
         private async Task<bool> IsHostedServer(string serverUrl, VssCredentials credentials)

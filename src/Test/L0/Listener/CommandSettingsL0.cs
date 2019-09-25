@@ -290,7 +290,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadBool(
                         Constants.Runner.CommandLine.Flags.Replace, // argName
-                        "replace? (Y/N)", // description
+                        "Do you like to replace existing runner? (Y/N)", // description
                         false, // defaultValue
                         true)) // unattended
                     .Returns(true);
@@ -315,7 +315,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Agent, // argName
-                        "runner name", // description
+                        "Enter the name of runner:", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -342,7 +342,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Agent, // argName
-                        "runner name", // description
+                        "Enter the name of runner:", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -369,7 +369,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Auth, // argName
-                        "authentication type", // description
+                        "How would you like to authenticate?", // description
                         false, // secret
                         "some default auth", // defaultValue
                         Validators.AuthSchemeValidator, // validator
@@ -396,7 +396,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Password, // argName
-                        "password", // description
+                        "What is your Github password?", // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -423,7 +423,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Pool, // argName
-                        "runner pool", // description
+                        "Enter the name of runner pool:", // description
                         false, // secret
                         "default", // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -450,7 +450,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadBool(
                         Constants.Runner.CommandLine.Flags.Replace, // argName
-                        "replace? (Y/N)", // description
+                        "Do you like to replace existing runner? (Y/N)", // description
                         false, // defaultValue
                         false)) // unattended
                     .Returns(true);
@@ -475,7 +475,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadBool(
                         Constants.Runner.CommandLine.Flags.RunAsService, // argName
-                        "run runner as service? (Y/N)", // description
+                        "Do you like to run runner as service? (Y/N)", // description
                         false, // defaultValue
                         false)) // unattended
                     .Returns(true);
@@ -500,7 +500,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Token, // argName
-                        "GitHub PAT", // description
+                        "Enter your personal access token:", // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -527,7 +527,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "GitHub Repository URL", // description
+                        "What is the URL of your respository?", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -554,7 +554,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.UserName, // argName
-                        "user name", // description
+                        "What is your Github username?", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -636,7 +636,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Work, // argName
-                        "work folder", // description
+                        "Enter name of work folder:", // description
                         false, // secret
                         "_work", // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -665,7 +665,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "GitHub Repository URL", // description
+                        "What is the URL of your respository?", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -694,7 +694,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "GitHub Repository URL", // description
+                        "What is the URL of your respository?", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
