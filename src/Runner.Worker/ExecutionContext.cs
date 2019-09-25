@@ -59,10 +59,13 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has JobSteps
         Queue<IStep> JobSteps { get; }
 
+        // Only job level ExecutionContext has PostJobSteps
+        Stack<IStep> PostJobSteps { get; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null);
 
         // logging
         bool WriteDebug { get; }
@@ -117,6 +120,7 @@ namespace GitHub.Runner.Worker
 
         private Guid _mainTimelineId;
         private Guid _detailTimelineId;
+        private bool _expandedForPostJob = false;
         private int _childTimelineRecordOrder = 0;
         private CancellationTokenSource _cancellationTokenSource;
         private TaskCompletionSource<int> _forceCompleted = new TaskCompletionSource<int>();
@@ -146,6 +150,9 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has JobSteps
         public Queue<IStep> JobSteps { get; private set; }
+
+        // Only job level ExecutionContext has PostJobSteps
+        public Stack<IStep> PostJobSteps { get; private set; }
 
         public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
 
@@ -250,11 +257,11 @@ namespace GitHub.Runner.Worker
             actionRunner.Stage = ActionRunStage.Post;
             actionRunner.Condition = $"{Constants.Expressions.Always}()";
             actionRunner.DisplayName = displayName;
-            actionRunner.ExecutionContext = Root.CreateChild(Guid.NewGuid(), displayName, $"{actionRunner.Action.Name}_post", null, null, IntraActionState);
-            Root.JobSteps.Enqueue(actionRunner);
+            actionRunner.ExecutionContext = Root.CreatePostChild(displayName, $"{actionRunner.Action.Name}_post", IntraActionState);
+            Root.PostJobSteps.Push(actionRunner);
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
         {
             Trace.Entering();
 
@@ -288,7 +295,14 @@ namespace GitHub.Runner.Worker
             child.Container = Container;
             child.ServiceContainers = ServiceContainers;
 
-            child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
+            if (recordOrder != null)
+            {
+                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);
+            }
+            else
+            {
+                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
+            }
 
             child._logger = HostContext.CreateService<IPagingLogger>();
             child._logger.Setup(_mainTimelineId, recordId);
@@ -606,6 +620,8 @@ namespace GitHub.Runner.Worker
             // JobSteps for job ExecutionContext
             JobSteps = new Queue<IStep>();
 
+            // PostJobSteps for job ExecutionContext
+            PostJobSteps = new Stack<IStep>();
             // Proxy variables
             //             var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
             //             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
@@ -890,6 +906,18 @@ namespace GitHub.Runner.Worker
 
                 _throttlingReported = true;
             }
+        }
+
+        private IExecutionContext CreatePostChild(string displayName, string refName, Dictionary<string, string> intraActionState)
+        {
+            if (!_expandedForPostJob)
+            {
+                Trace.Info($"Reserve record order {_childTimelineRecordOrder + 1} to {_childTimelineRecordOrder * 2} for post job actions.");
+                _expandedForPostJob = true;
+                _childTimelineRecordOrder = _childTimelineRecordOrder * 2;
+            }
+
+            return CreateChild(Guid.NewGuid(), displayName, refName, null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
         }
     }
 

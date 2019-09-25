@@ -210,14 +210,17 @@ namespace GitHub.Runner.Common.Tests.Worker
                 action2.RegisterPostJobAction("post2", new Pipelines.ActionStep() { Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } });
 
                 Assert.NotNull(jobContext.JobSteps);
+                Assert.NotNull(jobContext.PostJobSteps);
                 Assert.Null(action1.JobSteps);
                 Assert.Null(action2.JobSteps);
+                Assert.Null(action1.PostJobSteps);
+                Assert.Null(action2.PostJobSteps);
 
-                var post1 = jobContext.JobSteps.Dequeue();
-                var post2 = jobContext.JobSteps.Dequeue();
+                var post1 = jobContext.PostJobSteps.Pop();
+                var post2 = jobContext.PostJobSteps.Pop();
 
-                Assert.Equal("post1", (post1 as IActionRunner).Action.Name);
-                Assert.Equal("post2", (post2 as IActionRunner).Action.Name);
+                Assert.Equal("post2", (post1 as IActionRunner).Action.Name);
+                Assert.Equal("post1", (post2 as IActionRunner).Action.Name);
 
                 Assert.Equal(ActionRunStage.Post, (post1 as IActionRunner).Stage);
                 Assert.Equal(ActionRunStage.Post, (post2 as IActionRunner).Stage);
@@ -225,8 +228,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("always()", (post1 as IActionRunner).Condition);
                 Assert.Equal("always()", (post2 as IActionRunner).Condition);
 
-                Assert.Equal("1", (post1 as IActionRunner).ExecutionContext.IntraActionState["state"]);
-                Assert.Equal("2", (post2 as IActionRunner).ExecutionContext.IntraActionState["state"]);
+                Assert.Equal("2", (post1 as IActionRunner).ExecutionContext.IntraActionState["state"]);
+                Assert.Equal("1", (post2 as IActionRunner).ExecutionContext.IntraActionState["state"]);
             }
         }
 
