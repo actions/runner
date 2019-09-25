@@ -159,20 +159,26 @@ namespace GitHub.Runner.Common
 
         public void WriteSection(string message)
         {
-            Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine($"# {message}");
-            Console.ResetColor();
-            Console.WriteLine();
+            if (!Silent)
+            {
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"# {message}");
+                Console.ResetColor();
+                Console.WriteLine();
+            }
         }
 
         public void WriteSuccessMessage(string message)
         {
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.Write("√ ");
-            Console.ForegroundColor = ConsoleColor.White;
-            Console.WriteLine(message);
-            Console.ResetColor();
+            if (!Silent)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("√ ");
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine(message);
+                Console.ResetColor();
+            }
         }
 
         private void Dispose(bool disposing)
