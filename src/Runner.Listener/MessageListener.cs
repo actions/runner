@@ -91,7 +91,7 @@ namespace GitHub.Runner.Listener
                     Trace.Info("VssConnection created");
                     
                     _term.WriteLine();
-                    _term.WriteSuccessMessage("Connected to Github");
+                    _term.WriteSuccessMessage("Connected to GitHub");
                     _term.WriteLine();
 
                     _session = await _runnerServer.CreateAgentSessionAsync(

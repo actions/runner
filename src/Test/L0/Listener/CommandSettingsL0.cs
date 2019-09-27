@@ -527,7 +527,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "What is the URL of your respository?", // description
+                        "What is the URL of your repository?", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -665,7 +665,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "What is the URL of your respository?", // description
+                        "What is the URL of your repository?", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
@@ -694,7 +694,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Url, // argName
-                        "What is the URL of your respository?", // description
+                        "What is the URL of your repository?", // description
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
