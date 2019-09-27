@@ -8,6 +8,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using System.Linq;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -170,6 +171,15 @@ namespace GitHub.Runner.Worker.Handlers
                         Environment[env.Key] = env.Value;
                     }
                 }
+            }
+
+            // Add Actions Runtime server info
+            var systemConnection = ExecutionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            Environment["ACTIONS_RUNTIME_URL"] = systemConnection.Url.AbsoluteUri;
+            Environment["ACTIONS_RUNTIME_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            if (systemConnection.Data.TryGetValue("CacheServerUrl", out var cacheUrl) && !string.IsNullOrEmpty(cacheUrl))
+            {
+                Environment["ACTIONS_CACHE_URL"] = cacheUrl;
             }
 
             foreach (var variable in this.Environment)

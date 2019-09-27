@@ -19,3 +19,4 @@ runs:
   using: 'node12'
   main: 'main.js'
   post: 'cleanup.js'
+  post-if: 'cancelled()'

@@ -520,6 +520,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             PipelineTemplateConstants.Inputs,
             PipelineTemplateConstants.Job,
             PipelineTemplateConstants.Runner,
+            PipelineTemplateConstants.Env,
         };
     }
 }

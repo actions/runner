@@ -30,6 +30,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IExecutionContext> _ec;
         private TestHostContext _hc;
         private ActionRunner _actionRunner;
+        private IActionManifestManager _actionManifestManager;
         private string _workFolder;
         private DictionaryContextData _context = new DictionaryContextData();
 
@@ -325,6 +326,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _handlerFactory = new Mock<IHandlerFactory>();
             _defaultStepHost = new Mock<IDefaultStepHost>();
+            _actionManifestManager = new ActionManifestManager();
+            _actionManifestManager.Initialize(_hc);
 
             var githubContext = new GitHubContext();
             githubContext.Add("event", JToken.Parse("{\"foo\":\"bar\"}").ToPipelineContextData());
@@ -343,6 +346,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _hc.SetSingleton<IActionManager>(_actionManager.Object);
             _hc.SetSingleton<IHandlerFactory>(_handlerFactory.Object);
+            _hc.SetSingleton<IActionManifestManager>(_actionManifestManager);
 
             _hc.EnqueueInstance<IDefaultStepHost>(_defaultStepHost.Object);
 

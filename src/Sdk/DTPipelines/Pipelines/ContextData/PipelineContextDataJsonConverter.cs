@@ -89,6 +89,10 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     newValue = new NumberContextData(0);
                     break;
 
+                case PipelineContextDataType.CaseSensitiveDictionary:
+                    newValue = new CaseSensitiveDictionaryContextData();
+                    break;
+
                 default:
                     throw new NotSupportedException($"Unexpected {nameof(PipelineContextDataType)} '{type}'");
             }
@@ -153,6 +157,28 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
                     writer.WritePropertyName("d");
                     writer.WriteStartArray();
                     foreach (var pair in dictionaryData)
+                    {
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("k");
+                        writer.WriteValue(pair.Key);
+                        writer.WritePropertyName("v");
+                        serializer.Serialize(writer, pair.Value);
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                }
+                writer.WriteEndObject();
+            }
+            else if (value is CaseSensitiveDictionaryContextData caseSensitiveDictionaryData)
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("t");
+                writer.WriteValue(PipelineContextDataType.CaseSensitiveDictionary);
+                if (caseSensitiveDictionaryData.Count > 0)
+                {
+                    writer.WritePropertyName("d");
+                    writer.WriteStartArray();
+                    foreach (var pair in caseSensitiveDictionaryData)
                     {
                         writer.WriteStartObject();
                         writer.WritePropertyName("k");

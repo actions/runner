@@ -1123,6 +1123,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
         };
         private static readonly INamedValueInfo[] s_stepInTemplateNamedValues = new INamedValueInfo[]
         {
@@ -1133,6 +1134,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
         };
         private static readonly IFunctionInfo[] s_stepConditionFunctions = new IFunctionInfo[]
         {

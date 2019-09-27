@@ -13,5 +13,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
         internal const Int32 Boolean = 3;
 
         internal const Int32 Number = 4;
+
+        internal const Int32 CaseSensitiveDictionary = 5;
     }
 }
