@@ -230,7 +230,7 @@ namespace GitHub.Runner.Listener
 
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Url,
-                description: "What is the URL of your respository?",
+                description: "What is the URL of your repository?",
                 defaultValue: string.Empty,
                 validator: Validators.ServerUrlValidator);
         }
