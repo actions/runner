@@ -195,7 +195,7 @@ namespace GitHub.Runner.Listener.Configuration
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
 
                     _term.WriteLine();
-                    _term.WriteSuccessMessage("Connected to Github");
+                    _term.WriteSuccessMessage("Connected to GitHub");
 
                     Trace.Info("Test Connection complete.");
                     break;
