@@ -656,8 +656,7 @@ namespace GitHub.Runner.Listener.Configuration
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler))
             {
-                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.shuri-preview+json"));
                 var response = await httpClient.PostAsync(githubApiUrl, new StringContent("", null, "application/json"));
