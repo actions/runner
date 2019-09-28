@@ -126,6 +126,10 @@ namespace GitHub.Runner.Worker.Container
                     dockerOptions.Add($"-e \"{env.Key}={env.Value.Replace("\"", "\\\"")}\"");
                 }
             }
+
+            // Watermark for GitHub Action environment
+            dockerOptions.Add("-e GITHUB_ACTIONS=true");
+
             foreach (var volume in container.MountVolumes)
             {
                 // replace `"` with `\"` and add `"{0}"` to all path.
@@ -181,6 +185,9 @@ namespace GitHub.Runner.Worker.Container
                 // the value directly in the command
                 dockerOptions.Add($"-e {env.Key}");
             }
+
+            // Watermark for GitHub Action environment
+            dockerOptions.Add("-e GITHUB_ACTIONS=true");
 
             if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
             {
