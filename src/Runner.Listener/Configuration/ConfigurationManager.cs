@@ -179,7 +179,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     runnerSettings.GitHubUrl = inputUrl;
-                    var githubToken = command.GetToken();
+                    var githubToken = command.GetRunnerRegisterToken();
                     GitHubAuthResult authResult = await GetTenantCredential(inputUrl, githubToken);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     creds = authResult.ToVssCredentials();

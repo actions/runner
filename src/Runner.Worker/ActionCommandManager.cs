@@ -227,39 +227,6 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class SetSecretCommandExtension : RunnerService, IActionCommandExtension
-    {
-        public string Command => "set-secret";
-
-        public Type ExtensionType => typeof(IActionCommandExtension);
-
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
-        {
-            if (!command.Properties.TryGetValue(SetSecretCommandProperties.Name, out string secretName) || string.IsNullOrEmpty(secretName))
-            {
-                throw new Exception("Required field 'name' is missing in ##[set-secret] command.");
-            }
-
-            // TODO: Later we will add the data to secret context after we figure out how secret works with set-output
-            if (string.IsNullOrWhiteSpace(command.Data))
-            {
-                context.Warning("Can't add secret mask for empty string.");
-            }
-            else
-            {
-                HostContext.SecretMasker.AddValue(command.Data);
-                Trace.Info($"Add new secret mask with length of {command.Data.Length}");
-            }
-
-            omitEcho = true;
-        }
-
-        private static class SetSecretCommandProperties
-        {
-            public const String Name = "name";
-        }
-    }
-
     public sealed class SaveStateCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "save-state";
@@ -511,7 +478,8 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(relativeSourcePath))
                     {
                         // replace sourcePath with the new relative path
-                        command.Properties[IssueCommandProperties.File] = relativeSourcePath;
+                        // prefer `/` on all platforms
+                        command.Properties[IssueCommandProperties.File] = relativeSourcePath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                     }
                 }
             }
