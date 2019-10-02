@@ -75,7 +75,7 @@ namespace GitHub.Runner.Worker.Handlers
             var line = e.Data;
 
             // ## commands
-            if (!String.IsNullOrEmpty(line) && 
+            if (!String.IsNullOrEmpty(line) &&
                 (line.IndexOf(ActionCommand.Prefix) >= 0 || line.IndexOf(ActionCommand._commandKey) >= 0))
             {
                 // This does not need to be inside of a critical section.
@@ -239,7 +239,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 if (int.TryParse(match.Column, NumberStyles.None, CultureInfo.InvariantCulture, out var column))
                 {
-                    issue.Data["column"] = column.ToString(CultureInfo.InvariantCulture);
+                    issue.Data["col"] = column.ToString(CultureInfo.InvariantCulture);
                 }
                 else
                 {
@@ -297,7 +297,8 @@ namespace GitHub.Runner.Worker.Handlers
                         }
                         else
                         {
-                            issue.Data["file"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
+                            // prefer `/` on all platforms
+                            issue.Data["file"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         }
                     }
                     // File does not exist

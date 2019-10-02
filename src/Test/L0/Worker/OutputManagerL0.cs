@@ -331,13 +331,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(3, _issues.Count);
                 Assert.Equal("real bad", _issues[0].Item1.Message);
                 Assert.Equal("12", _issues[0].Item1.Data["line"]);
-                Assert.Equal("34", _issues[0].Item1.Data["column"]);
+                Assert.Equal("34", _issues[0].Item1.Data["col"]);
                 Assert.Equal("it is broken", _issues[1].Item1.Message);
                 Assert.Equal("12", _issues[1].Item1.Data["line"]);
-                Assert.False(_issues[1].Item1.Data.ContainsKey("column"));
+                Assert.False(_issues[1].Item1.Data.ContainsKey("col"));
                 Assert.Equal("not working", _issues[2].Item1.Message);
                 Assert.False(_issues[2].Item1.Data.ContainsKey("line"));
-                Assert.Equal("34", _issues[2].Item1.Data["column"]);
+                Assert.Equal("34", _issues[2].Item1.Data["col"]);
                 Assert.Equal(0, _commands.Count);
                 Assert.Equal(2, _messages.Count);
                 Assert.Equal("##[debug]Unable to parse column number 'thirty-four'", _messages[0]);
