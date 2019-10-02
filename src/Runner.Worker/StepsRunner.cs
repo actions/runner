@@ -306,47 +306,6 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.Result = TaskResult.Failed;
             }
 
-            // Wait till all async commands finish.
-            foreach (var command in step.ExecutionContext.AsyncCommands ?? new List<IAsyncCommandContext>())
-            {
-                try
-                {
-                    // wait async command to finish.
-                    await command.WaitAsync();
-                }
-                catch (OperationCanceledException ex)
-                {
-                    if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
-                        !jobCancellationToken.IsCancellationRequested)
-                    {
-                        // Log the timeout error, set step result to failed if the current result is not canceled.
-                        Trace.Error($"Caught timeout exception from async command {command.Name}: {ex}");
-                        step.ExecutionContext.Error("The action has timed out.");
-
-                        // if the step already canceled, don't set it to failed.
-                        step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Failed);
-                    }
-                    else
-                    {
-                        // log and save the OperationCanceledException, set step result to canceled if the current result is not failed.
-                        Trace.Error($"Caught cancellation exception from async command {command.Name}: {ex}");
-                        step.ExecutionContext.Error(ex);
-
-                        // if the step already failed, don't set it to canceled.
-                        step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Canceled);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Log the error, set step result to falied if the current result is not canceled.
-                    Trace.Error($"Caught exception from async command {command.Name}: {ex}");
-                    step.ExecutionContext.Error(ex);
-
-                    // if the step already canceled, don't set it to failed.
-                    step.ExecutionContext.CommandResult = TaskResultUtil.MergeTaskResults(step.ExecutionContext.CommandResult, TaskResult.Failed);
-                }
-            }
-
             // Merge execution context result with command result
             if (step.ExecutionContext.CommandResult != null)
             {
