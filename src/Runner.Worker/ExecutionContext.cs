@@ -50,7 +50,6 @@ namespace GitHub.Runner.Worker
         IDictionary<String, ContextScope> Scopes { get; }
         StepsContext StepsContext { get; }
         DictionaryContextData ExpressionValues { get; }
-        List<IAsyncCommandContext> AsyncCommands { get; }
         List<string> PrependPath { get; }
         ContainerInfo Container { get; set; }
         List<ContainerInfo> ServiceContainers { get; }
@@ -106,7 +105,6 @@ namespace GitHub.Runner.Worker
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
         private readonly object _loggerLock = new object();
-        private readonly List<IAsyncCommandContext> _asyncCommands = new List<IAsyncCommandContext>();
         private readonly HashSet<string> _outputvariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly object _matchersLock = new object();
 
@@ -154,7 +152,6 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
 
-        public List<IAsyncCommandContext> AsyncCommands => _asyncCommands;
 
         public TaskResult? Result
         {
