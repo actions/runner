@@ -196,11 +196,7 @@ namespace GitHub.Runner.Common
             public static readonly string AAD = "AAD";
             public static readonly string OAuthAccessToken = "OAuthAccessToken";
             public static readonly string PAT = "PAT";
-            public static readonly string Alternate = "ALT";
-            public static readonly string Negotiate = "Negotiate";
-            public static readonly string Integrated = "Integrated";
             public static readonly string OAuth = "OAuth";
-            public static readonly string ServiceIdentity = "ServiceIdentity";
         }
 
         public static class Expressions

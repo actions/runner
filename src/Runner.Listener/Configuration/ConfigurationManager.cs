@@ -558,21 +558,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(GetCredentialProvider));
 
             var credentialManager = HostContext.GetService<ICredentialManager>();
-            // Get the default auth type. 
-            // Use PAT as long as the server uri scheme is Https and looks like a FQDN
-            // Otherwise windows use Integrated, linux/mac use negotiate.
-            string defaultAuth = string.Empty;
-            Uri server = new Uri(serverUrl);
-            if (server.Scheme == Uri.UriSchemeHttps && server.Host.Contains('.'))
-            {
-                defaultAuth = Constants.Configuration.PAT;
-            }
-            else
-            {
-                defaultAuth = Constants.Runner.Platform == Constants.OSPlatform.Windows ? Constants.Configuration.Integrated : Constants.Configuration.Negotiate;
-            }
-
-            string authType = command.GetAuth(defaultValue: defaultAuth);
+            string authType = command.GetAuth(defaultValue: Constants.Configuration.PAT);
 
             // Create the credential.
             Trace.Info("Creating credential for auth: {0}", authType);

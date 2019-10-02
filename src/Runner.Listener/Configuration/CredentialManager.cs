@@ -22,12 +22,8 @@ namespace GitHub.Runner.Listener.Configuration
         {
             { Constants.Configuration.AAD, typeof(AadDeviceCodeAccessToken)},
             { Constants.Configuration.PAT, typeof(PersonalAccessToken)},
-            { Constants.Configuration.Alternate, typeof(AlternateCredential)},
-            { Constants.Configuration.Negotiate, typeof(NegotiateCredential)},
-            { Constants.Configuration.Integrated, typeof(IntegratedCredential)},
             { Constants.Configuration.OAuth, typeof(OAuthCredential)},
             { Constants.Configuration.OAuthAccessToken, typeof(OAuthAccessTokenCredential)},
-            { Constants.Configuration.ServiceIdentity, typeof(ServiceIdentityCredential)},
         };
 
         public ICredentialProvider GetCredentialProvider(string credType)
