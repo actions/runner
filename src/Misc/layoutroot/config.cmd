@@ -13,7 +13,7 @@ if defined VERBOSE_ARG (
 rem Unblock the following types of files:
 rem 1) The files in the root of the layout folder. E.g. .cmd files.
 rem
-rem 2) The PowerShell scripts delivered with the agent. E.g. capability scan scripts under "bin\"
+rem 2) The PowerShell scripts delivered with the runner. E.g. capability scan scripts under "bin\"
 rem and legacy handler scripts under "externals\vstshost\".
 rem
 rem 3) The DLLs potentially loaded from a PowerShell script (e.g. DLLs in Agent.ServerOMDirectory).
@@ -27,12 +27,12 @@ powershell.exe -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestri
 
 if /i "%~1" equ "remove" (
     rem ********************************************************************************
-    rem Unconfigure the agent.
+    rem Unconfigure the runner.
     rem ********************************************************************************
     "%~dp0bin\Runner.Listener.exe" %*
 ) else (
     rem ********************************************************************************
-    rem Configure the agent.
+    rem Configure the runner.
     rem ********************************************************************************
     "%~dp0bin\Runner.Listener.exe" configure %*
 )

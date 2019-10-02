@@ -13,7 +13,7 @@ if defined VERBOSE_ARG (
 rem Unblock the following types of files:
 rem 1) The files in the root of the layout folder. E.g. .cmd files.
 rem
-rem 2) The PowerShell scripts delivered with the agent. E.g. capability scan scripts under "bin\"
+rem 2) The PowerShell scripts delivered with the runner. E.g. capability scan scripts under "bin\"
 rem and legacy handler scripts under "externals\vstshost\".
 rem
 rem 3) The DLLs potentially loaded from a PowerShell script (e.g. DLLs in Agent.ServerOMDirectory).
@@ -36,8 +36,8 @@ if /i "%~1" equ "localRun" (
   rem ********************************************************************************
   "%~dp0bin\Runner.Listener.exe" run %*
 
-  rem Return code 4 means the run once agent received an update message.
-  rem Sleep 5 seconds to wait for the update process finish and run the agent again.
+  rem Return code 4 means the run once runner received an update message.
+  rem Sleep 5 seconds to wait for the update process finish and run the runner again.
   if ERRORLEVEL 4 (
     timeout /t 5 /nobreak > NUL
     "%~dp0bin\Runner.Listener.exe" run %*
