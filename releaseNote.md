@@ -1,17 +1,16 @@
 ## Features
-  - Users/thboop/evaluate step display name (#83)
-  - expand job container on runner side (#101)
-  - Support more containers for javascript actions (#105)
+  - Runner config auth via GitHub.com. (#107) (#117) 
+  - Adding wrapper action to support post job cleanup, adding checkout v1.1 (#91)
+  - Improving terminal experience (#110)
+  - Add runner support for cache action. (#120)
 
 ## Bugs
-  - Add set-secret to only mask secret (#98)
-  - prefer action.yml over dockerfile in repository. (#99)
-  - Dont overwrite workingdir for service containers (#100)
-  - add group and endgroup commands (#106)
+  - Set GITHUB_ACTIONS in containers. (#119)
+  - Fix issue data column/col mismatch. (#122)
 
 ## Misc
-  - Simplify container start / keep-alive script (#97)
-  - Allow vswhere to find VS pre-releases (#104)
+  - Use GitHub actions for CI/PR (#112) 
+  - Code Cleanup (#123) (#124) (#125)
 
 ## Agent Downloads  
 
