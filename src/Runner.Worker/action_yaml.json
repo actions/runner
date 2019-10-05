@@ -22,7 +22,7 @@
         "input": {
             "mapping": {
                 "properties": {
-                    "default": "string"
+                    "default": "input-default-context"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -43,7 +43,8 @@
                     "entrypoint": "non-empty-string",
                     "args": "container-runs-args",
                     "env": "container-runs-env",
-                    "post-entrypoint": "non-empty-string"
+                    "post-entrypoint": "non-empty-string",
+                    "post-if": "non-empty-string"
                 }
             }
         },
@@ -66,7 +67,8 @@
                 "properties": {
                     "using": "non-empty-string",
                     "main": "non-empty-string",
-                    "post": "non-empty-string"
+                    "post": "non-empty-string",
+                    "post-if": "non-empty-string"
                 }
             }
         },
@@ -80,6 +82,18 @@
         "container-runs-context": {
             "context": [
                 "inputs"
+            ],
+            "string": {}
+        },
+        "input-default-context": {
+            "context": [
+                "github",
+                "strategy",
+                "matrix",
+                "steps",
+                "job",
+                "runner",
+                "env"
             ],
             "string": {}
         },

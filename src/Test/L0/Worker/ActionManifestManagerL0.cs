@@ -5,6 +5,7 @@ using GitHub.Runner.Worker;
 using Moq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -95,6 +96,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(containerAction.Image, "Dockerfile");
                 Assert.Equal(containerAction.EntryPoint, "main.sh");
                 Assert.Equal(containerAction.Cleanup, "cleanup.sh");
+                Assert.Equal(containerAction.CleanupCondition, "failure()");
                 Assert.Equal(containerAction.Arguments[0].ToString(), "bzz");
                 Assert.Equal(containerAction.Environment[0].Key.ToString(), "Token");
                 Assert.Equal(containerAction.Environment[0].Value.ToString(), "foo");
@@ -309,6 +311,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal(nodeAction.Script, "main.js");
                 Assert.Equal(nodeAction.Cleanup, "cleanup.js");
+                Assert.Equal(nodeAction.CleanupCondition, "cancelled()");
             }
             finally
             {
@@ -427,6 +430,49 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Evaluate_Default_Input()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                var githubContext = new DictionaryContextData();
+                githubContext.Add("ref", new StringContextData("refs/heads/master"));
+
+                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                evaluateContext["github"] = githubContext;
+                evaluateContext["strategy"] = new DictionaryContextData();
+                evaluateContext["matrix"] = new DictionaryContextData();
+                evaluateContext["steps"] = new DictionaryContextData();
+                evaluateContext["job"] = new DictionaryContextData();
+                evaluateContext["runner"] = new DictionaryContextData();
+                evaluateContext["env"] = new DictionaryContextData();
+
+                //Act
+                var result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new StringToken(null, null, null, "defaultValue"), evaluateContext);
+
+                //Assert
+                Assert.Equal(result, "defaultValue");
+
+                //Act
+                result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new BasicExpressionToken(null, null, null, "github.ref"), evaluateContext);
+
+                //Assert
+                Assert.Equal(result, "refs/heads/master");
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
         private void Setup([CallerMemberName] string name = "")
         {
             _ecTokenSource?.Dispose();
@@ -436,9 +482,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             _hc = new TestHostContext(this, name);
 
             _ec = new Mock<IExecutionContext>();
+            _ec.Setup(x => x.WriteDebug).Returns(true);
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Variables).Returns(new Variables(_hc, new Dictionary<string, VariableValue>()));
-            _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
+            _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
         }
 

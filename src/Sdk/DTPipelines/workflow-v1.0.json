@@ -43,7 +43,8 @@
         "steps",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "one-of": [
         "string",
@@ -69,7 +70,8 @@
         "steps",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "string": {}
     },
@@ -113,7 +115,8 @@
         "secrets",
         "steps",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "string": {}
     },
@@ -383,7 +386,8 @@
         "secrets",
         "steps",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -400,7 +404,8 @@
         "steps",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -415,9 +420,9 @@
         "matrix",
         "secrets",
         "steps",
-        "github",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -434,7 +439,8 @@
         "steps",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -449,9 +455,9 @@
         "matrix",
         "secrets",
         "steps",
-        "github",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -511,7 +517,8 @@
         "steps",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -556,9 +563,9 @@
         "matrix",
         "secrets",
         "steps",
-        "github",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "boolean": {}
     },
@@ -570,10 +577,10 @@
         "matrix",
         "secrets",
         "steps",
-        "github",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "boolean": {}
     },
@@ -585,9 +592,9 @@
         "matrix",
         "secrets",
         "steps",
-        "github",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "number": {}
     },
@@ -599,10 +606,10 @@
         "matrix",
         "secrets",
         "steps",
-        "github",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "number": {}
     },
@@ -614,9 +621,9 @@
         "matrix",
         "secrets",
         "steps",
-        "github",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "string": {}
     },
@@ -630,7 +637,8 @@
         "steps",
         "inputs",
         "job",
-        "runner"
+        "runner",
+        "env"
       ],
       "string": {}
     }

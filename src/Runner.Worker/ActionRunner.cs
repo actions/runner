@@ -94,7 +94,7 @@ namespace GitHub.Runner.Worker
                 {
                     postDisplayName = $"Post {this.DisplayName}";
                 }
-                ExecutionContext.RegisterPostJobAction(postDisplayName, Action);
+                ExecutionContext.RegisterPostJobAction(postDisplayName, handlerData.CleanupCondition, Action);
             }
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -144,13 +144,19 @@ namespace GitHub.Runner.Worker
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
+                var manifestManager = HostContext.GetService<IActionManifestManager>();
                 foreach (var input in (definition.Data?.Inputs))
                 {
                     string key = input.Key.AssertString("action input name").Value;
-                    string value = input.Value.AssertString("action input default value").Value;
                     if (!inputs.ContainsKey(key))
                     {
-                        inputs[key] = value;
+                        var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var data in ExecutionContext.ExpressionValues)
+                        {
+                            evaluateContext[data.Key] = data.Value;
+                        }
+
+                        inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value, evaluateContext);
                     }
                 }
             }

@@ -11,7 +11,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String CancelTimeoutMinutes = "cancel-timeout-minutes";
         public const String Cancelled = "cancelled";
         public const String Checkout = "checkout";
-        public const String Clean= "clean";
+        public const String Clean = "clean";
         public const String Container = "container";
         public const String ContinueOnError = "continue-on-error";
         public const String Env = "env";
@@ -77,5 +77,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Workflow_1_0 = "workflow-v1.0";
         public const String WorkflowRoot = "workflow-root";
         public const String WorkingDirectory = "working-directory";
+        public const String Workspace = "workspace";
     }
 }

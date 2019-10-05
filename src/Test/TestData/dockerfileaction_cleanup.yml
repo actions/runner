@@ -24,3 +24,4 @@ runs:
     Token: foo
     Url: bar
   post-entrypoint: 'cleanup.sh'
+  post-if: 'failure()'

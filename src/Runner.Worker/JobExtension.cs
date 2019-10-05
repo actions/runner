@@ -85,6 +85,7 @@ namespace GitHub.Runner.Worker
                         foreach (var pair in environmentVariables)
                         {
                             context.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
+                            context.SetEnvContext(pair.Key, pair.Value ?? string.Empty);
                         }
                     }
 

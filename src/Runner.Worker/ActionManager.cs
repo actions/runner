@@ -797,9 +797,17 @@ namespace GitHub.Runner.Worker
 
     public abstract class ActionExecutionData
     {
+        private string _cleanupCondition = $"{Constants.Expressions.Always}()";
+
         public abstract ActionExecutionType ExecutionType { get; }
 
         public abstract bool HasCleanup { get; }
+
+        public string CleanupCondition
+        {
+            get { return _cleanupCondition; }
+            set { _cleanupCondition = value; }
+        }
     }
 
     public class ContainerSetupInfo

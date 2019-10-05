@@ -15,6 +15,7 @@ namespace GitHub.DistributedTask.Expressions2
             AddFunction<Join>("join", 1, 2);
             AddFunction<StartsWith>("startsWith", 2, 2);
             AddFunction<ToJson>("toJson", 1, 1);
+            AddFunction<HashFiles>("hashFiles", 1, 1);
         }
 
         private static void AddFunction<T>(String name, Int32 minParameters, Int32 maxParameters)

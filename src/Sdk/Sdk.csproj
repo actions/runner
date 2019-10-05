@@ -26,11 +26,7 @@
         <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.19.4" />
         <PackageReference Include="Microsoft.ApplicationInsights" Version="2.9.1" />
         <PackageReference Include="WindowsAzure.Storage" Version="8.7.0" />
-        <PackageReference Include="BuildXL.Cache.Hashing" Version="0.1.0-20190412.7" />
-        <PackageReference Include="BuildXL.Cache.Interfaces" Version="0.1.0-20190412.7" />
-        <PackageReference Include="DotNet.Glob" Version="2.0.3" />
         <PackageReference Include="Minimatch" Version="2.0.0" />
-        <PackageReference Include="RuntimeContracts" Version="0.1.7.2" />
         <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
     </ItemGroup>
 

@@ -19,6 +19,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using Newtonsoft.Json;
 using System.Text;
+using System.Collections;
 
 namespace GitHub.Runner.Worker
 {
@@ -74,7 +75,7 @@ namespace GitHub.Runner.Worker
         // timeline record update methods
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
-        string GetRunnerContext(string name);
+        void SetEnvContext(string name, string value);
         void SetRunnerContext(string name, string value);
         string GetGitHubContext(string name);
         void SetGitHubContext(string name, string value);
@@ -95,7 +96,7 @@ namespace GitHub.Runner.Worker
 
         // others
         void ForceTaskComplete();
-        void RegisterPostJobAction(string displayName, Pipelines.ActionStep action);
+        void RegisterPostJobAction(string displayName, string condition, Pipelines.ActionStep action);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -235,7 +236,7 @@ namespace GitHub.Runner.Worker
             });
         }
 
-        public void RegisterPostJobAction(string displayName, Pipelines.ActionStep action)
+        public void RegisterPostJobAction(string displayName, string condition, Pipelines.ActionStep action)
         {
             if (action.Reference.Type != ActionSourceType.Repository)
             {
@@ -252,7 +253,7 @@ namespace GitHub.Runner.Worker
             var actionRunner = HostContext.CreateService<IActionRunner>();
             actionRunner.Action = action;
             actionRunner.Stage = ActionRunStage.Post;
-            actionRunner.Condition = $"{Constants.Expressions.Always}()";
+            actionRunner.Condition = condition;
             actionRunner.DisplayName = displayName;
             actionRunner.ExecutionContext = Root.CreatePostChild(displayName, $"{actionRunner.Action.Name}_post", IntraActionState);
             Root.PostJobSteps.Push(actionRunner);
@@ -366,18 +367,18 @@ namespace GitHub.Runner.Worker
             runnerContext[name] = new StringContextData(value);
         }
 
-        public string GetRunnerContext(string name)
+        public void SetEnvContext(string name, string value)
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
-            var runnerContext = ExpressionValues["runner"] as RunnerContext;
-            if (runnerContext.TryGetValue(name, out var value))
-            {
-                return value as StringContextData;
-            }
-            else
-            {
-                return null;
-            }
+
+#if OS_WINDOWS
+            var envContext = ExpressionValues["env"] as DictionaryContextData;
+            envContext[name] = new StringContextData(value);
+#else
+            var envContext = ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+            envContext[name] = new StringContextData(value);
+#endif
+
         }
 
         public void SetGitHubContext(string name, string value)
@@ -610,6 +611,14 @@ namespace GitHub.Runner.Worker
                 githubContext[pair.Key] = pair.Value;
             }
             ExpressionValues["github"] = githubContext;
+
+            Trace.Info("Initialize Env context");
+#if OS_WINDOWS
+            ExpressionValues["env"] = new DictionaryContextData();
+#else
+
+            ExpressionValues["env"] = new CaseSensitiveDictionaryContextData();
+#endif
 
             // Prepend Path
             PrependPath = new List<string>();

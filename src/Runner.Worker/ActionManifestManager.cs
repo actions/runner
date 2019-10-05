@@ -25,6 +25,8 @@ namespace GitHub.Runner.Worker
         List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, PipelineContextData> contextData);
 
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> contextData);
+
+        string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token, IDictionary<string, PipelineContextData> contextData);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -207,6 +209,38 @@ namespace GitHub.Runner.Worker
             return result;
         }
 
+        public string EvaluateDefaultInput(
+            IExecutionContext executionContext,
+            string inputName,
+            TemplateToken token,
+            IDictionary<string, PipelineContextData> contextData)
+        {
+            string result = "";
+            if (token != null)
+            {
+                var context = CreateContext(executionContext, contextData);
+                try
+                {
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "input-default-context", token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+
+                    Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
+
+                    // String
+                    result = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    Trace.Error(ex);
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
+
         private TemplateContext CreateContext(
             IExecutionContext executionContext,
             IDictionary<string, PipelineContextData> contextData)
@@ -248,6 +282,7 @@ namespace GitHub.Runner.Worker
             var pluginToken = default(StringToken);
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
+            var postIfToken = default(StringToken);
             foreach (var run in runsMapping)
             {
                 var runsKey = run.Key.AssertString("runs key").Value;
@@ -280,6 +315,9 @@ namespace GitHub.Runner.Worker
                     case "post-entrypoint":
                         postEntrypointToken = run.Value.AssertString("post-entrypoint");
                         break;
+                    case "post-if":
+                        postIfToken = run.Value.AssertString("post-if");
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -302,7 +340,8 @@ namespace GitHub.Runner.Worker
                             Arguments = argsToken,
                             EntryPoint = entrypointToken?.Value,
                             Environment = envToken,
-                            Cleanup = postEntrypointToken?.Value
+                            Cleanup = postEntrypointToken?.Value,
+                            CleanupCondition = postIfToken?.Value
                         };
                     }
                 }
@@ -317,7 +356,8 @@ namespace GitHub.Runner.Worker
                         return new NodeJSActionExecutionData()
                         {
                             Script = mainToken.Value,
-                            Cleanup = postToken?.Value
+                            Cleanup = postToken?.Value,
+                            CleanupCondition = postIfToken?.Value
                         };
                     }
                 }
@@ -355,8 +395,7 @@ namespace GitHub.Runner.Worker
                     if (string.Equals(metadataName, "default", StringComparison.OrdinalIgnoreCase))
                     {
                         hasDefault = true;
-                        var inputDefault = metadata.Value.AssertString("input default");
-                        actionDefinition.Inputs.Add(inputName, inputDefault);
+                        actionDefinition.Inputs.Add(inputName, metadata.Value);
                     }
                     else if (string.Equals(metadataName, "deprecationMessage", StringComparison.OrdinalIgnoreCase))
                     {
