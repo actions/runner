@@ -152,7 +152,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.Replace,
-                description: "Do you like to replace existing runner? (Y/N)",
+                description: "Would you like to replace the existing runner? (Y/N)",
                 defaultValue: false);
         }
 
@@ -160,7 +160,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.RunAsService,
-                description: "Do you like to run runner as service? (Y/N)",
+                description: "Would you like to run the runner as service? (Y/N)",
                 defaultValue: false);
         }
 
@@ -168,7 +168,7 @@ namespace GitHub.Runner.Listener
         {
             return TestFlagOrPrompt(
                 name: Constants.Runner.CommandLine.Flags.LaunchBrowser,
-                description: "Do you like to launch browser for AAD Device Code Flow? (Y/N)",
+                description: "Would you like to launch your browser for AAD Device Code Flow? (Y/N)",
                 defaultValue: true);
         }
         //
@@ -196,7 +196,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Password,
-                description: "What is your Github password?",
+                description: "What is your GitHub password?",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -205,7 +205,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Pool,
-                description: "Enter the name of runner pool:",
+                description: "Enter the name of your runner pool:",
                 defaultValue: "default",
                 validator: Validators.NonEmptyValidator);
         }
@@ -248,7 +248,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.UserName,
-                description: "What is your Github username?",
+                description: "What is your GitHub username?",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
