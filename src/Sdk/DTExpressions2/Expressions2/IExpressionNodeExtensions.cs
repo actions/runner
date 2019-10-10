@@ -56,7 +56,7 @@ namespace GitHub.DistributedTask.Expressions2
 
                 // Attempt to match a named-value or index operator.
                 // Note, do not push children of the index operator.
-                if (node is NamedValue || node is Index)
+                if (node is NamedValue || node is Sdk.Operators.Index)
                 {
                     // Lazy initialize the pattern segments
                     if (segmentedPatterns is null)
@@ -201,7 +201,7 @@ namespace GitHub.DistributedTask.Expressions2
                 result.Push(node);
             }
             // Node is an index
-            else if (node is Index index)
+            else if (node is Sdk.Operators.Index index)
             {
                 while (true)
                 {
@@ -218,7 +218,7 @@ namespace GitHub.DistributedTask.Expressions2
                         break;
                     }
                     // Parameter 0 is an index
-                    else if (parameter0 is Index index2)
+                    else if (parameter0 is Sdk.Operators.Index index2)
                     {
                         index = index2;
                     }
