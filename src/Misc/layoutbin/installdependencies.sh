@@ -60,10 +60,9 @@ then
                 print_errormessage
                 exit 1
             fi
-            
-            # ubuntu 18 uses libcurl4
-            # ubuntu 14, 16 and other linux use libcurl3
-            apt install -y libcurl3 || apt install -y libcurl4
+
+            # libissl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
+            apt install -y libssl1.1$ || apt install -y libssl1.0.2$ || apt install -y libssl1.0.0$
             if [ $? -ne 0 ]
             then
                 echo "'apt' failed with exit code '$?'"
@@ -71,18 +70,8 @@ then
                 exit 1
             fi
 
-            # debian 9 use libssl1.0.2
-            # other debian linux use libssl1.0.0
-            apt install -y libssl1.0.0 || apt install -y libssl1.0.2
-            if [ $? -ne 0 ]
-            then
-                echo "'apt' failed with exit code '$?'"
-                print_errormessage
-                exit 1
-            fi
-
-            # libicu version prefer: libicu52 -> libicu55 -> libicu57 -> libicu60
-            apt install -y libicu52 || apt install -y libicu55 || apt install -y libicu57 || apt install -y libicu60
+            # libicu version prefer: libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
+            apt install -y libicu63 || apt install -y libicu60 || apt install -y libicu57 || apt install -y libicu55 || apt install -y libicu52
             if [ $? -ne 0 ]
             then
                 echo "'apt' failed with exit code '$?'"
@@ -101,9 +90,8 @@ then
                     exit 1
                 fi
                 
-                # ubuntu 18 uses libcurl4
-                # ubuntu 14, 16 and other linux use libcurl3
-                apt-get install -y libcurl3 || apt-get install -y libcurl4
+                # libissl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
+                apt-get install -y libssl1.1$ || apt-get install -y libssl1.0.2$ || apt install -y libssl1.0.0$
                 if [ $? -ne 0 ]
                 then
                     echo "'apt-get' failed with exit code '$?'"
@@ -111,18 +99,8 @@ then
                     exit 1
                 fi
 
-                # debian 9 use libssl1.0.2
-                # other debian linux use libssl1.0.0
-                apt-get install -y libssl1.0.0 || apt install -y libssl1.0.2
-                if [ $? -ne 0 ]
-                then
-                    echo "'apt-get' failed with exit code '$?'"
-                    print_errormessage
-                    exit 1
-                fi
-
-                # libicu version prefer: libicu52 -> libicu55 -> libicu57 -> libicu60
-                apt-get install -y libicu52 || apt install -y libicu55 || apt install -y libicu57 || apt install -y libicu60
+                # libicu version prefer: libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
+                apt-get install -y libicu63 || apt-get install -y libicu60 || apt install -y libicu57 || apt install -y libicu55 || apt install -y libicu52
                 if [ $? -ne 0 ]
                 then
                     echo "'apt-get' failed with exit code '$?'"
@@ -149,46 +127,7 @@ then
             command -v dnf
             if [ $? -eq 0 ]
             then
-                useCompatSsl=0
-                grep -i 'fedora release 28' /etc/fedora-release
-                if [ $? -eq 0 ]
-                then
-                   useCompatSsl=1
-                else 
-                    grep -i 'fedora release 27' /etc/fedora-release
-                    if [ $? -eq 0 ]
-                    then
-                        useCompatSsl=1
-                    else
-                        grep -i 'fedora release 26' /etc/fedora-release
-                        if [ $? -eq 0 ]
-                        then
-                            useCompatSsl=1
-                        fi
-                    fi
-                fi
-
-                if [ $useCompatSsl -eq 1 ]
-                then
-                    echo "Use compat-openssl10-devel instead of openssl-devel for Fedora 27/28 (dotnet core requires openssl 1.0.x)"                    
-                    dnf install -y compat-openssl10
-                    if [ $? -ne 0 ]
-                    then
-                        echo "'dnf' failed with exit code '$?'"
-                        print_errormessage
-                        exit 1
-                    fi
-                else
-                    dnf install -y openssl-libs
-                    if [ $? -ne 0 ]
-                    then
-                        echo "'dnf' failed with exit code '$?'"
-                        print_errormessage
-                        exit 1
-                    fi
-                fi       
-
-                dnf install -y lttng-ust libcurl krb5-libs zlib libicu
+                dnf install -y lttng-ust openssl-libs krb5-libs zlib libicu
                 if [ $? -ne 0 ]
                 then
                     echo "'dnf' failed with exit code '$?'"
@@ -204,19 +143,10 @@ then
             command -v yum
             if [ $? -eq 0 ]
             then
-                yum install -y openssl-libs libcurl krb5-libs zlib libicu
+                yum install -y lttng-ust openssl-libs krb5-libs zlib libicu
                 if [ $? -ne 0 ]
                 then                    
                     echo "'yum' failed with exit code '$?'"
-                    print_errormessage
-                    exit 1
-                fi
-
-                # install lttng-ust separately since it's not part of offical package repository
-                yum install -y wget && wget -P /etc/yum.repos.d/ https://packages.efficios.com/repo.files/EfficiOS-RHEL7-x86-64.repo && rpmkeys --import https://packages.efficios.com/rhel/repo.key && yum updateinfo && yum install -y lttng-ust
-                if [ $? -ne 0 ]
-                then                    
-                    echo "'lttng-ust' installation failed with exit code '$?'"
                     print_errormessage
                     exit 1
                 fi
@@ -230,13 +160,14 @@ then
         # we might on OpenSUSE
         OSTYPE=$(grep ID_LIKE /etc/os-release | cut -f2 -d=)
         echo $OSTYPE
-        if [ $OSTYPE == '"suse"' ]
+        echo $OSTYPE | grep "suse"
+        if [ $? -eq 0 ]
         then
             echo "The current OS is SUSE based"
             command -v zypper
             if [ $? -eq 0 ]
             then
-                zypper -n install lttng-ust libopenssl1_0_0 libcurl4 krb5 zlib libicu52_1
+                zypper -n install lttng-ust libopenssl1_1 libcurl4 krb5 zlib libicu60_2
                 if [ $? -ne 0 ]
                 then
                     echo "'zypper' failed with exit code '$?'"
