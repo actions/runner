@@ -1,0 +1,646 @@
+﻿{
+  "version": "workflow-v1.0",
+
+  "definitions": {
+
+    "workflow-root": {
+      "description": "Workflow file",
+      "mapping": {
+        "properties": {
+          "on": "any",
+          "name": "string",
+          "env": "workflow-env",
+          "jobs": "jobs"
+        }
+      }
+    },
+
+    "steps-template-root": {
+      "description": "Steps template file",
+      "mapping": {
+        "properties": {
+          "inputs": "steps-template-inputs",
+          "outputs": "steps-template-outputs",
+          "steps": "steps-in-template"
+        }
+      }
+    },
+
+    "steps-scope-inputs": {
+      "description": "Used when evaluating steps scope inputs",
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "steps-scope-input-value"
+      }
+    },
+
+    "steps-scope-input-value": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "one-of": [
+        "string",
+        "sequence",
+        "mapping"
+      ]
+    },
+
+    "steps-scope-outputs": {
+      "description": "Used when evaluating steps scope outputs",
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "steps-scope-output-value"
+      }
+    },
+
+    "steps-scope-output-value": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
+    },
+
+    "steps-template-inputs": {
+      "description": "Allowed inputs in a steps template",
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "steps-template-input-value"
+      }
+    },
+
+    "steps-template-input-value": {
+      "description": "Default input values for a steps template",
+      "context": [
+        "github",
+        "strategy",
+        "matrix"
+      ],
+      "one-of": [
+        "string",
+        "sequence",
+        "mapping"
+      ]
+    },
+
+    "steps-template-outputs": {
+      "description": "Output mapping for a steps template",
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "steps-template-output-value"
+      }
+    },
+
+    "steps-template-output-value": {
+      "description": "Output values for a steps template",
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
+    },
+
+    "workflow-env": {
+      "context": [
+        "github",
+        "secrets"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "jobs": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "job"
+      }
+    },
+
+    "job": {
+      "mapping": {
+        "properties": {
+          "needs": "needs",
+          "if": "string",
+          "strategy": "strategy",
+          "name": "string-strategy-context",
+          "runs-on": "runs-on",
+          "timeout-minutes": "number-strategy-context",
+          "cancel-timeout-minutes": "number-strategy-context",
+          "continue-on-error": "boolean",
+          "container": "container",
+          "services": "services",
+          "env": "job-env",
+          "steps": "steps"
+        }
+      }
+    },
+
+    "needs": {
+      "one-of": [
+        "sequence-of-non-empty-string",
+        "non-empty-string"
+      ]
+    },
+
+    "strategy": {
+      "context": [
+        "github"
+      ],
+      "mapping": {
+        "properties": {
+          "fail-fast": "boolean",
+          "max-parallel": "number",
+          "matrix": "matrix"
+        }
+      }
+    },
+
+    "matrix": {
+      "mapping": {
+        "properties": {
+          "include": "matrix-include",
+          "exclude": "matrix-exclude"
+        },
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "sequence"
+      }
+    },
+
+    "matrix-include": {
+      "sequence": {
+        "item-type": "matrix-include-item"
+      }
+    },
+
+    "matrix-include-item": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "any"
+      }
+    },
+
+    "matrix-exclude": {
+      "sequence": {
+        "item-type": "matrix-exclude-item"
+      }
+    },
+
+    "matrix-exclude-item": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "matrix-exclude-filter-item"
+      }
+    },
+
+    "matrix-exclude-filter-item": {
+      "one-of": [
+        "string",
+        "matrix-exclude-mapping-filter"
+      ]
+    },
+
+    "matrix-exclude-mapping-filter": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "matrix-exclude-filter-item"
+      }
+    },
+
+    "runs-on": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix"
+      ],
+      "one-of": [
+        "runs-on-string",
+        "runs-on-mapping"
+      ]
+    },
+
+    "runs-on-string": {
+      "string": {
+        "require-non-empty": true
+      }
+    },
+
+    "runs-on-mapping": {
+      "mapping": {
+        "properties": {
+          "pool": "non-empty-string"
+        }
+      }
+    },
+
+    "job-env": {
+      "context": [
+        "github",
+        "secrets",
+        "strategy",
+        "matrix"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "steps": {
+      "sequence": {
+        "item-type": "steps-item"
+      }
+    },
+
+    "steps-in-template": {
+      "sequence": {
+        "item-type": "steps-item-in-template"
+      }
+    },
+
+    "steps-item": {
+      "one-of": [
+        "run-step",
+        "regular-step",
+        "steps-template-reference"
+      ]
+    },
+
+    "steps-item-in-template": {
+      "one-of": [
+        "run-step-in-template",
+        "regular-step-in-template",
+        "steps-template-reference-in-template"
+      ]
+    },
+
+    "run-step": {
+      "mapping": {
+        "properties": {
+          "name": "string-steps-context",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout-minutes": "number-steps-context",
+          "run": "string-steps-context",
+          "continue-on-error": "boolean-steps-context",
+          "env": "step-env",
+          "working-directory": "string-steps-context",
+          "shell": "non-empty-string"
+        }
+      }
+    },
+
+    "run-step-in-template": {
+      "mapping": {
+        "properties": {
+          "name": "string-steps-context-in-template",
+          "id": "non-empty-string",
+          "if": "string",
+          "timeout-minutes": "number-steps-context-in-template",
+          "run": "string-steps-context-in-template",
+          "continue-on-error": "boolean-steps-context-in-template",
+          "env": "step-env-in-template",
+          "working-directory": "string-steps-context-in-template",
+          "shell": "non-empty-string"
+        }
+      }
+    },
+
+    "regular-step": {
+      "mapping": {
+        "properties": {
+          "name": "string-steps-context",
+          "id": "non-empty-string",
+          "if": "string",
+          "continue-on-error": "boolean-steps-context",
+          "timeout-minutes": "number-steps-context",
+          "uses": "non-empty-string",
+          "with": "step-with",
+          "env": "step-env"
+        }
+      }
+    },
+
+    "regular-step-in-template": {
+      "mapping": {
+        "properties": {
+          "name": "string-steps-context-in-template",
+          "id": "non-empty-string",
+          "if": "string",
+          "continue-on-error": "boolean-steps-context-in-template",
+          "timeout-minutes": "number-steps-context-in-template",
+          "uses": "non-empty-string",
+          "with": "step-with-in-template",
+          "env": "step-env-in-template"
+        }
+      }
+    },
+
+    "steps-template-reference": {
+      "mapping": {
+        "properties": {
+          "template": "non-empty-string",
+          "id": "non-empty-string",
+          "inputs": "steps-template-reference-inputs"
+        }
+      }
+    },
+
+    "steps-template-reference-in-template": {
+      "mapping": {
+        "properties": {
+          "template": "non-empty-string",
+          "id": "non-empty-string",
+          "inputs": "steps-template-reference-inputs-in-template"
+        }
+      }
+    },
+
+    "steps-template-reference-inputs": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "steps-template-reference-inputs-in-template": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "step-env": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "step-env-in-template": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "step-with": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "container": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix"
+      ],
+      "one-of": [
+        "non-empty-string",
+        "container-mapping"
+      ]
+    },
+
+    "container-mapping": {
+      "mapping": {
+        "properties": {
+          "image": "non-empty-string",
+          "options": "non-empty-string",
+          "env": "container-env",
+          "ports": "sequence-of-non-empty-string",
+          "volumes": "sequence-of-non-empty-string"
+        }
+      }
+    },
+
+    "services": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "container"
+      }
+    },
+
+    "container-env": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "step-with-in-template": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "non-empty-string": {
+      "string": {
+        "require-non-empty": true
+      }
+    },
+
+    "sequence-of-non-empty-string": {
+      "sequence": {
+        "item-type": "non-empty-string"
+      }
+    },
+
+    "number-strategy-context": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix"
+      ],
+      "number": {}
+    },
+
+    "string-strategy-context": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix"
+      ],
+      "string": {}
+    },
+
+    "boolean-steps-context": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "boolean": {}
+    },
+
+    "boolean-steps-context-in-template": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "boolean": {}
+    },
+
+    "number-steps-context": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "number": {}
+    },
+
+    "number-steps-context-in-template": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "number": {}
+    },
+
+    "string-steps-context": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
+    },
+
+    "string-steps-context-in-template": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
+    }
+  }
+}

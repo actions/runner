@@ -1,0 +1,177 @@
+stages:
+- stage: Build    
+  jobs:
+  ################################################################################
+  - job: build_windows_agent_x64
+  ################################################################################
+    displayName: Windows Agent (x64)
+    pool:
+      vmImage: vs2017-win2016
+    steps:
+
+    # Steps template for windows platform
+    - template: windows.template.yml
+    
+    # Package dotnet core windows dependency (VC++ Redistributable)
+    - powershell: |
+        Write-Host "Downloading 'VC++ Redistributable' package."
+        $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
+        New-Item -Path $outDir -ItemType directory 
+        $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
+        Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x64.zip -OutFile $outFile
+        Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
+        $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($outFile, $unzipDir)
+        $agentLayoutBin = Join-Path -Path $(Build.SourcesDirectory) -ChildPath "_layout\bin"
+        Copy-Item -Path $unzipDir -Destination $agentLayoutBin -Force
+      displayName: Package UCRT
+
+    # Create agent package zip
+    - script: dev.cmd package Release
+      workingDirectory: src
+      displayName: Package Release
+
+    # Upload agent package zip as build artifact
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifact (Windows)
+      inputs:
+        pathToPublish: _package
+        artifactName: runners
+        artifactType: container
+
+  ################################################################################
+  - job: build_linux_agent_x64
+  ################################################################################
+    displayName: Linux Agent (x64)
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+
+    # Steps template for non-windows platform
+    - template: nonwindows.template.yml
+
+    # Create agent package zip
+    - script: ./dev.sh package Release
+      workingDirectory: src
+      displayName: Package Release    
+
+    # Upload agent package zip as build artifact
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifact (Linux)    
+      inputs:
+        pathToPublish: _package
+        artifactName: runners
+        artifactType: container
+
+  ################################################################################
+  - job: build_osx_agent
+  ################################################################################
+    displayName: macOS Agent (x64)
+    pool:
+      vmImage: macOS-10.13
+    steps:
+
+    # Steps template for non-windows platform
+    - template: nonwindows.template.yml
+    
+    # Create agent package zip
+    - script: ./dev.sh package Release
+      workingDirectory: src
+      displayName: Package Release    
+
+    # Upload agent package zip as build artifact
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifact (OSX)    
+      inputs:
+        pathToPublish: _package
+        artifactName: runners
+        artifactType: container
+
+- stage: Release
+  dependsOn: Build
+  jobs:
+  ################################################################################
+  - job: publish_agent_packages
+  ################################################################################
+    displayName: Publish Agents (Windows/Linux/OSX)
+    pool:
+      name: ProductionRMAgents
+    steps:
+    
+    # Download all agent packages from all previous phases
+    - task: DownloadBuildArtifacts@0
+      displayName: Download Agent Packages
+      inputs:
+        artifactName: runners
+
+    # Upload agent packages to Azure blob storage and refresh Azure CDN
+    - powershell: |
+        Write-Host "Preloading Azure modules." # This is for better performance, to avoid module-autoloading.
+        Import-Module AzureRM, AzureRM.profile, AzureRM.Storage, Azure.Storage, AzureRM.Cdn -ErrorAction Ignore -PassThru
+        Enable-AzureRmAlias -Scope CurrentUser
+        $uploadFiles = New-Object System.Collections.ArrayList
+        $certificateThumbprint = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalCertThumbprint
+        $clientId = (Get-ItemProperty -Path "$(ServicePrincipalReg)").ServicePrincipalClientId
+        Write-Host "##vso[task.setsecret]$certificateThumbprint"
+        Write-Host "##vso[task.setsecret]$clientId"
+        Login-AzureRmAccount -ServicePrincipal -CertificateThumbprint $certificateThumbprint -ApplicationId $clientId -TenantId $(GitHubTenantId)
+        Select-AzureRmSubscription -SubscriptionId $(GitHubSubscriptionId)
+        $storage = Get-AzureRmStorageAccount -ResourceGroupName githubassets -AccountName githubassets
+        Get-ChildItem -LiteralPath "$(System.ArtifactsDirectory)/runners" | ForEach-Object {
+          $versionDir = $_.Name.Trim('.zip').Trim('.tar.gz')
+          $versionDir = $versionDir.SubString($versionDir.LastIndexOf('-') + 1)
+          Write-Host "##vso[task.setvariable variable=ReleaseAgentVersion;]$versionDir"
+          Write-Host "Uploading $_ to BlobStorage githubassets/runners/$versionDir"
+          Set-AzureStorageBlobContent -Context $storage.Context -Container runners -File "$(System.ArtifactsDirectory)/runners/$_" -Blob "$versionDir/$_" -Force
+          $uploadFiles.Add("/runners/$versionDir/$_")
+        }
+        Write-Host "Get CDN info"
+        Get-AzureRmCdnEndpoint -ProfileName githubassets -ResourceGroupName githubassets
+        Write-Host "Purge Azure CDN Cache"
+        Unpublish-AzureRmCdnEndpointContent -EndpointName githubassets -ProfileName githubassets -ResourceGroupName githubassets -PurgeContent $uploadFiles
+        Write-Host "Pull assets through Azure CDN"
+        $uploadFiles | ForEach-Object {
+          $downloadUrl = "https://githubassets.azureedge.net" + $_
+          Write-Host $downloadUrl
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $_.SubString($_.LastIndexOf('/') + 1)
+        }
+      displayName: Upload to Azure Blob
+
+    # Create agent release on Github
+    - powershell: |
+        Write-Host "Creating github release."
+        $releaseNotes = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\releaseNote.md").Replace("<RUNNER_VERSION>","$(ReleaseAgentVersion)")
+        $releaseData = @{
+          tag_name = "v$(ReleaseAgentVersion)";
+          target_commitish = "$(Build.SourceVersion)";
+          name = "v$(ReleaseAgentVersion)";
+          body = $releaseNotes;
+          draft = $false;
+          prerelease = $true;
+        }
+        $releaseParams = @{
+          Uri = "https://api.github.com/repos/actions/runner/releases";
+          Method = 'POST';
+          Headers = @{
+            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("github:$(GithubToken)"));
+          }
+          ContentType = 'application/json';
+          Body = (ConvertTo-Json $releaseData -Compress)
+        }
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $releaseCreated = Invoke-RestMethod @releaseParams
+        Write-Host $releaseCreated
+        $releaseId = $releaseCreated.id
+        $assets = [System.IO.File]::ReadAllText("$(Build.SourcesDirectory)\assets.json").Replace("<RUNNER_VERSION>","$(ReleaseAgentVersion)")
+        $assetsParams = @{
+          Uri = "https://uploads.github.com/repos/actions/runner/releases/$releaseId/assets?name=assets.json"
+          Method = 'POST';
+          Headers = @{
+            Authorization = 'Basic ' + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("github:$(GithubToken)"));
+          }
+          ContentType = 'application/octet-stream';
+          Body = [system.Text.Encoding]::UTF8.GetBytes($assets)
+        }
+        Invoke-RestMethod @assetsParams
+      displayName: Create agent release on Github
