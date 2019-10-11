@@ -31,21 +31,6 @@ namespace GitHub.DistributedTask.Logging
             return Base64StringEscapeShift(value, 2);
         }
 
-        public static String Base64StringEscapeShift3(String value)
-        {
-            return Base64StringEscapeShift(value, 3);
-        }
-
-        public static String Base64StringEscapeShift4(String value)
-        {
-            return Base64StringEscapeShift(value, 4);
-        }
-
-        public static String Base64StringEscapeShift5(String value)
-        {
-            return Base64StringEscapeShift(value, 5);
-        }
-
         public static String ExpressionStringEscape(String value)
         {
             return Expressions.ExpressionUtil.StringEscape(value);
