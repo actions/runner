@@ -39,10 +39,6 @@ namespace GitHub.Runner.Common
             var extensions = new List<IExtension>();
             switch (typeof(T).FullName)
             {
-                // Listener capabilities providers.
-                case "GitHub.Runner.Common.Capabilities.ICapabilitiesProvider":
-                    Add<T>(extensions, "GitHub.Runner.Common.Capabilities.RunnerCapabilitiesProvider, Runner.Common");
-                    break;
                 // Action command extensions.
                 case "GitHub.Runner.Worker.IActionCommandExtension":
                     Add<T>(extensions, "GitHub.Runner.Worker.InternalPluginSetRepoPathCommandExtension, Runner.Worker");

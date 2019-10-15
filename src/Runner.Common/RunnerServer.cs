@@ -31,7 +31,7 @@ namespace GitHub.Runner.Common
         Task DeleteAgentAsync(int agentPoolId, int agentId);
         Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName = null, TaskAgentPoolType poolType = TaskAgentPoolType.Automation);
         Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null);
-        Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent);
+        Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent);
 
         // messagequeue
         Task<TaskAgentSession> CreateAgentSessionAsync(Int32 poolId, TaskAgentSession session, CancellationToken cancellationToken);
@@ -257,7 +257,7 @@ namespace GitHub.Runner.Common
             return _genericTaskAgentClient.GetAgentsAsync(agentPoolId, agentName, false);
         }
 
-        public Task<TaskAgent> UpdateAgentAsync(int agentPoolId, TaskAgent agent)
+        public Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent)
         {
             CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.ReplaceAgentAsync(agentPoolId, agent);

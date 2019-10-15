@@ -35,7 +35,6 @@ namespace GitHub.DistributedTask.WebApi
             this.PoolId = requestToBeCloned.PoolId;
             this.JobId = requestToBeCloned.JobId;
             this.JobName = requestToBeCloned.JobName;
-            this.Demands = new List<Demand>(requestToBeCloned.Demands ?? new Demand[0]);
             this.LockToken = requestToBeCloned.LockToken;
             this.ExpectedDuration = requestToBeCloned.ExpectedDuration;
             this.OrchestrationId = requestToBeCloned.OrchestrationId;
@@ -67,6 +66,11 @@ namespace GitHub.DistributedTask.WebApi
             if (requestToBeCloned.AgentSpecification != null)
             {
                 this.AgentSpecification = new JObject(requestToBeCloned.AgentSpecification);
+            }
+
+            if (requestToBeCloned.Labels != null)
+            {
+                this.Labels = new HashSet<string>(requestToBeCloned.Labels, StringComparer.OrdinalIgnoreCase);
             }
         }
 
@@ -229,6 +233,7 @@ namespace GitHub.DistributedTask.WebApi
         /// </summary>
         /// <value></value>
         [DataMember(Order = 16, EmitDefaultValue = false)]
+        [Obsolete("No more demands, use labels", true)]
         public IList<Demand> Demands
         {
             get;
@@ -381,6 +386,13 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(Order = 32, EmitDefaultValue = false)]
         public bool UserDelayed
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Order = 33, EmitDefaultValue = false)]
+        public ISet<string> Labels
         {
             get;
             set;
