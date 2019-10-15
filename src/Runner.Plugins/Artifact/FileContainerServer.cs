@@ -236,15 +236,15 @@ namespace GitHub.Runner.Plugins.Artifact
                     // try upload all files for the first time.
                     UploadResult uploadResult = await ParallelUploadAsync(context, files, maxConcurrentUploads, _uploadCancellationTokenSource.Token);
 
-                    if (uploadResult.FailedFiles.Count == 0)
+                    if (uploadResult.RetryFiles.Count == 0)
                     {
                         // all files have been upload succeed.
-                        context.Output("File upload succeed.");
+                        context.Output("File upload complete.");
                         return uploadResult.TotalFileSizeUploaded;
                     }
                     else
                     {
-                        context.Output($"{uploadResult.FailedFiles.Count} files failed to upload, retry these files after a minute.");
+                        context.Output($"{uploadResult.RetryFiles.Count} files failed to upload, retry these files after a minute.");
                     }
 
                     // Delay 1 min then retry failed files.
@@ -255,13 +255,13 @@ namespace GitHub.Runner.Plugins.Artifact
                     }
 
                     // Retry upload all failed files.
-                    context.Output($"Start retry {uploadResult.FailedFiles.Count} failed files upload.");
-                    UploadResult retryUploadResult = await ParallelUploadAsync(context, uploadResult.FailedFiles, maxConcurrentUploads, _uploadCancellationTokenSource.Token);
+                    context.Output($"Start retry {uploadResult.RetryFiles.Count} failed files upload.");
+                    UploadResult retryUploadResult = await ParallelUploadAsync(context, uploadResult.RetryFiles, maxConcurrentUploads, _uploadCancellationTokenSource.Token);
 
-                    if (retryUploadResult.FailedFiles.Count == 0)
+                    if (retryUploadResult.RetryFiles.Count == 0)
                     {
                         // all files have been upload succeed after retry.
-                        context.Output("File upload succeed after retry.");
+                        context.Output("File upload complete after retry.");
                         return uploadResult.TotalFileSizeUploaded + retryUploadResult.TotalFileSizeUploaded;
                     }
                     else
@@ -510,8 +510,17 @@ namespace GitHub.Runner.Plugins.Artifact
                                 }
                             }
 
-                            // tracking file that failed to upload.
-                            failedFiles.Add(fileToUpload);
+                            // We received an http status code where we should abandon our efforts
+                            if (_fileContainerHttpClient.IsFastFailResponse(response))
+                            {
+                                context.Output($"Cannot continue uploading files, so draining upload queue of {_fileUploadQueue.Count} items.");
+                                DrainUploadQueue(context);
+                            }
+                            else
+                            {
+                                // tracking file that failed to upload.
+                                failedFiles.Add(fileToUpload);
+                            }
                         }
                         else
                         {
@@ -590,6 +599,15 @@ namespace GitHub.Runner.Plugins.Artifact
             }
         }
 
+        private void DrainUploadQueue(RunnerActionPluginExecutionContext context)
+        {
+            while (_fileUploadQueue.TryDequeue(out string fileToUpload))
+            {
+                context.Debug($"Clearing upload queue: '{fileToUpload}'");
+                Interlocked.Increment(ref _uploadFilesProcessed);
+            }
+        }
+
         private void UploadFileTraceReportReceived(object sender, ReportTraceEventArgs e)
         {
             ConcurrentQueue<string> logQueue = _fileUploadTraceLog.GetOrAdd(e.File, new ConcurrentQueue<string>());
@@ -607,22 +625,22 @@ namespace GitHub.Runner.Plugins.Artifact
     {
         public UploadResult()
         {
-            FailedFiles = new List<string>();
+            RetryFiles = new List<string>();
             TotalFileSizeUploaded = 0;
         }
 
         public UploadResult(List<string> failedFiles, long totalFileSizeUploaded)
         {
-            FailedFiles = failedFiles;
+            RetryFiles = failedFiles ?? new List<string>();
             TotalFileSizeUploaded = totalFileSizeUploaded;
         }
-        public List<string> FailedFiles { get; set; }
+        public List<string> RetryFiles { get; set; }
 
         public long TotalFileSizeUploaded { get; set; }
 
         public void AddUploadResult(UploadResult resultToAdd)
         {
-            this.FailedFiles.AddRange(resultToAdd.FailedFiles);
+            this.RetryFiles.AddRange(resultToAdd.RetryFiles);
             this.TotalFileSizeUploaded += resultToAdd.TotalFileSizeUploaded;
         }
     }

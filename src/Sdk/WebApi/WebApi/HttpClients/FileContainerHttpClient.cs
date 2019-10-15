@@ -397,6 +397,11 @@ namespace GitHub.Services.FileContainer.Client
                     {
                         break;
                     }
+                    else if (IsFastFailResponse(response))
+                    {
+                        FileUploadTrace(itemPath, $"Chunk '{currentChunk}' attempt '{attempt}' of file '{itemPath}' received non-success status code {response.StatusCode} for sending request and cannot continue.");
+                        break;
+                    }
                     else
                     {
                         FileUploadTrace(itemPath, $"Chunk '{currentChunk}' attempt '{attempt}' of file '{itemPath}' received non-success status code {response.StatusCode} for sending request.");
@@ -536,6 +541,17 @@ namespace GitHub.Services.FileContainer.Client
                 query,
                 userState,
                 cancellationToken);
+        }
+
+        public bool IsFastFailResponse(HttpResponseMessage response)
+        {
+            int statusCode = (int)response?.StatusCode;
+            return statusCode >= 400 && statusCode <= 499;
+        }
+        
+        protected override bool ShouldThrowError(HttpResponseMessage response)
+        {
+            return !response.IsSuccessStatusCode && !IsFastFailResponse(response);
         }
 
         private async Task<HttpResponseMessage> ContainerGetRequestAsync(
