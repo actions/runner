@@ -167,7 +167,7 @@ then
             command -v zypper
             if [ $? -eq 0 ]
             then
-                zypper -n install lttng-ust libopenssl1_1 libcurl4 krb5 zlib libicu60_2
+                zypper -n install lttng-ust libopenssl1_1 krb5 zlib libicu60_2
                 if [ $? -ne 0 ]
                 then
                     echo "'zypper' failed with exit code '$?'"
