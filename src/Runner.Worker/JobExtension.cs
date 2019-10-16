@@ -50,6 +50,13 @@ namespace GitHub.Runner.Worker
                     context.Start();
                     context.Debug($"Starting: Set up job");
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
+                    
+                    string virtualEnvironmentVersion = Environment.GetEnvironmentVariable("ImageVersion");
+                    if (!string.IsNullOrEmpty(virtualEnvironmentVersion))
+                    {
+                        context.Output($"Virtual Environment version: '{virtualEnvironmentVersion}'");
+                    }
+
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
                     context.Debug($"Primary repository: {repoFullName}");
