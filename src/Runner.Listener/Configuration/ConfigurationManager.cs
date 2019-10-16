@@ -163,7 +163,8 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 // Get the URL
                 var inputUrl = command.GetUrl();
-                if (!inputUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+                if (!inputUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase) &&
+                    !inputUrl.Contains("github.localhost", StringComparison.OrdinalIgnoreCase))
                 {
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
@@ -628,7 +629,7 @@ namespace GitHub.Runner.Listener.Configuration
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken)
         {
             var gitHubUrl = new UriBuilder(githubUrl);
-            var githubApiUrl = $"https://api.github.com/repos/{gitHubUrl.Path.Trim('/')}/actions-runners/registration";
+            var githubApiUrl = $"https://api.{gitHubUrl.Host}/repos/{gitHubUrl.Path.Trim('/')}/actions-runners/registration";
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler))
             {
