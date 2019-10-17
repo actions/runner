@@ -79,7 +79,7 @@ namespace GitHub.Runner.Plugins.Artifact
             propertiesDictionary.Add("artifactsize", size.ToString());
 
             string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{artifactName}");
-            context.Output($"Uploaded '{fullPath}' to server");
+            context.Output($"Uploaded '{size}' bytes from '{fullPath}' to server");
 
             BuildServer buildHelper = new BuildServer(context.VssConnection);
             string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;

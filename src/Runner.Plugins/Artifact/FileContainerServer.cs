@@ -630,9 +630,9 @@ namespace GitHub.Runner.Plugins.Artifact
             TotalFileSizeUploaded = 0;
         }
 
-        public UploadResult(List<string> failedFiles, long totalFileSizeUploaded)
+        public UploadResult(List<string> retryFiles, long totalFileSizeUploaded)
         {
-            RetryFiles = failedFiles ?? new List<string>();
+            RetryFiles = retryFiles ?? new List<string>();
             TotalFileSizeUploaded = totalFileSizeUploaded;
         }
         public List<string> RetryFiles { get; set; }
