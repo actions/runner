@@ -1,7 +1,5 @@
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Capabilities;
 using GitHub.Runner.Listener.Configuration;
-using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
 using System;
 using System.Collections.Generic;
@@ -10,7 +8,6 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.IO;
 using System.Text;
-using GitHub.Services.WebApi;
 using GitHub.Services.OAuth;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -59,9 +56,6 @@ namespace GitHub.Runner.Listener
             var serverUrl = _settings.ServerUrl;
             Trace.Info(_settings);
 
-            // Capabilities.
-            Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(_settings, token);
-
             // Create connection.
             Trace.Info("Loading Credentials");
             var credMgr = HostContext.GetService<ICredentialManager>();
@@ -75,7 +69,7 @@ namespace GitHub.Runner.Listener
                 OSDescription = RuntimeInformation.OSDescription,
             };
             string sessionName = $"{Environment.MachineName ?? "RUNNER"}";
-            var taskAgentSession = new TaskAgentSession(sessionName, agent, systemCapabilities);
+            var taskAgentSession = new TaskAgentSession(sessionName, agent);
 
             string errorMessage = string.Empty;
             bool encounteringError = false;

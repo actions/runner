@@ -1,6 +1,5 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
-using GitHub.Runner.Common.Capabilities;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Common.Util;
 using GitHub.Services.WebApi;
@@ -40,8 +39,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 #endif
 
         private Mock<IRSAKeyManager> _rsaKeyManager;
-        private ICapabilitiesManager _capabilitiesManager;
-        // private DeploymentGroupAgentConfigProvider _deploymentGroupAgentConfigProvider;
         private string _expectedToken = "expectedToken";
         private string _expectedServerUrl = "https://localhost";
         private string _expectedAgentName = "expectedAgentName";
@@ -77,8 +74,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 #if !OS_WINDOWS
             _serviceControlManager = new Mock<ILinuxServiceControlManager>();
 #endif
-
-            _capabilitiesManager = new CapabilitiesManager();
 
             var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
             var expectedDeploymentMachine = new DeploymentMachine() { Agent = expectedAgent, Id = _expectedDeploymentMachineId };
@@ -127,7 +122,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
 
             _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
-            _agentServer.Setup(x => x.UpdateAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+            _agentServer.Setup(x => x.ReplaceAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
 
             rsa = new RSACryptoServiceProvider(2048);
 
@@ -143,8 +138,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
             tc.SetSingleton<IRunnerServer>(_agentServer.Object);
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
-            // tc.SetSingleton<IDeploymentGroupServer>(_machineGroupServer.Object);
-            tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager);
             tc.SetSingleton<IRunnerWebProxy>(_runnerWebProxy.Object);
             tc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
 
@@ -208,12 +201,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 // validate GetAgentPoolsAsync gets called once with automation pool type
                 _agentServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Once);
 
-                // validate GetAgentPoolsAsync not called with deployment pool type
-                _agentServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Deployment)), Times.Never);
-
-                // For build and release agent / deployment pool, tags logic should not get trigger;
-                // _machineGroupServer.Verify(x =>
-                //      x.UpdateDeploymentTargetsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()), Times.Never);
+                _agentServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Contains("self-hosted") && a.Labels.Contains(VarUtil.OS) && a.Labels.Contains(VarUtil.OSArchitecture))), Times.Once);
             }
         }
     }

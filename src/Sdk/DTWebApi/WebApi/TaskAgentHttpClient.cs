@@ -246,8 +246,7 @@ namespace GitHub.DistributedTask.WebApi
                 PlanType = hubName,
                 ScopeId = scopeIdentifier,
                 PlanId = planId,
-                JobId = jobId,
-                Demands = demands,
+                JobId = jobId
             };
 
             return QueueAgentRequestByPoolAsync(poolId, request, userState, cancellationToken);

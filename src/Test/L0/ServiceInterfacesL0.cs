@@ -1,5 +1,4 @@
 ﻿using GitHub.Runner.Listener;
-using GitHub.Runner.Common.Capabilities;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
@@ -44,7 +43,6 @@ namespace GitHub.Runner.Common.Tests
                 typeof(IHostContext),
                 typeof(ITraceManager),
                 typeof(IThrottlingReporter),
-                typeof(ICapabilitiesProvider)
             };
             Validate(
                 assembly: typeof(IHostContext).GetTypeInfo().Assembly,

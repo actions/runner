@@ -1,24 +1,19 @@
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Capabilities;
 using GitHub.Runner.Common.Util;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Security.Principal;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -168,7 +163,8 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 // Get the URL
                 var inputUrl = command.GetUrl();
-                if (!inputUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase))
+                if (!inputUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase) &&
+                    !inputUrl.Contains("github.localhost", StringComparison.OrdinalIgnoreCase))
                 {
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
@@ -238,11 +234,8 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 runnerSettings.AgentName = command.GetAgentName();
 
-                // Get the system capabilities.
-                Dictionary<string, string> systemCapabilities = await HostContext.GetService<ICapabilitiesManager>().GetCapabilitiesAsync(runnerSettings, CancellationToken.None);
-
                 _term.WriteLine();
-                
+
                 var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
                 Trace.Verbose("Returns {0} agents", agents.Count);
                 agent = agents.FirstOrDefault();
@@ -251,12 +244,12 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine("A runner exists with the same name", ConsoleColor.Yellow);
                     if (command.GetReplace())
                     {
-                        // Update existing agent with new PublicKey, agent version and SystemCapabilities.
-                        agent = UpdateExistingAgent(agent, publicKey, systemCapabilities);
+                        // Update existing agent with new PublicKey, agent version.
+                        agent = UpdateExistingAgent(agent, publicKey);
 
                         try
                         {
-                            agent = await _runnerServer.UpdateAgentAsync(runnerSettings.PoolId, agent);
+                            agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
                             _term.WriteSuccessMessage("Successfully replaced the runner");
                             break;
                         }
@@ -275,7 +268,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent. 
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, systemCapabilities);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey);
 
                     try
                     {
@@ -435,7 +428,7 @@ namespace GitHub.Runner.Listener.Configuration
         {
             ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             string currentAction = string.Empty;
-            
+
             _term.WriteSection("Runner removal");
 
             try
@@ -499,7 +492,7 @@ namespace GitHub.Runner.Listener.Configuration
                     else
                     {
                         await _runnerServer.DeleteAgentAsync(settings.PoolId, settings.AgentId);
-                        
+
                         _term.WriteLine();
                         _term.WriteSuccessMessage("Runner removed successfully");
                     }
@@ -573,7 +566,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, Dictionary<string, string> systemCapabilities)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -585,15 +578,14 @@ namespace GitHub.Runner.Listener.Configuration
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
 
-            foreach (KeyValuePair<string, string> capability in systemCapabilities)
-            {
-                agent.SystemCapabilities[capability.Key] = capability.Value ?? string.Empty;
-            }
+            agent.Labels.Add("self-hosted");
+            agent.Labels.Add(VarUtil.OS);
+            agent.Labels.Add(VarUtil.OSArchitecture);
 
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, Dictionary<string, string> systemCapabilities)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey)
         {
             TaskAgent agent = new TaskAgent(agentName)
             {
@@ -606,10 +598,9 @@ namespace GitHub.Runner.Listener.Configuration
                 OSDescription = RuntimeInformation.OSDescription,
             };
 
-            foreach (KeyValuePair<string, string> capability in systemCapabilities)
-            {
-                agent.SystemCapabilities[capability.Key] = capability.Value ?? string.Empty;
-            }
+            agent.Labels.Add("self-hosted");
+            agent.Labels.Add(VarUtil.OS);
+            agent.Labels.Add(VarUtil.OSArchitecture);
 
             return agent;
         }
@@ -638,7 +629,7 @@ namespace GitHub.Runner.Listener.Configuration
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken)
         {
             var gitHubUrl = new UriBuilder(githubUrl);
-            var githubApiUrl = $"https://api.github.com/repos/{gitHubUrl.Path.Trim('/')}/actions-runners/registration";
+            var githubApiUrl = $"https://api.{gitHubUrl.Host}/repos/{gitHubUrl.Path.Trim('/')}/actions-runners/registration";
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler))
             {

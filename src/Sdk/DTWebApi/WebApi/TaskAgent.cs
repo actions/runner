@@ -55,14 +55,9 @@ namespace GitHub.DistributedTask.WebApi
                 m_properties = new PropertiesCollection(agentToBeCloned.m_properties);
             }
 
-            if (agentToBeCloned.m_systemCapabilities != null && agentToBeCloned.m_systemCapabilities.Count > 0)
+            if (agentToBeCloned.m_labels != null && agentToBeCloned.m_labels.Count > 0)
             {
-                m_systemCapabilities = new Dictionary<String, String>(agentToBeCloned.m_systemCapabilities, StringComparer.OrdinalIgnoreCase);
-            }
-
-            if (agentToBeCloned.m_userCapabilities != null && agentToBeCloned.m_userCapabilities.Count > 0)
-            {
-                m_userCapabilities = new Dictionary<String, String>(agentToBeCloned.m_userCapabilities, StringComparer.OrdinalIgnoreCase);
+                m_labels = new HashSet<string>(agentToBeCloned.m_labels, StringComparer.OrdinalIgnoreCase);
             }
 
             if (agentToBeCloned.PendingUpdate != null)
@@ -152,32 +147,17 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
-        /// System-defined capabilities supported by this agent's host.
+        /// The labels of the runner
         /// </summary>
-        public IDictionary<String, String> SystemCapabilities
+        public ISet<string> Labels
         {
             get
             {
-                if (m_systemCapabilities == null)
+                if (m_labels == null)
                 {
-                    m_systemCapabilities = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+                    m_labels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 }
-                return m_systemCapabilities;
-            }
-        }
-
-        /// <summary>
-        /// User-defined capabilities supported by this agent's host.
-        /// </summary>
-        public IDictionary<String, String> UserCapabilities
-        {
-            get
-            {
-                if (m_userCapabilities == null)
-                {
-                    m_userCapabilities = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
-                }
-                return m_userCapabilities;
+                return m_labels;
             }
         }
 
@@ -214,10 +194,7 @@ namespace GitHub.DistributedTask.WebApi
         [DataMember(IsRequired = false, EmitDefaultValue = false, Name = "Properties")]
         private PropertiesCollection m_properties;
 
-        [DataMember(IsRequired = false, EmitDefaultValue = false, Name = "SystemCapabilities")]
-        private Dictionary<String, String> m_systemCapabilities;
-
-        [DataMember(IsRequired = false, EmitDefaultValue = false, Name = "UserCapabilities")]
-        private Dictionary<String, String> m_userCapabilities;
+        [DataMember(IsRequired = false, EmitDefaultValue = false, Name = "Labels")]
+        private HashSet<string> m_labels;
     }
 }

@@ -2,7 +2,6 @@
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using GitHub.Runner.Listener;
-using GitHub.Runner.Common.Capabilities;
 using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
@@ -21,7 +20,6 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IConfigurationManager> _config;
         private Mock<IRunnerServer> _agentServer;
         private Mock<ICredentialManager> _credMgr;
-        private Mock<ICapabilitiesManager> _capabilitiesManager;
 
         public MessageListenerL0()
         {
@@ -30,7 +28,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
             _agentServer = new Mock<IRunnerServer>();
             _credMgr = new Mock<ICredentialManager>();
-            _capabilitiesManager = new Mock<ICapabilitiesManager>();
         }
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -39,7 +36,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             tc.SetSingleton<IConfigurationManager>(_config.Object);
             tc.SetSingleton<IRunnerServer>(_agentServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
-            tc.SetSingleton<ICapabilitiesManager>(_capabilitiesManager.Object);
             return tc;
         }
 
@@ -61,8 +57,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
-
-                _capabilitiesManager.Setup(x => x.GetCapabilitiesAsync(_settings, It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
                 _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
 
@@ -105,8 +99,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
-
-                _capabilitiesManager.Setup(x => x.GetCapabilitiesAsync(_settings, It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
                 _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
 
@@ -152,8 +144,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
-
-                _capabilitiesManager.Setup(x => x.GetCapabilitiesAsync(_settings, It.IsAny<CancellationToken>())).Returns(Task.FromResult(new Dictionary<string, string>()));
 
                 _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
 
