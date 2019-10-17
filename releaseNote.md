@@ -1,16 +1,13 @@
 ## Features
-  - Runner config auth via GitHub.com. (#107) (#117) 
-  - Adding wrapper action to support post job cleanup, adding checkout v1.1 (#91)
-  - Improving terminal experience (#110)
-  - Add runner support for cache action. (#120)
+  - Added support for OS and Architecture Labels for self hosted runners (#130)
 
 ## Bugs
-  - Set GITHUB_ACTIONS in containers. (#119)
-  - Fix issue data column/col mismatch. (#122)
+  - N/A
 
 ## Misc
-  - Use GitHub actions for CI/PR (#112) 
-  - Code Cleanup (#123) (#124) (#125)
+  - Updated Prompts for self-hosted runners (#126)
+  - Optimized Secret Masking of Base64 Encoded Secrets (#128)
+  - Added additional tests for secret masking (#129)
 
 ## Agent Downloads  
 
