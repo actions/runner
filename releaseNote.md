@@ -1,5 +1,5 @@
 ## Features
-  - Added support for OS and Architecture Labels for self hosted runners
+  - Added support for OS and Architecture Labels for self hosted runners (#130)
 
 ## Bugs
   - N/A
