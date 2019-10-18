@@ -63,7 +63,7 @@ namespace GitHub.Runner.Worker.Handlers
                 shellCommand = "powershell";
                 if(validateShellOnHost)
                 {
-                    shellCommandPath = System.Environment.GetEnvironmentVariable("ComSpec");
+                    shellCommandPath = WhichUtil.Which(shellCommand, true, Trace);
                 }
 #else
                 shellCommand = "sh";
@@ -144,7 +144,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
 #if OS_WINDOWS
                 shellCommand = "powershell";
-                commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
+                commandPath = WhichUtil.Which(shellCommand, true, Trace);
                 ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
 #else
                 shellCommand = "sh";
