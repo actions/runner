@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "cmd";
+                shellCommand = "powershell";
                 if(validateShellOnHost)
                 {
                     shellCommandPath = System.Environment.GetEnvironmentVariable("ComSpec");
@@ -143,7 +143,7 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "cmd";
+                shellCommand = "powershell";
                 commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
                 ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
 #else
