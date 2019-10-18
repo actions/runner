@@ -517,6 +517,12 @@ namespace GitHub.Runner.Plugins.Artifact
                                 DrainUploadQueue(context);
                                 failedFiles.Clear();
 
+                                if (response != null)
+                                {
+                                    response.Dispose();
+                                    response = null;
+                                }
+
                                 throw new Exception($"Critical failure uploading '{fileToUpload}'");
                             }
                             else
