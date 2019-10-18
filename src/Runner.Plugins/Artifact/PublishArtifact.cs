@@ -74,17 +74,22 @@ namespace GitHub.Runner.Plugins.Artifact
             context.Output($"Uploading artifact '{artifactName}' from '{fullPath}' for run #{buildId}");
 
             FileContainerServer fileContainerHelper = new FileContainerServer(context.VssConnection, projectId, containerId, artifactName);
-            long size = await fileContainerHelper.CopyToContainerAsync(context, fullPath, token);
             var propertiesDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            propertiesDictionary.Add("artifactsize", size.ToString());
-
-            string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{artifactName}");
-            context.Output($"Uploaded '{size}' bytes from '{fullPath}' to server");
-
-            BuildServer buildHelper = new BuildServer(context.VssConnection);
-            string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
-            var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
-            context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId}");
+            try
+            {
+                long size = await fileContainerHelper.CopyToContainerAsync(context, fullPath, token);
+                propertiesDictionary.Add("artifactsize", size.ToString());
+                context.Output($"Uploaded '{size}' bytes from '{fullPath}' to server");
+            }
+            // if any of the results were successful, make sure to attach them to the build
+            finally
+            {
+                string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{artifactName}");
+                BuildServer buildHelper = new BuildServer(context.VssConnection);
+                string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
+                var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
+                context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId}");
+            }
         }
     }
 }

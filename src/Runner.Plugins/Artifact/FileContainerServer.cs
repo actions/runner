@@ -516,6 +516,8 @@ namespace GitHub.Runner.Plugins.Artifact
                                 context.Output($"Cannot continue uploading files, so draining upload queue of {_fileUploadQueue.Count} items.");
                                 DrainUploadQueue(context);
                                 failedFiles.Clear();
+
+                                throw new Exception($"Critical failure uploading '{fileToUpload}'");
                             }
                             else
                             {
