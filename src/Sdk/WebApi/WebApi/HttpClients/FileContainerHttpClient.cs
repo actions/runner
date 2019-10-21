@@ -545,10 +545,8 @@ namespace GitHub.Services.FileContainer.Client
 
         public bool IsFastFailResponse(HttpResponseMessage response)
         {
-            // StatusCode 429 - 'Conflict'
-            // Don't fail all the uploads if one of the files has already been uploaded
             int statusCode = (int)response?.StatusCode;
-            return statusCode >= 400 && statusCode <= 499 && statusCode != 429;
+            return statusCode >= 400 && statusCode <= 499;
         }
         
         protected override bool ShouldThrowError(HttpResponseMessage response)

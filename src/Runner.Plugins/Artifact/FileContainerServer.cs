@@ -465,93 +465,61 @@ namespace GitHub.Runner.Plugins.Artifact
                     using (FileStream fs = File.Open(fileToUpload, FileMode.Open, FileAccess.Read, FileShare.Read))
                     {
                         string itemPath = (_containerPath.TrimEnd('/') + "/" + fileToUpload.Remove(0, _sourceParentDirectory.Length + 1)).Replace('\\', '/');
-                        uploadTimer.Restart();
-                        bool catchExceptionDuringUpload = false;
-                        HttpResponseMessage response = null;
+                        bool failAndExit = false;
                         try
                         {
-                            response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token, chunkSize: 4 * 1024 * 1024);
+                            uploadTimer.Restart();
+                            using (HttpResponseMessage response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token, chunkSize: 4 * 1024 * 1024))
+                            {
+                                if (response == null || response.StatusCode != HttpStatusCode.Created)
+                                {
+                                    context.Output($"Unable to copy file to server StatusCode={response?.StatusCode}: {response?.ReasonPhrase}. Source file path: {fileToUpload}. Target server path: {itemPath}");
+
+                                    if (response?.StatusCode == HttpStatusCode.Conflict)
+                                    {
+                                        // fail upload task but continue with any other files
+                                        context.Error($"Error '{fileToUpload}' has already been uploaded.");
+                                    }
+                                    else if (_fileContainerHttpClient.IsFastFailResponse(response))
+                                    {
+                                        // Fast fail: we received an http status code where we should abandon our efforts
+                                        context.Output($"Cannot continue uploading files, so draining upload queue of {_fileUploadQueue.Count} items.");
+                                        DrainUploadQueue(context);
+                                        failedFiles.Clear();
+                                        failAndExit = true;
+                                        throw new Exception($"Critical failure uploading '{fileToUpload}'");
+                                    }
+                                    else
+                                    {
+                                        context.Debug($"Adding '{fileToUpload}' to retry list.");
+                                        failedFiles.Add(fileToUpload);
+                                    }
+                                    throw new Exception($"Http failure response '{response?.StatusCode}': '{response?.ReasonPhrase}' while uploading '{fileToUpload}'");
+                                }
+
+                                uploadTimer.Stop();
+                                context.Debug($"File: '{fileToUpload}' took {uploadTimer.ElapsedMilliseconds} milliseconds to finish upload");
+                                uploadedSize += fs.Length;
+                                OutputLogForFile(context, fileToUpload, $"Detail upload trace for file: {itemPath}", m => context.Debug(m));
+                            }
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
                         {
                             context.Output($"File upload has been cancelled during upload file: '{fileToUpload}'.");
-                            if (response != null)
-                            {
-                                response.Dispose();
-                                response = null;
-                            }
-
                             throw;
                         }
                         catch (Exception ex)
                         {
-                            catchExceptionDuringUpload = true;
                             context.Output($"Fail to upload '{fileToUpload}' due to '{ex.Message}'.");
                             context.Output(ex.ToString());
-                        }
 
-                        uploadTimer.Stop();
-                        if (catchExceptionDuringUpload || (response != null && response.StatusCode != HttpStatusCode.Created))
-                        {
-                            if (response != null)
+                            OutputLogForFile(context, fileToUpload, $"Detail upload trace for file that fail to upload: {itemPath}", m => context.Output(m));
+
+                            if (failAndExit)
                             {
-                                context.Output($"Unable to copy file to server StatusCode={response.StatusCode}: {response.ReasonPhrase}. Source file path: {fileToUpload}. Target server path: {itemPath}");
+                                context.Debug("Exiting upload.");
+                                throw;
                             }
-
-                            // output detail upload trace for the file.
-                            ConcurrentQueue<string> logQueue;
-                            if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
-                            {
-                                context.Output($"Detail upload trace for file that fail to upload: {itemPath}");
-                                string message;
-                                while (logQueue.TryDequeue(out message))
-                                {
-                                    context.Output(message);
-                                }
-                            }
-
-                            // We received an http status code where we should abandon our efforts
-                            if (_fileContainerHttpClient.IsFastFailResponse(response))
-                            {
-                                context.Output($"Cannot continue uploading files, so draining upload queue of {_fileUploadQueue.Count} items.");
-                                DrainUploadQueue(context);
-                                failedFiles.Clear();
-
-                                if (response != null)
-                                {
-                                    response.Dispose();
-                                    response = null;
-                                }
-
-                                throw new Exception($"Critical failure uploading '{fileToUpload}'");
-                            }
-                            else
-                            {
-                                // tracking file that failed to upload.
-                                failedFiles.Add(fileToUpload);
-                            }
-                        }
-                        else
-                        {
-                            context.Debug($"File: '{fileToUpload}' took {uploadTimer.ElapsedMilliseconds} milliseconds to finish upload");
-                            uploadedSize += fs.Length;
-                            // debug detail upload trace for the file.
-                            ConcurrentQueue<string> logQueue;
-                            if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
-                            {
-                                context.Debug($"Detail upload trace for file: {itemPath}");
-                                string message;
-                                while (logQueue.TryDequeue(out message))
-                                {
-                                    context.Debug(message);
-                                }
-                            }
-                        }
-
-                        if (response != null)
-                        {
-                            response.Dispose();
-                            response = null;
                         }
                     }
 
@@ -614,6 +582,21 @@ namespace GitHub.Runner.Plugins.Artifact
             {
                 context.Debug($"Clearing upload queue: '{fileToUpload}'");
                 Interlocked.Increment(ref _uploadFilesProcessed);
+            }
+        }
+
+        private void OutputLogForFile(RunnerActionPluginExecutionContext context, string itemPath, string logDescription, Action<string> log)
+        {
+            // output detail upload trace for the file.
+            ConcurrentQueue<string> logQueue;
+            if (_fileUploadTraceLog.TryGetValue(itemPath, out logQueue))
+            {
+                log(logDescription);
+                string message;
+                while (logQueue.TryDequeue(out message))
+                {
+                    log(message);
+                }
             }
         }
 
