@@ -145,7 +145,7 @@ namespace GitHub.Runner.Worker.Handlers
 #if OS_WINDOWS
                 shellCommand = "powershell";
                 commandPath = WhichUtil.Which(shellCommand, true, Trace);
-                ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
+                ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
 #else
                 shellCommand = "sh";
                 commandPath = WhichUtil.Which("bash", false, Trace) ?? WhichUtil.Which("sh", true, Trace);
