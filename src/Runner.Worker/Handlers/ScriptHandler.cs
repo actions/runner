@@ -60,10 +60,10 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "cmd";
+                shellCommand = "powershell";
                 if(validateShellOnHost)
                 {
-                    shellCommandPath = System.Environment.GetEnvironmentVariable("ComSpec");
+                    shellCommandPath = WhichUtil.Which(shellCommand, true, Trace);
                 }
 #else
                 shellCommand = "sh";
@@ -143,9 +143,9 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "cmd";
-                commandPath = System.Environment.GetEnvironmentVariable("ComSpec");
-                ArgUtil.NotNullOrEmpty(commandPath, "%ComSpec%");
+                shellCommand = "powershell";
+                commandPath = WhichUtil.Which(shellCommand, true, Trace);
+                ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
 #else
                 shellCommand = "sh";
                 commandPath = WhichUtil.Which("bash", false, Trace) ?? WhichUtil.Which("sh", true, Trace);
