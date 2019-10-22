@@ -296,6 +296,7 @@ namespace GitHub.Runner.Worker
             child.PrependPath = PrependPath;
             child.Container = Container;
             child.ServiceContainers = ServiceContainers;
+            child.EchoOnActionCommandSuccess = EchoOnActionCommandSuccess;
 
             if (recordOrder != null)
             {
@@ -710,6 +711,8 @@ namespace GitHub.Runner.Worker
 
             // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
             EchoOnActionCommandSuccess = Variables.Step_Debug ?? false;
+
+            //throw new Exception($"EchoOACS = {EchoOnActionCommandSuccess}");
 
             // Verbosity (from GitHub.Step_Debug).
             WriteDebug = Variables.Step_Debug ?? false;

@@ -114,7 +114,7 @@ namespace GitHub.Runner.Worker
                             if (context.EchoOnActionCommandSuccess)
                             {
                                 context.Output(input);
-                                context.Debug($"Processed command");
+                                context.Debug($"Processed command '{actionCommand.Command}' successfully");
                             }
                         }
                         catch (Exception ex)
@@ -473,14 +473,14 @@ namespace GitHub.Runner.Worker
             {
                 case "on":
                     context.EchoOnActionCommandSuccess = true;
-                    context.Debug("Setting echo command value to on");
+                    context.Debug("Setting echo command value to 'on'");
                     break;
                 case "off":
                     context.EchoOnActionCommandSuccess = false;
-                    context.Debug("Setting echo command value to off");
+                    context.Debug("Setting echo command value to 'off'");
                     break;
                 default:
-                    throw new Exception("Invalid echo command value. Possible values can be: on, off");
+                    throw new Exception($"Invalid echo command value. Possible values can be: 'on', 'off'. Current value is: '{command.Data}'.");
                     break;
             }
         }
