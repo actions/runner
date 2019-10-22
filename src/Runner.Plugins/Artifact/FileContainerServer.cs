@@ -487,20 +487,20 @@ namespace GitHub.Runner.Plugins.Artifact
                                         DrainUploadQueue(context);
                                         failedFiles.Clear();
                                         failAndExit = true;
-                                        throw new Exception($"Critical failure uploading '{fileToUpload}'");
+                                        throw new UploadFailedException($"Critical failure uploading '{fileToUpload}'");
                                     }
                                     else
                                     {
                                         context.Debug($"Adding '{fileToUpload}' to retry list.");
                                         failedFiles.Add(fileToUpload);
                                     }
-                                    throw new Exception($"Http failure response '{response?.StatusCode}': '{response?.ReasonPhrase}' while uploading '{fileToUpload}'");
+                                    throw new UploadFailedException($"Http failure response '{response?.StatusCode}': '{response?.ReasonPhrase}' while uploading '{fileToUpload}'");
                                 }
 
                                 uploadTimer.Stop();
                                 context.Debug($"File: '{fileToUpload}' took {uploadTimer.ElapsedMilliseconds} milliseconds to finish upload");
                                 uploadedSize += fs.Length;
-                                OutputLogForFile(context, fileToUpload, $"Detail upload trace for file: {itemPath}", m => context.Debug(m));
+                                OutputLogForFile(context, fileToUpload, $"Detail upload trace for file: {itemPath}", context.Debug);
                             }
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -513,7 +513,7 @@ namespace GitHub.Runner.Plugins.Artifact
                             context.Output($"Fail to upload '{fileToUpload}' due to '{ex.Message}'.");
                             context.Output(ex.ToString());
 
-                            OutputLogForFile(context, fileToUpload, $"Detail upload trace for file that fail to upload: {itemPath}", m => context.Output(m));
+                            OutputLogForFile(context, fileToUpload, $"Detail upload trace for file that fail to upload: {itemPath}", context.Output);
 
                             if (failAndExit)
                             {
@@ -666,5 +666,20 @@ namespace GitHub.Runner.Plugins.Artifact
         {
             this.FailedFiles.AddRange(resultToAdd.FailedFiles);
         }
+    }
+
+    public class UploadFailedException : Exception
+    {
+        public UploadFailedException()
+            : base()
+        { }
+
+        public UploadFailedException(string message)
+            : base(message)
+        { }
+
+        public UploadFailedException(string message, Exception inner)
+            : base(message, inner)
+        { }
     }
 }
