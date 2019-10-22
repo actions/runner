@@ -62,6 +62,8 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
 
+        Boolean EchoOnActionCommandSuccess { get; set; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -152,6 +154,8 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
+
+        public Boolean EchoOnActionCommandSuccess { get; set; }
 
 
         public TaskResult? Result
@@ -703,6 +707,9 @@ namespace GitHub.Runner.Worker
             // Logger (must be initialized before writing warnings).
             _logger = HostContext.CreateService<IPagingLogger>();
             _logger.Setup(_mainTimelineId, _record.Id);
+
+            // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
+            EchoOnActionCommandSuccess = Variables.Step_Debug ?? false;
 
             // Verbosity (from GitHub.Step_Debug).
             WriteDebug = Variables.Step_Debug ?? false;

@@ -111,8 +111,11 @@ namespace GitHub.Runner.Worker
                         {
                             extension.ProcessCommand(context, input, actionCommand);
 
-                            context.Output(input);
-                            context.Debug($"Processed command");
+                            if (context.EchoOnActionCommandSuccess)
+                            {
+                                context.Output(input);
+                                context.Debug($"Processed command");
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -453,6 +456,33 @@ namespace GitHub.Runner.Worker
         {
             var data = this is GroupCommandExtension ? command.Data : string.Empty;
             context.Output($"##[{Command}]{data}");
+        }
+    }
+
+    public sealed class EchoCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "echo";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        {
+            ArgUtil.NotNullOrEmpty(command.Data, "value");
+
+            switch (command.Data.Trim().ToLower())
+            {
+                case "on":
+                    context.EchoOnActionCommandSuccess = true;
+                    context.Debug("Setting echo command value to on");
+                    break;
+                case "off":
+                    context.EchoOnActionCommandSuccess = false;
+                    context.Debug("Setting echo command value to off");
+                    break;
+                default:
+                    throw new Exception("Invalid echo command value. Possible values can be: on, off");
+                    break;
+            }
         }
     }
 }
