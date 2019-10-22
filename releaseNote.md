@@ -1,13 +1,11 @@
 ## Features
-  - Added support for OS and Architecture Labels for self hosted runners (#130)
+  - Set Default shell to powershell for windows runners (#135)
 
 ## Bugs
-  - N/A
+  - Removed unintended additional fields on error and warning commands (#137)
 
 ## Misc
-  - Updated Prompts for self-hosted runners (#126)
-  - Optimized Secret Masking of Base64 Encoded Secrets (#128)
-  - Added additional tests for secret masking (#129)
+  - N/A
 
 ## Agent Downloads  
 
