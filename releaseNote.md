@@ -1,5 +1,6 @@
 ## Features
   - Set Default shell to powershell for windows runners (#135)
+  - Use Powershell as fallback if Powershell Core is not available for default shell on windows (#142)
 
 ## Bugs
   - Removed unintended additional fields on error and warning commands (#137)
