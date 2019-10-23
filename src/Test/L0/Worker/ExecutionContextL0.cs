@@ -141,7 +141,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.Debug("te\r\nst");
 
                 ec.Complete();
-                
+
                 jobServerQueue.Verify(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>()), Times.Exactly(10));
             }
         }
