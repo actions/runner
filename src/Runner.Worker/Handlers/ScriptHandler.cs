@@ -60,10 +60,16 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "powershell";
+                shellCommand = "pwsh";
                 if(validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which(shellCommand, true, Trace);
+                    shellCommandPath = WhichUtil.Which(shellCommand, false, Trace);
+                    if (string.IsNullOrEmpty(shellCommandPath))
+                    {
+                        shellCommand = "powershell";
+                        Trace.Info($"Defaulting to {shellCommand}");
+                        shellCommandPath = WhichUtil.Which(shellCommand, true, Trace);
+                    }
                 }
 #else
                 shellCommand = "sh";
@@ -143,8 +149,14 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "powershell";
-                commandPath = WhichUtil.Which(shellCommand, true, Trace);
+                shellCommand = "pwsh";
+                commandPath = WhichUtil.Which(shellCommand, false, Trace);
+                if (string.IsNullOrEmpty(commandPath))
+                {
+                    shellCommand = "powershell";
+                    Trace.Info($"Defaulting to {shellCommand}");
+                    commandPath = WhichUtil.Which(shellCommand, true, Trace);
+                }
                 ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
 #else
                 shellCommand = "sh";
