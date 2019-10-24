@@ -264,7 +264,7 @@ namespace GitHub.Runner.Worker
         {
             if (string.IsNullOrWhiteSpace(command.Data))
             {
-                context.Warning("Can't add secret mask for empty string.");
+                context.Warning("Can't add secret mask for empty string in ##[add-mask] command.");
             }
             else
             {
@@ -348,14 +348,14 @@ namespace GitHub.Runner.Worker
             // Owner and file are mutually exclusive
             if (!string.IsNullOrEmpty(owner) && !string.IsNullOrEmpty(file))
             {
-                context.Warning("Either specify a matcher owner name or a file path. Both values cannot be set.");
+                context.Warning("Either specify an owner name or a file path in ##[remove-matcher] command. Both values cannot be set.");
                 return;
             }
 
             // Owner or file is required
             if (string.IsNullOrEmpty(owner) && string.IsNullOrEmpty(file))
             {
-                context.Warning("Either a matcher owner name or a file path must be specified.");
+                context.Warning("Either an owner name or a file path must be specified in ##[remove-matcher] command.");
                 return;
             }
 
