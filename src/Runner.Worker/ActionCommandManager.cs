@@ -107,19 +107,31 @@ namespace GitHub.Runner.Worker
                     }
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
                     {
+                        bool commandHasBeenOutput = false;
+
                         try
                         {
+                            if (context.EchoOnActionCommandSuccess)
+                            {
+                                context.Output(input);
+                                context.Debug($"Processing command '{actionCommand.Command}'");
+                                commandHasBeenOutput = true;
+                            }
+
                             extension.ProcessCommand(context, input, actionCommand);
 
                             if (context.EchoOnActionCommandSuccess)
                             {
-                                context.Output(input);
                                 context.Debug($"Processed command '{actionCommand.Command}' successfully");
                             }
                         }
                         catch (Exception ex)
                         {
-                            context.Output(input);
+                            if (!commandHasBeenOutput)
+                            {
+                                context.Output(input);
+                            }
+
                             context.Error($"Unable to process command '{input}' successfully.");
                             context.Error(ex);
                             context.CommandResult = TaskResult.Failed;
