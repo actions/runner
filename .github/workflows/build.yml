@@ -17,10 +17,13 @@ jobs:
         include:
         - os: ubuntu-latest
           devScript: ./dev.sh
+          shell: bash
         - os: macOS-latest
           devScript: ./dev.sh
+          shell: bash
         - os: windows-latest
           devScript: dev.cmd
+          shell: cmd
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
@@ -30,12 +33,14 @@ jobs:
       run: |
         ${{ matrix.devScript }} layout Release
       working-directory: src
+      shell: ${{ matrix.shell }}
 
     # Run tests
     - name: L0
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
+      shell: ${{ matrix.shell }}
   
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -43,6 +48,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} package Release
       working-directory: src
+      shell: ${{ matrix.shell }}
       
     # Upload runner package tar.gz/zip as artifact
     - name: Publish Artifact
