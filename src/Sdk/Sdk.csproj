@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <TargetFramework>netcoreapp3.0</TargetFramework>
         <OutputType>Library</OutputType>
         <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm;rhel.6-x64;osx-x64</RuntimeIdentifiers>
         <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
@@ -11,6 +11,7 @@
         <DefineConstants>NETSTANDARD;NET_STANDARD;TRACE</DefineConstants>
         <LangVersion>7.3</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     </PropertyGroup>
 
     <ItemGroup>
@@ -21,11 +22,7 @@
         <PackageReference Include="System.Security.Cryptography.Cng" Version="4.4.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="4.4.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
-        <PackageReference Include="System.Data.SqlClient" Version="4.4.0" />
-        <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.4.0" />
         <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.19.4" />
-        <PackageReference Include="Microsoft.ApplicationInsights" Version="2.9.1" />
-        <PackageReference Include="WindowsAzure.Storage" Version="8.7.0" />
         <PackageReference Include="Minimatch" Version="2.0.0" />
         <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
     </ItemGroup>
