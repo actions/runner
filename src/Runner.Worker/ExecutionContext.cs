@@ -12,14 +12,14 @@ using GitHub.Services.WebApi;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using Newtonsoft.Json;
 using System.Text;
 using System.Collections;
+using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -155,7 +155,7 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
 
-        public Boolean EchoOnActionCommandSuccess { get; set; }
+        public bool EchoOnActionCommandSuccess { get; set; }
 
 
         public TaskResult? Result

@@ -4,8 +4,8 @@ using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 using Xunit;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {

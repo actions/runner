@@ -469,13 +469,13 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(command.Data, "value");
 
-            switch (command.Data.Trim().ToLower())
+            switch (command.Data.Trim().ToUpperInvariant())
             {
-                case "on":
+                case "ON":
                     context.EchoOnActionCommandSuccess = true;
                     context.Debug("Setting echo command value to 'on'");
                     break;
-                case "off":
+                case "OFF":
                     context.EchoOnActionCommandSuccess = false;
                     context.Debug("Setting echo command value to 'off'");
                     break;
