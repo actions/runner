@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <TargetFramework>netcoreapp2.2</TargetFramework>
+        <TargetFramework>netcoreapp3.0</TargetFramework>
         <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm;rhel.6-x64;osx-x64</RuntimeIdentifiers>
         <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
         <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
