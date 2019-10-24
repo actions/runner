@@ -1,12 +1,11 @@
 ## Features
-  - Set Default shell to powershell for windows runners (#135)
-  - Use Powershell as fallback if Powershell Core is not available for default shell on windows (#142)
+  - N/A
 
 ## Bugs
-  - Removed unintended additional fields on error and warning commands (#137)
+  - N/A
 
 ## Misc
-  - N/A
+  - Updated to .NET Core 3.0 (#127)
 
 ## Agent Downloads  
 
