@@ -199,7 +199,6 @@ namespace GitHub.Runner.Worker
 
             context.EnvironmentVariables[envName] = command.Data;
             context.SetEnvContext(envName, command.Data);
-            context.Output(line);
             context.Debug($"{envName}='{command.Data}'");
         }
 
@@ -223,7 +222,6 @@ namespace GitHub.Runner.Worker
             }
 
             context.SetOutput(outputName, command.Data, out var reference);
-            context.Output(line);
             context.Debug($"{reference}='{command.Data}'");
         }
 

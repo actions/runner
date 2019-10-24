@@ -62,7 +62,7 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
 
-        Boolean EchoOnActionCommand { get; set; }
+        bool EchoOnActionCommand { get; set; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
