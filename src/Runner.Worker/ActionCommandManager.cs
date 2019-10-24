@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker
 
                         try
                         {
-                            if (context.EchoOnActionCommandSuccess)
+                            if (context.EchoOnActionCommand)
                             {
                                 context.Output(input);
                                 context.Debug($"Processing command '{actionCommand.Command}'");
@@ -120,7 +120,7 @@ namespace GitHub.Runner.Worker
 
                             extension.ProcessCommand(context, input, actionCommand);
 
-                            if (context.EchoOnActionCommandSuccess)
+                            if (context.EchoOnActionCommand)
                             {
                                 context.Debug($"Processed command '{actionCommand.Command}' successfully");
                             }
@@ -484,11 +484,11 @@ namespace GitHub.Runner.Worker
             switch (command.Data.Trim().ToUpperInvariant())
             {
                 case "ON":
-                    context.EchoOnActionCommandSuccess = true;
+                    context.EchoOnActionCommand = true;
                     context.Debug("Setting echo command value to 'on'");
                     break;
                 case "OFF":
-                    context.EchoOnActionCommandSuccess = false;
+                    context.EchoOnActionCommand = false;
                     context.Debug("Setting echo command value to 'off'");
                     break;
                 default:

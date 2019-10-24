@@ -62,7 +62,7 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
 
-        Boolean EchoOnActionCommandSuccess { get; set; }
+        Boolean EchoOnActionCommand { get; set; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -155,7 +155,7 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
 
-        public bool EchoOnActionCommandSuccess { get; set; }
+        public bool EchoOnActionCommand { get; set; }
 
 
         public TaskResult? Result
@@ -296,7 +296,7 @@ namespace GitHub.Runner.Worker
             child.PrependPath = PrependPath;
             child.Container = Container;
             child.ServiceContainers = ServiceContainers;
-            child.EchoOnActionCommandSuccess = EchoOnActionCommandSuccess;
+            child.EchoOnActionCommand = EchoOnActionCommand;
 
             if (recordOrder != null)
             {
@@ -710,7 +710,7 @@ namespace GitHub.Runner.Worker
             _logger.Setup(_mainTimelineId, _record.Id);
 
             // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
-            EchoOnActionCommandSuccess = Variables.Step_Debug ?? false;
+            EchoOnActionCommand = Variables.Step_Debug ?? false;
 
             // Verbosity (from GitHub.Step_Debug).
             WriteDebug = Variables.Step_Debug ?? false;

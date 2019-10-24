@@ -176,19 +176,19 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ActionCommandManager commandManager = new ActionCommandManager();
                 commandManager.Initialize(_hc);
 
-                Assert.False(_ec.Object.EchoOnActionCommandSuccess);
+                Assert.False(_ec.Object.EchoOnActionCommand);
 
                 Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::on"));
-                Assert.True(_ec.Object.EchoOnActionCommandSuccess);
+                Assert.True(_ec.Object.EchoOnActionCommand);
 
                 Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::off"));
-                Assert.False(_ec.Object.EchoOnActionCommandSuccess);
+                Assert.False(_ec.Object.EchoOnActionCommand);
 
                 Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::ON"));
-                Assert.True(_ec.Object.EchoOnActionCommandSuccess);
+                Assert.True(_ec.Object.EchoOnActionCommand);
 
                 Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::Off   "));
-                Assert.False(_ec.Object.EchoOnActionCommandSuccess);
+                Assert.False(_ec.Object.EchoOnActionCommand);
             }
         }
 
@@ -245,18 +245,18 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var _ec = new Runner.Worker.ExecutionContext();
                 _ec.Initialize(_hc);
 
-                // Initialize the job (to exercise logic that sets EchoOnActionCommandSuccess)
+                // Initialize the job (to exercise logic that sets EchoOnActionCommand)
                 _ec.InitializeJob(jobRequest, System.Threading.CancellationToken.None);
 
                 _ec.Complete();
 
-                Assert.True(_ec.EchoOnActionCommandSuccess);
+                Assert.True(_ec.EchoOnActionCommand);
 
                 Assert.True(commandManager.TryProcessCommand(_ec, "::echo::off"));
-                Assert.False(_ec.EchoOnActionCommandSuccess);
+                Assert.False(_ec.EchoOnActionCommand);
 
                 Assert.True(commandManager.TryProcessCommand(_ec, "::echo::on"));
-                Assert.True(_ec.EchoOnActionCommandSuccess);
+                Assert.True(_ec.EchoOnActionCommand);
             }
         }
 
@@ -293,12 +293,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // 1. Invalid echo value
                 Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::invalid"));
                 Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
-                Assert.False(_ec.Object.EchoOnActionCommandSuccess);
+                Assert.False(_ec.Object.EchoOnActionCommand);
 
                 // 2. No value
                 Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::"));
                 Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
-                Assert.False(_ec.Object.EchoOnActionCommandSuccess);
+                Assert.False(_ec.Object.EchoOnActionCommand);
             }
         }
     }
