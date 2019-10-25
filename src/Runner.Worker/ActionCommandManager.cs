@@ -107,26 +107,35 @@ namespace GitHub.Runner.Worker
                     }
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
                     {
-                        bool omitEcho;
+                        bool commandHasBeenOutput = false;
+
                         try
                         {
-                            extension.ProcessCommand(context, input, actionCommand, out omitEcho);
+                            if (context.EchoOnActionCommand)
+                            {
+                                context.Output(input);
+                                context.Debug($"Processing command '{actionCommand.Command}'");
+                                commandHasBeenOutput = true;
+                            }
+
+                            extension.ProcessCommand(context, input, actionCommand);
+
+                            if (context.EchoOnActionCommand)
+                            {
+                                context.Debug($"Processed command '{actionCommand.Command}' successfully");
+                            }
                         }
                         catch (Exception ex)
                         {
-                            omitEcho = true;
-                            context.Output(input);
+                            if (!commandHasBeenOutput)
+                            {
+                                context.Output(input);
+                            }
+
                             context.Error($"Unable to process command '{input}' successfully.");
                             context.Error(ex);
                             context.CommandResult = TaskResult.Failed;
                         }
-
-                        if (!omitEcho)
-                        {
-                            context.Output(input);
-                            context.Debug($"Processed command");
-                        }
-
                     }
                     else
                     {
@@ -143,7 +152,7 @@ namespace GitHub.Runner.Worker
     {
         string Command { get; }
 
-        void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho);
+        void ProcessCommand(IExecutionContext context, string line, ActionCommand command);
     }
 
     public sealed class InternalPluginSetRepoPathCommandExtension : RunnerService, IActionCommandExtension
@@ -152,7 +161,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
             if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.repoFullName, out string repoFullName) || string.IsNullOrEmpty(repoFullName))
             {
@@ -166,8 +175,6 @@ namespace GitHub.Runner.Worker
 
             var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
             var trackingConfig = directoryManager.UpdateRepositoryDirectory(context, repoFullName, command.Data, StringUtil.ConvertToBoolean(workspaceRepo));
-
-            omitEcho = true;
         }
 
         private static class SetRepoPathCommandProperties
@@ -183,7 +190,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
@@ -192,9 +199,7 @@ namespace GitHub.Runner.Worker
 
             context.EnvironmentVariables[envName] = command.Data;
             context.SetEnvContext(envName, command.Data);
-            context.Output(line);
             context.Debug($"{envName}='{command.Data}'");
-            omitEcho = true;
         }
 
         private static class SetEnvCommandProperties
@@ -209,7 +214,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
@@ -217,9 +222,7 @@ namespace GitHub.Runner.Worker
             }
 
             context.SetOutput(outputName, command.Data, out var reference);
-            context.Output(line);
             context.Debug($"{reference}='{command.Data}'");
-            omitEcho = true;
         }
 
         private static class SetOutputCommandProperties
@@ -234,7 +237,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
             {
@@ -243,7 +246,6 @@ namespace GitHub.Runner.Worker
 
             context.IntraActionState[stateName] = command.Data;
             context.Debug($"Save intra-action state {stateName} = {command.Data}");
-            omitEcho = true;
         }
 
         private static class SaveStateCommandProperties
@@ -258,19 +260,17 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
             if (string.IsNullOrWhiteSpace(command.Data))
             {
-                context.Warning("Can't add secret mask for empty string.");
+                context.Warning("Can't add secret mask for empty string in ##[add-mask] command.");
             }
             else
             {
                 HostContext.SecretMasker.AddValue(command.Data);
                 Trace.Info($"Add new secret mask with length of {command.Data.Length}");
             }
-
-            omitEcho = true;
         }
     }
 
@@ -280,12 +280,11 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
             ArgUtil.NotNullOrEmpty(command.Data, "path");
             context.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
             context.PrependPath.Add(command.Data);
-            omitEcho = false;
         }
     }
 
@@ -295,9 +294,8 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
-            omitEcho = false;
             var file = command.Data;
 
             // File is required
@@ -342,23 +340,22 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
-            omitEcho = false;
             command.Properties.TryGetValue(RemoveMatcherCommandProperties.Owner, out string owner);
             var file = command.Data;
 
             // Owner and file are mutually exclusive
             if (!string.IsNullOrEmpty(owner) && !string.IsNullOrEmpty(file))
             {
-                context.Warning("Either specify a matcher owner name or a file path. Both values cannot be set.");
+                context.Warning("Either specify an owner name or a file path in ##[remove-matcher] command. Both values cannot be set.");
                 return;
             }
 
             // Owner or file is required
             if (string.IsNullOrEmpty(owner) && string.IsNullOrEmpty(file))
             {
-                context.Warning("Either a matcher owner name or a file path must be specified.");
+                context.Warning("Either an owner name or a file path must be specified in ##[remove-matcher] command.");
                 return;
             }
 
@@ -410,9 +407,8 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command)
         {
-            omitEcho = true;
             context.Debug(command.Data);
         }
     }
@@ -438,10 +434,8 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command)
         {
-            omitEcho = true;
-
             Issue issue = new Issue()
             {
                 Category = "General",
@@ -468,11 +462,37 @@ namespace GitHub.Runner.Worker
         public abstract string Command { get; }
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, out bool omitEcho)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
         {
             var data = this is GroupCommandExtension ? command.Data : string.Empty;
             context.Output($"##[{Command}]{data}");
-            omitEcho = true;
+        }
+    }
+
+    public sealed class EchoCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "echo";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        {
+            ArgUtil.NotNullOrEmpty(command.Data, "value");
+
+            switch (command.Data.Trim().ToUpperInvariant())
+            {
+                case "ON":
+                    context.EchoOnActionCommand = true;
+                    context.Debug("Setting echo command value to 'on'");
+                    break;
+                case "OFF":
+                    context.EchoOnActionCommand = false;
+                    context.Debug("Setting echo command value to 'off'");
+                    break;
+                default:
+                    throw new Exception($"Invalid echo command value. Possible values can be: 'on', 'off'. Current value is: '{command.Data}'.");
+                    break;
+            }
         }
     }
 }

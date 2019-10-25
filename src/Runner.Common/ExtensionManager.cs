@@ -54,6 +54,7 @@ namespace GitHub.Runner.Common
                     Add<T>(extensions, "GitHub.Runner.Worker.DebugCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.GroupCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.EndGroupCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.EchoCommandExtension, Runner.Worker");
                     break;
                 default:
                     // This should never happen.

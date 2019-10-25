@@ -12,14 +12,14 @@ using GitHub.Services.WebApi;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using Newtonsoft.Json;
 using System.Text;
 using System.Collections;
+using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -61,6 +61,8 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
+
+        bool EchoOnActionCommand { get; set; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -152,6 +154,8 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
+
+        public bool EchoOnActionCommand { get; set; }
 
 
         public TaskResult? Result
@@ -292,6 +296,7 @@ namespace GitHub.Runner.Worker
             child.PrependPath = PrependPath;
             child.Container = Container;
             child.ServiceContainers = ServiceContainers;
+            child.EchoOnActionCommand = EchoOnActionCommand;
 
             if (recordOrder != null)
             {
@@ -703,6 +708,9 @@ namespace GitHub.Runner.Worker
             // Logger (must be initialized before writing warnings).
             _logger = HostContext.CreateService<IPagingLogger>();
             _logger.Setup(_mainTimelineId, _record.Id);
+
+            // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
+            EchoOnActionCommand = Variables.Step_Debug ?? false;
 
             // Verbosity (from GitHub.Step_Debug).
             WriteDebug = Variables.Step_Debug ?? false;
