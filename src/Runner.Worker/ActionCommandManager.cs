@@ -441,6 +441,9 @@ namespace GitHub.Runner.Worker
         public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, out bool omitEcho)
         {
             omitEcho = true;
+            command.Properties.TryGetValue(IssueCommandProperties.File, out string file);
+            command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
+            command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
 
             Issue issue = new Issue()
             {
@@ -449,8 +452,54 @@ namespace GitHub.Runner.Worker
                 Message = command.Data
             };
 
+            if (!string.IsNullOrEmpty(file))
+            {
+                issue.Category = "Code";
+
+                if (context.Container != null)
+                {
+                    // Translate file path back from container path
+                    file = context.Container.TranslateToHostPath(file);
+                    command.Properties[IssueCommandProperties.File] = file;
+                }
+
+                // Get the values that represent the server path given a local path
+                string repoName = context.GetGitHubContext("repository");
+                var repoPath = context.GetGitHubContext("workspace");
+
+                string relativeSourcePath = IOUtil.MakeRelative(file, repoPath);
+                if (!string.Equals(relativeSourcePath, file, IOUtil.FilePathStringComparison))
+                {
+                    // add repo info
+                    if (!string.IsNullOrEmpty(repoName))
+                    {
+                        command.Properties["repo"] = repoName;
+                    }
+
+                    if (!string.IsNullOrEmpty(relativeSourcePath))
+                    {
+                        // replace sourcePath with the new relative path
+                        // prefer `/` on all platforms
+                        command.Properties[IssueCommandProperties.File] = relativeSourcePath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    }
+                }
+            }
+
+            foreach (var property in command.Properties)
+            {
+                issue.Data[property.Key] = property.Value;
+            }
+
             context.AddIssue(issue);
         }
+
+        private static class IssueCommandProperties
+        {
+            public const String File = "file";
+            public const String Line = "line";
+            public const String Column = "col";
+        }
+
     }
 
     public sealed class GroupCommandExtension : GroupingCommandExtension
