@@ -28,6 +28,12 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                 string searchRoot = workspaceData.Value;
                 string pattern = Parameters[0].Evaluate(context).ConvertToString();
 
+                // Root the pattern
+                if (!Path.IsPathRooted(pattern))
+                {
+                    pattern = Path.Combine(searchRoot, pattern);
+                }
+
                 context.Trace.Info($"Search root directory: '{searchRoot}'");
                 context.Trace.Info($"Search pattern: '{pattern}'");
                 var files = Directory.GetFiles(searchRoot, "*", SearchOption.AllDirectories).OrderBy(x => x).ToList();
