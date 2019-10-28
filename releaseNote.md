@@ -2,7 +2,7 @@
   - N/A
 
 ## Bugs
-  - N/A
+  - Reverted removal of additional fields error and warning fields (#147)
 
 ## Misc
   - Updated to .NET Core 3.0 (#127)
