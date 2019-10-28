@@ -58,6 +58,9 @@ namespace GitHub.Runner.Worker
                 executionContext.Warning("The 'PREVIEW_ACTION_TOKEN' secret is depreciated. Please remove it from the repository's secrets");
             }
 
+            // Clear the cache (local runner)
+            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+
             foreach (var action in actions)
             {
                 if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
@@ -445,7 +448,7 @@ namespace GitHub.Runner.Worker
             }
             else
             {
-                // make sure we get an clean folder ready to use.
+                // make sure we get a clean folder ready to use.
                 IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
                 Directory.CreateDirectory(destDirectory);
                 executionContext.Output($"Download action repository '{repositoryReference.Name}@{repositoryReference.Ref}'");

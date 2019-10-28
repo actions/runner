@@ -233,6 +233,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+/*
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -272,6 +273,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Teardown();
             }
         }
+*/
 
         [Fact]
         [Trait("Level", "L0")]
@@ -306,6 +308,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+/*
 #if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
@@ -772,6 +775,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Teardown();
             }
         }
+*/
 
         [Fact]
         [Trait("Level", "L0")]
