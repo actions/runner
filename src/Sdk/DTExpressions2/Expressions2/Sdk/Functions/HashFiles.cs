@@ -83,11 +83,15 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
             }
         }
 
+        // Only support basic globbing (* ? and []) and globstar (**)
         private static readonly Options s_minimatchOptions = new Options
         {
             Dot = true,
             NoBrace = true,
-            NoCase = Environment.OSVersion.Platform != PlatformID.Unix && Environment.OSVersion.Platform != PlatformID.MacOSX
+            NoCase = Environment.OSVersion.Platform != PlatformID.Unix && Environment.OSVersion.Platform != PlatformID.MacOSX,
+            NoComment = true,
+            NoExt = true,
+            NoNegate = true,
         };
     }
 }
