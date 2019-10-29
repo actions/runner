@@ -37,10 +37,7 @@
 .PARAMETER SharedRuntime
     This parameter is obsolete and may be removed in a future version of this script.
     The recommended alternative is '-Runtime dotnet'.
-
-    Default: false
     Installs just the shared runtime bits, not the entire SDK.
-    This is equivalent to specifying `-Runtime dotnet`.
 .PARAMETER Runtime
     Installs just a shared runtime, not the entire SDK.
     Possible values:
@@ -77,11 +74,15 @@
     Skips installing non-versioned files if they already exist, such as dotnet.exe.
 .PARAMETER NoCdn
     Disable downloading from the Azure CDN, and use the uncached feed directly.
+.PARAMETER JSonFile
+    Determines the SDK version from a user specified global.json file
+    Note: global.json must have a value for 'SDK:Version'
 #>
 [cmdletbinding()]
 param(
    [string]$Channel="LTS",
    [string]$Version="Latest",
+   [string]$JSonFile,
    [string]$InstallDir="<auto>",
    [string]$Architecture="<auto>",
    [ValidateSet("dotnet", "aspnetcore", "windowsdesktop", IgnoreCase = $false)]
@@ -258,7 +259,6 @@ function GetHTTPResponse([Uri] $Uri)
     })
 }
 
-
 function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel, [bool]$Coherent) {
     Say-Invocation $MyInvocation
 
@@ -304,20 +304,64 @@ function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel, [bool]$Co
     return $VersionInfo
 }
 
-
-function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel, [string]$Version) {
+function Parse-Jsonfile-For-Version([string]$JSonFile) {
     Say-Invocation $MyInvocation
 
-    switch ($Version.ToLower()) {
-        { $_ -eq "latest" } {
-            $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel -Coherent $False
-            return $LatestVersionInfo.Version
+    If (-Not (Test-Path $JSonFile)) {
+        throw "Unable to find '$JSonFile'"
+        exit 0
+    }
+    try {
+        $JSonContent = Get-Content($JSonFile) -Raw | ConvertFrom-Json | Select-Object -expand "sdk" -ErrorAction SilentlyContinue
+    }
+    catch {
+        throw "Json file unreadable: '$JSonFile'"
+        exit 0
+    }
+    if ($JSonContent) {
+        try {
+            $JSonContent.PSObject.Properties | ForEach-Object {
+                $PropertyName = $_.Name
+                if ($PropertyName -eq "version") {
+                    $Version = $_.Value
+                    Say-Verbose "Version = $Version"
+                }
+            }
         }
-        { $_ -eq "coherent" } {
-            $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel -Coherent $True
-            return $LatestVersionInfo.Version
+        catch {
+            throw "Unable to parse the SDK node in '$JSonFile'"
+            exit 0
         }
-        default { return $Version }
+    }
+    else {
+        throw "Unable to find the SDK node in '$JSonFile'"
+        exit 0
+    }
+    If ($Version -eq $null) {
+        throw "Unable to find the SDK:version node in '$JSonFile'"
+        exit 0
+    }
+    return $Version
+}
+
+function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel, [string]$Version, [string]$JSonFile) {
+    Say-Invocation $MyInvocation
+
+    if (-not $JSonFile) {
+        switch ($Version.ToLower()) {
+            { $_ -eq "latest" } {
+                $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel -Coherent $False
+                return $LatestVersionInfo.Version
+            }
+            { $_ -eq "coherent" } {
+                $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel -Coherent $True
+                return $LatestVersionInfo.Version
+            }
+            default { return $Version }
+        }
+    }
+    else {
+        return Parse-Jsonfile-For-Version $JSonFile
     }
 }
 
@@ -380,23 +424,6 @@ function Resolve-Installation-Path([string]$InstallDir) {
         return Get-User-Share-Path
     }
     return $InstallDir
-}
-
-function Get-Version-Info-From-Version-File([string]$InstallRoot, [string]$RelativePathToVersionFile) {
-    Say-Invocation $MyInvocation
-
-    $VersionFile = Join-Path -Path $InstallRoot -ChildPath $RelativePathToVersionFile
-    Say-Verbose "Local version file: $VersionFile"
-
-    if (Test-Path $VersionFile) {
-        $VersionText = cat $VersionFile
-        Say-Verbose "Local version file text: $VersionText"
-        return Get-Version-Info-From-Version-Text $VersionText
-    }
-
-    Say-Verbose "Local version file not found."
-
-    return $null
 }
 
 function Is-Dotnet-Package-Installed([string]$InstallRoot, [string]$RelativePathToPackage, [string]$SpecificVersion) {
@@ -534,7 +561,7 @@ function Prepend-Sdk-InstallRoot-To-Path([string]$InstallRoot, [string]$BinFolde
 }
 
 $CLIArchitecture = Get-CLIArchitecture-From-Architecture $Architecture
-$SpecificVersion = Get-Specific-Version-From-Version -AzureFeed $AzureFeed -Channel $Channel -Version $Version
+$SpecificVersion = Get-Specific-Version-From-Version -AzureFeed $AzureFeed -Channel $Channel -Version $Version -JSonFile $JSonFile
 $DownloadLink = Get-Download-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
 $LegacyDownloadLink = Get-LegacyDownload-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
 
