@@ -28,15 +28,25 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                 string searchRoot = workspaceData.Value;
                 string pattern = Parameters[0].Evaluate(context).ConvertToString();
 
+                // Convert slashes on Windows
+                if (s_isWindows)
+                {
+                    pattern = pattern.Replace('\\', '/');
+                }
+
                 // Root the pattern
                 if (!Path.IsPathRooted(pattern))
                 {
-                    pattern = Path.Combine(searchRoot, pattern);
+                    var patternRoot = s_isWindows ? searchRoot.Replace('\\', '/').TrimEnd('/') : searchRoot.TrimEnd('/');
+                    pattern = string.Concat(patternRoot, "/", pattern);
                 }
 
                 context.Trace.Info($"Search root directory: '{searchRoot}'");
                 context.Trace.Info($"Search pattern: '{pattern}'");
-                var files = Directory.GetFiles(searchRoot, "*", SearchOption.AllDirectories).OrderBy(x => x).ToList();
+                var files = Directory.GetFiles(searchRoot, "*", SearchOption.AllDirectories)
+                    .Select(x => s_isWindows ? x.Replace('\\', '/') : x)
+                    .OrderBy(x => x)
+                    .ToList();
                 if (files.Count == 0)
                 {
                     throw new ArgumentException($"'hashFiles({pattern})' failed. Directory '{searchRoot}' is empty");
@@ -89,12 +99,14 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
             }
         }
 
+        private static readonly bool s_isWindows = Environment.OSVersion.Platform != PlatformID.Unix && Environment.OSVersion.Platform != PlatformID.MacOSX;
+
         // Only support basic globbing (* ? and []) and globstar (**)
         private static readonly Options s_minimatchOptions = new Options
         {
             Dot = true,
             NoBrace = true,
-            NoCase = Environment.OSVersion.Platform != PlatformID.Unix && Environment.OSVersion.Platform != PlatformID.MacOSX,
+            NoCase = s_isWindows,
             NoComment = true,
             NoExt = true,
             NoNegate = true,
