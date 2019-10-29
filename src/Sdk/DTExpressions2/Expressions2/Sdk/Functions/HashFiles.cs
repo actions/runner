@@ -51,7 +51,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     .ToList();
                 if (files.Count == 0)
                 {
-                    throw new ArgumentException($"'hashFiles({pattern})' failed. Directory '{searchRoot}' is empty");
+                    throw new ArgumentException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Directory '{searchRoot}' is empty");
                 }
                 else
                 {
@@ -65,7 +65,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     .ToList();
                 if (files.Count == 0)
                 {
-                    throw new ArgumentException($"'hashFiles('{ExpressionUtility.StringEscape(pattern)}')' failed. Search pattern '{pattern}' doesn't match any file under '{searchRoot}'");
+                    throw new ArgumentException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Search pattern '{pattern}' doesn't match any file under '{searchRoot}'");
                 }
                 else
                 {
