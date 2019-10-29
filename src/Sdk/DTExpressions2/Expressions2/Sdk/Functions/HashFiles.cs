@@ -5,6 +5,7 @@ using System.Text;
 using Minimatch;
 using System.IO;
 using System.Security.Cryptography;
+using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
@@ -28,29 +29,50 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                 string searchRoot = workspaceData.Value;
                 string pattern = Parameters[0].Evaluate(context).ConvertToString();
 
+                // Convert slashes on Windows
+                if (s_isWindows)
+                {
+                    pattern = pattern.Replace('\\', '/');
+                }
+
+                // Root the pattern
+                if (!Path.IsPathRooted(pattern))
+                {
+                    var patternRoot = s_isWindows ? searchRoot.Replace('\\', '/').TrimEnd('/') : searchRoot.TrimEnd('/');
+                    pattern = string.Concat(patternRoot, "/", pattern);
+                }
+
+                // Get all files
                 context.Trace.Info($"Search root directory: '{searchRoot}'");
                 context.Trace.Info($"Search pattern: '{pattern}'");
-                var files = Directory.GetFiles(searchRoot, "*", SearchOption.AllDirectories).OrderBy(x => x).ToList();
+                var files = Directory.GetFiles(searchRoot, "*", SearchOption.AllDirectories)
+                    .Select(x => s_isWindows ? x.Replace('\\', '/') : x)
+                    .OrderBy(x => x, StringComparer.Ordinal)
+                    .ToList();
                 if (files.Count == 0)
                 {
-                    throw new ArgumentException($"'hashFiles({pattern})' failed. Directory '{searchRoot}' is empty");
+                    throw new ArgumentException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Directory '{searchRoot}' is empty");
                 }
                 else
                 {
                     context.Trace.Info($"Found {files.Count} files");
                 }
 
+                // Match
                 var matcher = new Minimatcher(pattern, s_minimatchOptions);
-                files = matcher.Filter(files).ToList();
+                files = matcher.Filter(files)
+                    .Select(x => s_isWindows ? x.Replace('/', '\\') : x)
+                    .ToList();
                 if (files.Count == 0)
                 {
-                    throw new ArgumentException($"'hashFiles({pattern})' failed. Search pattern '{pattern}' doesn't match any file under '{searchRoot}'");
+                    throw new ArgumentException($"hashFiles('{ExpressionUtility.StringEscape(pattern)}') failed. Search pattern '{pattern}' doesn't match any file under '{searchRoot}'");
                 }
                 else
                 {
                     context.Trace.Info($"{files.Count} matches to hash");
                 }
 
+                // Hash each file
                 List<byte> filesSha256 = new List<byte>();
                 foreach (var file in files)
                 {
@@ -64,6 +86,7 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
                     }
                 }
 
+                // Hash the hashes
                 using (SHA256 sha256hash = SHA256.Create())
                 {
                     var hashBytes = sha256hash.ComputeHash(filesSha256.ToArray());
@@ -83,12 +106,14 @@ namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
             }
         }
 
+        private static readonly bool s_isWindows = Environment.OSVersion.Platform != PlatformID.Unix && Environment.OSVersion.Platform != PlatformID.MacOSX;
+
         // Only support basic globbing (* ? and []) and globstar (**)
         private static readonly Options s_minimatchOptions = new Options
         {
             Dot = true,
             NoBrace = true,
-            NoCase = Environment.OSVersion.Platform != PlatformID.Unix && Environment.OSVersion.Platform != PlatformID.MacOSX,
+            NoCase = s_isWindows,
             NoComment = true,
             NoExt = true,
             NoNegate = true,
