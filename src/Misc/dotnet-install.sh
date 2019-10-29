@@ -436,10 +436,51 @@ get_latest_version_info() {
 }
 
 # args:
+# json_file - $1
+parse_jsonfile_for_version() {
+    eval $invocation
+
+    local json_file="$1"
+    if [ ! -f "$json_file" ]; then
+        say_err "Unable to find \`$json_file\`"
+        return 1
+    fi
+
+    sdk_section=$(cat $json_file | awk '/"sdk"/,/}/')
+    if [ -z "$sdk_section" ]; then
+        say_err "Unable to parse the SDK node in \`$json_file\`"
+        return 1
+    fi
+
+    sdk_list=$(echo $sdk_section | awk -F"[{}]" '{print $2}')
+    sdk_list=${sdk_list//[\" ]/}
+    sdk_list=${sdk_list//,/$'\n'}
+    sdk_list="$(echo -e "${sdk_list}" | tr -d '[[:space:]]')"
+
+    local version_info=""
+    while read -r line; do
+      IFS=:
+      while read -r key value; do
+        if [[ "$key" == "version" ]]; then
+          version_info=$value
+        fi
+      done <<< "$line"
+    done <<< "$sdk_list"
+    if [ -z "$version_info" ]; then
+        say_err "Unable to find the SDK:version node in \`$json_file\`"
+        return 1
+    fi
+
+    echo "$version_info"
+    return 0
+}
+
+# args:
 # azure_feed - $1
 # channel - $2
 # normalized_architecture - $3
 # version - $4
+# json_file - $5
 get_specific_version_from_version() {
     eval $invocation
 
@@ -447,27 +488,35 @@ get_specific_version_from_version() {
     local channel="$2"
     local normalized_architecture="$3"
     local version="$(to_lowercase "$4")"
+    local json_file="$5"
 
-    case "$version" in
-        latest)
-            local version_info
-            version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" false)" || return 1
-            say_verbose "get_specific_version_from_version: version_info=$version_info"
-            echo "$version_info" | get_version_from_version_info
-            return 0
-            ;;
-        coherent)
-            local version_info
-            version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" true)" || return 1
-            say_verbose "get_specific_version_from_version: version_info=$version_info"
-            echo "$version_info" | get_version_from_version_info
-            return 0
-            ;;
-        *)
-            echo "$version"
-            return 0
-            ;;
-    esac
+    if [ -z "$json_file" ]; then
+        case "$version" in
+            latest)
+                local version_info
+                version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" false)" || return 1
+                say_verbose "get_specific_version_from_version: version_info=$version_info"
+                echo "$version_info" | get_version_from_version_info
+                return 0
+                ;;
+            coherent)
+                local version_info
+                version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" true)" || return 1
+                say_verbose "get_specific_version_from_version: version_info=$version_info"
+                echo "$version_info" | get_version_from_version_info
+                return 0
+                ;;
+            *)
+                echo "$version"
+                return 0
+                ;;
+        esac
+    else
+        local version_info
+        version_info="$(parse_jsonfile_for_version "$json_file")" || return 1
+        echo "$version_info"
+        return 0
+    fi
 }
 
 # args:
@@ -555,24 +604,6 @@ resolve_installation_path() {
     fi
 
     echo "$install_dir"
-    return 0
-}
-
-# args:
-# install_root - $1
-get_installed_version_info() {
-    eval $invocation
-
-    local install_root="$1"
-    local version_file="$(combine_paths "$install_root" "$local_version_file_relative_path")"
-    say_verbose "Local version file: $version_file"
-    if [ ! -z "$version_file" ] | [ -r "$version_file" ]; then
-        local version_info="$(cat "$version_file")"
-        echo "$version_info"
-        return 0
-    fi
-
-    say_verbose "Local version file not found."
     return 0
 }
 
@@ -724,7 +755,7 @@ calculate_vars() {
     normalized_architecture="$(get_normalized_architecture_from_architecture "$architecture")"
     say_verbose "normalized_architecture=$normalized_architecture"
 
-    specific_version="$(get_specific_version_from_version "$azure_feed" "$channel" "$normalized_architecture" "$version")"
+    specific_version="$(get_specific_version_from_version "$azure_feed" "$channel" "$normalized_architecture" "$version" "$json_file")"
     say_verbose "specific_version=$specific_version"
     if [ -z "$specific_version" ]; then
         say_err "Could not resolve version information."
@@ -826,6 +857,7 @@ temporary_file_template="${TMPDIR:-/tmp}/dotnet.XXXXXXXXX"
 
 channel="LTS"
 version="Latest"
+json_file=""
 install_dir="<auto>"
 architecture="<auto>"
 dry_run=false
@@ -912,6 +944,10 @@ do
             runtime_id="$1"
             non_dynamic_parameters+=" $name "\""$1"\"""
             ;;
+        --jsonfile|-[Jj][Ss]on[Ff]ile)
+            shift
+            json_file="$1"
+            ;;
         --skip-non-versioned-files|-[Ss]kip[Nn]on[Vv]ersioned[Ff]iles)
             override_non_versioned_files=false
             non_dynamic_parameters+=" $name"
@@ -953,22 +989,25 @@ do
             echo "          Possible values:"
             echo "          - dotnet     - the Microsoft.NETCore.App shared runtime"
             echo "          - aspnetcore - the Microsoft.AspNetCore.App shared runtime"
-            echo "  --skip-non-versioned-files         Skips non-versioned files if they already exist, such as the dotnet executable."
-            echo "      -SkipNonVersionedFiles"
             echo "  --dry-run,-DryRun                  Do not perform installation. Display download link."
             echo "  --no-path, -NoPath                 Do not set PATH for the current process."
             echo "  --verbose,-Verbose                 Display diagnostics information."
             echo "  --azure-feed,-AzureFeed            Azure feed location. Defaults to $azure_feed, This parameter typically is not changed by the user."
             echo "  --uncached-feed,-UncachedFeed      Uncached feed location. This parameter typically is not changed by the user."
-            echo "  --no-cdn,-NoCdn                    Disable downloading from the Azure CDN, and use the uncached feed directly."
             echo "  --feed-credential,-FeedCredential  Azure feed shared access token. This parameter typically is not specified."
+            echo "  --skip-non-versioned-files         Skips non-versioned files if they already exist, such as the dotnet executable."
+            echo "      -SkipNonVersionedFiles"
+            echo "  --no-cdn,-NoCdn                    Disable downloading from the Azure CDN, and use the uncached feed directly."
+            echo "  --jsonfile <JSONFILE>              Determines the SDK version from a user specified global.json file."
+            echo "                                     Note: global.json must have a value for 'SDK:Version'"
             echo "  --runtime-id                       Installs the .NET Tools for the given platform (use linux-x64 for portable linux)."
             echo "      -RuntimeId"
             echo "  -?,--?,-h,--help,-Help             Shows this help message"
             echo ""
             echo "Obsolete parameters:"
             echo "  --shared-runtime                   The recommended alternative is '--runtime dotnet'."
-            echo "      -SharedRuntime                 Installs just the shared runtime bits, not the entire SDK."
+            echo "                                     This parameter is obsolete and may be removed in a future version of this script."
+            echo "                                     Installs just the shared runtime bits, not the entire SDK."
             echo ""
             echo "Install Location:"
             echo "  Location is chosen in following order:"
