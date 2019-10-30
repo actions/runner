@@ -110,17 +110,11 @@ namespace GitHub.Runner.Worker
 
                         try
                         {
-                            if (context.EchoOnActionCommand)
-                            {
-                                context.Debug($"Processing command '{actionCommand.Command}'");
-                            }
-
                             extension.ProcessCommand(context, input, actionCommand);
 
                             if (context.EchoOnActionCommand)
                             {
                                 context.Output(input);
-                                context.Debug($"Processed command '{actionCommand.Command}' successfully");
                             }
                         }
                         catch (Exception ex)
