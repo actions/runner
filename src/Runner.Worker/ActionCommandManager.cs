@@ -73,7 +73,7 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
-            // process action command in serialize oreder.
+            // process action command in serialize order.
             lock (_commandSerializeLock)
             {
                 if (_stopProcessCommand)
@@ -107,27 +107,25 @@ namespace GitHub.Runner.Worker
                     }
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
                     {
-                        bool commandHasBeenOutput = false;
 
                         try
                         {
                             if (context.EchoOnActionCommand)
                             {
-                                context.Output(input);
                                 context.Debug($"Processing command '{actionCommand.Command}'");
-                                commandHasBeenOutput = true;
                             }
 
                             extension.ProcessCommand(context, input, actionCommand);
 
                             if (context.EchoOnActionCommand)
                             {
+                                context.Output(input);
                                 context.Debug($"Processed command '{actionCommand.Command}' successfully");
                             }
                         }
                         catch (Exception ex)
                         {
-                            if (!commandHasBeenOutput)
+                            if (context.EchoOnActionCommand)
                             {
                                 context.Output(input);
                             }
