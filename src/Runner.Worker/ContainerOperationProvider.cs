@@ -11,6 +11,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using Microsoft.Win32;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 
 namespace GitHub.Runner.Worker
 {
@@ -37,6 +38,13 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
+
+            var postJobStep = new JobExtensionRunner(runAsync: this.StopContainersAsync,
+                                                condition: $"{PipelineTemplateConstants.Always}()",
+                                                displayName: "Stop containers",
+                                                data: data);
+            
+            executionContext.RegisterPostJobAction(postJobStep.DisplayName, postJobStep);
 
             // Check whether we are inside a container.
             // Our container feature requires to map working directory from host to the container.

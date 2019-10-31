@@ -99,6 +99,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobAction(string displayName, string condition, Pipelines.ActionStep action);
+        void RegisterPostJobAction(string displayName, JobExtensionRunner extensionRunner);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -261,6 +262,13 @@ namespace GitHub.Runner.Worker
             actionRunner.DisplayName = displayName;
             actionRunner.ExecutionContext = Root.CreatePostChild(displayName, $"{actionRunner.Action.Name}_post", IntraActionState);
             Root.PostJobSteps.Push(actionRunner);
+        }
+
+        public void RegisterPostJobAction(string displayName, JobExtensionRunner extensionStep)
+        {
+            this.Debug($"Register post job cleanup for action: {extensionStep.DisplayName}");
+            extensionStep.ExecutionContext = Root.CreatePostChild(displayName, $"{extensionStep.DisplayName}_post", IntraActionState);
+            Root.PostJobSteps.Push(extensionStep);
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
