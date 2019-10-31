@@ -184,6 +184,40 @@ namespace GitHub.Runner.Worker
         }
     }
 
+    public sealed class SetWorkspaceCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "set-workspace";
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        {
+            string path = command.Data;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new Exception("Path not specified");
+            }
+
+            if (!Path.IsPathRooted(path))
+            {
+                throw new Exception("Expected a rooted path");
+            }
+
+            string runnerWorkspace = context.GetRunnerContext("workspace");
+            ArgUtil.Directory(runnerWorkspace, nameof(runnerWorkspace));
+
+            // Must be under runner workspace
+            path = Path.GetFullPath(path); // remove relative pathing and normalize slashes
+            if (!path.StartsWith(runnerWorkspace + Path.DirectorySeparatorChar, IOUtil.FilePathStringComparison))
+            {
+                throw new Exception($"Expected path to be under {runnerWorkspace}");
+            }
+
+            Trace.Info($"Setting GitHub workspace to '{path}'");
+            context.SetGitHubContext("workspace", path);
+        }
+    }
+
     public sealed class SetEnvCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "set-env";

@@ -78,6 +78,7 @@ namespace GitHub.Runner.Worker
         void Start(string currentOperation = null);
         TaskResult Complete(TaskResult? result = null, string currentOperation = null, string resultCode = null);
         void SetEnvContext(string name, string value);
+        string GetRunnerContext(string name);
         void SetRunnerContext(string name, string value);
         string GetGitHubContext(string name);
         void SetGitHubContext(string name, string value);
@@ -363,6 +364,13 @@ namespace GitHub.Runner.Worker
             _logger.End();
 
             return Result.Value;
+        }
+
+        public string GetRunnerContext(string name)
+        {
+            ArgUtil.NotNullOrEmpty(name, nameof(name));
+            var runnerContext = ExpressionValues["runner"] as RunnerContext;
+            return runnerContext[name].AssertString($"runner[{name}]");
         }
 
         public void SetRunnerContext(string name, string value)

@@ -42,6 +42,7 @@ namespace GitHub.Runner.Common
                 // Action command extensions.
                 case "GitHub.Runner.Worker.IActionCommandExtension":
                     Add<T>(extensions, "GitHub.Runner.Worker.InternalPluginSetRepoPathCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.SetWorkspaceCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.SetEnvCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.SetOutputCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.SaveStateCommandExtension, Runner.Worker");
