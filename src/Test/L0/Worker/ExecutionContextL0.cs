@@ -206,8 +206,22 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var action2 = jobContext.CreateChild(Guid.NewGuid(), "action_2", "action_2", null, null);
                 action2.IntraActionState["state"] = "2";
 
-                action1.RegisterPostJobAction("post1", "always()", new Pipelines.ActionStep() { Name = "post1", DisplayName = "Test 1", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } });
-                action2.RegisterPostJobAction("post2", "always()", new Pipelines.ActionStep() { Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } });
+
+                var postRunner1 = hc.CreateService<IActionRunner>();
+                postRunner1.Action = new Pipelines.ActionStep() { Name = "post1", DisplayName = "Test 1", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner1.Stage = ActionRunStage.Post;
+                postRunner1.Condition = "always()";
+                postRunner1.DisplayName = "post1";
+
+
+                var postRunner2 = hc.CreateService<IActionRunner>();
+                postRunner2.Action = new Pipelines.ActionStep() { Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner2.Stage = ActionRunStage.Post;
+                postRunner2.Condition = "always()";
+                postRunner2.DisplayName = "post2";
+
+                action1.RegisterPostJobStep("post1", postRunner1);
+                action2.RegisterPostJobStep("post2", postRunner2);
 
                 Assert.NotNull(jobContext.JobSteps);
                 Assert.NotNull(jobContext.PostJobSteps);

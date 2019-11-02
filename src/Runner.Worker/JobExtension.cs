@@ -110,9 +110,7 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Build up 3 lists of steps, pre-job, job, post-job
-                    // var postJobStepsBuilder = new Stack<IStep>();
-
+                    // Build up 2 lists of steps, pre-job, job
                     // Download actions not already in the cache
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
@@ -134,10 +132,6 @@ namespace GitHub.Runner.Worker
                                                                           condition: $"{PipelineTemplateConstants.Success}()",
                                                                           displayName: "Initialize containers",
                                                                           data: (object)containers));
-                        // postJobStepsBuilder.Push(new JobExtensionRunner(runAsync: containerProvider.StopContainersAsync,
-                        //                                                 condition: $"{PipelineTemplateConstants.Always}()",
-                        //                                                 displayName: "Stop containers",
-                        //                                                 data: (object)containers));
                     }
 
                     // Add action steps
@@ -187,33 +181,9 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // Add post-job steps
-                    // Trace.Info("Adding post-job steps");
-                    // while (postJobStepsBuilder.Count > 0)
-                    // {
-                    //     postJobSteps.Add(postJobStepsBuilder.Pop());
-                    // }
-
-                    // Create execution context for post-job steps
-                    // foreach (var step in postJobSteps)
-                    // {
-                    //     if (step is JobExtensionRunner)
-                    //     {
-                    //         JobExtensionRunner extensionStep = step as JobExtensionRunner;
-                    //         ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
-                    //         Guid stepId = Guid.NewGuid();
-                    //         extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, stepId.ToString("N"), null, null);
-                    //     }
-                    // }
-
                     List<IStep> steps = new List<IStep>();
                     steps.AddRange(preJobSteps);
                     steps.AddRange(jobSteps);
-                    // steps.AddRange(postJobSteps);
-
-                    // Start agent log plugin host process
-                    // var logPlugin = HostContext.GetService<IAgentLogPlugin>();
-                    // await logPlugin.StartAsync(context, steps, jobContext.CancellationToken);
 
                     // Prepare for orphan process cleanup
                     _processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;

@@ -94,7 +94,22 @@ namespace GitHub.Runner.Worker
                 {
                     postDisplayName = $"Post {this.DisplayName}";
                 }
-                ExecutionContext.RegisterPostJobAction(postDisplayName, handlerData.CleanupCondition, Action);
+
+                var repositoryReference = Action.Reference as RepositoryPathReference;
+                var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
+                var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
+                    $"{repositoryReference.Name}{pathString}@{repositoryReference.Ref}";
+
+                ExecutionContext.Debug($"Register post job cleanup for action: {repoString}");
+
+                var actionRunner = HostContext.CreateService<IActionRunner>();
+                actionRunner.Action = Action;
+                actionRunner.Stage = ActionRunStage.Post;
+                actionRunner.Condition = handlerData.CleanupCondition;
+                actionRunner.DisplayName = postDisplayName;
+                // actionRunner.ExecutionContext = Root.CreatePostChild(displayName, $"{actionRunner.Action.Name}_post", IntraActionState);
+
+                ExecutionContext.RegisterPostJobStep($"{actionRunner.Action.Name}_post", actionRunner);
             }
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
