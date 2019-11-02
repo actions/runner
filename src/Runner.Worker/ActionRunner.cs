@@ -107,7 +107,6 @@ namespace GitHub.Runner.Worker
                 actionRunner.Stage = ActionRunStage.Post;
                 actionRunner.Condition = handlerData.CleanupCondition;
                 actionRunner.DisplayName = postDisplayName;
-                // actionRunner.ExecutionContext = Root.CreatePostChild(displayName, $"{actionRunner.Action.Name}_post", IntraActionState);
 
                 ExecutionContext.RegisterPostJobStep($"{actionRunner.Action.Name}_post", actionRunner);
             }
