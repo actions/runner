@@ -405,7 +405,7 @@ namespace GitHub.Runner.Worker
     public sealed class DebugCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "debug";
-        public bool OmitEcho => false;
+        public bool OmitEcho => true;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -433,7 +433,7 @@ namespace GitHub.Runner.Worker
     {
         public abstract IssueType Type { get; }
         public abstract string Command { get; }
-        public bool OmitEcho => false;
+        public bool OmitEcho => true;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
