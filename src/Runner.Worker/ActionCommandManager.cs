@@ -73,7 +73,7 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
-            // process action command in serialize oreder.
+            // process action command in serialize order.
             lock (_commandSerializeLock)
             {
                 if (_stopProcessCommand)
@@ -107,32 +107,19 @@ namespace GitHub.Runner.Worker
                     }
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
                     {
-                        bool commandHasBeenOutput = false;
+                        if (context.EchoOnActionCommand && !extension.OmitEcho)
+                        {
+                            context.Output(input);
+                        }
 
                         try
                         {
-                            if (context.EchoOnActionCommand)
-                            {
-                                context.Output(input);
-                                context.Debug($"Processing command '{actionCommand.Command}'");
-                                commandHasBeenOutput = true;
-                            }
-
                             extension.ProcessCommand(context, input, actionCommand);
-
-                            if (context.EchoOnActionCommand)
-                            {
-                                context.Debug($"Processed command '{actionCommand.Command}' successfully");
-                            }
                         }
                         catch (Exception ex)
                         {
-                            if (!commandHasBeenOutput)
-                            {
-                                context.Output(input);
-                            }
-
-                            context.Error($"Unable to process command '{input}' successfully.");
+                            var commandInformation = extension.OmitEcho ? extension.Command : input;
+                            context.Error($"Unable to process command '{commandInformation}' successfully.");
                             context.Error(ex);
                             context.CommandResult = TaskResult.Failed;
                         }
@@ -151,6 +138,7 @@ namespace GitHub.Runner.Worker
     public interface IActionCommandExtension : IExtension
     {
         string Command { get; }
+        bool OmitEcho { get; }
 
         void ProcessCommand(IExecutionContext context, string line, ActionCommand command);
     }
@@ -158,6 +146,7 @@ namespace GitHub.Runner.Worker
     public sealed class InternalPluginSetRepoPathCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "internal-set-repo-path";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -187,6 +176,7 @@ namespace GitHub.Runner.Worker
     public sealed class SetEnvCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "set-env";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -211,6 +201,7 @@ namespace GitHub.Runner.Worker
     public sealed class SetOutputCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "set-output";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -234,6 +225,7 @@ namespace GitHub.Runner.Worker
     public sealed class SaveStateCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "save-state";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -257,6 +249,7 @@ namespace GitHub.Runner.Worker
     public sealed class AddMaskCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "add-mask";
+        public bool OmitEcho => true;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -268,6 +261,11 @@ namespace GitHub.Runner.Worker
             }
             else
             {
+                if (context.EchoOnActionCommand)
+                {
+                    context.Output($"::{Command}::***");
+                }
+
                 HostContext.SecretMasker.AddValue(command.Data);
                 Trace.Info($"Add new secret mask with length of {command.Data.Length}");
             }
@@ -277,6 +275,7 @@ namespace GitHub.Runner.Worker
     public sealed class AddPathCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "add-path";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -291,6 +290,7 @@ namespace GitHub.Runner.Worker
     public sealed class AddMatcherCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "add-matcher";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -337,6 +337,7 @@ namespace GitHub.Runner.Worker
     public sealed class RemoveMatcherCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "remove-matcher";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -404,6 +405,7 @@ namespace GitHub.Runner.Worker
     public sealed class DebugCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "debug";
+        public bool OmitEcho => true;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -431,6 +433,7 @@ namespace GitHub.Runner.Worker
     {
         public abstract IssueType Type { get; }
         public abstract string Command { get; }
+        public bool OmitEcho => true;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
@@ -510,6 +513,8 @@ namespace GitHub.Runner.Worker
     public abstract class GroupingCommandExtension : RunnerService, IActionCommandExtension
     {
         public abstract string Command { get; }
+        public bool OmitEcho => false;
+
         public Type ExtensionType => typeof(IActionCommandExtension);
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
@@ -522,6 +527,7 @@ namespace GitHub.Runner.Worker
     public sealed class EchoCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "echo";
+        public bool OmitEcho => false;
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
