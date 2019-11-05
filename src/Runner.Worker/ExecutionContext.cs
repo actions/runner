@@ -98,7 +98,7 @@ namespace GitHub.Runner.Worker
 
         // others
         void ForceTaskComplete();
-        void RegisterPostJobAction(string displayName, string condition, Pipelines.ActionStep action);
+        void RegisterPostJobStep(string refName, IStep step);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -240,27 +240,10 @@ namespace GitHub.Runner.Worker
             });
         }
 
-        public void RegisterPostJobAction(string displayName, string condition, Pipelines.ActionStep action)
+        public void RegisterPostJobStep(string refName, IStep step)
         {
-            if (action.Reference.Type != ActionSourceType.Repository)
-            {
-                throw new NotSupportedException("Only action that has `action.yml` can define post job execution.");
-            }
-
-            var repositoryReference = action.Reference as RepositoryPathReference;
-            var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
-            var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
-                $"{repositoryReference.Name}{pathString}@{repositoryReference.Ref}";
-
-            this.Debug($"Register post job cleanup for action: {repoString}");
-
-            var actionRunner = HostContext.CreateService<IActionRunner>();
-            actionRunner.Action = action;
-            actionRunner.Stage = ActionRunStage.Post;
-            actionRunner.Condition = condition;
-            actionRunner.DisplayName = displayName;
-            actionRunner.ExecutionContext = Root.CreatePostChild(displayName, $"{actionRunner.Action.Name}_post", IntraActionState);
-            Root.PostJobSteps.Push(actionRunner);
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, refName, IntraActionState);
+            Root.PostJobSteps.Push(step);
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
