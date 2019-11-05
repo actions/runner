@@ -1,12 +1,12 @@
-# Contribute (Dev)
+# Contribution guide for developers
 
-## Dev Dependencies
+## Required Dev Dependencies
 
 ![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) (needed for dev sh script)
 
-## Build, Test, Layout 
+## To Build, Test, Layout 
 
-From src:
+Navigate to the `src` directory and run the following command:
 
 ![Win](res/win_sm.png) `dev {command}`  
 
@@ -14,13 +14,12 @@ From src:
   
 **Commands:**  
 
-`layout` (`l`):  Run first time to create a full agent layout in {root}/_layout  
+* `layout` (`l`):  Run first time to create a full agent layout in `{root}/_layout`
+* `build` (`b`):   Build everything and update agent layout folder
+* `test` (`t`):    Build agent binaries and run unit tests
 
-`build` (`b`):   build everything and update agent layout folder  
+Sample developer flow:
 
-`test` (`t`):    build agent binaries and run unit tests  
-
-Normal dev flow:
 ```bash
 git clone https://github.com/actions/runner
 cd ./src
@@ -37,5 +36,5 @@ cd ./src
 
 ## Styling
 
-We use the dotnet foundation and CoreCLR style guidelines [located here](
+We use the .NET Foundation and CoreCLR style guidelines [located here](
 https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
