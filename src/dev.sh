@@ -208,8 +208,6 @@ fi
 echo "Prepend ${DOTNETSDK_INSTALLDIR} to %PATH%"
 export PATH=${DOTNETSDK_INSTALLDIR}:$PATH
 
-heading "Github Dreamlifter Runner"
-
 heading "Dotnet SDK Version"
 dotnet --version
 
