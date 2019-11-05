@@ -1,12 +1,15 @@
 ## Features
-  - N/A
+  - Add command to enable to disable echoing of commands (#139)
 
 ## Bugs
-  - Reverted removal of additional fields error and warning fields (#147)
-  - Actions cache would incorrectly cache the action if the tag was updated (#148)
+  - Do not retry uploads on 4xx Errors for Artifact Upload Service (#131)
+  - Actions cache would incorrectly cache the action if the tag was updated on self hosted runners (#148)
+  - Disable echoing of commands on add-mask, debug, warning and error commands (#158)
+  - HashFile should only support basic globbing and globstar (#149)
+  - HashFile should set a default root and handle Windows paths correctly (#151)
 
 ## Misc
-  - Updated to .NET Core 3.0 (#127)
+  - N/A
 
 ## Agent Downloads  
 
