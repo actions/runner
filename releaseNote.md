@@ -1,12 +1,12 @@
 ## Features
-  - Add command to enable to disable echoing of commands (#139)
+  - Added commands to enable or disable echoing of commands (#139)
 
 ## Bugs
   - Do not retry uploads on 4xx Errors for Artifact Upload Service (#131)
-  - Actions cache would incorrectly cache the action if the tag was updated on self hosted runners (#148)
-  - Disable echoing of commands on add-mask, debug, warning and error commands (#158)
-  - HashFile should only support basic globbing and globstar (#149)
-  - HashFile should set a default root and handle Windows paths correctly (#151)
+  - Actions cache no longer incorrectly caches the action if the tag was updated for self hosted runners (#148)
+  - Disabled echoing of commands on add-mask, debug, warning and error commands (#158)
+  - HashFile now is correctly configured to only support basic globbing and globstar (#149)
+  - HashFile now sets a default root and handles Windows paths correctly (#151)
 
 ## Misc
   - N/A
