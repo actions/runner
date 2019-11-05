@@ -52,7 +52,7 @@ namespace GitHub.Runner.Common.Tests
                     // Assert.
                     Assert.Equal("some agent", actual);
                     Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT") ?? string.Empty); // Should remove.
-                    Assert.Equal(hc.SecretMasker.MaskSecrets("some agent"), "some agent");
+                    Assert.Equal("some agent", hc.SecretMasker.MaskSecrets("some agent"));
                 }
                 finally
                 {
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Common.Tests
                     // Assert.
                     Assert.Equal("some secret token value", actual);
                     Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_TOKEN") ?? string.Empty); // Should remove.
-                    Assert.Equal(hc.SecretMasker.MaskSecrets("some secret token value"), "***");
+                    Assert.Equal("***", hc.SecretMasker.MaskSecrets("some secret token value"));
                 }
                 finally
                 {
@@ -250,7 +250,7 @@ namespace GitHub.Runner.Common.Tests
                     bool actual = command.Unattended;
 
                     // Assert.
-                    Assert.Equal(true, actual);
+                    Assert.True(actual);
                     Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_UNATTENDED") ?? string.Empty); // Should remove.
                 }
                 finally
@@ -720,7 +720,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "badcommand" });
 
                 // Assert.
-                Assert.True(command.Validate().Contains("badcommand"));
+                Assert.Contains("badcommand", command.Validate());
             }
         }
 
@@ -735,7 +735,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--badflag" });
 
                 // Assert.
-                Assert.True(command.Validate().Contains("badflag"));
+                Assert.Contains("badflag", command.Validate());
             }
         }
 
@@ -750,7 +750,7 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--badargname", "bad arg value" });
 
                 // Assert.
-                Assert.True(command.Validate().Contains("badargname"));
+                Assert.Contains("badargname", command.Validate());
             }
         }
 

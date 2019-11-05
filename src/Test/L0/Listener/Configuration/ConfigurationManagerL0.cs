@@ -43,10 +43,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private string _expectedServerUrl = "https://localhost";
         private string _expectedAgentName = "expectedAgentName";
         private string _expectedPoolName = "poolName";
-        private string _expectedCollectionName = "testCollectionName";
-        private string _expectedProjectName = "testProjectName";
-        private string _expectedProjectId = "edf3f94e-d251-49df-bfce-602d6c967409";
-        private string _expectedMachineGroupName = "testMachineGroupName";
         private string _expectedAuthType = "pat";
         private string _expectedWorkFolder = "_work";
         private int _expectedPoolId = 1;

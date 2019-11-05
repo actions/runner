@@ -37,25 +37,25 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Assert
 
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.Container);
+                Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
                 var containerAction = result.Execution as ContainerActionExecutionData;
 
-                Assert.Equal(containerAction.Image, "Dockerfile");
-                Assert.Equal(containerAction.EntryPoint, "main.sh");
-                Assert.Equal(containerAction.Arguments[0].ToString(), "bzz");
-                Assert.Equal(containerAction.Environment[0].Key.ToString(), "Token");
-                Assert.Equal(containerAction.Environment[0].Value.ToString(), "foo");
-                Assert.Equal(containerAction.Environment[1].Key.ToString(), "Url");
-                Assert.Equal(containerAction.Environment[1].Value.ToString(), "bar");
+                Assert.Equal("Dockerfile", containerAction.Image);
+                Assert.Equal("main.sh", containerAction.EntryPoint);
+                Assert.Equal("bzz", containerAction.Arguments[0].ToString());
+                Assert.Equal("Token", containerAction.Environment[0].Key.ToString());
+                Assert.Equal("foo", containerAction.Environment[0].Value.ToString());
+                Assert.Equal("Url", containerAction.Environment[1].Key.ToString());
+                Assert.Equal("bar", containerAction.Environment[1].Value.ToString());
             }
             finally
             {
@@ -81,27 +81,27 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Assert
 
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.Container);
+                Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
                 var containerAction = result.Execution as ContainerActionExecutionData;
 
-                Assert.Equal(containerAction.Image, "Dockerfile");
-                Assert.Equal(containerAction.EntryPoint, "main.sh");
-                Assert.Equal(containerAction.Cleanup, "cleanup.sh");
-                Assert.Equal(containerAction.CleanupCondition, "failure()");
-                Assert.Equal(containerAction.Arguments[0].ToString(), "bzz");
-                Assert.Equal(containerAction.Environment[0].Key.ToString(), "Token");
-                Assert.Equal(containerAction.Environment[0].Value.ToString(), "foo");
-                Assert.Equal(containerAction.Environment[1].Key.ToString(), "Url");
-                Assert.Equal(containerAction.Environment[1].Value.ToString(), "bar");
+                Assert.Equal("Dockerfile", containerAction.Image);
+                Assert.Equal("main.sh", containerAction.EntryPoint);
+                Assert.Equal("cleanup.sh", containerAction.Cleanup);
+                Assert.Equal("failure()", containerAction.CleanupCondition);
+                Assert.Equal("bzz", containerAction.Arguments[0].ToString());
+                Assert.Equal("Token", containerAction.Environment[0].Key.ToString());
+                Assert.Equal("foo", containerAction.Environment[0].Value.ToString());
+                Assert.Equal("Url", containerAction.Environment[1].Key.ToString());
+                Assert.Equal("bar", containerAction.Environment[1].Value.ToString());
             }
             finally
             {
@@ -126,19 +126,19 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "dockerfileaction_noargs_noenv_noentrypoint.yml"));
 
                 //Assert
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.Container);
+                Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
                 var containerAction = result.Execution as ContainerActionExecutionData;
 
-                Assert.Equal(containerAction.Image, "Dockerfile");
+                Assert.Equal("Dockerfile", containerAction.Image);
             }
             finally
             {
@@ -164,25 +164,25 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Assert
 
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.Container);
+                Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
                 var containerAction = result.Execution as ContainerActionExecutionData;
 
-                Assert.Equal(containerAction.Image, "Dockerfile");
-                Assert.Equal(containerAction.EntryPoint, "main.sh");
-                Assert.Equal(containerAction.Arguments[0].ToString(), "${{ inputs.greeting }}");
-                Assert.Equal(containerAction.Environment[0].Key.ToString(), "Token");
-                Assert.Equal(containerAction.Environment[0].Value.ToString(), "foo");
-                Assert.Equal(containerAction.Environment[1].Key.ToString(), "Url");
-                Assert.Equal(containerAction.Environment[1].Value.ToString(), "${{ inputs.entryPoint }}");
+                Assert.Equal("Dockerfile", containerAction.Image);
+                Assert.Equal("main.sh", containerAction.EntryPoint);
+                Assert.Equal("${{ inputs.greeting }}", containerAction.Arguments[0].ToString());
+                Assert.Equal("Token", containerAction.Environment[0].Key.ToString());
+                Assert.Equal("foo", containerAction.Environment[0].Value.ToString());
+                Assert.Equal("Url", containerAction.Environment[1].Key.ToString());
+                Assert.Equal("${{ inputs.entryPoint }}", containerAction.Environment[1].Value.ToString());
             }
             finally
             {
@@ -207,25 +207,25 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "dockerhubaction.yml"));
 
                 //Assert
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.Container);
+                Assert.Equal(ActionExecutionType.Container, result.Execution.ExecutionType);
 
                 var containerAction = result.Execution as ContainerActionExecutionData;
 
-                Assert.Equal(containerAction.Image, "docker://ubuntu:18.04");
-                Assert.Equal(containerAction.EntryPoint, "main.sh");
-                Assert.Equal(containerAction.Arguments[0].ToString(), "bzz");
-                Assert.Equal(containerAction.Environment[0].Key.ToString(), "Token");
-                Assert.Equal(containerAction.Environment[0].Value.ToString(), "foo");
-                Assert.Equal(containerAction.Environment[1].Key.ToString(), "Url");
-                Assert.Equal(containerAction.Environment[1].Value.ToString(), "bar");
+                Assert.Equal("docker://ubuntu:18.04", containerAction.Image);
+                Assert.Equal("main.sh", containerAction.EntryPoint);
+                Assert.Equal("bzz", containerAction.Arguments[0].ToString());
+                Assert.Equal("Token", containerAction.Environment[0].Key.ToString());
+                Assert.Equal("foo", containerAction.Environment[0].Value.ToString());
+                Assert.Equal("Url", containerAction.Environment[1].Key.ToString());
+                Assert.Equal("bar", containerAction.Environment[1].Value.ToString());
             }
             finally
             {
@@ -250,24 +250,24 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "nodeaction.yml"));
 
                 //Assert
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
-                Assert.Equal(result.Deprecated.Count, 1);
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal(1, result.Deprecated.Count);
 
                 Assert.True(result.Deprecated.ContainsKey("greeting"));
                 result.Deprecated.TryGetValue("greeting", out string value);
-                Assert.Equal(value, "This property has been deprecated");
+                Assert.Equal("This property has been deprecated", value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.NodeJS);
+                Assert.Equal(ActionExecutionType.NodeJS, result.Execution.ExecutionType);
 
                 var nodeAction = result.Execution as NodeJSActionExecutionData;
 
-                Assert.Equal(nodeAction.Script, "main.js");
+                Assert.Equal("main.js", nodeAction.Script);
             }
             finally
             {
@@ -292,26 +292,26 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "nodeaction_cleanup.yml"));
 
                 //Assert
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
-                Assert.Equal(result.Deprecated.Count, 1);
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal(1, result.Deprecated.Count);
 
                 Assert.True(result.Deprecated.ContainsKey("greeting"));
                 result.Deprecated.TryGetValue("greeting", out string value);
-                Assert.Equal(value, "This property has been deprecated");
+                Assert.Equal("This property has been deprecated", value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.NodeJS);
+                Assert.Equal(ActionExecutionType.NodeJS, result.Execution.ExecutionType);
 
                 var nodeAction = result.Execution as NodeJSActionExecutionData;
 
-                Assert.Equal(nodeAction.Script, "main.js");
-                Assert.Equal(nodeAction.Cleanup, "cleanup.js");
-                Assert.Equal(nodeAction.CleanupCondition, "cancelled()");
+                Assert.Equal("main.js", nodeAction.Script);
+                Assert.Equal("cleanup.js", nodeAction.Cleanup);
+                Assert.Equal("cancelled()", nodeAction.CleanupCondition);
             }
             finally
             {
@@ -336,19 +336,19 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "pluginaction.yml"));
 
                 //Assert
-                Assert.Equal(result.Name, "Hello World");
-                Assert.Equal(result.Description, "Greet the world and record the time");
-                Assert.Equal(result.Inputs.Count, 2);
-                Assert.Equal(result.Inputs[0].Key.AssertString("key").Value, "greeting");
-                Assert.Equal(result.Inputs[0].Value.AssertString("value").Value, "Hello");
-                Assert.Equal(result.Inputs[1].Key.AssertString("key").Value, "entryPoint");
-                Assert.Equal(result.Inputs[1].Value.AssertString("value").Value, "");
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
 
-                Assert.Equal(result.Execution.ExecutionType, ActionExecutionType.Plugin);
+                Assert.Equal(ActionExecutionType.Plugin, result.Execution.ExecutionType);
 
                 var pluginAction = result.Execution as PluginActionExecutionData;
 
-                Assert.Equal(pluginAction.Plugin, "someplugin");
+                Assert.Equal("someplugin", pluginAction.Plugin);
             }
             finally
             {
@@ -383,9 +383,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.EvaluateContainerArguments(_ec.Object, arguments, evaluateContext);
 
                 //Assert
-                Assert.Equal(result[0], "hello");
-                Assert.Equal(result[1], "test");
-                Assert.Equal(result.Count, 2);
+                Assert.Equal("hello", result[0]);
+                Assert.Equal("test", result[1]);
+                Assert.Equal(2, result.Count);
             }
             finally
             {
@@ -420,9 +420,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.EvaluateContainerEnvironment(_ec.Object, environment, evaluateContext);
 
                 //Assert
-                Assert.Equal(result["hello"], "hello");
-                Assert.Equal(result["test"], "test");
-                Assert.Equal(result.Count, 2);
+                Assert.Equal("hello", result["hello"]);
+                Assert.Equal("test", result["test"]);
+                Assert.Equal(2, result.Count);
             }
             finally
             {
@@ -459,13 +459,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new StringToken(null, null, null, "defaultValue"), evaluateContext);
 
                 //Assert
-                Assert.Equal(result, "defaultValue");
+                Assert.Equal("defaultValue", result);
 
                 //Act
                 result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new BasicExpressionToken(null, null, null, "github.ref"), evaluateContext);
 
                 //Assert
-                Assert.Equal(result, "refs/heads/master");
+                Assert.Equal("refs/heads/master", result);
             }
             finally
             {
