@@ -19,43 +19,5 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>portable</DebugType>
   </PropertyGroup>
-  
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true' AND '$(PackageRuntime)' == 'win-x64'">
-    <DefineConstants>OS_WINDOWS;X64;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true' AND '$(PackageRuntime)' == 'win-x86'">
-    <DefineConstants>OS_WINDOWS;X86;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'win-x64'">
-    <DefineConstants>OS_WINDOWS;X64;DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'win-x86'">
-    <DefineConstants>OS_WINDOWS;X86;DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">
-    <DefineConstants>OS_OSX;X64;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true' AND '$(Configuration)' == 'Debug'">
-    <DefineConstants>OS_OSX;DEBUG;X64;TRACE</DefineConstants>
-  </PropertyGroup>
 
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(PackageRuntime)' == 'linux-x64'">
-    <DefineConstants>OS_LINUX;X64;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(PackageRuntime)' == 'rhel.6-x64'">
-    <DefineConstants>OS_LINUX;OS_RHEL6;X64;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(PackageRuntime)' == 'linux-arm'">
-    <DefineConstants>OS_LINUX;ARM;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'linux-x64'">
-    <DefineConstants>OS_LINUX;X64;DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'rhel.6-x64'">
-    <DefineConstants>OS_LINUX;OS_RHEL6;X64;DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'linux-arm'">
-    <DefineConstants>OS_LINUX;ARM;DEBUG;TRACE</DefineConstants>
-  </PropertyGroup>
 </Project>

@@ -3,7 +3,6 @@
 **/libs
 **/*.xproj
 **/*.xproj.user
-**/*.sln
 **/.vs
 **/.vscode
 **/*.error
