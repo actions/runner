@@ -22,7 +22,9 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public ContainerActionExecutionData Data { get; set; }
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously (method has async logic on only certain platforms)
         public async Task RunAsync(ActionRunStage stage)
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             // Validate args.
             Trace.Entering();

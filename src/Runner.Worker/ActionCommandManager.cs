@@ -541,7 +541,6 @@ namespace GitHub.Runner.Worker
                     break;
                 default:
                     throw new Exception($"Invalid echo command value. Possible values can be: 'on', 'off'. Current value is: '{command.Data}'.");
-                    break;
             }
         }
     }
