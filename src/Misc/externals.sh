@@ -146,3 +146,9 @@ fi
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir
 fi
+
+if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-arm64.tar.gz" node12 fix_nested_dir
+
+    ## TODO: alpine arm64 version node.js
+fi
