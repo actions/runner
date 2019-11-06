@@ -107,7 +107,7 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
-        public void Setup([CallerMemberName] string testName = "")
+        private void Setup([CallerMemberName] string testName = "")
         {
             _tokenSource = new CancellationTokenSource();
             _hc = new HostContext(
@@ -115,7 +115,7 @@ namespace GitHub.Runner.Common.Tests
                 logFile: Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), $"trace_{nameof(HostContextL0)}_{testName}.log"));
         }
 
-        public void Teardown()
+        private void Teardown()
         {
             _hc?.Dispose();
             _tokenSource?.Dispose();

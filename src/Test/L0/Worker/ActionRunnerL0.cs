@@ -31,7 +31,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext _hc;
         private ActionRunner _actionRunner;
         private IActionManifestManager _actionManifestManager;
-        private string _workFolder;
         private DictionaryContextData _context = new DictionaryContextData();
 
         [Fact]
@@ -75,9 +74,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
 
             //Assert
-            Assert.Equal(finialInputs["input1"], "test1");
-            Assert.Equal(finialInputs["input2"], "test2");
-            Assert.Equal(finialInputs["input3"], "github");
+            Assert.Equal("test1", finialInputs["input1"]);
+            Assert.Equal("test2", finialInputs["input2"]);
+            Assert.Equal("github", finialInputs["input3"]);
         }
 
         [Fact]
@@ -276,24 +275,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.False(didUpdateDisplayName);
             // Should use the pretty display name until we can eval
             Assert.Equal("${{ matrix.node }}", _actionRunner.DisplayName);
-        }
-
-        private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
-        {
-            directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
-            string file = Path.Combine(directory, Constants.Path.ActionManifestFile);
-            Directory.CreateDirectory(Path.GetDirectoryName(file));
-            File.WriteAllText(file, yamlContent);
-            instance = new Pipelines.ActionStep()
-            {
-                Id = Guid.NewGuid(),
-                Reference = new Pipelines.RepositoryPathReference()
-                {
-                    Name = "GitHub/actions",
-                    Ref = "master",
-                    RepositoryType = Pipelines.RepositoryTypes.GitHub
-                }
-            };
         }
 
         private void Setup([CallerMemberName] string name = "")

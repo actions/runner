@@ -150,7 +150,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 string actual = variables.Get("no such");
 
                 // Assert.
-                Assert.Equal(null, actual);
+                Assert.Null(actual);
             }
         }
 

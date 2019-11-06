@@ -31,8 +31,8 @@ namespace GitHub.Runner.Common.Tests.Util
                     var connect = VssUtil.CreateConnection(new Uri("https://github.com/actions/runner"), new VssCredentials());
 
                     // Assert.
-                    Assert.Equal(connect.Settings.MaxRetryRequest.ToString(), "10");
-                    Assert.Equal(connect.Settings.SendTimeout.TotalSeconds.ToString(), "360");
+                    Assert.Equal("10", connect.Settings.MaxRetryRequest.ToString());
+                    Assert.Equal("360", connect.Settings.SendTimeout.TotalSeconds.ToString());
 
                     trace.Info("Set httpretry to 100.");
                     Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTP_RETRY", "100");
@@ -42,8 +42,8 @@ namespace GitHub.Runner.Common.Tests.Util
                     connect = VssUtil.CreateConnection(new Uri("https://github.com/actions/runner"), new VssCredentials());
 
                     // Assert.
-                    Assert.Equal(connect.Settings.MaxRetryRequest.ToString(), "10");
-                    Assert.Equal(connect.Settings.SendTimeout.TotalSeconds.ToString(), "1200");
+                    Assert.Equal("10", connect.Settings.MaxRetryRequest.ToString());
+                    Assert.Equal("1200", connect.Settings.SendTimeout.TotalSeconds.ToString());
                 }
                 finally
                 {

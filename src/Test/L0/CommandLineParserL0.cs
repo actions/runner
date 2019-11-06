@@ -47,8 +47,8 @@ namespace GitHub.Runner.Common.Tests
                 });
 
                 // Assert.
-                Assert.Equal(hc.SecretMasker.MaskSecrets("secret value 1"), "***");
-                Assert.Equal(hc.SecretMasker.MaskSecrets("secret value 2"), "***");
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("secret value 1"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("secret value 2"));
             }
         }
 
@@ -90,9 +90,9 @@ namespace GitHub.Runner.Common.Tests
                 trace.Info("Args: {0}", clp.Args.Count);
                 Assert.True(clp.Args.Count == 2);
                 Assert.True(clp.Args.ContainsKey("arg1"));
-                Assert.Equal(clp.Args["arg1"], "arg1val");
+                Assert.Equal("arg1val", clp.Args["arg1"]);
                 Assert.True(clp.Args.ContainsKey("arg2"));
-                Assert.Equal(clp.Args["arg2"], "arg2val");
+                Assert.Equal("arg2val", clp.Args["arg2"]);
             }
         }
 
@@ -113,8 +113,8 @@ namespace GitHub.Runner.Common.Tests
 
                 trace.Info("Args: {0}", clp.Flags.Count);
                 Assert.True(clp.Flags.Count == 2);
-                Assert.True(clp.Flags.Contains("flag1"));
-                Assert.True(clp.Flags.Contains("flag2"));
+                Assert.Contains("flag1", clp.Flags);
+                Assert.Contains("flag2", clp.Flags);
             }
         }
 

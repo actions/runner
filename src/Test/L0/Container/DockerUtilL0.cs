@@ -36,10 +36,10 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
 
             // Assert
             Assert.NotNull(result0);
-            Assert.Equal(result0.Count, 0);
+            Assert.Equal(0, result0.Count);
 
             Assert.NotNull(result1);
-            Assert.Equal(result1.Count, 1);
+            Assert.Equal(1, result1.Count);
             var result1Port80Mapping = result1.Find(pm =>
                 string.Equals(pm.ContainerPort, "80") &&
                 string.Equals(pm.HostPort, "32881") &&
@@ -48,10 +48,10 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             Assert.NotNull(result1Port80Mapping);
 
             Assert.NotNull(result1Empty);
-            Assert.Equal(result1Empty.Count, 0);
+            Assert.Equal(0, result1Empty.Count);
 
             Assert.NotNull(result2);
-            Assert.Equal(result2.Count, 2);
+            Assert.Equal(2, result2.Count);
             var result2Port80Mapping = result2.Find(pm =>
                 string.Equals(pm.ContainerPort, "80") &&
                 string.Equals(pm.HostPort, "32881") &&

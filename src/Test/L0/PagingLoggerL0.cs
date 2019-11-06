@@ -64,7 +64,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                                 string line;
                                 while ((line = freader.ReadLine()) != null)
                                 {
-                                    Assert.True(line.EndsWith(LogData));
+                                    Assert.EndsWith(LogData, line);
                                     bytesWritten += logDataSize;
                                 }
                             }
