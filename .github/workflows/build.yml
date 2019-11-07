@@ -13,9 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-x86, osx-x64 ]
-        # runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-x86, osx-x64, rhel.6-x64 ]
-        # os: [ubuntu-latest, windows-latest, macOS-latest]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-x86, osx-x64, rhel.6-x64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -29,9 +27,9 @@ jobs:
           os: ubuntu-latest
           devScript: ./dev.sh
 
-        # - runtime: rhel.6-x64
-        #   os: ubuntu-latest
-        #   devScript: ./dev.sh
+        - runtime: rhel.6-x64
+          os: ubuntu-latest
+          devScript: ./dev.sh
 
         - runtime: osx-x64
           os: macOS-latest
@@ -60,7 +58,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: matrix.runtime == 'linux-x64' || matrix.runtime == 'win-x64' || matrix.runtime == 'osx-x64'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
 
     # Create runner package tar.gz/zip
     - name: Package Release
