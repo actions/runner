@@ -53,6 +53,9 @@
   <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(PackageRuntime)' == 'linux-arm'">
     <DefineConstants>OS_LINUX;ARM;TRACE</DefineConstants>
   </PropertyGroup>
+  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(PackageRuntime)' == 'linux-arm64'">
+    <DefineConstants>OS_LINUX;ARM64;TRACE</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'linux-x64'">
     <DefineConstants>OS_LINUX;X64;DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
@@ -61,5 +64,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'linux-arm'">
     <DefineConstants>OS_LINUX;ARM;DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true' AND '$(Configuration)' == 'Debug' AND '$(PackageRuntime)' == 'linux-arm64'">
+    <DefineConstants>OS_LINUX;ARM64;DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
 </Project>
