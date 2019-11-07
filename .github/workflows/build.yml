@@ -59,6 +59,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
+      if: matrix.runtime == 'linux-x64' || matrix.runtime == 'win-x64' || matrix.runtime == 'osx-x64'
 
     # Create runner package tar.gz/zip
     - name: Package Release
