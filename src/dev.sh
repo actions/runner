@@ -28,43 +28,40 @@ if [[ "$DEV_CONFIG" == "Release" ]]; then
     BUILD_CONFIG="Release"
 fi
 
-if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
-    RUNTIME_ID="$DEV_TARGET_RUNTIME"
-else
-    echo "Automatically determining target runtime"
-    CURRENT_PLATFORM="windows"
-    if [[ ($(uname) == "Linux") || ($(uname) == "Darwin") ]]; then
-        CURRENT_PLATFORM=$(uname | awk '{print tolower($0)}')
-    fi
-
-    if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
-    RUNTIME_ID='win-x64'
-    if [[ "$PROCESSOR_ARCHITECTURE" == 'x86' ]]; then
-        RUNTIME_ID='win-x86'
-    fi
-    elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
-    RUNTIME_ID="linux-x64"
-    if command -v uname > /dev/null; then
-        CPU_NAME=$(uname -m)
-        case $CPU_NAME in
-            armv7l) RUNTIME_ID="linux-arm";;
-            aarch64) RUNTIME_ID="linux-arm64";;
-        esac
-    fi
-    
-    if [ -e /etc/redhat-release ]; then
-        redhatRelease=$(</etc/redhat-release)
-        if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
-            RUNTIME_ID='rhel.6-x64'
-        fi
-    fi
-    
-    elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
-    RUNTIME_ID='osx-x64'
-    fi
-    echo "$RUNTIME_ID"
+CURRENT_PLATFORM="windows"
+if [[ ($(uname) == "Linux") || ($(uname) == "Darwin") ]]; then
+    CURRENT_PLATFORM=$(uname | awk '{print tolower($0)}')
 fi
 
+if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
+RUNTIME_ID='win-x64'
+if [[ "$PROCESSOR_ARCHITECTURE" == 'x86' ]]; then
+    RUNTIME_ID='win-x86'
+fi
+elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
+RUNTIME_ID="linux-x64"
+if command -v uname > /dev/null; then
+    CPU_NAME=$(uname -m)
+    case $CPU_NAME in
+        armv7l) RUNTIME_ID="linux-arm";;
+        aarch64) RUNTIME_ID="linux-arm64";;
+    esac
+fi
+
+if [ -e /etc/redhat-release ]; then
+    redhatRelease=$(</etc/redhat-release)
+    if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]; then
+        RUNTIME_ID='rhel.6-x64'
+    fi
+fi
+
+elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
+RUNTIME_ID='osx-x64'
+fi
+
+if [[ -n "$DEV_TARGET_RUNTIME" ]]; then
+    RUNTIME_ID="$DEV_TARGET_RUNTIME"
+fi
 
 # Make sure current platform support publish the dotnet runtime
 # Windows can publish win-x86/x64
