@@ -17,10 +17,21 @@ jobs:
         include:
         - os: ubuntu-latest
           devScript: ./dev.sh
+          targetRuntime: linux-x64
+        - os: ubuntu-latest
+          devScript: ./dev.sh
+          targetRuntime: linux-arm64
+        - os: ubuntu-latest
+          devScript: ./dev.sh
+          targetRuntime: linux-arm
         - os: macOS-latest
           devScript: ./dev.sh
         - os: windows-latest
           devScript: ./dev
+          targetRuntime: win-x64
+        - os: windows-latest
+          devScript: ./dev
+          targetRuntime: win-x86
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
@@ -28,7 +39,7 @@ jobs:
     # Build runner layout
     - name: Build & Layout Release
       run: |
-        ${{ matrix.devScript }} layout Release
+        ${{ matrix.devScript }} layout Release ${{ matrix.targetRuntime }}
       working-directory: src
 
     # Run tests
