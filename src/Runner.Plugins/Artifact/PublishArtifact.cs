@@ -68,27 +68,63 @@ namespace GitHub.Runner.Plugins.Artifact
             string containerIdStr = context.Variables.GetValueOrDefault(BuildVariables.ContainerId)?.Value ?? string.Empty;
             if (!long.TryParse(containerIdStr, out long containerId))
             {
-                throw new ArgumentException($"Container Id is not a Int64: {containerIdStr}");
+                throw new ArgumentException($"Container Id is not an Int64: {containerIdStr}");
             }
 
             context.Output($"Uploading artifact '{artifactName}' from '{fullPath}' for run #{buildId}");
 
             FileContainerServer fileContainerHelper = new FileContainerServer(context.VssConnection, projectId, containerId, artifactName);
             var propertiesDictionary = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            long size = 0;
+
             try
             {
-                long size = await fileContainerHelper.CopyToContainerAsync(context, fullPath, token);
+                size = await fileContainerHelper.CopyToContainerAsync(context, fullPath, token);
+
                 propertiesDictionary.Add("artifactsize", size.ToString());
+
                 context.Output($"Uploaded '{size}' bytes from '{fullPath}' to server");
             }
             // if any of the results were successful, make sure to attach them to the build
             finally
             {
-                string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{artifactName}");
-                BuildServer buildHelper = new BuildServer(context.VssConnection);
-                string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
-                var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
-                context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId}");
+                // Determine whether to call Pipelines or Build endpoint to publish artifact based on variable setting
+                string usePipelinesArtifactEndpointVar = context.Variables.GetValueOrDefault("Runner.UseActionsArtifactsApis")?.Value;
+                bool.TryParse(usePipelinesArtifactEndpointVar, out bool usePipelinesArtifactEndpoint);
+
+                if (usePipelinesArtifactEndpoint)
+                {
+                    // Definition ID
+                    string definitionIdStr = context.Variables.GetValueOrDefault(BuildVariables.DefinitionId)?.Value ?? string.Empty;
+
+                    if (!int.TryParse(definitionIdStr, out int definitionId))
+                    {
+                        throw new ArgumentException($"Definition Id is not an Int32: {definitionIdStr}");
+                    }
+
+                    PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);              
+                    string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
+                    var artifact = await pipelinesHelper.AssociateActionsStorageArtifactAsync(
+                        definitionId,
+                        buildId,
+                        jobId,
+                        containerId,
+                        artifactName,
+                        size,
+                        token);
+
+                    context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId} (Pipelines endpoint)"); 
+                }
+                else
+                {
+                    string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{artifactName}");
+                    BuildServer buildHelper = new BuildServer(context.VssConnection);
+                    string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
+                    var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
+
+                    context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId} (Build2 endpoint)");
+                }
             }
         }
     }
