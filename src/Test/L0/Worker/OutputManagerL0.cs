@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using GitHub.Runner.Sdk;
@@ -158,7 +159,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Code()
+        public void MatcherCode()
         {
             var matchers = new IssueMatchersConfig
             {
@@ -300,7 +301,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void LineColumn()
+        public void MatcherLineColumn()
         {
             var matchers = new IssueMatchersConfig
             {
@@ -348,7 +349,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void ProcessCommand()
+        public void MatcherDoesNotReceiveCommand()
         {
             using (Setup())
             using (_outputManager)
@@ -382,7 +383,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void RemoveColorCodes()
+        public void MatcherRemoveColorCodes()
         {
             using (Setup())
             using (_outputManager)
@@ -528,7 +529,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Severity()
+        public void MatcherSeverity()
         {
             var matchers = new IssueMatchersConfig
             {
@@ -589,7 +590,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Timeout()
+        public void MatcherTimeout()
         {
             Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_ISSUE_MATCHER_TIMEOUT", "0:0:0.01");
             var matchers = new IssueMatchersConfig
@@ -640,10 +641,216 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        // todo: roots file against fromPath
-        // todo: roots file against system.defaultWorkingDirectory
-        // todo: matches repository
-        // todo: checks file exists
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void MatcherFile()
+        {
+            var matchers = new IssueMatchersConfig
+            {
+                Matchers =
+                {
+                    new IssueMatcherConfig
+                    {
+                        Owner = "my-matcher-1",
+                        Patterns = new[]
+                        {
+                            new IssuePatternConfig
+                            {
+                                Pattern = @"(.+): (.+)",
+                                File = 1,
+                                Message = 2,
+                            },
+                        },
+                    },
+                },
+            };
+            using (var hostContext = Setup(matchers: matchers))
+            using (_outputManager)
+            {
+                // Setup github.workspace
+                var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
+                ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
+                Directory.CreateDirectory(workDirectory);
+                var workspaceDirectory = Path.Combine(workDirectory, "workspace");
+                Directory.CreateDirectory(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
+
+                // Create a test file
+                Directory.CreateDirectory(Path.Combine(workspaceDirectory, "some-directory"));
+                var filePath = Path.Combine(workspaceDirectory, "some-directory", "some-file.txt");
+                File.WriteAllText(filePath, "");
+
+                // Process
+                Process("some-directory/some-file.txt: some error");
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal("some error", _issues[0].Item1.Message);
+                Assert.Equal("some-directory/some-file.txt", _issues[0].Item1.Data["file"]);
+                Assert.Equal(0, _commands.Count);
+                Assert.Equal(0, _messages.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void MatcherFileExists()
+        {
+            var matchers = new IssueMatchersConfig
+            {
+                Matchers =
+                {
+                    new IssueMatcherConfig
+                    {
+                        Owner = "my-matcher-1",
+                        Patterns = new[]
+                        {
+                            new IssuePatternConfig
+                            {
+                                Pattern = @"(.+): (.+)",
+                                File = 1,
+                                Message = 2,
+                            },
+                        },
+                    },
+                },
+            };
+            using (var hostContext = Setup(matchers: matchers))
+            using (_outputManager)
+            {
+                // Setup github.workspace
+                var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
+                ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
+                Directory.CreateDirectory(workDirectory);
+                var workspaceDirectory = Path.Combine(workDirectory, "workspace");
+                Directory.CreateDirectory(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
+
+                // Create a test file
+                File.WriteAllText(Path.Combine(workspaceDirectory, "some-file-1.txt"), "");
+
+                // Process
+                Process("some-file-1.txt: some error 1"); // file exists
+                Process("some-file-2.txt: some error 2"); // file does not exist
+
+                Assert.Equal(2, _issues.Count);
+                Assert.Equal("some error 1", _issues[0].Item1.Message);
+                Assert.Equal("some-file-1.txt", _issues[0].Item1.Data["file"]);
+                Assert.Equal("some error 2", _issues[1].Item1.Message);
+                Assert.False(_issues[1].Item1.Data.ContainsKey("file")); // does not contain file key
+                Assert.Equal(0, _commands.Count);
+                Assert.Equal(0, _messages.Where(x => !x.StartsWith("##[debug]")).Count());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void MatcherFileOutsideRepository()
+        {
+            var matchers = new IssueMatchersConfig
+            {
+                Matchers =
+                {
+                    new IssueMatcherConfig
+                    {
+                        Owner = "my-matcher-1",
+                        Patterns = new[]
+                        {
+                            new IssuePatternConfig
+                            {
+                                Pattern = @"(.+): (.+)",
+                                File = 1,
+                                Message = 2,
+                            },
+                        },
+                    },
+                },
+            };
+            using (var hostContext = Setup(matchers: matchers))
+            using (_outputManager)
+            {
+                // Setup github.workspace
+                var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
+                ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
+                Directory.CreateDirectory(workDirectory);
+                var workspaceDirectory = Path.Combine(workDirectory, "workspace");
+                Directory.CreateDirectory(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
+
+                // Create test files
+                var filePath1 = Path.Combine(workspaceDirectory, "some-file-1.txt");
+                File.WriteAllText(filePath1, "");
+                var workspaceSiblingDirectory = Path.Combine(Path.GetDirectoryName(workspaceDirectory), "workspace-sibling");
+                Directory.CreateDirectory(workspaceSiblingDirectory);
+                var filePath2 = Path.Combine(workspaceSiblingDirectory, "some-file-2.txt");
+                File.WriteAllText(filePath2, "");
+
+                // Process
+                Process($"{filePath1}: some error 1"); // file exists inside workspace
+                Process($"{filePath2}: some error 2"); // file exists outside workspace
+
+                Assert.Equal(2, _issues.Count);
+                Assert.Equal("some error 1", _issues[0].Item1.Message);
+                Assert.Equal("some-file-1.txt", _issues[0].Item1.Data["file"]);
+                Assert.Equal("some error 2", _issues[1].Item1.Message);
+                Assert.False(_issues[1].Item1.Data.ContainsKey("file")); // does not contain file key
+                Assert.Equal(0, _commands.Count);
+                Assert.Equal(0, _messages.Where(x => !x.StartsWith("##[debug]")).Count());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void MatcherFromPath()
+        {
+            var matchers = new IssueMatchersConfig
+            {
+                Matchers =
+                {
+                    new IssueMatcherConfig
+                    {
+                        Owner = "my-matcher-1",
+                        Patterns = new[]
+                        {
+                            new IssuePatternConfig
+                            {
+                                Pattern = @"(.+): (.+) \[(.+)\]",
+                                File = 1,
+                                Message = 2,
+                                FromPath = 3,
+                            },
+                        },
+                    },
+                },
+            };
+            using (var hostContext = Setup(matchers: matchers))
+            using (_outputManager)
+            {
+                // Setup github.workspace
+                var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
+                ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
+                Directory.CreateDirectory(workDirectory);
+                var workspaceDirectory = Path.Combine(workDirectory, "workspace");
+                Directory.CreateDirectory(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
+
+                // Create a test file
+                Directory.CreateDirectory(Path.Combine(workspaceDirectory, "some-directory"));
+                Directory.CreateDirectory(Path.Combine(workspaceDirectory, "some-project", "some-directory"));
+                var filePath = Path.Combine(workspaceDirectory, "some-project", "some-directory", "some-file.txt");
+                File.WriteAllText(filePath, "");
+
+                // Process
+                Process("some-directory/some-file.txt: some error [some-project/some-project.proj]");
+                Assert.Equal(1, _issues.Count);
+                Assert.Equal("some error", _issues[0].Item1.Message);
+                Assert.Equal("some-project/some-directory/some-file.txt", _issues[0].Item1.Data["file"]);
+                Assert.Equal(0, _commands.Count);
+                Assert.Equal(0, _messages.Count);
+            }
+        }
 
         private TestHostContext Setup(
             [CallerMemberName] string name = "",
