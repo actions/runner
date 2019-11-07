@@ -40,7 +40,7 @@ jobs:
           os: windows-latest
           devScript: ./dev
 
-        - runtime: win-x32
+        - runtime: win-x86
           os: windows-latest
           devScript: ./dev
 
