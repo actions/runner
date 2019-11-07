@@ -123,9 +123,9 @@ function acquireExternalTool() {
 }
 
 # Download the external tools only for Windows.
-if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/win-x64/node.exe" node12/bin
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/win-x64/node.lib" node12/bin
+if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/$PACKAGERUNTIME/node.exe" node12/bin
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/$PACKAGERUNTIME/node.lib" node12/bin
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
