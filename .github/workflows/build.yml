@@ -29,9 +29,9 @@ jobs:
         - os: windows-latest
           devScript: ./dev
           targetRuntime: win-x64
-        - os: windows-latest
-          devScript: ./dev
-          targetRuntime: win-x86
+        # - os: windows-latest
+        #   devScript: ./dev
+        #   targetRuntime: win-x86
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
