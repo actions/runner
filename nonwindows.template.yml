@@ -1,9 +1,12 @@
+parameters:
+  targetRuntime: ''
+
 steps:
 
 # Build agent layout
-- script: ./dev.sh layout Release
+- script: ./dev.sh layout Release ${{ parameters.targetRuntime }}
   workingDirectory: src
-  displayName: Build & Layout Release
+  displayName: Build & Layout Release ${{ parameters.targetRuntime }}
 
 # Run test
 - script: ./dev.sh test

@@ -136,11 +136,16 @@ if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir
 fi
 
+# TODO make sure linux[x64, x84, arm64(8), arm32(7)] are listed
 # Download the external tools common across Linux PACKAGERUNTIMEs (excluding OSX).
 if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "rhel.6-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
     # TODO: Repath this blob to use a consistent version format (_ vs .)
     acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12_4_0/alpine/node-v${NODE12_VERSION}-alpine.tar.gz" node12_alpine
+fi
+
+if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv64.tar.gz" node12 fix_nested_dir
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
