@@ -2,7 +2,9 @@
   - N/A
 
 ## Bugs
-  - TEST RELEASE IGNORE
+  - Reverted removal of additional fields error and warning fields (#147)
+  - Actions cache would incorrectly cache the action if the tag was updated (#148)
+
 ## Misc
   - Updated to .NET Core 3.0 (#127)
 
