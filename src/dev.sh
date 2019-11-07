@@ -67,34 +67,34 @@ fi
 # Linux can publish linux-x64/arm/rhel.6-x64
 # OSX can publish osx-x64
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
-   if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') ]]; then
-      echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
-      exit 1
-   fi
+    if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') ]]; then
+        echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
+        exit 1
+    fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
-   if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-x86') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') && ("$RUNTIME_ID" != 'rhel.6-x64') ]]; then
-      echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
-      exit 1
-   fi
+    if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-x86') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') && ("$RUNTIME_ID" != 'rhel.6-x64') ]]; then
+       echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
+       exit 1
+    fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
-   if [[ ("$RUNTIME_ID" != 'osx-x64') ]]; then
-      echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
-      exit 1
-   fi
+    if [[ ("$RUNTIME_ID" != 'osx-x64') ]]; then
+       echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
+       exit 1
+    fi
 fi
 
 function failed()
 {
-   local error=${1:-Undefined error}
-   echo "Failed: $error" >&2
-   popd
-   exit 1
+    local error=${1:-Undefined error}
+    echo "Failed: $error" >&2
+    popd
+    exit 1
 }
 
 function warn()
 {
-   local error=${1:-Undefined error}
-   echo "WARNING - FAILED: $error" >&2
+    local error=${1:-Undefined error}
+    echo "WARNING - FAILED: $error" >&2
 }
 
 function checkRC() {
@@ -235,15 +235,15 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
 fi
 
 case $DEV_CMD in
-   "build") build;;
-   "b") build;;
-   "test") runtest;;
-   "t") runtest;;
-   "layout") layout;;
-   "l") layout;;
-   "package") package;;
-   "p") package;;
-   *) echo "Invalid cmd.  Use build(b), test(t), layout(l) or package(p)";;
+    "build") build;;
+    "b") build;;
+    "test") runtest;;
+    "t") runtest;;
+    "layout") layout;;
+    "l") layout;;
+    "package") package;;
+    "p") package;;
+    *) echo "Invalid cmd.  Use build(b), test(t), layout(l) or package(p)";;
 esac
 
 popd
