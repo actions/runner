@@ -220,8 +220,6 @@ namespace GitHub.Runner.Worker.Handlers
                 Message = match.Message,
                 Type = issueType,
             };
-//            _executionContext.Debug($"message = '{match.Message}'");
-  //          _executionContext.Debug($"type = '{issueType}'");
 
             // Line
             if (!string.IsNullOrEmpty(match.Line))
@@ -229,7 +227,6 @@ namespace GitHub.Runner.Worker.Handlers
                 if (int.TryParse(match.Line, NumberStyles.None, CultureInfo.InvariantCulture, out var line))
                 {
                     issue.Data["line"] = line.ToString(CultureInfo.InvariantCulture);
-//                    _executionContext.Debug($"line = '{issue.Data["line"]}'");
                 }
                 else
                 {
@@ -243,7 +240,6 @@ namespace GitHub.Runner.Worker.Handlers
                 if (int.TryParse(match.Column, NumberStyles.None, CultureInfo.InvariantCulture, out var column))
                 {
                     issue.Data["col"] = column.ToString(CultureInfo.InvariantCulture);
-//                    _executionContext.Debug($"col = '{issue.Data["col"]}'");
                 }
                 else
                 {
@@ -255,7 +251,6 @@ namespace GitHub.Runner.Worker.Handlers
             if (!string.IsNullOrWhiteSpace(match.Code))
             {
                 issue.Data["code"] = match.Code.Trim();
-//                _executionContext.Debug($"code = '{issue.Data["code"]}'");
             }
 
             // File
@@ -306,7 +301,6 @@ namespace GitHub.Runner.Worker.Handlers
                         {
                             // Prefer `/` on all platforms
                             issue.Data["file"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-//                            _executionContext.Debug($"file = '{issue.Data["file"]}'");
                         }
                     }
                     // File does not exist
