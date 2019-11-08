@@ -72,5 +72,5 @@ jobs:
       if: github.event_name != 'pull_request'
       uses: actions/upload-artifact@v1
       with:
-        name: runner-package-${{ matrix.os }}
+        name: runner-package-${{ matrix.runtime }}
         path: _package
