@@ -9,7 +9,7 @@
     <NoWarn>NU1701;NU1603</NoWarn>
     <Version>$(Version)</Version>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
-    <PublishReadyToRun Condition="'$(PackageRuntime)' != 'rhel.6-x64'">true</PublishReadyToRun>    
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
