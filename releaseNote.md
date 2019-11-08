@@ -1,12 +1,8 @@
 ## Features
-  - Added commands to enable or disable echoing of commands (#139)
+  - N/A
 
 ## Bugs
-  - Do not retry uploads on 4xx Errors for Artifact Upload Service (#131)
-  - Actions cache no longer incorrectly caches the action if the tag was updated for self hosted runners (#148)
-  - Disabled echoing of commands on add-mask, debug, warning and error commands (#158)
-  - HashFile now is correctly configured to only support basic globbing and globstar (#149)
-  - HashFile now sets a default root and handles Windows paths correctly (#151)
+  - Fixed an issue with Strong Name Validation when running as a service on Windows (#185)
 
 ## Misc
   - N/A
