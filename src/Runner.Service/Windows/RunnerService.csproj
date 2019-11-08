@@ -10,7 +10,6 @@
     <RootNamespace>RunnerService</RootNamespace>
     <AssemblyName>RunnerService</AssemblyName>
     <SignAssembly>false</SignAssembly>
-    <AssemblyOriginatorKeyFile>FinalPublicKey.snk</AssemblyOriginatorKeyFile>
     <DelaySign>false</DelaySign>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -64,7 +63,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="FinalPublicKey.snk" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resource.resx">
