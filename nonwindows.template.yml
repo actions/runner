@@ -12,6 +12,7 @@ steps:
 - script: ./dev.sh test
   workingDirectory: src
   displayName: Test
+  condition: and(ne('${{ parameters.targetRuntime }}', 'linux-arm64'), ne('${{ parameters.targetRuntime }}', 'linux-arm'))
 
 # # Publish test results
 # - task: PublishTestResults@2
