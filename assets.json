@@ -6,12 +6,6 @@
         "downloadUrl": "https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip"
     },
     {
-        "name": "actions-runner-win-x86-<RUNNER_VERSION>.zip",
-        "platform": "win-x86",
-        "version": "<RUNNER_VERSION>",
-        "downloadUrl": "https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x86-<RUNNER_VERSION>.zip"
-    },
-    {
         "name": "actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz",
         "platform": "osx-x64",
         "version": "<RUNNER_VERSION>",

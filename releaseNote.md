@@ -1,18 +1,17 @@
 ## Features
-  - N/A
+  - Add packages for Windows x86 (win-x6), Linux ARM32 (linux-arm), Linux ARM64 (linux-arm64)
 
 ## Bugs
   - N/A
 
 ## Misc
-  - Add packages for Windows x86 (win-x6), Linux ARM32 (linux-arm), Linux ARM64 (linux-arm64)
+  - N/A
 
 ## Agent Downloads  
 
 |         | Package                                                                                                       |
 | ------- | ----------------------------------------------------------------------------------------------------------- |
 | Windows x64 | [actions-runner-win-x64-<RUNNER_VERSION>.zip](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip)      |
-| Windows x86 | [actions-runner-win-x86-<RUNNER_VERSION>.zip](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x86-<RUNNER_VERSION>.zip)      |
 | macOS   | [actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz)   |
 | Linux x64  | [actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz) |
 | Linux arm64  | [actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz) |
@@ -25,13 +24,6 @@ After Download:
 ``` bash
 C:\> mkdir myagent && cd myagent
 C:\myagent> Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
-```
-
-## Windows x86
-
-``` bash
-C:\> mkdir myagent && cd myagent
-C:\myagent> Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\actions-runner-win-x86-<RUNNER_VERSION>.zip", "$PWD")
 ```
 
 ## OSX

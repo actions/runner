@@ -42,46 +42,46 @@ stages:
         artifactName: runners
         artifactType: container
 
-  ################################################################################
-  - job: build_windows_agent_x86
-  ################################################################################
-    displayName: Windows Agent (x86)
-    pool:
-      vmImage: vs2017-win2016
-    steps:
+  # ################################################################################
+  # - job: build_windows_agent_x86
+  # ################################################################################
+  #   displayName: Windows Agent (x86)
+  #   pool:
+  #     vmImage: vs2017-win2016
+  #   steps:
 
-    # Steps template for windows platform
-    - template: windows.template.yml
-      parameters:
-        targetRuntime: win-x86
+  #   # Steps template for windows platform
+  #   - template: windows.template.yml
+  #     parameters:
+  #       targetRuntime: win-x86
 
-    # Package dotnet core windows dependency (VC++ Redistributable)
-    - powershell: |
-        Write-Host "Downloading 'VC++ Redistributable' package."
-        $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
-        New-Item -Path $outDir -ItemType directory
-        $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
-        Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x86.zip -OutFile $outFile
-        Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
-        $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
-        [System.IO.Compression.ZipFile]::ExtractToDirectory($outFile, $unzipDir)
-        $agentLayoutBin = Join-Path -Path $(Build.SourcesDirectory) -ChildPath "_layout\bin"
-        Copy-Item -Path $unzipDir -Destination $agentLayoutBin -Force
-      displayName: Package UCRT
+  #   # Package dotnet core windows dependency (VC++ Redistributable)
+  #   - powershell: |
+  #       Write-Host "Downloading 'VC++ Redistributable' package."
+  #       $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
+  #       New-Item -Path $outDir -ItemType directory
+  #       $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
+  #       Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x86.zip -OutFile $outFile
+  #       Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
+  #       $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
+  #       Add-Type -AssemblyName System.IO.Compression.FileSystem
+  #       [System.IO.Compression.ZipFile]::ExtractToDirectory($outFile, $unzipDir)
+  #       $agentLayoutBin = Join-Path -Path $(Build.SourcesDirectory) -ChildPath "_layout\bin"
+  #       Copy-Item -Path $unzipDir -Destination $agentLayoutBin -Force
+  #     displayName: Package UCRT
 
-    # Create agent package zip
-    - script: dev.cmd package Release win-x86
-      workingDirectory: src
-      displayName: Package Release
+  #   # Create agent package zip
+  #   - script: dev.cmd package Release win-x86
+  #     workingDirectory: src
+  #     displayName: Package Release
 
-    # Upload agent package zip as build artifact
-    - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (Windows)
-      inputs:
-        pathToPublish: _package
-        artifactName: runners
-        artifactType: container
+  #   # Upload agent package zip as build artifact
+  #   - task: PublishBuildArtifacts@1
+  #     displayName: Publish Artifact (Windows)
+  #     inputs:
+  #       pathToPublish: _package
+  #       artifactName: runners
+  #       artifactType: container
 
   ################################################################################
   - job: build_linux_agent_x64
