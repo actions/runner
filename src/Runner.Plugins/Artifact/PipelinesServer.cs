@@ -34,7 +34,6 @@ namespace GitHub.Runner.Plugins.Artifact
             {
                 Name = name,
                 ContainerId = containerId,
-                Path = "/" + name,
                 Size = size
             };
 

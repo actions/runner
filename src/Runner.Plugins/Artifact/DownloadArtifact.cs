@@ -51,7 +51,7 @@ namespace GitHub.Runner.Plugins.Artifact
             }
 
             // Determine whether to call Pipelines or Build endpoint to publish artifact based on variable setting
-            string usePipelinesArtifactEndpointVar = context.Variables.GetValueOrDefault("runner.UseActionsArtifactsApis")?.Value;
+            string usePipelinesArtifactEndpointVar = context.Variables.GetValueOrDefault("Runner.UseActionsArtifactsApis")?.Value;
             bool.TryParse(usePipelinesArtifactEndpointVar, out bool usePipelinesArtifactEndpoint);
             string containerPath;
             long containerId;
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Plugins.Artifact
                     throw new NotSupportedException($"Invalid actions storage artifact for '{artifactName}'");
                 }
 
-                containerPath = actionsStorageArtifact.Path.TrimStart('/');
+                containerPath = actionsStorageArtifact.Name; // In actions storage artifacts, name equals the path
                 containerId = actionsStorageArtifact.ContainerId;
             }
             else

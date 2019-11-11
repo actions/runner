@@ -21,16 +21,6 @@ namespace GitHub.Actions.Pipelines.WebApi
         }
 
         /// <summary>
-        /// path of the artifact in the container
-        /// </summary>
-        [DataMember]
-        public string Path
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
         /// Size of the file in bytes
         /// </summary>
         [DataMember]
