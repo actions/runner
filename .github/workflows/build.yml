@@ -27,10 +27,6 @@ jobs:
           os: ubuntu-latest
           devScript: ./dev.sh
 
-        - runtime: rhel.6-x64
-          os: ubuntu-latest
-          devScript: ./dev.sh
-
         - runtime: osx-x64
           os: macOS-latest
           devScript: ./dev.sh
