@@ -2,19 +2,21 @@
   - N/A
 
 ## Bugs
-  - Reverted removal of additional fields error and warning fields (#147)
-  - Actions cache would incorrectly cache the action if the tag was updated (#148)
+  - N/A
 
 ## Misc
-  - Updated to .NET Core 3.0 (#127)
+  - Add packages for Windows x86 (win-x6), Linux ARM32 (linux-arm), Linux ARM64 (linux-arm64)
 
 ## Agent Downloads  
 
 |         | Package                                                                                                       |
 | ------- | ----------------------------------------------------------------------------------------------------------- |
 | Windows x64 | [actions-runner-win-x64-<RUNNER_VERSION>.zip](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip)      |
+| Windows x86 | [actions-runner-win-x86-<RUNNER_VERSION>.zip](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x86-<RUNNER_VERSION>.zip)      |
 | macOS   | [actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz)   |
 | Linux x64  | [actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz) |
+| Linux arm64  | [actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz) |
+| Linux arm  | [actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz](https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz) |
 
 After Download:  
 
@@ -23,6 +25,13 @@ After Download:
 ``` bash
 C:\> mkdir myagent && cd myagent
 C:\myagent> Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
+```
+
+## Windows x86
+
+``` bash
+C:\> mkdir myagent && cd myagent
+C:\myagent> Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\actions-runner-win-x86-<RUNNER_VERSION>.zip", "$PWD")
 ```
 
 ## OSX
@@ -37,4 +46,18 @@ C:\myagent> Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO
 ``` bash
 ~/$ mkdir myagent && cd myagent
 ~/myagent$ tar xzf ~/Downloads/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
+```
+
+## Linux arm64
+
+``` bash
+~/$ mkdir myagent && cd myagent
+~/myagent$ tar xzf ~/Downloads/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
+```
+
+## Linux arm
+
+``` bash
+~/$ mkdir myagent && cd myagent
+~/myagent$ tar xzf ~/Downloads/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 ```

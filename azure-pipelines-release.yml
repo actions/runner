@@ -1,5 +1,5 @@
 stages:
-- stage: Build    
+- stage: Build
   jobs:
   ################################################################################
   - job: build_windows_agent_x64
@@ -11,12 +11,14 @@ stages:
 
     # Steps template for windows platform
     - template: windows.template.yml
-    
+      parameters:
+        targetRuntime: win-x64
+
     # Package dotnet core windows dependency (VC++ Redistributable)
     - powershell: |
         Write-Host "Downloading 'VC++ Redistributable' package."
         $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
-        New-Item -Path $outDir -ItemType directory 
+        New-Item -Path $outDir -ItemType directory
         $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
         Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x64.zip -OutFile $outFile
         Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
@@ -28,7 +30,48 @@ stages:
       displayName: Package UCRT
 
     # Create agent package zip
-    - script: dev.cmd package Release
+    - script: dev.cmd package Release win-x64
+      workingDirectory: src
+      displayName: Package Release
+
+    # Upload agent package zip as build artifact
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifact (Windows)
+      inputs:
+        pathToPublish: _package
+        artifactName: runners
+        artifactType: container
+
+  ################################################################################
+  - job: build_windows_agent_x86
+  ################################################################################
+    displayName: Windows Agent (x86)
+    pool:
+      vmImage: vs2017-win2016
+    steps:
+
+    # Steps template for windows platform
+    - template: windows.template.yml
+      parameters:
+        targetRuntime: win-x86
+
+    # Package dotnet core windows dependency (VC++ Redistributable)
+    - powershell: |
+        Write-Host "Downloading 'VC++ Redistributable' package."
+        $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
+        New-Item -Path $outDir -ItemType directory
+        $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
+        Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x86.zip -OutFile $outFile
+        Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
+        $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($outFile, $unzipDir)
+        $agentLayoutBin = Join-Path -Path $(Build.SourcesDirectory) -ChildPath "_layout\bin"
+        Copy-Item -Path $unzipDir -Destination $agentLayoutBin -Force
+      displayName: Package UCRT
+
+    # Create agent package zip
+    - script: dev.cmd package Release win-x86
       workingDirectory: src
       displayName: Package Release
 
@@ -50,22 +93,76 @@ stages:
 
     # Steps template for non-windows platform
     - template: nonwindows.template.yml
+      parameters:
+        targetRuntime: linux-x64
 
     # Create agent package zip
-    - script: ./dev.sh package Release
+    - script: ./dev.sh package Release linux-x64
       workingDirectory: src
-      displayName: Package Release    
+      displayName: Package Release
 
     # Upload agent package zip as build artifact
     - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (Linux)    
+      displayName: Publish Artifact (Linux)
       inputs:
         pathToPublish: _package
         artifactName: runners
         artifactType: container
 
   ################################################################################
-  - job: build_osx_agent
+  - job: build_linux_agent_arm64
+  ################################################################################
+    displayName: Linux Agent (arm64)
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+
+    # Steps template for non-windows platform
+    - template: nonwindows.template.yml
+      parameters:
+        targetRuntime: linux-arm64
+
+    # Create agent package zip
+    - script: ./dev.sh package Release linux-arm64
+      workingDirectory: src
+      displayName: Package Release
+
+    # Upload agent package zip as build artifact
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifact (Linux)
+      inputs:
+        pathToPublish: _package
+        artifactName: runners
+        artifactType: container
+
+  ################################################################################
+  - job: build_linux_agent_arm
+  ################################################################################
+    displayName: Linux Agent (arm)
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+
+    # Steps template for non-windows platform
+    - template: nonwindows.template.yml
+      parameters:
+        targetRuntime: linux-arm
+
+    # Create agent package zip
+    - script: ./dev.sh package Release linux-arm
+      workingDirectory: src
+      displayName: Package Release
+
+    # Upload agent package zip as build artifact
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifact (Linux)
+      inputs:
+        pathToPublish: _package
+        artifactName: runners
+        artifactType: container
+
+  ################################################################################
+  - job: build_osx_agent_x64
   ################################################################################
     displayName: macOS Agent (x64)
     pool:
@@ -74,15 +171,17 @@ stages:
 
     # Steps template for non-windows platform
     - template: nonwindows.template.yml
-    
+      parameters:
+        targetRuntime: osx-x64
+
     # Create agent package zip
-    - script: ./dev.sh package Release
+    - script: ./dev.sh package Release osx-64
       workingDirectory: src
-      displayName: Package Release    
+      displayName: Package Release
 
     # Upload agent package zip as build artifact
     - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (OSX)    
+      displayName: Publish Artifact (OSX)
       inputs:
         pathToPublish: _package
         artifactName: runners
@@ -98,7 +197,7 @@ stages:
     pool:
       name: ProductionRMAgents
     steps:
-    
+
     # Download all agent packages from all previous phases
     - task: DownloadBuildArtifacts@0
       displayName: Download Agent Packages
