@@ -122,5 +122,10 @@ namespace GitHub.Runner.Sdk
                 return format;
             }
         }
+
+        public static string SubstringPrefix(string value, int count)
+        {
+            return value?.Substring(0, Math.Min(value.Length, count));
+        }
     }
 }
