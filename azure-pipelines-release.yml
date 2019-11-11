@@ -175,7 +175,7 @@ stages:
         targetRuntime: osx-x64
 
     # Create agent package zip
-    - script: ./dev.sh package Release osx-64
+    - script: ./dev.sh package Release osx-x64
       workingDirectory: src
       displayName: Package Release
 
