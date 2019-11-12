@@ -56,12 +56,16 @@ namespace GitHub.Runner.Plugins.Artifact
             string containerPath;
             long containerId;
 
+            context.Output($"Download artifact '{artifactName}' to: '{targetPath}'");
+
             if (usePipelinesArtifactEndpoint)
             {
-                context.Output($"Download artifact '{artifactName}' to: '{targetPath}' (Pipelines endpoint)");
+                context.Debug("Downloading artifact using Pipelines endpoint");
 
                 // Definition ID
                 string definitionIdStr = context.Variables.GetValueOrDefault(BuildVariables.DefinitionId)?.Value ?? string.Empty;
+
+                context.Output($"Definition id: {definitionIdStr}");
 
                 if (!int.TryParse(definitionIdStr, out int definitionId))
                 {
@@ -74,7 +78,7 @@ namespace GitHub.Runner.Plugins.Artifact
 
                 if (actionsStorageArtifact == null)
                 {
-                    throw new NotSupportedException($"Invalid actions storage artifact for '{artifactName}'");
+                    throw new Exception($"The actions storage artifact for '{artifactName}' could not be found, or is no longer available");
                 }
 
                 containerPath = actionsStorageArtifact.Name; // In actions storage artifacts, name equals the path
@@ -82,7 +86,7 @@ namespace GitHub.Runner.Plugins.Artifact
             }
             else
             {
-                context.Output($"Download artifact '{artifactName}' to: '{targetPath}' (Build2 endpoint)");
+                context.Debug("Downloading artifact using Build2 endpoint");
 
                 BuildServer buildHelper = new BuildServer(context.VssConnection);
                 BuildArtifact buildArtifact = await buildHelper.GetArtifact(projectId, buildId, artifactName, token);

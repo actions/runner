@@ -113,7 +113,8 @@ namespace GitHub.Runner.Plugins.Artifact
                         size,
                         token);
 
-                    context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId} (Pipelines endpoint)"); 
+                    context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId}"); 
+                    context.Debug($"Associated artifact using Pipelines endpoint");
                 }
                 else
                 {
@@ -122,7 +123,8 @@ namespace GitHub.Runner.Plugins.Artifact
                     string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
                     var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
 
-                    context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId} (Build2 endpoint)");
+                    context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId}");
+                    context.Debug($"Associated artifact using Build2 endpoint");
                 }
             }
         }
