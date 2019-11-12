@@ -24,7 +24,6 @@ namespace GitHub.Runner.Plugins.Artifact
         public async Task<Pipelines.ActionsStorageArtifact> AssociateActionsStorageArtifactAsync(
             int pipelineId,
             int runId,
-            string jobId,
             long containerId,
             string name,
             long size,

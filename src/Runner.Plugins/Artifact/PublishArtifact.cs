@@ -103,12 +103,11 @@ namespace GitHub.Runner.Plugins.Artifact
                         throw new ArgumentException($"Definition Id is not an Int32: {definitionIdStr}");
                     }
 
-                    PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);              
-                    string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
+                    PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);
+
                     var artifact = await pipelinesHelper.AssociateActionsStorageArtifactAsync(
                         definitionId,
                         buildId,
-                        jobId,
                         containerId,
                         artifactName,
                         size,
