@@ -9,9 +9,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>RunnerService</RootNamespace>
     <AssemblyName>RunnerService</AssemblyName>
-    <SignAssembly>true</SignAssembly>
-    <AssemblyOriginatorKeyFile>FinalPublicKey.snk</AssemblyOriginatorKeyFile>
-    <DelaySign>true</DelaySign>
+    <SignAssembly>false</SignAssembly>
+    <DelaySign>false</DelaySign>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -64,7 +63,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="FinalPublicKey.snk" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resource.resx">

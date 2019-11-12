@@ -263,15 +263,17 @@ namespace GitHub.Runner.Worker.Handlers
                     // Root using fromPath
                     if (!string.IsNullOrWhiteSpace(match.FromPath) && !Path.IsPathRooted(file))
                     {
-                        file = Path.Combine(match.FromPath, file);
+                        var fromDirectory = Path.GetDirectoryName(match.FromPath);
+                        if (!string.IsNullOrWhiteSpace(fromDirectory))
+                        {
+                            file = Path.Combine(fromDirectory, file);
+                        }
                     }
 
-                    // Root using system.defaultWorkingDirectory
+                    // Root using workspace
                     if (!Path.IsPathRooted(file))
                     {
-                        var githubContext = _executionContext.ExpressionValues["github"] as GitHubContext;
-                        ArgUtil.NotNull(githubContext, nameof(githubContext));
-                        var workspace = githubContext["workspace"].ToString();
+                        var workspace = _executionContext.GetGitHubContext("workspace");
                         ArgUtil.NotNullOrEmpty(workspace, "workspace");
 
                         file = Path.Combine(workspace, file);
@@ -297,7 +299,7 @@ namespace GitHub.Runner.Worker.Handlers
                         }
                         else
                         {
-                            // prefer `/` on all platforms
+                            // Prefer `/` on all platforms
                             issue.Data["file"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         }
                     }
