@@ -31,9 +31,6 @@ namespace GitHub.Runner.Common
         public string NotificationSocketAddress { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public bool SkipCapabilitiesScan { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
         public bool SkipSessionRecover { get; set; }
 
         [DataMember(EmitDefaultValue = false)]

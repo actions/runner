@@ -574,7 +574,7 @@ namespace GitHub.Runner.Listener.Configuration
                 PublicKey = new TaskAgentPublicKey(publicKey.Exponent, publicKey.Modulus),
             };
 
-            // update - update instead of delete so we don't lose user capabilities etc...
+            // update - update instead of delete so we don't lose labels etc...
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
 
