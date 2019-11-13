@@ -1,11 +1,13 @@
 ## Features
-  - Add packages for Windows x86 (win-x6), Linux ARM32 (linux-arm), Linux ARM64 (linux-arm64)
+  - Added packages for Linux ARM32 (linux-arm) and Linux ARM64 (linux-arm64) (#184)
 
 ## Bugs
-  - N/A
+  - Fixed a bug where problem matchers were not treating FromPath as a file path (#183)
 
 ## Misc
-  - N/A
+  - Fixed code warnings in the Runner (#174)
+  - Fixed code warnings in the Runner tests (#178)
+  - Added support for building the Runner in Visual Studio (#173)
 
 ## Agent Downloads  
 
