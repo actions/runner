@@ -1,5 +1,6 @@
 ## Features
   - Added packages for Linux ARM32 (linux-arm) and Linux ARM64 (linux-arm64) (#184)
+    - Note that these packages are pre-release status and may not work with all existing actions
 
 ## Bugs
   - Fixed a bug where problem matchers were not treating FromPath as a file path (#183)
