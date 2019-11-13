@@ -137,7 +137,7 @@ if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
 fi
 
 # Download the external tools for Linux PACKAGERUNTIMEs.
-if [[ "$PACKAGERUNTIME" == "linux-x64" || "$PACKAGERUNTIME" == "rhel.6-x64" ]]; then
+if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
     # TODO: Repath this blob to use a consistent version format (_ vs .)
     acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12_4_0/alpine/node-v${NODE12_VERSION}-alpine.tar.gz" node12_alpine

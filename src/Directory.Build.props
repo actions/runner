@@ -16,9 +16,6 @@
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux'">
     <DefineConstants>$(DefineConstants);OS_LINUX</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'rhel.6-x64'">
-    <DefineConstants>$(DefineConstants);OS_RHEL6</DefineConstants>
-  </PropertyGroup>
 
   <!-- Set Platform/bitness vars -->
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Windows' AND ('$(PackageRuntime)' == 'win-x64' OR '$(PackageRuntime)' == '')">

@@ -36,52 +36,11 @@ stages:
 
     # Upload agent package zip as build artifact
     - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (Windows)
+      displayName: Publish Artifact (Windows x64)
       inputs:
         pathToPublish: _package
         artifactName: runners
         artifactType: container
-
-  # ################################################################################
-  # - job: build_windows_agent_x86
-  # ################################################################################
-  #   displayName: Windows Agent (x86)
-  #   pool:
-  #     vmImage: vs2017-win2016
-  #   steps:
-
-  #   # Steps template for windows platform
-  #   - template: windows.template.yml
-  #     parameters:
-  #       targetRuntime: win-x86
-
-  #   # Package dotnet core windows dependency (VC++ Redistributable)
-  #   - powershell: |
-  #       Write-Host "Downloading 'VC++ Redistributable' package."
-  #       $outDir = Join-Path -Path $env:TMP -ChildPath ([Guid]::NewGuid())
-  #       New-Item -Path $outDir -ItemType directory
-  #       $outFile = Join-Path -Path $outDir -ChildPath "ucrt.zip"
-  #       Invoke-WebRequest -Uri https://vstsagenttools.blob.core.windows.net/tools/ucrt/ucrt_x86.zip -OutFile $outFile
-  #       Write-Host "Unzipping 'VC++ Redistributable' package to agent layout."
-  #       $unzipDir = Join-Path -Path $outDir -ChildPath "unzip"
-  #       Add-Type -AssemblyName System.IO.Compression.FileSystem
-  #       [System.IO.Compression.ZipFile]::ExtractToDirectory($outFile, $unzipDir)
-  #       $agentLayoutBin = Join-Path -Path $(Build.SourcesDirectory) -ChildPath "_layout\bin"
-  #       Copy-Item -Path $unzipDir -Destination $agentLayoutBin -Force
-  #     displayName: Package UCRT
-
-  #   # Create agent package zip
-  #   - script: dev.cmd package Release win-x86
-  #     workingDirectory: src
-  #     displayName: Package Release
-
-  #   # Upload agent package zip as build artifact
-  #   - task: PublishBuildArtifacts@1
-  #     displayName: Publish Artifact (Windows)
-  #     inputs:
-  #       pathToPublish: _package
-  #       artifactName: runners
-  #       artifactType: container
 
   ################################################################################
   - job: build_linux_agent_x64
@@ -103,7 +62,7 @@ stages:
 
     # Upload agent package zip as build artifact
     - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (Linux)
+      displayName: Publish Artifact (Linux x64)
       inputs:
         pathToPublish: _package
         artifactName: runners
@@ -129,7 +88,7 @@ stages:
 
     # Upload agent package zip as build artifact
     - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (Linux)
+      displayName: Publish Artifact (Linux ARM64)
       inputs:
         pathToPublish: _package
         artifactName: runners
@@ -155,7 +114,7 @@ stages:
 
     # Upload agent package zip as build artifact
     - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (Linux)
+      displayName: Publish Artifact (Linux ARM)
       inputs:
         pathToPublish: _package
         artifactName: runners
@@ -181,7 +140,7 @@ stages:
 
     # Upload agent package zip as build artifact
     - task: PublishBuildArtifacts@1
-      displayName: Publish Artifact (OSX)
+      displayName: Publish Artifact (OSX x64)
       inputs:
         pathToPublish: _package
         artifactName: runners
