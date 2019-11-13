@@ -68,13 +68,6 @@ namespace GitHub.Runner.Common.Tests
             _term.Silent = true;
             SetSingleton<ITerminal>(_term);
             EnqueueInstance<ITerminal>(_term);
-
-#if !OS_WINDOWS
-            string eulaFile = Path.Combine(GetDirectory(WellKnownDirectory.Externals), Constants.Path.TeeDirectory, "license.html");
-            Directory.CreateDirectory(GetDirectory(WellKnownDirectory.Externals));
-            Directory.CreateDirectory(Path.Combine(GetDirectory(WellKnownDirectory.Externals), Constants.Path.TeeDirectory));
-            File.WriteAllText(eulaFile, "testeulafile");
-#endif
         }
 
         public CultureInfo DefaultCulture { get; private set; }
