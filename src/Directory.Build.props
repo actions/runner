@@ -16,9 +16,6 @@
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux'">
     <DefineConstants>$(DefineConstants);OS_LINUX</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'rhel.6-x64'">
-    <DefineConstants>$(DefineConstants);OS_RHEL6</DefineConstants>
-  </PropertyGroup>
 
   <!-- Set Platform/bitness vars -->
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Windows' AND ('$(PackageRuntime)' == 'win-x64' OR '$(PackageRuntime)' == '')">
@@ -35,11 +32,11 @@
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND ('$(PackageRuntime)' == 'linux-x64' OR '$(PackageRuntime)' == '')">
     <DefineConstants>$(DefineConstants);X64</DefineConstants>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'rhel.6-x64'">
-    <DefineConstants>$(DefineConstants);X64</DefineConstants>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'linux-arm'">
     <DefineConstants>$(DefineConstants);ARM</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'linux-arm64'">
+    <DefineConstants>$(DefineConstants);ARM64</DefineConstants>
   </PropertyGroup>
 
   <!-- Set TRACE/DEBUG vars -->

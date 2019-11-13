@@ -1,34 +1,48 @@
 name: Runner CI
 
-on: 
+on:
   push:
-    branches: 
+    branches:
     - master
     - releases/*
   pull_request:
-    branches: 
+    branches:
     - '*'
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
         include:
-        - os: ubuntu-latest
+        - runtime: linux-x64
+          os: ubuntu-latest
           devScript: ./dev.sh
-        - os: macOS-latest
+
+        - runtime: linux-arm64
+          os: ubuntu-latest
           devScript: ./dev.sh
-        - os: windows-latest
+
+        - runtime: linux-arm
+          os: ubuntu-latest
+          devScript: ./dev.sh
+
+        - runtime: osx-x64
+          os: macOS-latest
+          devScript: ./dev.sh
+
+        - runtime: win-x64
+          os: windows-latest
           devScript: ./dev
+
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
-    
+
     # Build runner layout
     - name: Build & Layout Release
       run: |
-        ${{ matrix.devScript }} layout Release
+        ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
       working-directory: src
 
     # Run tests
@@ -36,18 +50,19 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-  
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+
     # Create runner package tar.gz/zip
     - name: Package Release
       if: github.event_name != 'pull_request'
       run: |
         ${{ matrix.devScript }} package Release
       working-directory: src
-      
+
     # Upload runner package tar.gz/zip as artifact
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
       uses: actions/upload-artifact@v1
       with:
-        name: runner-package-${{ matrix.os }} 
+        name: runner-package-${{ matrix.runtime }}
         path: _package

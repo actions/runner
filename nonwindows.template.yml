@@ -1,14 +1,18 @@
+parameters:
+  targetRuntime: ''
+
 steps:
 
 # Build agent layout
-- script: ./dev.sh layout Release
+- script: ./dev.sh layout Release ${{ parameters.targetRuntime }}
   workingDirectory: src
-  displayName: Build & Layout Release
+  displayName: Build & Layout Release ${{ parameters.targetRuntime }}
 
 # Run test
 - script: ./dev.sh test
   workingDirectory: src
   displayName: Test
+  condition: and(ne('${{ parameters.targetRuntime }}', 'linux-arm64'), ne('${{ parameters.targetRuntime }}', 'linux-arm'))
 
 # # Publish test results
 # - task: PublishTestResults@2

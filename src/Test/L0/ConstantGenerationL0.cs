@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common.Tests
                 "win-x86",
                 "linux-x64",
                 "linux-arm",
-                "rhel.6-x64",
+                "linux-arm64",
                 "osx-x64"
             };
 
