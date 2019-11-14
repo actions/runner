@@ -12,14 +12,18 @@
 
 ## Windows x64
 
-``` powershell
+``` 
 // Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 // Download the latest runner package
-$ Invoke-WebRequest -Uri https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip -OutFile actions-runner-win-x64-<RUNNER_VERSION>.zip
+Invoke-WebRequest -Uri https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip -OutFile actions-runner-win-x64-<RUNNER_VERSION>.zip
 // Extract the installer
 Add-Type -AssemblyName System.IO.Compression.FileSystem ; 
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
+// Create the runner and start the configuration experience
+./config.cmd
+// Last step, run it!
+./run.cmd
 ```
 
 ## OSX
@@ -30,38 +34,63 @@ mkdir actions-runner && cd actions-runner
 // Download the latest runner package
 curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
-xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
+tar xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
+// Create the runner and start the configuration experience
+./config.sh 
+// Last step, run it!
+./run.sh
 ```
 
 ## Linux x64
 
 ``` bash
 // Create a folder
-$ mkdir actions-runner && cd actions-runner
+mkdir actions-runner && cd actions-runner
 // Download the latest runner package
-$ curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
+curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
-$ tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
+tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
+// Create the runner and start the configuration experience
+./config.sh 
+// Last step, run it!
+./run.sh
 ```
 
 ## Linux arm64 (Pre-release)
 
 ``` bash
 // Create a folder
-$ mkdir actions-runner && cd actions-runner
+mkdir actions-runner && cd actions-runner
 // Download the latest runner package
-$ curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
+curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
-$ tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
+tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
+// Create the runner and start the configuration experience
+./config.sh 
+// Last step, run it!
+./run.sh
 ```
 
 ## Linux arm (Pre-release)
 
 ``` bash
 // Create a folder
-$ mkdir actions-runner && cd actions-runner
+mkdir actions-runner && cd actions-runner
 // Download the latest runner package
-$ curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
+curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 // Extract the installer
-$ tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
+tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
+// Create the runner and start the configuration experience
+./config.sh 
+// Last step, run it!
+./run.sh
 ```
+
+## Using your self hosted runner
+Use this yaml in your workflow file for each job
+```
+# Use this yaml in your workflow file for each job
+runs-on: self-hosted
+```
+
+For additional details about configuring, running, or shutting down the runner please check out our [product docs.](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners)
