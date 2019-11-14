@@ -11,7 +11,7 @@
   - Added support for building the Runner in Visual Studio (#173)
 
 ## Windows x64
-
+We recommend configuring the runner under "<DRIVE>:\actions-runner". This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows
 ``` 
 // Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
