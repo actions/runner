@@ -18,6 +18,7 @@ namespace GitHub.Runner.Common
 
         private static readonly EscapeMapping[] _escapeDataMappings = new[]
         {
+            new EscapeMapping(token: "%", replacement: "%25"),
             new EscapeMapping(token: "\r", replacement: "%0D"),
             new EscapeMapping(token: "\n", replacement: "%0A"),
         };
