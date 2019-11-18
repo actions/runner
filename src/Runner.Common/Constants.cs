@@ -225,26 +225,14 @@ namespace GitHub.Runner.Common
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
             }
 
-            public static class Build
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string Number = "build.buildNumber";
-                public static readonly string DefinitionName = "build.definitionname";
-            }
-
             public static class System
             {
                 //
                 // Keep alphabetical
                 //
                 public static readonly string AccessToken = "system.accessToken";
-                public static readonly string CollectionId = "system.collectionid";
                 public static readonly string Culture = "system.culture";
-                public static readonly string DefinitionId = "system.definitionid";
                 public static readonly string PhaseDisplayName = "system.phaseDisplayName";
-                public static readonly string ServerType = "system.servertype";
             }
         }
     }

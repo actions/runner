@@ -787,38 +787,12 @@ namespace GitHub.Runner.Listener
 
                 var jobServer = HostContext.GetService<IJobServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
-                Uri jobServerUrl = systemConnection.Url;
+                VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
 
-                // Make sure SystemConnection Url match Config Url base for OnPremises server
-                if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||
-                    string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))
-                {
-                    try
-                    {
-                        Uri result = null;
-                        Uri configUri = new Uri(_runnerSetting.ServerUrl);
-                        if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), jobServerUrl.PathAndQuery, out result))
-                        {
-                            //replace the schema and host portion of messageUri with the host from the
-                            //server URI (which was set at config time)
-                            jobServerUrl = result;
-                        }
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        //cannot parse the Uri - not a fatal error
-                        Trace.Error(ex);
-                    }
-                    catch (UriFormatException ex)
-                    {
-                        //cannot parse the Uri - not a fatal error
-                        Trace.Error(ex);
-                    }
-                }
-
-                VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential);
                 await jobServer.ConnectAsync(jobConnection);
+                
                 var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
+
                 ArgUtil.NotNull(timeline, nameof(timeline));
                 TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                 ArgUtil.NotNull(jobRecord, nameof(jobRecord));
