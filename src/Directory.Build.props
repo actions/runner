@@ -46,4 +46,9 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
+
+  <!-- Set OS specific config -->
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'OSX'">
+    <UseHardenedRuntime>true</UseHardenedRuntime>
+  </PropertyGroup>
 </Project>
