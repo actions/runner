@@ -20,10 +20,6 @@ Invoke-WebRequest -Uri https://githubassets.azureedge.net/runners/<RUNNER_VERSIO
 // Extract the installer
 Add-Type -AssemblyName System.IO.Compression.FileSystem ; 
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
-// Create the runner and start the configuration experience
-./config.cmd
-// Last step, run it!
-./run.cmd
 ```
 
 ## OSX
@@ -35,10 +31,6 @@ mkdir actions-runner && cd actions-runner
 curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
-// Create the runner and start the configuration experience
-./config.sh 
-// Last step, run it!
-./run.sh
 ```
 
 ## Linux x64
@@ -50,10 +42,6 @@ mkdir actions-runner && cd actions-runner
 curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
-// Create the runner and start the configuration experience
-./config.sh 
-// Last step, run it!
-./run.sh
 ```
 
 ## Linux arm64 (Pre-release)
@@ -65,10 +53,6 @@ mkdir actions-runner && cd actions-runner
 curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
-// Create the runner and start the configuration experience
-./config.sh 
-// Last step, run it!
-./run.sh
 ```
 
 ## Linux arm (Pre-release)
@@ -80,17 +64,7 @@ mkdir actions-runner && cd actions-runner
 curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
-// Create the runner and start the configuration experience
-./config.sh 
-// Last step, run it!
-./run.sh
 ```
 
 ## Using your self hosted runner
-Use this yaml in your workflow file for each job
-```
-# Use this yaml in your workflow file for each job
-runs-on: self-hosted
-```
-
 For additional details about configuring, running, or shutting down the runner please check out our [product docs.](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners)
