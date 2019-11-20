@@ -468,7 +468,7 @@ namespace GitHub.Runner.Listener
                     // send notification to machine provisioner.
                     var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
                     var accessToken = systemConnection?.Authorization?.Parameters["AccessToken"];
-                    await notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
+                    notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
 
                     HostContext.WritePerfCounter($"SentJobToWorker_{requestId.ToString()}");
 
@@ -790,7 +790,7 @@ namespace GitHub.Runner.Listener
                 VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
 
                 await jobServer.ConnectAsync(jobConnection);
-                
+
                 var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
 
                 ArgUtil.NotNull(timeline, nameof(timeline));

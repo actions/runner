@@ -285,11 +285,6 @@ namespace GitHub.Runner.Listener
             return GetArg(Constants.Runner.CommandLine.Args.MonitorSocketAddress);
         }
 
-        public string GetNotificationPipeName()
-        {
-            return GetArg(Constants.Runner.CommandLine.Args.NotificationPipeName);
-        }
-
         public string GetNotificationSocketAddress()
         {
             return GetArg(Constants.Runner.CommandLine.Args.NotificationSocketAddress);

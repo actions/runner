@@ -367,9 +367,6 @@ namespace GitHub.Runner.Listener.Configuration
             // We will Combine() what's stored with root.  Defaults to string a relative path
             runnerSettings.WorkFolder = command.GetWork();
 
-            // notificationPipeName for Hosted agent provisioner.
-            runnerSettings.NotificationPipeName = command.GetNotificationPipeName();
-
             runnerSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
 
             runnerSettings.NotificationSocketAddress = command.GetNotificationSocketAddress();

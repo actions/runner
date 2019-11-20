@@ -113,10 +113,6 @@ namespace GitHub.Runner.Worker
                 Directory.CreateDirectory(toolsDirectory);
                 jobContext.SetRunnerContext("tool_cache", toolsDirectory);
 
-                // remove variable from env
-                Environment.SetEnvironmentVariable("AGENT_TOOLSDIRECTORY", null);
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ToolsDirectory, null);
-
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
