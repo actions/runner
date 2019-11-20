@@ -56,23 +56,16 @@ namespace GitHub.Runner.Plugins.Artifact
             string containerPath;
             long containerId;
 
-            context.Output($"Download artifact '{artifactName}' to: '{targetPath}'");
+            context.Output($"Downloading artifact '{artifactName}' to: '{targetPath}'");
 
             if (usePipelinesArtifactEndpoint)
             {
-                context.Debug("Downloading artifact using Pipelines endpoint");
+                context.Debug("Downloading artifact using v2 endpoint");
 
-                // Definition ID
-                string definitionIdStr = context.Variables.GetValueOrDefault(BuildVariables.DefinitionId)?.Value ?? string.Empty;
+                // Definition ID is a dummy value only used by HTTP client routing purposes
+                int definitionId = 1;
 
-                context.Output($"Definition id: {definitionIdStr}");
-
-                if (!int.TryParse(definitionIdStr, out int definitionId))
-                {
-                    throw new ArgumentException($"Definition Id is not an Int32: {definitionIdStr}");
-                }
-
-                PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);
+                var pipelinesHelper = new PipelinesServer(context.VssConnection);
 
                 var actionsStorageArtifact = await pipelinesHelper.GetActionsStorageArtifact(definitionId, buildId, artifactName, token);
 
@@ -86,7 +79,7 @@ namespace GitHub.Runner.Plugins.Artifact
             }
             else
             {
-                context.Debug("Downloading artifact using Build2 endpoint");
+                context.Debug("Downloading artifact using v1 endpoint");
 
                 BuildServer buildHelper = new BuildServer(context.VssConnection);
                 BuildArtifact buildArtifact = await buildHelper.GetArtifact(projectId, buildId, artifactName, token);

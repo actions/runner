@@ -95,13 +95,8 @@ namespace GitHub.Runner.Plugins.Artifact
 
                 if (usePipelinesArtifactEndpoint)
                 {
-                    // Definition ID
-                    string definitionIdStr = context.Variables.GetValueOrDefault(BuildVariables.DefinitionId)?.Value ?? string.Empty;
-
-                    if (!int.TryParse(definitionIdStr, out int definitionId))
-                    {
-                        throw new ArgumentException($"Definition Id is not an Int32: {definitionIdStr}");
-                    }
+                    // Definition ID is a dummy value only used by HTTP client routing purposes
+                    int definitionId = 1;
 
                     PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);
 
@@ -114,7 +109,7 @@ namespace GitHub.Runner.Plugins.Artifact
                         token);
 
                     context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId}"); 
-                    context.Debug($"Associated artifact using Pipelines endpoint");
+                    context.Debug($"Associated artifact using v2 endpoint");
                 }
                 else
                 {
@@ -124,7 +119,7 @@ namespace GitHub.Runner.Plugins.Artifact
                     var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
 
                     context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId}");
-                    context.Debug($"Associated artifact using Build2 endpoint");
+                    context.Debug($"Associated artifact using v1 endpoint");
                 }
             }
         }

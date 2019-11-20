@@ -2,9 +2,9 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Actions.Pipelines.WebApi;
 using GitHub.Services.WebApi;
 using GitHub.Runner.Sdk;
-using GitHub.Actions.Pipelines.WebApi;
 using Pipelines = GitHub.Actions.Pipelines.WebApi;
 
 namespace GitHub.Runner.Plugins.Artifact
