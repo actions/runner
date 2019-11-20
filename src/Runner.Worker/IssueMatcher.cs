@@ -22,11 +22,13 @@ namespace GitHub.Runner.Worker
     {
         private string _owner;
         private IssuePattern[] _patterns;
+        private string _severity;
         private IssueMatch[] _state;
 
         public IssueMatcher(IssueMatcherConfig config, TimeSpan timeout)
         {
             _owner = config.Owner;
+            _severity = config.Severity;
             _patterns = config.Patterns.Select(x => new IssuePattern(x , timeout)).ToArray();
             Reset();
         }
@@ -37,10 +39,23 @@ namespace GitHub.Runner.Worker
             {
                 if (_owner == null)
                 {
-                    _owner = String.Empty;
+                    _owner = string.Empty;
                 }
 
                 return _owner;
+            }
+        }
+
+        public string Severity
+        {
+            get
+            {
+                if (_severity == null)
+                {
+                    _severity = string.Empty;
+                }
+
+                return _severity;
             }
         }
 
@@ -54,7 +69,7 @@ namespace GitHub.Runner.Worker
 
                 if (regexMatch.Success)
                 {
-                    return new IssueMatch(null, pattern, regexMatch.Groups);
+                    return new IssueMatch(null, pattern, regexMatch.Groups, Severity);
                 }
 
                 return null;
@@ -95,7 +110,7 @@ namespace GitHub.Runner.Worker
                                 }
 
                                 // Return
-                                return new IssueMatch(runningMatch, pattern, regexMatch.Groups);
+                                return new IssueMatch(runningMatch, pattern, regexMatch.Groups, Severity);
                             }
                             // Not the last pattern
                             else
@@ -169,7 +184,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class IssueMatch
     {
-        public IssueMatch(IssueMatch runningMatch, IssuePattern pattern, GroupCollection groups)
+        public IssueMatch(IssueMatch runningMatch, IssuePattern pattern, GroupCollection groups, string defaultSeverity = null)
         {
             File = runningMatch?.File ?? GetValue(groups, pattern.File);
             Line = runningMatch?.Line ?? GetValue(groups, pattern.Line);
@@ -178,6 +193,11 @@ namespace GitHub.Runner.Worker
             Code = runningMatch?.Code ?? GetValue(groups, pattern.Code);
             Message = runningMatch?.Message ?? GetValue(groups, pattern.Message);
             FromPath = runningMatch?.FromPath ?? GetValue(groups, pattern.FromPath);
+
+            if (string.IsNullOrEmpty(Severity) && !string.IsNullOrEmpty(defaultSeverity))
+            {
+                Severity = defaultSeverity;
+            }
         }
 
         public string File { get; }
@@ -256,6 +276,9 @@ namespace GitHub.Runner.Worker
         [DataMember(Name = "owner")]
         private string _owner;
 
+        [DataMember(Name = "severity")]
+        private string _severity;
+
         [DataMember(Name = "pattern")]
         private IssuePatternConfig[] _patterns;
 
@@ -274,6 +297,24 @@ namespace GitHub.Runner.Worker
             set
             {
                 _owner = value;
+            }
+        }
+
+        public string Severity
+        {
+            get
+            {
+                if (_severity == null)
+                {
+                    _severity = String.Empty;
+                }
+
+                return _severity;
+            }
+
+            set
+            {
+                _severity = value;
             }
         }
 
@@ -301,6 +342,17 @@ namespace GitHub.Runner.Worker
             if (string.IsNullOrEmpty(_owner))
             {
                 throw new ArgumentException("Owner must not be empty");
+            }
+
+            // Validate severity
+            switch ((_severity ?? string.Empty).ToUpperInvariant())
+            {
+                case "":
+                case "ERROR":
+                case "WARNING":
+                    break;
+                default:
+                    throw new ArgumentException($"Matcher '{_owner}' contains unexpected default severity '{_severity}'");
             }
 
             // Validate at least one pattern
