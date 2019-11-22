@@ -353,6 +353,48 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Matcher_MultiplePatterns_DefaultSeverity()
+        {
+            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""severity"": ""warning"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^(ERROR)?(?: )?(.+):$"",
+          ""severity"": 1,
+          ""code"": 2
+        },
+        {
+          ""regexp"": ""^(.+)$"",
+          ""message"": 1
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            var match = matcher.Match("ABC:");
+            match = matcher.Match("not-working");
+            Assert.Equal("warning", match.Severity);
+            Assert.Equal("ABC", match.Code);
+            Assert.Equal("not-working", match.Message);
+
+            match = matcher.Match("ERROR ABC:");
+            match = matcher.Match("not-working");
+            Assert.Equal("ERROR", match.Severity);
+            Assert.Equal("ABC", match.Code);
+            Assert.Equal("not-working", match.Message);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Matcher_MultiplePatterns_Loop_AccumulatesStatePerLine()
         {
             var config = JsonUtility.FromString<IssueMatchersConfig>(@"
@@ -754,44 +796,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Matcher_SinglePattern_ExtractsProperties()
-        {
-            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
-{
-  ""problemMatcher"": [
-    {
-      ""owner"": ""myMatcher"",
-      ""pattern"": [
-        {
-          ""regexp"": ""^file:(.+) line:(.+) column:(.+) severity:(.+) code:(.+) message:(.+) fromPath:(.+)$"",
-          ""file"": 1,
-          ""line"": 2,
-          ""column"": 3,
-          ""severity"": 4,
-          ""code"": 5,
-          ""message"": 6,
-          ""fromPath"": 7
-        }
-      ]
-    }
-  ]
-}
-");
-            config.Validate();
-            var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
-            var match = matcher.Match("file:my-file.cs line:123 column:45 severity:real-bad code:uh-oh message:not-working fromPath:my-project.proj");
-            Assert.Equal("my-file.cs", match.File);
-            Assert.Equal("123", match.Line);
-            Assert.Equal("45", match.Column);
-            Assert.Equal("real-bad", match.Severity);
-            Assert.Equal("uh-oh", match.Code);
-            Assert.Equal("not-working", match.Message);
-            Assert.Equal("my-project.proj", match.FromPath);
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void Matcher_SinglePattern_DefaultSeverity()
         {
             var config = JsonUtility.FromString<IssueMatchersConfig>(@"
@@ -829,23 +833,23 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void Matcher_MultiplePatterns_DefaultSeverity()
+        public void Matcher_SinglePattern_ExtractsProperties()
         {
             var config = JsonUtility.FromString<IssueMatchersConfig>(@"
 {
   ""problemMatcher"": [
     {
       ""owner"": ""myMatcher"",
-      ""severity"": ""warning"",
       ""pattern"": [
         {
-          ""regexp"": ""^(ERROR)?(?: )?(.+):$"",
-          ""severity"": 1,
-          ""code"": 2
-        },
-        {
-          ""regexp"": ""^(.+)$"",
-          ""message"": 1
+          ""regexp"": ""^file:(.+) line:(.+) column:(.+) severity:(.+) code:(.+) message:(.+) fromPath:(.+)$"",
+          ""file"": 1,
+          ""line"": 2,
+          ""column"": 3,
+          ""severity"": 4,
+          ""code"": 5,
+          ""message"": 6,
+          ""fromPath"": 7
         }
       ]
     }
@@ -854,18 +858,14 @@ namespace GitHub.Runner.Common.Tests.Worker
 ");
             config.Validate();
             var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
-
-            var match = matcher.Match("ABC:");
-            match = matcher.Match("not-working");
-            Assert.Equal("warning", match.Severity);
-            Assert.Equal("ABC", match.Code);
+            var match = matcher.Match("file:my-file.cs line:123 column:45 severity:real-bad code:uh-oh message:not-working fromPath:my-project.proj");
+            Assert.Equal("my-file.cs", match.File);
+            Assert.Equal("123", match.Line);
+            Assert.Equal("45", match.Column);
+            Assert.Equal("real-bad", match.Severity);
+            Assert.Equal("uh-oh", match.Code);
             Assert.Equal("not-working", match.Message);
-
-            match = matcher.Match("ERROR ABC:");
-            match = matcher.Match("not-working");
-            Assert.Equal("ERROR", match.Severity);
-            Assert.Equal("ABC", match.Code);
-            Assert.Equal("not-working", match.Message);
+            Assert.Equal("my-project.proj", match.FromPath);
         }
     }
 }
