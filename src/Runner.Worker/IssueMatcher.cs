@@ -20,15 +20,15 @@ namespace GitHub.Runner.Worker
 
     public sealed class IssueMatcher
     {
+        private string _defaultSeverity;
         private string _owner;
         private IssuePattern[] _patterns;
-        private string _severity;
         private IssueMatch[] _state;
 
         public IssueMatcher(IssueMatcherConfig config, TimeSpan timeout)
         {
             _owner = config.Owner;
-            _severity = config.Severity;
+            _defaultSeverity = config.Severity;
             _patterns = config.Patterns.Select(x => new IssuePattern(x , timeout)).ToArray();
             Reset();
         }
@@ -46,16 +46,16 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public string Severity
+        public string DefaultSeverity
         {
             get
             {
-                if (_severity == null)
+                if (_defaultSeverity == null)
                 {
-                    _severity = string.Empty;
+                    _defaultSeverity = string.Empty;
                 }
 
-                return _severity;
+                return _defaultSeverity;
             }
         }
 
@@ -69,7 +69,7 @@ namespace GitHub.Runner.Worker
 
                 if (regexMatch.Success)
                 {
-                    return new IssueMatch(null, pattern, regexMatch.Groups, Severity);
+                    return new IssueMatch(null, pattern, regexMatch.Groups, DefaultSeverity);
                 }
 
                 return null;
@@ -110,7 +110,7 @@ namespace GitHub.Runner.Worker
                                 }
 
                                 // Return
-                                return new IssueMatch(runningMatch, pattern, regexMatch.Groups, Severity);
+                                return new IssueMatch(runningMatch, pattern, regexMatch.Groups, DefaultSeverity);
                             }
                             // Not the last pattern
                             else
