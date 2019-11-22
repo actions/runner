@@ -288,7 +288,7 @@ namespace GitHub.Runner.Worker
             {
                 if (_owner == null)
                 {
-                    _owner = String.Empty;
+                    _owner = string.Empty;
                 }
 
                 return _owner;
@@ -306,7 +306,7 @@ namespace GitHub.Runner.Worker
             {
                 if (_severity == null)
                 {
-                    _severity = String.Empty;
+                    _severity = string.Empty;
                 }
 
                 return _severity;
