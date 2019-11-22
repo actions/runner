@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using GitHub.Runner.Worker;
 using GitHub.Services.WebApi;
 using Xunit;
@@ -351,6 +348,48 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Sanity test
             config.Matchers[0].Patterns[0].Message = 1;
             config.Validate();
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Matcher_MultiplePatterns_DefaultSeverity()
+        {
+            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""severity"": ""warning"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^(ERROR)?(?: )?(.+):$"",
+          ""severity"": 1,
+          ""code"": 2
+        },
+        {
+          ""regexp"": ""^(.+)$"",
+          ""message"": 1
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            var match = matcher.Match("ABC:");
+            match = matcher.Match("not-working");
+            Assert.Equal("warning", match.Severity);
+            Assert.Equal("ABC", match.Code);
+            Assert.Equal("not-working", match.Message);
+
+            match = matcher.Match("ERROR ABC:");
+            match = matcher.Match("not-working");
+            Assert.Equal("ERROR", match.Severity);
+            Assert.Equal("ABC", match.Code);
+            Assert.Equal("not-working", match.Message);
         }
 
         [Fact]
@@ -752,6 +791,43 @@ namespace GitHub.Runner.Common.Tests.Worker
             config.Validate();
             var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
             Assert.Equal("myMatcher", matcher.Owner);
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Matcher_SinglePattern_DefaultSeverity()
+        {
+            var config = JsonUtility.FromString<IssueMatchersConfig>(@"
+{
+  ""problemMatcher"": [
+    {
+      ""owner"": ""myMatcher"",
+      ""severity"": ""warning"",
+      ""pattern"": [
+        {
+          ""regexp"": ""^(ERROR)?(?: )?(.+): (.+)$"",
+          ""severity"": 1,
+          ""code"": 2,
+          ""message"": 3
+        }
+      ]
+    }
+  ]
+}
+");
+            config.Validate();
+            var matcher = new IssueMatcher(config.Matchers[0], TimeSpan.FromSeconds(1));
+
+            var match = matcher.Match("ABC: not-working");
+            Assert.Equal("warning", match.Severity);
+            Assert.Equal("ABC", match.Code);
+            Assert.Equal("not-working", match.Message);
+
+            match = matcher.Match("ERROR ABC: not-working");
+            Assert.Equal("ERROR", match.Severity);
+            Assert.Equal("ABC", match.Code);
+            Assert.Equal("not-working", match.Message);
         }
 
         [Fact]
