@@ -50,28 +50,61 @@ namespace GitHub.Runner.Plugins.Artifact
                 throw new ArgumentException($"Run Id is not an Int32: {buildIdStr}");
             }
 
-            context.Output($"Download artifact '{artifactName}' to: '{targetPath}'");
+            // Determine whether to call Pipelines or Build endpoint to publish artifact based on variable setting
+            string usePipelinesArtifactEndpointVar = context.Variables.GetValueOrDefault("Runner.UseActionsArtifactsApis")?.Value;
+            bool.TryParse(usePipelinesArtifactEndpointVar, out bool usePipelinesArtifactEndpoint);
+            string containerPath;
+            long containerId;
 
-            BuildServer buildHelper = new BuildServer(context.VssConnection);
-            BuildArtifact buildArtifact = await buildHelper.GetArtifact(projectId, buildId, artifactName, token);
+            context.Output($"Downloading artifact '{artifactName}' to: '{targetPath}'");
 
-            if (string.Equals(buildArtifact.Resource.Type, "Container", StringComparison.OrdinalIgnoreCase))
+            if (usePipelinesArtifactEndpoint)
             {
-                string containerUrl = buildArtifact.Resource.Data;
-                string[] parts = containerUrl.Split(new[] { '/' }, 3);
-                if (parts.Length < 3 || !long.TryParse(parts[1], out long containerId))
+                context.Debug("Downloading artifact using v2 endpoint");
+
+                // Definition ID is a dummy value only used by HTTP client routing purposes
+                int definitionId = 1;
+
+                var pipelinesHelper = new PipelinesServer(context.VssConnection);
+
+                var actionsStorageArtifact = await pipelinesHelper.GetActionsStorageArtifact(definitionId, buildId, artifactName, token);
+
+                if (actionsStorageArtifact == null)
                 {
-                    throw new ArgumentOutOfRangeException($"Invalid container url '{containerUrl}' for artifact '{buildArtifact.Name}'");
+                    throw new Exception($"The actions storage artifact for '{artifactName}' could not be found, or is no longer available");
                 }
 
-                string containerPath = parts[2];
-                FileContainerServer fileContainerServer = new FileContainerServer(context.VssConnection, projectId, containerId, containerPath);
-                await fileContainerServer.DownloadFromContainerAsync(context, targetPath, token);
+                containerPath = actionsStorageArtifact.Name; // In actions storage artifacts, name equals the path
+                containerId = actionsStorageArtifact.ContainerId;
             }
             else
             {
-                throw new NotSupportedException($"Invalid artifact type: {buildArtifact.Resource.Type}");
+                context.Debug("Downloading artifact using v1 endpoint");
+
+                BuildServer buildHelper = new BuildServer(context.VssConnection);
+                BuildArtifact buildArtifact = await buildHelper.GetArtifact(projectId, buildId, artifactName, token);
+
+                if (string.Equals(buildArtifact.Resource.Type, "Container", StringComparison.OrdinalIgnoreCase) ||
+                    // Artifact was published by Pipelines endpoint, check new type here to handle rollback scenario
+                    string.Equals(buildArtifact.Resource.Type, "Actions_Storage", StringComparison.OrdinalIgnoreCase))
+                {
+                    string containerUrl = buildArtifact.Resource.Data;
+                    string[] parts = containerUrl.Split(new[] { '/' }, 3);
+                    if (parts.Length < 3 || !long.TryParse(parts[1], out containerId))
+                    {
+                        throw new ArgumentOutOfRangeException($"Invalid container url '{containerUrl}' for artifact '{buildArtifact.Name}'");
+                    }
+
+                    containerPath = parts[2];
+                }
+                else
+                {
+                    throw new NotSupportedException($"Invalid artifact type: {buildArtifact.Resource.Type}");
+                }
             }
+
+            FileContainerServer fileContainerServer = new FileContainerServer(context.VssConnection, projectId, containerId, containerPath);
+            await fileContainerServer.DownloadFromContainerAsync(context, targetPath, token);
 
             context.Output("Artifact download finished.");
         }
