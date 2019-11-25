@@ -38,36 +38,35 @@ namespace GitHub.Runner.Listener.Configuration
             serviceDisplayName = string.Empty;
 
             Uri accountUri = new Uri(settings.ServerUrl);
-            string accountName = string.Empty;
+            string repoOrOrgName = string.Empty;
 
             if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase))
             {
-                accountName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                Uri gitHubUrl = new Uri(settings.GitHubUrl);
+
+                // Use the "NWO part" from the GitHub URL path. Replace known invalid characters
+                repoOrOrgName = gitHubUrl.AbsolutePath.Trim('/').Replace('/', '-').Replace('\\', '-');
             }
             else
             {
-                accountName = accountUri.Host.Split('.').FirstOrDefault();
+                repoOrOrgName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
             }
 
-            if (string.IsNullOrEmpty(accountName))
+            if (string.IsNullOrEmpty(repoOrOrgName))
             {
-                throw new InvalidOperationException($"Cannot find GitHub organization name from server url: '{settings.ServerUrl}'");
+                throw new InvalidOperationException($"Cannot find GitHub repository/organization name from server url: '{settings.ServerUrl}'");
             }
 
-            serviceName = StringUtil.Format(serviceNamePattern, accountName, settings.PoolName, settings.AgentName);
+            serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgName, settings.AgentName);
 
             if (serviceName.Length > 80)
             {
                 Trace.Verbose($"Calculated service name is too long (> 80 chars). Trying again by calculating a shorter name.");
 
                 int exceededCharLength = serviceName.Length - 80;
-                string accountNameSubstring = StringUtil.SubstringPrefix(accountName, 25);
+                string repoOrOrgNameSubstring = StringUtil.SubstringPrefix(repoOrOrgName, 45);
 
-                exceededCharLength -= accountName.Length - accountNameSubstring.Length;
-
-                string poolNameSubstring = StringUtil.SubstringPrefix(settings.PoolName, 25);
-
-                exceededCharLength -= settings.PoolName.Length - poolNameSubstring.Length;
+                exceededCharLength -= repoOrOrgName.Length - repoOrOrgNameSubstring.Length;
 
                 string runnerNameSubstring = settings.AgentName;
 
@@ -77,10 +76,10 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerNameSubstring = StringUtil.SubstringPrefix(settings.AgentName, settings.AgentName.Length - exceededCharLength);
                 }
 
-                serviceName = StringUtil.Format(serviceNamePattern, accountNameSubstring, poolNameSubstring, runnerNameSubstring);
+                serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
             }
 
-            serviceDisplayName = StringUtil.Format(serviceDisplayNamePattern, accountName, settings.PoolName, settings.AgentName);
+            serviceDisplayName = StringUtil.Format(serviceDisplayNamePattern, repoOrOrgName, settings.AgentName);
 
             Trace.Info($"Service name '{serviceName}' display name '{serviceDisplayName}' will be used for service configuration.");
         }

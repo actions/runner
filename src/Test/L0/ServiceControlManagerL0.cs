@@ -15,12 +15,12 @@ namespace GitHub.Runner.Common.Tests
         {
             RunnerSettings settings = new RunnerSettings();
 
-            settings.AgentName = "runner";
-            settings.ServerUrl = "https://12345678901234567890123456789012345678901234567890.exampledomain.com";
-            settings.PoolName = "Default";
+            settings.AgentName = "thisiskindofalongrunnername1";
+            settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
+            settings.GitHubUrl = "https://github.com/myorganizationexample/myrepoexample";
 
-            string serviceNamePattern = "actionsrunner.{0}.{1}.{2}";
-            string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1}.{2})";
+            string serviceNamePattern = "actions.runner.{0}.{1}";
+            string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1})";
 
             using (TestHostContext hc = CreateTestContext())
             {
@@ -40,10 +40,10 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal(79, serviceName.Length);
 
                 // Verify nothing has been shortened out
-                Assert.Equal("actionsrunner", serviceNameParts[0]);
-                Assert.Equal("12345678901234567890123456789012345678901234567890", serviceNameParts[1]);
-                Assert.Equal("Default", serviceNameParts[2]);
-                Assert.Equal("runner", serviceNameParts[3]);
+                Assert.Equal("actions", serviceNameParts[0]);
+                Assert.Equal("runner", serviceNameParts[1]);
+                Assert.Equal("myorganizationexample-myrepoexample", serviceNameParts[2]); // '/' has been replaced with '-'
+                Assert.Equal("thisiskindofalongrunnername1", serviceNameParts[3]);
             }
         }
 
@@ -54,12 +54,12 @@ namespace GitHub.Runner.Common.Tests
         {
             RunnerSettings settings = new RunnerSettings();
 
-            settings.AgentName = "runner1";
-            settings.ServerUrl = "https://12345678901234567890123456789012345678901234567890.exampledomain.com";
-            settings.PoolName = "Default";
+            settings.AgentName = "thisiskindofalongrunnername12";
+            settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
+            settings.GitHubUrl = "https://github.com/myorganizationexample/myrepoexample";
 
-            string serviceNamePattern = "actionsrunner.{0}.{1}.{2}";
-            string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1}.{2})";
+            string serviceNamePattern = "actions.runner.{0}.{1}";
+            string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1})";
 
             using (TestHostContext hc = CreateTestContext())
             {
@@ -79,10 +79,10 @@ namespace GitHub.Runner.Common.Tests
                 var serviceNameParts = serviceName.Split('.');
 
                 // Verify nothing has been shortened out
-                Assert.Equal("actionsrunner", serviceNameParts[0]);
-                Assert.Equal("12345678901234567890123456789012345678901234567890", serviceNameParts[1]);
-                Assert.Equal("Default", serviceNameParts[2]);
-                Assert.Equal("runner1", serviceNameParts[3]);
+                Assert.Equal("actions", serviceNameParts[0]);
+                Assert.Equal("runner", serviceNameParts[1]);
+                Assert.Equal("myorganizationexample-myrepoexample", serviceNameParts[2]); // '/' has been replaced with '-'
+                Assert.Equal("thisiskindofalongrunnername12", serviceNameParts[3]);
             }
         }
 
@@ -93,12 +93,12 @@ namespace GitHub.Runner.Common.Tests
         {
             RunnerSettings settings = new RunnerSettings();
 
-            settings.AgentName = "thisisaverylongrunnernamewithlotsofchars";
-            settings.ServerUrl = "https://12345678901234567890123456789012345678901234567890.exampledomain.com";
-            settings.PoolName = "thisisaverylongpoolnamewithlotsofchars";
+            settings.AgentName = "thisisareallyreallylongbutstillvalidagentname";
+            settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
+            settings.GitHubUrl = "https://github.com/myreallylongorganizationexample/myreallylongrepoexample";
 
-            string serviceNamePattern = "actionsrunner.{0}.{1}.{2}";
-            string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1}.{2})";
+            string serviceNamePattern = "actions.runner.{0}.{1}";
+            string serviceDisplayNamePattern = "GitHub Actions Runner ({0}.{1})";
 
             using (TestHostContext hc = CreateTestContext())
             {
@@ -118,10 +118,10 @@ namespace GitHub.Runner.Common.Tests
                 var serviceNameParts = serviceName.Split('.');
 
                 // Verify that each component has been shortened to a sensible length
-                Assert.Equal("actionsrunner", serviceNameParts[0]); // Never shortened
-                Assert.Equal("1234567890123456789012345", serviceNameParts[1]); // 25 chars
-                Assert.Equal("thisisaverylongpoolnamewi", serviceNameParts[2]); // 25 chars
-                Assert.Equal("thisisaverylon", serviceNameParts[3]); // Remainder of unused chars
+                Assert.Equal("actions", serviceNameParts[0]); // Never shortened
+                Assert.Equal("runner", serviceNameParts[1]); // Never shortened
+                Assert.Equal("myreallylongorganizationexample-myreallylongr", serviceNameParts[2]); // First 45 chars, '/' has been replaced with '-'
+                Assert.Equal("thisisareallyreally", serviceNameParts[3]); // Remainder of unused chars
             }
         }
 
