@@ -54,7 +54,11 @@ namespace GitHub.Runner.Common
         [DataMember(EmitDefaultValue = false)]
         public string MonitorSocketAddress { get; set; }
 
-        // Computed property for convenience
+        /// <summary>
+        // Computed property for convenience. Can either return:
+        // 1. If runner was configured at the repo level, returns something like: "myorg/myrepo"
+        // 2. If runner was configured at the org level, returns something like: "myorg"
+        /// </summary>
         public string RepoOrOrgName
         {
             get

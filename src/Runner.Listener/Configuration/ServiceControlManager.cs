@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
@@ -37,13 +38,14 @@ namespace GitHub.Runner.Listener.Configuration
             serviceName = string.Empty;
             serviceDisplayName = string.Empty;
 
-            // Replace known invalid service name characters
-            string repoOrOrgName = settings.RepoOrOrgName.Replace('/', '-').Replace('\\', '-');
-
-            if (string.IsNullOrEmpty(repoOrOrgName))
+            if (string.IsNullOrEmpty(settings.RepoOrOrgName))
             {
                 throw new InvalidOperationException($"Cannot find GitHub repository/organization name from server url: '{settings.ServerUrl}'");
             }
+
+            // For the service name, replace any characters outside of the alpha-numeric set and ".", "_", "-" with "-"
+            Regex regex = new Regex(@"[^0-9a-zA-Z._\-]");
+            string repoOrOrgName = regex.Replace(settings.RepoOrOrgName, "-");
 
             serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgName, settings.AgentName);
 
