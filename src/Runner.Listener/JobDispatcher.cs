@@ -789,6 +789,35 @@ namespace GitHub.Runner.Listener
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
                 VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
 
+                /* Below is the legacy 'OnPremises' code that is currently unused by the runner
+                   ToDo: re-implement code as appropriate once GHES support is added.
+                // Make sure SystemConnection Url match Config Url base for OnPremises server	
+                if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||	
+                    string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))	
+                {	
+                    try	
+                    {	
+                        Uri result = null;	
+                        Uri configUri = new Uri(_runnerSetting.ServerUrl);	
+                        if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), jobServerUrl.PathAndQuery, out result))	
+                        {	
+                            //replace the schema and host portion of messageUri with the host from the	
+                            //server URI (which was set at config time)	
+                            jobServerUrl = result;	
+                        }	
+                    }	
+                    catch (InvalidOperationException ex)	
+                    {	
+                        //cannot parse the Uri - not a fatal error	
+                        Trace.Error(ex);	
+                    }	
+                    catch (UriFormatException ex)	
+                    {	
+                        //cannot parse the Uri - not a fatal error	
+                        Trace.Error(ex);	
+                    }	
+                } */
+
                 await jobServer.ConnectAsync(jobConnection);
 
                 var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
