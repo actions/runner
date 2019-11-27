@@ -1,6 +1,8 @@
 ﻿using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
@@ -51,6 +53,34 @@ namespace GitHub.Runner.Common
 
         [DataMember(EmitDefaultValue = false)]
         public string MonitorSocketAddress { get; set; }
+
+        /// <summary>
+        // Computed property for convenience. Can either return:
+        // 1. If runner was configured at the repo level, returns something like: "myorg/myrepo"
+        // 2. If runner was configured at the org level, returns something like: "myorg"
+        /// </summary>
+        public string RepoOrOrgName
+        {
+            get
+            {
+                Uri accountUri = new Uri(this.ServerUrl);
+                string repoOrOrgName = string.Empty;
+
+                if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+                {
+                    Uri gitHubUrl = new Uri(this.GitHubUrl);
+
+                    // Use the "NWO part" from the GitHub URL path
+                    repoOrOrgName = gitHubUrl.AbsolutePath.Trim('/');
+                }
+                else
+                {
+                    repoOrOrgName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                }
+
+                return repoOrOrgName;
+            }
+        }
     }
 
     [DataContract]

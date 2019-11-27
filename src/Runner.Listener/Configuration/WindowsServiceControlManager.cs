@@ -15,8 +15,8 @@ namespace GitHub.Runner.Listener.Configuration
     {
         public const string WindowsServiceControllerName = "RunnerService.exe";
 
-        private const string ServiceNamePattern = "actionsrunner.{0}.{1}.{2}";
-        private const string ServiceDisplayNamePattern = "GitHub Actions Runner ({0}.{1}.{2})";
+        private const string ServiceNamePattern = "actions.runner.{0}.{1}";
+        private const string ServiceDisplayNamePattern = "GitHub Actions Runner ({0}.{1})";
 
         private INativeWindowsServiceHelper _windowsServiceHelper;
         private ITerminal _term;
