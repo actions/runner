@@ -37,20 +37,8 @@ namespace GitHub.Runner.Listener.Configuration
             serviceName = string.Empty;
             serviceDisplayName = string.Empty;
 
-            Uri accountUri = new Uri(settings.ServerUrl);
-            string repoOrOrgName = string.Empty;
-
-            if (accountUri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase))
-            {
-                Uri gitHubUrl = new Uri(settings.GitHubUrl);
-
-                // Use the "NWO part" from the GitHub URL path. Replace known invalid characters
-                repoOrOrgName = gitHubUrl.AbsolutePath.Trim('/').Replace('/', '-').Replace('\\', '-');
-            }
-            else
-            {
-                repoOrOrgName = accountUri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-            }
+            // Replace known invalid service name characters
+            string repoOrOrgName = settings.RepoOrOrgName.Replace('/', '-').Replace('\\', '-');
 
             if (string.IsNullOrEmpty(repoOrOrgName))
             {
