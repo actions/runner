@@ -22,9 +22,6 @@ namespace GitHub.Runner.Common
         public string AgentName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public string NotificationSocketAddress { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
         public bool SkipSessionRecover { get; set; }
 
         [DataMember(EmitDefaultValue = false)]

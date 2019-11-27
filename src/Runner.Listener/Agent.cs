@@ -294,7 +294,7 @@ namespace GitHub.Runner.Listener
                 {
                     var notification = HostContext.GetService<IJobNotification>();
 
-                    notification.StartClient(settings.NotificationSocketAddress, settings.MonitorSocketAddress);
+                    notification.StartClient(settings.MonitorSocketAddress);
 
                     bool autoUpdateInProgress = false;
                     Task<bool> selfUpdateTask = null;

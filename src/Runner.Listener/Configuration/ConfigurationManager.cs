@@ -369,8 +369,6 @@ namespace GitHub.Runner.Listener.Configuration
 
             runnerSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
 
-            runnerSettings.NotificationSocketAddress = command.GetNotificationSocketAddress();
-
             _store.SaveSettings(runnerSettings);
 
             if (saveProxySetting)

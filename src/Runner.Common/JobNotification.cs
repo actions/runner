@@ -14,14 +14,12 @@ namespace GitHub.Runner.Common
     {
         void JobStarted(Guid jobId, string accessToken, Uri serverUrl);
         Task JobCompleted(Guid jobId);
-        void StartClient(string socketAddress, string monitorSocketAddress);
+        void StartClient(string monitorSocketAddress);
     }
 
     public sealed class JobNotification : RunnerService, IJobNotification
     {
-        private Socket _socket;
         private Socket _monitorSocket;
-        private bool _configured = false;
         private bool _isMonitorConfigured = false;
 
         public void JobStarted(Guid jobId, string accessToken, Uri serverUrl)
@@ -29,23 +27,6 @@ namespace GitHub.Runner.Common
             Trace.Info("Entering JobStarted Notification");
 
             StartMonitor(jobId, accessToken, serverUrl);
-
-            if (_configured)
-            {
-                String message = $"Starting job: {jobId.ToString()}";
-
-                try
-                {
-                    Trace.Info("Writing JobStarted to socket");
-                    _socket.Send(Encoding.UTF8.GetBytes(message));
-                    Trace.Info("Finished JobStarted writing to socket");
-                }
-                catch (SocketException e)
-                {
-                    Trace.Error($"Failed sending message \"{message}\" on socket!");
-                    Trace.Error(e);
-                }
-            }
         }
 
         public async Task JobCompleted(Guid jobId)
@@ -53,70 +34,10 @@ namespace GitHub.Runner.Common
             Trace.Info("Entering JobCompleted Notification");
 
             await EndMonitor();
-            
-            if (_configured)
-            {
-                String message = $"Finished job: {jobId.ToString()}";
-
-                try
-                {
-                    Trace.Info("Writing JobCompleted to socket");
-                    _socket.Send(Encoding.UTF8.GetBytes(message));
-                    Trace.Info("Finished JobCompleted writing to socket");
-                }
-                catch (SocketException e)
-                {
-                    Trace.Error($"Failed sending message \"{message}\" on socket!");
-                    Trace.Error(e);
-                }
-            }
         }
 
-        public void StartClient(string socketAddress, string monitorSocketAddress)
+        public void StartClient(string monitorSocketAddress)
         {
-            if (!_configured && !String.IsNullOrEmpty(socketAddress))
-            {
-                try
-                {
-                    string[] splitAddress = socketAddress.Split(':');
-                    if (splitAddress.Length != 2)
-                    {
-                        Trace.Error("Invalid socket address {0}. Job Notification will be disabled.", socketAddress);
-                        return;
-                    }
-
-                    IPAddress address;
-                    try
-                    {
-                        address = IPAddress.Parse(splitAddress[0]);
-                    }
-                    catch (FormatException e)
-                    {
-                        Trace.Error("Invalid socket ip address {0}. Job Notification will be disabled",splitAddress[0]);
-                        Trace.Error(e);
-                        return;
-                    }
-
-                    int port = -1;
-                    Int32.TryParse(splitAddress[1], out port);
-                    if (port < IPEndPoint.MinPort || port > IPEndPoint.MaxPort)
-                    {
-                        Trace.Error("Invalid tcp socket port {0}. Job Notification will be disabled.", splitAddress[1]);
-                        return;
-                    }
-
-                    _socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                    _socket.Connect(address, port);
-                    Trace.Info("Connection successful to socket {0}", socketAddress);
-                    _configured = true;
-                }
-                catch (SocketException e)
-                {
-                    Trace.Error("Connection to socket {0} failed!", socketAddress);
-                    Trace.Error(e);
-                }
-            }
-
             ConnectMonitor(monitorSocketAddress);
         }
         
@@ -237,13 +158,6 @@ namespace GitHub.Runner.Common
         {
             if (disposing)
             {
-                if (_socket != null)
-                {
-                    _socket.Send(Encoding.UTF8.GetBytes("<EOF>"));
-                    _socket.Shutdown(SocketShutdown.Both);
-                    _socket = null;
-                }
-
                 if (_monitorSocket != null)
                 {
                     _monitorSocket.Send(Encoding.UTF8.GetBytes("<EOF>"));
