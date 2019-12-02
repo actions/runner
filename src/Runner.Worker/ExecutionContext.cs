@@ -616,29 +616,6 @@ namespace GitHub.Runner.Worker
 
             // PostJobSteps for job ExecutionContext
             PostJobSteps = new Stack<IStep>();
-            // Proxy variables
-            //             var agentWebProxy = HostContext.GetService<IRunnerWebProxy>();
-            //             if (!string.IsNullOrEmpty(agentWebProxy.ProxyAddress))
-            //             {
-            //                 SetRunnerContext("proxyurl", agentWebProxy.ProxyAddress);
-
-            //                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyUsername))
-            //                 {
-            //                     SetRunnerContext("proxyusername", agentWebProxy.ProxyUsername);
-            //                 }
-
-            //                 if (!string.IsNullOrEmpty(agentWebProxy.ProxyPassword))
-            //                 {
-            //                     HostContext.SecretMasker.AddValue(agentWebProxy.ProxyPassword);
-            //                     SetRunnerContext("proxypassword", agentWebProxy.ProxyPassword);
-            //                 }
-
-            //                 if (agentWebProxy.ProxyBypassList.Count > 0)
-            //                 {
-            //                     SetRunnerContext("proxybypasslist", JsonUtility.ToString(agentWebProxy.ProxyBypassList));
-            //                 }
-            //             }
-
             //             // Certificate variables
             //             var agentCert = HostContext.GetService<IRunnerCertificateManager>();
             //             if (agentCert.SkipServerCertificateValidation)

@@ -26,8 +26,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
-        // private Mock<IDeploymentGroupServer> _machineGroupServer;
-        private Mock<IRunnerWebProxy> _runnerWebProxy;
         private Mock<IRunnerCertificateManager> _cert;
 
 #if OS_WINDOWS
@@ -59,8 +57,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _store = new Mock<IConfigurationStore>();
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
-            // _machineGroupServer = new Mock<IDeploymentGroupServer>();
-            _runnerWebProxy = new Mock<IRunnerWebProxy>();
             _cert = new Mock<IRunnerCertificateManager>();
 
 #if OS_WINDOWS
@@ -134,7 +130,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
             tc.SetSingleton<IRunnerServer>(_agentServer.Object);
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
-            tc.SetSingleton<IRunnerWebProxy>(_runnerWebProxy.Object);
             tc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
 
 #if OS_WINDOWS

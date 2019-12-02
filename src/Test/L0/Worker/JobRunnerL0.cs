@@ -22,7 +22,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         private CancellationTokenSource _tokenSource;
         private Mock<IJobServer> _jobServer;
         private Mock<IJobServerQueue> _jobServerQueue;
-        private Mock<IRunnerWebProxy> _proxyConfig;
         private Mock<IRunnerCertificateManager> _cert;
         private Mock<IConfigurationStore> _config;
         private Mock<IExtensionManager> _extensions;
@@ -43,7 +42,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             _jobExtension = new Mock<IJobExtension>();
             _jobServer = new Mock<IJobServer>();
             _jobServerQueue = new Mock<IJobServerQueue>();
-            _proxyConfig = new Mock<IRunnerWebProxy>();
             _cert = new Mock<IRunnerCertificateManager>();
             _stepRunner = new Mock<IStepsRunner>();
             _logger = new Mock<IPagingLogger>();
@@ -95,9 +93,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             _jobExtension.Setup(x => x.InitializeJob(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.AgentJobRequestMessage>())).
                 Returns(Task.FromResult(_initResult));
 
-            _proxyConfig.Setup(x => x.ProxyAddress)
-                .Returns(string.Empty);
-
             var settings = new RunnerSettings
             {
                 AgentId = 1,
@@ -114,7 +109,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(_config.Object);
             hc.SetSingleton(_jobServer.Object);
             hc.SetSingleton(_jobServerQueue.Object);
-            hc.SetSingleton(_proxyConfig.Object);
             hc.SetSingleton(_cert.Object);
             hc.SetSingleton(_stepRunner.Object);
             hc.SetSingleton(_extensions.Object);

@@ -16,14 +16,12 @@ namespace GitHub.Runner.Common.Tests.Worker
     {
         private Mock<IProcessChannel> _processChannel;
         private Mock<IJobRunner> _jobRunner;
-        private Mock<IRunnerWebProxy> _proxy;
         private Mock<IRunnerCertificateManager> _cert;
 
         public WorkerL0()
         {
             _processChannel = new Mock<IProcessChannel>();
             _jobRunner = new Mock<IJobRunner>();
-            _proxy = new Mock<IRunnerWebProxy>();
             _cert = new Mock<IRunnerCertificateManager>();
         }
 
@@ -92,7 +90,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
-                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
                 hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");
@@ -145,7 +142,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var worker = new GitHub.Runner.Worker.Worker();
                 hc.EnqueueInstance<IProcessChannel>(_processChannel.Object);
                 hc.EnqueueInstance<IJobRunner>(_jobRunner.Object);
-                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
                 hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 worker.Initialize(hc);
                 var jobMessage = CreateJobRequestMessage("job1");

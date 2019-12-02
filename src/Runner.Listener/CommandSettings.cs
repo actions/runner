@@ -47,9 +47,6 @@ namespace GitHub.Runner.Listener
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
             Constants.Runner.CommandLine.Args.Password,
             Constants.Runner.CommandLine.Args.Pool,
-            Constants.Runner.CommandLine.Args.ProxyPassword,
-            Constants.Runner.CommandLine.Args.ProxyUrl,
-            Constants.Runner.CommandLine.Args.ProxyUserName,
             Constants.Runner.CommandLine.Args.SslCACert,
             Constants.Runner.CommandLine.Args.SslClientCert,
             Constants.Runner.CommandLine.Args.SslClientCertKey,
@@ -288,21 +285,6 @@ namespace GitHub.Runner.Listener
         public string GetStartupType()
         {
             return GetArg(Constants.Runner.CommandLine.Args.StartupType);
-        }
-
-        public string GetProxyUrl()
-        {
-            return GetArg(Constants.Runner.CommandLine.Args.ProxyUrl);
-        }
-
-        public string GetProxyUserName()
-        {
-            return GetArg(Constants.Runner.CommandLine.Args.ProxyUserName);
-        }
-
-        public string GetProxyPassword()
-        {
-            return GetArg(Constants.Runner.CommandLine.Args.ProxyPassword);
         }
 
         public bool GetSkipCertificateValidation()

@@ -40,9 +40,8 @@ namespace GitHub.Runner.Worker
                 // Validate args.
                 ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
                 ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
-                var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
                 var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, runnerWebProxy.WebProxy, runnerCertManager.VssClientCertificateManager);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, HostContext.WebProxy, runnerCertManager.VssClientCertificateManager);
                 var jobRunner = HostContext.CreateService<IJobRunner>();
 
                 using (var channel = HostContext.CreateService<IProcessChannel>())

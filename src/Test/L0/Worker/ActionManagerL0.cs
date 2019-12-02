@@ -1688,10 +1688,6 @@ runs:
             _hc.SetSingleton<IRunnerPluginManager>(_pluginManager.Object);
             _hc.SetSingleton<IActionManifestManager>(actionManifest);
 
-            var proxy = new RunnerWebProxy();
-            proxy.Initialize(_hc);
-            _hc.SetSingleton<IRunnerWebProxy>(proxy);
-
             _configurationStore = new Mock<IConfigurationStore>();
             _configurationStore
                 .Setup(x => x.GetSettings())

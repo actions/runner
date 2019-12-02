@@ -55,10 +55,13 @@ namespace GitHub.Runner.Worker
                     context.Debug($"Primary repository: {repoFullName}");
 
                     // Print proxy setting information for better diagnostic experience
-                    var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
-                    if (!string.IsNullOrEmpty(runnerWebProxy.ProxyAddress))
+                    if (!string.IsNullOrEmpty(HostContext.WebProxy.HttpProxyAddress))
                     {
-                        context.Output($"Runner is running behind proxy server: '{runnerWebProxy.ProxyAddress}'");
+                        context.Output($"Runner is running behind proxy server '{HostContext.WebProxy.HttpProxyAddress}' for all HTTP requests.");
+                    }
+                    if (!string.IsNullOrEmpty(HostContext.WebProxy.HttpsProxyAddress))
+                    {
+                        context.Output($"Runner is running behind proxy server '{HostContext.WebProxy.HttpsProxyAddress}' for all HTTPS requests.");
                     }
 
                     // Prepare the workflow directory
