@@ -154,7 +154,7 @@ stages:
   ################################################################################
     displayName: Publish Agents (Windows/Linux/OSX)
     pool:
-      name: AzDevProdRMAgents
+      name: ProductionRMAgents
     steps:
 
     # Download all agent packages from all previous phases
