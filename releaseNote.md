@@ -1,14 +1,13 @@
 ## Features
-  - Added packages for Linux ARM32 (linux-arm) and Linux ARM64 (linux-arm64) (#184)
-    - Note that these packages are pre-release status and may not work with all existing actions
+  - Added the "severity" keyword to allow action authors to set the default severity for problem matchers (#203)
 
 ## Bugs
-  - Fixed a bug where problem matchers were not treating FromPath as a file path (#183)
+  - Fixed generated self-hosted runner names to never go over 80 characters (helps Windows customers) (#193)
+  - Fixed `PrepareActions_DownloadActionFromGraph` test by pointing to an active Actions repository (#205)
 
 ## Misc
-  - Fixed code warnings in the Runner (#174)
-  - Fixed code warnings in the Runner tests (#178)
-  - Added support for building the Runner in Visual Studio (#173)
+  - Updated the publish and download artifact actions to use the v2 endpoint (#188)
+  - Updated the service name on self-hosted runner name to include repository or organization information (#193)
 
 ## Windows x64
 We recommend configuring the runner under "<DRIVE>:\actions-runner". This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows
