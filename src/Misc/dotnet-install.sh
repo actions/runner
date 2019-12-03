@@ -144,7 +144,7 @@ get_linux_platform_name() {
     else
         if [ -e /etc/os-release ]; then
             . /etc/os-release
-            echo "$ID.$VERSION_ID"
+            echo "$ID${VERSION_ID:+.${VERSION_ID}}"
             return 0
         elif [ -e /etc/redhat-release ]; then
             local redhatRelease=$(</etc/redhat-release)
@@ -157,6 +157,10 @@ get_linux_platform_name() {
 
     say_verbose "Linux specific platform name and version could not be detected: UName = $uname"
     return 1
+}
+
+is_musl_based_distro() {
+    (ldd --version 2>&1 || true) | grep -q musl
 }
 
 get_current_os_name() {
@@ -173,10 +177,10 @@ get_current_os_name() {
         local linux_platform_name
         linux_platform_name="$(get_linux_platform_name)" || { echo "linux" && return 0 ; }
 
-        if [[ $linux_platform_name == "rhel.6" ]]; then
+        if [ "$linux_platform_name" = "rhel.6" ]; then
             echo $linux_platform_name
             return 0
-        elif [[ $linux_platform_name == alpine* ]]; then
+        elif is_musl_based_distro; then
             echo "linux-musl"
             return 0
         else
@@ -202,7 +206,7 @@ get_legacy_os_name() {
     else
         if [ -e /etc/os-release ]; then
             . /etc/os-release
-            os=$(get_legacy_os_name_from_platform "$ID.$VERSION_ID" || echo "")
+            os=$(get_legacy_os_name_from_platform "$ID${VERSION_ID:+.${VERSION_ID}}" || echo "")
             if [ -n "$os" ]; then
                 echo "$os"
                 return 0
@@ -245,20 +249,29 @@ check_pre_reqs() {
     fi
 
     if [ "$(uname)" = "Linux" ]; then
-        if [ ! -x "$(command -v ldconfig)" ]; then
-            echo "ldconfig is not in PATH, trying /sbin/ldconfig."
-            LDCONFIG_COMMAND="/sbin/ldconfig"
+        if is_musl_based_distro; then
+            if ! command -v scanelf > /dev/null; then
+                say_warning "scanelf not found, please install pax-utils package."
+                return 0
+            fi
+            LDCONFIG_COMMAND="scanelf --ldpath -BF '%f'"
+            [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libintl)" ] && say_warning "Unable to locate libintl. Probable prerequisite missing; install libintl (or gettext)."
         else
-            LDCONFIG_COMMAND="ldconfig"
+            if [ ! -x "$(command -v ldconfig)" ]; then
+                say_verbose "ldconfig is not in PATH, trying /sbin/ldconfig."
+                LDCONFIG_COMMAND="/sbin/ldconfig"
+            else
+                LDCONFIG_COMMAND="ldconfig"
+            fi
+            local librarypath=${LD_LIBRARY_PATH:-}
+            LDCONFIG_COMMAND="$LDCONFIG_COMMAND -NXv ${librarypath//:/ }"
         fi
 
-        local librarypath=${LD_LIBRARY_PATH:-}
-        LDCONFIG_COMMAND="$LDCONFIG_COMMAND -NXv ${librarypath//:/ }"
-
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libunwind)" ] && say_warning "Unable to locate libunwind. Probable prerequisite missing; install libunwind."
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libssl)" ] && say_warning "Unable to locate libssl. Probable prerequisite missing; install libssl."
+        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep zlib)" ] && say_warning "Unable to locate zlib. Probable prerequisite missing; install zlib."
+        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep ssl)" ] && say_warning "Unable to locate libssl. Probable prerequisite missing; install libssl."
         [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libicu)" ] && say_warning "Unable to locate libicu. Probable prerequisite missing; install libicu."
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep -F libcurl.so)" ] && say_warning "Unable to locate libcurl. Probable prerequisite missing; install libcurl."
+        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep lttng)" ] && say_warning "Unable to locate liblttng. Probable prerequisite missing; install libcurl."
+        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libcurl)" ] && say_warning "Unable to locate libcurl. Probable prerequisite missing; install libcurl."
     fi
 
     return 0
@@ -360,7 +373,7 @@ get_normalized_architecture_from_architecture() {
             ;;
     esac
 
-    say_err "Architecture \`$architecture\` not supported. If you think this is a bug, report it at https://github.com/dotnet/cli/issues"
+    say_err "Architecture \`$architecture\` not supported. If you think this is a bug, report it at https://github.com/dotnet/sdk/issues"
     return 1
 }
 
@@ -471,6 +484,7 @@ parse_jsonfile_for_version() {
         return 1
     fi
 
+    unset IFS;
     echo "$version_info"
     return 0
 }
@@ -631,7 +645,7 @@ copy_files_or_dirs_from_list() {
     local osname="$(get_current_os_name)"
     local override_switch=$(
         if [ "$override" = false ]; then
-            if [[ "$osname" == "linux-musl" ]]; then
+            if [ "$osname" = "linux-musl" ]; then
                 printf -- "-u";
             else
                 printf -- "-n";
@@ -840,8 +854,26 @@ install_dotnet() {
     say "Extracting zip from $download_link"
     extract_dotnet_package "$zip_path" "$install_root"
 
-    #  Check if the SDK version is now installed; if not, fail the installation.
-    if ! is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version"; then
+    #  Check if the SDK version is installed; if not, fail the installation.
+    is_asset_installed=false
+
+    # if the version contains "RTM" or "servicing"; check if a 'release-type' SDK version is installed.
+    if [[ $specific_version == *"rtm"* || $specific_version == *"servicing"* ]]; then
+        IFS='-'
+        read -ra verArr <<< "$specific_version"
+        release_version="${verArr[0]}"
+        unset IFS;
+        say_verbose "Checking installation: version = $release_version"
+        is_asset_installed="$(is_dotnet_package_installed "$install_root" "$asset_relative_path" "$release_version")"
+    fi
+
+    #  Check if the SDK version is installed.
+    if [ "$is_asset_installed" = false ]; then
+        say_verbose "Checking installation: version = $specific_version"
+        is_asset_installed="$(is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version")"
+    fi
+
+    if [ "$is_asset_installed" = false ]; then
         say_err "\`$asset_name\` with version = $specific_version failed to install with an unknown error."
         return 1
     fi
