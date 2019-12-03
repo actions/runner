@@ -89,38 +89,20 @@ namespace GitHub.Runner.Plugins.Artifact
             // if any of the results were successful, make sure to attach them to the build
             finally
             {
-                // Determine whether to call Pipelines or Build endpoint to publish artifact based on variable setting
-                string usePipelinesArtifactEndpointVar = context.Variables.GetValueOrDefault("Runner.UseActionsArtifactsApis")?.Value;
-                bool.TryParse(usePipelinesArtifactEndpointVar, out bool usePipelinesArtifactEndpoint);
+                // Definition ID is a dummy value only used by HTTP client routing purposes
+                int definitionId = 1;
 
-                if (usePipelinesArtifactEndpoint)
-                {
-                    // Definition ID is a dummy value only used by HTTP client routing purposes
-                    int definitionId = 1;
+                PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);
 
-                    PipelinesServer pipelinesHelper = new PipelinesServer(context.VssConnection);
+                var artifact = await pipelinesHelper.AssociateActionsStorageArtifactAsync(
+                    definitionId,
+                    buildId,
+                    containerId,
+                    artifactName,
+                    size,
+                    token);
 
-                    var artifact = await pipelinesHelper.AssociateActionsStorageArtifactAsync(
-                        definitionId,
-                        buildId,
-                        containerId,
-                        artifactName,
-                        size,
-                        token);
-
-                    context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId}"); 
-                    context.Debug($"Associated artifact using v2 endpoint");
-                }
-                else
-                {
-                    string fileContainerFullPath = StringUtil.Format($"#/{containerId}/{artifactName}");
-                    BuildServer buildHelper = new BuildServer(context.VssConnection);
-                    string jobId = context.Variables.GetValueOrDefault(WellKnownDistributedTaskVariables.JobId).Value ?? string.Empty;
-                    var artifact = await buildHelper.AssociateArtifact(projectId, buildId, jobId, artifactName, ArtifactResourceTypes.Container, fileContainerFullPath, propertiesDictionary, token);
-
-                    context.Output($"Associated artifact {artifactName} ({artifact.Id}) with run #{buildId}");
-                    context.Debug($"Associated artifact using v1 endpoint");
-                }
+                context.Output($"Associated artifact {artifactName} ({artifact.ContainerId}) with run #{buildId}"); 
             }
         }
     }
