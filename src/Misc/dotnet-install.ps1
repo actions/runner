@@ -167,7 +167,7 @@ function Get-CLIArchitecture-From-Architecture([string]$Architecture) {
         { $_ -eq "x86" } { return "x86" }
         { $_ -eq "arm" } { return "arm" }
         { $_ -eq "arm64" } { return "arm64" }
-        default { throw "Architecture not supported. If you think this is a bug, report it at https://github.com/dotnet/cli/issues" }
+        default { throw "Architecture not supported. If you think this is a bug, report it at https://github.com/dotnet/sdk/issues" }
     }
 }
 
@@ -309,14 +309,12 @@ function Parse-Jsonfile-For-Version([string]$JSonFile) {
 
     If (-Not (Test-Path $JSonFile)) {
         throw "Unable to find '$JSonFile'"
-        exit 0
     }
     try {
         $JSonContent = Get-Content($JSonFile) -Raw | ConvertFrom-Json | Select-Object -expand "sdk" -ErrorAction SilentlyContinue
     }
     catch {
         throw "Json file unreadable: '$JSonFile'"
-        exit 0
     }
     if ($JSonContent) {
         try {
@@ -330,16 +328,13 @@ function Parse-Jsonfile-For-Version([string]$JSonFile) {
         }
         catch {
             throw "Unable to parse the SDK node in '$JSonFile'"
-            exit 0
         }
     }
     else {
         throw "Unable to find the SDK node in '$JSonFile'"
-        exit 0
     }
     If ($Version -eq $null) {
         throw "Unable to find the SDK:version node in '$JSonFile'"
-        exit 0
     }
     return $Version
 }
@@ -430,7 +425,7 @@ function Is-Dotnet-Package-Installed([string]$InstallRoot, [string]$RelativePath
     Say-Invocation $MyInvocation
 
     $DotnetPackagePath = Join-Path -Path $InstallRoot -ChildPath $RelativePathToPackage | Join-Path -ChildPath $SpecificVersion
-    Say-Verbose "Is-Dotnet-Package-Installed: Path to a package: $DotnetPackagePath"
+    Say-Verbose "Is-Dotnet-Package-Installed: DotnetPackagePath=$DotnetPackagePath"
     return Test-Path $DotnetPackagePath -PathType Container
 }
 
@@ -663,8 +658,22 @@ if ($DownloadFailed) {
 Say "Extracting zip from $DownloadLink"
 Extract-Dotnet-Package -ZipPath $ZipPath -OutPath $InstallRoot
 
-#  Check if the SDK version is now installed; if not, fail the installation.
-$isAssetInstalled = Is-Dotnet-Package-Installed -InstallRoot $InstallRoot -RelativePathToPackage $dotnetPackageRelativePath -SpecificVersion $SpecificVersion
+#  Check if the SDK version is installed; if not, fail the installation.
+$isAssetInstalled = $false
+
+# if the version contains "RTM" or "servicing"; check if a 'release-type' SDK version is installed.
+if ($SpecificVersion -Match "rtm" -or $SpecificVersion -Match "servicing") {
+    $ReleaseVersion = $SpecificVersion.Split("-")[0]
+    Say-Verbose "Checking installation: version = $ReleaseVersion"
+    $isAssetInstalled = Is-Dotnet-Package-Installed -InstallRoot $InstallRoot -RelativePathToPackage $dotnetPackageRelativePath -SpecificVersion $ReleaseVersion
+}
+
+#  Check if the SDK version is installed.
+if (!$isAssetInstalled) {
+    Say-Verbose "Checking installation: version = $SpecificVersion"
+    $isAssetInstalled = Is-Dotnet-Package-Installed -InstallRoot $InstallRoot -RelativePathToPackage $dotnetPackageRelativePath -SpecificVersion $SpecificVersion
+}
+
 if (!$isAssetInstalled) {
     throw "`"$assetName`" with version = $SpecificVersion failed to install with an unknown error."
 }
