@@ -60,7 +60,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         /*
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         //process 2 new job messages, and one cancel message
         public async void TestRunAsync()
         {
@@ -171,7 +171,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Theory]
         [MemberData(nameof(RunAsServiceTestData))]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void TestExecuteCommandForRunAsService(string[] args, bool configureAsService, Times expectedTimes)
         {
             using (var hc = new TestHostContext(this))
@@ -203,7 +203,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         //process 2 new job messages, and one cancel message
         public async void TestMachineProvisionerCLI()
         {
@@ -239,7 +239,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         /*
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         //process 2 new job messages, and one cancel message
         public async void TestMachineProvisionerCLICompat()
         {
@@ -277,7 +277,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         /*
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void TestRunOnce()
         {
             using (var hc = new TestHostContext(this))
@@ -369,7 +369,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         /*
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void TestRunOnceOnlyTakeOneJobMessage()
         {
             using (var hc = new TestHostContext(this))
@@ -466,7 +466,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void TestRunOnceHandleUpdateMessage()
         {
             using (var hc = new TestHostContext(this))

@@ -43,7 +43,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatchesJobRequest()
         {
             //Arrange
@@ -93,7 +93,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatcherRenewJobRequest()
         {
             //Arrange
@@ -151,7 +151,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatcherRenewJobRequestStopOnJobNotFoundExceptions()
         {
             //Arrange
@@ -210,7 +210,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatcherRenewJobRequestStopOnJobTokenExpiredExceptions()
         {
             //Arrange
@@ -269,7 +269,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatcherRenewJobRequestRecoverFromExceptions()
         {
             //Arrange
@@ -330,7 +330,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatcherRenewJobRequestFirstRenewRetrySixTimes()
         {
             //Arrange
@@ -385,7 +385,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatcherRenewJobRequestStopOnExpiredRequest()
         {
             //Arrange
@@ -451,7 +451,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DispatchesOneTimeJobRequest()
         {
             //Arrange

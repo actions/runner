@@ -41,7 +41,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void CreatesSession()
         {
             using (TestHostContext tc = CreateTestContext())
@@ -79,7 +79,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DeleteSession()
         {
             using (TestHostContext tc = CreateTestContext())
@@ -124,7 +124,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void GetNextMessage()
         {
             using (TestHostContext tc = CreateTestContext())
