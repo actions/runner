@@ -855,8 +855,6 @@ install_dotnet() {
     extract_dotnet_package "$zip_path" "$install_root"
 
     #  Check if the SDK version is installed; if not, fail the installation.
-    is_asset_installed=false
-
     # if the version contains "RTM" or "servicing"; check if a 'release-type' SDK version is installed.
     if [[ $specific_version == *"rtm"* || $specific_version == *"servicing"* ]]; then
         IFS='-'
@@ -864,21 +862,19 @@ install_dotnet() {
         release_version="${verArr[0]}"
         unset IFS;
         say_verbose "Checking installation: version = $release_version"
-        is_asset_installed="$(is_dotnet_package_installed "$install_root" "$asset_relative_path" "$release_version")"
+        if is_dotnet_package_installed "$install_root" "$asset_relative_path" "$release_version"; then
+            return 0
+        fi
     fi
 
-    #  Check if the SDK version is installed.
-    if [ "$is_asset_installed" = false ]; then
-        say_verbose "Checking installation: version = $specific_version"
-        is_asset_installed="$(is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version")"
+    #  Check if the standard SDK version is installed.
+    say_verbose "Checking installation: version = $specific_version"
+    if is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version"; then
+        return 0
     fi
 
-    if [ "$is_asset_installed" = false ]; then
-        say_err "\`$asset_name\` with version = $specific_version failed to install with an unknown error."
-        return 1
-    fi
-
-    return 0
+    say_err "\`$asset_name\` with version = $specific_version failed to install with an unknown error."
+    return 1
 }
 
 args=("$@")
