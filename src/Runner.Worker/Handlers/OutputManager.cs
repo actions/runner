@@ -21,6 +21,8 @@ namespace GitHub.Runner.Worker.Handlers
         private readonly object _matchersLock = new object();
         private readonly TimeSpan _timeout;
         private IssueMatcher[] _matchers = Array.Empty<IssueMatcher>();
+        // Mapping that indicates whether a directory belongs to the workflow repository
+        private readonly Dictionary<string, bool> _directoryMap = new Dictionary<string, bool>();
 
         public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager)
         {
@@ -316,6 +318,61 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             return issue;
+        }
+
+        private bool IsWorkflowRepositoryFile(string filePath, int recursion = 0)
+        {
+            // Prevent the cache from growing too much
+            if (_directoryMap.Count > 100)
+            {
+                _directoryMap.Clear();
+            }
+
+            var directoryPath = Path.GetDirectoryName(filePath);
+
+            // Empty directory means we hit the root of the drive
+            // todo: Test on Windows
+            const int failsafe = 50;
+            if (string.IsNullOrEmpty(directoryPath) || recursion > failsafe)
+            {
+                return false;
+            }
+
+            // Check the cache
+            if (_directoryMap.TryGetValue(directoryPath, out bool isWorkflowDirectory))
+            {
+                return isWorkflowDirectory;
+            }
+
+            try
+            {
+                var qualifiedRepository = _executionContext.GetGitHubContext("repository");
+                var configMatch =  $"url = https://github.com/${qualifiedRepository}";
+                var gitConfigPath = Path.Combine(directoryPath, ".git", "config");
+                if (File.Exists(gitConfigPath))
+                {
+                    var content = File.ReadAllText(gitConfigPath);
+                    foreach (var line in content.Split("\n").Select(x => x.Trim()))
+                    {
+                        if (String.Equals(line, configMatch, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isWorkflowDirectory = true;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    // Recursive call
+                    isWorkflowDirectory = IsWorkflowRepositoryFile(directoryPath, recursion + 1);
+                }
+            }
+            catch
+            {
+            }
+
+            _directoryMap[directoryPath] = isWorkflowDirectory;
+            return isWorkflowDirectory;
         }
     }
 }
