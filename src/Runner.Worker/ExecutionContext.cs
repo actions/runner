@@ -874,33 +874,6 @@ namespace GitHub.Runner.Worker
             {
                 this.Warning(string.Format("The job is currently being throttled by the server. You may experience delays in console line output, job status reporting, and action log uploads."));
 
-                if (!String.IsNullOrEmpty(this.Variables.System_TFCollectionUrl))
-                {
-                    // Construct a URL to the resource utilization page, to aid the user debug throttling issues
-                    UriBuilder uriBuilder = new UriBuilder(Variables.System_TFCollectionUrl);
-                    NameValueCollection query = HttpUtility.ParseQueryString(uriBuilder.Query);
-                    DateTime endTime = DateTime.UtcNow;
-                    string queryDate = endTime.AddHours(-1).ToString("s") + "," + endTime.ToString("s");
-
-                    uriBuilder.Path += (Variables.System_TFCollectionUrl.EndsWith("/") ? "" : "/") + "_usersSettings/usage";
-                    query["tab"] = "pipelines";
-                    query["queryDate"] = queryDate;
-
-                    // Global RU link
-                    uriBuilder.Query = query.ToString();
-                    string global = $"Link to resource utilization page (global 1-hour view): {uriBuilder.ToString()}.";
-
-                    if (!String.IsNullOrEmpty(this.Variables.Build_DefinitionName))
-                    {
-                        query["keywords"] = this.Variables.Build_Number;
-                        query["definition"] = this.Variables.Build_DefinitionName;
-                    }
-
-                    // RU link scoped for the build/release
-                    uriBuilder.Query = query.ToString();
-                    this.Warning($"{global}\nLink to resource utilization page (1-hour view by pipeline): {uriBuilder.ToString()}.");
-                }
-
                 _throttlingReported = true;
             }
         }

@@ -293,14 +293,8 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
-                    if (!String.IsNullOrEmpty(settings.NotificationSocketAddress))
-                    {
-                        notification.StartClient(settings.NotificationSocketAddress, settings.MonitorSocketAddress);
-                    }
-                    else
-                    {
-                        notification.StartClient(settings.NotificationPipeName, settings.MonitorSocketAddress, HostContext.RunnerShutdownToken);
-                    }
+
+                    notification.StartClient(settings.MonitorSocketAddress);
 
                     bool autoUpdateInProgress = false;
                     Task<bool> selfUpdateTask = null;

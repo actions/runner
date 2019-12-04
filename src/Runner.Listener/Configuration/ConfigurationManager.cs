@@ -367,12 +367,7 @@ namespace GitHub.Runner.Listener.Configuration
             // We will Combine() what's stored with root.  Defaults to string a relative path
             runnerSettings.WorkFolder = command.GetWork();
 
-            // notificationPipeName for Hosted agent provisioner.
-            runnerSettings.NotificationPipeName = command.GetNotificationPipeName();
-
             runnerSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
-
-            runnerSettings.NotificationSocketAddress = command.GetNotificationSocketAddress();
 
             _store.SaveSettings(runnerSettings);
 
@@ -574,7 +569,7 @@ namespace GitHub.Runner.Listener.Configuration
                 PublicKey = new TaskAgentPublicKey(publicKey.Exponent, publicKey.Modulus),
             };
 
-            // update - update instead of delete so we don't lose user capabilities etc...
+            // update - update instead of delete so we don't lose labels etc...
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
 

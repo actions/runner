@@ -16,22 +16,10 @@ namespace GitHub.Runner.Common
     public sealed class RunnerSettings
     {
         [DataMember(EmitDefaultValue = false)]
-        public bool AcceptTeeEula { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
         public int AgentId { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public string AgentName { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string NotificationPipeName { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public string NotificationSocketAddress { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public bool SkipCapabilitiesScan { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public bool SkipSessionRecover { get; set; }
