@@ -281,14 +281,13 @@ namespace GitHub.Runner.Worker.Handlers
                     // todo: make sure this normalizes slashes on windows
                     file = Path.GetFullPath(file);
 
+                    // todo: remove
                     //// Normalize slashes
                     //file = file.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
                     // Check whether the file exists
-                    Console.WriteLine($"Checking if file exists: {file}");
                     if (File.Exists(file))
                     {
-                        Console.WriteLine($"Exists");
                         // Check whether the file is under the workflow repository
                         var repositoryPath = GetRepositoryPath(file);
                         if (!string.IsNullOrEmpty(repositoryPath))
@@ -301,13 +300,11 @@ namespace GitHub.Runner.Worker.Handlers
                         }
                         else
                         {
-                            Console.WriteLine($"Not under the workflow repo");
                             _executionContext.Debug($"Dropping file value '{file}'. Path is not under the workflow repo.");
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"Does not exist");
                         _executionContext.Debug($"Dropping file value '{file}'. Path does not exist");
                     }
                 }
@@ -348,7 +345,6 @@ namespace GitHub.Runner.Worker.Handlers
                 var gitConfigPath = Path.Combine(directoryPath, ".git", "config");
                 if (File.Exists(gitConfigPath))
                 {
-                    Console.WriteLine("git config exists");
                     // Check if the config contains the workflow repository url
                     var qualifiedRepository = _executionContext.GetGitHubContext("repository");
                     var configMatch =  $"url = https://github.com/{qualifiedRepository}";
@@ -361,13 +357,9 @@ namespace GitHub.Runner.Worker.Handlers
                             break;
                         }
                     }
-                    Console.WriteLine($"workflow repo? {!string.IsNullOrEmpty(repositoryPath)}");
-                    Console.WriteLine(content);
-                    Console.WriteLine($"searched for string: '{configMatch}'");
                 }
                 else
                 {
-                    Console.WriteLine($"not a git dir, checking parent dir (recursion={recursion})");
                     // Recursive call
                     repositoryPath = GetRepositoryPath(directoryPath, recursion + 1);
                 }
