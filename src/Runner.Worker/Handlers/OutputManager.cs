@@ -18,6 +18,7 @@ namespace GitHub.Runner.Worker.Handlers
         private static readonly Regex _colorCodeRegex = new Regex(@"\x0033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly IActionCommandManager _commandManager;
         private readonly IExecutionContext _executionContext;
+        private readonly int _failsafe = 50;
         private readonly object _matchersLock = new object();
         private readonly TimeSpan _timeout;
         private IssueMatcher[] _matchers = Array.Empty<IssueMatcher>();
@@ -26,38 +27,37 @@ namespace GitHub.Runner.Worker.Handlers
 
         public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager)
         {
-            //executionContext.Debug("ENTERING OutputManager ctor");
             _executionContext = executionContext;
             _commandManager = commandManager;
 
-            //_executionContext.Debug("OutputManager ctor - determine timeout from variable");
+            // Recursion failsafe (test override)
+            var failsafeString = Environment.GetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE");
+            if (!string.IsNullOrEmpty(failsafeString))
+            {
+                _failsafe = int.Parse(failsafeString, NumberStyles.None);
+            }
+
             // Determine the timeout
             var timeoutStr = _executionContext.Variables.Get(_timeoutKey);
             if (string.IsNullOrEmpty(timeoutStr) ||
                 !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                 _timeout <= TimeSpan.Zero)
             {
-                //_executionContext.Debug("OutputManager ctor - determine timeout from env var");
                 timeoutStr = Environment.GetEnvironmentVariable(_timeoutKey);
                 if (string.IsNullOrEmpty(timeoutStr) ||
                     !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                     _timeout <= TimeSpan.Zero)
                 {
-                    //_executionContext.Debug("OutputManager ctor - set timeout to default");
                     _timeout = TimeSpan.FromSeconds(1);
                 }
             }
 
-            //_executionContext.Debug("OutputManager ctor - adding matchers");
             // Lock
             lock (_matchersLock)
             {
-                //_executionContext.Debug("OutputManager ctor - adding OnMatcherChanged");
                 _executionContext.Add(OnMatcherChanged);
-                //_executionContext.Debug("OutputManager ctor - getting matchers");
                 _matchers = _executionContext.GetMatchers().Select(x => new IssueMatcher(x, _timeout)).ToArray();
             }
-            //_executionContext.Debug("LEAVING OutputManager ctor");
         }
 
         public void Dispose()
@@ -73,7 +73,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         public void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
-            //_executionContext.Debug("ENTERING OutputManager OnDataReceived");
             var line = e.Data;
 
             // ## commands
@@ -84,7 +83,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // The logging queues and command handlers are thread-safe.
                 if (_commandManager.TryProcessCommand(_executionContext, line))
                 {
-                    //_executionContext.Debug("LEAVING OutputManager OnDataReceived - command processed");
                     return;
                 }
             }
@@ -144,7 +142,6 @@ namespace GitHub.Runner.Worker.Handlers
                             // Log issue
                             _executionContext.AddIssue(issue, stripped);
 
-                            //_executionContext.Debug("LEAVING OutputManager OnDataReceived - issue logged");
                             return;
                         }
                     }
@@ -153,7 +150,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Regular output
             _executionContext.Output(line);
-            //_executionContext.Debug("LEAVING OutputManager OnDataReceived");
         }
 
         private void OnMatcherChanged(object sender, MatcherChangedEventArgs e)
@@ -289,8 +285,10 @@ namespace GitHub.Runner.Worker.Handlers
                     //file = file.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
                     // Check whether the file exists
+                    Console.WriteLine($"Checking if file exists: {file}");
                     if (File.Exists(file))
                     {
+                        Console.WriteLine($"Exists");
                         // Check whether the file is under the workflow repository
                         var repositoryPath = GetRepositoryPath(file);
                         if (!string.IsNullOrEmpty(repositoryPath))
@@ -303,11 +301,13 @@ namespace GitHub.Runner.Worker.Handlers
                         }
                         else
                         {
+                            Console.WriteLine($"Not under the workflow repo");
                             _executionContext.Debug($"Dropping file value '{file}'. Path is not under the workflow repo.");
                         }
                     }
                     else
                     {
+                        Console.WriteLine($"Does not exist");
                         _executionContext.Debug($"Dropping file value '{file}'. Path does not exist");
                     }
                 }
@@ -320,7 +320,7 @@ namespace GitHub.Runner.Worker.Handlers
             return issue;
         }
 
-        private string GetRelativePath(string filePath, int recursion = 0)
+        private string GetRepositoryPath(string filePath, int recursion = 0)
         {
             // Prevent the cache from growing too much
             if (_directoryMap.Count > 100)
@@ -328,12 +328,10 @@ namespace GitHub.Runner.Worker.Handlers
                 _directoryMap.Clear();
             }
 
-            var directoryPath = Path.GetDirectoryName(filePath);
-
             // Empty directory means we hit the root of the drive
             // todo: Test on Windows
-            const int failsafe = 50;
-            if (string.IsNullOrEmpty(directoryPath) || recursion > failsafe)
+            var directoryPath = Path.GetDirectoryName(filePath);
+            if (string.IsNullOrEmpty(directoryPath) || recursion > _failsafe)
             {
                 return null;
             }
@@ -342,43 +340,44 @@ namespace GitHub.Runner.Worker.Handlers
             if (_directoryMap.TryGetValue(directoryPath, out string repositoryPath))
             {
                 return repositoryPath;
-                // if (!string.IsNullOrEmpty(repositoryPath))
-                // {
-                //     //return filePath.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
-                // }
-
-                // return null;
             }
 
             try
             {
-                var qualifiedRepository = _executionContext.GetGitHubContext("repository");
-                var configMatch =  $"url = https://github.com/${qualifiedRepository}";
+                // Check if .git/config exists
                 var gitConfigPath = Path.Combine(directoryPath, ".git", "config");
                 if (File.Exists(gitConfigPath))
                 {
+                    Console.WriteLine("git config exists");
+                    // Check if the config contains the workflow repository url
+                    var qualifiedRepository = _executionContext.GetGitHubContext("repository");
+                    var configMatch =  $"url = https://github.com/{qualifiedRepository}";
                     var content = File.ReadAllText(gitConfigPath);
                     foreach (var line in content.Split("\n").Select(x => x.Trim()))
                     {
                         if (String.Equals(line, configMatch, StringComparison.OrdinalIgnoreCase))
                         {
-                            isWorkflowDirectory = true;
+                            repositoryPath = directoryPath;
                             break;
                         }
                     }
+                    Console.WriteLine($"workflow repo? {!string.IsNullOrEmpty(repositoryPath)}");
+                    Console.WriteLine(content);
+                    Console.WriteLine($"searched for string: '{configMatch}'");
                 }
                 else
                 {
+                    Console.WriteLine($"not a git dir, checking parent dir (recursion={recursion})");
                     // Recursive call
-                    isWorkflowDirectory = IsWorkflowRepositoryFile(directoryPath, recursion + 1);
+                    repositoryPath = GetRepositoryPath(directoryPath, recursion + 1);
                 }
             }
             catch
             {
             }
 
-            _directoryMap[directoryPath] = isWorkflowDirectory;
-            return isWorkflowDirectory;
+            _directoryMap[directoryPath] = repositoryPath;
+            return repositoryPath;
         }
     }
 }
