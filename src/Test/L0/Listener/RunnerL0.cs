@@ -57,7 +57,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             return message;
         }
 
-        /*
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
@@ -85,7 +84,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 {
                     Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
                     MessageId = 4234,
-                    MessageType = JobRequestMessageTypes.AgentJobRequest
+                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
                 };
 
                 var messages = new Queue<TaskAgentMessage>();
@@ -159,7 +158,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 }
             }
         }
-        */
 
         public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
                                                                     {
@@ -204,7 +202,6 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        //process 2 new job messages, and one cancel message
         public async void TestMachineProvisionerCLI()
         {
             using (var hc = new TestHostContext(this))
@@ -236,45 +233,6 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
         }
 
-        /*
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Runner")]
-        //process 2 new job messages, and one cancel message
-        public async void TestMachineProvisionerCLICompat()
-        {
-            using (var hc = new TestHostContext(this))
-            {
-                hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
-                hc.SetSingleton<IPromptManager>(_promptManager.Object);
-                hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IRunnerWebProxy>(_proxy.Object);
-                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
-                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-
-                var command = new CommandSettings(hc, new string[] { });
-
-                _configurationManager.Setup(x => x.IsConfigured()).
-                    Returns(true);
-                _configurationManager.Setup(x => x.LoadSettings())
-                    .Returns(new RunnerSettings { });
-
-                _configStore.Setup(x => x.IsServiceConfigured())
-                    .Returns(false);
-
-                _messageListener.Setup(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()))
-                    .Returns(Task.FromResult(false));
-
-                var runner = new Runner.Listener.Runner();
-                runner.Initialize(hc);
-                await runner.ExecuteCommand(command);
-
-                _messageListener.Verify(x => x.CreateSessionAsync(It.IsAny<CancellationToken>()), Times.Once());
-            }
-        }
-        */
-
-        /*
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
@@ -301,7 +259,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 {
                     Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
                     MessageId = 4234,
-                    MessageType = JobRequestMessageTypes.AgentJobRequest
+                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
                 };
 
                 var messages = new Queue<TaskAgentMessage>();
@@ -364,9 +322,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.AtLeastOnce());
             }
         }
-        */
 
-        /*
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
@@ -393,13 +349,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                 {
                     Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
                     MessageId = 4234,
-                    MessageType = JobRequestMessageTypes.AgentJobRequest
+                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
                 };
                 var message2 = new TaskAgentMessage()
                 {
                     Body = JsonUtility.ToString(CreateJobRequestMessage("job1")),
                     MessageId = 4235,
-                    MessageType = JobRequestMessageTypes.AgentJobRequest
+                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
                 };
 
                 var messages = new Queue<TaskAgentMessage>();
@@ -462,7 +418,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _messageListener.Verify(x => x.DeleteSessionAsync(), Times.Once());
                 _messageListener.Verify(x => x.DeleteMessageAsync(It.IsAny<TaskAgentMessage>()), Times.Once());
             }
-        }*/
+        }
 
         [Fact]
         [Trait("Level", "L0")]
