@@ -22,7 +22,7 @@ namespace GitHub.Runner.Worker.Handlers
         private readonly TimeSpan _timeout;
         private IssueMatcher[] _matchers = Array.Empty<IssueMatcher>();
         // Mapping that indicates whether a directory belongs to the workflow repository
-        private readonly Dictionary<string, bool> _directoryMap = new Dictionary<string, bool>();
+        private readonly Dictionary<string, string> _directoryMap = new Dictionary<string, string>();
 
         public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager)
         {
@@ -263,7 +263,7 @@ namespace GitHub.Runner.Worker.Handlers
                     var file = match.File;
 
                     // Root using fromPath
-                    if (!string.IsNullOrWhiteSpace(match.FromPath) && !Path.IsPathRooted(file))
+                    if (!string.IsNullOrWhiteSpace(match.FromPath) && !Path.IsPathFullyQualified(file))
                     {
                         var fromDirectory = Path.GetDirectoryName(match.FromPath);
                         if (!string.IsNullOrWhiteSpace(fromDirectory))
@@ -273,7 +273,7 @@ namespace GitHub.Runner.Worker.Handlers
                     }
 
                     // Root using workspace
-                    if (!Path.IsPathRooted(file))
+                    if (!Path.IsPathFullyQualified(file))
                     {
                         var workspace = _executionContext.GetGitHubContext("workspace");
                         ArgUtil.NotNullOrEmpty(workspace, "workspace");
@@ -281,31 +281,31 @@ namespace GitHub.Runner.Worker.Handlers
                         file = Path.Combine(workspace, file);
                     }
 
-                    // Normalize slashes
-                    file = file.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                    // Remove relative pathing and normalize slashes
+                    // todo: make sure this normalizes slashes on windows
+                    file = Path.GetFullPath(file);
 
-                    // File exists
+                    //// Normalize slashes
+                    //file = file.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+                    // Check whether the file exists
                     if (File.Exists(file))
                     {
-                        // Repository path
-                        var repositoryPath = _executionContext.GetGitHubContext("workspace");
-                        ArgUtil.NotNullOrEmpty(repositoryPath, nameof(repositoryPath));
-
-                        // Normalize slashes
-                        repositoryPath = repositoryPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-
-                        if (!file.StartsWith(repositoryPath, IOUtil.FilePathStringComparison))
+                        // Check whether the file is under the workflow repository
+                        var repositoryPath = GetRepositoryPath(file);
+                        if (!string.IsNullOrEmpty(repositoryPath))
                         {
-                            // File is not under repo
-                            _executionContext.Debug($"Dropping file value '{file}'. Path is not under the repo.");
+                            // Get the relative file path
+                            var relativePath = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
+
+                            // Prefer `/` on all platforms
+                            issue.Data["file"] = relativePath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         }
                         else
                         {
-                            // Prefer `/` on all platforms
-                            issue.Data["file"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                            _executionContext.Debug($"Dropping file value '{file}'. Path is not under the workflow repo.");
                         }
                     }
-                    // File does not exist
                     else
                     {
                         _executionContext.Debug($"Dropping file value '{file}'. Path does not exist");
@@ -320,7 +320,7 @@ namespace GitHub.Runner.Worker.Handlers
             return issue;
         }
 
-        private bool IsWorkflowRepositoryFile(string filePath, int recursion = 0)
+        private string GetRelativePath(string filePath, int recursion = 0)
         {
             // Prevent the cache from growing too much
             if (_directoryMap.Count > 100)
@@ -335,13 +335,19 @@ namespace GitHub.Runner.Worker.Handlers
             const int failsafe = 50;
             if (string.IsNullOrEmpty(directoryPath) || recursion > failsafe)
             {
-                return false;
+                return null;
             }
 
             // Check the cache
-            if (_directoryMap.TryGetValue(directoryPath, out bool isWorkflowDirectory))
+            if (_directoryMap.TryGetValue(directoryPath, out string repositoryPath))
             {
-                return isWorkflowDirectory;
+                return repositoryPath;
+                // if (!string.IsNullOrEmpty(repositoryPath))
+                // {
+                //     //return filePath.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
+                // }
+
+                // return null;
             }
 
             try
