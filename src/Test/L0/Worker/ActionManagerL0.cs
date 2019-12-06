@@ -29,130 +29,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         private ActionManager _actionManager;
         private string _workFolder;
 
-        // //Test how exceptions are propagated to the caller.
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public async void RetryNetworkException()
-        // {
-        //     try
-        //     {
-        //         // Arrange.
-        //         Setup();
-        //         var pingTask = new Pipelines.TaskStep()
-        //         {
-        //             Enabled = true,
-        //             Reference = new Pipelines.TaskStepDefinitionReference()
-        //             {
-        //                 Name = "Ping",
-        //                 Version = "0.1.1",
-        //                 Id = Guid.NewGuid()
-        //             }
-        //         };
-
-        //         var pingVersion = new TaskVersion(pingTask.Reference.Version);
-        //         Exception expectedException = new System.Net.Http.HttpRequestException("simulated network error");
-        //         _taskServer
-        //             .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()))
-        //             .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
-        //             {
-        //                 throw expectedException;
-        //             });
-
-        //         var tasks = new List<Pipelines.TaskStep>(new Pipelines.TaskStep[] { pingTask });
-
-        //         //Act
-        //         Exception actualException = null;
-        //         try
-        //         {
-        //             await _actionManager.DownloadAsync(_ec.Object, tasks);
-        //         }
-        //         catch (Exception ex)
-        //         {
-        //             actualException = ex;
-        //         }
-
-        //         //Assert
-        //         //verify task completed in less than 2sec and it is in failed state state
-        //         Assert.Equal(expectedException, actualException);
-
-        //         //assert download was invoked 3 times, because we retry on task download
-        //         _taskServer
-        //             .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
-
-        //         //see if the task.json was not downloaded
-        //         Assert.Equal(
-        //             0,
-        //             Directory.GetFiles(_hc.GetDirectory(WellKnownDirectory.Tasks), "*", SearchOption.AllDirectories).Length);
-        //     }
-        //     finally
-        //     {
-        //         Teardown();
-        //     }
-        // }
-
-        // //Test how exceptions are propagated to the caller.
-        // [Fact]
-        // [Trait("Level", "L0")]
-        // [Trait("Category", "Worker")]
-        // public async void RetryStreamException()
-        // {
-        //     try
-        //     {
-        //         // Arrange.
-        //         Setup();
-        //         var pingTask = new Pipelines.TaskStep()
-        //         {
-        //             Enabled = true,
-        //             Reference = new Pipelines.TaskStepDefinitionReference()
-        //             {
-        //                 Name = "Ping",
-        //                 Version = "0.1.1",
-        //                 Id = Guid.NewGuid()
-        //             }
-        //         };
-
-        //         var pingVersion = new TaskVersion(pingTask.Reference.Version);
-        //         Exception expectedException = new System.Net.Http.HttpRequestException("simulated network error");
-        //         _taskServer
-        //             .Setup(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()))
-        //             .Returns((Guid taskId, TaskVersion taskVersion, CancellationToken token) =>
-        //             {
-        //                 return Task.FromResult<Stream>(new ExceptionStream());
-        //             });
-
-        //         var tasks = new List<Pipelines.TaskStep>(new Pipelines.TaskStep[] { pingTask });
-
-        //         //Act
-        //         Exception actualException = null;
-        //         try
-        //         {
-        //             await _actionManager.DownloadAsync(_ec.Object, tasks);
-        //         }
-        //         catch (Exception ex)
-        //         {
-        //             actualException = ex;
-        //         }
-
-        //         //Assert
-        //         //verify task completed in less than 2sec and it is in failed state state
-        //         Assert.Equal("NotImplementedException", actualException.GetType().Name);
-
-        //         //assert download was invoked 3 times, because we retry on task download
-        //         _taskServer
-        //             .Verify(x => x.GetTaskContentZipAsync(It.IsAny<Guid>(), It.IsAny<TaskVersion>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
-
-        //         //see if the task.json was not downloaded
-        //         Assert.Equal(
-        //             0,
-        //             Directory.GetFiles(_hc.GetDirectory(WellKnownDirectory.Tasks), "*", SearchOption.AllDirectories).Length);
-        //     }
-        //     finally
-        //     {
-        //         Teardown();
-        //     }
-        // }
-
 #if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
@@ -233,31 +109,17 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-/*
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_SkipDownloadActionFromGraphWhenCache()
+        public async void PrepareActions_AlwaysClearActionsCache()
         {
             try
             {
                 //Arrange
                 Setup();
                 var actionId = Guid.NewGuid();
-                var actions = new List<Pipelines.ActionStep>
-                {
-                    new Pipelines.ActionStep()
-                    {
-                        Name = "action",
-                        Id = actionId,
-                        Reference = new Pipelines.RepositoryPathReference()
-                        {
-                            Name = "notexist/no",
-                            Ref = "notexist",
-                            RepositoryType = "GitHub"
-                        }
-                    }
-                };
+                var actions = new List<Pipelines.ActionStep>();
 
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
                 Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
@@ -267,13 +129,15 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Act
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                // Make sure _actions folder get deleted
+                Assert.False(Directory.Exists(_hc.GetDirectory(WellKnownDirectory.Actions)));
             }
             finally
             {
                 Teardown();
             }
         }
-*/
 
         [Fact]
         [Trait("Level", "L0")]
@@ -300,7 +164,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                Assert.True(steps.Count == 0);
             }
             finally
             {
@@ -308,7 +174,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-/*
 #if OS_LINUX
         [Fact]
         [Trait("Level", "L0")]
@@ -328,24 +193,20 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "actions/test",
-                            Ref = "master",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithdockerfile",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "master.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"), "Fake Dockerfile");
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfile");
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
             }
             finally
             {
@@ -371,26 +232,22 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "actions/test",
-                            Ref = "master",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithdockerfileinrelativepath",
                             Path = "images/cli",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "master.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images/cli"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images/cli/Dockerfile"), "Fake Dockerfile");
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "images/cli", "Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "images/cli", "Dockerfile"));
             }
             finally
             {
@@ -416,26 +273,20 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "notexist/no",
-                            Ref = "notexist",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithdockerfileinrelativepath",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerfileaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist/Dockerfile"), "Fake Dockerfile");
-
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
             }
             finally
             {
@@ -461,27 +312,21 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "notexist/no",
-                            Ref = "notexist",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "RepositoryActionWithActionfile_DockerfileRelativePath",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerfilerelativeaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images/Dockerfile"), "Fake Dockerfile");
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionfile_DockerfileRelativePath");
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "images/Dockerfile"));
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "images/Dockerfile"));
             }
             finally
             {
@@ -507,18 +352,14 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "notexist/no",
-                            Ref = "notexist",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "RepositoryActionWithActionfile_DockerHubImage",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerhubaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionfile_DockerHubImage");
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
@@ -550,25 +391,21 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "notexist/no",
-                            Ref = "notexist",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithactionfileanddockerfile",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerhubaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "Dockerfile"), "Fake Dockerfile");
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithactionfileanddockerfile");
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
             }
             finally
             {
@@ -628,8 +465,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId4,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "notexist/no",
-                            Ref = "notexist",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "notpullorbuildimagesmultipletimes1",
                             RepositoryType = "GitHub"
                         }
                     },
@@ -639,8 +476,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId5,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "actions/test",
-                            Ref = "master",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithdockerfile",
                             RepositoryType = "GitHub"
                         }
                     },
@@ -650,8 +487,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId6,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "actions/test",
-                            Ref = "release",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithdockerfileinrelativepath",
                             RepositoryType = "GitHub"
                         }
                     },
@@ -661,8 +498,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId7,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "actions/test",
-                            Ref = "release",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithdockerfileinrelativepath",
                             RepositoryType = "GitHub"
                         }
                     },
@@ -672,37 +509,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId8,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "actions/test",
-                            Ref = "master",
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "repositoryactionwithdockerfileinrelativepath",
                             Path = "images/cli",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
-
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerhubaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
-
-                watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "master.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"), "Fake Dockerfile");
-
-                watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "release.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "release"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "release", "Dockerfile"), "Fake Dockerfile");
-
-                watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/test", "master.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images/cli"));
-                File.WriteAllText(Path.Combine(Path.GetDirectoryName(watermarkFile), "master/images/cli/Dockerfile"), "Fake Dockerfile");
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
@@ -716,18 +529,22 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.True((steps[1].Data as ContainerSetupInfo).StepIds.Contains(actionId4));
                 Assert.Equal((steps[1].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
 
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfile");
+
                 Assert.Equal((steps[2].Data as ContainerSetupInfo).StepIds[0], actionId5);
-                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "Dockerfile"));
+                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
+
+                actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
 
                 Assert.True((steps[3].Data as ContainerSetupInfo).StepIds.Contains(actionId6));
                 Assert.True((steps[3].Data as ContainerSetupInfo).StepIds.Contains(actionId7));
-                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "release"));
-                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "release", "Dockerfile"));
+                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
 
                 Assert.Equal((steps[4].Data as ContainerSetupInfo).StepIds[0], actionId8);
-                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.WorkingDirectory, Path.Combine(Path.GetDirectoryName(watermarkFile), "master"));
-                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(Path.GetDirectoryName(watermarkFile), "master", "images/cli", "Dockerfile"));
+                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
+                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "images/cli", "Dockerfile"));
             }
             finally
             {
@@ -754,28 +571,24 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Id = actionId,
                         Reference = new Pipelines.RepositoryPathReference()
                         {
-                            Name = "notexist/no",
-                            Ref = "notexist",
+                            Name = "actions/setup-node",
+                            Ref = "v1",
                             RepositoryType = "GitHub"
                         }
                     }
                 };
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "notexist/no", "notexist.completed");
-                Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
-                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
-                Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "nodeaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
-
                 //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                // node.js based action doesn't need any extra steps to build/pull containers.
+                Assert.True(steps.Count == 0);
             }
             finally
             {
                 Teardown();
             }
         }
-*/
 
         [Fact]
         [Trait("Level", "L0")]
@@ -1653,7 +1466,6 @@ runs:
             };
         }
 
-
         private void Setup([CallerMemberName] string name = "")
         {
             _ecTokenSource?.Dispose();
@@ -1698,9 +1510,21 @@ runs:
                     });
             _hc.SetSingleton<IConfigurationStore>(_configurationStore.Object);
 
-            var pInvoker = new ProcessInvokerWrapper();
-            pInvoker.Initialize(_hc);
-            _hc.EnqueueInstance<IProcessInvoker>(pInvoker);
+            var pInvoker1 = new ProcessInvokerWrapper();
+            pInvoker1.Initialize(_hc);
+            var pInvoker2 = new ProcessInvokerWrapper();
+            pInvoker2.Initialize(_hc);
+            var pInvoker3 = new ProcessInvokerWrapper();
+            pInvoker3.Initialize(_hc);
+            var pInvoker4 = new ProcessInvokerWrapper();
+            pInvoker4.Initialize(_hc);
+            var pInvoker5 = new ProcessInvokerWrapper();
+            pInvoker5.Initialize(_hc);
+            _hc.EnqueueInstance<IProcessInvoker>(pInvoker1);
+            _hc.EnqueueInstance<IProcessInvoker>(pInvoker2);
+            _hc.EnqueueInstance<IProcessInvoker>(pInvoker3);
+            _hc.EnqueueInstance<IProcessInvoker>(pInvoker4);
+            _hc.EnqueueInstance<IProcessInvoker>(pInvoker5);
 
             // Instance to test.
             _actionManager = new ActionManager();
@@ -1715,44 +1539,6 @@ runs:
             if (!string.IsNullOrEmpty(_workFolder) && Directory.Exists(_workFolder))
             {
                 Directory.Delete(_workFolder, recursive: true);
-            }
-        }
-
-        private class ExceptionStream : Stream
-        {
-            public override bool CanRead => throw new NotImplementedException();
-
-            public override bool CanSeek => throw new NotImplementedException();
-
-            public override bool CanWrite => throw new NotImplementedException();
-
-            public override long Length => throw new NotImplementedException();
-
-            public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
-            public override void Flush()
-            {
-                throw new NotImplementedException();
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotImplementedException();
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new NotImplementedException();
             }
         }
     }

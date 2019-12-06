@@ -1,386 +1,291 @@
-﻿// using GitHub.DistributedTask.WebApi;
-// using GitHub.Runner.Worker;
-// using Moq;
-// using System;
-// using System.Collections.Generic;
-// using System.Linq;
-// using System.Runtime.CompilerServices;
-// using System.Threading.Tasks;
-// using Xunit;
-// using System.Threading;
-// using Pipelines = GitHub.DistributedTask.Pipelines;
+﻿using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Worker;
+using Moq;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Xunit;
+using System.Threading;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
-// namespace GitHub.Runner.Common.Tests.Worker
-// {
-//     public sealed class JobExtensionL0
-//     {
-//         private class TestJobExtension : JobExtension
-//         {
-//             public override HostTypes HostType => HostTypes.None;
+namespace GitHub.Runner.Common.Tests.Worker
+{
+    public sealed class JobExtensionL0
+    {
+        private IExecutionContext _jobEc;
+        private Pipelines.AgentJobRequestMessage _message;
 
-//             public override Type ExtensionType => typeof(IJobExtension);
+        private Mock<IPipelineDirectoryManager> _directoryManager;
+        private Mock<IActionManager> _actionManager;
+        private Mock<IJobServerQueue> _jobServerQueue;
+        private Mock<IRunnerCertificateManager> _cert;
+        private Mock<IConfigurationStore> _config;
+        private Mock<IPagingLogger> _logger;
+        private Mock<IExpressionManager> _express;
+        private Mock<IContainerOperationProvider> _containerProvider;
+        private Mock<IDiagnosticLogManager> _diagnosticLogManager;
 
-//             public override void ConvertLocalPath(IExecutionContext context, string localPath, out string repoName, out string sourcePath)
-//             {
-//                 repoName = "";
-//                 sourcePath = "";
-//             }
+        private CancellationTokenSource _tokenSource;
+        private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
+        {
+            var hc = new TestHostContext(this, testName);
+            _jobEc = new Runner.Worker.ExecutionContext();
+            _actionManager = new Mock<IActionManager>();
+            _jobServerQueue = new Mock<IJobServerQueue>();
+            _config = new Mock<IConfigurationStore>();
+            _logger = new Mock<IPagingLogger>();
+            _cert = new Mock<IRunnerCertificateManager>();
+            _express = new Mock<IExpressionManager>();
+            _containerProvider = new Mock<IContainerOperationProvider>();
+            _diagnosticLogManager = new Mock<IDiagnosticLogManager>();
+            _directoryManager = new Mock<IPipelineDirectoryManager>();
+            _directoryManager.Setup(x => x.PrepareDirectory(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.WorkspaceOptions>()))
+                             .Returns(new TrackingConfig() { PipelineDirectory = "runner", WorkspaceDirectory = "runner/runner" });
 
-//             public override IStep GetExtensionPostJobStep(IExecutionContext jobContext)
-//             {
-//                 return null;
-//             }
+            IActionRunner step1 = new ActionRunner();
+            IActionRunner step2 = new ActionRunner();
+            IActionRunner step3 = new ActionRunner();
+            IActionRunner step4 = new ActionRunner();
+            IActionRunner step5 = new ActionRunner();
 
-//             public override IStep GetExtensionPreJobStep(IExecutionContext jobContext)
-//             {
-//                 return null;
-//             }
+            _logger.Setup(x => x.Setup(It.IsAny<Guid>(), It.IsAny<Guid>()));
+            var settings = new RunnerSettings
+            {
+                AgentId = 1,
+                AgentName = "runner",
+                ServerUrl = "https://pipelines.actions.githubusercontent.com/abcd",
+                WorkFolder = "_work",
+            };
 
-//             public override string GetRootedPath(IExecutionContext context, string path)
-//             {
-//                 return path;
-//             }
+            _config.Setup(x => x.GetSettings())
+                .Returns(settings);
 
-//             public override void InitializeJobExtension(IExecutionContext context, IList<Pipelines.JobStep> steps, Pipelines.WorkspaceOptions workspace)
-//             {
-//                 return;
-//             }
-//         }
+            if (_tokenSource != null)
+            {
+                _tokenSource.Dispose();
+                _tokenSource = null;
+            }
 
-//         private IExecutionContext _jobEc;
-//         private Pipelines.AgentJobRequestMessage _message;
-//         private Mock<ITaskManager> _taskManager;
-//         private Mock<IAgentLogPlugin> _logPlugin;
-//         private Mock<IJobServerQueue> _jobServerQueue;
-//         private Mock<IVstsAgentWebProxy> _proxy;
-//         private Mock<IAgentCertificateManager> _cert;
-//         private Mock<IConfigurationStore> _config;
-//         private Mock<IPagingLogger> _logger;
-//         private Mock<IExpressionManager> _express;
-//         private Mock<IContainerOperationProvider> _containerProvider;
-//         private CancellationTokenSource _tokenSource;
-//         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
-//         {
-//             var hc = new TestHostContext(this, testName);
-//             _jobEc = new Runner.Worker.ExecutionContext();
-//             _taskManager = new Mock<ITaskManager>();
-//             _jobServerQueue = new Mock<IJobServerQueue>();
-//             _config = new Mock<IConfigurationStore>();
-//             _logger = new Mock<IPagingLogger>();
-//             _proxy = new Mock<IVstsAgentWebProxy>();
-//             _cert = new Mock<IAgentCertificateManager>();
-//             _express = new Mock<IExpressionManager>();
-//             _containerProvider = new Mock<IContainerOperationProvider>();
-//             _logPlugin = new Mock<IAgentLogPlugin>();
+            _tokenSource = new CancellationTokenSource();
+            TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+            TimelineReference timeline = new Timeline(Guid.NewGuid());
 
-//             TaskRunner step1 = new TaskRunner();
-//             TaskRunner step2 = new TaskRunner();
-//             TaskRunner step3 = new TaskRunner();
-//             TaskRunner step4 = new TaskRunner();
-//             TaskRunner step5 = new TaskRunner();
-//             TaskRunner step6 = new TaskRunner();
-//             TaskRunner step7 = new TaskRunner();
-//             TaskRunner step8 = new TaskRunner();
-//             TaskRunner step9 = new TaskRunner();
-//             TaskRunner step10 = new TaskRunner();
-//             TaskRunner step11 = new TaskRunner();
-//             TaskRunner step12 = new TaskRunner();
+            List<Pipelines.ActionStep> steps = new List<Pipelines.ActionStep>()
+            {
+                new Pipelines.ActionStep()
+                {
+                    Id = Guid.NewGuid(),
+                    DisplayName = "action1",
+                },
+                new Pipelines.ActionStep()
+                {
+                    Id = Guid.NewGuid(),
+                    DisplayName = "action2",
+                },
+                new Pipelines.ActionStep()
+                {
+                    Id = Guid.NewGuid(),
+                    DisplayName = "action3",
+                },
+                new Pipelines.ActionStep()
+                {
+                    Id = Guid.NewGuid(),
+                    DisplayName = "action4",
+                },
+                new Pipelines.ActionStep()
+                {
+                    Id = Guid.NewGuid(),
+                    DisplayName = "action5",
+                }
+            };
 
-//             _logger.Setup(x => x.Setup(It.IsAny<Guid>(), It.IsAny<Guid>()));
-//             var settings = new AgentSettings
-//             {
-//                 AgentId = 1,
-//                 AgentName = "agent1",
-//                 ServerUrl = "https://test.visualstudio.com",
-//                 WorkFolder = "_work",
-//             };
+            Guid jobId = Guid.NewGuid();
+            _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null);
+            GitHubContext github = new GitHubContext();
+            github["repository"] = new Pipelines.ContextData.StringContextData("actions/runner");
+            _message.ContextData.Add("github", github);
 
-//             _config.Setup(x => x.GetSettings())
-//                 .Returns(settings);
+            hc.SetSingleton(_actionManager.Object);
+            hc.SetSingleton(_config.Object);
+            hc.SetSingleton(_jobServerQueue.Object);
+            hc.SetSingleton(_cert.Object);
+            hc.SetSingleton(_express.Object);
+            hc.SetSingleton(_containerProvider.Object);
+            hc.SetSingleton(_directoryManager.Object);
+            hc.SetSingleton(_diagnosticLogManager.Object);
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // JobExecutionContext
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // Initial Job
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step1
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step2
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step3
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step4
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step5
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // prepare1
+            hc.EnqueueInstance<IPagingLogger>(_logger.Object); // prepare2
 
-//             _proxy.Setup(x => x.ProxyAddress)
-//                             .Returns(string.Empty);
+            hc.EnqueueInstance<IActionRunner>(step1);
+            hc.EnqueueInstance<IActionRunner>(step2);
+            hc.EnqueueInstance<IActionRunner>(step3);
+            hc.EnqueueInstance<IActionRunner>(step4);
+            hc.EnqueueInstance<IActionRunner>(step5);
 
-//             if (_tokenSource != null)
-//             {
-//                 _tokenSource.Dispose();
-//                 _tokenSource = null;
-//             }
+            _jobEc.Initialize(hc);
+            _jobEc.InitializeJob(_message, _tokenSource.Token);
+            return hc;
+        }
 
-//             _tokenSource = new CancellationTokenSource();
-//             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
-//             TimelineReference timeline = new Timeline(Guid.NewGuid());
-//             JobEnvironment environment = new JobEnvironment();
-//             environment.Variables[Constants.Variables.System.Culture] = "en-US";
-//             environment.SystemConnection = new ServiceEndpoint()
-//             {
-//                 Name = WellKnownServiceEndpointNames.SystemVssConnection,
-//                 Url = new Uri("https://test.visualstudio.com"),
-//                 Authorization = new EndpointAuthorization()
-//                 {
-//                     Scheme = "Test",
-//                 }
-//             };
-//             environment.SystemConnection.Authorization.Parameters["AccessToken"] = "token";
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task JobExtensionBuildStepsList()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
 
-//             List<TaskInstance> tasks = new List<TaskInstance>()
-//             {
-//                 new TaskInstance()
-//                 {
-//                     InstanceId = Guid.NewGuid(),
-//                     DisplayName = "task1",
-//                 },
-//                 new TaskInstance()
-//                 {
-//                     InstanceId = Guid.NewGuid(),
-//                     DisplayName = "task2",
-//                 },
-//                 new TaskInstance()
-//                 {
-//                     InstanceId = Guid.NewGuid(),
-//                     DisplayName = "task3",
-//                 },
-//                 new TaskInstance()
-//                 {
-//                     InstanceId = Guid.NewGuid(),
-//                     DisplayName = "task4",
-//                 },
-//                 new TaskInstance()
-//                 {
-//                     InstanceId = Guid.NewGuid(),
-//                     DisplayName = "task5",
-//                 },
-//                 new TaskInstance()
-//                 {
-//                     InstanceId = Guid.NewGuid(),
-//                     DisplayName = "task6",
-//                 },
-//                 new TaskInstance()
-//                 {
-//                     InstanceId = Guid.NewGuid(),
-//                     DisplayName = "task7",
-//                 },
-//             };
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>()))
+                              .Returns(Task.FromResult(new List<JobExtensionRunner>()));
 
-//             Guid JobId = Guid.NewGuid();
-//             _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
+                List<IStep> result = await jobExtension.InitializeJob(_jobEc, _message);
 
-//             _taskManager.Setup(x => x.DownloadAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.TaskStep>>()))
-//                 .Returns(Task.CompletedTask);
+                var trace = hc.GetTrace();
 
-//             _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task1")))
-//                 .Returns(new Definition()
-//                 {
-//                     Data = new DefinitionData()
-//                     {
-//                         PreJobExecution = null,
-//                         Execution = new ExecutionData(),
-//                         PostJobExecution = null,
-//                     },
-//                 });
-//             _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task2")))
-//                 .Returns(new Definition()
-//                 {
-//                     Data = new DefinitionData()
-//                     {
-//                         PreJobExecution = new ExecutionData(),
-//                         Execution = new ExecutionData(),
-//                         PostJobExecution = new ExecutionData(),
-//                     },
-//                 });
-//             _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task3")))
-//                 .Returns(new Definition()
-//                 {
-//                     Data = new DefinitionData()
-//                     {
-//                         PreJobExecution = new ExecutionData(),
-//                         Execution = null,
-//                         PostJobExecution = new ExecutionData(),
-//                     },
-//                 });
-//             _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task4")))
-//                 .Returns(new Definition()
-//                 {
-//                     Data = new DefinitionData()
-//                     {
-//                         PreJobExecution = new ExecutionData(),
-//                         Execution = null,
-//                         PostJobExecution = null,
-//                     },
-//                 });
-//             _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task5")))
-//                 .Returns(new Definition()
-//                 {
-//                     Data = new DefinitionData()
-//                     {
-//                         PreJobExecution = null,
-//                         Execution = null,
-//                         PostJobExecution = new ExecutionData(),
-//                     },
-//                 });
-//             _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task6")))
-//                 .Returns(new Definition()
-//                 {
-//                     Data = new DefinitionData()
-//                     {
-//                         PreJobExecution = new ExecutionData(),
-//                         Execution = new ExecutionData(),
-//                         PostJobExecution = null,
-//                     },
-//                 });
-//             _taskManager.Setup(x => x.Load(It.Is<Pipelines.TaskStep>(t => t.DisplayName == "task7")))
-//                 .Returns(new Definition()
-//                 {
-//                     Data = new DefinitionData()
-//                     {
-//                         PreJobExecution = null,
-//                         Execution = new ExecutionData(),
-//                         PostJobExecution = new ExecutionData(),
-//                     },
-//                 });
+                trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
 
-//             hc.SetSingleton(_taskManager.Object);
-//             hc.SetSingleton(_config.Object);
-//             hc.SetSingleton(_jobServerQueue.Object);
-//             hc.SetSingleton(_proxy.Object);
-//             hc.SetSingleton(_cert.Object);
-//             hc.SetSingleton(_express.Object);
-//             hc.SetSingleton(_containerProvider.Object);
-//             hc.SetSingleton(_logPlugin.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // jobcontext logger
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // init step logger
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step 1
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // step 12
+                Assert.Equal(5, result.Count);
 
-//             hc.EnqueueInstance<ITaskRunner>(step1);
-//             hc.EnqueueInstance<ITaskRunner>(step2);
-//             hc.EnqueueInstance<ITaskRunner>(step3);
-//             hc.EnqueueInstance<ITaskRunner>(step4);
-//             hc.EnqueueInstance<ITaskRunner>(step5);
-//             hc.EnqueueInstance<ITaskRunner>(step6);
-//             hc.EnqueueInstance<ITaskRunner>(step7);
-//             hc.EnqueueInstance<ITaskRunner>(step8);
-//             hc.EnqueueInstance<ITaskRunner>(step9);
-//             hc.EnqueueInstance<ITaskRunner>(step10);
-//             hc.EnqueueInstance<ITaskRunner>(step11);
-//             hc.EnqueueInstance<ITaskRunner>(step12);
+                Assert.Equal("action1", result[0].DisplayName);
+                Assert.Equal("action2", result[1].DisplayName);
+                Assert.Equal("action3", result[2].DisplayName);
+                Assert.Equal("action4", result[3].DisplayName);
+                Assert.Equal("action5", result[4].DisplayName);
 
-//             _jobEc.Initialize(hc);
-//             _jobEc.InitializeJob(_message, _tokenSource.Token);
-//             return hc;
-//         }
+                Assert.NotNull(result[0].ExecutionContext);
+                Assert.NotNull(result[1].ExecutionContext);
+                Assert.NotNull(result[2].ExecutionContext);
+                Assert.NotNull(result[3].ExecutionContext);
+                Assert.NotNull(result[4].ExecutionContext);
+            }
+        }
 
-//         [Fact]
-//         [Trait("Level", "L0")]
-//         [Trait("Category", "Worker")]
-//         public async Task JobExtensioBuildStepsList()
-//         {
-//             using (TestHostContext hc = CreateTestContext())
-//             {
-//                 TestJobExtension testExtension = new TestJobExtension();
-//                 testExtension.Initialize(hc);
-//                 List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task JobExtensionBuildPreStepsList()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
 
-//                 var trace = hc.GetTrace();
+                _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>()))
+                              .Returns(Task.FromResult(new List<JobExtensionRunner>() { new JobExtensionRunner(null, "", "prepare1", null), new JobExtensionRunner(null, "", "prepare2", null) }));
 
-//                 trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
+                List<IStep> result = await jobExtension.InitializeJob(_jobEc, _message);
 
-//                 Assert.Equal(12, result.Count);
+                var trace = hc.GetTrace();
 
-//                 Assert.Equal("task2", result[0].DisplayName);
-//                 Assert.Equal("task3", result[1].DisplayName);
-//                 Assert.Equal("task4", result[2].DisplayName);
-//                 Assert.Equal("task6", result[3].DisplayName);
-//                 Assert.Equal("task1", result[4].DisplayName);
-//                 Assert.Equal("task2", result[5].DisplayName);
-//                 Assert.Equal("task6", result[6].DisplayName);
-//                 Assert.Equal("task7", result[7].DisplayName);
-//                 Assert.Equal("task7", result[8].DisplayName);
-//                 Assert.Equal("task5", result[9].DisplayName);
-//                 Assert.Equal("task3", result[10].DisplayName);
-//                 Assert.Equal("task2", result[11].DisplayName);
-//             }
-//         }
+                trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
 
-//         // [Fact]
-//         // [Trait("Level", "L0")]
-//         // [Trait("Category", "Worker")]
-//         // public async Task JobExtensionIntraTaskState()
-//         // {
-//         //     using (TestHostContext hc = CreateTestContext())
-//         //     {
-//         //         TestJobExtension testExtension = new TestJobExtension();
-//         //         testExtension.Initialize(hc);
-//         //         List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
+                Assert.Equal(7, result.Count);
 
-//         //         var trace = hc.GetTrace();
+                Assert.Equal("prepare1", result[0].DisplayName);
+                Assert.Equal("prepare2", result[1].DisplayName);
+                Assert.Equal("action1", result[2].DisplayName);
+                Assert.Equal("action2", result[3].DisplayName);
+                Assert.Equal("action3", result[4].DisplayName);
+                Assert.Equal("action4", result[5].DisplayName);
+                Assert.Equal("action5", result[6].DisplayName);
 
-//         //         trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
+                Assert.NotNull(result[0].ExecutionContext);
+                Assert.NotNull(result[1].ExecutionContext);
+                Assert.NotNull(result[2].ExecutionContext);
+                Assert.NotNull(result[3].ExecutionContext);
+                Assert.NotNull(result[4].ExecutionContext);
+                Assert.NotNull(result[5].ExecutionContext);
+                Assert.NotNull(result[6].ExecutionContext);
+            }
+        }
 
-//         //         Assert.Equal(12, result.Count);
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void UploadDiganosticLogIfEnvironmentVariableSet()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
 
-//         //         result[0].ExecutionContext.TaskVariables.Set("state1", "value1", false);
-//         //         Assert.Equal("value1", result[5].ExecutionContext.TaskVariables.Get("state1"));
-//         //         Assert.Equal("value1", result[11].ExecutionContext.TaskVariables.Get("state1"));
+                _message.Variables[Constants.Variables.Actions.RunnerDebug] = "true";
 
-//         //         Assert.Null(result[4].ExecutionContext.TaskVariables.Get("state1"));
-//         //         Assert.Null(result[1].ExecutionContext.TaskVariables.Get("state1"));
-//         //         Assert.Null(result[2].ExecutionContext.TaskVariables.Get("state1"));
-//         //         Assert.Null(result[10].ExecutionContext.TaskVariables.Get("state1"));
-//         //         Assert.Null(result[6].ExecutionContext.TaskVariables.Get("state1"));
-//         //         Assert.Null(result[7].ExecutionContext.TaskVariables.Get("state1"));
-//         //     }
-//         // }
+                _jobEc = new Runner.Worker.ExecutionContext();
+                _jobEc.Initialize(hc);
+                _jobEc.InitializeJob(_message, _tokenSource.Token);
 
-// #if OS_WINDOWS
-//         [Fact]
-//         [Trait("Level", "L0")]
-//         [Trait("Category", "Worker")]
-//         public async Task JobExtensionManagementScriptStep()
-//         {
-//             using (TestHostContext hc = CreateTestContext())
-//             {
-//                 hc.EnqueueInstance<IPagingLogger>(_logger.Object);
-//                 hc.EnqueueInstance<IPagingLogger>(_logger.Object);
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
 
-//                 Environment.SetEnvironmentVariable("VSTS_AGENT_INIT_INTERNAL_TEMP_HACK", "C:\\init.ps1");
-//                 Environment.SetEnvironmentVariable("VSTS_AGENT_CLEANUP_INTERNAL_TEMP_HACK", "C:\\clenup.ps1");
+                _diagnosticLogManager.Verify(x =>
+                    x.UploadDiagnosticLogs(
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                        It.IsAny<DateTime>()),
+                    Times.Once);
+            }
+        }
 
-//                 try
-//                 {
-//                     TestJobExtension testExtension = new TestJobExtension();
-//                     testExtension.Initialize(hc);
-//                     List<IStep> result = await testExtension.InitializeJob(_jobEc, _message);
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void DontUploadDiagnosticLogIfEnvironmentVariableFalse()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
 
-//                     var trace = hc.GetTrace();
+                _message.Variables[Constants.Variables.Actions.RunnerDebug] = "false";
 
-//                     trace.Info(string.Join(", ", result.Select(x => x.DisplayName)));
+                _jobEc = new Runner.Worker.ExecutionContext();
+                _jobEc.Initialize(hc);
+                _jobEc.InitializeJob(_message, _tokenSource.Token);
 
-//                     Assert.Equal(14, result.Count);
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
 
-//                     Assert.True(result[0] is ManagementScriptStep);
-//                     Assert.True(result[13] is ManagementScriptStep);
+                _diagnosticLogManager.Verify(x =>
+                    x.UploadDiagnosticLogs(
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                        It.IsAny<DateTime>()),
+                    Times.Never);
+            }
+        }
 
-//                     Assert.Equal(result[0].DisplayName, "Agent Initialization");
-//                     Assert.Equal(result[13].DisplayName, "Agent Cleanup");
-//                 }
-//                 finally
-//                 {
-//                     Environment.SetEnvironmentVariable("VSTS_AGENT_INIT_INTERNAL_TEMP_HACK", "");
-//                     Environment.SetEnvironmentVariable("VSTS_AGENT_CLEANUP_INTERNAL_TEMP_HACK", "");
-//                 }
-//             }
-//         }
-// #endif
-//     }
-// }
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void DontUploadDiagnosticLogIfEnvironmentVariableMissing()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+
+                _diagnosticLogManager.Verify(x =>
+                    x.UploadDiagnosticLogs(
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<IExecutionContext>(),
+                        It.IsAny<Pipelines.AgentJobRequestMessage>(),
+                        It.IsAny<DateTime>()),
+                    Times.Never);
+            }
+        }
+    }
+}

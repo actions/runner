@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker
     public interface IJobExtension : IRunnerService
     {
         Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message);
-        Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
+        void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
     }
 
     public sealed class JobExtension : RunnerService, IJobExtension
@@ -42,7 +42,6 @@ namespace GitHub.Runner.Worker
 
             List<IStep> preJobSteps = new List<IStep>();
             List<IStep> jobSteps = new List<IStep>();
-            List<IStep> postJobSteps = new List<IStep>();
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
@@ -231,7 +230,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public async Task FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
+        public void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
         {
             Trace.Entering();
             ArgUtil.NotNull(jobContext, nameof(jobContext));
@@ -245,19 +244,6 @@ namespace GitHub.Runner.Worker
                     context.Start();
                     context.Debug("Starting: Complete job");
 
-                    // Wait for agent log plugin process exits
-                    // var logPlugin = HostContext.GetService<IAgentLogPlugin>();
-                    // try
-                    // {
-                    //     await logPlugin.WaitAsync(context);
-                    // }
-                    // catch (Exception ex)
-                    // {
-                    //     // Log and ignore the error from log plugin finalization.
-                    //     Trace.Error($"Caught exception from log plugin finalization: {ex}");
-                    //     context.Output(ex.Message);
-                    // }
-
                     if (context.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
                     {
                         Trace.Info("Support log upload starting.");
@@ -267,7 +253,7 @@ namespace GitHub.Runner.Worker
 
                         try
                         {
-                            await diagnosticLogManager.UploadDiagnosticLogsAsync(executionContext: context, parentContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
+                            diagnosticLogManager.UploadDiagnosticLogs(executionContext: context, parentContext: jobContext, message: message, jobStartTimeUtc: jobStartTimeUtc);
 
                             Trace.Info("Support log upload complete.");
                             context.Output("Completed runner diagnostic log upload");

@@ -15,7 +15,7 @@ namespace GitHub.Runner.Worker
     [ServiceLocator(Default = typeof(DiagnosticLogManager))]
     public interface IDiagnosticLogManager : IRunnerService
     {
-        Task UploadDiagnosticLogsAsync(IExecutionContext executionContext,
+        void UploadDiagnosticLogs(IExecutionContext executionContext,
                                     IExecutionContext parentContext,
                                     Pipelines.AgentJobRequestMessage message,
                                     DateTime jobStartTimeUtc);
@@ -31,12 +31,10 @@ namespace GitHub.Runner.Worker
     public sealed class DiagnosticLogManager : RunnerService, IDiagnosticLogManager
     {
         private static string DateTimeFormat = "yyyyMMdd-HHmmss";
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously (method has async logic on only certain platforms)
-        public async Task UploadDiagnosticLogsAsync(IExecutionContext executionContext,
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-                                                IExecutionContext parentContext, 
-                                                Pipelines.AgentJobRequestMessage message,
-                                                DateTime jobStartTimeUtc)
+        public void UploadDiagnosticLogs(IExecutionContext executionContext,
+                                         IExecutionContext parentContext, 
+                                         Pipelines.AgentJobRequestMessage message,
+                                         DateTime jobStartTimeUtc)
         {
             executionContext.Debug("Starting diagnostic file upload.");
 
