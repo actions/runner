@@ -75,8 +75,6 @@ namespace GitHub.Runner.Worker
 
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
 
-        public string System_TFCollectionUrl => Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
-
         public string Get(string name)
         {
             Variable variable;

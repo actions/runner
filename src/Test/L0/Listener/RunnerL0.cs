@@ -138,11 +138,11 @@ namespace GitHub.Runner.Common.Tests.Listener
                 else
                 {
                     //Act
-                    hc.ShutdownRunner(ShutdownReason.UserCancelled); //stop Agent
+                    hc.ShutdownRunner(ShutdownReason.UserCancelled); //stop Runner
 
                     //Assert
                     Task[] taskToWait2 = { runnerTask, Task.Delay(2000) };
-                    //wait for the Agent to exit
+                    //wait for the runner to exit
                     await Task.WhenAny(taskToWait2);
 
                     Assert.True(runnerTask.IsCompleted, $"{nameof(runner.ExecuteCommand)} timed out.");
@@ -161,9 +161,9 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         public static TheoryData<string[], bool, Times> RunAsServiceTestData = new TheoryData<string[], bool, Times>()
                                                                     {
-                                                                        // staring with run command, configured as run as service, should start the agent
+                                                                        // staring with run command, configured as run as service, should start the runner
                                                                         { new [] { "run" }, true, Times.Once() },
-                                                                        // starting with no argument, configured not to run as service, should start agent interactively
+                                                                        // starting with no argument, configured not to run as service, should start runner interactively
                                                                         { new [] { "run" }, false, Times.Once() }
                                                                     };
         [Theory]
