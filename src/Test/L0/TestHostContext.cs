@@ -90,6 +90,8 @@ namespace GitHub.Runner.Common.Tests
 
         public ProductInfoHeaderValue UserAgent => new ProductInfoHeaderValue("L0Test", "0.0");
 
+        public RunnerWebProxy WebProxy => new RunnerWebProxy();
+
         public async Task Delay(TimeSpan delay, CancellationToken token)
         {
             await Task.Delay(TimeSpan.Zero);
@@ -272,24 +274,6 @@ namespace GitHub.Runner.Common.Tests
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
                         ".certificates");
-                    break;
-
-                case WellKnownConfigFile.Proxy:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".proxy");
-                    break;
-
-                case WellKnownConfigFile.ProxyCredentials:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".proxycredentials");
-                    break;
-
-                case WellKnownConfigFile.ProxyBypass:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".proxybypass");
                     break;
 
                 case WellKnownConfigFile.Options:

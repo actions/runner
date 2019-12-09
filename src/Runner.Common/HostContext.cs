@@ -26,6 +26,7 @@ namespace GitHub.Runner.Common
         ShutdownReason RunnerShutdownReason { get; }
         ISecretMasker SecretMasker { get; }
         ProductInfoHeaderValue UserAgent { get; }
+        RunnerWebProxy WebProxy { get; }
         string GetDirectory(WellKnownDirectory directory);
         string GetConfigFile(WellKnownConfigFile configFile);
         Tracing GetTrace(string name);
@@ -67,12 +68,14 @@ namespace GitHub.Runner.Common
         private IDisposable _diagListenerSubscription;
         private StartupType _startupType;
         private string _perfFile;
+        private RunnerWebProxy _webProxy = new RunnerWebProxy();
 
         public event EventHandler Unloading;
         public CancellationToken RunnerShutdownToken => _runnerShutdownTokenSource.Token;
         public ShutdownReason RunnerShutdownReason { get; private set; }
         public ISecretMasker SecretMasker => _secretMasker;
         public ProductInfoHeaderValue UserAgent => _userAgent;
+        public RunnerWebProxy WebProxy => _webProxy;
         public HostContext(string hostType, string logFile = null)
         {
             // Validate args.
@@ -146,6 +149,48 @@ namespace GitHub.Runner.Common
                 {
                     _trace.Error(ex);
                 }
+            }
+
+            // Check and trace proxy info
+            if (!string.IsNullOrEmpty(WebProxy.HttpProxyAddress))
+            {
+                if (string.IsNullOrEmpty(WebProxy.HttpProxyUsername) && string.IsNullOrEmpty(WebProxy.HttpProxyPassword))
+                {
+                    _trace.Info($"Configuring anonymous proxy {WebProxy.HttpProxyAddress} for all HTTP requests.");
+                }
+                else
+                {
+                    // Register proxy password as secret
+                    if (!string.IsNullOrEmpty(WebProxy.HttpProxyPassword))
+                    {
+                        this.SecretMasker.AddValue(WebProxy.HttpProxyPassword);
+                    }
+
+                    _trace.Info($"Configuring authenticated proxy {WebProxy.HttpProxyAddress} for all HTTP requests.");
+                }
+            }
+
+            if (!string.IsNullOrEmpty(WebProxy.HttpsProxyAddress))
+            {
+                if (string.IsNullOrEmpty(WebProxy.HttpsProxyUsername) && string.IsNullOrEmpty(WebProxy.HttpsProxyPassword))
+                {
+                    _trace.Info($"Configuring anonymous proxy {WebProxy.HttpsProxyAddress} for all HTTPS requests.");
+                }
+                else
+                {
+                    // Register proxy password as secret
+                    if (!string.IsNullOrEmpty(WebProxy.HttpsProxyPassword))
+                    {
+                        this.SecretMasker.AddValue(WebProxy.HttpsProxyPassword);
+                    }
+
+                    _trace.Info($"Configuring authenticated proxy {WebProxy.HttpsProxyAddress} for all HTTPS requests.");
+                }
+            }
+
+            if (string.IsNullOrEmpty(WebProxy.HttpProxyAddress) && string.IsNullOrEmpty(WebProxy.HttpsProxyAddress))
+            {
+                _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
             }
         }
 
@@ -280,24 +325,6 @@ namespace GitHub.Runner.Common
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
                         ".certificates");
-                    break;
-
-                case WellKnownConfigFile.Proxy:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".proxy");
-                    break;
-
-                case WellKnownConfigFile.ProxyCredentials:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".proxycredentials");
-                    break;
-
-                case WellKnownConfigFile.ProxyBypass:
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        ".proxybypass");
                     break;
 
                 case WellKnownConfigFile.Options:
@@ -580,8 +607,7 @@ namespace GitHub.Runner.Common
         public static HttpClientHandler CreateHttpClientHandler(this IHostContext context)
         {
             HttpClientHandler clientHandler = new HttpClientHandler();
-            var runnerWebProxy = context.GetService<IRunnerWebProxy>();
-            clientHandler.Proxy = runnerWebProxy.WebProxy;
+            clientHandler.Proxy = context.WebProxy;
             return clientHandler;
         }
     }

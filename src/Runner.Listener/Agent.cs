@@ -37,9 +37,8 @@ namespace GitHub.Runner.Listener
         {
             try
             {
-                var runnerWebProxy = HostContext.GetService<IRunnerWebProxy>();
                 var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, runnerWebProxy.WebProxy, runnerCertManager.VssClientCertificateManager);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, HostContext.WebProxy, runnerCertManager.VssClientCertificateManager);
 
                 _inConfigStage = true;
                 _completedCommand.Reset();

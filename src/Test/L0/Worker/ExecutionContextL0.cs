@@ -256,10 +256,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings());
             hc.SetSingleton(configurationStore.Object);
 
-            // Arrange: Setup the proxy configation.
-            var proxy = new Mock<IRunnerWebProxy>();
-            hc.SetSingleton(proxy.Object);
-
             // Arrange: Setup the cert configation.
             var cert = new Mock<IRunnerCertificateManager>();
             hc.SetSingleton(cert.Object);

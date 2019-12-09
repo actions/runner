@@ -65,8 +65,6 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             // Validate args.
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             Dictionary<string, string> configModifications = new Dictionary<string, string>();
-            Uri proxyUrlWithCred = null;
-            string proxyUrlWithCredString = null;
             bool useSelfSignedCACert = false;
             bool useClientCert = false;
             string clientCertPrivateKeyAskPassFile = null;
@@ -152,18 +150,6 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             // 2. git-lfs version greater than 2.1 since we need to use auth header.
             // 3. git version greater than 2.14.2 if use SChannel for SSL backend (Windows only)
             RequirementCheck(executionContext, gitCommandManager, gitLfsSupport);
-
-            // prepare credentail embedded urls
-            var runnerProxy = executionContext.GetProxyConfiguration();
-            if (runnerProxy != null && !string.IsNullOrEmpty(runnerProxy.ProxyAddress) && !runnerProxy.WebProxy.IsBypassed(repositoryUrl))
-            {
-                proxyUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(new Uri(runnerProxy.ProxyAddress), runnerProxy.ProxyUsername, runnerProxy.ProxyPassword);
-
-                // uri.absoluteuri will not contains port info if the scheme is http/https and the port is 80/443
-                // however, git.exe always require you provide port info, if nothing passed in, it will use 1080 as default
-                // as result, we need prefer the uri.originalstring over uri.absoluteuri.
-                proxyUrlWithCredString = proxyUrlWithCred.OriginalString;
-            }
 
             // prepare askpass for client cert private key, if the repository's endpoint url match the runner config url
             var systemConnection = executionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
@@ -355,13 +341,6 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                 await RemoveGitConfig(executionContext, gitCommandManager, targetPath, $"http.{repositoryUrl.AbsoluteUri}.extraheader", string.Empty);
             }
 
-            // always remove any possible left proxy setting from git config, the proxy setting may contains credential
-            if (await gitCommandManager.GitConfigExist(executionContext, targetPath, $"http.proxy"))
-            {
-                executionContext.Debug("Remove any proxy setting from git config.");
-                await RemoveGitConfig(executionContext, gitCommandManager, targetPath, $"http.proxy", string.Empty);
-            }
-
             List<string> additionalFetchArgs = new List<string>();
             List<string> additionalLfsFetchArgs = new List<string>();
 
@@ -374,15 +353,6 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             if (exitCode_config != 0)
             {
                 throw new InvalidOperationException($"Git config failed with exit code: {exitCode_config}");
-            }
-
-            // Prepare proxy config for fetch.
-            if (runnerProxy != null && !string.IsNullOrEmpty(runnerProxy.ProxyAddress) && !runnerProxy.WebProxy.IsBypassed(repositoryUrl))
-            {
-                executionContext.Debug($"Config proxy server '{runnerProxy.ProxyAddress}' for git fetch.");
-                ArgUtil.NotNullOrEmpty(proxyUrlWithCredString, nameof(proxyUrlWithCredString));
-                additionalFetchArgs.Add($"-c http.proxy=\"{proxyUrlWithCredString}\"");
-                additionalLfsFetchArgs.Add($"-c http.proxy=\"{proxyUrlWithCredString}\"");
             }
 
             // Prepare ignore ssl cert error config for fetch.
@@ -514,14 +484,6 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
 
                 List<string> additionalSubmoduleUpdateArgs = new List<string>();
 
-                // Prepare proxy config for submodule update.
-                if (runnerProxy != null && !string.IsNullOrEmpty(runnerProxy.ProxyAddress) && !runnerProxy.WebProxy.IsBypassed(repositoryUrl))
-                {
-                    executionContext.Debug($"Config proxy server '{runnerProxy.ProxyAddress}' for git submodule update.");
-                    ArgUtil.NotNullOrEmpty(proxyUrlWithCredString, nameof(proxyUrlWithCredString));
-                    additionalSubmoduleUpdateArgs.Add($"-c http.proxy=\"{proxyUrlWithCredString}\"");
-                }
-
                 // Prepare ignore ssl cert error config for fetch.
                 if (acceptUntrustedCerts)
                 {
@@ -592,7 +554,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             GitCliManager gitCommandManager = new GitCliManager();
             await gitCommandManager.LoadGitExecutionInfo(executionContext);
 
-            executionContext.Debug("Remove any extraheader and proxy setting from git config.");
+            executionContext.Debug("Remove any extraheader setting from git config.");
             var configKeys = JsonUtility.FromString<List<string>>(Environment.GetEnvironmentVariable("STATE_modifiedgitconfig"));
             if (configKeys?.Count > 0)
             {
@@ -677,7 +639,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             int exitCode_configUnset = await gitCommandManager.GitConfigUnset(executionContext, targetPath, configKey);
             if (exitCode_configUnset != 0)
             {
-                // if unable to use git.exe unset http.extraheader, http.proxy or core.askpass, modify git config file on disk. make sure we don't left credential.
+                // if unable to use git.exe unset http.extraheader or core.askpass, modify git config file on disk. make sure we don't left credential.
                 if (!string.IsNullOrEmpty(configValue))
                 {
                     executionContext.Warning("An unsuccessful attempt was made using git command line to remove \"http.extraheader\" from the git config. Attempting to modify the git config file directly to remove the credential.");
