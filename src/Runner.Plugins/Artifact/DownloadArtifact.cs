@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Build.WebApi;
 using GitHub.Services.Common;
 using GitHub.Runner.Sdk;
 
@@ -40,11 +39,8 @@ namespace GitHub.Runner.Plugins.Artifact
 
             targetPath = Path.IsPathFullyQualified(targetPath) ? targetPath : Path.GetFullPath(Path.Combine(defaultWorkingDirectory, targetPath));
 
-            // Project ID
-            Guid projectId = new Guid(context.Variables.GetValueOrDefault(BuildVariables.TeamProjectId)?.Value ?? Guid.Empty.ToString());
-
             // Build ID
-            string buildIdStr = context.Variables.GetValueOrDefault(BuildVariables.BuildId)?.Value ?? string.Empty;
+            string buildIdStr = context.Variables.GetValueOrDefault(SdkConstants.Variables.Build.BuildId)?.Value ?? string.Empty;
             if (!int.TryParse(buildIdStr, out int buildId))
             {
                 throw new ArgumentException($"Run Id is not an Int32: {buildIdStr}");
@@ -67,7 +63,7 @@ namespace GitHub.Runner.Plugins.Artifact
             string containerPath = actionsStorageArtifact.Name; // In actions storage artifacts, name equals the path
             long containerId = actionsStorageArtifact.ContainerId;
 
-            FileContainerServer fileContainerServer = new FileContainerServer(context.VssConnection, projectId, containerId, containerPath);
+            FileContainerServer fileContainerServer = new FileContainerServer(context.VssConnection, projectId: new Guid(), containerId, containerPath);
             await fileContainerServer.DownloadFromContainerAsync(context, targetPath, token);
 
             context.Output("Artifact download finished.");
