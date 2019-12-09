@@ -3,7 +3,7 @@ PACKAGERUNTIME=$1
 PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
-NODE12_VERSION="12.4.0"
+NODE12_VERSION="12.13.1"
 
 get_abs_path() {
   # exploits the fact that pwd will print abs path when no args
@@ -139,20 +139,13 @@ fi
 # Download the external tools for Linux PACKAGERUNTIMEs.
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
-    # TODO: Repath this blob to use a consistent version format (_ vs .)
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12_4_0/alpine/node-v${NODE12_VERSION}-alpine.tar.gz" node12_alpine
-    # acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12.13.0/alpine/x64/node-v${NODE12_VERSION}-alpine-x64.tar.gz" node12_alpine
+    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12.13.0/alpine/x64/node-v${NODE12_VERSION}-alpine-x64.tar.gz" node12_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-arm64.tar.gz" node12 fix_nested_dir
-    # TODO: alpine node runtime for arm64(8)
-    # acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12.13.0/alpine/arm64/node-v${NODE12_VERSION}-alpine-arm64.tar.gz" node12_alpine
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir
-    # TODO: alpine node runtime for arm32(7)
-    # Need to set up custom gcc toolchain to cross compile on x64 ubuntu for armv7 (per https://github.com/nodejs/node/blob/master/BUILDING.md)
-    # acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/12.13.0/alpine/arm/node-v${NODE12_VERSION}-alpine-arm.tar.gz" node12_alpine
 fi
