@@ -75,36 +75,6 @@ namespace GitHub.Runner.Worker
 
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
 
-        public string System_TFCollectionUrl => Get(WellKnownDistributedTaskVariables.TFCollectionUrl);
-
-        public static readonly HashSet<string> PiiVariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "Build.AuthorizeAs",
-            "Build.QueuedBy",
-            "Build.RequestedFor",
-            "Build.RequestedForEmail",
-            "Build.SourceBranch",
-            "Build.SourceBranchName",
-            "Build.SourceTfvcShelveset",
-            "Build.SourceVersion",
-            "Build.SourceVersionAuthor",
-            "Job.AuthorizeAs",
-            "Release.Deployment.RequestedFor",
-            "Release.Deployment.RequestedForEmail",
-            "Release.RequestedFor",
-            "Release.RequestedForEmail",
-        };
-
-        public static readonly string PiiArtifactVariablePrefix = "Release.Artifacts";
-
-        public static readonly List<string> PiiArtifactVariableSuffixes = new List<string>()
-        {
-            "SourceBranch",
-            "SourceBranchName",
-            "SourceVersion",
-            "RequestedFor"
-        };
-
         public string Get(string name)
         {
             Variable variable;

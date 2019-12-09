@@ -208,14 +208,6 @@ namespace GitHub.Runner.Common
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
 
-            public static class Agent
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string ToolsDirectory = "agent.ToolsDirectory";
-            }
-
             public static class System
             {
                 //

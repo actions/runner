@@ -14,8 +14,8 @@ namespace GitHub.Runner.Common.Tests
     {
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
-        public void AgentInterfacesSpecifyDefaultImplementation()
+        [Trait("Category", "Runner")]
+        public void RunnerInterfacesSpecifyDefaultImplementation()
         {
             // Validate all interfaces in the Listener assembly define a valid service locator attribute.
             // Otherwise, the interface needs to whitelisted.

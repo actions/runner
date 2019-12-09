@@ -5,9 +5,9 @@ using GitHub.Services.Common;
 
 namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
-    public class TestAgentCredential : CredentialProvider
+    public class TestRunnerCredential : CredentialProvider
     {
-        public TestAgentCredential(): base("TEST") {}
+        public TestRunnerCredential(): base("TEST") {}
         public override VssCredentials GetVssCredentials(IHostContext context)
         {
             Tracing trace = context.GetTrace("PersonalAccessToken");

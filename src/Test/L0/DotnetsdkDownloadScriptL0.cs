@@ -9,7 +9,7 @@ namespace GitHub.Runner.Common.Tests
     {
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async Task EnsureDotnetsdkBashDownloadScriptUpToDate()
         {
             string shDownloadUrl = "https://dot.net/v1/dotnet-install.sh";
@@ -33,7 +33,7 @@ namespace GitHub.Runner.Common.Tests
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async Task EnsureDotnetsdkPowershellDownloadScriptUpToDate()
         {
             string ps1DownloadUrl = "https://dot.net/v1/dotnet-install.ps1";

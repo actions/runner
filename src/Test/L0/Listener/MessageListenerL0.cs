@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common.Tests.Listener
     {
         private RunnerSettings _settings;
         private Mock<IConfigurationManager> _config;
-        private Mock<IRunnerServer> _agentServer;
+        private Mock<IRunnerServer> _runnerServer;
         private Mock<ICredentialManager> _credMgr;
 
         public MessageListenerL0()
@@ -26,7 +26,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _settings = new RunnerSettings { AgentId = 1, AgentName = "myagent", PoolId = 123, PoolName = "default", ServerUrl = "http://myserver", WorkFolder = "_work" };
             _config = new Mock<IConfigurationManager>();
             _config.Setup(x => x.LoadSettings()).Returns(_settings);
-            _agentServer = new Mock<IRunnerServer>();
+            _runnerServer = new Mock<IRunnerServer>();
             _credMgr = new Mock<ICredentialManager>();
         }
 
@@ -34,14 +34,14 @@ namespace GitHub.Runner.Common.Tests.Listener
         {
             TestHostContext tc = new TestHostContext(this, testName);
             tc.SetSingleton<IConfigurationManager>(_config.Object);
-            tc.SetSingleton<IRunnerServer>(_agentServer.Object);
+            tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             tc.SetSingleton<ICredentialManager>(_credMgr.Object);
             return tc;
         }
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void CreatesSession()
         {
             using (TestHostContext tc = CreateTestContext())
@@ -51,7 +51,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 // Arrange.
                 var expectedSession = new TaskAgentSession();
-                _agentServer
+                _runnerServer
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
@@ -69,7 +69,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 // Assert.
                 Assert.True(result);
-                _agentServer
+                _runnerServer
                     .Verify(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
@@ -79,7 +79,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void DeleteSession()
         {
             using (TestHostContext tc = CreateTestContext())
@@ -93,7 +93,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.NotNull(sessionIdProperty);
                 sessionIdProperty.SetValue(expectedSession, Guid.NewGuid());
 
-                _agentServer
+                _runnerServer
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
@@ -109,14 +109,14 @@ namespace GitHub.Runner.Common.Tests.Listener
                 bool result = await listener.CreateSessionAsync(tokenSource.Token);
                 Assert.True(result);
 
-                _agentServer
+                _runnerServer
                     .Setup(x => x.DeleteAgentSessionAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()))
                     .Returns(Task.CompletedTask);
                 await listener.DeleteSessionAsync();
 
                 //Assert
-                _agentServer
+                _runnerServer
                     .Verify(x => x.DeleteAgentSessionAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Once());
             }
@@ -124,7 +124,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public async void GetNextMessage()
         {
             using (TestHostContext tc = CreateTestContext())
@@ -138,7 +138,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.NotNull(sessionIdProperty);
                 sessionIdProperty.SetValue(expectedSession, Guid.NewGuid());
 
-                _agentServer
+                _runnerServer
                     .Setup(x => x.CreateAgentSessionAsync(
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
@@ -179,7 +179,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 };
                 var messages = new Queue<TaskAgentMessage>(arMessages);
 
-                _agentServer
+                _runnerServer
                     .Setup(x => x.GetAgentMessageAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token))
                     .Returns(async (Int32 poolId, Guid sessionId, Int64? lastMessageId, CancellationToken cancellationToken) =>
@@ -195,7 +195,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.Equal(arMessages[4], message3);
 
                 //Assert
-                _agentServer
+                _runnerServer
                     .Verify(x => x.GetAgentMessageAsync(
                         _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token), Times.Exactly(arMessages.Length));
             }

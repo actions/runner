@@ -73,7 +73,7 @@ namespace GitHub.Runner.Worker
                     SetCulture(jobMessage);
 
                     // Start the job.
-                    Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(WorkerUtilities.ScrubPiiData(jobMessage))}");
+                    Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(jobMessage)}");
                     Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage, jobRequestCancellationToken.Token);
 
                     // Start listening for a cancel message from the channel.
