@@ -407,26 +407,26 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--unattended" });
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Runner.CommandLine.Args.Agent, // argName
+                        Constants.Runner.CommandLine.Args.Name, // argName
                         "Enter the name of runner:", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
                         true)) // unattended
-                    .Returns("some agent");
+                    .Returns("some runner");
 
                 // Act.
                 string actual = command.GetRunnerName();
 
                 // Assert.
-                Assert.Equal("some agent", actual);
+                Assert.Equal("some runner", actual);
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForAgent()
+        public void PromptsForRunnerName()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -434,19 +434,19 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Runner.CommandLine.Args.Agent, // argName
+                        Constants.Runner.CommandLine.Args.Name, // argName
                         "Enter the name of runner:", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
                         false)) // unattended
-                    .Returns("some agent");
+                    .Returns("some runner");
 
                 // Act.
                 string actual = command.GetRunnerName();
 
                 // Assert.
-                Assert.Equal("some agent", actual);
+                Assert.Equal("some runner", actual);
             }
         }
 
