@@ -93,6 +93,7 @@ namespace GitHub.Runner.Common
                     public static readonly string Agent = "agent";
                     public static readonly string Auth = "auth";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
+                    public static readonly string Name = "name";
                     public static readonly string Pool = "pool";
                     public static readonly string SslCACert = "sslcacert";
                     public static readonly string SslClientCert = "sslclientcert";

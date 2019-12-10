@@ -45,6 +45,7 @@ namespace GitHub.Runner.Listener
             Constants.Runner.CommandLine.Args.Agent,
             Constants.Runner.CommandLine.Args.Auth,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
+            Constants.Runner.CommandLine.Args.Name,
             Constants.Runner.CommandLine.Args.Password,
             Constants.Runner.CommandLine.Args.Pool,
             Constants.Runner.CommandLine.Args.SslCACert,
@@ -170,15 +171,6 @@ namespace GitHub.Runner.Listener
         //
         // Args.
         //
-        public string GetAgentName()
-        {
-            return GetArgOrPrompt(
-                name: Constants.Runner.CommandLine.Args.Agent,
-                description: "Enter the name of runner:",
-                defaultValue: Environment.MachineName ?? "myagent",
-                validator: Validators.NonEmptyValidator);
-        }
-
         public string GetAuth(string defaultValue)
         {
             return GetArgOrPrompt(
@@ -203,6 +195,24 @@ namespace GitHub.Runner.Listener
                 name: Constants.Runner.CommandLine.Args.Pool,
                 description: "Enter the name of your runner pool:",
                 defaultValue: "default",
+                validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetRunnerName()
+        {
+            string runnerName = GetArg(name: Constants.Runner.CommandLine.Args.Name);
+
+            if (!string.IsNullOrEmpty(runnerName))
+            {
+                return runnerName;
+            }
+
+            // If 'name' arg was not defined, fall back to reading the legacy 'agent' arg
+            // This is to preserve back-compat with third-party scripts out there that configure self-hosted runners
+            return GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Agent,
+                description: "Enter the name of runner:",
+                defaultValue: Environment.MachineName ?? "myrunner",
                 validator: Validators.NonEmptyValidator);
         }
 
