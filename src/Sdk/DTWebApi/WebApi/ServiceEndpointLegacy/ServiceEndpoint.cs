@@ -45,47 +45,6 @@ namespace GitHub.DistributedTask.WebApi
             }
         }
 
-        public static bool ValidateServiceEndpoint(ServiceEndpoint endpoint, ref string message)
-        {
-            if (endpoint == null)
-            {
-                message = "endpoint: null";
-                return false;
-            }
-
-            if (endpoint.Id == Guid.Empty)
-            {
-                message = CommonResources.EmptyGuidNotAllowed("endpoint.Id");
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(endpoint.Name))
-            {
-                message = string.Format("{0}:{1}", CommonResources.EmptyStringNotAllowed(), "endpoint.Name");
-                return false;
-            }
-
-            if (endpoint.Url == null)
-            {
-                message = "endpoint.Url: null";
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(endpoint.Type))
-            {
-                message = string.Format("{0}:{1}", CommonResources.EmptyStringNotAllowed(), "endpoint.Type");
-                return false;
-            }
-
-            if (endpoint.Authorization == null)
-            {
-                message = "endpoint.Authorization: null";
-                return false;
-            }
-
-            return true;
-        }
-
         /// <summary>
         /// Gets or sets the identifier of this endpoint.
         /// </summary>

@@ -33,7 +33,7 @@ using GitHub.Services.WebApi;
 namespace GitHub.DistributedTask.WebApi
 {
     [ResourceArea(TaskResourceIds.AreaId)]
-    public abstract class TaskAgentHttpClientBase : TaskAgentHttpClientCompatBase
+    public abstract class TaskAgentHttpClientBase : VssHttpClientBase
     {
         public TaskAgentHttpClientBase(Uri baseUrl, VssCredentials credentials)
             : base(baseUrl, credentials)
@@ -659,7 +659,6 @@ namespace GitHub.DistributedTask.WebApi
             string poolName = null,
             IEnumerable<string> properties = null,
             TaskAgentPoolType? poolType = null,
-            TaskAgentPoolActionFilter? actionFilter = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -678,10 +677,6 @@ namespace GitHub.DistributedTask.WebApi
             if (poolType != null)
             {
                 queryParams.Add("poolType", poolType.Value.ToString());
-            }
-            if (actionFilter != null)
-            {
-                queryParams.Add("actionFilter", actionFilter.Value.ToString());
             }
 
             return SendAsync<List<TaskAgentPool>>(

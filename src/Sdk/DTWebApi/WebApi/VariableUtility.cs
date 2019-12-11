@@ -13,21 +13,9 @@ namespace GitHub.DistributedTask.WebApi
 {
     public static class VariableUtility
     {
-        public static EnableAccessTokenType GetEnableAccessTokenType(IDictionary<String, VariableValue> variables)
+        public static VariableValue Clone(this VariableValue value)
         {
-            EnableAccessTokenType type;
-            if (variables != null &&
-                variables.TryGetValue(WellKnownDistributedTaskVariables.EnableAccessToken, out VariableValue enableVariable) &&
-                enableVariable != null)
-            {
-                Enum.TryParse(enableVariable.Value, true, out type);
-            }
-            else
-            {
-                type = EnableAccessTokenType.None;
-            }
-
-            return type;
+            return new VariableValue(value);
         }
 
         public static Boolean IsVariable(String value)
