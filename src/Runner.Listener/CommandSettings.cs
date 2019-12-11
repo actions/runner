@@ -42,7 +42,6 @@ namespace GitHub.Runner.Listener
 
         private readonly string[] validArgs =
         {
-            Constants.Runner.CommandLine.Args.Agent,
             Constants.Runner.CommandLine.Args.Auth,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
             Constants.Runner.CommandLine.Args.Name,
@@ -200,31 +199,11 @@ namespace GitHub.Runner.Listener
 
         public string GetRunnerName()
         {
-            string runnerName = GetArg(name: Constants.Runner.CommandLine.Args.Name);
-
-            if (!string.IsNullOrEmpty(runnerName))
-            {
-                return runnerName;
-            }
-
-            // If 'name' arg was not defined, fall back to reading the legacy 'agent' arg
-            // This is to preserve back-compat with third-party scripts out there that configure self-hosted runners
-            string agentName = GetArg(name: Constants.Runner.CommandLine.Args.Agent);
-
-            if (!string.IsNullOrEmpty(agentName))
-            {
-                _trace.Warning("The '--agent' argument is now deprecated. Please use the '--name' argument to specify runner name.");
-
-                return agentName;
-            }
-            else
-            {
-                return GetArgOrPrompt(
-                    name: Constants.Runner.CommandLine.Args.Name,
-                    description: "Enter the name of runner:",
-                    defaultValue: Environment.MachineName ?? "myrunner",
-                    validator: Validators.NonEmptyValidator);
-            }
+            return GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Name,
+                description: "Enter the name of runner:",
+                defaultValue: Environment.MachineName ?? "myrunner",
+                validator: Validators.NonEmptyValidator);
         }
 
         public string GetToken()

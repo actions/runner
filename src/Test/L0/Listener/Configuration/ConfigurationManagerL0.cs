@@ -160,7 +160,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "--acceptteeeula", 
 #endif                       
                        "--url", _expectedServerUrl,
-                       "--agent", _expectedAgentName,
+                       "--name", _expectedAgentName,
                        "--pool", _expectedPoolName,
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,

@@ -90,7 +90,6 @@ namespace GitHub.Runner.Common
                 //validArgs array as well present in the CommandSettings.cs
                 public static class Args
                 {
-                    public static readonly string Agent = "agent";
                     public static readonly string Auth = "auth";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";

@@ -34,43 +34,6 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsAgentFallbackArg()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "--agent", "some agent" });
-
-                // Act.
-                string actual = command.GetRunnerName();
-
-                // Assert.
-                Assert.Equal("some agent", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void GetsNameAndAgentArgPreferRunner()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "--name", "some runner", "--agent", "some agent" });
-
-                // Act.
-                string actual = command.GetRunnerName();
-
-                // Assert.
-                Assert.Equal("some runner", actual);
-            }
-        }
-
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
         public void GetsNameArgFromEnvVar()
         {
             using (TestHostContext hc = CreateTestContext())
@@ -92,64 +55,6 @@ namespace GitHub.Runner.Common.Tests
                 finally
                 {
                     Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_NAME", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void GetsAgentFallbackArgFromEnvVar()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                try
-                {
-                    // Arrange.
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", "some agent");
-                    var command = new CommandSettings(hc, args: new string[0]);
-
-                    // Act.
-                    string actual = command.GetRunnerName();
-
-                    // Assert.
-                    Assert.Equal("some agent", actual);
-                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT") ?? string.Empty); // Should remove.
-                    Assert.Equal("some agent", hc.SecretMasker.MaskSecrets("some agent"));
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", null);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void GetsNameAndAgentFromEnvVarPreferName()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                try
-                {
-                    // Arrange.
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_NAME", "some runner");
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", "some agent");
-                    var command = new CommandSettings(hc, args: new string[0]);
-
-                    // Act.
-                    string actual = command.GetRunnerName();
-
-                    // Assert.
-                    Assert.Equal("some runner", actual);
-                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_NAME") ?? string.Empty); // Should remove.
-                    Assert.Equal("some runner", hc.SecretMasker.MaskSecrets("some runner"));
-                }
-                finally
-                {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_NAME", null);
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", null);
                 }
             }
         }
@@ -859,8 +764,8 @@ namespace GitHub.Runner.Common.Tests
                     args: new string[] {
                         "configure",
                         "--unattended",
-                        "--agent",
-                        "test agent" });
+                        "--name",
+                        "test runner" });
 
                 // Assert.
                 Assert.True(command.Validate().Count == 0);
