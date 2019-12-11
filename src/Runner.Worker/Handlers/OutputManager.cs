@@ -18,44 +18,46 @@ namespace GitHub.Runner.Worker.Handlers
         private static readonly Regex _colorCodeRegex = new Regex(@"\x0033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly IActionCommandManager _commandManager;
         private readonly IExecutionContext _executionContext;
+        private readonly int _failsafe = 50;
         private readonly object _matchersLock = new object();
         private readonly TimeSpan _timeout;
         private IssueMatcher[] _matchers = Array.Empty<IssueMatcher>();
+        // Mapping that indicates whether a directory belongs to the workflow repository
+        private readonly Dictionary<string, string> _directoryMap = new Dictionary<string, string>();
 
         public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager)
         {
-            //executionContext.Debug("ENTERING OutputManager ctor");
             _executionContext = executionContext;
             _commandManager = commandManager;
 
-            //_executionContext.Debug("OutputManager ctor - determine timeout from variable");
+            // Recursion failsafe (test override)
+            var failsafeString = Environment.GetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE");
+            if (!string.IsNullOrEmpty(failsafeString))
+            {
+                _failsafe = int.Parse(failsafeString, NumberStyles.None);
+            }
+
             // Determine the timeout
             var timeoutStr = _executionContext.Variables.Get(_timeoutKey);
             if (string.IsNullOrEmpty(timeoutStr) ||
                 !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                 _timeout <= TimeSpan.Zero)
             {
-                //_executionContext.Debug("OutputManager ctor - determine timeout from env var");
                 timeoutStr = Environment.GetEnvironmentVariable(_timeoutKey);
                 if (string.IsNullOrEmpty(timeoutStr) ||
                     !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                     _timeout <= TimeSpan.Zero)
                 {
-                    //_executionContext.Debug("OutputManager ctor - set timeout to default");
                     _timeout = TimeSpan.FromSeconds(1);
                 }
             }
 
-            //_executionContext.Debug("OutputManager ctor - adding matchers");
             // Lock
             lock (_matchersLock)
             {
-                //_executionContext.Debug("OutputManager ctor - adding OnMatcherChanged");
                 _executionContext.Add(OnMatcherChanged);
-                //_executionContext.Debug("OutputManager ctor - getting matchers");
                 _matchers = _executionContext.GetMatchers().Select(x => new IssueMatcher(x, _timeout)).ToArray();
             }
-            //_executionContext.Debug("LEAVING OutputManager ctor");
         }
 
         public void Dispose()
@@ -71,7 +73,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         public void OnDataReceived(object sender, ProcessDataReceivedEventArgs e)
         {
-            //_executionContext.Debug("ENTERING OutputManager OnDataReceived");
             var line = e.Data;
 
             // ## commands
@@ -82,7 +83,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // The logging queues and command handlers are thread-safe.
                 if (_commandManager.TryProcessCommand(_executionContext, line))
                 {
-                    //_executionContext.Debug("LEAVING OutputManager OnDataReceived - command processed");
                     return;
                 }
             }
@@ -142,7 +142,6 @@ namespace GitHub.Runner.Worker.Handlers
                             // Log issue
                             _executionContext.AddIssue(issue, stripped);
 
-                            //_executionContext.Debug("LEAVING OutputManager OnDataReceived - issue logged");
                             return;
                         }
                     }
@@ -151,7 +150,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Regular output
             _executionContext.Output(line);
-            //_executionContext.Debug("LEAVING OutputManager OnDataReceived");
         }
 
         private void OnMatcherChanged(object sender, MatcherChangedEventArgs e)
@@ -261,7 +259,7 @@ namespace GitHub.Runner.Worker.Handlers
                     var file = match.File;
 
                     // Root using fromPath
-                    if (!string.IsNullOrWhiteSpace(match.FromPath) && !Path.IsPathRooted(file))
+                    if (!string.IsNullOrWhiteSpace(match.FromPath) && !Path.IsPathFullyQualified(file))
                     {
                         var fromDirectory = Path.GetDirectoryName(match.FromPath);
                         if (!string.IsNullOrWhiteSpace(fromDirectory))
@@ -271,7 +269,7 @@ namespace GitHub.Runner.Worker.Handlers
                     }
 
                     // Root using workspace
-                    if (!Path.IsPathRooted(file))
+                    if (!Path.IsPathFullyQualified(file))
                     {
                         var workspace = _executionContext.GetGitHubContext("workspace");
                         ArgUtil.NotNullOrEmpty(workspace, "workspace");
@@ -279,31 +277,27 @@ namespace GitHub.Runner.Worker.Handlers
                         file = Path.Combine(workspace, file);
                     }
 
-                    // Normalize slashes
-                    file = file.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                    // Remove relative pathing and normalize slashes
+                    file = Path.GetFullPath(file);
 
-                    // File exists
+                    // Check whether the file exists
                     if (File.Exists(file))
                     {
-                        // Repository path
-                        var repositoryPath = _executionContext.GetGitHubContext("workspace");
-                        ArgUtil.NotNullOrEmpty(repositoryPath, nameof(repositoryPath));
-
-                        // Normalize slashes
-                        repositoryPath = repositoryPath.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-
-                        if (!file.StartsWith(repositoryPath, IOUtil.FilePathStringComparison))
+                        // Check whether the file is under the workflow repository
+                        var repositoryPath = GetRepositoryPath(file);
+                        if (!string.IsNullOrEmpty(repositoryPath))
                         {
-                            // File is not under repo
-                            _executionContext.Debug($"Dropping file value '{file}'. Path is not under the repo.");
+                            // Get the relative file path
+                            var relativePath = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar);
+
+                            // Prefer `/` on all platforms
+                            issue.Data["file"] = relativePath.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                         }
                         else
                         {
-                            // Prefer `/` on all platforms
-                            issue.Data["file"] = file.Substring(repositoryPath.Length).TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                            _executionContext.Debug($"Dropping file value '{file}'. Path is not under the workflow repo.");
                         }
                     }
-                    // File does not exist
                     else
                     {
                         _executionContext.Debug($"Dropping file value '{file}'. Path does not exist");
@@ -316,6 +310,61 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             return issue;
+        }
+
+        private string GetRepositoryPath(string filePath, int recursion = 0)
+        {
+            // Prevent the cache from growing too much
+            if (_directoryMap.Count > 100)
+            {
+                _directoryMap.Clear();
+            }
+
+            // Empty directory means we hit the root of the drive
+            var directoryPath = Path.GetDirectoryName(filePath);
+            if (string.IsNullOrEmpty(directoryPath) || recursion > _failsafe)
+            {
+                return null;
+            }
+
+            // Check the cache
+            if (_directoryMap.TryGetValue(directoryPath, out string repositoryPath))
+            {
+                return repositoryPath;
+            }
+
+            try
+            {
+                // Check if .git/config exists
+                var gitConfigPath = Path.Combine(directoryPath, ".git", "config");
+                if (File.Exists(gitConfigPath))
+                {
+                    // Check if the config contains the workflow repository url
+                    var qualifiedRepository = _executionContext.GetGitHubContext("repository");
+                    var configMatch = $"url = https://github.com/{qualifiedRepository}";
+                    var content = File.ReadAllText(gitConfigPath);
+                    foreach (var line in content.Split("\n").Select(x => x.Trim()))
+                    {
+                        if (String.Equals(line, configMatch, StringComparison.OrdinalIgnoreCase))
+                        {
+                            repositoryPath = directoryPath;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    // Recursive call
+                    repositoryPath = GetRepositoryPath(directoryPath, recursion + 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                _executionContext.Debug($"Error when attempting to determine whether the path '{filePath}' is under the workflow repository: {ex.Message}");
+            }
+
+            _directoryMap[directoryPath] = repositoryPath;
+            return repositoryPath;
         }
     }
 }
