@@ -9,70 +9,9 @@ namespace GitHub.DistributedTask.Pipelines
     public static class RepositoryPropertyNames
     {
         public static readonly String Id = "id";
-        public static readonly String Mappings = "mappings";
-        public static readonly String Name = "name";
-        public static readonly String Ref = "ref";
         public static readonly String Type = "type";
         public static readonly String Url = "url";
         public static readonly String Version = "version";
-        public static readonly String VersionInfo = "versionInfo";
-        public static readonly String VersionSpec = "versionSpec";
-        public static readonly String Shelveset = "shelveset";
-        public static readonly String Project = "project";
-        public static readonly String Path = "path";
-        public static readonly String CheckoutOptions = "checkoutOptions";
-        public static readonly String DefaultBranch = "defaultBranch";
-        public static readonly String ExternalId = "externalId";
-        public static readonly String IsJustInTimeRepository = "isJustInTimeRepository";
-    }
-
-    [DataContract]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public class VersionInfo
-    {
-        [DataMember(EmitDefaultValue = false)]
-        public String Author { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public String Message { get; set; }
-    }
-
-    [DataContract]
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public class CheckoutOptions
-    {
-        [JsonConstructor]
-        public CheckoutOptions()
-        { }
-
-        private CheckoutOptions(CheckoutOptions optionsToCopy)
-        {
-            this.Clean = optionsToCopy.Clean;
-            this.FetchDepth = optionsToCopy.FetchDepth;
-            this.Lfs = optionsToCopy.Lfs;
-            this.Submodules = optionsToCopy.Submodules;
-            this.PersistCredentials = optionsToCopy.PersistCredentials;
-        }
-
-        [DataMember(EmitDefaultValue = false)]
-        public String Clean{ get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public String FetchDepth{ get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public String Lfs { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public String Submodules { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public String PersistCredentials { get; set; }
-
-        public CheckoutOptions Clone()
-        {
-            return new CheckoutOptions(this);
-        }
     }
 
     /// <summary>

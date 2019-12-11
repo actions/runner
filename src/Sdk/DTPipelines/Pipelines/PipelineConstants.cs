@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using GitHub.DistributedTask.WebApi;
-using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.Pipelines
 {
@@ -12,17 +9,7 @@ namespace GitHub.DistributedTask.Pipelines
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class PipelineConstants
     {
-        /// <summary>
-        /// The minimum agent version when performing an advanced checkout. This demand
-        /// is required when multiple checkout steps are used, when the checkout step
-        /// is not the first step, or when any repository is checked out other than self
-        /// or none.
-        /// </summary>
-        public static readonly String AdvancedCheckoutMinAgentVersion = "2.137.0";
-
         public static readonly String AgentVersionDemandName = "Runner.Version";
-
-        public static readonly String AgentName = "Agent.Name";
 
         /// <summary>
         /// The default job cancel timeout in minutes.
@@ -51,19 +38,9 @@ namespace GitHub.DistributedTask.Pipelines
         public static readonly Int32 MaxNodeNameLength = 100;
 
         /// <summary>
-        /// The repository alias to use for dont-sync-sources.
-        /// </summary>
-        public static readonly String NoneAlias = "none";
-
-        /// <summary>
         /// Alias for the self repository.
         /// </summary>
         public static readonly String SelfAlias = "self";
-
-        /// <summary>
-        /// Alias for the repository coming from designer build definition.
-        /// </summary>
-        public static readonly String DesignerRepo = "__designer_repo";
 
         /// <summary>
         /// Error code during graph validation.
@@ -89,9 +66,6 @@ namespace GitHub.DistributedTask.Pipelines
         /// Error code during graph validation.
         /// </summary>
         internal const String StartingPointNotFound = nameof(StartingPointNotFound);
-
-        internal const String CheckpointNodeInstanceNameClaimKey = "nodeInstanceName";
-        internal const String CheckpointIdClaimKey = "checkpointId";
 
         public static class CheckoutTaskInputs
         {
@@ -119,21 +93,6 @@ namespace GitHub.DistributedTask.Pipelines
             public static readonly String Outputs = "outputs";
             public static readonly String Resources = "resources";
             public static readonly String All = "all";
-        }
-
-        public static class EnvironmentVariables
-        {
-            public static readonly String EnvironmentId = "Environment.Id";
-            public static readonly String EnvironmentName = "Environment.Name";
-            public static readonly String EnvironmentResourceId = "Environment.ResourceId";
-            public static readonly String EnvironmentResourceName = "Environment.ResourceName";
-        }
-
-        public static class ScriptStepInputs
-        {
-            public static readonly String Script = "script";
-            public static readonly String WorkingDirectory = "workingDirectory";
-            public static readonly String Shell = "shell";
         }
     }
 }
