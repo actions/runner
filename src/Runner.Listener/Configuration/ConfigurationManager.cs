@@ -79,7 +79,6 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteLine("|                                                                              |", ConsoleColor.White);
             _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
 
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
             {
@@ -397,7 +396,6 @@ namespace GitHub.Runner.Listener.Configuration
 
         public async Task UnconfigureAsync(CommandSettings command)
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             string currentAction = string.Empty;
 
             _term.WriteSection("Runner removal");

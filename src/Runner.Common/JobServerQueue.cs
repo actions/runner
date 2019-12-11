@@ -63,7 +63,6 @@ namespace GitHub.Runner.Common
         private Task[] _allDequeueTasks;
         private readonly TaskCompletionSource<int> _jobCompletionSource = new TaskCompletionSource<int>();
         private bool _queueInProcess = false;
-        private ITerminal _term;
 
         public event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
 
@@ -85,11 +84,6 @@ namespace GitHub.Runner.Common
         public void Start(Pipelines.AgentJobRequestMessage jobRequest)
         {
             Trace.Entering();
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                _term = HostContext.GetService<ITerminal>();
-                return;
-            }
 
             if (_queueInProcess)
             {
@@ -129,11 +123,6 @@ namespace GitHub.Runner.Common
         // TimelineUpdate queue error will become critical when timeline records contain output variabls.
         public async Task ShutdownAsync()
         {
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                return;
-            }
-
             if (!_queueInProcess)
             {
                 Trace.Info("No-op, all queue process tasks have been stopped.");
@@ -169,32 +158,11 @@ namespace GitHub.Runner.Common
         public void QueueWebConsoleLine(Guid stepRecordId, string line)
         {
             Trace.Verbose("Enqueue web console line queue: {0}", line);
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                if ((line ?? string.Empty).StartsWith("##[section]"))
-                {
-                    Console.WriteLine("******************************************************************************");
-                    Console.WriteLine(line.Substring("##[section]".Length));
-                    Console.WriteLine("******************************************************************************");
-                }
-                else
-                {
-                    Console.WriteLine(line);
-                }
-
-                return;
-            }
-
             _webConsoleLineQueue.Enqueue(new ConsoleLineInfo(stepRecordId, line));
         }
 
         public void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource)
         {
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                return;
-            }
-
             ArgUtil.NotEmpty(timelineId, nameof(timelineId));
             ArgUtil.NotEmpty(timelineRecordId, nameof(timelineRecordId));
 
@@ -215,11 +183,6 @@ namespace GitHub.Runner.Common
 
         public void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord)
         {
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                return;
-            }
-
             ArgUtil.NotEmpty(timelineId, nameof(timelineId));
             ArgUtil.NotNull(timelineRecord, nameof(timelineRecord));
             ArgUtil.NotEmpty(timelineRecord.Id, nameof(timelineRecord.Id));

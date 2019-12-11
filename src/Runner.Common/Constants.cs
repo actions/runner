@@ -2,12 +2,6 @@
 
 namespace GitHub.Runner.Common
 {
-    public enum RunMode
-    {
-        Normal, // Keep "Normal" first (default value).
-        Local,
-    }
-
     public enum WellKnownDirectory
     {
         Bin,

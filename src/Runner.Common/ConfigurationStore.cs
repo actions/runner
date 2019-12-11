@@ -139,7 +139,6 @@ namespace GitHub.Runner.Common
 
         public bool HasCredentials()
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("HasCredentials()");
             bool credsStored = (new FileInfo(_credFilePath)).Exists;
             Trace.Info("stored {0}", credsStored);
@@ -149,14 +148,13 @@ namespace GitHub.Runner.Common
         public bool IsConfigured()
         {
             Trace.Info("IsConfigured()");
-            bool configured = HostContext.RunMode == RunMode.Local || (new FileInfo(_configFilePath)).Exists;
+            bool configured = new FileInfo(_configFilePath).Exists;
             Trace.Info("IsConfigured: {0}", configured);
             return configured;
         }
 
         public bool IsServiceConfigured()
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("IsServiceConfigured()");
             bool serviceConfigured = (new FileInfo(_serviceConfigFilePath)).Exists;
             Trace.Info($"IsServiceConfigured: {serviceConfigured}");
@@ -165,7 +163,6 @@ namespace GitHub.Runner.Common
 
         public CredentialData GetCredentials()
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             if (_creds == null)
             {
                 _creds = IOUtil.LoadObject<CredentialData>(_credFilePath);
@@ -195,7 +192,6 @@ namespace GitHub.Runner.Common
 
         public void SaveCredential(CredentialData credential)
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("Saving {0} credential @ {1}", credential.Scheme, _credFilePath);
             if (File.Exists(_credFilePath))
             {
@@ -211,7 +207,6 @@ namespace GitHub.Runner.Common
 
         public void SaveSettings(RunnerSettings settings)
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info("Saving runner settings.");
             if (File.Exists(_configFilePath))
             {
@@ -227,13 +222,11 @@ namespace GitHub.Runner.Common
 
         public void DeleteCredential()
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             IOUtil.Delete(_credFilePath, default(CancellationToken));
         }
 
         public void DeleteSettings()
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             IOUtil.Delete(_configFilePath, default(CancellationToken));
         }
 

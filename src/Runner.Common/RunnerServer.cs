@@ -66,11 +66,6 @@ namespace GitHub.Runner.Common
 
         public async Task ConnectAsync(Uri serverUrl, VssCredentials credentials)
         {
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                return;
-            }
-
             var createGenericConnection = EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(100));
             var createMessageConnection = EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
             var createRequestConnection = EstablishVssConnection(serverUrl, credentials, TimeSpan.FromSeconds(60));
@@ -303,29 +298,18 @@ namespace GitHub.Runner.Common
 
         public Task<TaskAgentJobRequest> RenewAgentRequestAsync(int poolId, long requestId, Guid lockToken, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                return Task.FromResult(JsonUtility.FromString<TaskAgentJobRequest>("{ lockedUntil: \"" + DateTime.Now.Add(TimeSpan.FromMinutes(5)).ToString("u") + "\" }"));
-            }
-
             CheckConnection(RunnerConnectionType.JobRequest);
             return _requestTaskAgentClient.RenewAgentRequestAsync(poolId, requestId, lockToken, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> FinishAgentRequestAsync(int poolId, long requestId, Guid lockToken, DateTime finishTime, TaskResult result, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                return Task.FromResult<TaskAgentJobRequest>(null);
-            }
-
             CheckConnection(RunnerConnectionType.JobRequest);
             return _requestTaskAgentClient.FinishAgentRequestAsync(poolId, requestId, lockToken, finishTime, result, cancellationToken: cancellationToken);
         }
 
         public Task<TaskAgentJobRequest> GetAgentRequestAsync(int poolId, long requestId, CancellationToken cancellationToken = default(CancellationToken))
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             CheckConnection(RunnerConnectionType.JobRequest);
             return _requestTaskAgentClient.GetAgentRequestAsync(poolId, requestId, cancellationToken: cancellationToken);
         }
@@ -335,7 +319,6 @@ namespace GitHub.Runner.Common
         //-----------------------------------------------------------------
         public Task<List<PackageMetadata>> GetPackagesAsync(string packageType, string platform, int top, CancellationToken cancellationToken)
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.GetPackagesAsync(packageType, platform, top, cancellationToken: cancellationToken);
         }
