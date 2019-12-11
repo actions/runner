@@ -214,7 +214,7 @@ namespace GitHub.Runner.Listener.Configuration
             TaskAgent agent;
             while (true)
             {
-                runnerSettings.AgentName = command.GetAgentName();
+                runnerSettings.AgentName = command.GetRunnerName();
 
                 _term.WriteLine();
 

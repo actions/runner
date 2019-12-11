@@ -42,9 +42,9 @@ namespace GitHub.Runner.Listener
 
         private readonly string[] validArgs =
         {
-            Constants.Runner.CommandLine.Args.Agent,
             Constants.Runner.CommandLine.Args.Auth,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
+            Constants.Runner.CommandLine.Args.Name,
             Constants.Runner.CommandLine.Args.Password,
             Constants.Runner.CommandLine.Args.Pool,
             Constants.Runner.CommandLine.Args.SslCACert,
@@ -170,15 +170,6 @@ namespace GitHub.Runner.Listener
         //
         // Args.
         //
-        public string GetAgentName()
-        {
-            return GetArgOrPrompt(
-                name: Constants.Runner.CommandLine.Args.Agent,
-                description: "Enter the name of runner:",
-                defaultValue: Environment.MachineName ?? "myagent",
-                validator: Validators.NonEmptyValidator);
-        }
-
         public string GetAuth(string defaultValue)
         {
             return GetArgOrPrompt(
@@ -203,6 +194,15 @@ namespace GitHub.Runner.Listener
                 name: Constants.Runner.CommandLine.Args.Pool,
                 description: "Enter the name of your runner pool:",
                 defaultValue: "default",
+                validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetRunnerName()
+        {
+            return GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Name,
+                description: "Enter the name of runner:",
+                defaultValue: Environment.MachineName ?? "myrunner",
                 validator: Validators.NonEmptyValidator);
         }
 

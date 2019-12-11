@@ -1,11 +1,9 @@
 using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
-using GitHub.Runner.Common.Util;
 using Moq;
 using System;
 using System.Runtime.CompilerServices;
 using Xunit;
-using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -18,45 +16,45 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsArg()
+        public void GetsNameArg()
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
-                var command = new CommandSettings(hc, args: new string[] { "--agent", "some agent" });
+                var command = new CommandSettings(hc, args: new string[] { "--name", "some runner" });
 
                 // Act.
-                string actual = command.GetAgentName();
+                string actual = command.GetRunnerName();
 
                 // Assert.
-                Assert.Equal("some agent", actual);
+                Assert.Equal("some runner", actual);
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void GetsArgFromEnvVar()
+        public void GetsNameArgFromEnvVar()
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 try
                 {
                     // Arrange.
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", "some agent");
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_NAME", "some runner");
                     var command = new CommandSettings(hc, args: new string[0]);
 
                     // Act.
-                    string actual = command.GetAgentName();
+                    string actual = command.GetRunnerName();
 
                     // Assert.
-                    Assert.Equal("some agent", actual);
-                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT") ?? string.Empty); // Should remove.
-                    Assert.Equal("some agent", hc.SecretMasker.MaskSecrets("some agent"));
+                    Assert.Equal("some runner", actual);
+                    Assert.Equal(string.Empty, Environment.GetEnvironmentVariable("ACTIONS_RUNNER_INPUT_NAME") ?? string.Empty); // Should remove.
+                    Assert.Equal("some runner", hc.SecretMasker.MaskSecrets("some runner"));
                 }
                 finally
                 {
-                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_AGENT", null);
+                    Environment.SetEnvironmentVariable("ACTIONS_RUNNER_INPUT_NAME", null);
                 }
             }
         }
@@ -314,26 +312,26 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[] { "--unattended" });
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Runner.CommandLine.Args.Agent, // argName
+                        Constants.Runner.CommandLine.Args.Name, // argName
                         "Enter the name of runner:", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
                         true)) // unattended
-                    .Returns("some agent");
+                    .Returns("some runner");
 
                 // Act.
-                string actual = command.GetAgentName();
+                string actual = command.GetRunnerName();
 
                 // Assert.
-                Assert.Equal("some agent", actual);
+                Assert.Equal("some runner", actual);
             }
         }
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForAgent()
+        public void PromptsForRunnerName()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -341,19 +339,19 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Runner.CommandLine.Args.Agent, // argName
+                        Constants.Runner.CommandLine.Args.Name, // argName
                         "Enter the name of runner:", // description
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
                         false)) // unattended
-                    .Returns("some agent");
+                    .Returns("some runner");
 
                 // Act.
-                string actual = command.GetAgentName();
+                string actual = command.GetRunnerName();
 
                 // Assert.
-                Assert.Equal("some agent", actual);
+                Assert.Equal("some runner", actual);
             }
         }
 
@@ -766,8 +764,8 @@ namespace GitHub.Runner.Common.Tests
                     args: new string[] {
                         "configure",
                         "--unattended",
-                        "--agent",
-                        "test agent" });
+                        "--name",
+                        "test runner" });
 
                 // Assert.
                 Assert.True(command.Validate().Count == 0);
