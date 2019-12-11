@@ -341,7 +341,7 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     // Check if the config contains the workflow repository url
                     var qualifiedRepository = _executionContext.GetGitHubContext("repository");
-                    var configMatch =  $"url = https://github.com/{qualifiedRepository}";
+                    var configMatch = $"url = https://github.com/{qualifiedRepository}";
                     var content = File.ReadAllText(gitConfigPath);
                     foreach (var line in content.Split("\n").Select(x => x.Trim()))
                     {

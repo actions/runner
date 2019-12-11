@@ -890,12 +890,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             var gitPath = WhichUtil.Which("git", true);
             var environment = new Dictionary<string, string>();
 
-            using(var processInvoker = new ProcessInvoker(hostConetxt.GetTrace()))
+            using (var processInvoker = new ProcessInvoker(hostConetxt.GetTrace()))
             {
                 await processInvoker.ExecuteAsync(path, gitPath, "init", environment, CancellationToken.None);
             }
 
-            using(var processInvoker = new ProcessInvoker(hostConetxt.GetTrace()))
+            using (var processInvoker = new ProcessInvoker(hostConetxt.GetTrace()))
             {
                 await processInvoker.ExecuteAsync(path, gitPath, $"remote add origin {url}", environment, CancellationToken.None);
             }
