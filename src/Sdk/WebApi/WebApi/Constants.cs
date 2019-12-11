@@ -5,42 +5,11 @@ using System.Runtime.Serialization;
 
 namespace GitHub.Services.WebApi
 {
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // This will not be like MS.TF.Framework.Common!
-    // If your service does not ship in SPS or the Framework SDK you cannot put your stuff here!
-    // It goes in your own assembly!
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
     [GenerateAllConstants]
     public static class ServiceInstanceTypes
     {
-        // !!!!!!!!!!!!!!!!!!
-        // This class is sealed to new guids -- please define your instance type constant in your own assembly
-        // !!!!!!!!!!!!!!!!!!
-
-        public const String MPSString = "00000000-0000-8888-8000-000000000000";
-        public static readonly Guid MPS = new Guid(MPSString);
-
-        public const String SPSString = "951917AC-A960-4999-8464-E3F0AA25B381";
-        public static readonly Guid SPS = new Guid(SPSString);
-
-        public const String TFSString = "00025394-6065-48CA-87D9-7F5672854EF7";
-        public static readonly Guid TFS = new Guid(TFSString);
-
         public const String TFSOnPremisesString = "87966EAA-CB2A-443F-BE3C-47BD3B5BF3CB";
         public static readonly Guid TFSOnPremises = new Guid(TFSOnPremisesString);
-
-        [Obsolete]
-        public const String SpsExtensionString = "00000024-0000-8888-8000-000000000000";
-        [Obsolete]
-        public static readonly Guid SpsExtension = new Guid(SpsExtensionString);
-
-        public const String SDKSampleString = "FFFFFFFF-0000-8888-8000-000000000000";
-        public static readonly Guid SDKSample = new Guid(SDKSampleString);        
-
-        // !!!!!!!!!!!!!!!!!!
-        // This class is sealed to new guids -- please define your instance type constant in your own assembly
-        // !!!!!!!!!!!!!!!!!!
     }   
 
     /// <summary>

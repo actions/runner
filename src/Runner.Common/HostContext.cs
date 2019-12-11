@@ -20,7 +20,6 @@ namespace GitHub.Runner.Common
 {
     public interface IHostContext : IDisposable
     {
-        RunMode RunMode { get; set; }
         StartupType StartupType { get; set; }
         CancellationToken RunnerShutdownToken { get; }
         ShutdownReason RunnerShutdownReason { get; }
@@ -58,7 +57,6 @@ namespace GitHub.Runner.Common
         private readonly ProductInfoHeaderValue _userAgent = new ProductInfoHeaderValue($"GitHubActionsRunner-{BuildConstants.RunnerPackage.PackageName}", BuildConstants.RunnerPackage.Version);
         private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
         private object _perfLock = new object();
-        private RunMode _runMode = RunMode.Normal;
         private Tracing _trace;
         private Tracing _vssTrace;
         private Tracing _httpTrace;
@@ -191,20 +189,6 @@ namespace GitHub.Runner.Common
             if (string.IsNullOrEmpty(WebProxy.HttpProxyAddress) && string.IsNullOrEmpty(WebProxy.HttpsProxyAddress))
             {
                 _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
-            }
-        }
-
-        public RunMode RunMode
-        {
-            get
-            {
-                return _runMode;
-            }
-
-            set
-            {
-                _trace.Info($"Set run mode: {value}");
-                _runMode = value;
             }
         }
 

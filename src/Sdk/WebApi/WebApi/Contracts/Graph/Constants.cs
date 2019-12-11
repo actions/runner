@@ -103,56 +103,6 @@ namespace GitHub.Services.Graph
 
         public static readonly IReadOnlyDictionary<String, String> SocialTypeMap;
 
-        public static class ScopeUpdateFields
-        {
-            public const string Name = "name";
-        }
-
-        public static class GroupUpdateFields
-        {
-            public const string DisplayName = "displayName";
-            public const string Description = "description";
-        }
-
-        public static class Links
-        {
-            public const string Self = "self";
-            public const string Memberships = "memberships";
-            public const string MembershipState = "membershipState";
-            public const string StorageKey = "storageKey";
-            public const string Groups = "groups";
-            public const string Descriptor = "descriptor";
-            public const string Subject = "subject";
-            public const string Member = "member";
-            public const string Conainer = "container";
-            public const string Avatar = "avatar";
-        }
-
-        [GenerateSpecificConstants]
-        public static class OriginName
-        {
-            public const string ActiveDirectory = "ad";
-            [GenerateConstant]
-            public const string AzureActiveDirectory = "aad";
-            [GenerateConstant]
-            public const string MicrosoftAccount = "msa";
-            [GenerateConstant]
-            public const string VisualStudioTeamServices = "vsts";
-            [GenerateConstant]
-            public const string GitHubDirectory = "ghb";
-        }
-
-        public static class FederatedProviderName
-        {
-            public const string GitHub = "github.com";
-        }
-
-        public static class TraversalDepth
-        {
-            public const int Direct = 1;
-            public const int Expanded = -1;
-        }
-
         [GenerateSpecificConstants]
         public static class UserMetaType
         {
@@ -179,15 +129,6 @@ namespace GitHub.Services.Graph
             internal const int MaxIdentifierLength = SubjectDescriptorPolicies.MaxIdentifierLength;
         }
 
-        internal static class Version
-        {
-            internal const int Unspecified = -1;
-        }
-
-        public const int MaximumRestResultSize = 500;
-        public const string JsonPatchMediaType = "application/json-patch+json";
-        public const string JsonPatchOperationPathPrefix = "/";
-        public const char SubjectListSeparator = ',';
         public const char SubjectDescriptorPartsSeparator = '.';
 
         // Social descriptor constants

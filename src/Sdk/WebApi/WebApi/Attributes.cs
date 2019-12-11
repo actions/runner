@@ -19,60 +19,6 @@ namespace GitHub.Services.WebApi
     }
 
     /// <summary>
-    /// Use in conjunction with JsonCompatConverter.  This attribute describes a model property or field change at a particular API version.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-    public sealed class CompatPropertyAttribute : Attribute
-    {
-        /// <summary>
-        /// This attribute describes a model property or field change at a particular API version.
-        /// </summary>
-        /// <param name="oldName">Old name of the serialized property.</param>
-        /// <param name="majorApiVersion">The major version component of the max version of the api to support the old property name.</param>
-        /// <param name="minorApiVersion">The minor version component of the max version of the api to support the old property name.</param>
-        public CompatPropertyAttribute(String oldName, Int32 majorApiVersion, Int32 minorApiVersion = 0)
-        {
-            OldName = oldName;
-            MaxApiVersion = new Version(majorApiVersion, minorApiVersion);
-        }
-
-        /// <summary>
-        /// Old name of the serialized property.
-        /// </summary>
-        public String OldName { get; private set; }
-
-        /// <summary>
-        /// The max version of the api to support the old property name.
-        /// </summary>
-        public Version MaxApiVersion { get; private set; }
-    }
-
-    /// <summary>
-    /// This tells the client generator to set this property to the content of the repsonse 
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public sealed class ClientResponseContentAttribute : Attribute
-    {
-        public ClientResponseContentAttribute()
-        {
-        }
-    }
-
-    /// <summary>
-    /// This tells the client generator to set this property to the header value from the response.  This should only be added to types of IEnumerable&lt;String&gt;
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    public sealed class ClientResponseHeaderAttribute : Attribute
-    {
-        public ClientResponseHeaderAttribute(string headerName)
-        {
-            HeaderName = headerName;
-        }
-
-        public string HeaderName { get; private set; }
-    }
-
-    /// <summary>
     /// Tells the client generator to create meta data for this model, even if it is not referenced directly or indirectly from the client.
     /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Enum | AttributeTargets.Struct, AllowMultiple = false)]
@@ -159,19 +105,5 @@ namespace GitHub.Services.WebApi
         /// Timeout in seconds for request cancellation
         /// </summary>
         public TimeSpan Timeout { get; private set; }
-    }
-
-    /// <summary>
-    /// Indicates which headers are considered to contain sensitive information by a particular HttpClient.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Class)]
-    public sealed class ClientSensitiveHeaderAttribute : Attribute
-    {
-        public string HeaderName { get; set; }
-
-        public ClientSensitiveHeaderAttribute(string headerName)
-        {
-            HeaderName = headerName;
-        }
     }
 }

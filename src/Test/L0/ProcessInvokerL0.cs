@@ -53,7 +53,7 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal(1, stdout.Count);
                 Assert.Equal("From STDOUT 'ç'", stdout[0]);
                 Assert.True(stderr.Count > 0);
-                Assert.True(stderr[0].Contains("From STDERR 'ç'"));
+                Assert.Contains("From STDERR 'ç'", stderr[0]);
             }
         }
 #endif

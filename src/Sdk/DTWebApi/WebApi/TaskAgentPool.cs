@@ -23,7 +23,6 @@ namespace GitHub.DistributedTask.WebApi
         private TaskAgentPool(TaskAgentPool poolToBeCloned)
         {
             this.AutoProvision = poolToBeCloned.AutoProvision;
-            this.CreatedBy = poolToBeCloned.CreatedBy?.Clone();
             this.CreatedOn = poolToBeCloned.CreatedOn;
             this.Id = poolToBeCloned.Id;
             this.IsHosted = poolToBeCloned.IsHosted;
@@ -31,17 +30,9 @@ namespace GitHub.DistributedTask.WebApi
             this.Scope = poolToBeCloned.Scope;
             this.Size = poolToBeCloned.Size;
             this.PoolType = poolToBeCloned.PoolType;
-            this.Owner = poolToBeCloned.Owner?.Clone();
             this.AgentCloudId = poolToBeCloned.AgentCloudId;
             this.TargetSize = poolToBeCloned.TargetSize;
             this.IsLegacy = poolToBeCloned.IsLegacy;
-
-#pragma warning disable 0618
-            this.AdministratorsGroup = poolToBeCloned.AdministratorsGroup?.Clone();
-            this.GroupScopeId = poolToBeCloned.GroupScopeId;
-            this.Provisioned = poolToBeCloned.Provisioned;
-            this.ServiceAccountsGroup = poolToBeCloned.ServiceAccountsGroup?.Clone();
-#pragma warning restore 0618
 
             if (poolToBeCloned.m_properties != null)
             {
@@ -102,27 +93,6 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
-        /// Creator of the pool. The creator of the pool is automatically added into the 
-        /// administrators group for the pool on creation.
-        /// </summary>
-        [DataMember]
-        public IdentityRef CreatedBy
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Owner or administrator of the pool.
-        /// </summary>
-        [DataMember]
-        public IdentityRef Owner
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
         /// Properties which may be used to extend the storage fields available
         /// for a given machine instance.
         /// </summary>
@@ -141,54 +111,6 @@ namespace GitHub.DistributedTask.WebApi
                 m_properties = value;
             }
         }
-
-        #region Obsolete Properties
-
-        /// <summary>
-        /// Gets the scope identifier for groups/roles which are owned by this pool.
-        /// </summary>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        [Obsolete("This property is no longer used and will be removed in a future version.", false)]
-        public Guid GroupScopeId
-        {
-            get;
-            internal set;
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether or not roles have been provisioned for this pool.
-        /// </summary>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        [Obsolete("This property is no longer used and will be removed in a future version.", false)]
-        public Boolean Provisioned
-        {
-            get;
-            internal set;
-        }
-
-        /// <summary>
-        /// Gets the administrators group for this agent pool.
-        /// </summary>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        [Obsolete("This property is no longer used and will be removed in a future version.", false)]
-        public IdentityRef AdministratorsGroup
-        {
-            get;
-            internal set;
-        }
-
-        /// <summary>
-        /// Gets the service accounts group for this agent pool.
-        /// </summary>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        [Obsolete("This property is no longer used and will be removed in a future version.", false)]
-        public IdentityRef ServiceAccountsGroup
-        {
-            get;
-            internal set;
-        }
-
-        #endregion
 
         public new TaskAgentPool Clone()
         {

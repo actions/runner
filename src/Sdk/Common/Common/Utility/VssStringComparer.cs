@@ -1,18 +1,4 @@
-﻿// ************************************************************************************************
-// Microsoft Team Foundation
-//
-// Microsoft Confidential
-// Copyright (c) Microsoft Corporation.  All rights reserved.
-//
-// File:        VssStringComparer.cs
-// Area:        Team Foundation
-// Classes:     VssStringComparer
-// Contents:    The Team Foundation string comparison class provides inner classes
-//              that are used to provide semantic-specific Equals and Compare methods
-//              and a semantic-specific StringComparer instance.  New semantics should
-//              be added on an as-needed basis.
-// ************************************************************************************************
-using System;
+﻿using System;
 using System.Diagnostics;
 
 namespace GitHub.Services.Common

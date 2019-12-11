@@ -2,12 +2,6 @@
 
 namespace GitHub.Runner.Common
 {
-    public enum RunMode
-    {
-        Normal, // Keep "Normal" first (default value).
-        Local,
-    }
-
     public enum WellKnownDirectory
     {
         Bin,
@@ -94,10 +88,6 @@ namespace GitHub.Runner.Common
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";
                     public static readonly string Pool = "pool";
-                    public static readonly string SslCACert = "sslcacert";
-                    public static readonly string SslClientCert = "sslclientcert";
-                    public static readonly string SslClientCertKey = "sslclientcertkey";
-                    public static readonly string SslClientCertArchive = "sslclientcertarchive";
                     public static readonly string StartupType = "startuptype";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";
@@ -105,14 +95,10 @@ namespace GitHub.Runner.Common
                     public static readonly string Work = "work";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
-                    public static readonly string Password = "password";
-                    public static readonly string SslClientCertPassword = "sslclientcertpassword";
                     public static readonly string Token = "token";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
                     public static string[] Secrets => new[]
                     {
-                        Password,
-                        SslClientCertPassword,
                         Token,
                         WindowsLogonPassword,
                     };
@@ -131,13 +117,10 @@ namespace GitHub.Runner.Common
                 public static class Flags
                 {
                     public static readonly string Commit = "commit";
-                    public static readonly string GitUseSChannel = "gituseschannel";
                     public static readonly string Help = "help";
                     public static readonly string Replace = "replace";
-                    public static readonly string LaunchBrowser = "launchbrowser";
                     public static readonly string Once = "once";
                     public static readonly string RunAsService = "runasservice";
-                    public static readonly string SslSkipCertValidation = "sslskipcertvalidation";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
                 }
@@ -164,9 +147,7 @@ namespace GitHub.Runner.Common
 
         public static class Configuration
         {
-            public static readonly string AAD = "AAD";
             public static readonly string OAuthAccessToken = "OAuthAccessToken";
-            public static readonly string PAT = "PAT";
             public static readonly string OAuth = "OAuth";
         }
 

@@ -33,13 +33,7 @@ namespace GitHub.Services.Common
         public VssHttpMessageHandler(
             VssCredentials credentials,
             VssHttpRequestSettings settings)
-            : this(credentials, settings,
-#if !NETSTANDARD
-                  new WebRequestHandler()
-#else
-                  new HttpClientHandler()
-#endif
-                  )
+            : this(credentials, settings, new HttpClientHandler())
         {
         }
 
@@ -76,13 +70,7 @@ namespace GitHub.Services.Common
                 m_transportHandler = transportHandler;
             }
 
-#if NETSTANDARD
-            //.Net Core does not recognize CredentialCache.DefaultCredentials if we wrap them with CredentialWrapper
-            bool isDefaultCredentials = credentials != null && credentials.Windows != null && credentials.Windows.UseDefaultCredentials;
-            ApplySettings(m_transportHandler, isDefaultCredentials ? CredentialCache.DefaultCredentials : m_credentialWrapper, this.Settings);
-#else
             ApplySettings(m_transportHandler, m_credentialWrapper, this.Settings);
-#endif
         }
 
         /// <summary>
@@ -139,35 +127,6 @@ namespace GitHub.Services.Common
             var traceInfo = VssHttpMessageHandlerTraceInfo.GetTraceInfo(request);
             traceInfo?.TraceHandlerStartTime();
 
-#if !NETSTANDARD
-            // This action is deferred from ApplySettings because we want don't want to do it if we aren't
-            // talking to an HTTPS endpoint.
-            if (!m_appliedClientCertificatesToTransportHandler &&
-                request.RequestUri.Scheme == "https")
-            {
-                WebRequestHandler webRequestHandler = m_transportHandler as WebRequestHandler;
-                if (webRequestHandler != null &&
-                    this.Settings.ClientCertificateManager != null &&
-                    this.Settings.ClientCertificateManager.ClientCertificates != null &&
-                    this.Settings.ClientCertificateManager.ClientCertificates.Count > 0)
-                {
-                    webRequestHandler.ClientCertificates.AddRange(this.Settings.ClientCertificateManager.ClientCertificates);
-                }
-                m_appliedClientCertificatesToTransportHandler = true;
-            }
-
-            if (!m_appliedServerCertificateValidationCallbackToTransportHandler &&
-                request.RequestUri.Scheme == "https")
-            {
-                WebRequestHandler webRequestHandler = m_transportHandler as WebRequestHandler;
-                if (webRequestHandler != null &&
-                    this.Settings.ServerCertificateValidationCallback != null)
-                {
-                    webRequestHandler.ServerCertificateValidationCallback = this.Settings.ServerCertificateValidationCallback;
-                }
-                m_appliedServerCertificateValidationCallbackToTransportHandler = true;
-            }
-#else
             if (!m_appliedClientCertificatesToTransportHandler &&
                 request.RequestUri.Scheme == "https")
             {
@@ -201,7 +160,6 @@ namespace GitHub.Services.Common
             {
                 request.Version = HttpVersion.Version11;
             }
-#endif
 
             IssuedToken token = null;
             IssuedTokenProvider provider;
@@ -540,16 +498,11 @@ namespace GitHub.Services.Common
             }
         }
 
-        private static IWebProxy s_defaultWebProxy =
-#if !NETSTANDARD
-                WebRequest.DefaultWebProxy;
-#else
-                // setting this to WebRequest.DefaultWebProxy in NETSTANDARD is causing a System.PlatformNotSupportedException
-                //.in System.Net.SystemWebProxy.IsBypassed.  Comment in IsBypassed method indicates ".NET Core and .NET Native
-                // code will handle this exception and call into WinInet/WinHttp as appropriate to use the system proxy."
-                // This needs to be investigated further.
-                null;
-#endif
+        // setting this to WebRequest.DefaultWebProxy in NETSTANDARD is causing a System.PlatformNotSupportedException
+        //.in System.Net.SystemWebProxy.IsBypassed.  Comment in IsBypassed method indicates ".NET Core and .NET Native
+        // code will handle this exception and call into WinInet/WinHttp as appropriate to use the system proxy."
+        // This needs to be investigated further.
+        private static IWebProxy s_defaultWebProxy = null;
 
         /// <summary>
         /// Allows you to set a proxy to be used by all VssHttpMessageHandler requests without affecting the global WebRequest.DefaultWebProxy.  If not set it returns the WebRequest.DefaultWebProxy.
@@ -585,13 +538,9 @@ namespace GitHub.Services.Common
         private bool m_appliedServerCertificateValidationCallbackToTransportHandler;
         private readonly HttpMessageHandler m_transportHandler;
 
-#if NETSTANDARD
         //.Net Core does not attempt NTLM schema on Linux, unless ICredentials is a CredentialCache instance
         //This workaround may not be needed after this corefx fix is consumed: https://github.com/dotnet/corefx/pull/7923
         private sealed class CredentialWrapper : CredentialCache, ICredentials
-#else
-        private sealed class CredentialWrapper : ICredentials
-#endif
         {
             public ICredentials InnerCredentials
             {

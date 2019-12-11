@@ -32,11 +32,8 @@ namespace GitHub.Runner.Common.Tests.Listener
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
-            JobEnvironment environment = new JobEnvironment();
-            List<TaskInstance> tasks = new List<TaskInstance>();
-            Guid JobId = Guid.NewGuid();
-            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, "someJob", "someJob", environment, tasks);
-            var result = Pipelines.AgentJobRequestMessageUtil.Convert(jobRequest);
+            Guid jobId = Guid.NewGuid();
+            var result = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "someJob", "someJob", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null);
             result.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
             return result;
         }

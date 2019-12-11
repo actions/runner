@@ -38,25 +38,6 @@ namespace GitHub.Runner.Listener.Configuration
             return CredentialManager.CredentialTypes.ContainsKey(value);
         }
 
-        public static bool FilePathValidator(string value)
-        {
-            var directoryInfo = new DirectoryInfo(value);
-
-            if (!directoryInfo.Exists)
-            {
-                try
-                {
-                    Directory.CreateDirectory(value);
-                }
-                catch (Exception)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
         public static bool BoolValidator(string value)
         {
             return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||

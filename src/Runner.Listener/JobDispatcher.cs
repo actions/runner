@@ -22,7 +22,6 @@ namespace GitHub.Runner.Listener
         void Run(Pipelines.AgentJobRequestMessage message, bool runOnce = false);
         bool Cancel(JobCancelMessage message);
         Task WaitAsync(CancellationToken token);
-        TaskResult GetLocalRunJobResult(AgentJobRequestMessage message);
         Task ShutdownAsync();
     }
 
@@ -163,11 +162,6 @@ namespace GitHub.Runner.Listener
                     }
                 }
             }
-        }
-
-        public TaskResult GetLocalRunJobResult(AgentJobRequestMessage message)
-        {
-            return _localRunJobResult.Value[message.RequestId];
         }
 
         public async Task ShutdownAsync()
@@ -373,37 +367,29 @@ namespace GitHub.Runner.Listener
                             ArgUtil.NotNullOrEmpty(pipeHandleOut, nameof(pipeHandleOut));
                             ArgUtil.NotNullOrEmpty(pipeHandleIn, nameof(pipeHandleIn));
 
-                            if (HostContext.RunMode == RunMode.Normal)
+                            // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
+                            processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
                             {
-                                // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
-                                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                                if (!string.IsNullOrEmpty(stdout.Data))
                                 {
-                                    if (!string.IsNullOrEmpty(stdout.Data))
+                                    lock (_outputLock)
                                     {
-                                        lock (_outputLock)
-                                        {
-                                            workerOutput.Add(stdout.Data);
-                                        }
+                                        workerOutput.Add(stdout.Data);
                                     }
-                                };
+                                }
+                            };
 
-                                // Save STDERR from worker, worker will use STDERR on crash.
-                                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
-                                {
-                                    if (!string.IsNullOrEmpty(stderr.Data))
-                                    {
-                                        lock (_outputLock)
-                                        {
-                                            workerOutput.Add(stderr.Data);
-                                        }
-                                    }
-                                };
-                            }
-                            else if (HostContext.RunMode == RunMode.Local)
+                            // Save STDERR from worker, worker will use STDERR on crash.
+                            processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
                             {
-                                processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) => Console.WriteLine(e.Data);
-                                processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) => Console.WriteLine(e.Data);
-                            }
+                                if (!string.IsNullOrEmpty(stderr.Data))
+                                {
+                                    lock (_outputLock)
+                                    {
+                                        workerOutput.Add(stderr.Data);
+                                    }
+                                }
+                            };
 
                             // Start the child process.
                             HostContext.WritePerfCounter("StartingWorkerProcess");
@@ -730,11 +716,6 @@ namespace GitHub.Runner.Listener
         private async Task CompleteJobRequestAsync(int poolId, Pipelines.AgentJobRequestMessage message, Guid lockToken, TaskResult result, string detailInfo = null)
         {
             Trace.Entering();
-            if (HostContext.RunMode == RunMode.Local)
-            {
-                _localRunJobResult.Value[message.RequestId] = result;
-                return;
-            }
 
             if (PlanUtil.GetFeatures(message.Plan).HasFlag(PlanFeatures.JobCompletedPlanEvent))
             {

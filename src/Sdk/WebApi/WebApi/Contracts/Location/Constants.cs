@@ -87,21 +87,5 @@ namespace GitHub.Services.Location
     public static class AccessMappingConstants
     {
         public static readonly string PublicAccessMappingMoniker = "PublicAccessMapping";
-        public static readonly string ServerAccessMappingMoniker = "ServerAccessMapping";
-        public static readonly string ClientAccessMappingMoniker = "ClientAccessMapping";
-        public static readonly string HostGuidAccessMappingMoniker = "HostGuidAccessMapping";
-        public static readonly string RootDomainMappingMoniker = "RootDomainMapping";
-        public static readonly string AzureInstanceMappingMoniker = "AzureInstanceMapping";
-        public static readonly string ServicePathMappingMoniker = "ServicePathMapping";
-        public static readonly string ServiceDomainMappingMoniker = "ServiceDomainMapping";
-        public static readonly string LegacyPublicAccessMappingMoniker = "LegacyPublicAccessMapping";
-        public static readonly string MessageQueueAccessMappingMoniker = "MessageQueueAccessMapping";
-        public static readonly string LegacyAppDotAccessMappingMoniker = "LegacyAppDotDomain";
-        public static readonly string AffinitizedMultiInstanceAccessMappingMoniker = "AffinitizedMultiInstanceAccessMapping";
-
-        public static readonly string VstsAccessMapping = "VstsAccessMapping";
-        public static readonly string DevOpsAccessMapping = "CodexAccessMapping";
-
-        [Obsolete][EditorBrowsable(EditorBrowsableState.Never)] public static readonly string ServiceAccessMappingMoniker = "ServiceAccessMappingMoniker";
     }
 }

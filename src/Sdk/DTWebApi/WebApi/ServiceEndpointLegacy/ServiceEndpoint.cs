@@ -31,8 +31,6 @@ namespace GitHub.DistributedTask.WebApi
             Url = endpointToClone.Url;
             Description = endpointToClone.Description;
             GroupScopeId = endpointToClone.GroupScopeId;
-            AdministratorsGroup = endpointToClone.AdministratorsGroup;
-            ReadersGroup = endpointToClone.ReadersGroup;
 
             if (endpointToClone.Authorization != null)
             {
@@ -43,47 +41,6 @@ namespace GitHub.DistributedTask.WebApi
             {
                 m_data = new Dictionary<String, String>(endpointToClone.m_data, StringComparer.OrdinalIgnoreCase);
             }
-        }
-
-        public static bool ValidateServiceEndpoint(ServiceEndpoint endpoint, ref string message)
-        {
-            if (endpoint == null)
-            {
-                message = "endpoint: null";
-                return false;
-            }
-
-            if (endpoint.Id == Guid.Empty)
-            {
-                message = CommonResources.EmptyGuidNotAllowed("endpoint.Id");
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(endpoint.Name))
-            {
-                message = string.Format("{0}:{1}", CommonResources.EmptyStringNotAllowed(), "endpoint.Name");
-                return false;
-            }
-
-            if (endpoint.Url == null)
-            {
-                message = "endpoint.Url: null";
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(endpoint.Type))
-            {
-                message = string.Format("{0}:{1}", CommonResources.EmptyStringNotAllowed(), "endpoint.Type");
-                return false;
-            }
-
-            if (endpoint.Authorization == null)
-            {
-                message = "endpoint.Authorization: null";
-                return false;
-            }
-
-            return true;
         }
 
         /// <summary>
@@ -137,17 +94,6 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
-        /// Gets or sets the identity reference for the user who created the Service endpoint.
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        public IdentityRef CreatedBy
-        {
-            get;
-            set;
-        }
-
-
-        /// <summary>
         /// Gets or sets the description of endpoint.
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
@@ -169,26 +115,6 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public Guid GroupScopeId
-        {
-            get;
-            internal set;
-        }
-
-        /// <summary>
-        /// Gets or sets the identity reference for the administrators group of the service endpoint.
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        public IdentityRef AdministratorsGroup
-        {
-            get;
-            internal set;
-        }
-
-        /// <summary>
-        /// Gets or sets the identity reference for the readers group of the service endpoint.
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        public IdentityRef ReadersGroup
         {
             get;
             internal set;

@@ -70,9 +70,6 @@ namespace GitHub.Services.WebApi
             VssPerformanceEventSource.Log.RESTStart(Guid.Empty, requestString);
             _requestTimer.Start();
 
-#if !NETSTANDARD
-            EventActivityIdControl(1, ref _activityId);
-#endif
 #endif
         }
         internal void TraceResponse(HttpResponseMessage response)
@@ -80,22 +77,10 @@ namespace GitHub.Services.WebApi
 #if TRACE
             _requestTimer.Stop();
             String responseString = response.GetResponseString(_requestTimer.ElapsedMilliseconds);
-
-#if !NETSTANDARD
-            VssPerformanceEventSource.Log.RESTStop(Guid.Empty, _activityId, responseString, _requestTimer.ElapsedMilliseconds);
-#endif
 #endif
         }
 #if TRACE
         private Stopwatch _requestTimer;
-#if !NETSTANDARD
-        private Guid _activityId;
-#endif
-#endif
-
-#if !NETSTANDARD
-        [DllImport("ADVAPI32.DLL", ExactSpelling = true, EntryPoint = "EventActivityIdControl")]
-        internal static extern uint EventActivityIdControl([In] int ControlCode, [In][Out] ref Guid ActivityId);
 #endif
     }
 

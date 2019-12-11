@@ -51,47 +51,7 @@ namespace GitHub.Services.Common
         /// Initializes a new <c>VssCredentials</c> instance with default credentials.
         /// </summary>
         public VssCredentials()
-            : this(true) 
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new <c>VssCredentials</c> instance with default credentials if specified.
-        /// </summary>
-        /// <param name="useDefaultCredentials">True to use default windows credentials; otherwise, false</param>
-        public VssCredentials(bool useDefaultCredentials)
-            : this(new WindowsCredential(useDefaultCredentials))
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new <c>VssCredentials</c> instance with the specified windows credential.
-        /// </summary>
-        /// <param name="windowsCredential">The windows credential to use for authentication</param>
-        public VssCredentials(WindowsCredential windowsCredential)
-            : this(windowsCredential, null)
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new <c>VssCredentials</c> instance with the specified windows credential.
-        /// </summary>
-        /// <param name="windowsCredential">The windows credential to use for authentication</param>
-        /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed, otherwise CredentialProptType.DoNotPrompt</param>
-        public VssCredentials(
-            WindowsCredential windowsCredential,
-            CredentialPromptType promptType)
-            : this(windowsCredential, null, promptType)
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new <c>VssCredentials</c> instance with the specified issued token credential and
-        /// default windows credential.
-        /// </summary>
-        /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        public VssCredentials(FederatedCredential federatedCredential)
-            : this(new WindowsCredential(), federatedCredential)
+            : this(null)
         {
         }
 
@@ -99,12 +59,9 @@ namespace GitHub.Services.Common
         /// Initializes a new <c>VssCredentials</c> instance with the specified windows and issued token 
         /// credential.
         /// </summary>
-        /// <param name="windowsCredential">The windows credential to use for authentication</param>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
-        public VssCredentials(
-            WindowsCredential windowsCredential, 
-            FederatedCredential federatedCredential)
-            : this(windowsCredential, federatedCredential, EnvironmentUserInteractive
+        public VssCredentials(FederatedCredential federatedCredential)
+            : this(federatedCredential, EnvironmentUserInteractive
                   ? CredentialPromptType.PromptIfNeeded : CredentialPromptType.DoNotPrompt)
         {
         }
@@ -113,14 +70,12 @@ namespace GitHub.Services.Common
         /// Initializes a new <c>VssCredentials</c> instance with the specified windows and issued token 
         /// credential.
         /// </summary>
-        /// <param name="windowsCredential">The windows credential to use for authentication</param>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
         /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed, otherwise CredentialProptType.DoNotPrompt</param>
         public VssCredentials(
-            WindowsCredential windowsCredential,
             FederatedCredential federatedCredential,
             CredentialPromptType promptType)
-            : this(windowsCredential, federatedCredential, promptType, null)
+            : this(federatedCredential, promptType, null)
         {
         }
 
@@ -128,16 +83,14 @@ namespace GitHub.Services.Common
         /// Initializes a new <c>VssCredentials</c> instance with the specified windows and issued token 
         /// credential.
         /// </summary>
-        /// <param name="windowsCredential">The windows credential to use for authentication</param>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
         /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialProptType.DoNotPrompt</param>
         /// <param name="scheduler">An optional <c>TaskScheduler</c> to ensure credentials prompting occurs on the UI thread</param>
         public VssCredentials(
-            WindowsCredential windowsCredential,
             FederatedCredential federatedCredential,
             CredentialPromptType promptType,
             TaskScheduler scheduler)
-            : this(windowsCredential, federatedCredential, promptType, scheduler, null)
+            : this(federatedCredential, promptType, scheduler, null)
         {
         }
 
@@ -145,13 +98,11 @@ namespace GitHub.Services.Common
         /// Initializes a new <c>VssCredentials</c> instance with the specified windows and issued token 
         /// credential.
         /// </summary>
-        /// <param name="windowsCredential">The windows credential to use for authentication</param>
         /// <param name="federatedCredential">The federated credential to use for authentication</param>
         /// <param name="promptType">CredentialPromptType.PromptIfNeeded if interactive prompts are allowed; otherwise, CredentialProptType.DoNotPrompt</param>
         /// <param name="scheduler">An optional <c>TaskScheduler</c> to ensure credentials prompting occurs on the UI thread</param>
         /// <param name="credentialPrompt">An optional <c>IVssCredentialPrompt</c> to perform prompting for credentials</param>
         public VssCredentials(
-            WindowsCredential windowsCredential,
             FederatedCredential federatedCredential,
             CredentialPromptType promptType,
             TaskScheduler scheduler,
@@ -172,13 +123,6 @@ namespace GitHub.Services.Common
                 scheduler = TaskScheduler.Default;
             }
 
-            if (windowsCredential != null)
-            {
-                m_windowsCredential = windowsCredential;
-                m_windowsCredential.Scheduler = scheduler;
-                m_windowsCredential.Prompt = credentialPrompt;
-            }
-
             if (federatedCredential != null)
             {
                 m_federatedCredential = federatedCredential;
@@ -195,16 +139,6 @@ namespace GitHub.Services.Common
         /// <param name="credential">The federated credential instance</param>
         /// <returns>A new <c>VssCredentials</c> instance which wraps the specified credential</returns>
         public static implicit operator VssCredentials(FederatedCredential credential)
-        {
-            return new VssCredentials(credential);
-        }
-
-        /// <summary>
-        /// Implicitly converts a <c>WindowsCredential</c> instance into a <c>VssCredentials</c> instance.
-        /// </summary>
-        /// <param name="credential">The windows credential instance</param>
-        /// <returns>A new <c>VssCredentials</c> instance which wraps the specified credential</returns>
-        public static implicit operator VssCredentials(WindowsCredential credential)
         {
             return new VssCredentials(credential);
         }
@@ -241,17 +175,6 @@ namespace GitHub.Services.Common
         }
 
         /// <summary>
-        /// Gets the windows credential to use for NTLM authentication with the server.
-        /// </summary>
-        public WindowsCredential Windows
-        {
-            get
-            {
-                return m_windowsCredential;
-            }
-        }
-
-        /// <summary>
         /// A pluggable credential store.
         /// Simply assign a storage implementation to this property
         /// and the <c>VssCredentials</c> will use it to store and retrieve tokens
@@ -266,11 +189,6 @@ namespace GitHub.Services.Common
             set
             {
                 m_credentialStorage = value;
-
-                if (m_windowsCredential != null)
-                {
-                    m_windowsCredential.Storage = value;
-                }
 
                 if (m_federatedCredential != null)
                 {
@@ -327,20 +245,6 @@ namespace GitHub.Services.Common
                             VssHttpEventSource.Log.IssuedTokenProviderCreated(traceActivity, tokenProvider);
                         }
                     }
-                    else if (m_windowsCredential != null && m_windowsCredential.IsAuthenticationChallenge(webResponse))
-                    {
-                        if (tokenProvider != null)
-                        {
-                            VssHttpEventSource.Log.IssuedTokenProviderRemoved(traceActivity, tokenProvider);
-                        }
-
-                        tokenProvider = m_windowsCredential.CreateTokenProvider(serverUrl, webResponse, failedToken);
-
-                        if (tokenProvider != null)
-                        {
-                            VssHttpEventSource.Log.IssuedTokenProviderCreated(traceActivity, tokenProvider);
-                        }
-                    }
 
                     m_currentProvider = tokenProvider;
                 }
@@ -356,7 +260,7 @@ namespace GitHub.Services.Common
         /// <param name="provider">Stores the active token provider, if one exists</param>
         /// <returns>True if a token provider was found, false otherwise</returns>
         public bool TryGetTokenProvider(
-            Uri serverUrl, 
+            Uri serverUrl,
             out IssuedTokenProvider provider)
         {
             ArgumentUtility.CheckForNull(serverUrl, "serverUrl");
@@ -369,11 +273,6 @@ namespace GitHub.Services.Common
                     if (m_federatedCredential != null)
                     {
                         m_currentProvider = m_federatedCredential.CreateTokenProvider(serverUrl, null, null);
-                    }
-
-                    if (m_currentProvider == null && m_windowsCredential != null)
-                    {
-                        m_currentProvider = m_windowsCredential.CreateTokenProvider(serverUrl, null, null);
                     }
 
                     if (m_currentProvider != null)
@@ -401,11 +300,6 @@ namespace GitHub.Services.Common
             }
 
             bool isChallenge = false;
-            if (m_windowsCredential != null)
-            {
-                isChallenge = m_windowsCredential.IsAuthenticationChallenge(webResponse);
-            }
-
             if (!isChallenge && m_federatedCredential != null)
             {
                 isChallenge = m_federatedCredential.IsAuthenticationChallenge(webResponse);
@@ -415,8 +309,8 @@ namespace GitHub.Services.Common
         }
 
         internal void SignOut(
-            Uri serverUrl, 
-            Uri serviceLocation, 
+            Uri serverUrl,
+            Uri serviceLocation,
             string identityProvider)
         {
             // Remove the token in the storage and the current token provider. Note that we don't
@@ -449,110 +343,6 @@ namespace GitHub.Services.Common
             // Now actually signout of the token provider
             tokenProviderWithSignOut.SignOut(serviceLocation, serverUrl, identityProvider);
         }
-
-#if !NETSTANDARD
-        /// <summary>
-        /// Loads stored credentials for the specified server if found. If no credentials are found in the windows
-        /// credential store for the specified server and options then default credentials are returned.
-        /// </summary>
-        /// <param name="serverUrl">The server location</param>
-        /// <param name="requireExactMatch">A value indicating whether or not an exact or partial match of the server is required</param>
-        /// <returns>A credentials object populated with stored credentials for the server if found</returns>
-        public static VssCredentials LoadCachedCredentials(
-            Uri serverUrl,
-            bool requireExactMatch)
-        {
-            return LoadCachedCredentials(null, serverUrl, requireExactMatch);
-        }
-
-        /// <summary>
-        /// Loads stored credentials for the specified server if found. If no credentials are found for the specified server and options then default credentials are returned.
-        /// This overload assumes that the credentials are to be stored under the TFS server's registry root
-        /// </summary>
-        /// <param name="featureRegistryKeyword">An optional application name for isolated credential storage in the registry</param>
-        /// <param name="serverUrl">The server location</param>
-        /// <param name="requireExactMatch">A value indicating whether or not an exact or partial match of the server is required</param>
-        /// <returns>A credentials object populated with stored credentials for the server if found</returns>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static VssCredentials LoadCachedCredentials(
-            string featureRegistryKeyword,
-            Uri serverUrl,
-            bool requireExactMatch)
-        {
-            ArgumentUtility.CheckForNull(serverUrl, "serverUrl");
-
-            bool uriKnownToCachedProvider = false;
-            VssCredentials cred = LoadCachedCredentialsFromRegisteredProviders(serverUrl, out uriKnownToCachedProvider);
-
-            // If one of the registered credential providers had the target URI in its cache but failed to return a valid credential it means
-            // we should have had a cred but something went wrong (user canceled, user failed, auth source unavailable, etc.). In that case
-            // we Do Not want to carry on with the fallback to the VS registry/windows store credential caches. Even if that worked to get a
-            // credential it would put the user in a bad state (having an active, authenticated connection with an unexpected credential type).
-            if (cred == null && !uriKnownToCachedProvider)
-            {
-                WindowsCredential windowsCredential = null;
-                FederatedCredential federatedCredential = null;
-                CredentialsCacheManager credentialsCacheManager = new CredentialsCacheManager();
-                TfsCredentialCacheEntry cacheEntry = credentialsCacheManager.GetCredentials(featureRegistryKeyword, serverUrl, requireExactMatch, null);
-                if (cacheEntry != null)
-                {
-                    if (cacheEntry.NonInteractive)
-                    {
-                        switch (cacheEntry.Type)
-                        {
-                            case CachedCredentialsType.ServiceIdentity:
-                                VssServiceIdentityToken initialToken = null;
-                                string initialTokenValue = ReadAuthorizationToken(cacheEntry.Attributes);
-                                if (!string.IsNullOrEmpty(initialTokenValue))
-                                {
-                                    initialToken = new VssServiceIdentityToken(initialTokenValue);
-                                }
-
-                                // Initialize the issued token credential using the stored token if it exists
-                                federatedCredential = new VssServiceIdentityCredential(cacheEntry.Credentials.UserName,
-                                                                                       cacheEntry.Credentials.Password,
-                                                                                       initialToken);
-                                break;
-
-                            case CachedCredentialsType.Windows:
-                                windowsCredential = new WindowsCredential(cacheEntry.Credentials);
-                                break;
-                        }
-                    }
-                }
-
-                cred = new VssCredentials(windowsCredential ?? new WindowsCredential(true), federatedCredential, CredentialPromptType.DoNotPrompt);
-            }
-
-            return cred ?? new VssCredentials(new WindowsCredential(true), null, CredentialPromptType.DoNotPrompt);
-        }
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public static VssCredentials LoadCachedCredentialsFromRegisteredProviders(Uri serverUri, out bool knownUri)
-        {
-            LoadRegisteredCachedVssCredentialProviders();
-            bool uriKnownByAnyProvider = false;
-            VssCredentials cred = null;
-            foreach (var pair in m_loadedCachedVssCredentialProviders)
-            {
-                bool uriKnownToProvider = false;
-                cred = pair.Value?.GetCachedCredentials(serverUri, out uriKnownToProvider);
-                if (cred != null || uriKnownToProvider)
-                {
-                    uriKnownByAnyProvider |= uriKnownToProvider;
-                    break;
-                }
-            }
-            knownUri = uriKnownByAnyProvider;
-            return cred;
-        }
-
-        private static void LoadRegisteredCachedVssCredentialProviders()
-        {
-            CredentialsProviderRegistryHelper.LoadCachedVssCredentialProviders(ref m_loadedCachedVssCredentialProviders);
-        }
-        private static ConcurrentDictionary<string, ICachedVssCredentialProvider> m_loadedCachedVssCredentialProviders = new ConcurrentDictionary<string, ICachedVssCredentialProvider>();
-#endif
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public static void WriteAuthorizationToken(
@@ -604,7 +394,6 @@ namespace GitHub.Services.Common
         private object m_thisLock;
         private CredentialPromptType m_promptType;
         private IssuedTokenProvider m_currentProvider;
-        protected WindowsCredential m_windowsCredential;
         protected FederatedCredential m_federatedCredential;
         private IVssCredentialStorage m_credentialStorage;
     }

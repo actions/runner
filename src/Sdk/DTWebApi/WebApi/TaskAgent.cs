@@ -5,12 +5,6 @@ using System.Runtime.Serialization;
 
 namespace GitHub.DistributedTask.WebApi
 {
-    public static class AgentConstants
-    {
-        // 1.x agent has been deprecated.
-        public static readonly String Version = "0.0.0";
-    }
-
     /// <summary>
     /// A task agent.
     /// </summary>
@@ -58,11 +52,6 @@ namespace GitHub.DistributedTask.WebApi
             if (agentToBeCloned.m_labels != null && agentToBeCloned.m_labels.Count > 0)
             {
                 m_labels = new HashSet<string>(agentToBeCloned.m_labels, StringComparer.OrdinalIgnoreCase);
-            }
-
-            if (agentToBeCloned.PendingUpdate != null)
-            {
-                this.PendingUpdate = agentToBeCloned.PendingUpdate.Clone();
             }
         }
 
@@ -124,26 +113,6 @@ namespace GitHub.DistributedTask.WebApi
         {
             get;
             set;
-        }
-
-        /// <summary>
-        /// Pending update for this agent.
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        public TaskAgentUpdate PendingUpdate
-        {
-            get;
-            internal set;
-        }
-
-        /// <summary>
-        /// The agent cloud request that's currently associated with this agent.
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        public TaskAgentCloudRequest AssignedAgentCloudRequest
-        {
-            get;
-            internal set;
         }
 
         /// <summary>

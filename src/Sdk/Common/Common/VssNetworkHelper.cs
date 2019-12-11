@@ -216,21 +216,13 @@ namespace GitHub.Services.Common
                     }
                 }
             }
-#if !NETSTANDARD
-            else if (ex is System.Data.Services.Client.DataServiceRequestException ||
-                     ex is System.Data.Services.Client.DataServiceClientException)
-            {
-                // WCF exceptions
-                return true;
-            }
-#endif
 
             return false;
         }
 
-            /// <summary>
-            /// Gets the HttpStatusCode which represents a throttling error.
-            /// </summary>
+        /// <summary>
+        /// Gets the HttpStatusCode which represents a throttling error.
+        /// </summary>
         public const HttpStatusCode TooManyRequests = (HttpStatusCode)429;
     }
 }

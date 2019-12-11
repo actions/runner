@@ -23,12 +23,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange: Create a job request message.
                 TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
                 TimelineReference timeline = new TimelineReference();
-                JobEnvironment environment = new JobEnvironment();
-                environment.SystemConnection = new ServiceEndpoint();
-                List<TaskInstance> tasks = new List<TaskInstance>();
-                Guid JobId = Guid.NewGuid();
+                Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks));
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -102,12 +99,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange: Create a job request message.
                 TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
                 TimelineReference timeline = new TimelineReference();
-                JobEnvironment environment = new JobEnvironment();
-                environment.SystemConnection = new ServiceEndpoint();
-                List<TaskInstance> tasks = new List<TaskInstance>();
-                Guid JobId = Guid.NewGuid();
+                Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks));
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -156,12 +150,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange: Create a job request message.
                 TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
                 TimelineReference timeline = new TimelineReference();
-                JobEnvironment environment = new JobEnvironment();
-                environment.SystemConnection = new ServiceEndpoint();
-                List<TaskInstance> tasks = new List<TaskInstance>();
-                Guid JobId = Guid.NewGuid();
+                Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks));
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -255,10 +246,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             var configurationStore = new Mock<IConfigurationStore>();
             configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings());
             hc.SetSingleton(configurationStore.Object);
-
-            // Arrange: Setup the cert configation.
-            var cert = new Mock<IRunnerCertificateManager>();
-            hc.SetSingleton(cert.Object);
 
             // Arrange: Create the execution context.
             hc.SetSingleton(new Mock<IJobServerQueue>().Object);

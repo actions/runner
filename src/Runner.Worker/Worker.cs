@@ -40,8 +40,7 @@ namespace GitHub.Runner.Worker
                 // Validate args.
                 ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
                 ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
-                var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, HostContext.WebProxy, runnerCertManager.VssClientCertificateManager);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, HostContext.WebProxy);
                 var jobRunner = HostContext.CreateService<IJobRunner>();
 
                 using (var channel = HostContext.CreateService<IProcessChannel>())
@@ -176,15 +175,6 @@ namespace GitHub.Runner.Worker
                     {
                         HostContext.SecretMasker.AddValue(value);
                     }
-                }
-            }
-
-            // Add masks for secure file download tickets
-            foreach (SecureFile file in message.Resources.SecureFiles ?? new List<SecureFile>())
-            {
-                if (!string.IsNullOrEmpty(file.Ticket))
-                {
-                    HostContext.SecretMasker.AddValue(file.Ticket);
                 }
             }
         }

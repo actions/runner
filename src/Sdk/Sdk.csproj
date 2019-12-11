@@ -8,7 +8,7 @@
         <AssetTargetFallback>portable-net45+win8</AssetTargetFallback>
         <NoWarn>NU1701;NU1603</NoWarn>
         <Version>$(Version)</Version>
-        <DefineConstants>NETSTANDARD;NET_STANDARD;TRACE</DefineConstants>
+        <DefineConstants>TRACE</DefineConstants>
         <LangVersion>7.3</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
@@ -22,7 +22,6 @@
         <PackageReference Include="System.Security.Cryptography.Cng" Version="4.4.0" />
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="4.4.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
-        <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="3.19.4" />
         <PackageReference Include="Minimatch" Version="2.0.0" />
         <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
     </ItemGroup>

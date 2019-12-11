@@ -29,9 +29,6 @@ namespace GitHub.Services.WebApi.Location
             m_lastChangeId = -1;
             m_cacheExpirationDate = DateTime.MinValue;
 
-#if !NETSTANDARD
-            ClientCacheTimeToLive = VssClientSettings.ClientCacheTimeToLive;
-#endif
             if (serviceOwner == Guid.Empty)
             {
                 // For a legacy server (which didn't return serviceOwner in the connectionData), let's not try to break anything

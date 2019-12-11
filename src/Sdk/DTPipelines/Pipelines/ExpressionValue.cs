@@ -147,26 +147,6 @@ namespace GitHub.DistributedTask.Pipelines
         internal Boolean IsLiteral => String.IsNullOrEmpty(m_expression);
 
         /// <summary>
-        /// Retrieves the referenced value from the provided execution context.
-        /// </summary>
-        /// <param name="context">The execution context used for variable resolution</param>
-        /// <returns>The value of the variable if found; otherwise, null</returns>
-        public ExpressionResult<T> GetValue(IPipelineContext context = null)
-        {
-            if (this.IsLiteral)
-            {
-                return new ExpressionResult<T>(m_literalValue, containsSecrets: false);
-            }
-
-            if (context != null)
-            {
-                return context.Evaluate<T>(m_expression);
-            }
-
-            return null;
-        }
-
-        /// <summary>
         /// Converts the value to a string representation.
         /// </summary>
         /// <returns>A string representation of the current value</returns>

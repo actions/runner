@@ -79,59 +79,10 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteLine("|                                                                              |", ConsoleColor.White);
             _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
 
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
             {
                 throw new InvalidOperationException("Cannot configure the runner because it is already configured. To reconfigure the runner, run 'config.cmd remove' or './config.sh remove' first.");
-            }
-
-            // Populate cert setting from commandline args
-            var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
-            bool saveCertSetting = false;
-            bool skipCertValidation = command.GetSkipCertificateValidation();
-            string caCert = command.GetCACertificate();
-            string clientCert = command.GetClientCertificate();
-            string clientCertKey = command.GetClientCertificatePrivateKey();
-            string clientCertArchive = command.GetClientCertificateArchrive();
-            string clientCertPassword = command.GetClientCertificatePassword();
-
-            // We require all Certificate files are under agent root.
-            // So we can set ACL correctly when configure as service
-            if (!string.IsNullOrEmpty(caCert))
-            {
-                caCert = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), caCert);
-                ArgUtil.File(caCert, nameof(caCert));
-            }
-
-            if (!string.IsNullOrEmpty(clientCert) &&
-                !string.IsNullOrEmpty(clientCertKey) &&
-                !string.IsNullOrEmpty(clientCertArchive))
-            {
-                // Ensure all client cert pieces are there.
-                clientCert = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), clientCert);
-                clientCertKey = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), clientCertKey);
-                clientCertArchive = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), clientCertArchive);
-
-                ArgUtil.File(clientCert, nameof(clientCert));
-                ArgUtil.File(clientCertKey, nameof(clientCertKey));
-                ArgUtil.File(clientCertArchive, nameof(clientCertArchive));
-            }
-            else if (!string.IsNullOrEmpty(clientCert) ||
-                     !string.IsNullOrEmpty(clientCertKey) ||
-                     !string.IsNullOrEmpty(clientCertArchive))
-            {
-                // Print out which args are missing.
-                ArgUtil.NotNullOrEmpty(Constants.Runner.CommandLine.Args.SslClientCert, Constants.Runner.CommandLine.Args.SslClientCert);
-                ArgUtil.NotNullOrEmpty(Constants.Runner.CommandLine.Args.SslClientCertKey, Constants.Runner.CommandLine.Args.SslClientCertKey);
-                ArgUtil.NotNullOrEmpty(Constants.Runner.CommandLine.Args.SslClientCertArchive, Constants.Runner.CommandLine.Args.SslClientCertArchive);
-            }
-
-            if (skipCertValidation || !string.IsNullOrEmpty(caCert) || !string.IsNullOrEmpty(clientCert))
-            {
-                Trace.Info("Reset runner cert setting base on commandline args.");
-                (runnerCertManager as RunnerCertificateManager).SetupCertificate(skipCertValidation, caCert, clientCert, clientCertKey, clientCertArchive, clientCertPassword);
-                saveCertSetting = true;
             }
 
             RunnerSettings runnerSettings = new RunnerSettings();
@@ -353,30 +304,9 @@ namespace GitHub.Runner.Listener.Configuration
 
             _store.SaveSettings(runnerSettings);
 
-            if (saveCertSetting)
-            {
-                Trace.Info("Save agent cert setting to disk.");
-                (runnerCertManager as RunnerCertificateManager).SaveCertificateSetting();
-            }
-
             _term.WriteLine();
             _term.WriteSuccessMessage("Settings Saved.");
             _term.WriteLine();
-
-            bool saveRuntimeOptions = false;
-            var runtimeOptions = new RunnerRuntimeOptions();
-#if OS_WINDOWS
-            if (command.GitUseSChannel)
-            {
-                saveRuntimeOptions = true;
-                runtimeOptions.GitUseSecureChannel = true;
-            }
-#endif
-            if (saveRuntimeOptions)
-            {
-                Trace.Info("Save agent runtime options to disk.");
-                _store.SaveRunnerRuntimeOptions(runtimeOptions);
-            }
 
 #if OS_WINDOWS
             // config windows service
@@ -397,7 +327,6 @@ namespace GitHub.Runner.Listener.Configuration
 
         public async Task UnconfigureAsync(CommandSettings command)
         {
-            ArgUtil.Equal(RunMode.Normal, HostContext.RunMode, nameof(HostContext.RunMode));
             string currentAction = string.Empty;
 
             _term.WriteSection("Runner removal");
@@ -491,13 +420,6 @@ namespace GitHub.Runner.Listener.Configuration
                 currentAction = "Removing .runner";
                 if (isConfigured)
                 {
-
-                    // delete agent cert setting
-                    (HostContext.GetService<IRunnerCertificateManager>() as RunnerCertificateManager).DeleteCertificateSetting();
-
-                    // delete agent runtime option
-                    _store.DeleteRunnerRuntimeOptions();
-
                     _store.DeleteSettings();
                     _term.WriteSuccessMessage("Removed .runner");
                 }
@@ -520,7 +442,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(GetCredentialProvider));
 
             var credentialManager = HostContext.GetService<ICredentialManager>();
-            string authType = command.GetAuth(defaultValue: Constants.Configuration.AAD);
+            string authType = command.GetAuth(defaultValue: Constants.Configuration.OAuthAccessToken);
 
             // Create the credential.
             Trace.Info("Creating credential for auth: {0}", authType);

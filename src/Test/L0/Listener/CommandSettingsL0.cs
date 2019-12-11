@@ -385,7 +385,7 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForPassword()
+        public void PromptsForRunnerRegisterToken()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -393,46 +393,19 @@ namespace GitHub.Runner.Common.Tests
                 var command = new CommandSettings(hc, args: new string[0]);
                 _promptManager
                     .Setup(x => x.ReadValue(
-                        Constants.Runner.CommandLine.Args.Password, // argName
-                        "What is your GitHub password?", // description
+                        Constants.Runner.CommandLine.Args.Token, // argName
+                        "What is your runner register token?", // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
                         false)) // unattended
-                    .Returns("some password");
+                    .Returns("some token");
 
                 // Act.
-                string actual = command.GetPassword();
+                string actual = command.GetRunnerRegisterToken();
 
                 // Assert.
-                Assert.Equal("some password", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForPool()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[0]);
-                _promptManager
-                    .Setup(x => x.ReadValue(
-                        Constants.Runner.CommandLine.Args.Pool, // argName
-                        "Enter the name of your runner pool:", // description
-                        false, // secret
-                        "default", // defaultValue
-                        Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some pool");
-
-                // Act.
-                string actual = command.GetPool();
-
-                // Assert.
-                Assert.Equal("some pool", actual);
+                Assert.Equal("some token", actual);
             }
         }
 
@@ -498,7 +471,7 @@ namespace GitHub.Runner.Common.Tests
                 _promptManager
                     .Setup(x => x.ReadValue(
                         Constants.Runner.CommandLine.Args.Token, // argName
-                        "Enter your personal access token:", // description
+                        "What is your pool admin oauth access token?", // description
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
@@ -564,33 +537,6 @@ namespace GitHub.Runner.Common.Tests
 
                 // Assert.
                 Assert.Equal("some url", actual);
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", nameof(CommandSettings))]
-        public void PromptsForUserName()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var command = new CommandSettings(hc, args: new string[0]);
-                _promptManager
-                    .Setup(x => x.ReadValue(
-                        Constants.Runner.CommandLine.Args.UserName, // argName
-                        "What is your GitHub username?", // description
-                        false, // secret
-                        string.Empty, // defaultValue
-                        Validators.NonEmptyValidator, // validator
-                        false)) // unattended
-                    .Returns("some user name");
-
-                // Act.
-                string actual = command.GetUserName();
-
-                // Assert.
-                Assert.Equal("some user name", actual);
             }
         }
 

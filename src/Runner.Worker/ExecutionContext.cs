@@ -41,7 +41,6 @@ namespace GitHub.Runner.Worker
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
-        List<SecureFile> SecureFiles { get; }
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
@@ -136,7 +135,6 @@ namespace GitHub.Runner.Worker
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
-        public List<SecureFile> SecureFiles { get; private set; }
         public Variables Variables { get; private set; }
         public Dictionary<string, string> IntraActionState { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
@@ -257,7 +255,6 @@ namespace GitHub.Runner.Worker
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
-            child.SecureFiles = SecureFiles;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -549,9 +546,6 @@ namespace GitHub.Runner.Worker
             // Endpoints
             Endpoints = message.Resources.Endpoints;
 
-            // SecureFiles
-            SecureFiles = message.Resources.SecureFiles;
-
             // Variables
             Variables = new Variables(HostContext, message.Variables);
 
@@ -616,44 +610,6 @@ namespace GitHub.Runner.Worker
 
             // PostJobSteps for job ExecutionContext
             PostJobSteps = new Stack<IStep>();
-            //             // Certificate variables
-            //             var agentCert = HostContext.GetService<IRunnerCertificateManager>();
-            //             if (agentCert.SkipServerCertificateValidation)
-            //             {
-            //                 SetRunnerContext("sslskipcertvalidation", bool.TrueString);
-            //             }
-
-            //             if (!string.IsNullOrEmpty(agentCert.CACertificateFile))
-            //             {
-            //                 SetRunnerContext("sslcainfo", agentCert.CACertificateFile);
-            //             }
-
-            //             if (!string.IsNullOrEmpty(agentCert.ClientCertificateFile) &&
-            //                 !string.IsNullOrEmpty(agentCert.ClientCertificatePrivateKeyFile) &&
-            //                 !string.IsNullOrEmpty(agentCert.ClientCertificateArchiveFile))
-            //             {
-            //                 SetRunnerContext("clientcertfile", agentCert.ClientCertificateFile);
-            //                 SetRunnerContext("clientcertprivatekey", agentCert.ClientCertificatePrivateKeyFile);
-            //                 SetRunnerContext("clientcertarchive", agentCert.ClientCertificateArchiveFile);
-
-            //                 if (!string.IsNullOrEmpty(agentCert.ClientCertificatePassword))
-            //                 {
-            //                     HostContext.SecretMasker.AddValue(agentCert.ClientCertificatePassword);
-            //                     SetRunnerContext("clientcertpassword", agentCert.ClientCertificatePassword);
-            //                 }
-            //             }
-
-            //             // Runtime option variables
-            //             var runtimeOptions = HostContext.GetService<IConfigurationStore>().GetRunnerRuntimeOptions();
-            //             if (runtimeOptions != null)
-            //             {
-            // #if OS_WINDOWS
-            //                 if (runtimeOptions.GitUseSecureChannel)
-            //                 {
-            //                     SetRunnerContext("gituseschannel", runtimeOptions.GitUseSecureChannel.ToString());
-            //                 }
-            // #endif                
-            //             }
 
             // Job timeline record.
             InitializeTimelineRecord(

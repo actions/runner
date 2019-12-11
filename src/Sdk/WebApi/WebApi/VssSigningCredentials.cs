@@ -106,28 +106,11 @@ namespace GitHub.Services.WebApi
 
             if (certificate.HasPrivateKey)
             {
-
-// Once we move the ClientObjectModelTargetFrameworkVersion to 4.6 we should remove the #else sections
-// in this file.  The NETSTANDARD sections should be the code for both NetStandard and desktop.  4.5 does
-// not support these new cryptography classes, which is why we need these #ifs for now.
-#if NETSTANDARD
                 var rsa = certificate.GetRSAPrivateKey();
                 if (rsa == null)
                 {
                     throw new SignatureAlgorithmUnsupportedException(certificate.SignatureAlgorithm.FriendlyName);
                 }
-#else
-                var rsa = certificate.PrivateKey as RSACryptoServiceProvider;
-                if (rsa == null)
-                {
-                    throw new SignatureAlgorithmUnsupportedException(certificate.PrivateKey.SignatureAlgorithm);
-                }
-
-                if (rsa.CspKeyContainerInfo.ProviderType != 24)
-                {
-                    throw new SignatureAlgorithmUnsupportedException(rsa.CspKeyContainerInfo.ProviderType);
-                }
-#endif
 
                 if (rsa.KeySize < c_minKeySize)
                 {
@@ -138,7 +121,6 @@ namespace GitHub.Services.WebApi
             return new X509Certificate2SigningToken(certificate);
         }
 
-#if NETSTANDARD
         /// <summary>
         /// Creates a new <c>VssSigningCredentials</c> instance using the specified <paramref name="factory"/> 
         /// callback function to retrieve the signing key.
@@ -164,33 +146,6 @@ namespace GitHub.Services.WebApi
                 return new RSASigningToken(factory, rsa.KeySize);
             }
         }
-#else
-        /// <summary>
-        /// Creates a new <c>VssSigningCredentials</c> instance using the specified <paramref name="factory"/> 
-        /// callback function to retrieve the signing key.
-        /// </summary>
-        /// <param name="factory">The factory which creates <c>RSACryptoServiceProvider</c> keys used for signing and verification</param>
-        /// <returns>A new <c>VssSigningCredentials</c> instance which uses the specified provider for signing</returns>
-        public static VssSigningCredentials Create(Func<RSACryptoServiceProvider> factory)
-        {
-            ArgumentUtility.CheckForNull(factory, nameof(factory));
-
-            using (var rsa = factory())
-            {
-                if (rsa == null)
-                {
-                    throw new InvalidCredentialsException(JwtResources.SignatureAlgorithmUnsupportedException("None"));
-                }
-
-                if (rsa.KeySize < c_minKeySize)
-                {
-                    throw new InvalidCredentialsException(JwtResources.SigningTokenKeyTooSmall());
-                }
-
-                return new RSASigningToken(factory, rsa.KeySize);
-            }
-        }
-#endif
 
         /// <summary>
         /// Creates a new <c>VssSigningCredentials</c> instance using the specified <paramref name="key"/> as the signing 
@@ -300,11 +255,7 @@ namespace GitHub.Services.WebApi
             {
                 get
                 {
-#if NETSTANDARD
                     return m_certificate.GetRSAPublicKey().KeySize;
-#else
-                    return m_certificate.PublicKey.Key.KeySize;
-#endif
                 }
             }
 
@@ -328,32 +279,14 @@ namespace GitHub.Services.WebApi
                 Byte[] input,
                 Byte[] signature)
             {
-#if NETSTANDARD
                 var rsa = m_certificate.GetRSAPublicKey();
                 return rsa.VerifyData(input, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-#else
-                var rsa = m_certificate.PublicKey.Key as RSACryptoServiceProvider;
-
-                using (var hash = SHA256CryptoServiceProvider.Create())
-                {
-                    return rsa.VerifyData(input, hash, signature);
-                }
-#endif
             }
 
             protected override Byte[] GetSignature(Byte[] input)
             {
-#if NETSTANDARD
                 var rsa = m_certificate.GetRSAPrivateKey();
                 return rsa.SignData(input, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-#else
-                var rsa = m_certificate.PrivateKey as RSACryptoServiceProvider;
-
-                using (var hash = SHA256CryptoServiceProvider.Create())
-                {
-                    return rsa.SignData(input, hash);
-                }
-#endif
             }
 
             protected override Boolean HasPrivateKey()
@@ -369,7 +302,6 @@ namespace GitHub.Services.WebApi
             private readonly X509Certificate2 m_certificate;
         }
 
-#if NETSTANDARD
         private class RSASigningToken : AsymmetricKeySigningToken
         {
             public RSASigningToken(
@@ -425,65 +357,6 @@ namespace GitHub.Services.WebApi
             private readonly Int32 m_keySize;
             private readonly Func<RSA> m_factory;
         }
-#else
-        private class RSASigningToken : AsymmetricKeySigningToken
-        {
-            public RSASigningToken(
-                Func<RSACryptoServiceProvider> factory,
-                Int32 keySize)
-            {
-                m_keySize = keySize;
-                m_factory = factory;
-            }
-
-            public override Int32 KeySize
-            {
-                get
-                {
-                    return m_keySize;
-                }
-            }
-
-            protected override Byte[] GetSignature(Byte[] input)
-            {
-                using (var rsa = m_factory())
-                using (var hash = new SHA256CryptoServiceProvider())
-                {
-                    return rsa.SignData(input, hash);
-                }
-            }
-
-            protected override Boolean HasPrivateKey()
-            {
-                try
-                {
-                    // As unfortunate as this is, there is no way to tell from an RSA implementation, based on querying
-                    // properties alone, if it supports signature operations or has a private key. This is a one-time
-                    // hit for the signing credentials implementation, so it shouldn't be a huge deal.
-                    GetSignature(new Byte[1] { 1 });
-                    return true;
-                }
-                catch (CryptographicException)
-                {
-                    return false;
-                }
-            }
-
-            public override Boolean VerifySignature(
-                Byte[] input,
-                Byte[] signature)
-            {
-                using (var rsa = m_factory())
-                using (var hash = new SHA256CryptoServiceProvider())
-                {
-                    return rsa.VerifyData(input, hash, signature);
-                }
-            }
-
-            private readonly Int32 m_keySize;
-            private readonly Func<RSACryptoServiceProvider> m_factory;
-        }
-#endif
 
         #endregion
     }
