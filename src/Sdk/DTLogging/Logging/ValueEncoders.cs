@@ -39,7 +39,7 @@ namespace GitHub.DistributedTask.Logging
 
         public static String ExpressionStringEscape(String value)
         {
-            return Expressions.ExpressionUtil.StringEscape(value);
+            return Expressions2.Sdk.ExpressionUtility.StringEscape(value);
         }
 
         public static String JsonStringEscape(String value)

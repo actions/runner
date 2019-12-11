@@ -41,7 +41,6 @@ namespace GitHub.Runner.Worker
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
-        List<SecureFile> SecureFiles { get; }
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
@@ -136,7 +135,6 @@ namespace GitHub.Runner.Worker
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
-        public List<SecureFile> SecureFiles { get; private set; }
         public Variables Variables { get; private set; }
         public Dictionary<string, string> IntraActionState { get; private set; }
         public HashSet<string> OutputVariables => _outputvariables;
@@ -257,7 +255,6 @@ namespace GitHub.Runner.Worker
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
-            child.SecureFiles = SecureFiles;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -548,9 +545,6 @@ namespace GitHub.Runner.Worker
 
             // Endpoints
             Endpoints = message.Resources.Endpoints;
-
-            // SecureFiles
-            SecureFiles = message.Resources.SecureFiles;
 
             // Variables
             Variables = new Variables(HostContext, message.Variables);

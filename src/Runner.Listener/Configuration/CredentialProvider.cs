@@ -190,42 +190,4 @@ namespace GitHub.Runner.Listener.Configuration
             CredentialData.Data[Constants.Runner.CommandLine.Args.Token] = command.GetToken();
         }
     }
-
-    public sealed class PersonalAccessToken : CredentialProvider
-    {
-        public PersonalAccessToken() : base(Constants.Configuration.PAT) { }
-
-        public override VssCredentials GetVssCredentials(IHostContext context)
-        {
-            ArgUtil.NotNull(context, nameof(context));
-            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
-            trace.Info(nameof(GetVssCredentials));
-            ArgUtil.NotNull(CredentialData, nameof(CredentialData));
-            string token;
-            if (!CredentialData.Data.TryGetValue(Constants.Runner.CommandLine.Args.Token, out token))
-            {
-                token = null;
-            }
-
-            ArgUtil.NotNullOrEmpty(token, nameof(token));
-
-            trace.Info("token retrieved: {0} chars", token.Length);
-
-            // PAT uses a basic credential
-            VssBasicCredential basicCred = new VssBasicCredential("ActionsRunner", token);
-            VssCredentials creds = new VssCredentials(null, basicCred, CredentialPromptType.DoNotPrompt);
-            trace.Info("cred created");
-
-            return creds;
-        }
-
-        public override void EnsureCredential(IHostContext context, CommandSettings command, string serverUrl)
-        {
-            ArgUtil.NotNull(context, nameof(context));
-            Tracing trace = context.GetTrace(nameof(PersonalAccessToken));
-            trace.Info(nameof(EnsureCredential));
-            ArgUtil.NotNull(command, nameof(command));
-            CredentialData.Data[Constants.Runner.CommandLine.Args.Token] = command.GetToken();
-        }
-    }
 }

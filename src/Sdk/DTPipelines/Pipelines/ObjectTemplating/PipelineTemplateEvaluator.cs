@@ -46,65 +46,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Int32 MaxResultSize { get; set; } = 10 * 1024 * 1024; // 10 mb
 
-        public StrategyResult EvaluateStrategy(
-            TemplateToken token,
-            DictionaryContextData contextData,
-            String jobFactoryDisplayName)
-        {
-            var result = new StrategyResult();
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.Strategy, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = PipelineTemplateConverter.ConvertToStrategy(context, token, jobFactoryDisplayName);
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            if (result.Configurations.Count == 0)
-            {
-                var configuration = new StrategyConfiguration
-                {
-                    Name = PipelineConstants.DefaultJobName,
-                    DisplayName = new JobDisplayNameBuilder(jobFactoryDisplayName).Build(),
-                };
-                configuration.ContextData.Add(PipelineTemplateConstants.Matrix, null);
-                configuration.ContextData.Add(
-                    PipelineTemplateConstants.Strategy,
-                    new DictionaryContextData
-                    {
-                        {
-                            "fail-fast",
-                            new BooleanContextData(result.FailFast)
-                        },
-                        {
-                            "job-index",
-                            new NumberContextData(0)
-                        },
-                        {
-                            "job-total",
-                            new NumberContextData(1)
-                        },
-                        {
-                            "max-parallel",
-                            new NumberContextData(1)
-                        }
-                    });
-                result.Configurations.Add(configuration);
-            }
-
-            return result;
-        }
-
         public String EvaluateJobDisplayName(
             TemplateToken token,
             DictionaryContextData contextData,
@@ -130,32 +71,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
 
             return !String.IsNullOrEmpty(result) ? result : defaultDisplayName;
-        }
-
-        public PhaseTarget EvaluateJobTarget(
-            TemplateToken token,
-            DictionaryContextData contextData)
-        {
-            var result = default(PhaseTarget);
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.RunsOn, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = PipelineTemplateConverter.ConvertToJobTarget(context, token);
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return result ?? throw new InvalidOperationException("Job target cannot be null");
         }
 
         public Int32 EvaluateJobTimeout(

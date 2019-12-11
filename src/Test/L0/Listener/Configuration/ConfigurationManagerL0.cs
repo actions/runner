@@ -44,7 +44,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private string _expectedAuthType = "pat";
         private string _expectedWorkFolder = "_work";
         private int _expectedPoolId = 1;
-        private int _expectedDeploymentMachineId = 81;
         private RSACryptoServiceProvider rsa = null;
         private RunnerSettings _configMgrAgentSettings = new RunnerSettings();
 
@@ -68,7 +67,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 #endif
 
             var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
-            var expectedDeploymentMachine = new DeploymentMachine() { Agent = expectedAgent, Id = _expectedDeploymentMachineId };
             expectedAgent.Authorization = new TaskAgentAuthorization
             {
                 ClientId = Guid.NewGuid(),

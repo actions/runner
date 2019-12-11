@@ -128,20 +128,6 @@ namespace GitHub.DistributedTask.WebApi
                                       cancellationToken);
         }
 
-        public Task<TaskAgentJob> GetAgentRequestJobAsync(
-            Guid scopeIdentifier,
-            String planType,
-            String orchestrationId,
-            CancellationToken cancellationToken = default(CancellationToken),
-            Object userState = null)
-        {
-            return base.GetJobInstanceAsync(scopeIdentifier,
-                                       planType,
-                                       orchestrationId,
-                                       userState,
-                                       cancellationToken);
-        }
-
         private readonly ApiResourceVersion m_currentApiVersion = new ApiResourceVersion(2.0, 1);
     }
 }

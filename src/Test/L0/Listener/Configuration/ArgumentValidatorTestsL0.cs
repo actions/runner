@@ -25,7 +25,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
-                Assert.True(Validators.AuthSchemeValidator("pat"));
+                Assert.True(Validators.AuthSchemeValidator("OAuth"));
                 Assert.False(Validators.AuthSchemeValidator("Fail"));
             }
         }

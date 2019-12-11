@@ -37,15 +37,15 @@ namespace GitHub.Runner.Common.Tests.Worker
             serviceEndpoint.Authorization.Parameters.Add("nullValue", null);
             resources.Endpoints.Add(serviceEndpoint);
 
-            List<Pipelines.JobStep> tasks = new List<Pipelines.JobStep>();
-            tasks.Add(new Pipelines.TaskStep()
+            List<Pipelines.ActionStep> actions = new List<Pipelines.ActionStep>();
+            actions.Add(new Pipelines.ActionStep()
             {
                 Id = Guid.NewGuid(),
-                Reference = new Pipelines.TaskStepDefinitionReference()
+                Reference = new Pipelines.RepositoryPathReference()
                 {
-                    Id = Guid.NewGuid(),
-                    Name = "TestTask",
-                    Version = "1.0.0"
+                    RepositoryType = "GitHub",
+                    Name = "actions/test",
+                    Ref = "v1"
                 }
             });
             Guid JobId = Guid.NewGuid();
@@ -69,7 +69,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     new Pipelines.ContextData.DictionaryContextData()
                 },
             };
-            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, new StringToken(null, null, null, "ubuntu"), sidecarContainers, null, variables, new List<MaskHint>(), resources, context, null, tasks, null);
+            var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, new StringToken(null, null, null, "ubuntu"), sidecarContainers, null, variables, new List<MaskHint>(), resources, context, null, actions, null);
             return jobRequest;
         }
 

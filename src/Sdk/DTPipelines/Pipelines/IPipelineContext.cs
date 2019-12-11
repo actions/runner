@@ -15,27 +15,13 @@ namespace GitHub.DistributedTask.Pipelines
     [EditorBrowsable(EditorBrowsableState.Never)]
     public interface IPipelineContext
     {
-        ICounterStore CounterStore { get; }
-
         DictionaryContextData Data { get; }
 
         Int32 EnvironmentVersion { get; }
 
         EvaluationOptions ExpressionOptions { get; }
 
-        IPipelineIdGenerator IdGenerator { get; }
-
-        IPackageStore PackageStore { get; }
-
-        PipelineResources ReferencedResources { get; }
-
-        IResourceStore ResourceStore { get; }
-
-        IReadOnlyList<IStepProvider> StepProviders { get; }
-
         ISecretMasker SecretMasker { get; }
-
-        ITaskStore TaskStore { get; }
 
         IPipelineTraceWriter Trace { get; }
 

@@ -40,15 +40,12 @@ namespace GitHub.Runner.Common.Tests.Listener
             _updater = new Mock<ISelfUpdater>();
         }
 
-        private AgentJobRequestMessage CreateJobRequestMessage(string jobName)
+        private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
-            JobEnvironment environment = new JobEnvironment();
-            List<TaskInstance> tasks = new List<TaskInstance>();
-            Guid JobId = Guid.NewGuid();
-            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks);
-            return jobRequest as AgentJobRequestMessage;
+            Guid jobId = Guid.NewGuid();
+            return new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null);
         }
 
         private JobCancelMessage CreateJobCancelMessage()

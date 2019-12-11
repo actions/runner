@@ -62,13 +62,6 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        [IgnoreDataMember]
-        public OrchestrationProcessType ProcessType
-        {
-            get;
-            internal set;
-        }
-
         [DataMember]
         public TaskOrchestrationOwner Definition
         {

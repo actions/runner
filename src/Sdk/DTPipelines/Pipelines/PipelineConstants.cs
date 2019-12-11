@@ -129,93 +129,11 @@ namespace GitHub.DistributedTask.Pipelines
             public static readonly String EnvironmentResourceName = "Environment.ResourceName";
         }
 
-        public static readonly TaskDefinition CheckoutTask = new TaskDefinition
-        {
-            Id = new Guid("6d15af64-176c-496d-b583-fd2ae21d4df4"),
-            Name = "Checkout",
-            FriendlyName = "Get sources",
-            Author = "Microsoft",
-            RunsOn = { TaskRunsOnConstants.RunsOnAgent },
-            Version = new TaskVersion("1.0.0"),
-            Description = "Get sources from a repository. Supports Git, TfsVC, and SVN repositories.",
-            HelpMarkDown = "[More Information](https://github.com)",
-            Inputs = {
-                new TaskInputDefinition()
-                {
-                    Name =  CheckoutTaskInputs.Repository,
-                    Required = true,
-                    InputType = TaskInputType.Repository
-                },
-                new TaskInputDefinition()
-                {
-                    Name = CheckoutTaskInputs.Clean,
-                    Required = false,
-                    DefaultValue = Boolean.TrueString,
-                    InputType = TaskInputType.Boolean
-                },
-                // Git
-                new TaskInputDefinition()
-                {
-                    Name = CheckoutTaskInputs.Submodules, // True or Recursive
-                    Required = false,
-                    InputType = TaskInputType.String
-                },
-                new TaskInputDefinition()
-                {
-                    Name = CheckoutTaskInputs.Lfs, // Checkout lfs object
-                    Required = false,
-                    DefaultValue = Boolean.FalseString,
-                    InputType = TaskInputType.Boolean
-                },
-                new TaskInputDefinition()
-                {
-                    Name = CheckoutTaskInputs.FetchDepth, // Enable shallow fetch
-                    Required = false,
-                    InputType = TaskInputType.String
-                },
-                new TaskInputDefinition()
-                {
-                    Name = CheckoutTaskInputs.PersistCredentials, // Allow script git
-                    Required = false,
-                    DefaultValue = Boolean.FalseString,
-                    InputType = TaskInputType.Boolean
-                },
-            },
-            Execution =
-            {
-                {
-                    "agentPlugin",
-                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Agent.Plugins.Repository.CheckoutTask, Agent.Plugins"} })
-                }
-            },
-            PostJobExecution =
-            {
-                {
-                    "agentPlugin",
-                    JObject.FromObject(new Dictionary<String, String>(){ { "target", "Agent.Plugins.Repository.CleanupTask, Agent.Plugins"} })
-                }
-            }
-        };
-
         public static class ScriptStepInputs
         {
             public static readonly String Script = "script";
             public static readonly String WorkingDirectory = "workingDirectory";
             public static readonly String Shell = "shell";
-        }
-
-        public static Boolean IsCheckoutTask(this Step step)
-        {
-            if (step is TaskStep task &&
-                task.Reference.Id == PipelineConstants.CheckoutTask.Id &&
-                task.Reference.Version == PipelineConstants.CheckoutTask.Version)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
     }
 }

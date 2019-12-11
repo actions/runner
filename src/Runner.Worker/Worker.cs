@@ -178,15 +178,6 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
-
-            // Add masks for secure file download tickets
-            foreach (SecureFile file in message.Resources.SecureFiles ?? new List<SecureFile>())
-            {
-                if (!string.IsNullOrEmpty(file.Ticket))
-                {
-                    HostContext.SecretMasker.AddValue(file.Ticket);
-                }
-            }
         }
 
         private void SetCulture(Pipelines.AgentJobRequestMessage message)

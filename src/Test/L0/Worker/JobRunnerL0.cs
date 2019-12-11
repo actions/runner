@@ -64,22 +64,23 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = new Timeline(Guid.NewGuid());
-            JobEnvironment environment = new JobEnvironment();
-            environment.Variables[Constants.Variables.System.Culture] = "en-US";
-            environment.SystemConnection = new ServiceEndpoint()
+            Guid jobId = Guid.NewGuid();
+            _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, testName, testName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null);
+            _message.Variables[Constants.Variables.System.Culture] = "en-US";
+            _message.Resources.Endpoints.Add(new ServiceEndpoint()
             {
                 Name = WellKnownServiceEndpointNames.SystemVssConnection,
                 Url = new Uri("https://test.visualstudio.com"),
                 Authorization = new EndpointAuthorization()
                 {
                     Scheme = "Test",
-                }
-            };
-            environment.SystemConnection.Authorization.Parameters["AccessToken"] = "token";
+                    Parameters = {
+                        {"AccessToken", "token"}
+                    }
+                },
 
-            List<TaskInstance> tasks = new List<TaskInstance>();
-            Guid JobId = Guid.NewGuid();
-            _message = Pipelines.AgentJobRequestMessageUtil.Convert(new AgentJobRequestMessage(plan, timeline, JobId, testName, testName, environment, tasks));
+            });
+
             _message.Resources.Repositories.Add(new Pipelines.RepositoryResource()
             {
                 Alias = Pipelines.PipelineConstants.SelfAlias,
