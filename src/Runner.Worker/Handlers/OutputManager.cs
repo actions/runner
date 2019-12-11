@@ -278,12 +278,7 @@ namespace GitHub.Runner.Worker.Handlers
                     }
 
                     // Remove relative pathing and normalize slashes
-                    // todo: make sure this normalizes slashes on windows
                     file = Path.GetFullPath(file);
-
-                    // todo: remove
-                    //// Normalize slashes
-                    //file = file.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
                     // Check whether the file exists
                     if (File.Exists(file))
@@ -326,7 +321,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Empty directory means we hit the root of the drive
-            // todo: Test on Windows
             var directoryPath = Path.GetDirectoryName(filePath);
             if (string.IsNullOrEmpty(directoryPath) || recursion > _failsafe)
             {
@@ -364,8 +358,9 @@ namespace GitHub.Runner.Worker.Handlers
                     repositoryPath = GetRepositoryPath(directoryPath, recursion + 1);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _executionContext.Debug($"Error when attempting to determine whether the path '{filePath}' is under the workflow repository: {ex.Message}");
             }
 
             _directoryMap[directoryPath] = repositoryPath;

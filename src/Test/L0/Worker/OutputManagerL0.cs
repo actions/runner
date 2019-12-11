@@ -744,6 +744,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("some error 8", _issues[7].Item1.Message);
                 Assert.Equal(file_nestedWorkflowRepository.Substring(nestedWorkflowRepository.Length + 1).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), _issues[7].Item1.Data["file"]);
             }
+
+            Environment.SetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE", "");
         }
 
         [Fact]
