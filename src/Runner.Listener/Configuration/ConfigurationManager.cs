@@ -518,7 +518,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(GetCredentialProvider));
 
             var credentialManager = HostContext.GetService<ICredentialManager>();
-            string authType = command.GetAuth(defaultValue: Constants.Configuration.AAD);
+            string authType = command.GetAuth(defaultValue: Constants.Configuration.OAuthAccessToken);
 
             // Create the credential.
             Trace.Info("Creating credential for auth: {0}", authType);

@@ -158,7 +158,6 @@ namespace GitHub.Runner.Common
 
         public static class Configuration
         {
-            public static readonly string AAD = "AAD";
             public static readonly string OAuthAccessToken = "OAuthAccessToken";
             public static readonly string OAuth = "OAuth";
         }
