@@ -276,9 +276,7 @@ namespace GitHub.Runner.Worker.Container
             return await ExecuteDockerCommandAsync(context, "exec", $"{options} {containerId} {command}", context.CancellationToken);
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously (method has async logic on only certain platforms)
         public async Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> output)
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             ArgUtil.NotNull(output, nameof(output));
 
@@ -309,9 +307,10 @@ namespace GitHub.Runner.Worker.Container
                 }
             };
 
-#if OS_WINDOWS || OS_OSX
-            throw new NotSupportedException($"Container operation is only supported on Linux");
-#else
+            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            {
+                throw new NotSupportedException("Container operations are only supported on Linux runners");
+            }
             return await processInvoker.ExecuteAsync(
                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                             fileName: DockerPath,
@@ -320,7 +319,6 @@ namespace GitHub.Runner.Worker.Container
                             requireExitCodeZero: false,
                             outputEncoding: null,
                             cancellationToken: CancellationToken.None);
-#endif
         }
 
         public async Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
@@ -339,9 +337,7 @@ namespace GitHub.Runner.Worker.Container
             return ExecuteDockerCommandAsync(context, command, options, null, cancellationToken);
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously (method has async logic on only certain platforms)
         private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, IDictionary<string, string> environment, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived, CancellationToken cancellationToken = default(CancellationToken))
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             string arg = $"{command} {options}".Trim();
             context.Command($"{DockerPath} {arg}");
@@ -351,9 +347,10 @@ namespace GitHub.Runner.Worker.Container
             processInvoker.ErrorDataReceived += stderrDataReceived;
 
 
-#if OS_WINDOWS || OS_OSX
-            throw new NotSupportedException($"Container operation is only supported on Linux");
-#else
+            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            {
+                throw new NotSupportedException("Container operations are only supported on Linux runners");
+            }
             return await processInvoker.ExecuteAsync(
                 workingDirectory: context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
@@ -363,12 +360,9 @@ namespace GitHub.Runner.Worker.Container
                 outputEncoding: null,
                 killProcessOnCancel: false,
                 cancellationToken: cancellationToken);
-#endif
         }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously (method has async logic on only certain platforms)
         private async Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, string workingDirectory, CancellationToken cancellationToken = default(CancellationToken))
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             string arg = $"{command} {options}".Trim();
             context.Command($"{DockerPath} {arg}");
@@ -384,9 +378,10 @@ namespace GitHub.Runner.Worker.Container
                 context.Output(message.Data);
             };
 
-#if OS_WINDOWS || OS_OSX
-            throw new NotSupportedException($"Container operation is only supported on Linux");
-#else
+            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            {
+                throw new NotSupportedException("Container operations are only supported on Linux runners");
+            }
             return await processInvoker.ExecuteAsync(
                 workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
@@ -397,7 +392,6 @@ namespace GitHub.Runner.Worker.Container
                 killProcessOnCancel: false,
                 redirectStandardIn: null,
                 cancellationToken: cancellationToken);
-#endif
         }
 
         private async Task<List<string>> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options)
