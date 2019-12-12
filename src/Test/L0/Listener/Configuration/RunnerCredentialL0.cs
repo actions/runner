@@ -1,6 +1,5 @@
 ﻿using GitHub.Runner.Listener;
 using GitHub.Runner.Listener.Configuration;
-using GitHub.Services.Client;
 using GitHub.Services.Common;
 
 namespace GitHub.Runner.Common.Tests.Listener.Configuration
