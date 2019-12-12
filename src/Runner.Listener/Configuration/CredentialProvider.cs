@@ -1,13 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using GitHub.Runner.Common.Util;
-using GitHub.Services.Client;
 using GitHub.Services.Common;
-using GitHub.Services.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.Services.OAuth;
