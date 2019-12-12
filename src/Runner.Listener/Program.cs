@@ -4,6 +4,7 @@ using GitHub.Runner.Sdk;
 using System;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,9 @@ namespace GitHub.Runner.Listener
     {
         public static int Main(string[] args)
         {
+            // Add environment variables from .env file
+            LoadAndSetEnv();
+
             using (HostContext context = new HostContext("Runner"))
             {
                 return MainAsync(context, args).GetAwaiter().GetResult();
@@ -25,7 +29,7 @@ namespace GitHub.Runner.Listener
         // 1: Terminate failure
         // 2: Retriable failure
         // 3: Exit for self update
-        public async static Task<int> MainAsync(IHostContext context, string[] args)
+        private async static Task<int> MainAsync(IHostContext context, string[] args)
         {
             Tracing trace = context.GetTrace(nameof(GitHub.Runner.Listener));
             trace.Info($"Runner is built for {Constants.Runner.Platform} ({Constants.Runner.PlatformArchitecture}) - {BuildConstants.RunnerPackage.PackageName}.");
@@ -83,22 +87,6 @@ namespace GitHub.Runner.Listener
                     return Constants.Runner.ReturnCode.TerminatedError;
                 }
 
-                // Add environment variables from .env file
-                string envFile = Path.Combine(context.GetDirectory(WellKnownDirectory.Root), ".env");
-                if (File.Exists(envFile))
-                {
-                    var envContents = File.ReadAllLines(envFile);
-                    foreach (var env in envContents)
-                    {
-                        if (!string.IsNullOrEmpty(env) && env.IndexOf('=') > 0)
-                        {
-                            string envKey = env.Substring(0, env.IndexOf('='));
-                            string envValue = env.Substring(env.IndexOf('=') + 1);
-                            Environment.SetEnvironmentVariable(envKey, envValue);
-                        }
-                    }
-                }
-
                 // Parse the command line args.
                 var command = new CommandSettings(context, args);
                 trace.Info("Arguments parsed");
@@ -134,6 +122,35 @@ namespace GitHub.Runner.Listener
                 terminal.WriteError($"An error occurred: {e.Message}");
                 trace.Error(e);
                 return Constants.Runner.ReturnCode.RetryableError;
+            }
+        }
+
+        private static void LoadAndSetEnv()
+        {
+            var binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var rootDir = new DirectoryInfo(binDir).Parent.FullName;
+            string envFile = Path.Combine(rootDir, ".env");
+            if (File.Exists(envFile))
+            {
+                var envContents = File.ReadAllLines(envFile);
+                foreach (var env in envContents)
+                {
+                    if (!string.IsNullOrEmpty(env))
+                    {
+                        var separatorIndex = env.IndexOf('=');
+                        if (separatorIndex > 0)
+                        {
+                            string envKey = env.Substring(0, separatorIndex);
+                            string envValue = null;
+                            if (env.Length > separatorIndex + 1)
+                            {
+                                envValue = env.Substring(separatorIndex + 1);
+                            }
+
+                            Environment.SetEnvironmentVariable(envKey, envValue);
+                        }
+                    }
+                }
             }
         }
     }
