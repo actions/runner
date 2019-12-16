@@ -10,6 +10,10 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/releases/')
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v2
+
+    # Make sure ./releaseVersion match ./src/runnerversion 
+    # Query GitHub release ensure version is not used 
     - name: Check version
       uses: actions/github-script@0.3.0
       with:
@@ -17,37 +21,20 @@ jobs:
         script: |
           const core = require('@actions/core')
           const fs = require('fs');
-          // Get runner version from ./src/runnerVersion file
-          const versionContent = await github.repos.getContents({
-            owner: '${{ github.event.repository.owner.name }}',
-            repo: '${{ github.event.repository.name }}',
-            path: 'src/runnerversion',
-            ref: '${{ github.sha }}'
-          })
-          const runnerVersion = Buffer.from(versionContent.data.content, 'base64').toString().replace(/\n$/g, '')
-          console.log('Runner Version ' + runnerVersion)
-          // Get runner release request version from ./releaseVersion file
-          const releaseVersionContent = await github.repos.getContents({
-            owner: '${{ github.event.repository.owner.name }}',
-            repo: '${{ github.event.repository.name }}',
-            path: 'releaseVersion',
-            ref: '${{ github.sha }}'
-          })
-          const releaseVersion = Buffer.from(releaseVersionContent.data.content, 'base64').toString().replace(/\n$/g, '')
-          console.log('Request Release Version ' + releaseVersion)
+          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
+          const releaseVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '')
           if (runnerVersion != releaseVersion) {
+            console.log('Request Release Version: ' + releaseVersion + '\nCurrent Runner Version: ' + runnerVersion)
             core.setFailed('Version mismatch! Make sure ./releaseVersion match ./src/runnerVersion')
             return
           }
-          // Query GitHub release ensure version is not used 
           try {
-            const tagName = 'v' + runnerVersion
             const release = await github.repos.getReleaseByTag({
               owner: '${{ github.event.repository.owner.name }}',
               repo: '${{ github.event.repository.name }}',
-              tag: tagName
+              tag: 'v' + runnerVersion
             })
-            core.setFailed('Release already created at ' + release.data.created_at)
+            core.setFailed('Release with same tag already created: ' + release.data.html_url)
           } catch (e) {
             if (e.status != 404) {
               throw e
@@ -118,6 +105,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+    - uses: actions/checkout@v2
+
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact
       uses: actions/download-artifact@v1
@@ -134,29 +123,11 @@ jobs:
         script: |
           const core = require('@actions/core')
           const fs = require('fs');
-          // Get runner version from ./src/runnerVersion file
-          const versionContent = await github.repos.getContents({
-            owner: '${{ github.event.repository.owner.name }}',
-            repo: '${{ github.event.repository.name }}',
-            path: 'src/runnerversion',
-            ref: '${{ github.sha }}'
-          })
-          const runnerVersion = Buffer.from(versionContent.data.content, 'base64').toString().replace(/\n$/g, '')
-          console.log('Runner Version ' + runnerVersion)
-          core.setOutput('version', runnerVersion);
-          // Generate release note
-          const releaseNoteContent = await github.repos.getContents({
-            owner: '${{ github.event.repository.owner.name }}',
-            repo: '${{ github.event.repository.name }}',
-            path: 'releaseNote.md',
-            ref: '${{ github.sha }}'
-          })
-          const releaseNote = Buffer.from(releaseNoteContent.data.content, 'base64').toString().replace("<RUNNER_VERSION>", runnerVersion)
+          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
+          const releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
           console.log(releaseNote)
+          core.setOutput('version', runnerVersion);
           core.setOutput('note', releaseNote);
-          
-    - run: |
-        ls -Rl
         
     # Create GitHub release
     - uses: actions/create-release@v1
