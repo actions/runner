@@ -533,7 +533,7 @@ namespace GitHub.Runner.Common.Tests
                     .Returns("some token");
 
                 // Act.
-                string actual = command.GetToken();
+                string actual = command.GetRunnerDeletionToken();
 
                 // Assert.
                 Assert.Equal("some token", actual);
