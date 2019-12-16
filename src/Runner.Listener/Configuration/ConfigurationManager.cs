@@ -443,7 +443,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                     else
                     {
-                        var githubToken = command.GetToken();
+                        var githubToken = command.GetRunnerDeletionToken();
                         GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken);
                         creds = authResult.ToVssCredentials();
                         Trace.Info("cred retrieved via GitHub auth");

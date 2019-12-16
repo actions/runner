@@ -516,6 +516,33 @@ namespace GitHub.Runner.Common.Tests
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
+        public void PromptsForRunnerDeletionToken()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var command = new CommandSettings(hc, args: new string[0]);
+                _promptManager
+                    .Setup(x => x.ReadValue(
+                        Constants.Runner.CommandLine.Args.Token, // argName
+                        "Enter runner deletion token:", // description
+                        true, // secret
+                        string.Empty, // defaultValue
+                        Validators.NonEmptyValidator, // validator
+                        false)) // unattended
+                    .Returns("some token");
+
+                // Act.
+                string actual = command.GetRunnerDeletionToken();
+
+                // Assert.
+                Assert.Equal("some token", actual);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", nameof(CommandSettings))]
         public void PromptsForUrl()
         {
             using (TestHostContext hc = CreateTestContext())

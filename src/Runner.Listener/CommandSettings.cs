@@ -224,6 +224,15 @@ namespace GitHub.Runner.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
+        public string GetRunnerDeletionToken()
+        {
+            return GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Token,
+                description: "Enter runner deletion token:",
+                defaultValue: string.Empty,
+                validator: Validators.NonEmptyValidator);
+        }
+
         public string GetUrl(bool suppressPromptIfEmpty = false)
         {
             // Note, GetArg does not consume the arg (like GetArgOrPrompt does).
