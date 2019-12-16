@@ -29,9 +29,6 @@ namespace GitHub.Runner.Common
         Service,
         CredentialStore,
         Certificates,
-        Proxy,
-        ProxyCredentials,
-        ProxyBypass,
         Options,
     }
 
@@ -93,12 +90,10 @@ namespace GitHub.Runner.Common
                 //validArgs array as well present in the CommandSettings.cs
                 public static class Args
                 {
-                    public static readonly string Agent = "agent";
                     public static readonly string Auth = "auth";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
+                    public static readonly string Name = "name";
                     public static readonly string Pool = "pool";
-                    public static readonly string ProxyUrl = "proxyurl";
-                    public static readonly string ProxyUserName = "proxyusername";
                     public static readonly string SslCACert = "sslcacert";
                     public static readonly string SslClientCert = "sslclientcert";
                     public static readonly string SslClientCertKey = "sslclientcertkey";
@@ -111,14 +106,12 @@ namespace GitHub.Runner.Common
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Password = "password";
-                    public static readonly string ProxyPassword = "proxypassword";
                     public static readonly string SslClientCertPassword = "sslclientcertpassword";
                     public static readonly string Token = "token";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
                     public static string[] Secrets => new[]
                     {
                         Password,
-                        ProxyPassword,
                         SslClientCertPassword,
                         Token,
                         WindowsLogonPassword,
@@ -213,14 +206,6 @@ namespace GitHub.Runner.Common
                 //
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
-            }
-
-            public static class Agent
-            {
-                //
-                // Keep alphabetical
-                //
-                public static readonly string ToolsDirectory = "agent.ToolsDirectory";
             }
 
             public static class System

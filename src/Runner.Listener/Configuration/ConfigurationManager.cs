@@ -86,24 +86,6 @@ namespace GitHub.Runner.Listener.Configuration
                 throw new InvalidOperationException("Cannot configure the runner because it is already configured. To reconfigure the runner, run 'config.cmd remove' or './config.sh remove' first.");
             }
 
-            // Populate proxy setting from commandline args
-            var runnerProxy = HostContext.GetService<IRunnerWebProxy>();
-            bool saveProxySetting = false;
-            string proxyUrl = command.GetProxyUrl();
-            if (!string.IsNullOrEmpty(proxyUrl))
-            {
-                if (!Uri.IsWellFormedUriString(proxyUrl, UriKind.Absolute))
-                {
-                    throw new ArgumentOutOfRangeException(nameof(proxyUrl));
-                }
-
-                Trace.Info("Reset proxy base on commandline args.");
-                string proxyUserName = command.GetProxyUserName();
-                string proxyPassword = command.GetProxyPassword();
-                (runnerProxy as RunnerWebProxy).SetupProxy(proxyUrl, proxyUserName, proxyPassword);
-                saveProxySetting = true;
-            }
-
             // Populate cert setting from commandline args
             var runnerCertManager = HostContext.GetService<IRunnerCertificateManager>();
             bool saveCertSetting = false;
@@ -232,7 +214,7 @@ namespace GitHub.Runner.Listener.Configuration
             TaskAgent agent;
             while (true)
             {
-                runnerSettings.AgentName = command.GetAgentName();
+                runnerSettings.AgentName = command.GetRunnerName();
 
                 _term.WriteLine();
 
@@ -371,12 +353,6 @@ namespace GitHub.Runner.Listener.Configuration
 
             _store.SaveSettings(runnerSettings);
 
-            if (saveProxySetting)
-            {
-                Trace.Info("Save proxy setting to disk.");
-                (runnerProxy as RunnerWebProxy).SaveProxySetting();
-            }
-
             if (saveCertSetting)
             {
                 Trace.Info("Save agent cert setting to disk.");
@@ -467,7 +443,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                     else
                     {
-                        var githubToken = command.GetToken();
+                        var githubToken = command.GetRunnerDeletionToken();
                         GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken);
                         creds = authResult.ToVssCredentials();
                         Trace.Info("cred retrieved via GitHub auth");
@@ -515,8 +491,6 @@ namespace GitHub.Runner.Listener.Configuration
                 currentAction = "Removing .runner";
                 if (isConfigured)
                 {
-                    // delete proxy setting
-                    (HostContext.GetService<IRunnerWebProxy>() as RunnerWebProxy).DeleteProxySetting();
 
                     // delete agent cert setting
                     (HostContext.GetService<IRunnerCertificateManager>() as RunnerCertificateManager).DeleteCertificateSetting();

@@ -9,7 +9,7 @@ namespace GitHub.Runner.Common.Tests
     {
         [Fact]
         [Trait("Level", "L0")]
-        [Trait("Category", "Agent")]
+        [Trait("Category", "Runner")]
         public void BuildConstantGenerateSucceed()
         {
             List<string> validPackageNames = new List<string>()

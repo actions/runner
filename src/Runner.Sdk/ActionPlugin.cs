@@ -24,6 +24,7 @@ namespace GitHub.Runner.Sdk
     {
         private readonly string DebugEnvironmentalVariable = "ACTIONS_STEP_DEBUG";
         private VssConnection _connection;
+        private RunnerWebProxy _webProxy;
         private readonly object _stdoutLock = new object();
         private readonly ITraceWriter _trace; // for unit tests
 
@@ -57,6 +58,19 @@ namespace GitHub.Runner.Sdk
             }
         }
 
+        [JsonIgnore]
+        public RunnerWebProxy WebProxy
+        {
+            get
+            {
+                if (_webProxy == null)
+                {
+                    _webProxy = new RunnerWebProxy();
+                }
+                return _webProxy;
+            }
+        }
+
         public VssConnection InitializeVssConnection()
         {
             var headerValues = new List<ProductInfoHeaderValue>();
@@ -84,15 +98,7 @@ namespace GitHub.Runner.Sdk
                 }
             }
 
-            var proxySetting = GetProxyConfiguration();
-            if (proxySetting != null)
-            {
-                if (!string.IsNullOrEmpty(proxySetting.ProxyAddress))
-                {
-                    VssHttpMessageHandler.DefaultWebProxy = new RunnerWebProxyCore(proxySetting.ProxyAddress, proxySetting.ProxyUsername, proxySetting.ProxyPassword, proxySetting.ProxyBypassList);
-                }
-            }
-
+            VssHttpMessageHandler.DefaultWebProxy = this.WebProxy;
             ServiceEndpoint systemConnection = this.Endpoints.FirstOrDefault(e => string.Equals(e.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             ArgUtil.NotNull(systemConnection, nameof(systemConnection));
             ArgUtil.NotNull(systemConnection.Url, nameof(systemConnection.Url));
@@ -248,29 +254,6 @@ namespace GitHub.Runner.Sdk
                 }
 
                 return certConfig;
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        public RunnerWebProxySettings GetProxyConfiguration()
-        {
-            string proxyUrl = GetRunnerContext("ProxyUrl");
-            if (!string.IsNullOrEmpty(proxyUrl))
-            {
-                string proxyUsername = GetRunnerContext("ProxyUsername");
-                string proxyPassword = GetRunnerContext("ProxyPassword");
-                List<string> proxyBypassHosts = StringUtil.ConvertFromJson<List<string>>(GetRunnerContext("ProxyBypassList") ?? "[]");
-                return new RunnerWebProxySettings()
-                {
-                    ProxyAddress = proxyUrl,
-                    ProxyUsername = proxyUsername,
-                    ProxyPassword = proxyPassword,
-                    ProxyBypassList = proxyBypassHosts,
-                    WebProxy = new RunnerWebProxyCore(proxyUrl, proxyUsername, proxyPassword, proxyBypassHosts)
-                };
             }
             else
             {

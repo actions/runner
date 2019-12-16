@@ -1,13 +1,14 @@
 ## Features
-  - Added the "severity" keyword to allow action authors to set the default severity for problem matchers (#203)
+  - Added Proxy Support for self-hosted runner. (#206)
+  - Introduce `--name` configure argument for runner name. (#217)
+  - Better repo matching for issue file path (checkout v2 related) (#208)
 
 ## Bugs
-  - Fixed generated self-hosted runner names to never go over 80 characters (helps Windows customers) (#193)
-  - Fixed `PrepareActions_DownloadActionFromGraph` test by pointing to an active Actions repository (#205)
+  - N/A
 
 ## Misc
-  - Updated the publish and download artifact actions to use the v2 endpoint (#188)
-  - Updated the service name on self-hosted runner name to include repository or organization information (#193)
+  - Runner code cleanup  (#197, #209, #214, #219) 
+  - Update node external to 12.13.1 (#215)
 
 ## Windows x64
 We recommend configuring the runner under "<DRIVE>:\actions-runner". This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows

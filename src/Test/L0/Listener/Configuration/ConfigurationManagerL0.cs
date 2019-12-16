@@ -20,14 +20,12 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 {
     public class ConfigurationManagerL0
     {
-        private Mock<IRunnerServer> _agentServer;
+        private Mock<IRunnerServer> _runnerServer;
         private Mock<ILocationServer> _locationServer;
         private Mock<ICredentialManager> _credMgr;
         private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
-        // private Mock<IDeploymentGroupServer> _machineGroupServer;
-        private Mock<IRunnerWebProxy> _runnerWebProxy;
         private Mock<IRunnerCertificateManager> _cert;
 
 #if OS_WINDOWS
@@ -52,15 +50,13 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 
         public ConfigurationManagerL0()
         {
-            _agentServer = new Mock<IRunnerServer>();
+            _runnerServer = new Mock<IRunnerServer>();
             _locationServer = new Mock<ILocationServer>();
             _credMgr = new Mock<ICredentialManager>();
             _promptManager = new Mock<IPromptManager>();
             _store = new Mock<IConfigurationStore>();
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
-            // _machineGroupServer = new Mock<IDeploymentGroupServer>();
-            _runnerWebProxy = new Mock<IRunnerWebProxy>();
             _cert = new Mock<IRunnerCertificateManager>();
 
 #if OS_WINDOWS
@@ -85,15 +81,9 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 DeploymentType = DeploymentFlags.Hosted,
                 DeploymentId = Guid.NewGuid()
             };
-            _agentServer.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>())).Returns(Task.FromResult<object>(null));
+            _runnerServer.Setup(x => x.ConnectAsync(It.IsAny<Uri>(), It.IsAny<VssCredentials>())).Returns(Task.FromResult<object>(null));
             _locationServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
             _locationServer.Setup(x => x.GetConnectionDataAsync()).Returns(Task.FromResult<ConnectionData>(connectionData));
-            // _machineGroupServer.Setup(x => x.ConnectAsync(It.IsAny<VssConnection>())).Returns(Task.FromResult<object>(null));
-            // _machineGroupServer.Setup(x => x.UpdateDeploymentTargetsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<List<DeploymentMachine>>()));
-            // _machineGroupServer.Setup(x => x.AddDeploymentTargetAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DeploymentMachine>())).Returns(Task.FromResult(expectedDeploymentMachine));
-            // _machineGroupServer.Setup(x => x.ReplaceDeploymentTargetAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<DeploymentMachine>())).Returns(Task.FromResult(expectedDeploymentMachine));
-            // _machineGroupServer.Setup(x => x.GetDeploymentTargetsAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(new List<DeploymentMachine>() { }));
-            // _machineGroupServer.Setup(x => x.DeleteDeploymentTargetAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>())).Returns(Task.FromResult<object>(null));
 
             _store.Setup(x => x.IsConfigured()).Returns(false);
             _store.Setup(x => x.HasCredentials()).Returns(false);
@@ -105,20 +95,20 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                     _configMgrAgentSettings = settings;
                 });
 
-            _credMgr.Setup(x => x.GetCredentialProvider(It.IsAny<string>())).Returns(new TestAgentCredential());
+            _credMgr.Setup(x => x.GetCredentialProvider(It.IsAny<string>())).Returns(new TestRunnerCredential());
 
 #if !OS_WINDOWS
             _serviceControlManager.Setup(x => x.GenerateScripts(It.IsAny<RunnerSettings>()));
 #endif
 
             var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = _expectedPoolId } };
-            _agentServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.IsAny<TaskAgentPoolType>())).Returns(Task.FromResult(expectedPools));
+            _runnerServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.IsAny<TaskAgentPoolType>())).Returns(Task.FromResult(expectedPools));
 
             var expectedAgents = new List<TaskAgent>();
-            _agentServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
+            _runnerServer.Setup(x => x.GetAgentsAsync(It.IsAny<int>(), It.IsAny<string>())).Returns(Task.FromResult(expectedAgents));
 
-            _agentServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
-            _agentServer.Setup(x => x.ReplaceAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+            _runnerServer.Setup(x => x.AddAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
+            _runnerServer.Setup(x => x.ReplaceAgentAsync(It.IsAny<int>(), It.IsAny<TaskAgent>())).Returns(Task.FromResult(expectedAgent));
 
             rsa = new RSACryptoServiceProvider(2048);
 
@@ -132,9 +122,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<IPromptManager>(_promptManager.Object);
             tc.SetSingleton<IConfigurationStore>(_store.Object);
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
-            tc.SetSingleton<IRunnerServer>(_agentServer.Object);
+            tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
-            tc.SetSingleton<IRunnerWebProxy>(_runnerWebProxy.Object);
             tc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
 
 #if OS_WINDOWS
@@ -171,7 +160,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "--acceptteeeula", 
 #endif                       
                        "--url", _expectedServerUrl,
-                       "--agent", _expectedAgentName,
+                       "--name", _expectedAgentName,
                        "--pool", _expectedPoolName,
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,
@@ -195,9 +184,9 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
 
                 // validate GetAgentPoolsAsync gets called once with automation pool type
-                _agentServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Once);
+                _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Once);
 
-                _agentServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Contains("self-hosted") && a.Labels.Contains(VarUtil.OS) && a.Labels.Contains(VarUtil.OSArchitecture))), Times.Once);
+                _runnerServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Contains("self-hosted") && a.Labels.Contains(VarUtil.OS) && a.Labels.Contains(VarUtil.OSArchitecture))), Times.Once);
             }
         }
     }

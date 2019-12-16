@@ -179,7 +179,7 @@ namespace GitHub.Runner.Worker
                 finally
                 {
                     Trace.Info("Finalize job.");
-                    await jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
+                    jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
                 }
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");

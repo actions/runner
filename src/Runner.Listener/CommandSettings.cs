@@ -42,14 +42,11 @@ namespace GitHub.Runner.Listener
 
         private readonly string[] validArgs =
         {
-            Constants.Runner.CommandLine.Args.Agent,
             Constants.Runner.CommandLine.Args.Auth,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
+            Constants.Runner.CommandLine.Args.Name,
             Constants.Runner.CommandLine.Args.Password,
             Constants.Runner.CommandLine.Args.Pool,
-            Constants.Runner.CommandLine.Args.ProxyPassword,
-            Constants.Runner.CommandLine.Args.ProxyUrl,
-            Constants.Runner.CommandLine.Args.ProxyUserName,
             Constants.Runner.CommandLine.Args.SslCACert,
             Constants.Runner.CommandLine.Args.SslClientCert,
             Constants.Runner.CommandLine.Args.SslClientCertKey,
@@ -173,15 +170,6 @@ namespace GitHub.Runner.Listener
         //
         // Args.
         //
-        public string GetAgentName()
-        {
-            return GetArgOrPrompt(
-                name: Constants.Runner.CommandLine.Args.Agent,
-                description: "Enter the name of runner:",
-                defaultValue: Environment.MachineName ?? "myagent",
-                validator: Validators.NonEmptyValidator);
-        }
-
         public string GetAuth(string defaultValue)
         {
             return GetArgOrPrompt(
@@ -209,6 +197,15 @@ namespace GitHub.Runner.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
+        public string GetRunnerName()
+        {
+            return GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Name,
+                description: "Enter the name of runner:",
+                defaultValue: Environment.MachineName ?? "myrunner",
+                validator: Validators.NonEmptyValidator);
+        }
+
         public string GetToken()
         {
             return GetArgOrPrompt(
@@ -223,6 +220,15 @@ namespace GitHub.Runner.Listener
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Token,
                 description: "Enter runner register token:",
+                defaultValue: string.Empty,
+                validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetRunnerDeletionToken()
+        {
+            return GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Token,
+                description: "Enter runner deletion token:",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -288,21 +294,6 @@ namespace GitHub.Runner.Listener
         public string GetStartupType()
         {
             return GetArg(Constants.Runner.CommandLine.Args.StartupType);
-        }
-
-        public string GetProxyUrl()
-        {
-            return GetArg(Constants.Runner.CommandLine.Args.ProxyUrl);
-        }
-
-        public string GetProxyUserName()
-        {
-            return GetArg(Constants.Runner.CommandLine.Args.ProxyUserName);
-        }
-
-        public string GetProxyPassword()
-        {
-            return GetArg(Constants.Runner.CommandLine.Args.ProxyPassword);
         }
 
         public bool GetSkipCertificateValidation()

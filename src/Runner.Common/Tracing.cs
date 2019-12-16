@@ -50,6 +50,13 @@ namespace GitHub.Runner.Common
         public void Error(Exception exception)
         {
             Trace(TraceEventType.Error, exception.ToString());
+            var innerEx = exception.InnerException;
+            while (innerEx != null)
+            {
+                Trace(TraceEventType.Error, "#####################################################");
+                Trace(TraceEventType.Error, innerEx.ToString());
+                innerEx = innerEx.InnerException;
+            }
         }
 
         // Do not remove the non-format overload.
