@@ -25,7 +25,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         {
             using (TestHostContext hc = new TestHostContext(this))
             {
-                Assert.True(Validators.AuthSchemeValidator("pat"));
+                Assert.True(Validators.AuthSchemeValidator("OAuth"));
                 Assert.False(Validators.AuthSchemeValidator("Fail"));
             }
         }
@@ -47,7 +47,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "ArgumentValidator")]
-#endif
         public void WindowsLogonAccountValidator()
         {
             using (TestHostContext hc = new TestHostContext(this))
@@ -56,5 +55,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 Assert.True(Validators.NTAccountValidator("NT AUTHORITY\\LOCAL SERVICE"));
             }
         }
+#endif
     }
 }

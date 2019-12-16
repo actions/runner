@@ -4,7 +4,6 @@ using System.Runtime.Serialization;
 namespace GitHub.DistributedTask.WebApi
 {
     [DataContract]
-    [KnownType(typeof(AzureKeyVaultVariableValue))]
     public class VariableValue
     {
         public VariableValue()

@@ -41,20 +41,6 @@ namespace GitHub.Services.OAuth
         }
 
         /// <summary>
-        /// Performs a token exchange using the specified token request.
-        /// </summary>
-        /// <param name="request">The token request</param>
-        /// <param name="cancellationToken">A token for signalling cancellation</param>
-        /// <returns>A <c>Task&lt;VssOAuthTokenResponse&gt;</c> which may be used to track progress of the token request</returns>
-        public Task<VssOAuthTokenResponse> GetTokenAsync(
-            VssOAuthTokenRequest request,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            ArgumentUtility.CheckForNull(request, nameof(request));
-            return GetTokenAsync(request.Grant, request.ClientCredential, request.Parameters, cancellationToken);
-        }
-
-        /// <summary>
         /// Performs a token exchange using the specified authorization grant and client credentials.
         /// </summary>
         /// <param name="grant">The authorization grant for the token request</param>
@@ -75,12 +61,10 @@ namespace GitHub.Services.OAuth
                 requestMessage.Content = CreateRequestContent(grant, credential, tokenParameters);
                 requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-#if NETSTANDARD
                 if (VssClientHttpRequestSettings.Default.UseHttp11)
                 {
                     requestMessage.Version = HttpVersion.Version11;
                 }
-#endif
 
                 foreach (var headerVal in VssClientHttpRequestSettings.Default.UserAgent)
                 {
@@ -128,17 +112,10 @@ namespace GitHub.Services.OAuth
                 },
             };
 
-#if !NETSTANDARD
-            WebRequestHandler messageHandler = new WebRequestHandler()
-            {
-                UseDefaultCredentials = false
-            };
-#else
             HttpClientHandler messageHandler = new HttpClientHandler()
             {
                 UseDefaultCredentials = false
             };
-#endif
 
             // Inherit proxy setting from VssHttpMessageHandler
             if (VssHttpMessageHandler.DefaultWebProxy != null)
@@ -158,11 +135,7 @@ namespace GitHub.Services.OAuth
             if (requestUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) &&
                 VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback != null)
             {
-#if !NETSTANDARD
-                messageHandler.ServerCertificateValidationCallback = VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback;
-#else
                 messageHandler.ServerCertificateCustomValidationCallback = VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback;
-#endif
             }
 
             return new VssHttpRetryMessageHandler(retryOptions, messageHandler);

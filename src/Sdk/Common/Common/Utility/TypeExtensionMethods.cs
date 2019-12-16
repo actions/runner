@@ -218,7 +218,6 @@ namespace GitHub.Services.Common
             }
         }
 
-#if NETSTANDARD
         /// <summary>
         /// Portable compliant way to get a constructor with specified arguments.  This will return a constructor that is public or private as long as the arguments match.  NULL will be returned if there is no match.
         /// Note that it will pick the first one it finds that matches, which is not necesarily the best match.
@@ -263,7 +262,6 @@ namespace GitHub.Services.Common
             }
             return null;
         }
-#endif
 
         private static PropertyInfo GetPublicInstancePropertyInfo(Type type, string name)
         {

@@ -83,10 +83,6 @@ namespace GitHub.Services.WebApi
                 {
                     innerHandler.Credentials.Federated.TokenStorageUrl = baseUrl;
                 }
-                if (innerHandler.Credentials.Windows != null)
-                {
-                    innerHandler.Credentials.Windows.TokenStorageUrl = baseUrl;
-                }
             }
         }
 
@@ -97,13 +93,6 @@ namespace GitHub.Services.WebApi
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return ConnectAsync(VssConnectMode.Automatic, null, cancellationToken);
-        }
-
-        public Task ConnectAsync(
-            VssConnectMode connectMode,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return ConnectAsync(connectMode, null, cancellationToken);
         }
 
         public Task ConnectAsync(
@@ -139,20 +128,6 @@ namespace GitHub.Services.WebApi
                     promptToSetParametersOn = Credentials.Federated.Prompt;
                 }
 
-#if DEBUG && !NETSTANDARD
-                VssConnectMode? connectModeOverride;
-                String userOverride;
-                VssClientSettings.GetConnectionOverrides(out connectModeOverride, out userOverride);
-
-                if (connectModeOverride != null)
-                {
-                    connectMode = connectModeOverride.Value;
-                }
-                if (userOverride != null)
-                {
-                    parameters[VssConnectionParameterKeys.User] = userOverride;
-                }
-#endif
                 parameters[VssConnectionParameterKeys.VssConnectionMode] = connectMode.ToString();
                 promptToSetParametersOn.Parameters = parameters;
             }
@@ -212,42 +187,6 @@ namespace GitHub.Services.WebApi
         /// Retrieves an HTTP client of the specified type.
         /// </summary>
         /// <typeparam name="T">The type of client to retrieve</typeparam>
-        /// <param name="serviceIdentifier">Optional parameter. If supplied, the identifier will be used to resolve the
-        /// base address for the HTTP client. Otherwise the base address will be resolved using the service identifier
-        /// in the metadata of the requested client type (i.e. the ResourceArea attribute)</param>
-        /// <returns>The client of the specified type</returns>
-        public T GetClient<T>(Guid serviceIdentifier) where T : VssHttpClientBase
-        {
-            return GetClientAsync<T>(serviceIdentifier).SyncResult();
-        }
-
-        /// <summary>
-        /// Retrieves an HTTP client of the specified type.
-        /// </summary>
-        /// <typeparam name="T">The type of client to retrieve</typeparam>
-        /// <returns>The client of the specified type</returns>
-        public T GetClient<T>(CancellationToken cancellationToken) where T : VssHttpClientBase
-        {
-            return GetClientAsync<T>(cancellationToken).SyncResult();
-        }
-
-        /// <summary>
-        /// Retrieves an HTTP client of the specified type.
-        /// </summary>
-        /// <typeparam name="T">The type of client to retrieve</typeparam>
-        /// <param name="serviceIdentifier">Optional parameter. If supplied, the identifier will be used to resolve the
-        /// base address for the HTTP client. Otherwise the base address will be resolved using the service identifier
-        /// in the metadata of the requested client type (i.e. the ResourceArea attribute)</param>
-        /// <returns>The client of the specified type</returns>
-        public T GetClient<T>(Guid serviceIdentifier, CancellationToken cancellationToken) where T : VssHttpClientBase
-        {
-            return GetClientAsync<T>(serviceIdentifier, cancellationToken).SyncResult();
-        }
-
-        /// <summary>
-        /// Retrieves an HTTP client of the specified type.
-        /// </summary>
-        /// <typeparam name="T">The type of client to retrieve</typeparam>
         /// <returns>The client of the specified type</returns>
         public async Task<T> GetClientAsync<T>(CancellationToken cancellationToken = default(CancellationToken)) where T : VssHttpClientBase
         {
@@ -261,38 +200,6 @@ namespace GitHub.Services.WebApi
             }
 
             return (T)await GetClientServiceImplAsync(typeof(T), serviceIdentifier, GetClientInstanceAsync, cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Retrieves an HTTP client of the specified type.
-        /// </summary>
-        /// <typeparam name="T">The type of client to retrieve</typeparam>
-        /// <param name="serviceIdentifier">Optional parameter. If supplied, the identifier will be used to resolve the
-        /// base address for the HTTP client. Otherwise the base address will be resolved using the service identifier
-        /// in the metadata of the requested client type (i.e. the ResourceArea attribute)</param>
-        /// <returns>The client of the specified type</returns>
-        public async Task<T> GetClientAsync<T>(Guid serviceIdentifier, CancellationToken cancellationToken = default(CancellationToken)) where T : VssHttpClientBase
-        {
-            return (T)await GetClientServiceImplAsync(typeof(T), serviceIdentifier, GetClientInstanceAsync, cancellationToken).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="clientType"></param>
-        /// <returns></returns>
-        public Object GetClient(Type clientType)
-        {
-            // Verify incoming type is assignable from VssHttpClientBase
-            Type requiredBaseType = typeof(VssHttpClientBase);
-
-            if (!requiredBaseType.GetTypeInfo().IsAssignableFrom(clientType.GetTypeInfo()))
-            {
-                throw new ArgumentException(requiredBaseType.FullName);
-            }
-
-            // Return client instance
-            return GetClientServiceImplAsync(clientType, GetServiceIdentifier(clientType), GetClientInstanceAsync).SyncResult();
         }
 
         /// <summary>
@@ -356,24 +263,6 @@ namespace GitHub.Services.WebApi
             CancellationToken cancellationToken)
         {
             return GetClientInstanceAsync(managedType, serviceIdentifier, cancellationToken, null, null);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="managedType"></param>
-        /// <param name="cancellationToken"></param>
-        /// <param name="settings"></param>
-        /// <param name="handlers"></param>
-        /// <returns></returns>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        internal Task<Object> GetClientInstanceAsync(
-            Type managedType,
-            CancellationToken cancellationToken,
-            VssHttpRequestSettings settings,
-            DelegatingHandler[] handlers)
-        {
-            return GetClientInstanceAsync(managedType, GetServiceIdentifier(managedType), cancellationToken, settings, handlers);
         }
 
         /// <summary>
@@ -541,33 +430,6 @@ namespace GitHub.Services.WebApi
             ArgumentUtility.CheckForNull(type, "type");
 
             m_extensibleServiceTypes[typeName] = type;
-        }
-
-        /// <summary>
-        /// Used for Testing Only
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="instance"></param>
-        internal void RegisterClientServiceInstance(
-            Type type,
-            Object instance)
-        {
-            ArgumentUtility.CheckForNull(type, "type");
-            ArgumentUtility.CheckForNull(instance, "instance");
-            CheckForDisposed();
-
-            if (!type.GetTypeInfo().IsAssignableFrom(instance.GetType().GetTypeInfo()))
-            {
-                // This is just a test method -- no need to resource the string
-                throw new ArgumentException("Object is not an instance of the specified type.");
-            }
-
-            Type instanceType = instance.GetType();
-            ClientCacheKey cacheKey = new ClientCacheKey(instanceType, GetServiceIdentifier(type));
-
-            // Now add the service to the service list.
-            RegisterExtensibleType(type.Name, instanceType);
-            m_cachedTypes[cacheKey] = instance;
         }
 
         private bool m_isDisposed = false;

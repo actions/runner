@@ -160,7 +160,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         {
                             Body = "somebody1",
                             MessageId = 4234,
-                            MessageType = JobRequestMessageTypes.AgentJobRequest
+                            MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
                         },
                         new TaskAgentMessage
                         {
@@ -174,7 +174,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         {
                             Body = "somebody3",
                             MessageId = 4236,
-                            MessageType = JobRequestMessageTypes.AgentJobRequest
+                            MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
                         }
                 };
                 var messages = new Queue<TaskAgentMessage>(arMessages);

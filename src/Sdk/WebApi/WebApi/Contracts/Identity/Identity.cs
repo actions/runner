@@ -35,8 +35,6 @@ namespace GitHub.Services.Identity
             {
                 Id = Id,
                 Descriptor = new IdentityDescriptor(Descriptor),
-                SubjectDescriptor = SubjectDescriptor,
-                SocialDescriptor = SocialDescriptor,
                 ProviderDisplayName = ProviderDisplayName,
                 CustomDisplayName = CustomDisplayName,
                 IsActive = IsActive,
@@ -212,23 +210,6 @@ namespace GitHub.Services.Identity
             set;
         }
 
-        [DataMember(IsRequired = false, EmitDefaultValue = false)]
-        public SubjectDescriptor SubjectDescriptor
-        {
-            get;
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            set;
-        }
-
-        [DataMember(IsRequired = false, EmitDefaultValue = false)]
-        public SocialDescriptor SocialDescriptor
-        {
-            get;
-
-            [EditorBrowsable(EditorBrowsableState.Never)]
-            set;
-        }
         //*****************************************************************************************************************
         /// <summary>
         /// The display name for the identity as specified by the source identity provider.

@@ -97,11 +97,6 @@ namespace GitHub.Services.WebApi
                     {
                         vssHttpMessageHandler.Credentials.Federated.TokenStorageUrl = m_client.BaseAddress;
                     }
-                    if (vssHttpMessageHandler.Credentials.Windows != null
-                        && vssHttpMessageHandler.Credentials.Windows.TokenStorageUrl == null)
-                    {
-                        vssHttpMessageHandler.Credentials.Windows.TokenStorageUrl = m_client.BaseAddress;
-                    }
                 }
             }
             else if (handler is DelegatingHandler delegatingHandler)

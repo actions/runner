@@ -5,9 +5,6 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
-#if !NETSTANDARD
-using System.Diagnostics.Eventing;
-#endif
 
 namespace GitHub.Services.Common.Diagnostics
 {
@@ -838,13 +835,6 @@ namespace GitHub.Services.Common.Diagnostics
         [NonEvent]
         private void SetActivityId(VssTraceActivity activity)
         {
-#if !NETSTANDARD
-            if (activity != null)
-            {
-                Guid activityId = activity.Id;
-                EventProvider.SetActivityId(ref activityId);
-            }
-#endif
         }
 
         [NonEvent]
@@ -876,15 +866,6 @@ namespace GitHub.Services.Common.Diagnostics
             Action<Int32, String> writeEvent)
         {
             writeEvent(param0, message);
-#if !NETSTANDARD
-            if (EventProvider.GetLastWriteEventError() == EventProvider.WriteEventErrorCode.EventTooBig)
-            {
-                foreach (String messagePart in SplitMessage(message))
-                {
-                    writeEvent(param0, messagePart);
-                }
-            }
-#endif
         }
 
         [NonEvent]
@@ -895,15 +876,6 @@ namespace GitHub.Services.Common.Diagnostics
             Action<VssCredentialsType, Int32, String> writeEvent)
         {
             writeEvent(param0, param1, message);
-#if !NETSTANDARD
-            if (EventProvider.GetLastWriteEventError() == EventProvider.WriteEventErrorCode.EventTooBig)
-            {
-                foreach (String messagePart in SplitMessage(message))
-                {
-                    writeEvent(param0, param1, messagePart);
-                }
-            }
-#endif
         }
 
         [NonEvent]
@@ -914,23 +886,10 @@ namespace GitHub.Services.Common.Diagnostics
             Action<VssHttpMethod, String, String> writeEvent)
         {
             writeEvent(param0, param1, message);
-#if !NETSTANDARD
-            if (EventProvider.GetLastWriteEventError() == EventProvider.WriteEventErrorCode.EventTooBig)
-            {
-                foreach (String messagePart in SplitMessage(message))
-                {
-                    writeEvent(param0, param1, messagePart);
-                }
-            }
-#endif
         }
 
         [NonEvent]
-#if !NETSTANDARD
-        private unsafe void WriteEvent(
-#else
         private new unsafe void WriteEvent(
-#endif
             Int32 eventId,
             Int32 param0,
             String param1)

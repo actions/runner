@@ -20,7 +20,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IPipelineDirectoryManager> _directoryManager;
         private Mock<IActionManager> _actionManager;
         private Mock<IJobServerQueue> _jobServerQueue;
-        private Mock<IRunnerCertificateManager> _cert;
         private Mock<IConfigurationStore> _config;
         private Mock<IPagingLogger> _logger;
         private Mock<IExpressionManager> _express;
@@ -36,7 +35,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             _jobServerQueue = new Mock<IJobServerQueue>();
             _config = new Mock<IConfigurationStore>();
             _logger = new Mock<IPagingLogger>();
-            _cert = new Mock<IRunnerCertificateManager>();
             _express = new Mock<IExpressionManager>();
             _containerProvider = new Mock<IContainerOperationProvider>();
             _diagnosticLogManager = new Mock<IDiagnosticLogManager>();
@@ -110,7 +108,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(_actionManager.Object);
             hc.SetSingleton(_config.Object);
             hc.SetSingleton(_jobServerQueue.Object);
-            hc.SetSingleton(_cert.Object);
             hc.SetSingleton(_express.Object);
             hc.SetSingleton(_containerProvider.Object);
             hc.SetSingleton(_directoryManager.Object);

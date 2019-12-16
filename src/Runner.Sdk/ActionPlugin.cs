@@ -83,21 +83,6 @@ namespace GitHub.Runner.Sdk
             }
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
-
-            var certSetting = GetCertConfiguration();
-            if (certSetting != null)
-            {
-                if (!string.IsNullOrEmpty(certSetting.ClientCertificateArchiveFile))
-                {
-                    VssClientHttpRequestSettings.Default.ClientCertificateManager = new RunnerClientCertificateManager(certSetting.ClientCertificateArchiveFile, certSetting.ClientCertificatePassword);
-                }
-
-                if (certSetting.SkipServerCertificateValidation)
-                {
-                    VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-                }
-            }
-
             VssHttpMessageHandler.DefaultWebProxy = this.WebProxy;
             ServiceEndpoint systemConnection = this.Endpoints.FirstOrDefault(e => string.Equals(e.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             ArgUtil.NotNull(systemConnection, nameof(systemConnection));
@@ -220,40 +205,6 @@ namespace GitHub.Runner.Sdk
             if (githubContext.TryGetValue(contextName, out var data))
             {
                 return data as StringContextData;
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        public RunnerCertificateSettings GetCertConfiguration()
-        {
-            bool skipCertValidation = StringUtil.ConvertToBoolean(GetRunnerContext("SkipCertValidation"));
-            string caFile = GetRunnerContext("CAInfo");
-            string clientCertFile = GetRunnerContext("ClientCert");
-
-            if (!string.IsNullOrEmpty(caFile) || !string.IsNullOrEmpty(clientCertFile) || skipCertValidation)
-            {
-                var certConfig = new RunnerCertificateSettings();
-                certConfig.SkipServerCertificateValidation = skipCertValidation;
-                certConfig.CACertificateFile = caFile;
-
-                if (!string.IsNullOrEmpty(clientCertFile))
-                {
-                    certConfig.ClientCertificateFile = clientCertFile;
-                    string clientCertKey = GetRunnerContext("ClientCertKey");
-                    string clientCertArchive = GetRunnerContext("ClientCertArchive");
-                    string clientCertPassword = GetRunnerContext("ClientCertPassword");
-
-                    certConfig.ClientCertificatePrivateKeyFile = clientCertKey;
-                    certConfig.ClientCertificateArchiveFile = clientCertArchive;
-                    certConfig.ClientCertificatePassword = clientCertPassword;
-
-                    certConfig.VssClientCertificateManager = new RunnerClientCertificateManager(clientCertArchive, clientCertPassword);
-                }
-
-                return certConfig;
             }
             else
             {

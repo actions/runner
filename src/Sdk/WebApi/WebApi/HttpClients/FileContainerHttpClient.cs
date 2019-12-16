@@ -67,18 +67,6 @@ namespace GitHub.Services.FileContainer.Client
         }
 
         /// <summary>
-        /// Queries for file containers
-        /// </summary>
-        /// <param name="artifactUris">List of artifact uris associated with containers. If empty or null will return all containers.</param>
-        /// <param name="userState"></param>
-        /// <returns></returns>
-        public Task<List<FileContainer>> QueryContainersAsync(List<Uri> artifactUris, Guid scopeIdentifier, Object userState = null, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            List<KeyValuePair<String, String>> query = AppendContainerQueryString(artifactUris, scopeIdentifier);
-            return SendAsync<List<FileContainer>>(HttpMethod.Get, FileContainerResourceIds.FileContainer, version: s_currentApiVersion, queryParameters: query, userState: userState, cancellationToken: cancellationToken);
-        }
-
-        /// <summary>
         /// Queries for container items in a container.
         /// </summary>
         /// <param name="containerId">Id of the container to query.</param>
@@ -434,48 +422,6 @@ namespace GitHub.Services.FileContainer.Client
             return response;
         }
 
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public async Task<List<FileContainerItem>> CreateItemsAsync(
-            Int64 containerId,
-            List<FileContainerItem> items,
-            Guid scopeIdentifier,
-            CancellationToken cancellationToken = default(CancellationToken),
-            Object userState = null)
-        {
-            List<FileContainerItem> updatedItems = items.Select(x => { x.ContainerId = containerId; x.Status = ContainerItemStatus.PendingUpload; return x; }).ToList();
-
-            try
-            {
-                return await PostAsync<List<FileContainerItem>, List<FileContainerItem>>(
-                    updatedItems,
-                    FileContainerResourceIds.FileContainer,
-                    routeValues: new { containerId = containerId, scopeIdentifier = scopeIdentifier },
-                    version: s_currentApiVersion,
-                    userState: userState,
-                    cancellationToken: cancellationToken);
-            }
-            catch (Exception)
-            {
-                //eat until versioning works in options request
-                return updatedItems;
-            }
-        }
-
-        // for back compat with internal use
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public Task<HttpResponseMessage> UploadFileToTfsAsync(
-            Int64 containerId,
-            String itemPath,
-            Stream fileStream,
-            Guid scopeIdentifier,
-            CancellationToken cancellationToken,
-            int chunkSize = c_defaultChunkSize,
-            bool uploadFirstChunk = false,
-            Object userState = null)
-        {
-            return UploadFileAsync(containerId, itemPath, fileStream, scopeIdentifier, cancellationToken, chunkSize, uploadFirstChunk, userState);
-        }
-
         /// <summary>
         /// Download a file from the specified container.
         /// </summary>
@@ -492,55 +438,6 @@ namespace GitHub.Services.FileContainer.Client
             Object userState = null)
         {
             return DownloadAsync(containerId, itemPath, "application/octet-stream", cancellationToken, scopeIdentifier, userState);
-        }
-
-        /// <summary>
-        /// Download a file or folder as a zip file.
-        /// </summary>
-        /// <param name="containerId"></param>
-        /// <param name="itemPath"></param>
-        /// <param name="cancellationToken"></param>
-        /// <param name="userState"></param>
-        /// <returns>A stream of the zip file.</returns>
-        public Task<Stream> DownloadItemAsZipAsync(
-            Int64 containerId,
-            String itemPath,
-            CancellationToken cancellationToken,
-            Guid scopeIdentifier,
-            Object userState = null)
-        {
-            return DownloadAsync(containerId, itemPath, "application/zip", cancellationToken, scopeIdentifier, userState);
-        }
-
-        /// <summary>
-        /// Delete a container item
-        /// </summary>
-        /// <param name="containerId"></param>
-        /// <param name="itemPath"></param>
-        /// <param name="cancellationToken"></param>
-        /// <param name="userState"></param>
-        /// <returns></returns>
-        public Task DeleteContainerItem(
-            Int64 containerId,
-            String itemPath,
-            Guid scopeIdentifier,
-            CancellationToken cancellationToken = default(CancellationToken),
-            Object userState = null)
-        {
-            if (containerId < 1)
-            {
-                throw new ArgumentException(WebApiResources.ContainerIdMustBeGreaterThanZero(), "containerId");
-            }
-
-            List<KeyValuePair<String, String>> query = AppendItemQueryString(itemPath, scopeIdentifier);
-
-            return DeleteAsync(
-                FileContainerResourceIds.FileContainer,
-                new { containerId = containerId },
-                s_currentApiVersion,
-                query,
-                userState,
-                cancellationToken);
         }
 
         public bool IsFastFailResponse(HttpResponseMessage response)
@@ -580,21 +477,6 @@ namespace GitHub.Services.FileContainer.Client
             }
 
             return await SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, userState, cancellationToken).ConfigureAwait(false);
-        }
-
-        private List<KeyValuePair<String, String>> AppendContainerQueryString(List<Uri> artifactUris, Guid scopeIdentifier)
-        {
-            List<KeyValuePair<String, String>> collection = new List<KeyValuePair<String, String>>();
-
-            if (artifactUris != null && artifactUris.Count > 0)
-            {
-                String artifactsString = String.Join(",", artifactUris.Select(x => x.AbsoluteUri));
-                collection.Add(QueryParameters.ArtifactUris, artifactsString);
-            }
-
-            collection.Add(QueryParameters.ScopeIdentifier, scopeIdentifier.ToString());
-
-            return collection;
         }
 
         private List<KeyValuePair<String, String>> AppendItemQueryString(String itemPath, Guid scopeIdentifier, Boolean includeDownloadTickets = false, Boolean isShallow = false)

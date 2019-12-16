@@ -16,22 +16,12 @@ namespace GitHub.DistributedTask.WebApi
         public const String JobCompleted = "JobCompleted";
 
         public const String JobStarted = "JobStarted";
-
-        public const String TaskAssigned = "TaskAssigned";
-
-        public const String TaskStarted = "TaskStarted";
-
-        public const String TaskCompleted = "TaskCompleted";
     }
 
     [DataContract]
     [KnownType(typeof(JobAssignedEvent))]
     [KnownType(typeof(JobCompletedEvent))]
     [KnownType(typeof(JobStartedEvent))]
-    [KnownType(typeof(TaskAssignedEvent))]
-    [KnownType(typeof(TaskStartedEvent))]
-    [KnownType(typeof(TaskCompletedEvent))]
-    [KnownType(typeof(TaskLocalExecutionCompletedEvent))]
     [JsonConverter(typeof(JobEventJsonConverter))]
     public abstract class JobEvent
     {
@@ -179,89 +169,6 @@ namespace GitHub.DistributedTask.WebApi
         }
     }
 
-    [DataContract]
-    public sealed class TaskAssignedEvent : TaskEvent
-    {
-        public TaskAssignedEvent() 
-            : base(JobEventTypes.TaskAssigned)
-        {
-        }
-
-        public TaskAssignedEvent(
-            Guid jobId, 
-            Guid taskId) 
-            : base(JobEventTypes.TaskAssigned, jobId, taskId)
-        {
-        }
-    }
-
-    [DataContract]
-    public sealed class TaskStartedEvent : TaskEvent
-    {
-        public TaskStartedEvent() 
-            : base(JobEventTypes.TaskStarted)
-        {
-        }
-
-        public TaskStartedEvent(
-            Guid jobId, 
-            Guid taskId) 
-            : base(JobEventTypes.TaskStarted, jobId, taskId)
-        {
-        }
-    }
-
-    [DataContract]
-    public sealed class TaskCompletedEvent : TaskEvent
-    {
-        public TaskCompletedEvent() 
-            : base(JobEventTypes.TaskCompleted)
-        {
-        }
-
-        public TaskCompletedEvent(
-            Guid jobId, 
-            Guid taskId, 
-            TaskResult taskResult) 
-            : base(JobEventTypes.TaskCompleted, jobId, taskId)
-        {
-            Result = taskResult;
-        }
-
-        [DataMember]
-        public TaskResult Result
-        {
-            get;
-            set;
-        }
-    }
-
-    [DataContract]
-    [ClientIgnore]
-    internal sealed class TaskLocalExecutionCompletedEvent : TaskEvent
-    {
-        public TaskLocalExecutionCompletedEvent()
-            : base(JobEventTypes.TaskCompleted)
-        {
-        }
-
-        public TaskLocalExecutionCompletedEvent(
-            Guid jobId,
-            Guid taskId,
-            ServerTaskSectionExecutionOutput data)
-            : base(JobEventTypes.TaskCompleted, jobId, taskId)
-        {
-            EventData = data;
-        }
-
-        [DataMember]
-        public ServerTaskSectionExecutionOutput EventData
-        {
-            get;
-            set;
-        }
-    }
-
     internal sealed class JobEventJsonConverter : VssSecureJsonConverter
     {
         public override Boolean CanWrite
@@ -303,18 +210,6 @@ namespace GitHub.DistributedTask.WebApi
                     else if (String.Equals(nameValue, JobEventTypes.JobStarted, StringComparison.Ordinal))
                     {
                         jobEvent = new JobStartedEvent();
-                    }
-                    else if (String.Equals(nameValue, JobEventTypes.TaskAssigned, StringComparison.Ordinal))
-                    {
-                        jobEvent = new TaskAssignedEvent();
-                    }
-                    else if (String.Equals(nameValue, JobEventTypes.TaskStarted, StringComparison.Ordinal))
-                    {
-                        jobEvent = new TaskStartedEvent();
-                    }
-                    else if (String.Equals(nameValue, JobEventTypes.TaskCompleted, StringComparison.Ordinal))
-                    {
-                        jobEvent = new TaskCompletedEvent();
                     }
                 }
             }

@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-#if !NETSTANDARD
-using System.Runtime.Remoting.Messaging;
-#endif
 using System.Runtime.Serialization;
 
 namespace GitHub.Services.Common.Diagnostics
@@ -38,22 +35,11 @@ namespace GitHub.Services.Common.Diagnostics
         /// </summary>
         public static VssTraceActivity Current
         {
-#if !NETSTANDARD
-            get
-            {
-                return CallContext.LogicalGetData(VssTraceActivity.PropertyName) as VssTraceActivity;
-            }
-            private set
-            {
-                CallContext.LogicalSetData(VssTraceActivity.PropertyName, value);
-            }
-#else
             get
             {
                 return null;
             }
             set { }
-#endif
         }
 
         /// <summary>

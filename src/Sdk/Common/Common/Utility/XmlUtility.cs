@@ -13,9 +13,6 @@ namespace GitHub.Services.Common.Internal
 {
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-#if !NETSTANDARD
-    [CLSCompliant(false)]
-#endif
     public static class XmlUtility
     {
         internal static FileStream OpenFile(String path, FileShare sharing, Boolean saveFile)

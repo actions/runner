@@ -54,21 +54,6 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
-        /// <summary>
-        /// Gets the collection of secure files associated with the current job
-        /// </summary>
-        public List<SecureFile> SecureFiles
-        {
-            get
-            {
-                if (m_secureFiles == null)
-                {
-                    m_secureFiles = new List<SecureFile>();
-                }
-                return m_secureFiles;
-            }
-        }
-
         [OnSerializing]
         private void OnSerializing(StreamingContext context)
         {
@@ -86,11 +71,6 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 m_repositories = null;
             }
-
-            if (m_secureFiles?.Count == 0)
-            {
-                m_secureFiles = null;
-            }
         }
 
         [DataMember(Name = "Containers", EmitDefaultValue = false)]
@@ -101,8 +81,5 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "Repositories", EmitDefaultValue = false)]
         private List<RepositoryResource> m_repositories;
-
-        [DataMember(Name = "SecureFiles", EmitDefaultValue = false)]
-        private List<SecureFile> m_secureFiles;
     }
 }

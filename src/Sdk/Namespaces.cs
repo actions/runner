@@ -1,8 +1,16 @@
-﻿namespace AsyncFixer
+namespace AsyncFixer
 {
 }
 
-namespace GitHub.DistributedTask.Common.Contracts
+namespace GitHub.Actions.Pipelines.WebApi
+{
+}
+
+namespace GitHub.Actions.Pipelines.WebApi.Contracts
+{
+}
+
+namespace GitHub.Build.WebApi
 {
 }
 
@@ -10,7 +18,23 @@ namespace GitHub.DistributedTask.Expressions
 {
 }
 
-namespace GitHub.DistributedTask.Expressions.CollectionAccessors
+namespace GitHub.DistributedTask.Expressions2
+{
+}
+
+namespace GitHub.DistributedTask.Expressions2.Sdk
+{
+}
+
+namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
+{
+}
+
+namespace GitHub.DistributedTask.Expressions2.Sdk.Operators
+{
+}
+
+namespace GitHub.DistributedTask.Expressions2.Tokens
 {
 }
 
@@ -30,15 +54,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
 }
 
-namespace GitHub.DistributedTask.Orchestration.Server.Artifacts
-{
-}
-
 namespace GitHub.DistributedTask.Pipelines
-{
-}
-
-namespace GitHub.DistributedTask.Pipelines.Artifacts
 {
 }
 
@@ -54,10 +70,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
 }
 
-namespace GitHub.DistributedTask.Pipelines.Runtime
-{
-}
-
 namespace GitHub.DistributedTask.Pipelines.Validation
 {
 }
@@ -67,6 +79,10 @@ namespace GitHub.DistributedTask.WebApi
 }
 
 namespace GitHub.GraphProfile.WebApi
+{
+}
+
+namespace GitHub.Services
 {
 }
 
@@ -87,10 +103,6 @@ namespace GitHub.Services.AzureFrontDoor
 }
 
 namespace GitHub.Services.CentralizedFeature
-{
-}
-
-namespace GitHub.Services.Client
 {
 }
 
@@ -139,6 +151,10 @@ namespace GitHub.Services.FeatureAvailability
 }
 
 namespace GitHub.Services.FileContainer
+{
+}
+
+namespace GitHub.Services.FileContainer.Client
 {
 }
 
@@ -279,6 +295,10 @@ namespace GitHub.Services.Users
 }
 
 namespace GitHub.Services.WebApi
+{
+}
+
+namespace GitHub.Services.WebApi.Exceptions
 {
 }
 

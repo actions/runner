@@ -44,9 +44,7 @@ namespace GitHub.Services.Common
             this.SuppressFedAuthRedirects = true;
             this.ClientCertificateManager = null;
             this.ServerCertificateValidationCallback = null;
-#if NETSTANDARD
             this.UseHttp11 = false;
-#endif
 
             // If different, we'll also add CurrentCulture to the request headers,
             // but UICulture was added first, so it gets first preference
@@ -99,9 +97,7 @@ namespace GitHub.Services.Common
             this.ClientCertificateManager = copy.ClientCertificateManager;
             this.ServerCertificateValidationCallback = copy.ServerCertificateValidationCallback;
             this.MaxRetryRequest = copy.MaxRetryRequest;
-#if NETSTANDARD
             this.UseHttp11 = copy.UseHttp11;
-#endif
         }
 
         /// <summary>
@@ -144,7 +140,6 @@ namespace GitHub.Services.Common
             set;
         }
 
-#if NETSTANDARD
         /// <summary>
         /// The .NET Core 2.1 runtime switched its HTTP default from HTTP 1.1 to HTTP 2.
         /// This causes problems with some versions of the Curl handler on Linux.
@@ -156,7 +151,6 @@ namespace GitHub.Services.Common
             get;
             set;
         }
-#endif
 
         /// <summary>
         /// Gets or sets the maximum size allowed for response content buffering.
@@ -266,15 +260,6 @@ namespace GitHub.Services.Common
             set;
         }
 
-#if !NETSTANDARD
-        /// <summary>
-        /// Optional implementation used to validate server certificate validation
-        /// </summary>
-        public RemoteCertificateValidationCallback ServerCertificateValidationCallback
-        {
-            get; set;
-        }
-#else
         /// <summary>
         /// Optional implementation used to validate server certificate validation
         /// </summary>
@@ -283,7 +268,6 @@ namespace GitHub.Services.Common
             get;
             set;
         }
-#endif
 
         /// <summary>
         /// Number of times to retry a request that has an ambient failure
@@ -359,13 +343,11 @@ namespace GitHub.Services.Common
                 request.Headers.Add(Internal.HttpHeaders.VssAgentHeader, this.AgentId);
             }
 
-#if NETSTANDARD
             // Content is being sent as chunked by default in dotnet5.4, which differs than the .net 4.5 behaviour.
             if (request.Content != null && !request.Content.Headers.ContentLength.HasValue && !request.Headers.TransferEncodingChunked.HasValue)
             {
                 request.Content.Headers.ContentLength = request.Content.ReadAsByteArrayAsync().Result.Length;
             }
-#endif
 
             return true;
         }

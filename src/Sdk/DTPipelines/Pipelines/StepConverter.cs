@@ -22,9 +22,9 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         public override object ReadJson(
-            JsonReader reader, 
-            Type objectType, 
-            Object existingValue, 
+            JsonReader reader,
+            Type objectType,
+            Object existingValue,
             JsonSerializer serializer)
         {
             if (reader.TokenType != JsonToken.StartObject)
@@ -33,26 +33,7 @@ namespace GitHub.DistributedTask.Pipelines
             }
 
             JObject value = JObject.Load(reader);
-            if (!value.TryGetValue("Type", StringComparison.OrdinalIgnoreCase, out JToken stepTypeValue))
-            {
-                Step compatStepObject;
-                if (value.TryGetValue("Parameters", StringComparison.OrdinalIgnoreCase, out _))
-                {
-                    compatStepObject = new TaskTemplateStep();
-                }
-                else
-                {
-                    compatStepObject = new TaskStep();
-                }
-
-                using (var objectReader = value.CreateReader())
-                {
-                    serializer.Populate(objectReader, compatStepObject);
-                }
-
-                return compatStepObject;
-            }
-            else
+            if (value.TryGetValue("Type", StringComparison.OrdinalIgnoreCase, out JToken stepTypeValue))
             {
                 StepType stepType;
                 if (stepTypeValue.Type == JTokenType.Integer)
@@ -70,18 +51,6 @@ namespace GitHub.DistributedTask.Pipelines
                     case StepType.Action:
                         stepObject = new ActionStep();
                         break;
-
-                    case StepType.Group:
-                        stepObject = new GroupStep();
-                        break;
-
-                    case StepType.Task:
-                        stepObject = new TaskStep();
-                        break;
-
-                    case StepType.TaskTemplate:
-                        stepObject = new TaskTemplateStep();
-                        break;
                 }
 
                 using (var objectReader = value.CreateReader())
@@ -90,6 +59,10 @@ namespace GitHub.DistributedTask.Pipelines
                 }
 
                 return stepObject;
+            }
+            else
+            {
+                return null;
             }
         }
 

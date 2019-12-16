@@ -124,9 +124,6 @@ namespace GitHub.Services.Common
             LogException = (bool)info.GetValue("m_logException", typeof(bool));
             ReportException = (bool)info.GetValue("m_reportException", typeof(bool));
             ErrorCode = (int)info.GetValue("m_errorCode", typeof(int));
-#if !NETSTANDARD
-            LogLevel = (EventLogEntryType)info.GetValue("m_logLevel", typeof(EventLogEntryType));
-#endif
             EventId = (int)info.GetValue("m_eventId", typeof(int));
         }
 
@@ -137,9 +134,6 @@ namespace GitHub.Services.Common
             info.AddValue("m_logException", LogException);
             info.AddValue("m_reportException", ReportException);
             info.AddValue("m_errorCode", ErrorCode);
-#if !NETSTANDARD
-            info.AddValue("m_logLevel", LogLevel);
-#endif
             info.AddValue("m_eventId", EventId);
         }
 
@@ -156,22 +150,6 @@ namespace GitHub.Services.Common
                 m_logException = value;
             }
         }
-
-#if !NETSTANDARD
-        /// <summary>The event log entry type to use when logging the exception</summary>
-        /// <value>One of the event log entry types: </value>
-        public EventLogEntryType LogLevel
-        {
-            get
-            {
-                return m_logLevel;
-            }
-            set
-            {
-                m_logLevel = value;
-            }
-        }
-#endif
 
         /// <summary>A user-defined error code.</summary>
         public int ErrorCode
@@ -278,10 +256,6 @@ namespace GitHub.Services.Common
         private bool m_logException;
         private bool m_reportException;
         private int m_errorCode;
-
-#if !NETSTANDARD
-        private EventLogEntryType m_logLevel = EventLogEntryType.Warning;
-#endif
 
         private int m_eventId = DefaultExceptionEventId;
 

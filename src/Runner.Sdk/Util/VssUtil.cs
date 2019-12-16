@@ -14,7 +14,7 @@ namespace GitHub.Runner.Sdk
 {
     public static class VssUtil
     {
-        public static void InitializeVssClientSettings(ProductInfoHeaderValue additionalUserAgent, IWebProxy proxy, IVssClientCertificateManager clientCert)
+        public static void InitializeVssClientSettings(ProductInfoHeaderValue additionalUserAgent, IWebProxy proxy)
         {
             var headerValues = new List<ProductInfoHeaderValue>();
             headerValues.Add(additionalUserAgent);
@@ -26,7 +26,6 @@ namespace GitHub.Runner.Sdk
             }
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
-            VssClientHttpRequestSettings.Default.ClientCertificateManager = clientCert;
             VssHttpMessageHandler.DefaultWebProxy = proxy;
         }
 
@@ -83,7 +82,7 @@ namespace GitHub.Runner.Sdk
             if (serviceEndpoint.Authorization.Scheme == EndpointAuthorizationSchemes.OAuth &&
                 serviceEndpoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out accessToken))
             {
-                credentials = new VssCredentials(null, new VssOAuthAccessTokenCredential(accessToken), CredentialPromptType.DoNotPrompt);
+                credentials = new VssCredentials(new VssOAuthAccessTokenCredential(accessToken), CredentialPromptType.DoNotPrompt);
             }
 
             return credentials;

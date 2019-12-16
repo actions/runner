@@ -58,11 +58,6 @@ namespace GitHub.DistributedTask.WebApi
                 };
             }
 
-            if (recordToBeCloned.Task != null)
-            {
-                this.Task = recordToBeCloned.Task.Clone();
-            }
-
             if (recordToBeCloned.m_issues?.Count> 0)
             {
                 this.Issues.AddRange(recordToBeCloned.Issues.Select(i => i.Clone()));
@@ -236,13 +231,6 @@ namespace GitHub.DistributedTask.WebApi
                 }
                 return m_issues;
             }
-        }
-
-        [DataMember(EmitDefaultValue = false, Order = 70)]
-        public TaskReference Task
-        {
-            get;
-            set;
         }
 
         [DataMember(Order = 100)]

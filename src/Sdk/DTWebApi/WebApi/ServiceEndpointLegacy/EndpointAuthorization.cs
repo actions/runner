@@ -6,46 +6,12 @@ namespace GitHub.DistributedTask.WebApi
 {
     public sealed class EndpointAuthorizationSchemes
     {
-        public const String AzureStorage = "AzureStorage";
         public const String OAuth = "OAuth";
-        public const String OAuth2 = "OAuth2";
-        public const String OAuthWrap = "OAuthWrap";
-        public const String Certificate = "Certificate";
-        public const String UsernamePassword = "UsernamePassword";
-        public const String Token = "Token";
-        public const String PersonalAccessToken = "PersonalAccessToken";
-        public const String ServicePrincipal = "ServicePrincipal";
-        public const String None = "None";
-        public const String Jwt = "JWT";
-        public const String InstallationToken = "InstallationToken";
     }
 
     public sealed class EndpointAuthorizationParameters
     {
-        public const String Username = "Username";
-        public const String Password = "Password";
-        public const String Certificate = "Certificate";
         public const String AccessToken = "AccessToken";
-        public const String ApiToken = "ApiToken";
-        public const String RefreshToken = "RefreshToken";
-        public const String ServicePrincipalId = "ServicePrincipalId";
-        public const String ServicePrincipalKey = "ServicePrincipalKey";
-        public const String TenantId = "TenantId";
-        public const String RealmName = "RealmName";
-        public const String IdToken = "IdToken";
-        public const String Nonce = "nonce";
-        public const String Scope = "Scope";
-        public const String Role = "Role";
-        public const String ServerCertThumbprint = "ServerCertThumbprint";
-        public const String CompleteCallbackPayload = "CompleteCallbackPayload";
-        public const String ClientMail = "ClientMail";
-        public const String PrivateKey = "PrivateKey";
-        public const String Issuer = "Issuer";
-        public const String Audience = "Audience";
-        public const String StorageAccountName = "StorageAccountName";
-        public const String StorageAccessKey = "StorageAccessKey";
-        public const String AccessTokenType = "AccessTokenType";
-        public const String Signature = "Signature";
     }
 
     [DataContract]

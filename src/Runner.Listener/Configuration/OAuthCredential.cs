@@ -43,7 +43,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             // Construct a credentials cache with a single OAuth credential for communication. The windows credential
             // is explicitly set to null to ensure we never do that negotiation.
-            return new VssCredentials(null, agentCredential, CredentialPromptType.DoNotPrompt);
+            return new VssCredentials(agentCredential, CredentialPromptType.DoNotPrompt);
         }
     }
 }

@@ -74,41 +74,6 @@ namespace GitHub.Services.Location.Client
             }
         }
 
-        public async Task UpdateServiceDefinitionsAsync(IEnumerable<ServiceDefinition> definitions, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            using (new OperationScope(LocationResourceIds.LocationServiceArea, "UpdateServiceDefinitions"))
-            {
-                ArgumentUtility.CheckEnumerableForNullOrEmpty(definitions, "definitions");
-
-                HttpContent content = new ObjectContent<VssJsonCollectionWrapper<IEnumerable<ServiceDefinition>>>(new VssJsonCollectionWrapper<IEnumerable<ServiceDefinition>>(definitions), base.Formatter);
-                await SendAsync(new HttpMethod("PATCH"), LocationResourceIds.ServiceDefinitions, null, s_currentApiVersion, content, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        public async Task<HttpResponseMessage> DeleteServiceDefinitionAsync(String serviceType, Guid identifier, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            using (new OperationScope(LocationResourceIds.LocationServiceArea, "DeleteServiceDefinitions"))
-            {
-                return await SendAsync<HttpResponseMessage>(HttpMethod.Delete, LocationResourceIds.ServiceDefinitions, new { serviceType = serviceType, identifier = identifier }, s_currentApiVersion, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        public async Task<IEnumerable<ServiceDefinition>> GetServiceDefinitionsAsync()
-        {
-            using (new OperationScope(LocationResourceIds.LocationServiceArea, "GetServiceDefinitions"))
-            {
-                return await SendAsync<IEnumerable<ServiceDefinition>>(HttpMethod.Get, LocationResourceIds.ServiceDefinitions, null, s_currentApiVersion).ConfigureAwait(false);
-            }
-        }
-
-        public async Task<IEnumerable<ServiceDefinition>> GetServiceDefinitionsAsync(String serviceType)
-        {
-            using (new OperationScope(LocationResourceIds.LocationServiceArea, "GetServiceDefinitions"))
-            {
-                return await SendAsync<IEnumerable<ServiceDefinition>>(HttpMethod.Get, LocationResourceIds.ServiceDefinitions, new { serviceType = serviceType }, s_currentApiVersion).ConfigureAwait(false);
-            }
-        }
-
         public Task<ServiceDefinition> GetServiceDefinitionAsync(String serviceType, Guid identifier, CancellationToken cancellationToken = default(CancellationToken))
         {
             return GetServiceDefinitionAsync(serviceType, identifier, allowFaultIn: true, previewFaultIn: false, cancellationToken: cancellationToken);
@@ -137,32 +102,6 @@ namespace GitHub.Services.Location.Client
                 }
 
                 return await SendAsync<ServiceDefinition>(HttpMethod.Get, LocationResourceIds.ServiceDefinitions, new { serviceType = serviceType, identifier = identifier }, s_currentApiVersion, queryParameters: query, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public async Task<HttpResponseMessage> FlushSpsServiceDefinitionAsync(Guid hostId, CancellationToken cancellationToken = default(CancellationToken))
-        {
-            // Used when migrating an SPS host to update all registered service definitions across other VSO instances.
-            using (new OperationScope(LocationResourceIds.LocationServiceArea, "FlushSpsServiceDefinition"))
-            {
-                return await SendAsync(HttpMethod.Put, LocationResourceIds.SpsServiceDefinition, new { hostId = hostId }, s_currentApiVersion, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        public async Task<IEnumerable<ResourceAreaInfo>> GetResourceAreasAsync()
-        {
-            using (new OperationScope(LocationResourceIds.LocationServiceArea, "GetResourceAreas"))
-            {
-                return await SendAsync<IEnumerable<ResourceAreaInfo>>(HttpMethod.Get, LocationResourceIds.ResourceAreas, null, new ApiResourceVersion("3.2-preview.1")).ConfigureAwait(false);
-            }
-        }
-
-        public async Task<ResourceAreaInfo> GetResourceAreaAsync(Guid areaId)
-        {
-            using (new OperationScope(LocationResourceIds.LocationServiceArea, "GetResourceAreas"))
-            {
-                return await SendAsync<ResourceAreaInfo>(HttpMethod.Get, LocationResourceIds.ResourceAreas, new { areaId = areaId } , new ApiResourceVersion("3.2-preview.1")).ConfigureAwait(false);
             }
         }
 

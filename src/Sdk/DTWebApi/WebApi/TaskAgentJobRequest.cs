@@ -45,11 +45,6 @@ namespace GitHub.DistributedTask.WebApi
                 m_matchedAgents = requestToBeCloned.m_matchedAgents.Select(x => x.Clone()).ToList();
             }
 
-            if (requestToBeCloned.m_agentDelays?.Count > 0)
-            {
-                m_agentDelays = new List<TaskAgentDelaySource>(requestToBeCloned.m_agentDelays);
-            }
-
             if (requestToBeCloned.ReservedAgent != null)
             {
                 this.ReservedAgent = requestToBeCloned.ReservedAgent.Clone();
@@ -229,18 +224,6 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
-        /// A list of demands required to fulfill this request.
-        /// </summary>
-        /// <value></value>
-        [DataMember(Order = 16, EmitDefaultValue = false)]
-        [Obsolete("No more demands, use labels", true)]
-        public IList<Demand> Demands
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
         /// The agent allocated for this request.
         /// </summary>
         /// <value></value>
@@ -332,23 +315,6 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        [DataMember(Order = 26, EmitDefaultValue = false)]
-        public List<TaskAgentDelaySource> AgentDelays
-        {
-            get
-            {
-                if (m_agentDelays == null)
-                {
-                    m_agentDelays = new List<TaskAgentDelaySource>();
-                }
-                return m_agentDelays;
-            }
-            internal set
-            {
-                m_agentDelays = value;
-            }
-        }
-
         [DataMember(Order = 27, EmitDefaultValue = false)]
         public TimeSpan? ExpectedDuration
         {
@@ -434,8 +400,6 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         private List<TaskAgentReference> m_matchedAgents;
-
-        private List<TaskAgentDelaySource> m_agentDelays;
 
         private IDictionary<String, String> m_requestAgentData;
 

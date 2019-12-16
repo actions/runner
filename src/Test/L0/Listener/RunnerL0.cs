@@ -23,7 +23,6 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IRunnerServer> _runnerServer;
         private Mock<ITerminal> _term;
         private Mock<IConfigurationStore> _configStore;
-        private Mock<IRunnerCertificateManager> _cert;
         private Mock<ISelfUpdater> _updater;
 
         public RunnerL0()
@@ -36,19 +35,15 @@ namespace GitHub.Runner.Common.Tests.Listener
             _runnerServer = new Mock<IRunnerServer>();
             _term = new Mock<ITerminal>();
             _configStore = new Mock<IConfigurationStore>();
-            _cert = new Mock<IRunnerCertificateManager>();
             _updater = new Mock<ISelfUpdater>();
         }
 
-        private AgentJobRequestMessage CreateJobRequestMessage(string jobName)
+        private Pipelines.AgentJobRequestMessage CreateJobRequestMessage(string jobName)
         {
             TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
             TimelineReference timeline = null;
-            JobEnvironment environment = new JobEnvironment();
-            List<TaskInstance> tasks = new List<TaskInstance>();
-            Guid JobId = Guid.NewGuid();
-            var jobRequest = new AgentJobRequestMessage(plan, timeline, JobId, jobName, jobName, environment, tasks);
-            return jobRequest as AgentJobRequestMessage;
+            Guid jobId = Guid.NewGuid();
+            return new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null);
         }
 
         private JobCancelMessage CreateJobCancelMessage()
@@ -72,7 +67,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -177,7 +171,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
 
                 var command = new CommandSettings(hc, args);
@@ -209,7 +202,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IConfigurationManager>(_configurationManager.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
-                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
 
                 var command = new CommandSettings(hc, new[] { "run" });
@@ -247,7 +239,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -337,7 +328,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
@@ -434,7 +424,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IMessageListener>(_messageListener.Object);
                 hc.SetSingleton<IPromptManager>(_promptManager.Object);
                 hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
                 hc.SetSingleton<IConfigurationStore>(_configStore.Object);
                 hc.SetSingleton<ISelfUpdater>(_updater.Object);
 

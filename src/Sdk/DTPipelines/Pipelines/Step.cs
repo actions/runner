@@ -7,9 +7,6 @@ namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
     [KnownType(typeof(ActionStep))]
-    [KnownType(typeof(TaskStep))]
-    [KnownType(typeof(TaskTemplateStep))]
-    [KnownType(typeof(GroupStep))]
     [JsonConverter(typeof(StepConverter))]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class Step
@@ -70,19 +67,6 @@ namespace GitHub.DistributedTask.Pipelines
     public enum StepType
     {
         [DataMember]
-        Task = 1,
-
-        [DataMember]
-        TaskTemplate = 2,
-
-        [DataMember]
-        Group = 3,
-
-        [DataMember]
         Action = 4,
-
-        [DataMember]
-        [Obsolete("Deprecated", false)]
-        Script = 5,
     }
 }

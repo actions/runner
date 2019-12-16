@@ -26,7 +26,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private Mock<IPromptManager> _promptManager;
         private Mock<IConfigurationStore> _store;
         private Mock<IExtensionManager> _extnMgr;
-        private Mock<IRunnerCertificateManager> _cert;
 
 #if OS_WINDOWS
         private Mock<IWindowsServiceControlManager> _serviceControlManager;
@@ -44,7 +43,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private string _expectedAuthType = "pat";
         private string _expectedWorkFolder = "_work";
         private int _expectedPoolId = 1;
-        private int _expectedDeploymentMachineId = 81;
         private RSACryptoServiceProvider rsa = null;
         private RunnerSettings _configMgrAgentSettings = new RunnerSettings();
 
@@ -57,7 +55,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _store = new Mock<IConfigurationStore>();
             _extnMgr = new Mock<IExtensionManager>();
             _rsaKeyManager = new Mock<IRSAKeyManager>();
-            _cert = new Mock<IRunnerCertificateManager>();
 
 #if OS_WINDOWS
             _serviceControlManager = new Mock<IWindowsServiceControlManager>();
@@ -68,7 +65,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 #endif
 
             var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
-            var expectedDeploymentMachine = new DeploymentMachine() { Agent = expectedAgent, Id = _expectedDeploymentMachineId };
             expectedAgent.Authorization = new TaskAgentAuthorization
             {
                 ClientId = Guid.NewGuid(),
@@ -124,7 +120,6 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             tc.SetSingleton<IExtensionManager>(_extnMgr.Object);
             tc.SetSingleton<IRunnerServer>(_runnerServer.Object);
             tc.SetSingleton<ILocationServer>(_locationServer.Object);
-            tc.SetSingleton<IRunnerCertificateManager>(_cert.Object);
 
 #if OS_WINDOWS
             tc.SetSingleton<IWindowsServiceControlManager>(_serviceControlManager.Object);
@@ -155,10 +150,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                     tc,
                     new[]
                     {
-                       "configure",
-#if !OS_WINDOWS
-                       "--acceptteeeula", 
-#endif                       
+                       "configure",                
                        "--url", _expectedServerUrl,
                        "--name", _expectedAgentName,
                        "--pool", _expectedPoolName,
