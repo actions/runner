@@ -447,7 +447,7 @@ namespace GitHub.Runner.Listener.Configuration
         {
             Trace.Entering();
 
-            string agentServiceExecutable = "\"" + Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), WindowsServiceControlManager.WindowsServiceControllerName) + "\"";
+            string runnerServiceExecutable = "\"" + Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), WindowsServiceControlManager.WindowsServiceControllerName) + "\"";
             IntPtr scmHndl = IntPtr.Zero;
             IntPtr svcHndl = IntPtr.Zero;
             IntPtr tmpBuf = IntPtr.Zero;
@@ -468,7 +468,7 @@ namespace GitHub.Runner.Listener.Configuration
                     };
 
                     processInvoker.ExecuteAsync(workingDirectory: string.Empty,
-                                                fileName: agentServiceExecutable,
+                                                fileName: runnerServiceExecutable,
                                                 arguments: "init",
                                                 environment: null,
                                                 requireExitCodeZero: true,
@@ -490,7 +490,7 @@ namespace GitHub.Runner.Listener.Configuration
                                         SERVICE_WIN32_OWN_PROCESS,
                                         ServiceBootFlag.AutoStart,
                                         ServiceError.Normal,
-                                        agentServiceExecutable,
+                                        runnerServiceExecutable,
                                         null,
                                         IntPtr.Zero,
                                         null,

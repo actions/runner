@@ -48,7 +48,7 @@ namespace GitHub.Runner.Worker
                                                 displayName: "Stop containers",
                                                 data: data);
             
-            executionContext.Debug($"Register post job cleanup for stoping/deleting containers.");
+            executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(nameof(StopContainersAsync), postJobStep);
 
             // Check whether we are inside a container.
@@ -129,7 +129,7 @@ namespace GitHub.Runner.Worker
                 executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
             }
 
-            // Create local docker network for this job to avoid port conflict when multiple agents run on same machine.
+            // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
             // All containers within a job join the same network
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);

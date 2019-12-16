@@ -434,7 +434,7 @@ namespace GitHub.Runner.Listener
             }
             catch (TaskAgentAccessTokenExpiredException)
             {
-                Trace.Info("Agent OAuth token has been revoked. Shutting down.");
+                Trace.Info("Runner OAuth token has been revoked. Shutting down.");
             }
 
             return Constants.Runner.ReturnCode.Success;
