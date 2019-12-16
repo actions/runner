@@ -26,8 +26,8 @@ if [[ "$1" == "localRun" ]]; then
 else
     "$DIR"/bin/Runner.Listener run $*
 
-# Return code 4 means the run once agent received an update message.
-# Sleep 5 seconds to wait for the update process finish and run the agent again.
+# Return code 4 means the run once runner received an update message.
+# Sleep 5 seconds to wait for the update process finish and run the runner again.
     returnCode=$?
     if [[ $returnCode == 4 ]]; then
         if [ ! -x "$(command -v sleep)" ]; then
