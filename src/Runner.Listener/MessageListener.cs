@@ -80,7 +80,7 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Attempt to create session.");
                 try
                 {
-                    Trace.Info("Connecting to the Agent Server...");
+                    Trace.Info("Connecting to the Runner Server...");
                     await _runnerServer.ConnectAsync(new Uri(serverUrl), creds);
                     Trace.Info("VssConnection created");
                     
@@ -110,7 +110,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (TaskAgentAccessTokenExpiredException)
                 {
-                    Trace.Info("Agent OAuth token has been revoked. Session creation failed.");
+                    Trace.Info("Runner OAuth token has been revoked. Session creation failed.");
                     throw;
                 }
                 catch (Exception ex)
@@ -190,7 +190,7 @@ namespace GitHub.Runner.Listener
                 }
                 catch (TaskAgentAccessTokenExpiredException)
                 {
-                    Trace.Info("Agent OAuth token has been revoked. Unable to pull message.");
+                    Trace.Info("Runner OAuth token has been revoked. Unable to pull message.");
                     throw;
                 }
                 catch (Exception ex)
@@ -336,7 +336,7 @@ namespace GitHub.Runner.Listener
         {
             if (ex is TaskAgentNotFoundException)
             {
-                Trace.Info("The agent no longer exists on the server. Stopping the runner.");
+                Trace.Info("The runner no longer exists on the server. Stopping the runner.");
                 _term.WriteError("The runner no longer exists on the server. Please reconfigure the runner.");
                 return false;
             }
@@ -364,7 +364,7 @@ namespace GitHub.Runner.Listener
             }
             else if (ex is VssOAuthTokenRequestException && ex.Message.Contains("Current server time is"))
             {
-                Trace.Info("Local clock might skewed.");
+                Trace.Info("Local clock might be skewed.");
                 _term.WriteError("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
                 if (_sessionCreationExceptionTracker.ContainsKey(nameof(VssOAuthTokenRequestException)))
                 {

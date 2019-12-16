@@ -6,7 +6,7 @@ using GitHub.Runner.Common;
 namespace GitHub.Runner.Listener.Configuration
 {
     /// <summary>
-    /// Manages an RSA key for the agent using the most appropriate store for the target platform.
+    /// Manages an RSA key for the runner using the most appropriate store for the target platform.
     /// </summary>
 #if OS_WINDOWS
     [ServiceLocator(Default = typeof(RSAEncryptedFileKeyManager))]
@@ -16,10 +16,10 @@ namespace GitHub.Runner.Listener.Configuration
     public interface IRSAKeyManager : IRunnerService
     {
         /// <summary>
-        /// Creates a new <c>RSACryptoServiceProvider</c> instance for the current agent. If a key file is found then the current
+        /// Creates a new <c>RSACryptoServiceProvider</c> instance for the current runner. If a key file is found then the current
         /// key is returned to the caller.
         /// </summary>
-        /// <returns>An <c>RSACryptoServiceProvider</c> instance representing the key for the agent</returns>
+        /// <returns>An <c>RSACryptoServiceProvider</c> instance representing the key for the runner</returns>
         RSACryptoServiceProvider CreateKey();
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace GitHub.Runner.Listener.Configuration
         /// <summary>
         /// Gets the <c>RSACryptoServiceProvider</c> instance currently stored by the key manager. 
         /// </summary>
-        /// <returns>An <c>RSACryptoServiceProvider</c> instance representing the key for the agent</returns>
+        /// <returns>An <c>RSACryptoServiceProvider</c> instance representing the key for the runner</returns>
         /// <exception cref="CryptographicException">No key exists in the store</exception>
         RSACryptoServiceProvider GetKey();
     }

@@ -62,7 +62,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else if (data.ExecutionType == ActionExecutionType.Plugin)
             {
-                // Agent plugin
+                // Runner plugin
                 handler = HostContext.CreateService<IRunnerPluginHandler>();
                 (handler as IRunnerPluginHandler).Data = data as PluginActionExecutionData;
             }
