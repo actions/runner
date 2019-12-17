@@ -1,9 +1,6 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using GitHub.Services.Common;
 using GitHub.Services.Common.ClientStorage;
-using GitHub.Services.WebApi.Internal;
-using Microsoft.Win32;
 
 namespace GitHub.Services.WebApi
 {
@@ -16,7 +13,7 @@ namespace GitHub.Services.WebApi
         /// Directory containing the client cache files which resides below the settings directory.
         /// 
         /// This will look something like this:
-        /// C:\Documents and Settings\username\Local Settings\Application Data\GitHub\ActionsService\[GeneratedVersionInfo.TfsProductVersion]\Cache
+        /// C:\Documents and Settings\username\Local Settings\Application Data\GitHub\ActionsService\[GeneratedVersionInfo.ActionsProductVersion]\Cache
         /// </summary>
         internal static string ClientCacheDirectory
         {
@@ -30,7 +27,7 @@ namespace GitHub.Services.WebApi
         /// Directory containing the client settings files.
         /// 
         /// This will look something like this:
-        /// C:\Documents and Settings\username\Local Settings\Application Data\GitHub\ActionsService\[GeneratedVersionInfo.TfsProductVersion]
+        /// C:\Documents and Settings\username\Local Settings\Application Data\GitHub\ActionsService\[GeneratedVersionInfo.ActionsProductVersion]
         /// </summary>
         internal static string ClientSettingsDirectory
         {

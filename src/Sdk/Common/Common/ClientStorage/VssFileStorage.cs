@@ -204,7 +204,7 @@ namespace GitHub.Services.Common.ClientStorage
                     {
                         // The user does not have a roaming network directory either. Just place the cache in the
                         // common area.
-                        // If we are using the common dir, we might not have access to create a folder under "Microsoft"
+                        // If we are using the common dir, we might not have access to create a folder under "GitHub"
                         // so we just create a top level folder.
                         path = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
                         subDir = "GitHubActionsService";
