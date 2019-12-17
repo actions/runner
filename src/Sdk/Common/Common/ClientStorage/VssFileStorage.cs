@@ -88,7 +88,7 @@ namespace GitHub.Services.Common.ClientStorage
         public string PathKeyCombine(params string[] paths)
         {
             StringBuilder combinedPath = new StringBuilder();
-            foreach(string segment in paths)
+            foreach (string segment in paths)
             {
                 if (segment != null)
                 {
@@ -152,8 +152,8 @@ namespace GitHub.Services.Common.ClientStorage
         /// <summary>
         /// Gets an instance of a VssLocalFileStorage under the current user directory.
         /// </summary>
-        /// <param name="pathSuffix">This pathSuffix will be combined at the end of the current user data directory for VSS to make a full path.  Something like: "%localappdata%\Microsoft\VisualStudio Services\[pathSuffix]"</param>
-        /// <param name="storeByVssVersion">Adds the current product version as a path segment.  ...\Microsoft\VisualStudio Services\v[GeneratedVersionInfo.ProductVersion]\[pathSuffix]"</param>
+        /// <param name="pathSuffix">This pathSuffix will be combined at the end of the current user data directory for VSS to make a full path.  Something like: "%localappdata%\GitHub\ActionsService\[pathSuffix]"</param>
+        /// <param name="storeByVssVersion">Adds the current product version as a path segment.  ...\GitHub\ActionsService\v[GeneratedVersionInfo.ProductVersion]\[pathSuffix]"</param>
         /// <param name="pathSeparatorForKeys">The separator to use between the path segments of the storage keys.</param>
         /// <param name="ignoreCaseInPaths">If true the dictionary will use the OrdinalIgnoreCase StringComparer to compare keys.</param>
         /// <returns></returns>
@@ -166,7 +166,7 @@ namespace GitHub.Services.Common.ClientStorage
         /// Directory containing the client settings files.
         ///
         /// This will look something like this:
-        /// C:\Users\[user]\AppData\Local\Microsoft\VisualStudio Services\v[GeneratedVersionInfo.ProductVersion]
+        /// C:\Users\[user]\AppData\Local\GitHub\ActionsService\v[GeneratedVersionInfo.ProductVersion]
         /// </summary>
         internal static string ClientSettingsDirectoryByVersion
         {
@@ -182,7 +182,7 @@ namespace GitHub.Services.Common.ClientStorage
         /// Directory containing the client settings files.
         ///
         /// This will look something like this:
-        /// C:\Users\[user]\AppData\Local\Microsoft\VisualStudio Services
+        /// C:\Users\[user]\AppData\Local\GitHub\ActionsService
         /// </summary>
         internal static string ClientSettingsDirectory
         {
@@ -192,7 +192,7 @@ namespace GitHub.Services.Common.ClientStorage
                 // Windows Impersonation is being used.
 
                 // Check to see if we can find the user's local application data directory.
-                string subDir = "Microsoft\\VisualStudio Services";
+                string subDir = "GitHub\\ActionsService";
                 string path = Environment.GetEnvironmentVariable("localappdata");
                 SafeGetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 if (string.IsNullOrEmpty(path))
@@ -204,10 +204,10 @@ namespace GitHub.Services.Common.ClientStorage
                     {
                         // The user does not have a roaming network directory either. Just place the cache in the
                         // common area.
-                        // If we are using the common dir, we might not have access to create a folder under "Microsoft"
+                        // If we are using the common dir, we might not have access to create a folder under "GitHub"
                         // so we just create a top level folder.
                         path = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-                        subDir = "Microsoft VisualStudio Services";
+                        subDir = "GitHubActionsService";
                     }
                 }
 

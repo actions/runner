@@ -68,7 +68,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _message.Resources.Endpoints.Add(new ServiceEndpoint()
             {
                 Name = WellKnownServiceEndpointNames.SystemVssConnection,
-                Url = new Uri("https://test.visualstudio.com"),
+                Url = new Uri("https://pipelines.actions.githubusercontent.com"),
                 Authorization = new EndpointAuthorization()
                 {
                     Scheme = "Test",
@@ -96,7 +96,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 AgentId = 1,
                 AgentName = "agent1",
-                ServerUrl = "https://test.visualstudio.com",
+                ServerUrl = "https://pipelines.actions.githubusercontent.com",
                 WorkFolder = "_work",
             };
 

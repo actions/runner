@@ -523,8 +523,6 @@ namespace GitHub.Services.Common
             }
             set
             {
-                // requested by Insights team to be able to set a default Proxy that only affects this handler.
-                // see following bug for details: https://mseng.visualstudio.com/DefaultCollection/VSOnline/_workitems#_a=edit&id=425575&triage=true
                 s_defaultWebProxy = value;
             }
         }

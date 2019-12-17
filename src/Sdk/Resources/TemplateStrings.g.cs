@@ -4,7 +4,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
 {
     public static class TemplateStrings
     {
-
         public static string DirectiveNotAllowed(object arg0)
         {
             const string Format = @"The expression directive '{0}' is not supported in this context";
@@ -33,12 +32,6 @@ namespace GitHub.DistributedTask.ObjectTemplating
         {
             const string Format = @"Exactly {0} parameter(s) were expected following the directive '{1}'. Actual parameter count: {2}";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0, arg1, arg2);
-        }
-
-        public static string ExpectedScalar()
-        {
-            const string Format = @"Expected a scalar value";
-            return Format;
         }
 
         public static string ExpectedScalarSequenceOrMapping()
