@@ -7,11 +7,11 @@ namespace GitHub.Runner.Sdk
 {
     public static class WhichUtil
     {
-        public static string Which(string command, bool require = false, ITraceWriter trace = null)
+        public static string Which(string command, bool require = false, ITraceWriter trace = null, string prependPath = null)
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
             trace?.Info($"Which: '{command}'");
-            string path = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
+            string path = Path.Join(prependPath, Environment.GetEnvironmentVariable(PathUtil.PathVariable));
             if (string.IsNullOrEmpty(path))
             {
                 trace?.Info("PATH environment variable not defined.");
