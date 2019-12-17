@@ -4,7 +4,6 @@ namespace GitHub.Services.WebApi
 {
     public static class FileContainerResources
     {
-
         public static string ArtifactUriNotSupportedException(object arg0)
         {
             const string Format = @"The artifact Uri {0} is not supported.";

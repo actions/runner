@@ -1127,6 +1127,6 @@ namespace GitHub.Services.Common.Diagnostics
 
     public static class VssEventSources
     {
-        public const String Http = "Microsoft-VSS-Http";
+        public const String Http = "GitHub-Actions-Http";
     }
 }

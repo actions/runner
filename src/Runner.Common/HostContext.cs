@@ -58,8 +58,8 @@ namespace GitHub.Runner.Common
         private CancellationTokenSource _runnerShutdownTokenSource = new CancellationTokenSource();
         private object _perfLock = new object();
         private Tracing _trace;
-        private Tracing _vssTrace;
-        private Tracing _httpTrace;
+        private Tracing _actionsHttpTrace;
+        private Tracing _netcoreHttpTrace;
         private ITraceManager _traceManager;
         private AssemblyLoadContext _loadContext;
         private IDisposable _httpTraceSubscription;
@@ -117,8 +117,7 @@ namespace GitHub.Runner.Common
             }
 
             _trace = GetTrace(nameof(HostContext));
-            _vssTrace = GetTrace("GitHubActionsRunner");  // VisualStudioService
-
+            _actionsHttpTrace = GetTrace("GitHubActionsService");
             // Enable Http trace
             bool enableHttpTrace;
             if (bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_HTTPTRACE"), out enableHttpTrace) && enableHttpTrace)
@@ -130,7 +129,7 @@ namespace GitHub.Runner.Common
                 _trace.Warning("**                                                                                     **");
                 _trace.Warning("*****************************************************************************************");
 
-                _httpTrace = GetTrace("HttpTrace");
+                _netcoreHttpTrace = GetTrace("HttpTrace");
                 _diagListenerSubscription = DiagnosticListener.AllListeners.Subscribe(this);
             }
 
@@ -478,12 +477,12 @@ namespace GitHub.Runner.Common
 
         void IObserver<DiagnosticListener>.OnCompleted()
         {
-            _httpTrace.Info("DiagListeners finished transmitting data.");
+            _netcoreHttpTrace.Info("DiagListeners finished transmitting data.");
         }
 
         void IObserver<DiagnosticListener>.OnError(Exception error)
         {
-            _httpTrace.Error(error);
+            _netcoreHttpTrace.Error(error);
         }
 
         void IObserver<DiagnosticListener>.OnNext(DiagnosticListener listener)
@@ -496,22 +495,22 @@ namespace GitHub.Runner.Common
 
         void IObserver<KeyValuePair<string, object>>.OnCompleted()
         {
-            _httpTrace.Info("HttpHandlerDiagnosticListener finished transmitting data.");
+            _netcoreHttpTrace.Info("HttpHandlerDiagnosticListener finished transmitting data.");
         }
 
         void IObserver<KeyValuePair<string, object>>.OnError(Exception error)
         {
-            _httpTrace.Error(error);
+            _netcoreHttpTrace.Error(error);
         }
 
         void IObserver<KeyValuePair<string, object>>.OnNext(KeyValuePair<string, object> value)
         {
-            _httpTrace.Info($"Trace {value.Key} event:{Environment.NewLine}{value.Value.ToString()}");
+            _netcoreHttpTrace.Info($"Trace {value.Key} event:{Environment.NewLine}{value.Value.ToString()}");
         }
 
         protected override void OnEventSourceCreated(EventSource source)
         {
-            if (source.Name.Equals("Microsoft-VSS-Http"))
+            if (source.Name.Equals("GitHub-Actions-Http"))
             {
                 EnableEvents(source, EventLevel.Verbose);
             }
@@ -551,24 +550,24 @@ namespace GitHub.Runner.Common
                 {
                     case EventLevel.Critical:
                     case EventLevel.Error:
-                        _vssTrace.Error(message);
+                        _actionsHttpTrace.Error(message);
                         break;
                     case EventLevel.Warning:
-                        _vssTrace.Warning(message);
+                        _actionsHttpTrace.Warning(message);
                         break;
                     case EventLevel.Informational:
-                        _vssTrace.Info(message);
+                        _actionsHttpTrace.Info(message);
                         break;
                     default:
-                        _vssTrace.Verbose(message);
+                        _actionsHttpTrace.Verbose(message);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                _vssTrace.Error(ex);
-                _vssTrace.Info(eventData.Message);
-                _vssTrace.Info(string.Join(", ", eventData.Payload?.ToArray() ?? new string[0]));
+                _actionsHttpTrace.Error(ex);
+                _actionsHttpTrace.Info(eventData.Message);
+                _actionsHttpTrace.Info(string.Join(", ", eventData.Payload?.ToArray() ?? new string[0]));
             }
         }
 

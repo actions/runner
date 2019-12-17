@@ -16,8 +16,6 @@ namespace GitHub.Services.Common
         public const String AssemblyMajorVersion = "16";
 
         // Derived versions
-        public const String TfsMajorVersion = "8";
-        public const String TfsMinorVersion = "0";
-        public const String TfsProductVersion = TfsMajorVersion + "." + TfsMinorVersion;
+        public const String ActionsProductVersion = "8.0";
     }
 }

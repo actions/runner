@@ -4,7 +4,6 @@ namespace GitHub.Services.WebApi
 {
     public static class JwtResources
     {
-
         public static string ActorValidationException()
         {
             const string Format = @"The ActorToken within the JsonWebToken is invalid.";
@@ -92,12 +91,6 @@ namespace GitHub.Services.WebApi
         public static string SignatureValidationException()
         {
             const string Format = @"The signature is not valid.";
-            return Format;
-        }
-
-        public static string SymmetricSecurityKeyNotFound()
-        {
-            const string Format = @"The supplied Signing Credential is not a SymmetricSigningCredential and does not match the Signature Algorithm.";
             return Format;
         }
 

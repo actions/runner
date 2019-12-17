@@ -16,7 +16,7 @@ namespace GitHub.Services.WebApi
         /// Directory containing the client cache files which resides below the settings directory.
         /// 
         /// This will look something like this:
-        /// C:\Documents and Settings\username\Local Settings\Application Data\Microsoft\VisualStudio Services\[GeneratedVersionInfo.TfsProductVersion]\Cache
+        /// C:\Documents and Settings\username\Local Settings\Application Data\GitHub\ActionsService\[GeneratedVersionInfo.TfsProductVersion]\Cache
         /// </summary>
         internal static string ClientCacheDirectory
         {
@@ -30,7 +30,7 @@ namespace GitHub.Services.WebApi
         /// Directory containing the client settings files.
         /// 
         /// This will look something like this:
-        /// C:\Documents and Settings\username\Local Settings\Application Data\Microsoft\VisualStudio Services\[GeneratedVersionInfo.TfsProductVersion]
+        /// C:\Documents and Settings\username\Local Settings\Application Data\GitHub\ActionsService\[GeneratedVersionInfo.TfsProductVersion]
         /// </summary>
         internal static string ClientSettingsDirectory
         {
@@ -38,11 +38,8 @@ namespace GitHub.Services.WebApi
             {
                 // We purposely do not cache this value. This value needs to change if 
                 // Windows Impersonation is being used.
-                return Path.Combine(VssFileStorage.ClientSettingsDirectory, GeneratedVersionInfo.TfsProductVersion);
+                return Path.Combine(VssFileStorage.ClientSettingsDirectory, GeneratedVersionInfo.ActionsProductVersion);
             }
         }
-
-        private const string c_cacheSettingsKey = "Services\\CacheSettings";
-        private const string c_settingClientCacheTimeToLive = "ClientCacheTimeToLive";
     }
 }

@@ -4,7 +4,6 @@ namespace GitHub.Services.WebApi
 {
     public static class PatchResources
     {
-
         public static string CannotReplaceNonExistantValue(object arg0)
         {
             const string Format = @"Attempted to replace a value that does not exist at path {0}.";
@@ -38,12 +37,6 @@ namespace GitHub.Services.WebApi
         public static string MoveCopyNotImplemented()
         {
             const string Format = @"Move/Copy is not implemented.";
-            return Format;
-        }
-
-        public static string NullOrEmptyOperations()
-        {
-            const string Format = @"At least one operation is required for Apply.";
             return Format;
         }
 
@@ -104,12 +97,6 @@ namespace GitHub.Services.WebApi
         public static string ValueNotNull()
         {
             const string Format = @"Remove requires Value to be null.";
-            return Format;
-        }
-
-        public static string JsonPatchNull()
-        {
-            const string Format = @"You must pass a valid patch document in the body of the request.";
             return Format;
         }
 
