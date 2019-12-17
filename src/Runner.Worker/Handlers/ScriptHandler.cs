@@ -57,6 +57,7 @@ namespace GitHub.Runner.Worker.Handlers
             string shellCommand;
             string shellCommandPath = null;
             bool validateShellOnHost = !(StepHost is ContainerStepHost);
+            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
             Inputs.TryGetValue("shell", out var shell);
             if (string.IsNullOrEmpty(shell))
             {
@@ -64,19 +65,19 @@ namespace GitHub.Runner.Worker.Handlers
                 shellCommand = "pwsh";
                 if(validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace);
+                    shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
                     if (string.IsNullOrEmpty(shellCommandPath))
                     {
                         shellCommand = "powershell";
                         Trace.Info($"Defaulting to {shellCommand}");
-                        shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace);
+                        shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                     }
                 }
 #else
                 shellCommand = "sh";
                 if (validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true, Trace);
+                    shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
                 }
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
@@ -87,7 +88,7 @@ namespace GitHub.Runner.Worker.Handlers
                 shellCommand = parsed.shellCommand;
                 if (validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace);
+                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
                 }
 
                 argFormat = $"{parsed.shellArgs}".TrimStart();

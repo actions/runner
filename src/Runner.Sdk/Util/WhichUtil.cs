@@ -11,11 +11,15 @@ namespace GitHub.Runner.Sdk
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
             trace?.Info($"Which: '{command}'");
-            string path = Path.Join(prependPath, Environment.GetEnvironmentVariable(PathUtil.PathVariable));
+            string path = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
             if (string.IsNullOrEmpty(path))
             {
                 trace?.Info("PATH environment variable not defined.");
                 path = path ?? string.Empty;
+            }
+            if (!string.IsNullOrEmpty(prependPath))
+            {
+                path = PathUtil.PrependPath(prependPath, path);
             }
 
             string[] pathSegments = path.Split(new Char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
