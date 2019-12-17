@@ -174,7 +174,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
                 shellCommand = parsed.shellCommand;
                 // For non-ContainerStepHost, the command must be located on the host by Which
-                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace);
+                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
                 argFormat = $"{parsed.shellArgs}".TrimStart();
                 if (string.IsNullOrEmpty(argFormat))
                 {
