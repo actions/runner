@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -146,6 +147,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Prepend PATH before locating shell tool
             AddPrependPathToEnvironment();
+            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
 
             string commandPath, argFormat, shellCommand;
             // Set up default command and arguments
@@ -153,17 +155,17 @@ namespace GitHub.Runner.Worker.Handlers
             {
 #if OS_WINDOWS
                 shellCommand = "pwsh";
-                commandPath = WhichUtil.Which(shellCommand, require: false, Trace);
+                commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
                 if (string.IsNullOrEmpty(commandPath))
                 {
                     shellCommand = "powershell";
                     Trace.Info($"Defaulting to {shellCommand}");
-                    commandPath = WhichUtil.Which(shellCommand, require: true, Trace);
+                    commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                 }
                 ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
 #else
                 shellCommand = "sh";
-                commandPath = WhichUtil.Which("bash", false, Trace) ?? WhichUtil.Which("sh", true, Trace);
+                commandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
