@@ -7,7 +7,7 @@ on:
   
 jobs:
   check:
-    if: startsWith(github.ref, 'refs/heads/releases/')
+    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -36,6 +36,7 @@ jobs:
             })
             core.setFailed('Release with same tag already created: ' + release.data.html_url)
           } catch (e) {
+            // We are good to create the release if release with same tag doesn't exists
             if (e.status != 404) {
               throw e
             }
@@ -130,7 +131,7 @@ jobs:
           core.setOutput('note', releaseNote);
         
     # Create GitHub release
-    - uses: actions/create-release@v1
+    - uses: actions/create-release@master
       id: createRelease
       name: Create ${{ steps.releaseNote.outputs.version }} Runner Release
       env:
