@@ -1,14 +1,11 @@
 ## Features
-  - Added Proxy Support for self-hosted runner. (#206)
-  - Introduce `--name` configure argument for runner name. (#217)
-  - Better repo matching for issue file path (checkout v2 related) (#208)
-
-## Bugs
   - N/A
 
+## Bugs
+  - Fix scenario where Tool Cache folder in "Hosted macOS" environments was empty (#232)
+
 ## Misc
-  - Runner code cleanup  (#197, #209, #214, #219) 
-  - Update node external to 12.13.1 (#215)
+  - N/A
 
 ## Windows x64
 We recommend configuring the runner under "<DRIVE>:\actions-runner". This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows
