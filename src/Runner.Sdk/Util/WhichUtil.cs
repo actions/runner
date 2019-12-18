@@ -7,7 +7,7 @@ namespace GitHub.Runner.Sdk
 {
     public static class WhichUtil
     {
-        public static string Which(string command, bool require = false, ITraceWriter trace = null)
+        public static string Which(string command, bool require = false, ITraceWriter trace = null, string prependPath = null)
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
             trace?.Info($"Which: '{command}'");
@@ -16,6 +16,10 @@ namespace GitHub.Runner.Sdk
             {
                 trace?.Info("PATH environment variable not defined.");
                 path = path ?? string.Empty;
+            }
+            if (!string.IsNullOrEmpty(prependPath))
+            {
+                path = PathUtil.PrependPath(prependPath, path);
             }
 
             string[] pathSegments = path.Split(new Char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);

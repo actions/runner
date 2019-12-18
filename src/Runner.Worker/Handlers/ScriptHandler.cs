@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using System.Linq;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -56,6 +57,7 @@ namespace GitHub.Runner.Worker.Handlers
             string shellCommand;
             string shellCommandPath = null;
             bool validateShellOnHost = !(StepHost is ContainerStepHost);
+            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
             Inputs.TryGetValue("shell", out var shell);
             if (string.IsNullOrEmpty(shell))
             {
@@ -63,19 +65,19 @@ namespace GitHub.Runner.Worker.Handlers
                 shellCommand = "pwsh";
                 if(validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace);
+                    shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
                     if (string.IsNullOrEmpty(shellCommandPath))
                     {
                         shellCommand = "powershell";
                         Trace.Info($"Defaulting to {shellCommand}");
-                        shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace);
+                        shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                     }
                 }
 #else
                 shellCommand = "sh";
                 if (validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which("bash") ?? WhichUtil.Which("sh", true, Trace);
+                    shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
                 }
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
@@ -86,7 +88,7 @@ namespace GitHub.Runner.Worker.Handlers
                 shellCommand = parsed.shellCommand;
                 if (validateShellOnHost)
                 {
-                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace);
+                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
                 }
 
                 argFormat = $"{parsed.shellArgs}".TrimStart();
@@ -144,23 +146,24 @@ namespace GitHub.Runner.Worker.Handlers
             Inputs.TryGetValue("shell", out var shell);
             var isContainerStepHost = StepHost is ContainerStepHost;
 
+            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
             string commandPath, argFormat, shellCommand;
             // Set up default command and arguments
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
                 shellCommand = "pwsh";
-                commandPath = WhichUtil.Which(shellCommand, require: false, Trace);
+                commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
                 if (string.IsNullOrEmpty(commandPath))
                 {
                     shellCommand = "powershell";
                     Trace.Info($"Defaulting to {shellCommand}");
-                    commandPath = WhichUtil.Which(shellCommand, require: true, Trace);
+                    commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                 }
                 ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
 #else
                 shellCommand = "sh";
-                commandPath = WhichUtil.Which("bash", false, Trace) ?? WhichUtil.Which("sh", true, Trace);
+                commandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
@@ -169,7 +172,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
                 shellCommand = parsed.shellCommand;
                 // For non-ContainerStepHost, the command must be located on the host by Which
-                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace);
+                commandPath = WhichUtil.Which(parsed.shellCommand, !isContainerStepHost, Trace, prependPath);
                 argFormat = $"{parsed.shellArgs}".TrimStart();
                 if (string.IsNullOrEmpty(argFormat))
                 {
