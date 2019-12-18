@@ -146,10 +146,7 @@ namespace GitHub.Runner.Worker.Handlers
             Inputs.TryGetValue("shell", out var shell);
             var isContainerStepHost = StepHost is ContainerStepHost;
 
-            // Prepend PATH before locating shell tool
-            AddPrependPathToEnvironment();
             string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
-
             string commandPath, argFormat, shellCommand;
             // Set up default command and arguments
             if (string.IsNullOrEmpty(shell))
@@ -210,6 +207,9 @@ namespace GitHub.Runner.Worker.Handlers
 #endif
             // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
             File.WriteAllText(scriptFilePath, contents, encoding);
+
+            // Prepend PATH
+            AddPrependPathToEnvironment();
 
             // expose context to environment
             foreach (var context in ExecutionContext.ExpressionValues)
