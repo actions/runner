@@ -1,14 +1,14 @@
 ## Features
-  - Added Proxy Support for self-hosted runner. (#206)
-  - Introduce `--name` configure argument for runner name. (#217)
-  - Better repo matching for issue file path (checkout v2 related) (#208)
+  - Remove runner flow: Change from PAT to "deletion token" in prompt (#225) 
+  - Expose github.run_id and github.run_number to action runtime env. (#224)
 
 ## Bugs
-  - N/A
+  - Clean up error messages for container scenarios (#221)
+  - Pick shell from prependpath (#231)
 
 ## Misc
-  - Runner code cleanup  (#197, #209, #214, #219) 
-  - Update node external to 12.13.1 (#215)
+  - Runner code cleanup  (#218 #227, #228, #229, #230) 
+  - Consume dotnet core 3.1 in runner. (#213)
 
 ## Windows x64
 We recommend configuring the runner under "<DRIVE>:\actions-runner". This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows
@@ -16,7 +16,7 @@ We recommend configuring the runner under "<DRIVE>:\actions-runner". This will h
 // Create a folder under the drive root
 mkdir \actions-runner ; cd \actions-runner
 // Download the latest runner package
-Invoke-WebRequest -Uri https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip -OutFile actions-runner-win-x64-<RUNNER_VERSION>.zip
+Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip -OutFile actions-runner-win-x64-<RUNNER_VERSION>.zip
 // Extract the installer
 Add-Type -AssemblyName System.IO.Compression.FileSystem ; 
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$HOME\Downloads\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
@@ -28,7 +28,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 // Create a folder
 mkdir actions-runner && cd actions-runner
 // Download the latest runner package
-curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
+curl -O https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 ```
@@ -39,7 +39,7 @@ tar xzf ./actions-runner-osx-x64-<RUNNER_VERSION>.tar.gz
 // Create a folder
 mkdir actions-runner && cd actions-runner
 // Download the latest runner package
-curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
+curl -O https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 ```
@@ -50,7 +50,7 @@ tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 // Create a folder
 mkdir actions-runner && cd actions-runner
 // Download the latest runner package
-curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
+curl -O https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 ```
@@ -61,7 +61,7 @@ tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 // Create a folder
 mkdir actions-runner && cd actions-runner
 // Download the latest runner package
-curl -O https://githubassets.azureedge.net/runners/<RUNNER_VERSION>/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
+curl -O https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 // Extract the installer
 tar xzf ./actions-runner-linux-arm-<RUNNER_VERSION>.tar.gz
 ```
