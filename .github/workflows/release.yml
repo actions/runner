@@ -3,10 +3,47 @@ name: Runner CD
 on:
   push:
     paths:
-    - src/runnerversion_block # Change this to src/runnerversion when we are ready.
+    - releaseVersion
   
 jobs:
+  check:
+    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    # Make sure ./releaseVersion match ./src/runnerversion 
+    # Query GitHub release ensure version is not used 
+    - name: Check version
+      uses: actions/github-script@0.3.0
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          const core = require('@actions/core')
+          const fs = require('fs');
+          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
+          const releaseVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '')
+          if (runnerVersion != releaseVersion) {
+            console.log('Request Release Version: ' + releaseVersion + '\nCurrent Runner Version: ' + runnerVersion)
+            core.setFailed('Version mismatch! Make sure ./releaseVersion match ./src/runnerVersion')
+            return
+          }
+          try {
+            const release = await github.repos.getReleaseByTag({
+              owner: '${{ github.event.repository.owner.name }}',
+              repo: '${{ github.event.repository.name }}',
+              tag: 'v' + runnerVersion
+            })
+            core.setFailed('Release with same tag already created: ' + release.data.html_url)
+          } catch (e) {
+            // We are good to create the release if release with same tag doesn't exists
+            if (e.status != 404) {
+              throw e
+            }
+          }
+  
   build:
+    needs: check
     strategy:
       matrix:
         runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
@@ -52,7 +89,7 @@ jobs:
     - name: Package Release
       if: github.event_name != 'pull_request'
       run: |
-        ${{ matrix.devScript }} package Release
+        ${{ matrix.devScript }} package Release ${{ matrix.runtime }}
       working-directory: src
 
     # Upload runner package tar.gz/zip as artifact.
@@ -66,14 +103,17 @@ jobs:
 
   release:
     needs: build
-    runs-on: linux-latest
+    runs-on: ubuntu-latest
     steps:
+
+    - uses: actions/checkout@v2
 
     # Download runner package tar.gz/zip produced by 'build' job
     - name: Download Artifact
       uses: actions/download-artifact@v1
       with:
         name: runner-packages
+        path: ./
 
     # Create ReleaseNote file
     - name: Create ReleaseNote
@@ -82,103 +122,74 @@ jobs:
       with:
         github-token: ${{secrets.GITHUB_TOKEN}}
         script: |
+          const core = require('@actions/core')
           const fs = require('fs');
-          // Get runner version from ./src/runnerVersion file
-          const versionContent = await github.repos.getContents({
-            owner: '${{ github.event.repository.owner.name }}',
-            repo: '${{ github.event.repository.name }}',
-            path: 'src/runnerversion'
-            ref: ${{ github.sha }}
-          })
-          const runnerVersion = Buffer.from(versionContent.data.content, 'base64').toString()
-          console.log("Runner Version ' + runnerVersion)
+          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
+          const releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
+          console.log(releaseNote)
           core.setOutput('version', runnerVersion);
-
-          // Query GitHub release ensure version is bumped 
-          const latestRelease = await github.repos.getLatestRelease({
-            owner: '${{ github.event.repository.owner.name }}',
-            repo: '${{ github.event.repository.name }}'
-          })
-          console.log(latestRelease.name)
-          const latestReleaseVersion = latestRelease.name.substring(1)
-          const vLatest = latestReleaseVersion.split('.')
-          const vNew = runnerVersion.split('.')
-          let versionBumped = true
-          for (let i = 0; i < 3; ++i) {
-            var v1 = parseInt(vLatest[i], 10);
-            var v2 = parseInt(vNew[i], 10);
-            if (v2 > v1) {
-              console.log(runnerVersion + " > " + latestReleaseVersion + "(Latest)")
-              break
-            }
-            
-            if (v1 > v2) {
-              versionBumped = false  
-              core.setFailed(runnerVersion + " < " + latestReleaseVersion + "(Latest)")
-              break
-            }
-          }
-
-          // Generate release note
-          if (versionBumped) {
-            const releaseNoteContent = await github.repos.getContents({
-              owner: '${{ github.event.repository.owner.name }}',
-              repo: '${{ github.event.repository.name }}',
-              path: 'releaseNote.md'
-              ref: ${{ github.sha }}
-            })
-            const releaseNote = Buffer.from(releaseNoteContent.data.content, 'base64').toString().replace("<RUNNER_VERSION>", runnerVersion)
-            console.log(releaseNote)
-            core.setOutput('note', releaseNote);
-          }
-
+          core.setOutput('note', releaseNote);
+        
     # Create GitHub release
-    - uses: actions/create-release@v1
+    - uses: actions/create-release@master
       id: createRelease
       name: Create ${{ steps.releaseNote.outputs.version }} Runner Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: "v${{ steps.releaseNote.outputs.version }}"
         release_name: "v${{ steps.releaseNote.outputs.version }}"
-        body: ${{ steps.releaseNote.outputs.note }}
+        body: |
+          ${{ steps.releaseNote.outputs.note }}
         prerelease: true
 
     # Upload release assets
     - name: Upload Release Asset (win-x64)
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ./actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-x64)
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ./actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_name: actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
-    - name: Upload Release Asset (mac-x64)
+    - name: Upload Release Asset (osx-x64)
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ./actions-runner-mac-x64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-mac-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_name: actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm)
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ./actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_name: actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-arm64)
       uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ./actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_path: ${{ github.workspace }}/actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_name: actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_content_type: application/octet-stream
