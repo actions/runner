@@ -5,9 +5,13 @@ on:
     branches:
     - master
     - releases/*
+    paths-ignore:
+    - '**.md'    
   pull_request:
     branches:
     - '*'
+    paths-ignore:
+    - '**.md'    
 
 jobs:
   build:
