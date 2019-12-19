@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using GitHub.Build.WebApi;
 using GitHub.DistributedTask.WebApi;
 using GitHub.DistributedTask.Logging;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -63,7 +62,7 @@ namespace GitHub.Runner.Worker
 
         // DO NOT add file path variable to here.
         // All file path variables needs to be retrive and set through ExecutionContext, so it can handle container file path translation.
-        public string Build_Number => Get(BuildVariables.BuildNumber);
+        public string Build_Number => Get(SdkConstants.Variables.Build.BuildNumber);
 
 #if OS_WINDOWS
         public bool Retain_Default_Encoding => false;
