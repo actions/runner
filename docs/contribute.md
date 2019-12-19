@@ -2,6 +2,8 @@
 
 We welcome contributions in the form of issues and pull requests.  We view the contributions and the process as the same for github and external contributors.
 
+> IMPORTANT: Building your own runner is critical for the dev inner loop process when contributing changes.  However, only runners built and distributed by GitHub (releases) are supported in production.  Be aware that workflows and orchestrations run service side with the runner being a remote process to run steps.  For that reason, the service can pull the runner forward so customizations can be lost.
+
 ## Issues
 
 Log issues for both bugs and enhancement requests.  Logging issues are important for the open community.
@@ -12,7 +14,7 @@ Issues in this repository should be for the runner application.  Note that the V
 
 We ask that before significant effort is put into code changes, that we have agreement on taking the change before time is invested in code changes. 
 
-1. Create an enhancment issue.  Once agreed we will take the enhancment
+1. Create a feature request.  Once agreed we will take the enhancment
 2. Create an ADR to agree on the details of the change.
 
 An ADR is an Architectural Decision Record.  This allows consensus on the direction forward and also serves as a record of the change and motivation.  [Read more here](adrs/README.md)
