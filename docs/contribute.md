@@ -1,10 +1,29 @@
-# Contribution guide for developers
+# Contributions
 
-## Required Dev Dependencies
+We welcome contributions in the form of issues and pull requests.  We view the contributions and the process as the same for github and external contributors.
+
+## Issues
+
+Log issues for both bugs and enhancement requests.  Logging issues are important for the open community.
+
+Issues in this repository should be for the runner application.  Note that the VM and virtual machine images (including the developer toolsets) installed on the actions hosted machine pools are located [in this repository](https://github.com/actions/virtual-environments)
+
+## Enhancements and Feature Requests
+
+We ask that before significant effort is put into code changes, that we have agreement on taking the change before time is invested in code changes. 
+
+1. Create an enhancment issue.  Once agreed we will take the enhancment
+2. Create an ADR to agree on the details of the change.
+
+An ADR is an Architectural Decision Record.  This allows consensus on the direction forward and also serves as a record of the change and motivation.  [Read more here](adrs/README.md)
+
+## Development Life Cycle
+
+### Required Dev Dependencies
 
 ![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) (needed for dev sh script)
 
-## To Build, Test, Layout 
+### To Build, Test, Layout 
 
 Navigate to the `src` directory and run the following command:
 
@@ -29,12 +48,12 @@ cd ./src
 ./dev.(sh/cmd) test # run all unit tests before git commit/push
 ```
 
-## Editors
+### Editors
 
-[Using Visual Studio 2019](https://www.visualstudio.com/vs/)  
 [Using Visual Studio Code](https://code.visualstudio.com/)
+[Using Visual Studio 2019](https://www.visualstudio.com/vs/)  
 
-## Styling
+### Styling
 
 We use the .NET Foundation and CoreCLR style guidelines [located here](
 https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)

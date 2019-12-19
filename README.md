@@ -28,4 +28,4 @@ config.cmd
 
 ## Contribute
 
-For developers that want to contribute, [read here](docs/contribute.md) on how to build and test.
+We accept contributions in the form of issues and pull requests.  [Read more here](docs/contribute.md) before contributing.
