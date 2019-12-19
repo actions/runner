@@ -8,9 +8,7 @@
 
 ## Get Started
 
-The runner is the application that runs a job from a GitHub Actions workflow.  The runner can run on the [hosted machine pools](https://github.com/actions/virtual-environments) or run on self-hosted virtual machines.
-
-Read more about self-hosted runners [here](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/about-self-hosted-runners).
+The runner is the application that runs a job from a GitHub Actions workflow.  The runner can run on the [hosted machine pools](https://github.com/actions/virtual-environments) or run on [self-hosted environments](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/about-self-hosted-runners).
 
 For more information about installing and using self-hosted runners, see [Adding self-hosted runners](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/adding-self-hosted-runners) and [Using self-hosted runners in a workflow](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/using-self-hosted-runners-in-a-workflow)
 
