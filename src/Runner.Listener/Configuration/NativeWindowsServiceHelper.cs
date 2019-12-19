@@ -678,6 +678,17 @@ namespace GitHub.Runner.Listener.Configuration
                 if (service != null)
                 {
                     service.Start();
+
+                    try
+                    {
+                        _term.WriteLine("Waiting for service to start...");
+                        service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(60));
+                    }
+                    catch (System.ServiceProcess.TimeoutException)
+                    {
+                        throw new InvalidOperationException($"Cannot start the service {serviceName} in a timely fashion.");
+                    }
+
                     _term.WriteLine($"Service {serviceName} started successfully");
                 }
                 else
