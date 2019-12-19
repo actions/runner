@@ -5,10 +5,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
-using System.Xml;
 using System.Xml.Serialization;
 using GitHub.Services.Common;
-using GitHub.Services.Graph.Client;
 
 namespace GitHub.Services.WebApi.Xml
 {
