@@ -1,12 +1,17 @@
+# build output
 **/bin
 **/obj
 **/libs
+
+# editors
 **/*.xproj
 **/*.xproj.user
 **/.vs
 **/.vscode
 **/*.error
 **/*.json.pretty
+
+# output
 node_modules
 _downloads
 _layout
