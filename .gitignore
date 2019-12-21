@@ -10,6 +10,7 @@
 **/.vscode
 **/*.error
 **/*.json.pretty
+.idea/
 
 # output
 node_modules
@@ -24,4 +25,3 @@ TestLogs
 
 #generated
 src/Runner.Sdk/BuildConstants.cs
-
