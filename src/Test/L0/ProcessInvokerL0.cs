@@ -260,7 +260,7 @@ namespace GitHub.Runner.Common.Tests
                         var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"", null, false, null, false, null, false, false,
                                                             highPriorityProcess: false,
                                                             cancellationToken: tokenSource.Token);
-                        Assert.Equal(oomScoreAdj, 500);
+                        Assert.Equal(500, oomScoreAdj);
                     }
                     catch (OperationCanceledException)
                     {
@@ -293,12 +293,12 @@ namespace GitHub.Runner.Common.Tests
                     };
                     try
                     {
-                        var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"", 
+                        var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"",
                                                                 new Dictionary<string, string> { {"PIPELINE_JOB_OOMSCOREADJ", "1234"} },
                                                                 false, null, false, null, false, false,
                                                                 highPriorityProcess: false,
                                                                 cancellationToken: tokenSource.Token);
-                        Assert.Equal(oomScoreAdj, 1234);
+                        Assert.Equal(1234, oomScoreAdj);
                     }
                     catch (OperationCanceledException)
                     {
@@ -336,7 +336,7 @@ namespace GitHub.Runner.Common.Tests
                         var proc = await processInvoker.ExecuteAsync("", "bash", "-c \"cat /proc/$$/oom_score_adj\"", null, false, null, false, null, false, false,
                                                             highPriorityProcess: true,
                                                             cancellationToken: tokenSource.Token);
-                        Assert.Equal(oomScoreAdj, 123);
+                        Assert.Equal(123, oomScoreAdj);
                     }
                     catch (OperationCanceledException)
                     {
