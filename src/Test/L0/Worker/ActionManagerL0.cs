@@ -57,8 +57,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:16.04");
+                Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal("ubuntu:16.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
             }
             finally
             {
@@ -204,9 +204,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
+                Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "Dockerfile"), (steps[0].Data as ContainerSetupInfo).Container.Dockerfile);
             }
             finally
             {
@@ -245,9 +245,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "images/cli", "Dockerfile"));
+                Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "images/cli", "Dockerfile"), (steps[0].Data as ContainerSetupInfo).Container.Dockerfile);
             }
             finally
             {
@@ -284,9 +284,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
+                Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "Dockerfile"), (steps[0].Data as ContainerSetupInfo).Container.Dockerfile);
             }
             finally
             {
@@ -324,9 +324,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "images/Dockerfile"));
+                Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "images/Dockerfile"), (steps[0].Data as ContainerSetupInfo).Container.Dockerfile);
             }
             finally
             {
@@ -364,8 +364,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
+                Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal("ubuntu:18.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
             }
             finally
             {
@@ -403,9 +403,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
+                Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "Dockerfile"), (steps[0].Data as ContainerSetupInfo).Container.Dockerfile);
             }
             finally
             {
@@ -521,30 +521,30 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId1);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:16.04");
+                Assert.Equal(actionId1, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal("ubuntu:16.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
 
-                Assert.True((steps[1].Data as ContainerSetupInfo).StepIds.Contains(actionId2));
-                Assert.True((steps[1].Data as ContainerSetupInfo).StepIds.Contains(actionId3));
-                Assert.True((steps[1].Data as ContainerSetupInfo).StepIds.Contains(actionId4));
-                Assert.Equal((steps[1].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
+                Assert.Contains(actionId2, (steps[1].Data as ContainerSetupInfo).StepIds);
+                Assert.Contains(actionId3, (steps[1].Data as ContainerSetupInfo).StepIds);
+                Assert.Contains(actionId4, (steps[1].Data as ContainerSetupInfo).StepIds);
+                Assert.Equal("ubuntu:18.04", (steps[1].Data as ContainerSetupInfo).Container.Image);
 
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfile");
 
-                Assert.Equal((steps[2].Data as ContainerSetupInfo).StepIds[0], actionId5);
-                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[2].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
+                Assert.Equal(actionId5, (steps[2].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal(actionDir, (steps[2].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "Dockerfile"), (steps[2].Data as ContainerSetupInfo).Container.Dockerfile);
 
                 actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
 
-                Assert.True((steps[3].Data as ContainerSetupInfo).StepIds.Contains(actionId6));
-                Assert.True((steps[3].Data as ContainerSetupInfo).StepIds.Contains(actionId7));
-                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[3].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "Dockerfile"));
+                Assert.Contains(actionId6, (steps[3].Data as ContainerSetupInfo).StepIds);
+                Assert.Contains(actionId7, (steps[3].Data as ContainerSetupInfo).StepIds);
+                Assert.Equal(actionDir, (steps[3].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "Dockerfile"), (steps[3].Data as ContainerSetupInfo).Container.Dockerfile);
 
-                Assert.Equal((steps[4].Data as ContainerSetupInfo).StepIds[0], actionId8);
-                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.WorkingDirectory, actionDir);
-                Assert.Equal((steps[4].Data as ContainerSetupInfo).Container.Dockerfile, Path.Combine(actionDir, "images/cli", "Dockerfile"));
+                Assert.Equal(actionId8, (steps[4].Data as ContainerSetupInfo).StepIds[0]);
+                Assert.Equal(actionDir, (steps[4].Data as ContainerSetupInfo).Container.WorkingDirectory);
+                Assert.Equal(Path.Combine(actionDir, "images/cli", "Dockerfile"), (steps[4].Data as ContainerSetupInfo).Container.Dockerfile);
             }
             finally
             {
@@ -672,7 +672,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -772,7 +772,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -871,7 +871,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -940,7 +940,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1039,7 +1039,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1137,7 +1137,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1205,7 +1205,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1276,7 +1276,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1376,7 +1376,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'Test Corporation'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
