@@ -9,4 +9,4 @@
  - Windows Server 2016 64-bit
  - Windows Server 2019 64-bit
 
-## [More .Net Core Prerequisites Information](https://docs.microsoft.com/en-us/dotnet/core/windows-prerequisites?tabs=netcore30)
+## [More .NET Core Prerequisites Information](https://docs.microsoft.com/en-us/dotnet/core/windows-prerequisites?tabs=netcore30)
