@@ -24,7 +24,6 @@ namespace GitHub.Runner.Common
 
         private Guid _timelineId;
         private Guid _timelineRecordId;
-        private string _pageId;
         private FileStream _pageData;
         private StreamWriter _pageWriter;
         private int _byteCount;
@@ -40,7 +39,6 @@ namespace GitHub.Runner.Common
         {
             base.Initialize(hostContext);
             _totalLines = 0;
-            _pageId = Guid.NewGuid().ToString();
             _pagesFolder = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Diag), PagingFolder);
             _jobServerQueue = HostContext.GetService<IJobServerQueue>();
             Directory.CreateDirectory(_pagesFolder);
@@ -102,7 +100,7 @@ namespace GitHub.Runner.Common
         {
             EndPage();
             _byteCount = 0;
-            _dataFileName = Path.Combine(_pagesFolder, $"{_pageId}_{++_pageCount}.log");
+            _dataFileName = Path.Combine(_pagesFolder, $"{_timelineRecordId}_{++_pageCount}.log");
             _pageData = new FileStream(_dataFileName, FileMode.CreateNew);
             _pageWriter = new StreamWriter(_pageData, System.Text.Encoding.UTF8);
         }
