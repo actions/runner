@@ -61,11 +61,16 @@ namespace GitHub.Runner.Worker
             {
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
-#else
-            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+#else       
+            var path = "/proc/1/cgroup";
+            // OSX does not have this file, but you cannot run OSX as a base image for docker containers currently.
+            if (File.Exists(path))
             {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                var initProcessCgroup = File.ReadLines(path);
+                if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                }
             }
 #endif
 
