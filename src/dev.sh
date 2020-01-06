@@ -137,8 +137,6 @@ function runtest ()
         ulimit -n 1024
     fi
 
-    export GITHUB_RUNNER_SRC_DIR=${SCRIPT_DIR}
-
     dotnet msbuild -t:test -p:PackageRuntime="${RUNTIME_ID}" -p:BUILDCONFIG="${BUILD_CONFIG}" -p:RunnerVersion="${RUNNER_VERSION}" ./dir.proj || failed "failed tests" 
 }
 

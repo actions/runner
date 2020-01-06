@@ -125,7 +125,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Directory.CreateDirectory(Path.GetDirectoryName(watermarkFile));
                 File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
                 Directory.CreateDirectory(Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist"));
-                File.Copy(Path.Combine(Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR"), "Test", TestDataFolderName, "dockerfileaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
+                File.Copy(Path.Combine(TestUtil.GetSrcPath(), "Test", TestDataFolderName, "dockerfileaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
 
                 //Act
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
