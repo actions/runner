@@ -1,8 +1,7 @@
-﻿using GitHub.Runner.Common.Util;
-using System.IO;
+﻿using System.IO;
 using Xunit;
-using System;
 using GitHub.Runner.Sdk;
+using System.Runtime.CompilerServices;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -21,9 +20,16 @@ namespace GitHub.Runner.Common.Tests
             return projectDir;
         }
 
+        public static string GetTestFilePath([CallerFilePath] string path = null)
+        {
+            return path;
+        }
+
         public static string GetSrcPath()
         {
-            string srcDir = Environment.GetEnvironmentVariable("GITHUB_RUNNER_SRC_DIR");
+            string L0dir = Path.GetDirectoryName(GetTestFilePath());
+            string testDir = Path.GetDirectoryName(L0dir);
+            string srcDir = Path.GetDirectoryName(testDir);
             ArgUtil.Directory(srcDir, nameof(srcDir));
             Assert.Equal(Src, Path.GetFileName(srcDir));
             return srcDir;
