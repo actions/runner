@@ -116,7 +116,7 @@ namespace GitHub.Runner.Worker
             if (actionDefinition.Execution == null)
             {
                 executionContext.Debug($"Loaded action.yml file: {StringUtil.ConvertToJson(actionDefinition)}");
-                throw new ArgumentException($"Top level 'run:' section is required for {manifestFile}");
+                throw new ArgumentException($"Top level 'runs:' section is required for {manifestFile}");
             }
             else
             {
