@@ -36,6 +36,19 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
         }
 
         [EditorBrowsable(EditorBrowsableState.Never)]
+        public static CaseSensitiveDictionaryContextData AssertCaseSensitiveDictionary(
+                    this PipelineContextData value,
+                    String objectDescription)
+        {
+            if (value is CaseSensitiveDictionaryContextData dictionary)
+            {
+                return dictionary;
+            }
+
+            throw new ArgumentException($"Unexpected type '{value?.GetType().Name}' encountered while reading '{objectDescription}'. The type '{nameof(CaseSensitiveDictionaryContextData)}' was expected.");
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
         public static StringContextData AssertString(
             this PipelineContextData value,
             String objectDescription)

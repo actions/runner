@@ -76,10 +76,33 @@ namespace GitHub.Runner.Worker
                 // Start
                 step.ExecutionContext.Start();
 
-                // Set GITHUB_ACTION
+                // Populate env context for each step
+                Trace.Info("Initialize Env context for step");
+#if OS_WINDOWS
+                var envContext = new DictionaryContextData();
+#else
+                var envContext = new CaseSensitiveDictionaryContextData();
+#endif
+                step.ExecutionContext.ExpressionValues["env"] = envContext;
+                foreach (var pair in step.ExecutionContext.EnvironmentVariables)
+                {
+                    envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                }
+
                 if (step is IActionRunner actionStep)
                 {
+                    // Set GITHUB_ACTION
                     step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+
+                    // Evaluate and merge action's env block to env context
+                    var templateTrace = step.ExecutionContext.ToTemplateTraceWriter();
+                    var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+                    var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                    var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
+                    foreach (var env in actionEnvironment)
+                    {
+                        envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                    }
                 }
 
                 // Initialize scope
