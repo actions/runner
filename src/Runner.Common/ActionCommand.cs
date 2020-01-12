@@ -9,26 +9,27 @@ namespace GitHub.Runner.Common
     {
         private static readonly EscapeMapping[] _escapeMappings = new[]
         {
-            new EscapeMapping(token: "%", replacement: "%25"),
             new EscapeMapping(token: ";", replacement: "%3B"),
             new EscapeMapping(token: "\r", replacement: "%0D"),
             new EscapeMapping(token: "\n", replacement: "%0A"),
             new EscapeMapping(token: "]", replacement: "%5D"),
+            new EscapeMapping(token: "%", replacement: "%25"),
         };
 
         private static readonly EscapeMapping[] _escapeDataMappings = new[]
         {
             new EscapeMapping(token: "\r", replacement: "%0D"),
             new EscapeMapping(token: "\n", replacement: "%0A"),
+            new EscapeMapping(token: "%", replacement: "%25"),
         };
 
         private static readonly EscapeMapping[] _escapePropertyMappings = new[]
         {
-            new EscapeMapping(token: "%", replacement: "%25"),
             new EscapeMapping(token: "\r", replacement: "%0D"),
             new EscapeMapping(token: "\n", replacement: "%0A"),
             new EscapeMapping(token: ":", replacement: "%3A"),
             new EscapeMapping(token: ",", replacement: "%2C"),
+            new EscapeMapping(token: "%", replacement: "%25"),
         };
 
         private readonly Dictionary<string, string> _properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
