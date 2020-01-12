@@ -154,6 +154,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             if (value is StringToken containerLiteral)
             {
+                if (String.IsNullOrEmpty(containerLiteral.Value))
+                {
+                    return null;
+                }
+
                 result.Image = containerLiteral.Value;
             }
             else
