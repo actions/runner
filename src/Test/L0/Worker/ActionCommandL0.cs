@@ -54,6 +54,19 @@ namespace GitHub.Runner.Common.Tests.Worker
                 message = "";
                 test = null;
                 verify = null;
+                //##[do-something k1=%253B=%250D=%250A=%255D;]%253B-%250D-%250A-%255D
+                message = "##[do-something k1=%253B=%250D=%250A=%255D;]%253B-%250D-%250A-%255D";
+                test = new ActionCommand("do-something")
+                {
+                    Data = "%3B-%0D-%0A-%5D",
+                };
+                test.Properties.Add("k1", "%3B=%0D=%0A=%5D");
+                Assert.True(ActionCommand.TryParse(message, commands, out verify));
+                Assert.True(IsEqualCommand(hc, test, verify));
+
+                message = "";
+                test = null;
+                verify = null;
                 //##[do-something k1=;k2=;]
                 message = "##[do-something k1=;k2=;]";
                 test = new ActionCommand("do-something");
@@ -109,13 +122,26 @@ namespace GitHub.Runner.Common.Tests.Worker
                 message = "";
                 test = null;
                 verify = null;
-                //::do-something k1=%3B=%0D=%0A=%5D;::%3B-%0D-%0A-%5D
+                //::do-something k1=;=%2C=%0D=%0A=]=%3A,::;-%0D-%0A-]-:-,
                 message = "::do-something k1=;=%2C=%0D=%0A=]=%3A,::;-%0D-%0A-]-:-,";
                 test = new ActionCommand("do-something")
                 {
                     Data = ";-\r-\n-]-:-,",
                 };
                 test.Properties.Add("k1", ";=,=\r=\n=]=:");
+                Assert.True(ActionCommand.TryParseV2(message, commands, out verify));
+                Assert.True(IsEqualCommand(hc, test, verify));
+
+                message = "";
+                test = null;
+                verify = null;
+                //::do-something k1=;=%252C=%250D=%250A=]=%253A,::;-%250D-%250A-]-:-,
+                message = "::do-something k1=;=%252C=%250D=%250A=]=%253A,::;-%250D-%250A-]-:-,";
+                test = new ActionCommand("do-something")
+                {
+                    Data = ";-%0D-%0A-]-:-,",
+                };
+                test.Properties.Add("k1", ";=%2C=%0D=%0A=]=%3A");
                 Assert.True(ActionCommand.TryParseV2(message, commands, out verify));
                 Assert.True(IsEqualCommand(hc, test, verify));
 
