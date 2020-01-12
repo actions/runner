@@ -197,8 +197,9 @@ namespace GitHub.Runner.Common
             }
 
             string unescaped = escaped;
-            foreach (EscapeMapping mapping in _escapeMappings)
+            for (var i = _escapeMappings.Length - 1; i >= 0; i--)
             {
+                var mapping = _escapeMappings[i];
                 unescaped = unescaped.Replace(mapping.Replacement, mapping.Token);
             }
 
@@ -213,8 +214,9 @@ namespace GitHub.Runner.Common
             }
 
             string unescaped = escaped;
-            foreach (EscapeMapping mapping in _escapePropertyMappings)
+            for (var i = _escapePropertyMappings.Length - 1; i >= 0; i--)
             {
+                var mapping = _escapePropertyMappings[i];
                 unescaped = unescaped.Replace(mapping.Replacement, mapping.Token);
             }
 
@@ -229,8 +231,9 @@ namespace GitHub.Runner.Common
             }
 
             string unescaped = escaped;
-            foreach (EscapeMapping mapping in _escapeDataMappings)
+            for (var i = _escapeDataMappings.Length - 1; i >= 0; i--)
             {
+                var mapping = _escapeDataMappings[i];
                 unescaped = unescaped.Replace(mapping.Replacement, mapping.Token);
             }
 
