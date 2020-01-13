@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Worker.Handlers;
 using Moq;
 using Xunit;
@@ -748,6 +749,130 @@ namespace GitHub.Runner.Common.Tests.Worker
             Environment.SetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE", "");
         }
 
+#if OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void MatcherFile_JobContainer()
+        {
+            var matchers = new IssueMatchersConfig
+            {
+                Matchers =
+                {
+                    new IssueMatcherConfig
+                    {
+                        Owner = "my-matcher-1",
+                        Patterns = new[]
+                        {
+                            new IssuePatternConfig
+                            {
+                                Pattern = @"(.+): (.+)",
+                                File = 1,
+                                Message = 2,
+                            },
+                        },
+                    },
+                },
+            };
+            var container = new ContainerInfo();
+            using (var hostContext = Setup(matchers: matchers, jobContainer: container))
+            using (_outputManager)
+            {
+                // Setup github.workspace, github.repository
+                var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
+                ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
+                Directory.CreateDirectory(workDirectory);
+                var workspaceDirectory = Path.Combine(workDirectory, "workspace");
+                Directory.CreateDirectory(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("repository")).Returns("my-org/workflow-repo");
+
+                // Setup a git repository
+                await CreateRepository(hostContext, workspaceDirectory, "https://github.com/my-org/workflow-repo");
+
+                // Create test files
+                var file = Path.Combine(workspaceDirectory, "some-file.txt");
+                File.WriteAllText(file, "");
+
+                // Add translation path
+                container.AddPathTranslateMapping(workspaceDirectory, "/container/path/to/workspace");
+
+                // Process
+                Process($"/container/path/to/workspace/some-file.txt: some error 1");
+                Process($"some-file.txt: some error 2");
+
+                Assert.Equal(2, _issues.Count);
+
+                Assert.Equal("some error 1", _issues[0].Item1.Message);
+                Assert.Equal("some-file.txt", _issues[0].Item1.Data.ContainsKey("file"));
+
+                Assert.Equal("some error 2", _issues[1].Item1.Message);
+                Assert.Equal("some-file.txt", _issues[1].Item1.Data.ContainsKey("file"));
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void MatcherFile_StepContainer()
+        {
+            var matchers = new IssueMatchersConfig
+            {
+                Matchers =
+                {
+                    new IssueMatcherConfig
+                    {
+                        Owner = "my-matcher-1",
+                        Patterns = new[]
+                        {
+                            new IssuePatternConfig
+                            {
+                                Pattern = @"(.+): (.+)",
+                                File = 1,
+                                Message = 2,
+                            },
+                        },
+                    },
+                },
+            };
+            var container = new ContainerInfo();
+            using (var hostContext = Setup(matchers: matchers, stepContainer: container))
+            using (_outputManager)
+            {
+                // Setup github.workspace, github.repository
+                var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
+                ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
+                Directory.CreateDirectory(workDirectory);
+                var workspaceDirectory = Path.Combine(workDirectory, "workspace");
+                Directory.CreateDirectory(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("workspace")).Returns(workspaceDirectory);
+                _executionContext.Setup(x => x.GetGitHubContext("repository")).Returns("my-org/workflow-repo");
+
+                // Setup a git repository
+                await CreateRepository(hostContext, workspaceDirectory, "https://github.com/my-org/workflow-repo");
+
+                // Create test files
+                var file = Path.Combine(workspaceDirectory, "some-file.txt");
+                File.WriteAllText(file, "");
+
+                // Add translation path
+                container.AddPathTranslateMapping(workspaceDirectory, "/container/path/to/workspace");
+
+                // Process
+                Process($"/container/path/to/workspace/some-file.txt: some error 1");
+                Process($"some-file.txt: some error 2");
+
+                Assert.Equal(2, _issues.Count);
+
+                Assert.Equal("some error 1", _issues[0].Item1.Message);
+                Assert.Equal("some-file.txt", _issues[0].Item1.Data.ContainsKey("file"));
+
+                Assert.Equal("some error 2", _issues[1].Item1.Message);
+                Assert.Equal("some-file.txt", _issues[1].Item1.Data.ContainsKey("file"));
+            }
+        }
+#endif
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
@@ -806,7 +931,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private TestHostContext Setup(
             [CallerMemberName] string name = "",
-            IssueMatchersConfig matchers = null)
+            IssueMatchersConfig matchers = null,
+            ContainerInfo jobContainer = null,
+            ContainerInfo stepContainer = null)
         {
             matchers?.Validate();
 
@@ -824,6 +951,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 .Returns(true);
             _executionContext.Setup(x => x.Variables)
                 .Returns(_variables);
+            _executionContext.Setup(x => x.Container)
+                .Returns(jobContainer);
             _executionContext.Setup(x => x.GetMatchers())
                 .Returns(matchers?.Matchers ?? new List<IssueMatcherConfig>());
             _executionContext.Setup(x => x.Add(It.IsAny<OnMatcherChanged>()))
@@ -856,7 +985,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     return false;
                 });
 
-            _outputManager = new OutputManager(_executionContext.Object, _commandManager.Object);
+            _outputManager = new OutputManager(_executionContext.Object, _commandManager.Object, stepContainer);
             return hostContext;
         }
 
