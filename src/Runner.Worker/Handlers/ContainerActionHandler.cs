@@ -189,8 +189,8 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEnvironmentVariables[variable.Key] = container.TranslateToContainerPath(variable.Value);
             }
 
-            using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
-            using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
+            using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
+            using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             {
                 var runExitCode = await dockerManger.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
                 if (runExitCode != 0)
