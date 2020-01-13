@@ -31,7 +31,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             _executionContext = executionContext;
             _commandManager = commandManager;
-            _container = container;
+            _container = container ?? executionContext.Container;
 
             // Recursion failsafe (test override)
             var failsafeString = Environment.GetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE");
