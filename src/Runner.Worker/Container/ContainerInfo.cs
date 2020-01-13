@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using GitHub.Runner.Common.Util;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Container
 {
@@ -19,7 +19,6 @@ namespace GitHub.Runner.Worker.Container
 
         public ContainerInfo()
         {
-
         }
 
         public ContainerInfo(IHostContext hostContext, Pipelines.JobContainer container, bool isJobContainer = true, string networkAlias = null)

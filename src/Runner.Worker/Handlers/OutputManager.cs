@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
 using DTWebApi = GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Worker.Handlers
@@ -17,6 +18,7 @@ namespace GitHub.Runner.Worker.Handlers
         private const string _timeoutKey = "GITHUB_ACTIONS_RUNNER_ISSUE_MATCHER_TIMEOUT";
         private static readonly Regex _colorCodeRegex = new Regex(@"\x0033\[[0-9;]*m?", RegexOptions.Compiled | RegexOptions.CultureInvariant);
         private readonly IActionCommandManager _commandManager;
+        private readonly ContainerInfo _container;
         private readonly IExecutionContext _executionContext;
         private readonly int _failsafe = 50;
         private readonly object _matchersLock = new object();
@@ -25,10 +27,11 @@ namespace GitHub.Runner.Worker.Handlers
         // Mapping that indicates whether a directory belongs to the workflow repository
         private readonly Dictionary<string, string> _directoryMap = new Dictionary<string, string>();
 
-        public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager)
+        public OutputManager(IExecutionContext executionContext, IActionCommandManager commandManager, ContainerInfo container = null)
         {
             _executionContext = executionContext;
             _commandManager = commandManager;
+            _container = container;
 
             // Recursion failsafe (test override)
             var failsafeString = Environment.GetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE");
@@ -257,6 +260,7 @@ namespace GitHub.Runner.Worker.Handlers
                 if (!string.IsNullOrWhiteSpace(match.File))
                 {
                     var file = match.File;
+                    var translate = _container != null;
 
                     // Root using fromPath
                     if (!string.IsNullOrWhiteSpace(match.FromPath) && !Path.IsPathFullyQualified(file))
@@ -275,10 +279,18 @@ namespace GitHub.Runner.Worker.Handlers
                         ArgUtil.NotNullOrEmpty(workspace, "workspace");
 
                         file = Path.Combine(workspace, file);
+                        translate = false;
                     }
 
                     // Remove relative pathing and normalize slashes
                     file = Path.GetFullPath(file);
+
+                    // Translate to host
+                    if (translate)
+                    {
+                        file = _container.TranslateToHostPath(file);
+                        file = Path.GetFullPath(file);
+                    }
 
                     // Check whether the file exists
                     if (File.Exists(file))
