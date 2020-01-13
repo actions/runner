@@ -472,7 +472,7 @@
         "matrix"
       ],
       "one-of": [
-        "non-empty-string",
+        "string",
         "container-mapping"
       ]
     },
@@ -497,8 +497,20 @@
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "container"
+        "loose-value-type": "services-container"
       }
+    },
+
+    "services-container": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix"
+      ],
+      "one-of": [
+        "non-empty-string",
+        "container-mapping"
+      ]
     },
 
     "container-env": {
