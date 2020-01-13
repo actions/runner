@@ -804,10 +804,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(2, _issues.Count);
 
                 Assert.Equal("some error 1", _issues[0].Item1.Message);
-                Assert.Equal("some-file.txt", _issues[0].Item1.Data.ContainsKey("file"));
+                Assert.Equal("some-file.txt", _issues[0].Item1.Data["file"]);
 
                 Assert.Equal("some error 2", _issues[1].Item1.Message);
-                Assert.Equal("some-file.txt", _issues[1].Item1.Data.ContainsKey("file"));
+                Assert.Equal("some-file.txt", _issues[1].Item1.Data["file"]);
             }
         }
 
@@ -865,10 +865,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(2, _issues.Count);
 
                 Assert.Equal("some error 1", _issues[0].Item1.Message);
-                Assert.Equal("some-file.txt", _issues[0].Item1.Data.ContainsKey("file"));
+                Assert.Equal("some-file.txt", _issues[0].Item1.Data["file"]);
 
                 Assert.Equal("some error 2", _issues[1].Item1.Message);
-                Assert.Equal("some-file.txt", _issues[1].Item1.Data.ContainsKey("file"));
+                Assert.Equal("some-file.txt", _issues[1].Item1.Data["file"]);
             }
         }
 #endif
