@@ -5,7 +5,7 @@ using GitHub.DistributedTask.Expressions2.Sdk.Functions;
 
 namespace GitHub.DistributedTask.Expressions2
 {
-    internal static class ExpressionConstants
+    public static class ExpressionConstants
     {
         static ExpressionConstants()
         {
@@ -22,6 +22,12 @@ namespace GitHub.DistributedTask.Expressions2
             where T : Function, new()
         {
             WellKnownFunctions.Add(name, new FunctionInfo<T>(name, minParameters, maxParameters));
+        }
+
+        public static void UpdateFunction<T>(String name, Int32 minParameters, Int32 maxParameters)
+                    where T : Function, new()
+        {
+            WellKnownFunctions[name] = new FunctionInfo<T>(name, minParameters, maxParameters);
         }
 
         internal static readonly String False = "false";
