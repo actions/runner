@@ -472,6 +472,7 @@ namespace GitHub.Runner.Listener.Configuration
             agent.Labels.Add("self-hosted");
             agent.Labels.Add(VarUtil.OS);
             agent.Labels.Add(VarUtil.OSArchitecture);
+            agent.Labels.Add(agent.Name);
 
             return agent;
         }
@@ -492,6 +493,7 @@ namespace GitHub.Runner.Listener.Configuration
             agent.Labels.Add("self-hosted");
             agent.Labels.Add(VarUtil.OS);
             agent.Labels.Add(VarUtil.OSArchitecture);
+            agent.Labels.Add(agent.Name);
 
             return agent;
         }
