@@ -1,6 +1,6 @@
-# 0004: HashFiles Expression Function
+# 0279: HashFiles Expression Function
 
-**Date**: 2019/09/30
+**Date**: 2019-09-30
 
 **Status**: Accepted
 
@@ -29,7 +29,7 @@ There are serval different ways to get the hash `key` input for `actions/cache` 
       key: ${{ runner.os }}|${{ github.workspace }}|**/package-lock.json
 ```
 
-## Decisions
+## Decision
 
 ### Add hashFiles() function to expression engine for calculate files' hash
 
