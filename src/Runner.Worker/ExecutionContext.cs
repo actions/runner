@@ -309,12 +309,6 @@ namespace GitHub.Runner.Worker
                 Result = result;
             }
 
-            // update context
-            if (!string.IsNullOrEmpty(ContextName))
-            {
-                StepsContext.SetConclusion(ScopeName, ContextName, Result.Value.ToContextData());
-            }
-
             // report total delay caused by server throttling.
             if (_totalThrottlingDelayInMilliseconds > 0)
             {
@@ -347,6 +341,12 @@ namespace GitHub.Runner.Worker
             _cancellationTokenSource?.Dispose();
 
             _logger.End();
+
+            // update context
+            if (!string.IsNullOrEmpty(ContextName))
+            {
+                StepsContext.SetConclusion(ScopeName, ContextName, Result.Value.ToContextData());
+            }
 
             return Result.Value;
         }
