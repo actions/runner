@@ -1,4 +1,5 @@
 # ADR 263: Self Hosted Runner Proxies
+
 **Date**: 2019-11-13
 
 **Status**: Accepted
@@ -9,8 +10,7 @@
 - While there is not a standard convention, many applications support setting proxies via the environmental variables `http_proxy`, `https_proxy`, `no_proxy`, such as curl, wget, perl, python, docker, git, R, ect
   - Some of these applications use `HTTPS_PROXY` versus `https_proxy`, but most understand or primarily support the lowercase variant
 
-
-## Decisions
+## Decision
 
 We will update the Runner to use the conventional environment variables for proxies: `http_proxy`, `https_proxy` and `no_proxy` if they are set.
 These are described in detail below:
