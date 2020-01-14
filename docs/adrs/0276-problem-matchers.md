@@ -1,6 +1,8 @@
-# Problem Matchers
+# ADR 0276: Problem Matchers
 
-**Status** Proposed
+**Date** 2019-07-06
+
+**Status** Accepted
 
 ## Context
 
@@ -12,9 +14,11 @@ VSCode has an extensible model for solving this type of problem. VSCode allows u
 
 The problem-matcher concept fits well with "setup" actions. For example, the `setup-nodejs` action will download node.js, add it to the PATH, and register the `tsc` problem matcher. For the duration of the job, the `tsc` problem matcher will be applied against the output.
 
-## Registration
+## Decision
 
-### Using `##` command
+### Registration
+
+#### Using `##` command
 
 `##[add-matcher]path-to-problem-matcher-config.json`
 
@@ -24,7 +28,7 @@ Using a `##` command allows for flexibility:
 
 Note, if a matcher with the same name is registered a second time, it will clobber the first instance.
 
-### Unregister using `##` command
+#### Unregister using `##` command
 
 A way out for rare cases where scoping is a problem.
 
@@ -32,7 +36,7 @@ A way out for rare cases where scoping is a problem.
 
 For the this to be usable, the `owner` needs to be discoverable. Therefore, debug print the owner on registration.
 
-## Single line matcher
+### Single line matcher
 
 Consider the output:
 
@@ -106,7 +110,7 @@ Note, an error does not imply task failure. Exit codes communicate failure.
 
 Note, strip color codes when evaluating regular expressions.
 
-## Multi-line matcher
+### Multi-line matcher
 
 Consider the below output from ESLint in stylish mode. The file name is printed once, yet multiple error lines are printed.
 
@@ -164,13 +168,13 @@ code:     no-unused-vars
 
 Note, in the above example only the error line will appear red in the web UI. The \"file\" line will not appear red.
 
-## Other details
+### Other details
 
-### Configuration `owner`
+#### Configuration `owner`
 
 Can be used to stomp over or remove.
 
-### Rooting the file
+#### Rooting the file
 
 The goal of the file information is to provide a hyperlink in the UI.
 
@@ -184,7 +188,7 @@ This is a place where we diverge from VSCode. VSCode task configuration are spec
 
 In order to avoid creating inaccurate hyperlinks on the error issues, the agent will verify the file exists and is in the main repository. Otherwise omit the file property from the error issue and debug trace what happened.
 
-### Supported severity levels
+#### Supported severity levels
 
 Ordinal ignore case:
 
@@ -193,17 +197,66 @@ Ordinal ignore case:
 
 Coalesce empty with \"error\". For any other values, omit logging an issue and debug trace what happened.
 
-### Mitigate regular expression denial of service (ReDos)
+#### Default severity level
+
+Problem matchers are unable to interpret severity strings other than `warning` and `error`. The `severity` match group expects `warning` or `error` (case insensitive).
+
+However some tools indicate error/warning in different ways. For example `flake8` uses codes like `E100`, `W200`, and `F300` (error, warning, fatal, respectively).
+
+Therefore, allow a property `severity`, sibling to `owner`, which identifies the default severity for the problem matcher. This allows two problem matchers are registered - one for warnings and one for errors.
+
+For example, given the following `flake8` output:
+
+```
+./bootcamp/settings.py:156:80: E501 line too long (94 > 79 characters)
+./bootcamp/settings.py:165:5: F403 'from local_settings import *' used; unable to detect undefined names
+```
+
+Two problem matchers can be used:
+
+```json
+{
+    "problemMatcher": [
+        {
+            "owner": "flake8",
+            "pattern": [
+                {
+                    "regexp": "^(.+):(\\d+):(\\d+): ([EF]\\d+) (.+)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "code": 4,
+                    "message": 5
+                }
+            ]
+        },
+        {
+            "owner": "flake8-warnings",
+            "severity": "warning",
+            "pattern": [
+                {
+                    "regexp": "^(.+):(\\d+):(\\d+): (W\\d+) (.+)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "code": 4,
+                    "message": 5
+                }
+            ]
+        }
+    ]
+}
+```
+
+#### Mitigate regular expression denial of service (ReDos)
 
 If a matcher exceeds a 1 second timeout when processing a line, retry up to two three times total.
 After three unsuccessful attempts, warn and eject the matcher. The matcher will not run again for the duration of the job.
 
-## Where we diverge from VSCode
+### Where we diverge from VSCode
 
 - We added the `fromPath` concept for rooting paths. This is done differently in VSCode, since a task is the scope (root path well known). For us, the job is the scope.
 - VSCode allows additional activation info background tasks that are always running (recompile on files changed). They allow regular expressions to define when the matcher scope begins and ends. This is an interesting concept that we could leverage to help solve our scoping problem.
-
-## Implementation concerns
 
 ## Consequences
 
