@@ -1,8 +1,8 @@
-# 0002. run action- shell option
-Date: 2019-07-09
+# ADR 0277: Run action shell option
 
-## Status
-Accepted
+**Date** 2019-07-09
+
+**Status** Accepted
 
 ## Context
 run-actions run scripts using a platform specific shell:
@@ -23,7 +23,7 @@ jobs:
       shell: python {0}
 ```
 
-## Decisions
+## Decision
 
 ___
 
