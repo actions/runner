@@ -1,4 +1,5 @@
-﻿using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using System;
 
 namespace GitHub.Runner.Common.Util
@@ -74,6 +75,30 @@ namespace GitHub.Runner.Common.Util
                 default:
                     throw new NotSupportedException(result.ToString());
             }
+        }
+
+        public static StringContextData ToContextData(this TaskResult result)
+        {
+            string str;
+            switch (result)
+            {
+                case TaskResult.Succeeded:
+                    str = "success";
+                    break;
+                case TaskResult.Failed:
+                    str = "failure";
+                    break;
+                case TaskResult.Canceled:
+                    str = "cancelled";
+                    break;
+                case TaskResult.Skipped:
+                    str = "skipped";
+                    break;
+                default:
+                    throw new NotSupportedException($"Unexpected task result '{result}' when converting to context data");
+            }
+
+            return str;
         }
     }
 }

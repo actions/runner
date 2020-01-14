@@ -202,5 +202,20 @@ namespace GitHub.Runner.Common.Tests.Util
                 Assert.Equal(TaskResult.Skipped, merged);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ToContextData()
+        {
+            // Arrange
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                Assert.Equal("success", TaskResult.Succeeded.ToContextData().ToString());
+                Assert.Equal("failure", TaskResult.Failed.ToContextData().ToString());
+                Assert.Equal("cancelled", TaskResult.Canceled.ToContextData().ToString());
+                Assert.Equal("skipped", TaskResult.Skipped.ToContextData().ToString());
+            }
+        }
     }
 }
