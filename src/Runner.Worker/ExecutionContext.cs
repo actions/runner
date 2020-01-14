@@ -312,7 +312,7 @@ namespace GitHub.Runner.Worker
             // update context
             if (!string.IsNullOrEmpty(ContextName))
             {
-                StepsContext.SetOutcome(ScopeName, ContextName, Result.Value.ToContextData());
+                StepsContext.SetConclusion(ScopeName, ContextName, Result.Value.ToContextData());
             }
 
             // report total delay caused by server throttling.
