@@ -1,6 +1,7 @@
-# 0005: Echoing of Command Input
+# ADR 0280: Echoing of Command Input
 
-**Date**: 2019/11/04  
+**Date**: 2019-11-04  
+
 **Status**: Accepted
 
 ## Context
@@ -11,7 +12,7 @@ Command outputs will still be echoed in the case there are any errors processing
 
 Echo output in the user logs can be explicitly controlled by the new commands `::echo::on` and `::echo::off`. By default, echoing is enabled if `ACTIONS_STEP_DEBUG` secret is enabled, otherwise echoing is disabled.
 
-## Impact
+## Decision
 - The only commands that currently echo output are
   - `remove-matcher`
   - `add-matcher`
