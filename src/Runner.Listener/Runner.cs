@@ -450,7 +450,7 @@ namespace GitHub.Runner.Listener
             separator = "/";
             ext = "sh";
 #endif
-           _term.WriteLine($@"
+            _term.WriteLine($@"
 Commands:
  .{separator}config.{ext}         Configures the runner
  .{separator}config.{ext} remove  Unconfigures the runner
