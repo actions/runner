@@ -474,9 +474,6 @@ Config Options:
     _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
 #endif
     _term.WriteLine($@"
-Run Options:
- --once  Exit after completing a job. Does not remove the runner
-
 Examples:
  Configure a runner non-interactively:
   .{separator}config.{ext} --unattended --url <url> --token <token>
