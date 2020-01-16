@@ -48,7 +48,7 @@ jobs:
         echo "::add-path::C:\Program Files\Git\mingw64\bin"
         echo "::add-path::C:\Program Files\Git\usr\bin"
         echo "::add-path::C:\Program Files\Git\bin"
-      if: matrix.os == "windows-latest"
+      if: matrix.os == 'windows-latest'
       name: "Temp step to Set Path for Windows"
 
     # Build runner layout
