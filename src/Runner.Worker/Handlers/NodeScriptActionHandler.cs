@@ -122,7 +122,7 @@ namespace GitHub.Runner.Worker.Handlers
                 else
                 {
                     var exitCode = await step;
-                    Trace.Info($"Node Action run completed with exit code {exitCode}");
+                    ExecutionContext.Debug($"Node Action run completed with exit code {exitCode}");
                     if (exitCode != 0)
                     {
                         ExecutionContext.Result = TaskResult.Failed;
