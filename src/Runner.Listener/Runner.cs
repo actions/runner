@@ -451,16 +451,38 @@ namespace GitHub.Runner.Listener
             ext = "sh";
 #endif
             _term.WriteLine($@"
-Commands:,
- .{separator}config.{ext}          Configures the runner
- .{separator}config.{ext} remove   Unconfigures the runner
- .{separator}run.{ext}             Runs the runner interactively. Does not require any options.
+Commands:
+ .{separator}config.{ext}         Configures the runner
+ .{separator}config.{ext} remove  Unconfigures the runner
+ .{separator}run.{ext}            Runs the runner interactively. Does not require any options.
 
 Options:
+ --help     Prints the help for each command
  --version  Prints the runner version
  --commit   Prints the runner commit
- --help     Prints the help for each command
-");
+
+Config Options:
+ --unattended     Disable interactive prompts for missing arguments. Defaults will be used for missing options
+ --url string     Repository to add the runner to. Required if unattended
+ --token string   Registration token. Required if unattended
+ --name string    Name of the runner to configure (default {Environment.MachineName ?? "myrunner"})
+ --work string    Relative runner work directory (default {Constants.Path.WorkDirectory})
+ --replace        Replace any existing runner with the same name (default false)");
+#if OS_WINDOWS
+    _term.WriteLine($@" --runasservice   Run the runner as a service");
+    _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
+    _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
+#endif
+    _term.WriteLine($@"
+Examples:
+ Configure a runner non-interactively:
+  .{separator}config.{ext} --unattended --url <url> --token <token>
+ Configure a runner non-interactively, replacing any existing runner with the same name:
+  .{separator}config.{ext} --unattended --url <url> --token <token> --replace [--name <name>]");
+#if OS_WINDOWS
+    _term.WriteLine($@" Configure a runner to run as a service:");
+    _term.WriteLine($@"  .{separator}config.{ext} --url <url> --token <token> --runasservice");
+#endif
         }
     }
 }
