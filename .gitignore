@@ -2,6 +2,7 @@
 **/bin
 **/obj
 **/libs
+**/lib
 
 # editors
 **/*.xproj
