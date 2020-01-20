@@ -404,7 +404,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
-                Assert.Equal((steps[0].Data as ContainerSetupInfo).Container.Image, "ubuntu:18.04");
+                Assert.Equal("ubuntu:18.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
             }
             finally
             {
