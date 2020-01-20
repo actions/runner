@@ -198,15 +198,21 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Load action that reference repository from '{actionDirectory}'");
                 definition.Directory = actionDirectory;
 
-                string manifestFile = Path.Combine(actionDirectory, "action.yml");
-                string manifestFileYaml = Path.Combine(actionDirectory, "action.yaml");
+                string manifestFile = Path.Combine(actionDirectory, Constants.Path.ActionManifestYmlFile);
+                string manifestFileYaml = Path.Combine(actionDirectory, Constants.Path.ActionManifestYamlFile);
                 string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
                 string dockerFileLowerCase = Path.Combine(actionDirectory, "dockerfile");
                 if (File.Exists(manifestFile) || File.Exists(manifestFileYaml))
                 {
                     var manifestManager = HostContext.GetService<IActionManifestManager>();
-                    definition.Data = manifestManager.Load(executionContext, manifestFile);
-
+                    if (File.Exists(manifestFile))
+                    {
+                        definition.Data = manifestManager.Load(executionContext, manifestFile);
+                    }
+                    else
+                    {
+                        definition.Data = manifestManager.Load(executionContext, manifestFileYaml);
+                    }
                     Trace.Verbose($"Action friendly name: '{definition.Data.Name}'");
                     Trace.Verbose($"Action description: '{definition.Data.Description}'");
 
@@ -656,13 +662,21 @@ namespace GitHub.Runner.Worker
             // find the docker file or action.yml file
             var dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
             var dockerFileLowerCase = Path.Combine(actionEntryDirectory, "dockerfile");
-            var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
-            var actionManifestYaml = Path.Combine(actionEntryDirectory, "action.yaml");
+            var actionManifest = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYmlFile);
+            var actionManifestYaml = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYamlFile);
             if (File.Exists(actionManifest) || File.Exists(actionManifestYaml))
             {
                 executionContext.Debug($"action.yml for action: '{actionManifest}'.");
                 var manifestManager = HostContext.GetService<IActionManifestManager>();
-                var actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
+                ActionDefinitionData actionDefinitionData = null;
+                if (File.Exists(actionManifest))
+                {
+                    actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
+                }
+                else
+                {
+                    actionDefinitionData = manifestManager.Load(executionContext, actionManifestYaml);
+                }
 
                 if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
                 {
