@@ -341,7 +341,7 @@ namespace GitHub.Runner.Worker
                             EntryPoint = entrypointToken?.Value,
                             Environment = envToken,
                             Cleanup = postEntrypointToken?.Value,
-                            CleanupCondition = postIfToken?.Value
+                            CleanupCondition = postIfToken?.Value ?? "always()"
                         };
                     }
                 }
@@ -357,7 +357,7 @@ namespace GitHub.Runner.Worker
                         {
                             Script = mainToken.Value,
                             Cleanup = postToken?.Value,
-                            CleanupCondition = postIfToken?.Value
+                            CleanupCondition = postIfToken?.Value ?? "always()"
                         };
                     }
                 }
