@@ -162,7 +162,8 @@ namespace GitHub.Runner.Common
         public static class Path
         {
             public static readonly string ActionsDirectory = "_actions";
-            public static readonly string ActionManifestFile = "action.yml";
+            public static readonly string ActionManifestYmlFile = "action.yml";
+            public static readonly string ActionManifestYamlFile = "action.yaml";
             public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";

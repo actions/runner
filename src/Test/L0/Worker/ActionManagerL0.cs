@@ -376,6 +376,45 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_RepositoryActionWithActionYamlFile_DockerHubImage()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "RepositoryActionWithActionYamlFile_DockerHubImage",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionYamlFile_DockerHubImage");
+
+                //Act
+                var steps = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
+                Assert.Equal("ubuntu:18.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_RepositoryActionWithActionfileAndDockerfile()
         {
             try
@@ -672,7 +711,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -772,7 +811,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -871,7 +910,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -928,6 +967,87 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void LoadsNodeActionDefinitionYaml()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                const string Content = @"
+# Container action
+name: 'Hello World'
+description: 'Greet the world and record the time'
+author: 'GitHub'
+inputs: 
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'node12'
+  main: 'task.js'
+";
+                Pipelines.ActionStep instance;
+                string directory;
+                directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
+                string file = Path.Combine(directory, Constants.Path.ActionManifestYamlFile);
+                Directory.CreateDirectory(Path.GetDirectoryName(file));
+                File.WriteAllText(file, Content);
+                instance = new Pipelines.ActionStep()
+                {
+                    Id = Guid.NewGuid(),
+                    Reference = new Pipelines.RepositoryPathReference()
+                    {
+                        Name = "GitHub/actions",
+                        Ref = "master",
+                        RepositoryType = Pipelines.RepositoryTypes.GitHub
+                    }
+                };
+
+                // Act.
+                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
+                Assert.NotNull(definition.Data.Execution); // execution
+
+                Assert.NotNull((definition.Data.Execution as NodeJSActionExecutionData));
+                Assert.Equal("task.js", (definition.Data.Execution as NodeJSActionExecutionData).Script);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void LoadsContainerActionDefinitionDockerfile_SelfRepo()
         {
             try
@@ -940,7 +1060,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1039,7 +1159,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1137,7 +1257,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1205,7 +1325,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1276,7 +1396,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1376,7 +1496,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'Test Corporation'
-inputs:
+inputs: 
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1433,7 +1553,7 @@ runs:
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
             directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
-            string file = Path.Combine(directory, Constants.Path.ActionManifestFile);
+            string file = Path.Combine(directory, Constants.Path.ActionManifestYmlFile);
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             File.WriteAllText(file, yamlContent);
             instance = new Pipelines.ActionStep()
@@ -1451,7 +1571,7 @@ runs:
         private void CreateSelfRepoAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
             directory = Path.Combine(_workFolder, "actions", "actions");
-            string file = Path.Combine(directory, Constants.Path.ActionManifestFile);
+            string file = Path.Combine(directory, Constants.Path.ActionManifestYmlFile);
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             File.WriteAllText(file, yamlContent);
             instance = new Pipelines.ActionStep()

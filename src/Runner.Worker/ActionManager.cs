@@ -33,7 +33,7 @@ namespace GitHub.Runner.Worker
     {
         private const int _defaultFileStreamBufferSize = 4096;
 
-        //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
+        //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
         private const int _defaultCopyBufferSize = 81920;
 
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
@@ -198,14 +198,21 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Load action that reference repository from '{actionDirectory}'");
                 definition.Directory = actionDirectory;
 
-                string manifestFile = Path.Combine(actionDirectory, "action.yml");
+                string manifestFile = Path.Combine(actionDirectory, Constants.Path.ActionManifestYmlFile);
+                string manifestFileYaml = Path.Combine(actionDirectory, Constants.Path.ActionManifestYamlFile);
                 string dockerFile = Path.Combine(actionDirectory, "Dockerfile");
                 string dockerFileLowerCase = Path.Combine(actionDirectory, "dockerfile");
-                if (File.Exists(manifestFile))
+                if (File.Exists(manifestFile) || File.Exists(manifestFileYaml))
                 {
                     var manifestManager = HostContext.GetService<IActionManifestManager>();
-                    definition.Data = manifestManager.Load(executionContext, manifestFile);
-
+                    if (File.Exists(manifestFile))
+                    {
+                        definition.Data = manifestManager.Load(executionContext, manifestFile);
+                    }
+                    else
+                    {
+                        definition.Data = manifestManager.Load(executionContext, manifestFileYaml);
+                    }
                     Trace.Verbose($"Action friendly name: '{definition.Data.Name}'");
                     Trace.Verbose($"Action description: '{definition.Data.Description}'");
 
@@ -314,7 +321,7 @@ namespace GitHub.Runner.Worker
                 else
                 {
                     var fullPath = IOUtil.ResolvePath(actionDirectory, "."); // resolve full path without access filesystem.
-                    throw new NotSupportedException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
+                    throw new NotSupportedException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
                 }
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.Script)
@@ -477,7 +484,7 @@ namespace GitHub.Runner.Worker
 
                 int retryCount = 0;
 
-                // Allow up to 20 * 60s for any action to be downloaded from github graph. 
+                // Allow up to 20 * 60s for any action to be downloaded from github graph.
                 int timeoutSeconds = 20 * 60;
                 while (retryCount < 3)
                 {
@@ -655,12 +662,21 @@ namespace GitHub.Runner.Worker
             // find the docker file or action.yml file
             var dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
             var dockerFileLowerCase = Path.Combine(actionEntryDirectory, "dockerfile");
-            var actionManifest = Path.Combine(actionEntryDirectory, "action.yml");
-            if (File.Exists(actionManifest))
+            var actionManifest = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYmlFile);
+            var actionManifestYaml = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYamlFile);
+            if (File.Exists(actionManifest) || File.Exists(actionManifestYaml))
             {
                 executionContext.Debug($"action.yml for action: '{actionManifest}'.");
                 var manifestManager = HostContext.GetService<IActionManifestManager>();
-                var actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
+                ActionDefinitionData actionDefinitionData = null;
+                if (File.Exists(actionManifest))
+                {
+                    actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
+                }
+                else
+                {
+                    actionDefinitionData = manifestManager.Load(executionContext, actionManifestYaml);
+                }
 
                 if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
                 {
@@ -720,7 +736,7 @@ namespace GitHub.Runner.Worker
             else
             {
                 var fullPath = IOUtil.ResolvePath(actionEntryDirectory, "."); // resolve full path without access filesystem.
-                throw new InvalidOperationException($"Can't find 'action.yml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
+                throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
             }
         }
     }
