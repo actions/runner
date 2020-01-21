@@ -193,9 +193,9 @@ namespace GitHub.Runner.Worker.Handlers
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             {
                 var runExitCode = await dockerManger.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
+                ExecutionContext.Debug($"Docker Action run completed with exit code {runExitCode}");
                 if (runExitCode != 0)
                 {
-                    ExecutionContext.Error($"Docker run failed with exit code {runExitCode}");
                     ExecutionContext.Result = TaskResult.Failed;
                 }
             }
