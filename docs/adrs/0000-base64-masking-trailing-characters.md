@@ -14,6 +14,7 @@ The Runner registers a number of Value Encoders, which mask various encodings of
 This gives us good coverage across the board for secrets and secrets with a prefix (i.e. `base64($user:$pass)`).
 
 However, we don't have great coverage for cases where the secret has a string appended to it before it is base64 encoded (i.e.: `base64($pass\n))`). 
+
 Most notably we've seen this as a result of user error where a user accidentially appends a newline or space character before encoding their secret in base64.
 
 ## Decision
@@ -23,10 +24,10 @@ Most notably we've seen this as a result of user error where a user accidentiall
 We are going to modify all existing base64 encoders to trim information before registering as a secret.
 We will trim:
 - `=` from the end of all base64 strings. This is a padding character that contains no information. 
-  - Based on the number of padding characters `=`'s at the end of a base64 string, a malicious user could predict the length of the original string modulo 3. 
-  - For example: If a user saw `***==`, they would know the original UTF-8 secret could be 1,4,7,10... characters.
+  - Based on the number of `=`'s at the end of a base64 string, a malicious user could predict the length of the original secret modulo 3. 
+    - If a user saw `***==`, they would know the secret could be 1,4,7,10... characters.
 - If a string contains `=` we will also trim the last non-padding character from the base64 secret.
-  - This character can change if a string is appended to the secret before the encoding, and by trimming it we ensure that we mask the secret in this case.
+  - This character can change if a string is appended to the secret before the encoding.
 
 
 ### Register a fourth encoder
@@ -42,6 +43,6 @@ This will result in us only revealing length or bit information when a prefix or
 
 ## Consequences
 
-- In the case where a secret has a prefix or suffix added before base64 encoding, we will now reveal up to 20 bits of information and the length of the original string modulo 3, rather then the original 16 bits and no length information
+- In the case where a secret has a prefix or suffix added before base64 encoding, we may now reveal up to 20 bits of information and the length of the original string modulo 3, rather then the original 16 bits and no length information
 - Secrets with a suffix appended before encoding will now be masked across the board. Previously it was only masked if it was a multiple of 3 characters
 - Performance will suffer in a neglible way
