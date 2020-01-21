@@ -1,4 +1,4 @@
-# ADR 0276: Base64 Masking Trailing Characters
+# ADR 0297: Base64 Masking Trailing Characters
 
 **Date** 2020-01-21
 
