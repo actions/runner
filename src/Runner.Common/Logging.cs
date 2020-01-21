@@ -100,7 +100,7 @@ namespace GitHub.Runner.Common
         {
             EndPage();
             _byteCount = 0;
-            _dataFileName = Path.Combine(_pagesFolder, $"{_timelineRecordId}_{++_pageCount}.log");
+            _dataFileName = Path.Combine(_pagesFolder, $"{_timelineId}_{_timelineRecordId}_{++_pageCount}.log");
             _pageData = new FileStream(_dataFileName, FileMode.CreateNew);
             _pageWriter = new StreamWriter(_pageData, System.Text.Encoding.UTF8);
         }

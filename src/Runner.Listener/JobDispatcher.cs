@@ -752,27 +752,32 @@ namespace GitHub.Runner.Listener
                 foreach (var log in logs)
                 {
                     var logName = Path.GetFileNameWithoutExtension(log);
+                    var logNameParts = logName.Split('_', StringSplitOptions.RemoveEmptyEntries);
+                    if (logNameParts.Length != 3)
+                    {
+                        Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                        continue;
+                    }
                     var logPageSeperator = logName.IndexOf('_');
                     var logRecordId = Guid.Empty;
                     var pageNumber = 0;
-                    if (logPageSeperator < 0)
+
+                    if (!Guid.TryParse(logNameParts[0], out Guid timelineId) || timelineId != timeline.Id)
                     {
-                        Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_INT'.");
+                        Trace.Warning($"log file '{log}' is not belongs to current job");
                         continue;
                     }
-                    else
-                    {
-                        if (!Guid.TryParse(logName.Substring(0, logPageSeperator), out logRecordId))
-                        {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_INT'.");
-                            continue;
-                        }
 
-                        if (!int.TryParse(logName.Substring(logPageSeperator + 1), out pageNumber))
-                        {
-                            Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_INT'.");
-                            continue;
-                        }
+                    if (!Guid.TryParse(logNameParts[1], out logRecordId))
+                    {
+                        Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                        continue;
+                    }
+
+                    if (!int.TryParse(logNameParts[2], out pageNumber))
+                    {
+                        Trace.Warning($"log file '{log}' doesn't follow naming convension 'GUID_GUID_INT'.");
+                        continue;
                     }
 
                     var record = timeline.Records.FirstOrDefault(x => x.Id == logRecordId);
