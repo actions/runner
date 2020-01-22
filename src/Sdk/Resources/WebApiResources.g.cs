@@ -189,5 +189,11 @@ namespace GitHub.Services.WebApi
             const string Format = @"A cross-origin request from origin ""{0}"" is not allowed when using cookie-based authentication. An authentication token needs to be provided in the Authorization header of the request.";
             return string.Format(CultureInfo.CurrentCulture, Format, arg0);
         }
+
+        public static string UnknownEntityType(object arg0)
+        {
+            const string Format = @"Unknown entityType {0}. Cannot parse.";
+            return string.Format(CultureInfo.CurrentCulture, Format, arg0);
+        }
     }
 }

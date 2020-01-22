@@ -41,3 +41,16 @@ namespace GitHub.Services.Location
         public static readonly Guid SpsServiceDefinition = new Guid("{DF5F298A-4E06-4815-A13E-6CE90A37EFA4}");
     }
 }
+
+
+namespace GitHub.Services.Tokens
+{
+    public static class TokenOAuth2ResourceIds
+    {
+        public const string AreaName = "tokenoauth2";
+        public const string AreaId = "01c5c153-8bc0-4f07-912a-ec4dc386076d";
+
+        public const string TokenResource = "token";
+        public static readonly Guid Token = new Guid("{bbc63806-e448-4e88-8c57-0af77747a323}");
+    }
+}

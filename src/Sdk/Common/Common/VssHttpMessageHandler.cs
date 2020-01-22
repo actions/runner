@@ -162,8 +162,8 @@ namespace GitHub.Services.Common
             }
 
             IssuedToken token = null;
-            IssuedTokenProvider provider;
-            if (this.Credentials.TryGetTokenProvider(request.RequestUri, out provider))
+            IssuedTokenProvider provider = null;
+            if (this.Credentials != null && this.Credentials.TryGetTokenProvider(request.RequestUri, out provider))
             {
                 token = provider.CurrentToken;
             }
@@ -227,7 +227,7 @@ namespace GitHub.Services.Common
 
                     responseWrapper = new HttpResponseMessageWrapper(response);
 
-                    if (!this.Credentials.IsAuthenticationChallenge(responseWrapper))
+                    if (this.Credentials != null && !this.Credentials.IsAuthenticationChallenge(responseWrapper))
                     {
                         // Validate the token after it has been successfully authenticated with the server.
                         if (provider != null)
@@ -259,7 +259,10 @@ namespace GitHub.Services.Common
                         }
 
                         // Ensure we have an appropriate token provider for the current challenge
-                        provider = this.Credentials.CreateTokenProvider(request.RequestUri, responseWrapper, token);
+                        if (this.Credentials != null)
+                        {
+                            provider = this.Credentials.CreateTokenProvider(request.RequestUri, responseWrapper, token);
+                        }
 
                         // Make sure we don't invoke the provider in an invalid state
                         if (provider == null)
@@ -308,7 +311,7 @@ namespace GitHub.Services.Common
 
                 // We're out of retries and the response was an auth challenge -- then the request was unauthorized
                 // and we will throw a strongly-typed exception with a friendly error message.
-                if (!succeeded && response != null && this.Credentials.IsAuthenticationChallenge(responseWrapper))
+                if (!succeeded && response != null && (this.Credentials != null && this.Credentials.IsAuthenticationChallenge(responseWrapper)))
                 {
                     String message = null;
                     IEnumerable<String> serviceError;

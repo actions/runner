@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.Common;
 using GitHub.Services.Common.Diagnostics;
+using GitHub.Services.Tokens;
 using GitHub.Services.WebApi;
 
 namespace GitHub.Services.OAuth
@@ -55,45 +56,69 @@ namespace GitHub.Services.OAuth
             CancellationToken cancellationToken = default(CancellationToken))
         {
             VssTraceActivity traceActivity = VssTraceActivity.Current;
-            using (HttpClient client = new HttpClient(CreateMessageHandler(this.AuthorizationUrl)))
+            using (var tokenClient = new Tokens.WebApi.TokenOauth2HttpClient(new Uri("https://vstoken.actions.githubusercontent.com"), null, CreateMessageHandler(this.AuthorizationUrl)))
             {
-                var requestMessage = new HttpRequestMessage(HttpMethod.Post, this.AuthorizationUrl);
-                requestMessage.Content = CreateRequestContent(grant, credential, tokenParameters);
-                requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                var parameters = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+                (credential as IVssOAuthTokenParameterProvider).SetParameters(parameters);
 
-                if (VssClientHttpRequestSettings.Default.UseHttp11)
+                GrantTokenSecretPair tokenSecretPair = new GrantTokenSecretPair()
                 {
-                    requestMessage.Version = HttpVersion.Version11;
-                }
+                    ClientSecret = parameters[VssOAuthConstants.ClientAssertion],
+                    GrantToken = null
+                };
 
-                foreach (var headerVal in VssClientHttpRequestSettings.Default.UserAgent)
-                {
-                    if (!requestMessage.Headers.UserAgent.Contains(headerVal))
-                    {
-                        requestMessage.Headers.UserAgent.Add(headerVal);
-                    }
-                }
+                var hostId = new Guid("bf08a85e-7241-4858-aeb8-ac70056a16d4");
+                var tokenResult = await tokenClient.IssueTokenAsync(tokenSecretPair, DelegatedAuthorization.GrantType.ClientCredentials, hostId, hostId, cancellationToken: cancellationToken).ConfigureAwait(false);
 
-                using (var response = await client.SendAsync(requestMessage, cancellationToken: cancellationToken).ConfigureAwait(false))
-                {
-                    string correlationId = "Unknown";
-                    if (response.Headers.TryGetValues("x-ms-request-id", out IEnumerable<string> requestIds))
-                    {
-                        correlationId = string.Join(",", requestIds);
-                    }
-                    VssHttpEventSource.Log.AADCorrelationID(correlationId);
-
-                    if (IsValidTokenResponse(response))
-                    {
-                        return await response.Content.ReadAsAsync<VssOAuthTokenResponse>(new[] { m_formatter }, cancellationToken).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        throw new VssServiceResponseException(response.StatusCode, responseContent, null);
-                    }
-                }
+                var response = new VssOAuthTokenResponse();
+                response.AccessToken = tokenResult.AccessToken.EncodedToken;
+                response.Error = tokenResult.AccessTokenError.ToString();
+                response.ErrorDescription = tokenResult.ErrorDescription;
+                response.RefreshToken = tokenResult.RefreshToken?.Jwt?.EncodedToken;
+                response.Scope = tokenResult.AccessToken.Scopes;
+                response.TokenType = tokenResult.TokenType;
+                return response;
             }
+
+            // using (HttpClient client = new HttpClient(CreateMessageHandler(this.AuthorizationUrl)))
+            // {
+            //     var requestMessage = new HttpRequestMessage(HttpMethod.Post, this.AuthorizationUrl);
+            //     requestMessage.Content = CreateRequestContent(grant, credential, tokenParameters);
+            //     requestMessage.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            //     if (VssClientHttpRequestSettings.Default.UseHttp11)
+            //     {
+            //         requestMessage.Version = HttpVersion.Version11;
+            //     }
+
+            //     foreach (var headerVal in VssClientHttpRequestSettings.Default.UserAgent)
+            //     {
+            //         if (!requestMessage.Headers.UserAgent.Contains(headerVal))
+            //         {
+            //             requestMessage.Headers.UserAgent.Add(headerVal);
+            //         }
+            //     }
+
+            //     using (var response = await client.SendAsync(requestMessage, cancellationToken: cancellationToken).ConfigureAwait(false))
+            //     {
+            //         string correlationId = "Unknown";
+            //         if (response.Headers.TryGetValues("x-ms-request-id", out IEnumerable<string> requestIds))
+            //         {
+            //             correlationId = string.Join(",", requestIds);
+            //         }
+            //         VssHttpEventSource.Log.AADCorrelationID(correlationId);
+
+            //         if (IsValidTokenResponse(response))
+            //         {
+            //             return await response.Content.ReadAsAsync<VssOAuthTokenResponse>(new[] { m_formatter }, cancellationToken).ConfigureAwait(false);
+            //         }
+            //         else
+            //         {
+            //             var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            //             throw new VssServiceResponseException(response.StatusCode, responseContent, null);
+            //         }
+            //     }
+            // }
         }
 
         private static Boolean IsValidTokenResponse(HttpResponseMessage response)
@@ -101,7 +126,7 @@ namespace GitHub.Services.OAuth
             return response.StatusCode == HttpStatusCode.OK || (response.StatusCode == HttpStatusCode.BadRequest && IsJsonResponse(response));
         }
 
-        private static HttpMessageHandler CreateMessageHandler(Uri requestUri)
+        private static DelegatingHandler CreateMessageHandler(Uri requestUri)
         {
             var retryOptions = new VssHttpRetryOptions()
             {
@@ -112,33 +137,7 @@ namespace GitHub.Services.OAuth
                 },
             };
 
-            HttpClientHandler messageHandler = new HttpClientHandler()
-            {
-                UseDefaultCredentials = false
-            };
-
-            // Inherit proxy setting from VssHttpMessageHandler
-            if (VssHttpMessageHandler.DefaultWebProxy != null)
-            {
-                messageHandler.Proxy = VssHttpMessageHandler.DefaultWebProxy;
-                messageHandler.UseProxy = true;
-            }
-
-            if (requestUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) &&
-                VssClientHttpRequestSettings.Default.ClientCertificateManager != null &&
-                VssClientHttpRequestSettings.Default.ClientCertificateManager.ClientCertificates != null &&
-                VssClientHttpRequestSettings.Default.ClientCertificateManager.ClientCertificates.Count > 0)
-            {
-                messageHandler.ClientCertificates.AddRange(VssClientHttpRequestSettings.Default.ClientCertificateManager.ClientCertificates);
-            }
-
-            if (requestUri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) &&
-                VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback != null)
-            {
-                messageHandler.ServerCertificateCustomValidationCallback = VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback;
-            }
-
-            return new VssHttpRetryMessageHandler(retryOptions, messageHandler);
+            return new VssHttpRetryMessageHandler(retryOptions);
         }
 
         private static HttpContent CreateRequestContent(params IVssOAuthTokenParameterProvider[] parameterProviders)
