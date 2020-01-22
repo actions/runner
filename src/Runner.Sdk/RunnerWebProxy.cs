@@ -71,6 +71,10 @@ namespace GitHub.Runner.Sdk
             {
                 _httpProxyAddress = proxyHttpUri.AbsoluteUri;
 
+                // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
+                Environment.SetEnvironmentVariable("HTTP_PROXY", _httpProxyAddress);
+                Environment.SetEnvironmentVariable("http_proxy", _httpProxyAddress);
+
                 // the proxy url looks like http://[user:pass@]127.0.0.1:8888
                 var userInfo = Uri.UnescapeDataString(proxyHttpUri.UserInfo).Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
                 if (userInfo.Length == 2)
@@ -97,6 +101,10 @@ namespace GitHub.Runner.Sdk
             {
                 _httpsProxyAddress = proxyHttpsUri.AbsoluteUri;
 
+                // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
+                Environment.SetEnvironmentVariable("HTTPS_PROXY", _httpsProxyAddress);
+                Environment.SetEnvironmentVariable("https_proxy", _httpsProxyAddress);
+
                 // the proxy url looks like http://[user:pass@]127.0.0.1:8888
                 var userInfo = Uri.UnescapeDataString(proxyHttpsUri.UserInfo).Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
                 if (userInfo.Length == 2)
@@ -121,6 +129,10 @@ namespace GitHub.Runner.Sdk
 
             if (!string.IsNullOrEmpty(noProxyList))
             {
+                // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
+                Environment.SetEnvironmentVariable("NO_PROXY", noProxyList);
+                Environment.SetEnvironmentVariable("no_proxy", noProxyList);
+
                 var noProxyListSplit = noProxyList.Split(',', StringSplitOptions.RemoveEmptyEntries);
                 foreach (string noProxy in noProxyListSplit)
                 {
