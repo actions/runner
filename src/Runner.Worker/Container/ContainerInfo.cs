@@ -63,6 +63,22 @@ namespace GitHub.Runner.Worker.Container
                     UserMountVolumes[volume] = volume;
                 }
             }
+
+            if (!String.IsNullOrEmpty(hostContext.WebProxy.HttpProxyAddress))
+            {
+                // TODO: check if duplicate keys are allowed / could be given in yaml by `env`
+                ContainerEnvironmentVariables.Add("HTTP_PROXY", hostContext.WebProxy.HttpProxyAddress);
+            }
+            if (!String.IsNullOrEmpty(hostContext.WebProxy.HttpsProxyAddress))
+            {
+                // TODO: check if duplicate keys are allowed / could be given in yaml by `env`
+                ContainerEnvironmentVariables.Add("HTTPS_PROXY", hostContext.WebProxy.HttpsProxyAddress);
+            }
+            if (!String.IsNullOrEmpty(hostContext.WebProxy.NoProxyString))
+            {
+                // TODO: check if duplicate keys are allowed / could be given in yaml by `env`
+                ContainerEnvironmentVariables.Add("NO_PROXY", hostContext.WebProxy.NoProxyString);
+            }
         }
 
         public string ContainerId { get; set; }
