@@ -80,7 +80,7 @@ namespace GitHub.DistributedTask.Logging
             }
         }
 
-        private static String UriDataEscape(
+        public static String UriDataEscape(
             String value,
             Int32 maxSegmentSize)
         {
