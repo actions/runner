@@ -190,7 +190,7 @@ namespace GitHub.Runner.Listener
         {
             return GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Token,
-                description: "Enter runner deletion token:",
+                description: "Enter runner remove token:",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
@@ -291,7 +291,7 @@ namespace GitHub.Runner.Listener
             if (!string.IsNullOrEmpty(result))
             {
                 // After read the arg from input commandline args, remove it from Arg dictionary,
-                // This will help if bad arg value passed through CommandLine arg, when ConfigurationManager ask CommandSetting the second time, 
+                // This will help if bad arg value passed through CommandLine arg, when ConfigurationManager ask CommandSetting the second time,
                 // It will prompt for input instead of continue use the bad input.
                 _trace.Info($"Remove {name} from Arg dictionary.");
                 RemoveArg(name);

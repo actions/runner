@@ -21,6 +21,7 @@ namespace GitHub.Runner.Sdk
         private string _httpsProxyAddress;
         private string _httpsProxyUsername;
         private string _httpsProxyPassword;
+        private string _noProxyString;
 
         private readonly List<ByPassInfo> _noProxyList = new List<ByPassInfo>();
         private readonly HashSet<string> _noProxyUnique = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -33,6 +34,7 @@ namespace GitHub.Runner.Sdk
         public string HttpsProxyAddress => _httpsProxyAddress;
         public string HttpsProxyUsername => _httpsProxyUsername;
         public string HttpsProxyPassword => _httpsProxyPassword;
+        public string NoProxyString => _noProxyString;
 
         public List<ByPassInfo> NoProxyList => _noProxyList;
 
@@ -129,6 +131,8 @@ namespace GitHub.Runner.Sdk
 
             if (!string.IsNullOrEmpty(noProxyList))
             {
+                _noProxyString = noProxyList;
+
                 // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
                 Environment.SetEnvironmentVariable("NO_PROXY", noProxyList);
                 Environment.SetEnvironmentVariable("no_proxy", noProxyList);
