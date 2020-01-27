@@ -63,6 +63,8 @@ namespace GitHub.Runner.Worker.Container
                     UserMountVolumes[volume] = volume;
                 }
             }
+
+            UpdateWebProxyEnv(hostContext.WebProxy);
         }
 
         public string ContainerId { get; set; }
@@ -221,6 +223,26 @@ namespace GitHub.Runner.Worker.Container
         public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
         {
             _pathMappings.Insert(0, new PathMapping(hostCommonPath, containerCommonPath));
+        }
+
+        private void UpdateWebProxyEnv(RunnerWebProxy webProxy)
+        {
+            // Set common forms of proxy variables if configured in Runner and not set directly by container.env
+            if (!String.IsNullOrEmpty(webProxy.HttpProxyAddress))
+            {
+                ContainerEnvironmentVariables.TryAdd("HTTP_PROXY", webProxy.HttpProxyAddress);
+                ContainerEnvironmentVariables.TryAdd("http_proxy", webProxy.HttpProxyAddress);
+            }
+            if (!String.IsNullOrEmpty(webProxy.HttpsProxyAddress))
+            {
+                ContainerEnvironmentVariables.TryAdd("HTTPS_PROXY", webProxy.HttpsProxyAddress);
+                ContainerEnvironmentVariables.TryAdd("https_proxy", webProxy.HttpsProxyAddress);
+            }
+            if (!String.IsNullOrEmpty(webProxy.NoProxyString))
+            {
+                ContainerEnvironmentVariables.TryAdd("NO_PROXY", webProxy.NoProxyString);
+                ContainerEnvironmentVariables.TryAdd("no_proxy", webProxy.NoProxyString);
+            }
         }
     }
 
