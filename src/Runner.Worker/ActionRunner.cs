@@ -179,17 +179,15 @@ namespace GitHub.Runner.Worker
             ExecutionContext.Debug("Loading env");
             var environment = new Dictionary<String, String>(VarUtil.EnvironmentVariableKeyComparer);
 
-            // Apply environment set using ##[set-env] first since these are job level env
-            foreach (var env in ExecutionContext.EnvironmentVariables)
+#if OS_WINDOWS
+            var envContext = ExecutionContext.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = ExecutionContext.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
+            // Apply environment from env context, env context contains job level env and action's evn block
+            foreach (var env in envContext)
             {
-                environment[env.Key] = env.Value ?? string.Empty;
-            }
-
-            // Apply action's env block later.
-            var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(Action.Environment, ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
-            foreach (var env in actionEnvironment)
-            {
-                environment[env.Key] = env.Value ?? string.Empty;
+                environment[env.Key] = env.Value.ToString();
             }
 
             // Apply action's intra-action state at last

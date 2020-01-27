@@ -314,6 +314,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             githubContext.Add("event", JToken.Parse("{\"foo\":\"bar\"}").ToPipelineContextData());
             _context.Add("github", githubContext);
 
+#if OS_WINDOWS
+            _context["env"] = new DictionaryContextData();
+#else
+            _context["env"] = new CaseSensitiveDictionaryContextData();
+#endif
+
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.ExpressionValues).Returns(_context);
             _ec.Setup(x => x.IntraActionState).Returns(new Dictionary<string, string>());

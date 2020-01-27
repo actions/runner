@@ -19,6 +19,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IExecutionContext> _ec;
         private StepsRunner _stepsRunner;
         private Variables _variables;
+        private Dictionary<string, string> _env;
         private DictionaryContextData _contexts;
         private JobContext _jobContext;
         private StepsContext _stepContext;
@@ -32,6 +33,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             _variables = new Variables(
                 hostContext: hc,
                 copy: variablesToCopy);
+            _env = new Dictionary<string, string>()
+            {
+                {"env1", "1"},
+                {"test", "github_actions"}
+            };
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.Variables).Returns(_variables);
@@ -399,18 +405,98 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        private Mock<IStep> CreateStep(TaskResult result, string condition, Boolean continueOnError = false)
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StepEnvOverrideJobEnvContext()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var env1 = new MappingToken(null, null, null);
+                env1.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "100"));
+                env1.Add(new StringToken(null, null, null, "env2"), new BasicExpressionToken(null, null, null, "env.test"));
+                var step1 = CreateStep(TaskResult.Succeeded, "success()", env: env1);
+
+                _ec.Object.Result = null;
+
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object }));
+
+                // Act.
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert.
+                Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
+
+#if OS_WINDOWS
+                Assert.Equal("100", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("100"));
+                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env2"].AssertString("github_actions"));
+#else
+                Assert.Equal("100", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("100"));
+                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env2"].AssertString("github_actions"));
+#endif
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PopulateEnvContextForEachStep()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var env1 = new MappingToken(null, null, null);
+                env1.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "100"));
+                env1.Add(new StringToken(null, null, null, "env2"), new BasicExpressionToken(null, null, null, "env.test"));
+                var step1 = CreateStep(TaskResult.Succeeded, "success()", env: env1);
+
+                var env2 = new MappingToken(null, null, null);
+                env2.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "1000"));
+                env2.Add(new StringToken(null, null, null, "env3"), new BasicExpressionToken(null, null, null, "env.test"));
+                var step2 = CreateStep(TaskResult.Succeeded, "success()", env: env2);
+
+                _ec.Object.Result = null;
+
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object }));
+
+                // Act.
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert.
+                Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
+#if OS_WINDOWS
+                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env3"].AssertString("github_actions"));
+                Assert.False(_ec.Object.ExpressionValues["env"].AssertDictionary("env").ContainsKey("env2"));
+#else
+                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env3"].AssertString("github_actions"));
+                Assert.False(_ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env").ContainsKey("env2"));
+#endif
+            }
+        }
+
+        private Mock<IActionRunner> CreateStep(TaskResult result, string condition, Boolean continueOnError = false, MappingToken env = null)
         {
             // Setup the step.
-            var step = new Mock<IStep>();
+            var step = new Mock<IActionRunner>();
             step.Setup(x => x.Condition).Returns(condition);
             step.Setup(x => x.ContinueOnError).Returns(new BooleanToken(null, null, null, continueOnError));
             step.Setup(x => x.RunAsync()).Returns(Task.CompletedTask);
+            step.Setup(x => x.Action)
+                .Returns(new DistributedTask.Pipelines.ActionStep()
+                {
+                    Name = "Test",
+                    Id = Guid.NewGuid(),
+                    Environment = env
+                });
 
             // Setup the step execution context.
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
             stepContext.Setup(x => x.Variables).Returns(_variables);
+            stepContext.Setup(x => x.EnvironmentVariables).Returns(_env);
             stepContext.Setup(x => x.ExpressionValues).Returns(_contexts);
             stepContext.Setup(x => x.JobContext).Returns(_jobContext);
             stepContext.Setup(x => x.StepsContext).Returns(_stepContext);
@@ -428,7 +514,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             return step;
         }
 
-        private string FormatSteps(IEnumerable<Mock<IStep>> steps)
+        private string FormatSteps(IEnumerable<Mock<IActionRunner>> steps)
         {
             return String.Join(
                 " ; ",
