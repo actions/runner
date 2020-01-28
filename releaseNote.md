@@ -1,14 +1,27 @@
 ## Features
-  - Remove runner flow: Change from PAT to "deletion token" in prompt (#225) 
-  - Expose github.run_id and github.run_number to action runtime env. (#224)
+  - Expose whether debug is on/off via RUNNER_DEBUG. (#253)
+  - Upload log on runner when worker get killed due to cancellation timeout. (#255)
+  - Update config.sh/cmd --help documentation (#282) 
+  - Set http_proxy and related env vars for job/service containers (#304)
+  - Set both http_proxy and HTTP_PROXY env for runner/worker processes. (#298)
 
 ## Bugs
-  - Clean up error messages for container scenarios (#221)
-  - Pick shell from prependpath (#231)
+  - Verify runner Windows service hash started successfully after configuration (#236)
+  - Detect source file path in L0 without using env. (#257)
+  - Handle escaped '%' in commands data section (#200)
+  - Allow container to be null/empty during matrix expansion (#266)
+  - Translate problem matcher file to host path (#272)
+  - Change hashFiles() expression function to use @actions/glob. (#268)
+  - Default post-job action's condition to always(). (#293)
+  - Support action.yaml file as action's entry file (#288) 
+  - Trace javascript action exit code to debug instead of user logs (#290)
+  - Change prompt message when removing a runner to lines up with GitHub.com UI (#303) 
+  - Include step.env as part of env context. (#300)
+  - Update Base64 Encoders to deal with suffixes (#284)
 
 ## Misc
-  - Runner code cleanup  (#218 #227, #228, #229, #230) 
-  - Consume dotnet core 3.1 in runner. (#213)
+  - Move .sln file under ./src (#238)
+  - Treat warnings as errors during compile (#249) 
 
 ## Windows x64
 We recommend configuring the runner under "<DRIVE>:\actions-runner". This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows
