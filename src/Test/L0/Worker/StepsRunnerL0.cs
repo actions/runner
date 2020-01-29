@@ -70,9 +70,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Succeeded, "success()")  },
-                    new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Succeeded, "success() || failure()") },
-                    new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Succeeded, "always()") }
+                    new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Succeeded, "success()")  },
+                    new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Succeeded, "success() || failure()") },
+                    new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") }
                 };
                 foreach (var variableSet in variableSets)
                 {
@@ -102,12 +102,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new[] { CreateStep(TaskResult.Failed, "success()", true), CreateStep(TaskResult.Succeeded, "success()")  },
-                    new[] { CreateStep(TaskResult.Failed, "success()", true), CreateStep(TaskResult.Succeeded, "success() || failure()") },
-                    new[] { CreateStep(TaskResult.Failed, "success()", true), CreateStep(TaskResult.Succeeded, "always()") },
-                    new[] { CreateStep(TaskResult.Failed, "success()", true), CreateStep(TaskResult.Failed, "success()", true)  },
-                    new[] { CreateStep(TaskResult.Failed, "success()", true), CreateStep(TaskResult.Failed, "success() || failure()", true) },
-                    new[] { CreateStep(TaskResult.Failed, "success()", true), CreateStep(TaskResult.Failed, "always()", true) }
+                    new[] { CreateStep(hc, TaskResult.Failed, "success()", true), CreateStep(hc, TaskResult.Succeeded, "success()")  },
+                    new[] { CreateStep(hc, TaskResult.Failed, "success()", true), CreateStep(hc, TaskResult.Succeeded, "success() || failure()") },
+                    new[] { CreateStep(hc, TaskResult.Failed, "success()", true), CreateStep(hc, TaskResult.Succeeded, "always()") },
+                    new[] { CreateStep(hc, TaskResult.Failed, "success()", true), CreateStep(hc, TaskResult.Failed, "success()", true)  },
+                    new[] { CreateStep(hc, TaskResult.Failed, "success()", true), CreateStep(hc, TaskResult.Failed, "success() || failure()", true) },
+                    new[] { CreateStep(hc, TaskResult.Failed, "success()", true), CreateStep(hc, TaskResult.Failed, "always()", true) }
                 };
                 foreach (var variableSet in variableSets)
                 {
@@ -139,12 +139,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "success()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "success()") },
                         Expected = false,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "success() || failure()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "success() || failure()") },
                         Expected = true,
                     },
                 };
@@ -178,27 +178,27 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Succeeded, "always()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
                         Expected = TaskResult.Succeeded,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "always()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
                         Expected = TaskResult.Failed,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "always()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
                         Expected = TaskResult.Failed,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Failed, "always()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Failed, "always()") },
                         Expected = TaskResult.Failed,
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Failed, "always()", true) },
+                        Steps = new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Failed, "always()", true) },
                         Expected = TaskResult.Succeeded,
                     },
                 };
@@ -232,47 +232,47 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "success()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "success()") },
                         Expected = TaskResult.Failed
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "success() || failure()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "success() || failure()") },
                         Expected = TaskResult.Failed
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "always()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
                         Expected = TaskResult.Failed
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()", continueOnError: true), CreateStep(TaskResult.Failed, "success()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()", continueOnError: true), CreateStep(hc, TaskResult.Failed, "success()") },
                         Expected = TaskResult.Failed
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()", continueOnError: true), CreateStep(TaskResult.Succeeded, "success()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()", continueOnError: true), CreateStep(hc, TaskResult.Succeeded, "success()") },
                         Expected = TaskResult.Succeeded
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Failed, "success()", continueOnError: true), CreateStep(TaskResult.Failed, "success()", continueOnError: true) },
+                        Steps = new[] { CreateStep(hc, TaskResult.Failed, "success()", continueOnError: true), CreateStep(hc, TaskResult.Failed, "success()", continueOnError: true) },
                         Expected = TaskResult.Succeeded
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, "success() || failure()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Succeeded, "success() || failure()") },
                         Expected = TaskResult.Succeeded
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Failed, "success()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Failed, "success()") },
                         Expected = TaskResult.Failed
                     },
                     new
                     {
-                        Steps = new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Succeeded, "success()") },
+                        Steps = new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Succeeded, "success()") },
                         Expected = TaskResult.Succeeded
                     },
                 //  Abandoned
@@ -310,17 +310,17 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new
                     {
-                        Step = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "success()") },
+                        Step = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "success()") },
                         Expected = false
                     },
                     new
                     {
-                        Step = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "success() || failure()") },
+                        Step = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "success() || failure()") },
                         Expected = true
                     },
                     new
                     {
-                        Step = new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "always()") },
+                        Step = new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
                         Expected = true
                     }
                 };
@@ -351,9 +351,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new[] { CreateStep(TaskResult.Succeeded, "success()"), CreateStep(TaskResult.Succeeded, "always()") },
-                    new[] { CreateStep(TaskResult.Failed, "success()"), CreateStep(TaskResult.Succeeded, "always()") },
-                    new[] { CreateStep(TaskResult.Canceled, "success()"), CreateStep(TaskResult.Succeeded, "always()") }
+                    new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
+                    new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
+                    new[] { CreateStep(hc, TaskResult.Canceled, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") }
                 };
                 foreach (var variableSet in variableSets)
                 {
@@ -387,8 +387,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange.
                 var variableSets = new[]
                 {
-                    new[] { CreateStep(TaskResult.Succeeded, "success()") },
-                    new[] { CreateStep(TaskResult.Succeeded, "success()") },
+                    new[] { CreateStep(hc, TaskResult.Succeeded, "success()") },
+                    new[] { CreateStep(hc, TaskResult.Succeeded, "success()") },
                 };
                 foreach (var variableSet in variableSets)
                 {
@@ -416,7 +416,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var env1 = new MappingToken(null, null, null);
                 env1.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "100"));
                 env1.Add(new StringToken(null, null, null, "env2"), new BasicExpressionToken(null, null, null, "env.test"));
-                var step1 = CreateStep(TaskResult.Succeeded, "success()", env: env1);
+                var step1 = CreateStep(hc, TaskResult.Succeeded, "success()", env: env1);
 
                 _ec.Object.Result = null;
 
@@ -449,12 +449,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var env1 = new MappingToken(null, null, null);
                 env1.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "100"));
                 env1.Add(new StringToken(null, null, null, "env2"), new BasicExpressionToken(null, null, null, "env.test"));
-                var step1 = CreateStep(TaskResult.Succeeded, "success()", env: env1);
+                var step1 = CreateStep(hc, TaskResult.Succeeded, "success()", env: env1);
 
                 var env2 = new MappingToken(null, null, null);
                 env2.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "1000"));
                 env2.Add(new StringToken(null, null, null, "env3"), new BasicExpressionToken(null, null, null, "env.test"));
-                var step2 = CreateStep(TaskResult.Succeeded, "success()", env: env2);
+                var step2 = CreateStep(hc, TaskResult.Succeeded, "success()", env: env2);
 
                 _ec.Object.Result = null;
 
@@ -477,17 +477,52 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        private Mock<IActionRunner> CreateStep(TaskResult result, string condition, Boolean continueOnError = false, MappingToken env = null)
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task PopulateEnvContextAfterSetupStepsContext()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var env1 = new MappingToken(null, null, null);
+                env1.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "100"));
+                var step1 = CreateStep(hc, TaskResult.Succeeded, "success()", env: env1, name: "foo", setOutput: true);
+
+                var env2 = new MappingToken(null, null, null);
+                env2.Add(new StringToken(null, null, null, "env1"), new StringToken(null, null, null, "1000"));
+                env2.Add(new StringToken(null, null, null, "env2"), new BasicExpressionToken(null, null, null, "steps.foo.outputs.test"));
+                var step2 = CreateStep(hc, TaskResult.Succeeded, "success()", env: env2);
+
+                _ec.Object.Result = null;
+
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object }));
+
+                // Act.
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert.
+                Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
+#if OS_WINDOWS
+                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("something", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env2"].AssertString("something"));
+#else
+                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("something", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env2"].AssertString("something"));
+#endif
+            }
+        }
+
+        private Mock<IActionRunner> CreateStep(TestHostContext hc, TaskResult result, string condition, Boolean continueOnError = false, MappingToken env = null, string name = "Test", bool setOutput = false)
         {
             // Setup the step.
             var step = new Mock<IActionRunner>();
             step.Setup(x => x.Condition).Returns(condition);
             step.Setup(x => x.ContinueOnError).Returns(new BooleanToken(null, null, null, continueOnError));
-            step.Setup(x => x.RunAsync()).Returns(Task.CompletedTask);
             step.Setup(x => x.Action)
                 .Returns(new DistributedTask.Pipelines.ActionStep()
                 {
-                    Name = "Test",
+                    Name = name,
                     Id = Guid.NewGuid(),
                     Environment = env
                 });
@@ -495,6 +530,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Setup the step execution context.
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
+            stepContext.Setup(x => x.WriteDebug).Returns(true);
             stepContext.Setup(x => x.Variables).Returns(_variables);
             stepContext.Setup(x => x.EnvironmentVariables).Returns(_env);
             stepContext.Setup(x => x.ExpressionValues).Returns(_contexts);
@@ -508,8 +544,19 @@ namespace GitHub.Runner.Common.Tests.Worker
                         stepContext.Object.Result = r;
                     }
                 });
+            var trace = hc.GetTrace();
+            stepContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
             stepContext.Object.Result = result;
             step.Setup(x => x.ExecutionContext).Returns(stepContext.Object);
+
+            if (setOutput)
+            {
+                step.Setup(x => x.RunAsync()).Callback(() => { _stepContext.SetOutput(null, name, "test", "something", out string reference); }).Returns(Task.CompletedTask);
+            }
+            else
+            {
+                step.Setup(x => x.RunAsync()).Returns(Task.CompletedTask);
+            }
 
             return step;
         }
