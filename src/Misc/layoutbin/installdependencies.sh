@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 user_id=`id -u`
 
