@@ -28,6 +28,11 @@ if exist "%SH_PATH%" (
 echo Unable to resolve location of sh.exe. 1>&2
 exit /b 1
 
+ rem add expected utils to path
+IF EXIST C:\Program Files\Git\usr\bin (
+  SET PATH=%PATH%;C:\Program Files\Git\usr\bin
+)
+
 :run
 echo on
 "%SH_PATH%" "%~dp0dev.sh" %*
