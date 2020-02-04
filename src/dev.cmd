@@ -1,5 +1,10 @@
 @setlocal
 @echo off
+ rem add expected utils to path
+IF EXIST C:\Program Files\Git\usr\bin (
+  SET PATH=%PATH%;C:\Program Files\Git\usr\bin
+)
+
  rem Check if SH_PATH is defined.
 if defined SH_PATH (
   goto run
@@ -27,11 +32,6 @@ if exist "%SH_PATH%" (
 
 echo Unable to resolve location of sh.exe. 1>&2
 exit /b 1
-
- rem add expected utils to path
-IF EXIST C:\Program Files\Git\usr\bin (
-  SET PATH=%PATH%;C:\Program Files\Git\usr\bin
-)
 
 :run
 echo on
