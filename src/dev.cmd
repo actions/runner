@@ -4,6 +4,12 @@
 IF EXIST C:\Program Files\Git\usr\bin (
   SET PATH=%PATH%;C:\Program Files\Git\usr\bin
 )
+IF EXIST C:\Program Files\Git\mingw64\bin (
+  SET PATH=%PATH%;C:\Program Files\Git\mingw64\bin
+)
+IF EXIST C:\Program Files\Git\bin (
+  SET PATH=%PATH%;C:\Program Files\Git\bin
+)
 
  rem Check if SH_PATH is defined.
 if defined SH_PATH (
