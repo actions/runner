@@ -2,7 +2,7 @@
 @echo off
  rem add expected utils to path
 IF EXIST C:\Program Files\Git\usr\bin (
-  SET PATH=;C:\Program Files\Git\usr\bin;%PATH%
+  SET PATH=C:\Program Files\Git\usr\bin;%PATH%
 )
 IF EXIST C:\Program Files\Git\mingw64\bin (
   SET PATH=C:\Program Files\Git\mingw64\bin;%PATH%
