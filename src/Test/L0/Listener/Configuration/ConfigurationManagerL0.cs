@@ -175,8 +175,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 Assert.True(s.PoolId.Equals(_expectedPoolId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
 
-                // validate GetAgentPoolsAsync gets called once with automation pool type
-                _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Once);
+                // validate GetAgentPoolsAsync gets called twice with automation pool type
+                _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));
 
                 _runnerServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Contains("self-hosted") && a.Labels.Contains(VarUtil.OS) && a.Labels.Contains(VarUtil.OSArchitecture))), Times.Once);
             }

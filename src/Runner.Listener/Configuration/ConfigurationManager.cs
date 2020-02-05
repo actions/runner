@@ -277,12 +277,15 @@ namespace GitHub.Runner.Listener.Configuration
                 throw new NotSupportedException("Message queue listen OAuth token.");
             }
 
-            // Testing agent connection, detect any protential connection issue, like local clock skew that cause OAuth token expired.
+            // Testing agent connection, detect any potential connection issue, like local clock skew that cause OAuth token expired.
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials credential = credMgr.LoadCredentials();
             try
             {
                 await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
+                // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
+                // Need to hit an authenticate endpoint to trigger OAuth token exchange.
+                await _runnerServer.GetAgentPoolsAsync();
                 _term.WriteSuccessMessage("Runner connection is good");
             }
             catch (VssOAuthTokenRequestException ex) when (ex.Message.Contains("Current server time is"))
