@@ -282,9 +282,9 @@ namespace GitHub.Runner.Listener.Configuration
             VssCredentials credential = credMgr.LoadCredentials();
             try
             {
+                await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
                 // ConnectAsync() hits _apis/connectionData which is an anonymous endpoint
                 // Need to hit an authenticate endpoint to trigger OAuth token exchange.
-                await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), credential);
                 await _runnerServer.GetAgentPoolsAsync();
                 _term.WriteSuccessMessage("Runner connection is good");
             }
