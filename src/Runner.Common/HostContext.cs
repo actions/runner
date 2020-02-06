@@ -282,6 +282,12 @@ namespace GitHub.Runner.Common
                         ".credentials");
                     break;
 
+                case WellKnownConfigFile.CredentialsV2:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".v2credentials");
+                    break;
+
                 case WellKnownConfigFile.RSACredentials:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),

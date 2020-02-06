@@ -19,6 +19,7 @@ namespace GitHub.Runner.Common
     {
         Runner,
         Credentials,
+        CredentialsV2,
         RSACredentials,
         Service,
         CredentialStore,

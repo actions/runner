@@ -13,7 +13,10 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Services.WebApi;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("Test")]
 namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
@@ -32,11 +35,24 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private IRunnerServer _runnerServer;
         private TaskAgentSession _session;
+        private ICredentialManager _credMgr;
+        private IConfigurationStore _configStore;
         private TimeSpan _getNextMessageRetryInterval;
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
+
+        // Whether load credentials from .v2credentials file
+        internal bool _useV2Credentials;
+
+        // Whether .credentials existing, we will fallback to this if .v2credential doesn't work.
+        internal bool _v1CredentialsExists;
+
+        // need to check auth url if there is only .credentials and auth schema is OAuth
+        internal bool _needToCheckAuthorizationUrlUpdate;
+        internal Task<VssCredentials> _authorizationUrlMigrationBackgroundTask;
+        internal Task _authorizationUrlRollbackReattemptDelayBackgroundTask;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -44,6 +60,8 @@ namespace GitHub.Runner.Listener
 
             _term = HostContext.GetService<ITerminal>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
+            _credMgr = HostContext.GetService<ICredentialManager>();
+            _configStore = HostContext.GetService<IConfigurationStore>();
         }
 
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
@@ -58,8 +76,8 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            var credMgr = HostContext.GetService<ICredentialManager>();
-            VssCredentials creds = credMgr.LoadCredentials();
+            var useLegacyAuthUrl = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_LEGACYAUTHURL"));
+            VssCredentials creds = _credMgr.LoadCredentials(!useLegacyAuthUrl);
 
             var agent = new TaskAgentReference
             {
@@ -74,6 +92,25 @@ namespace GitHub.Runner.Listener
             string errorMessage = string.Empty;
             bool encounteringError = false;
 
+            var v1Creds = _configStore.GetCredentials();
+            var v2Creds = _configStore.GetV2Credentials();
+            if (v1Creds != null)
+            {
+                _v1CredentialsExists = true;
+            }
+
+            if (v2Creds == null)
+            {
+                if (v1Creds.Scheme == Constants.Configuration.OAuth)
+                {
+                    _needToCheckAuthorizationUrlUpdate = true;
+                }
+            }
+            else
+            {
+                _useV2Credentials = !useLegacyAuthUrl;
+            }
+
             while (true)
             {
                 token.ThrowIfCancellationRequested();
@@ -83,7 +120,7 @@ namespace GitHub.Runner.Listener
                     Trace.Info("Connecting to the Runner Server...");
                     await _runnerServer.ConnectAsync(new Uri(serverUrl), creds);
                     Trace.Info("VssConnection created");
-                    
+
                     _term.WriteLine();
                     _term.WriteSuccessMessage("Connected to GitHub");
                     _term.WriteLine();
@@ -99,6 +136,12 @@ namespace GitHub.Runner.Listener
                         _term.WriteLine($"{DateTime.UtcNow:u}: Runner reconnected.");
                         _sessionCreationExceptionTracker.Clear();
                         encounteringError = false;
+                    }
+
+                    if (_needToCheckAuthorizationUrlUpdate)
+                    {
+                        // start background task try to get new authorization url
+                        _authorizationUrlMigrationBackgroundTask = GetNewOAuthAuthorizationSetting(token);
                     }
 
                     return true;
@@ -120,8 +163,20 @@ namespace GitHub.Runner.Listener
 
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
-                        _term.WriteError($"Failed to create session. {ex.Message}");
-                        return false;
+                        if (_useV2Credentials && _v1CredentialsExists)
+                        {
+                            // v2 credentials might cause lose permission during permission check,
+                            // we will force to use v1 credential and try again
+                            _useV2Credentials = false;
+                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(TimeSpan.FromDays(2), token); // retry v2 creds in 2 days.
+                            creds = _credMgr.LoadCredentials(false);
+                            Trace.Error("Fallback to v1 credentials and try again.");
+                        }
+                        else
+                        {
+                            _term.WriteError($"Failed to create session. {ex.Message}");
+                            return false;
+                        }
                     }
 
                     if (!encounteringError) //print the message only on the first error
@@ -182,6 +237,51 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                         continuousError = 0;
                     }
+
+                    if (_needToCheckAuthorizationUrlUpdate &&
+                        _authorizationUrlMigrationBackgroundTask?.IsCompleted == true)
+                    {
+                        if (HostContext.GetService<IJobDispatcher>().Busy ||
+                            HostContext.GetService<ISelfUpdater>().Busy)
+                        {
+                            Trace.Info("Job or runner updates in progress, update credentials next time.");
+                        }
+                        else
+                        {
+                            try
+                            {
+                                var newCred = await _authorizationUrlMigrationBackgroundTask;
+                                await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), newCred);
+                                Trace.Info("Updated connection to use new credential for next GetMessage call.");
+                                _useV2Credentials = true;
+                                _authorizationUrlMigrationBackgroundTask = null;
+                                _needToCheckAuthorizationUrlUpdate = false;
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Error("Fail to refresh connection with new authorization url.");
+                                Trace.Error(ex);
+                            }
+                        }
+                    }
+
+                    if (_authorizationUrlRollbackReattemptDelayBackgroundTask?.IsCompleted == true)
+                    {
+                        try
+                        {
+                            // we rolled back to use v1 creds 2 days before, now it's a good time to try v2 creds again.
+                            Trace.Info("Re-attempt to use v2 credential");
+                            var v2Creds = _credMgr.LoadCredentials();
+                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), v2Creds);
+                            _useV2Credentials = true;
+                            _authorizationUrlRollbackReattemptDelayBackgroundTask = null;
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error("Fail to refresh connection with new authorization url on rollback reattempt.");
+                            Trace.Error(ex);
+                        }
+                    }
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -205,7 +305,20 @@ namespace GitHub.Runner.Listener
                     }
                     else if (!IsGetNextMessageExceptionRetriable(ex))
                     {
-                        throw;
+                        if (_useV2Credentials && _v1CredentialsExists)
+                        {
+                            // v2 credentials might cause lose permission during permission check,
+                            // we will force to use v1 credential and try again
+                            _useV2Credentials = false;
+                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(TimeSpan.FromDays(2), token); // retry v2 creds in 2 days.
+                            var v1Creds = _credMgr.LoadCredentials(false);
+                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), v1Creds);
+                            Trace.Error("Fallback to v1 credentials and try again.");
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
                     else
                     {
@@ -395,6 +508,70 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Info($"Retriable exception: {ex.Message}");
                 return true;
+            }
+        }
+
+        private async Task<VssCredentials> GetNewOAuthAuthorizationSetting(CancellationToken token)
+        {
+            Trace.Info("Start checking oauth authorization url update.");
+            while (true)
+            {
+                var backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(45));
+                await HostContext.Delay(backoff, token);
+
+                try
+                {
+                    var v2AuthorizationUrl = await _runnerServer.GetRunnerAuthUrlAsync(_settings.PoolId, _settings.AgentId);
+                    if (!string.IsNullOrEmpty(v2AuthorizationUrl))
+                    {
+                        var credData = _configStore.GetCredentials();
+                        var clientId = credData.Data.GetValueOrDefault("clientId", null);
+                        var currentAuthorizationUrl = credData.Data.GetValueOrDefault("authorizationUrl", null);
+                        Trace.Info($"Current authorization url: {currentAuthorizationUrl}, new authorization url: {v2AuthorizationUrl}");
+
+                        if (string.Equals(currentAuthorizationUrl, v2AuthorizationUrl, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // We don't need to update credentials.
+                            Trace.Info("No needs to update authorization url");
+                            await Task.Delay(TimeSpan.FromMilliseconds(-1), token);
+                        }
+
+                        var keyManager = HostContext.GetService<IRSAKeyManager>();
+                        var signingCredentials = VssSigningCredentials.Create(() => keyManager.GetKey());
+
+                        var v2ClientCredential = new VssOAuthJwtBearerClientCredential(clientId, v2AuthorizationUrl, signingCredentials);
+                        var v2RunnerCredential = new VssOAuthCredential(new Uri(v2AuthorizationUrl, UriKind.Absolute), VssOAuthGrant.ClientCredentials, v2ClientCredential);
+
+                        Trace.Info("Try connect service with v2 OAuth endpoint.");
+                        var runnerServer = HostContext.CreateService<IRunnerServer>();
+                        await runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), v2RunnerCredential);
+                        await runnerServer.GetAgentPoolsAsync();
+                        Trace.Info($"Successfully connected service with new authorization url.");
+
+                        var credDataV2 = new CredentialData
+                        {
+                            Scheme = Constants.Configuration.OAuth,
+                            Data =
+                            {
+                                { "clientId", clientId },
+                                { "authorizationUrl", v2AuthorizationUrl },
+                                { "oauthEndpointUrl", v2AuthorizationUrl },
+                            },
+                        };
+
+                        _configStore.SaveV2Credential(credDataV2);
+                        return v2RunnerCredential;
+                    }
+                    else
+                    {
+                        Trace.Verbose("No authorization url updates");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Fail to get/test new authorization url.");
+                    Trace.Error(ex);
+                }
             }
         }
     }
