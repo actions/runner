@@ -112,7 +112,7 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("YWJjOlBh***Tph", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"abc:Password123!:a"))));
                 Assert.Equal("YWJjOlBh***Tph", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"abc:Password123!:a"))));
                 Assert.Equal("***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes("{"))));
-                                Assert.Equal("***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes("3ch"))));
+                Assert.Equal("***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes("3ch"))));
                 Assert.Equal("a ***", _hc.SecretMasker.MaskSecrets("a aA==")); // h is "aA==" in base64, we should not mask the trimmed version only the full
                 Assert.Equal("Y2 ***", _hc.SecretMasker.MaskSecrets("Y2 Y2g=")); // ch is "Y2g=" in base64, we should not mask the trimmed version only the full
                 
