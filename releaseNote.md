@@ -17,7 +17,6 @@
   - Trace javascript action exit code to debug instead of user logs (#290)
   - Change prompt message when removing a runner to lines up with GitHub.com UI (#303) 
   - Include step.env as part of env context. (#300)
-  - Update Base64 Encoders to deal with suffixes (#284)
 
 ## Misc
   - Move .sln file under ./src (#238)
