@@ -16,11 +16,6 @@ namespace GitHub.DistributedTask.Logging
         {
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
         }
-        
-        public static String Base64StringEscapeTrimmed(String value)
-        {
-            return TrimBase64End(Convert.ToBase64String(Encoding.UTF8.GetBytes(value)));
-        }
 
         // Base64 is 6 bits -> char
         // A byte is 8 bits
@@ -72,15 +67,15 @@ namespace GitHub.DistributedTask.Logging
             {
                 var shiftArray = new byte[bytes.Length - shift];
                 Array.Copy(bytes, shift, shiftArray, 0, bytes.Length - shift);
-                return TrimBase64End(Convert.ToBase64String(shiftArray));
+                return Convert.ToBase64String(shiftArray);
             }
             else
             {
-                return TrimBase64End(Convert.ToBase64String(bytes));
+                return Convert.ToBase64String(bytes);
             }
         }
 
-        public static String UriDataEscape(
+        private static String UriDataEscape(
             String value,
             Int32 maxSegmentSize)
         {
@@ -107,27 +102,6 @@ namespace GitHub.DistributedTask.Logging
             while (i < value.Length);
 
             return result.ToString();
-        }
-
-        private static String TrimBase64End(String value)
-        {
-            if (String.IsNullOrEmpty(value))
-            {
-                return String.Empty;
-            }
-            if (value.EndsWith('='))
-            {
-                var trimmed = value.TrimEnd('=');
-                if (trimmed.Length > 1)
-                {
-                    // If a base64 string ends in '=' it indicates that the base 64 character is only using 2 or 4 of the six bytes and will change if another character is added
-                    // For example 'ab' is 'YWI=' in base 64
-                    // 'abc' is 'YWJj'
-                    // We need to detect YW, not YWI so we trim the last character ('I')
-                    return trimmed.Substring(0, trimmed.Length - 1);
-                }
-            }
-            return value;
         }
     }
 }
