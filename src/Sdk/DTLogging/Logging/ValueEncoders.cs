@@ -118,7 +118,8 @@ namespace GitHub.DistributedTask.Logging
             if (value.EndsWith('='))
             {
                 var trimmed = value.TrimEnd('=');
-                if (trimmed.Length > 1)
+                // Minimum length to make sure we don't register 1 or 2 characters as a secret.
+                if (trimmed.Length > 3)
                 {
                     // If a base64 string ends in '=' it indicates that the base 64 character is only using 2 or 4 of the six bytes and will change if another character is added
                     // For example 'ab' is 'YWI=' in base 64

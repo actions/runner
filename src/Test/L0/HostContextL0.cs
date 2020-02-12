@@ -85,6 +85,8 @@ namespace GitHub.Runner.Common.Tests
                 _hc.SecretMasker.AddValue("Pass word 123!");
                 _hc.SecretMasker.AddValue("Pass<word>123!");
                 _hc.SecretMasker.AddValue("Pass'word'123!");
+                _hc.SecretMasker.AddValue("3ch");
+                _hc.SecretMasker.AddValue("{");
 
                 // Assert.
                 Assert.Equal("123***123", _hc.SecretMasker.MaskSecrets("123Password123!123"));
@@ -108,6 +110,12 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("OlBh***To=", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($":Password123!:"))));
                 Assert.Equal("YTpQ***E6YQ==", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"a:Password123!:a"))));
                 Assert.Equal("YWJjOlBh***Tph", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"abc:Password123!:a"))));
+                Assert.Equal("YWJjOlBh***Tph", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"abc:Password123!:a"))));
+                Assert.Equal("***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes("{"))));
+                                Assert.Equal("***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes("3ch"))));
+                Assert.Equal("a ***", _hc.SecretMasker.MaskSecrets("a aA==")); // h is "aA==" in base64, we should not mask the trimmed version only the full
+                Assert.Equal("Y2 ***", _hc.SecretMasker.MaskSecrets("Y2 Y2g=")); // ch is "Y2g=" in base64, we should not mask the trimmed version only the full
+                
             }
             finally
             {
