@@ -83,7 +83,6 @@ namespace GitHub.Runner.Common
             _loadContext.Unloading += LoadContext_Unloading;
 
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeTrimmed);
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
             this.SecretMasker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
