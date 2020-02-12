@@ -1,6 +1,7 @@
 ﻿using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Worker.Container;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,14 +16,14 @@ namespace GitHub.Runner.Worker
     {
         void EnablePluginInternalCommand();
         void DisablePluginInternalCommand();
-        bool TryProcessCommand(IExecutionContext context, string input);
+        bool TryProcessCommand(IExecutionContext context, string input, ContainerInfo container);
     }
 
     public sealed class ActionCommandManager : RunnerService, IActionCommandManager
     {
         private const string _stopCommand = "stop-commands";
         private readonly Dictionary<string, IActionCommandExtension> _commandExtensions = new Dictionary<string, IActionCommandExtension>(StringComparer.OrdinalIgnoreCase);
-        private HashSet<string> _registeredCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _registeredCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly object _commandSerializeLock = new object();
         private bool _stopProcessCommand = false;
         private string _stopToken = null;
@@ -58,7 +59,7 @@ namespace GitHub.Runner.Worker
             _registeredCommands.Remove("internal-set-repo-path");
         }
 
-        public bool TryProcessCommand(IExecutionContext context, string input)
+        public bool TryProcessCommand(IExecutionContext context, string input, ContainerInfo container)
         {
             if (string.IsNullOrEmpty(input))
             {
@@ -114,7 +115,7 @@ namespace GitHub.Runner.Worker
 
                         try
                         {
-                            extension.ProcessCommand(context, input, actionCommand);
+                            extension.ProcessCommand(context, input, actionCommand, container);
                         }
                         catch (Exception ex)
                         {
@@ -140,7 +141,7 @@ namespace GitHub.Runner.Worker
         string Command { get; }
         bool OmitEcho { get; }
 
-        void ProcessCommand(IExecutionContext context, string line, ActionCommand command);
+        void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container);
     }
 
     public sealed class InternalPluginSetRepoPathCommandExtension : RunnerService, IActionCommandExtension
@@ -150,7 +151,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.repoFullName, out string repoFullName) || string.IsNullOrEmpty(repoFullName))
             {
@@ -180,7 +181,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
@@ -205,7 +206,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
@@ -229,7 +230,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
             {
@@ -253,7 +254,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             if (string.IsNullOrWhiteSpace(command.Data))
             {
@@ -279,7 +280,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             ArgUtil.NotNullOrEmpty(command.Data, "path");
             context.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
@@ -294,7 +295,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             var file = command.Data;
 
@@ -306,9 +307,9 @@ namespace GitHub.Runner.Worker
             }
 
             // Translate file path back from container path
-            if (context.Container != null)
+            if (container != null)
             {
-                file = context.Container.TranslateToHostPath(file);
+                file = container.TranslateToHostPath(file);
             }
 
             // Root the path
@@ -341,7 +342,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             command.Properties.TryGetValue(RemoveMatcherCommandProperties.Owner, out string owner);
             var file = command.Data;
@@ -369,9 +370,9 @@ namespace GitHub.Runner.Worker
             else
             {
                 // Translate file path back from container path
-                if (context.Container != null)
+                if (container != null)
                 {
-                    file = context.Container.TranslateToHostPath(file);
+                    file = container.TranslateToHostPath(file);
                 }
 
                 // Root the path
@@ -409,7 +410,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, ContainerInfo container)
         {
             context.Debug(command.Data);
         }
@@ -437,7 +438,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string inputLine, ActionCommand command, ContainerInfo container)
         {
             command.Properties.TryGetValue(IssueCommandProperties.File, out string file);
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
@@ -454,10 +455,10 @@ namespace GitHub.Runner.Worker
             {
                 issue.Category = "Code";
 
-                if (context.Container != null)
+                if (container != null)
                 {
                     // Translate file path back from container path
-                    file = context.Container.TranslateToHostPath(file);
+                    file = container.TranslateToHostPath(file);
                     command.Properties[IssueCommandProperties.File] = file;
                 }
 
@@ -517,7 +518,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             var data = this is GroupCommandExtension ? command.Data : string.Empty;
             context.Output($"##[{Command}]{data}");
@@ -531,7 +532,7 @@ namespace GitHub.Runner.Worker
 
         public Type ExtensionType => typeof(IActionCommandExtension);
 
-        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command)
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             ArgUtil.NotNullOrEmpty(command.Data, "value");
 

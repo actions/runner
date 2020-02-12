@@ -49,7 +49,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 commandManager.EnablePluginInternalCommand();
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
 
                 directoryManager.Verify(x => x.UpdateRepositoryDirectory(_ec.Object, "actions/runner", "somepath", true), Times.Once);
             }
@@ -94,11 +94,11 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 commandManager.EnablePluginInternalCommand();
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
 
                 commandManager.DisablePluginInternalCommand();
 
-                Assert.False(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath"));
+                Assert.False(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
 
                 directoryManager.Verify(x => x.UpdateRepositoryDirectory(_ec.Object, "actions/runner", "somepath", true), Times.Once);
             }
@@ -141,10 +141,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ActionCommandManager commandManager = new ActionCommandManager();
                 commandManager.Initialize(_hc);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[stop-commands]stopToken"));
-                Assert.False(commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar"));
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[stopToken]"));
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[stop-commands]stopToken", null));
+                Assert.False(commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[stopToken]", null));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
             }
         }
 
@@ -178,16 +178,16 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.False(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::on"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::on", null));
                 Assert.True(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::off"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::off", null));
                 Assert.False(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::ON"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::ON", null));
                 Assert.True(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::Off   "));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::Off   ", null));
                 Assert.False(_ec.Object.EchoOnActionCommand);
             }
         }
@@ -249,10 +249,10 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.True(_ec.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec, "::echo::off"));
+                Assert.True(commandManager.TryProcessCommand(_ec, "::echo::off", null));
                 Assert.False(_ec.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec, "::echo::on"));
+                Assert.True(commandManager.TryProcessCommand(_ec, "::echo::on", null));
                 Assert.True(_ec.EchoOnActionCommand);
             }
         }
@@ -288,12 +288,12 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Echo commands below are considered "processed", but are invalid
                 // 1. Invalid echo value
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::invalid"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::invalid", null));
                 Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
                 Assert.False(_ec.Object.EchoOnActionCommand);
 
                 // 2. No value
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::"));
+                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::", null));
                 Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
                 Assert.False(_ec.Object.EchoOnActionCommand);
             }

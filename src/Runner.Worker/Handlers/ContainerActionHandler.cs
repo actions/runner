@@ -189,6 +189,8 @@ namespace GitHub.Runner.Worker.Handlers
                 container.ContainerEnvironmentVariables[variable.Key] = container.TranslateToContainerPath(variable.Value);
             }
 
+            ActionCommandManager.SetContainer(container);
+
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             {
