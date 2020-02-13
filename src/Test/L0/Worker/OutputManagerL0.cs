@@ -973,8 +973,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 });
 
             _commandManager = new Mock<IActionCommandManager>();
-            _commandManager.Setup(x => x.TryProcessCommand(It.IsAny<IExecutionContext>(), It.IsAny<string>()))
-                .Returns((IExecutionContext executionContext, string line) =>
+            _commandManager.Setup(x => x.TryProcessCommand(It.IsAny<IExecutionContext>(), It.IsAny<string>(), It.IsAny<ContainerInfo>()))
+                .Returns((IExecutionContext executionContext, string line, ContainerInfo container) =>
                 {
                     if (line.IndexOf("##[some-command]") >= 0)
                     {

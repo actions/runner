@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.CompilerServices;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container;
 using Moq;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
@@ -11,47 +13,35 @@ namespace GitHub.Runner.Common.Tests.Worker
 {
     public sealed class ActionCommandManagerL0
     {
+        private ActionCommandManager _commandManager;
+        private Mock<IExecutionContext> _ec;
+        private Mock<IExtensionManager> _extensionManager;
+        private Mock<IPipelineDirectoryManager> _pipelineDirectoryManager;
+
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         public void EnablePluginInternalCommand()
         {
-            using (TestHostContext _hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
-                var extensionManger = new Mock<IExtensionManager>();
-                var directoryManager = new Mock<IPipelineDirectoryManager>();
-
-                var pluginCommand = new InternalPluginSetRepoPathCommandExtension();
-                pluginCommand.Initialize(_hc);
-
-                var envCommand = new SetEnvCommandExtension();
-                envCommand.Initialize(_hc);
-
-                extensionManger.Setup(x => x.GetExtensions<IActionCommandExtension>())
-                               .Returns(new List<IActionCommandExtension>() { pluginCommand, envCommand });
-                _hc.SetSingleton<IExtensionManager>(extensionManger.Object);
-                _hc.SetSingleton<IPipelineDirectoryManager>(directoryManager.Object);
-
-                Mock<IExecutionContext> _ec = new Mock<IExecutionContext>();
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
-                                _hc.GetTrace().Info($"{tag} {line}");
+                                hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
                 _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
                    .Callback((Issue issue, string message) =>
                    {
-                       _hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
                    });
-                ActionCommandManager commandManager = new ActionCommandManager();
-                commandManager.Initialize(_hc);
 
-                commandManager.EnablePluginInternalCommand();
+                _commandManager.EnablePluginInternalCommand();
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
 
-                directoryManager.Verify(x => x.UpdateRepositoryDirectory(_ec.Object, "actions/runner", "somepath", true), Times.Once);
+                _pipelineDirectoryManager.Verify(x => x.UpdateRepositoryDirectory(_ec.Object, "actions/runner", "somepath", true), Times.Once);
             }
         }
 
@@ -60,47 +50,29 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void DisablePluginInternalCommand()
         {
-            using (TestHostContext _hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
-                var extensionManger = new Mock<IExtensionManager>();
-                var directoryManager = new Mock<IPipelineDirectoryManager>();
-
-                var pluginCommand = new InternalPluginSetRepoPathCommandExtension();
-                pluginCommand.Initialize(_hc);
-
-                var envCommand = new SetEnvCommandExtension();
-                envCommand.Initialize(_hc);
-
-                extensionManger.Setup(x => x.GetExtensions<IActionCommandExtension>())
-                               .Returns(new List<IActionCommandExtension>() { pluginCommand, envCommand });
-
-                _hc.SetSingleton<IExtensionManager>(extensionManger.Object);
-                _hc.SetSingleton<IPipelineDirectoryManager>(directoryManager.Object);
-
-                Mock<IExecutionContext> _ec = new Mock<IExecutionContext>();
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
-                                _hc.GetTrace().Info($"{tag} {line}");
+                                hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
                 _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
                    .Callback((Issue issue, string message) =>
                    {
-                       _hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
                    });
-                ActionCommandManager commandManager = new ActionCommandManager();
-                commandManager.Initialize(_hc);
 
-                commandManager.EnablePluginInternalCommand();
+                _commandManager.EnablePluginInternalCommand();
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
 
-                commandManager.DisablePluginInternalCommand();
+                _commandManager.DisablePluginInternalCommand();
 
-                Assert.False(commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath"));
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
 
-                directoryManager.Verify(x => x.UpdateRepositoryDirectory(_ec.Object, "actions/runner", "somepath", true), Times.Once);
+                _pipelineDirectoryManager.Verify(x => x.UpdateRepositoryDirectory(_ec.Object, "actions/runner", "somepath", true), Times.Once);
             }
         }
 
@@ -109,42 +81,27 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void StopProcessCommand()
         {
-            using (TestHostContext _hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
-                var extensionManger = new Mock<IExtensionManager>();
-                var pluginCommand = new InternalPluginSetRepoPathCommandExtension();
-                pluginCommand.Initialize(_hc);
-
-                var envCommand = new SetEnvCommandExtension();
-                envCommand.Initialize(_hc);
-
-                extensionManger.Setup(x => x.GetExtensions<IActionCommandExtension>())
-                               .Returns(new List<IActionCommandExtension>() { pluginCommand, envCommand });
-                _hc.SetSingleton<IExtensionManager>(extensionManger.Object);
-
-                Mock<IExecutionContext> _ec = new Mock<IExecutionContext>();
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
-                                _hc.GetTrace().Info($"{tag} {line}");
+                                hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
 
                 _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
                    .Callback((Issue issue, string message) =>
                    {
-                       _hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
                    });
 
                 _ec.Setup(x => x.EnvironmentVariables).Returns(new Dictionary<string, string>());
 
-                ActionCommandManager commandManager = new ActionCommandManager();
-                commandManager.Initialize(_hc);
-
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[stop-commands]stopToken"));
-                Assert.False(commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar"));
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[stopToken]"));
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[stop-commands]stopToken", null));
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[stopToken]", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
             }
         }
 
@@ -153,41 +110,29 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void EchoProcessCommand()
         {
-            using (TestHostContext _hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
-                var extensionManager = new Mock<IExtensionManager>();
-                var echoCommand = new EchoCommandExtension();
-                echoCommand.Initialize(_hc);
-
-                extensionManager.Setup(x => x.GetExtensions<IActionCommandExtension>())
-                               .Returns(new List<IActionCommandExtension>() { echoCommand });
-                _hc.SetSingleton<IExtensionManager>(extensionManager.Object);
-
-                Mock<IExecutionContext> _ec = new Mock<IExecutionContext>();
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
-                                _hc.GetTrace().Info($"{tag} {line}");
+                                hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
 
                 _ec.SetupAllProperties();
 
-                ActionCommandManager commandManager = new ActionCommandManager();
-                commandManager.Initialize(_hc);
-
                 Assert.False(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::on"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::echo::on", null));
                 Assert.True(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::off"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::echo::off", null));
                 Assert.False(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::ON"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::echo::ON", null));
                 Assert.True(_ec.Object.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::Off   "));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::echo::Off   ", null));
                 Assert.False(_ec.Object.EchoOnActionCommand);
             }
         }
@@ -197,7 +142,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public void EchoProcessCommandDebugOn()
         {
-            using (TestHostContext _hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
                 // Set up a few things
                 // 1. Job request message (with ACTIONS_STEP_DEBUG = true)
@@ -219,84 +164,135 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
 
-                _hc.SetSingleton(jobServerQueue.Object);
-
-                var extensionManager = new Mock<IExtensionManager>();
-                var echoCommand = new EchoCommandExtension();
-                echoCommand.Initialize(_hc);
-
-                extensionManager.Setup(x => x.GetExtensions<IActionCommandExtension>())
-                               .Returns(new List<IActionCommandExtension>() { echoCommand });
-                _hc.SetSingleton<IExtensionManager>(extensionManager.Object);
+                hc.SetSingleton(jobServerQueue.Object);
 
                 var configurationStore = new Mock<IConfigurationStore>();
                 configurationStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings());
-                _hc.SetSingleton(configurationStore.Object);
+                hc.SetSingleton(configurationStore.Object);
 
                 var pagingLogger = new Mock<IPagingLogger>();
-                _hc.EnqueueInstance(pagingLogger.Object);
-
-                ActionCommandManager commandManager = new ActionCommandManager();
-                commandManager.Initialize(_hc);
-
-                var _ec = new Runner.Worker.ExecutionContext();
-                _ec.Initialize(_hc);
+                hc.EnqueueInstance(pagingLogger.Object);
 
                 // Initialize the job (to exercise logic that sets EchoOnActionCommand)
-                _ec.InitializeJob(jobRequest, System.Threading.CancellationToken.None);
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+                ec.InitializeJob(jobRequest, System.Threading.CancellationToken.None);
 
-                _ec.Complete();
+                ec.Complete();
 
-                Assert.True(_ec.EchoOnActionCommand);
+                Assert.True(ec.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec, "::echo::off"));
-                Assert.False(_ec.EchoOnActionCommand);
+                Assert.True(_commandManager.TryProcessCommand(ec, "::echo::off", null));
+                Assert.False(ec.EchoOnActionCommand);
 
-                Assert.True(commandManager.TryProcessCommand(_ec, "::echo::on"));
-                Assert.True(_ec.EchoOnActionCommand);
+                Assert.True(_commandManager.TryProcessCommand(ec, "::echo::on", null));
+                Assert.True(ec.EchoOnActionCommand);
             }
         }
-
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
         public void EchoProcessCommandInvalid()
         {
-            using (TestHostContext _hc = new TestHostContext(this))
+            using (TestHostContext hc = CreateTestContext())
             {
-                var extensionManager = new Mock<IExtensionManager>();
-                var echoCommand = new EchoCommandExtension();
-                echoCommand.Initialize(_hc);
-
-                extensionManager.Setup(x => x.GetExtensions<IActionCommandExtension>())
-                               .Returns(new List<IActionCommandExtension>() { echoCommand });
-                _hc.SetSingleton<IExtensionManager>(extensionManager.Object);
-
-                Mock<IExecutionContext> _ec = new Mock<IExecutionContext>();
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
-                                _hc.GetTrace().Info($"{tag} {line}");
+                                hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
 
                 _ec.SetupAllProperties();
 
-                ActionCommandManager commandManager = new ActionCommandManager();
-                commandManager.Initialize(_hc);
-
                 // Echo commands below are considered "processed", but are invalid
                 // 1. Invalid echo value
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::invalid"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::echo::invalid", null));
                 Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
                 Assert.False(_ec.Object.EchoOnActionCommand);
 
                 // 2. No value
-                Assert.True(commandManager.TryProcessCommand(_ec.Object, "::echo::"));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::echo::", null));
                 Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
                 Assert.False(_ec.Object.EchoOnActionCommand);
             }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void AddMatcherTranslatesFilePath()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Create a problem matcher config file
+                var hostDirectory = hc.GetDirectory(WellKnownDirectory.Temp);
+                var hostFile = Path.Combine(hostDirectory, "my-matcher.json");
+                Directory.CreateDirectory(hostDirectory);
+                var content = @"
+{
+    ""problemMatcher"": [
+        {
+            ""owner"": ""my-matcher"",
+            ""pattern"": [
+                {
+                    ""regexp"": ""^ERROR: (.+)$"",
+                    ""message"": 1
+                }
+            ]
+        }
+    ]
+}";
+                File.WriteAllText(hostFile, content);
+
+                // Setup translation info
+                var container = new ContainerInfo();
+                var containerDirectory = "/some-container-directory";
+                var containerFile = Path.Combine(containerDirectory, "my-matcher.json");
+                container.AddPathTranslateMapping(hostDirectory, containerDirectory);
+
+                // Act
+                _commandManager.TryProcessCommand(_ec.Object, $"::add-matcher::{containerFile}", container);
+
+                // Assert
+                _ec.Verify(x => x.AddMatchers(It.IsAny<IssueMatchersConfig>()), Times.Once);
+            }
+        }
+
+        private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
+        {
+            var hostContext = new TestHostContext(this, testName);
+
+            // Mock extension manager
+            _extensionManager = new Mock<IExtensionManager>();
+            var commands = new IActionCommandExtension[]
+            {
+                new AddMatcherCommandExtension(),
+                new EchoCommandExtension(),
+                new InternalPluginSetRepoPathCommandExtension(),
+                new SetEnvCommandExtension(),
+            };
+            foreach (var command in commands)
+            {
+                command.Initialize(hostContext);
+            }
+            _extensionManager.Setup(x => x.GetExtensions<IActionCommandExtension>())
+                .Returns(new List<IActionCommandExtension>(commands));
+            hostContext.SetSingleton<IExtensionManager>(_extensionManager.Object);
+
+            // Mock pipeline directory manager
+            _pipelineDirectoryManager = new Mock<IPipelineDirectoryManager>();
+            hostContext.SetSingleton<IPipelineDirectoryManager>(_pipelineDirectoryManager.Object);
+
+            // Execution context
+            _ec = new Mock<IExecutionContext>();
+
+            // Command manager
+            _commandManager = new ActionCommandManager();
+            _commandManager.Initialize(hostContext);
+
+            return hostContext;
         }
     }
 }

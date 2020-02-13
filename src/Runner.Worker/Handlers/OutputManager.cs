@@ -84,7 +84,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // This does not need to be inside of a critical section.
                 // The logging queues and command handlers are thread-safe.
-                if (_commandManager.TryProcessCommand(_executionContext, line))
+                if (_commandManager.TryProcessCommand(_executionContext, line, _container))
                 {
                     return;
                 }
