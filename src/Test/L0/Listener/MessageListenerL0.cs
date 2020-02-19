@@ -266,7 +266,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -321,7 +320,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.True(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -368,7 +366,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -442,7 +439,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         v2VssCred), Times.Once);
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.NotNull(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -508,7 +504,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         v2VssCred), Times.Once);
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.NotNull(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -569,7 +564,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
 
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
@@ -635,7 +629,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.DoesNotContain(traceContent, x => x.Contains("Try connect service with v2 OAuth endpoint."));
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -696,7 +689,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -779,7 +771,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.Contains(traceContent, x => x.Contains("Try connect service with v2 OAuth endpoint."));
 
                 Assert.True(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -840,7 +831,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -936,7 +926,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.Contains(traceContent, x => x.Contains("Try connect service with v2 OAuth endpoint."));
 
                 Assert.True(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -997,7 +986,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -1080,7 +1068,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.Contains(traceContent, x => x.Contains("No needs to update authorization url"));
 
                 Assert.False(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -1138,7 +1125,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.True(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1234,7 +1220,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var traceContent = File.ReadAllLines(tempLog);
                 Assert.Contains(traceContent, x => x.Contains("Fallback to v1 credentials and try again."));
 
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
             }
@@ -1291,7 +1276,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token), Times.Once());
 
                 Assert.True(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1388,7 +1372,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                 Assert.Contains(traceContent, x => x.Contains("Re-attempt to use v2 credential"));
 
                 Assert.True(listener._useV2Credentials);
-                Assert.True(listener._v1CredentialsExists);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1449,7 +1432,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                             tokenSource.Token), Times.Once());
 
                     Assert.False(listener._useV2Credentials);
-                    Assert.True(listener._v1CredentialsExists);
                     Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                     Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                     Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1509,7 +1491,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                             It.IsAny<VssCredentials>()), Times.Once);
 
                     Assert.False(listener._useV2Credentials);
-                    Assert.True(listener._v1CredentialsExists);
                     Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                     Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                     Assert.Null(listener._authorizationUrlMigrationBackgroundTask);

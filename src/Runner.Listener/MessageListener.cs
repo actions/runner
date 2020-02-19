@@ -46,9 +46,6 @@ namespace GitHub.Runner.Listener
         // Whether load credentials from .v2credentials file
         internal bool _useV2Credentials;
 
-        // Whether .credentials existing, we will fallback to this if .v2credential doesn't work.
-        internal bool _v1CredentialsExists;
-
         // need to check auth url if there is only .credentials and auth schema is OAuth
         internal bool _needToCheckAuthorizationUrlUpdate;
         internal Task<VssCredentials> _authorizationUrlMigrationBackgroundTask;
@@ -76,8 +73,8 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            var useLegacyAuthUrl = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_LEGACYAUTHURL"));
-            VssCredentials creds = _credMgr.LoadCredentials(!useLegacyAuthUrl);
+            _useV2Credentials = !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_LEGACYAUTHURL"));
+            VssCredentials creds = _credMgr.LoadCredentials(_useV2Credentials);
 
             var agent = new TaskAgentReference
             {
@@ -94,21 +91,13 @@ namespace GitHub.Runner.Listener
 
             var v1Creds = _configStore.GetCredentials();
             var v2Creds = _configStore.GetV2Credentials();
-            if (v1Creds != null)
-            {
-                _v1CredentialsExists = true;
-            }
-
             if (v2Creds == null)
             {
+                _useV2Credentials = false;
                 if (v1Creds.Scheme == Constants.Configuration.OAuth)
                 {
                     _needToCheckAuthorizationUrlUpdate = true;
                 }
-            }
-            else
-            {
-                _useV2Credentials = !useLegacyAuthUrl;
             }
 
             while (true)
@@ -163,7 +152,7 @@ namespace GitHub.Runner.Listener
 
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
-                        if (_useV2Credentials && _v1CredentialsExists)
+                        if (_useV2Credentials)
                         {
                             // v2 credentials might cause lose permission during permission check,
                             // we will force to use v1 credential and try again
@@ -305,7 +294,7 @@ namespace GitHub.Runner.Listener
                     }
                     else if (!IsGetNextMessageExceptionRetriable(ex))
                     {
-                        if (_useV2Credentials && _v1CredentialsExists)
+                        if (_useV2Credentials)
                         {
                             // v2 credentials might cause lose permission during permission check,
                             // we will force to use v1 credential and try again
