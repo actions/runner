@@ -65,7 +65,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -109,7 +109,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -156,7 +156,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -215,7 +215,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV1Credential()
+        public async void CreateSessionWithOriginalCredential()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -243,12 +243,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -265,7 +265,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -275,7 +275,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV2Credential()
+        public async void CreateSessionWithMigratedCredential()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -293,16 +293,16 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                var v2Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v2Cred.Data["authorizationUrl"] = "https://t.server";
-                v2Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var migratedCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                migratedCred.Data["authorizationUrl"] = "https://t.server";
+                migratedCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(v2Cred);
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(migratedCred);
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -319,7 +319,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.True(listener._useV2Credentials);
+                Assert.True(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -348,7 +348,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
 
                 _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -365,7 +365,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -375,7 +375,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV2CredentialFallBackV1Succeed()
+        public async void CreateSessionWithMigratedCredentialFallBackOriginalSucceed()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -399,21 +399,21 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                var v1VssCred = new VssCredentials();
-                var v2VssCred = new VssCredentials();
-                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(v2VssCred);
-                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(v1VssCred);
+                var originalVssCred = new VssCredentials();
+                var migratedVssCred = new VssCredentials();
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(migratedVssCred);
+                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(originalVssCred);
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                var v2Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v2Cred.Data["authorizationUrl"] = "https://t.server";
-                v2Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var migratedCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                migratedCred.Data["authorizationUrl"] = "https://t.server";
+                migratedCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(v2Cred);
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(migratedCred);
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -432,13 +432,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _runnerServer
                     .Verify(x => x.ConnectAsync(
                         It.IsAny<Uri>(),
-                        v1VssCred), Times.Once);
+                        originalVssCred), Times.Once);
                 _runnerServer
                     .Verify(x => x.ConnectAsync(
                         It.IsAny<Uri>(),
-                        v2VssCred), Times.Once);
+                        migratedVssCred), Times.Once);
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.NotNull(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -448,7 +448,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV2CredentialFallBackV1StillFailed()
+        public async void CreateSessionWithMigratedCredentialFallBackOriginalStillFailed()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -464,21 +464,21 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Throws(new TaskAgentPoolNotFoundException("L0 Pool not found"));
 
-                var v1VssCred = new VssCredentials();
-                var v2VssCred = new VssCredentials();
-                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(v2VssCred);
-                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(v1VssCred);
+                var originalVssCred = new VssCredentials();
+                var migratedVssCred = new VssCredentials();
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(migratedVssCred);
+                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(originalVssCred);
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                var v2Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v2Cred.Data["authorizationUrl"] = "https://t.server";
-                v2Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var migratedCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                migratedCred.Data["authorizationUrl"] = "https://t.server";
+                migratedCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(v2Cred);
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(migratedCred);
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -497,13 +497,13 @@ namespace GitHub.Runner.Common.Tests.Listener
                 _runnerServer
                     .Verify(x => x.ConnectAsync(
                         It.IsAny<Uri>(),
-                        v1VssCred), Times.Once);
+                        originalVssCred), Times.Once);
                 _runnerServer
                     .Verify(x => x.ConnectAsync(
                         It.IsAny<Uri>(),
-                        v2VssCred), Times.Once);
+                        migratedVssCred), Times.Once);
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.NotNull(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -513,7 +513,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV1GetMessageWaitForMigtateToV2()
+        public async void CreateSessionWithOriginalGetMessageWaitForMigtateToMigrated()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -541,12 +541,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -563,7 +563,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
 
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
@@ -626,9 +626,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var tempLog = Path.GetTempFileName();
                 File.Copy(tc.TraceFileName, tempLog, true);
                 var traceContent = File.ReadAllLines(tempLog);
-                Assert.DoesNotContain(traceContent, x => x.Contains("Try connect service with v2 OAuth endpoint."));
+                Assert.DoesNotContain(traceContent, x => x.Contains("Try connect service with migrated OAuth endpoint."));
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -638,7 +638,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV1GetMessageMigtateToV2()
+        public async void CreateSessionWithOriginalGetMessageMigtateToMigrated()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -666,12 +666,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -688,7 +688,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -768,9 +768,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var tempLog = Path.GetTempFileName();
                 File.Copy(tc.TraceFileName, tempLog, true);
                 var traceContent = File.ReadAllLines(tempLog);
-                Assert.Contains(traceContent, x => x.Contains("Try connect service with v2 OAuth endpoint."));
+                Assert.Contains(traceContent, x => x.Contains("Try connect service with Token Service OAuth endpoint."));
 
-                Assert.True(listener._useV2Credentials);
+                Assert.True(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -780,7 +780,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV1GetMessageMigtateToV2WaitForIdle()
+        public async void CreateSessionWithOriginalGetMessageMigtateToMigratedWaitForIdle()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -808,12 +808,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -830,7 +830,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -923,9 +923,9 @@ namespace GitHub.Runner.Common.Tests.Listener
                 File.Copy(tc.TraceFileName, tempLog, true);
                 var traceContent = File.ReadAllLines(tempLog);
                 Assert.Contains(traceContent, x => x.Contains("Job or runner updates in progress, update credentials next time."));
-                Assert.Contains(traceContent, x => x.Contains("Try connect service with v2 OAuth endpoint."));
+                Assert.Contains(traceContent, x => x.Contains("Try connect service with Token Service OAuth endpoint."));
 
-                Assert.True(listener._useV2Credentials);
+                Assert.True(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -935,7 +935,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV2GetMessageNotMigrateAgain()
+        public async void CreateSessionWithMigratedGetMessageNotMigrateAgain()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -963,12 +963,12 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _credMgr.Setup(x => x.LoadCredentials(true)).Returns(new VssCredentials());
 
-                var v2Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v2Cred.Data["authorizationUrl"] = "https://t.server";
-                v2Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var migratedCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                migratedCred.Data["authorizationUrl"] = "https://t.server";
+                migratedCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v2Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(default(CredentialData));
+                _store.Setup(x => x.GetCredentials()).Returns(migratedCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -985,7 +985,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -1067,7 +1067,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var traceContent = File.ReadAllLines(tempLog);
                 Assert.Contains(traceContent, x => x.Contains("No needs to update authorization url"));
 
-                Assert.False(listener._useV2Credentials);
+                Assert.False(listener._useMigratedCredentials);
                 Assert.True(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.NotNull(listener._authorizationUrlMigrationBackgroundTask);
@@ -1077,7 +1077,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV1GetMessageMigrateToV2FallbackToV1()
+        public async void CreateSessionWithOriginalGetMessageMigrateToMigratedFallbackToOriginal()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -1093,21 +1093,21 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                var v1VssCred = new VssCredentials();
-                var v2VssCred = new VssCredentials();
-                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(v2VssCred);
-                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(v1VssCred);
+                var originalVssCred = new VssCredentials();
+                var migratedVssCred = new VssCredentials();
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(migratedVssCred);
+                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(originalVssCred);
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                var v2Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v2Cred.Data["authorizationUrl"] = "https://t.server";
-                v2Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var migratedCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                migratedCred.Data["authorizationUrl"] = "https://t.server";
+                migratedCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(v2Cred);
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(migratedCred);
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -1124,7 +1124,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.True(listener._useV2Credentials);
+                Assert.True(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1171,7 +1171,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         if (counter == 6)
                         {
                             Assert.NotNull(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
-                            Assert.False(listener._useV2Credentials);
+                            Assert.False(listener._useMigratedCredentials);
                         }
 
                         return messages.Dequeue();
@@ -1218,7 +1218,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var tempLog = Path.GetTempFileName();
                 File.Copy(tc.TraceFileName, tempLog, true);
                 var traceContent = File.ReadAllLines(tempLog);
-                Assert.Contains(traceContent, x => x.Contains("Fallback to v1 credentials and try again."));
+                Assert.Contains(traceContent, x => x.Contains("Fallback to original credentials and try again."));
 
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1228,7 +1228,7 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV1GetMessageMigrateToV2FallbackToV1ReattemptV2()
+        public async void CreateSessionWithOriginalGetMessageMigrateToMigratedFallbackToOriginalReattemptMigrated()
         {
             using (TestHostContext tc = CreateTestContext())
             using (var tokenSource = new CancellationTokenSource())
@@ -1244,21 +1244,21 @@ namespace GitHub.Runner.Common.Tests.Listener
                         tokenSource.Token))
                     .Returns(Task.FromResult(expectedSession));
 
-                var v1VssCred = new VssCredentials();
-                var v2VssCred = new VssCredentials();
-                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(v2VssCred);
-                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(v1VssCred);
+                var originalVssCred = new VssCredentials();
+                var migratedVssCred = new VssCredentials();
+                _credMgr.Setup(x => x.LoadCredentials(true)).Returns(migratedVssCred);
+                _credMgr.Setup(x => x.LoadCredentials(false)).Returns(originalVssCred);
 
-                var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v1Cred.Data["authorizationUrl"] = "https://s.server";
-                v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                originalCred.Data["authorizationUrl"] = "https://s.server";
+                originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                var v2Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                v2Cred.Data["authorizationUrl"] = "https://t.server";
-                v2Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                var migratedCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                migratedCred.Data["authorizationUrl"] = "https://t.server";
+                migratedCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                _store.Setup(x => x.GetV2Credentials()).Returns(v2Cred);
+                _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(migratedCred);
 
                 // Act.
                 MessageListener listener = new MessageListener();
@@ -1275,7 +1275,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
 
-                Assert.True(listener._useV2Credentials);
+                Assert.True(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1368,10 +1368,10 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var tempLog = Path.GetTempFileName();
                 File.Copy(tc.TraceFileName, tempLog, true);
                 var traceContent = File.ReadAllLines(tempLog);
-                Assert.Contains(traceContent, x => x.Contains("Fallback to v1 credentials and try again."));
-                Assert.Contains(traceContent, x => x.Contains("Re-attempt to use v2 credential"));
+                Assert.Contains(traceContent, x => x.Contains("Fallback to original credentials and try again."));
+                Assert.Contains(traceContent, x => x.Contains("Re-attempt to use migrated credential"));
 
-                Assert.True(listener._useV2Credentials);
+                Assert.True(listener._useMigratedCredentials);
                 Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                 Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                 Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1381,11 +1381,11 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Runner")]
-        public async void CreateSessionWithV1GetMessageWithV1EnvOverwrite()
+        public async void CreateSessionWithOriginalGetMessageWithOriginalEnvOverwrite()
         {
             try
             {
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_LEGACYAUTHURL", "1");
+                Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_SPSAUTHURL", "1");
                 using (TestHostContext tc = CreateTestContext())
                 using (var tokenSource = new CancellationTokenSource())
                 {
@@ -1400,21 +1400,21 @@ namespace GitHub.Runner.Common.Tests.Listener
                             tokenSource.Token))
                         .Returns(Task.FromResult(expectedSession));
 
-                    var v1VssCred = new VssCredentials();
-                    var v2VssCred = new VssCredentials();
-                    _credMgr.Setup(x => x.LoadCredentials(false)).Returns(v1VssCred);
-                    _credMgr.Setup(x => x.LoadCredentials(true)).Returns(v2VssCred);
+                    var originalVssCred = new VssCredentials();
+                    var migratedVssCred = new VssCredentials();
+                    _credMgr.Setup(x => x.LoadCredentials(false)).Returns(originalVssCred);
+                    _credMgr.Setup(x => x.LoadCredentials(true)).Returns(migratedVssCred);
 
-                    var v1Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                    v1Cred.Data["authorizationUrl"] = "https://s.server";
-                    v1Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                    var originalCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                    originalCred.Data["authorizationUrl"] = "https://s.server";
+                    originalCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                    var v2Cred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
-                    v2Cred.Data["authorizationUrl"] = "https://t.server";
-                    v2Cred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
+                    var migratedCred = new CredentialData() { Scheme = Constants.Configuration.OAuth };
+                    migratedCred.Data["authorizationUrl"] = "https://t.server";
+                    migratedCred.Data["clientId"] = "d842fd7b-61b0-4a80-96b4-f2797c353897";
 
-                    _store.Setup(x => x.GetCredentials()).Returns(v1Cred);
-                    _store.Setup(x => x.GetV2Credentials()).Returns(v2Cred);
+                    _store.Setup(x => x.GetCredentials()).Returns(originalCred);
+                    _store.Setup(x => x.GetMigratedCredentials()).Returns(migratedCred);
 
                     // Act.
                     MessageListener listener = new MessageListener();
@@ -1431,7 +1431,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                             It.Is<TaskAgentSession>(y => y != null),
                             tokenSource.Token), Times.Once());
 
-                    Assert.False(listener._useV2Credentials);
+                    Assert.False(listener._useMigratedCredentials);
                     Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                     Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                     Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1490,7 +1490,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                             It.IsAny<Uri>(),
                             It.IsAny<VssCredentials>()), Times.Once);
 
-                    Assert.False(listener._useV2Credentials);
+                    Assert.False(listener._useMigratedCredentials);
                     Assert.False(listener._needToCheckAuthorizationUrlUpdate);
                     Assert.Null(listener._authorizationUrlRollbackReattemptDelayBackgroundTask);
                     Assert.Null(listener._authorizationUrlMigrationBackgroundTask);
@@ -1498,7 +1498,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             }
             finally
             {
-                Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_LEGACYAUTHURL", null);
+                Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_SPSAUTHURL", null);
             }
         }
     }

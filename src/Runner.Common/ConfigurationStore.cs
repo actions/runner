@@ -78,10 +78,10 @@ namespace GitHub.Runner.Common
         bool IsServiceConfigured();
         bool HasCredentials();
         CredentialData GetCredentials();
-        CredentialData GetV2Credentials();
+        CredentialData GetMigratedCredentials();
         RunnerSettings GetSettings();
         void SaveCredential(CredentialData credential);
-        void SaveV2Credential(CredentialData credential);
+        void SaveMigratedCredential(CredentialData credential);
         void SaveSettings(RunnerSettings settings);
         void DeleteCredential();
         void DeleteSettings();
@@ -92,11 +92,11 @@ namespace GitHub.Runner.Common
         private string _binPath;
         private string _configFilePath;
         private string _credFilePath;
-        private string _credV2FilePath;
+        private string _migratedCredFilePath;
         private string _serviceConfigFilePath;
 
         private CredentialData _creds;
-        private CredentialData _credsV2;
+        private CredentialData _migratedCreds;
         private RunnerSettings _settings;
 
         public override void Initialize(IHostContext hostContext)
@@ -118,8 +118,8 @@ namespace GitHub.Runner.Common
             _credFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Credentials);
             Trace.Info("CredFilePath: {0}", _credFilePath);
 
-            _credV2FilePath = hostContext.GetConfigFile(WellKnownConfigFile.CredentialsV2);
-            Trace.Info("CredV2FilePath: {0}", _credV2FilePath);
+            _migratedCredFilePath = hostContext.GetConfigFile(WellKnownConfigFile.MigratedCredentials);
+            Trace.Info("MigratedCredFilePath: {0}", _migratedCredFilePath);
 
             _serviceConfigFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Service);
             Trace.Info("ServiceConfigFilePath: {0}", _serviceConfigFilePath);
@@ -130,7 +130,7 @@ namespace GitHub.Runner.Common
         public bool HasCredentials()
         {
             Trace.Info("HasCredentials()");
-            bool credsStored = (new FileInfo(_credFilePath)).Exists || (new FileInfo(_credV2FilePath)).Exists;
+            bool credsStored = (new FileInfo(_credFilePath)).Exists || (new FileInfo(_migratedCredFilePath)).Exists;
             Trace.Info("stored {0}", credsStored);
             return credsStored;
         }
@@ -161,14 +161,14 @@ namespace GitHub.Runner.Common
             return _creds;
         }
 
-        public CredentialData GetV2Credentials()
+        public CredentialData GetMigratedCredentials()
         {
-            if (_credsV2 == null && File.Exists(_credV2FilePath))
+            if (_migratedCreds == null && File.Exists(_migratedCredFilePath))
             {
-                _credsV2 = IOUtil.LoadObject<CredentialData>(_credV2FilePath);
+                _migratedCreds = IOUtil.LoadObject<CredentialData>(_migratedCredFilePath);
             }
 
-            return _credsV2;
+            return _migratedCreds;
         }
 
         public RunnerSettings GetSettings()
@@ -205,19 +205,19 @@ namespace GitHub.Runner.Common
             File.SetAttributes(_credFilePath, File.GetAttributes(_credFilePath) | FileAttributes.Hidden);
         }
 
-        public void SaveV2Credential(CredentialData credential)
+        public void SaveMigratedCredential(CredentialData credential)
         {
-            Trace.Info("Saving {0} v2 credential @ {1}", credential.Scheme, _credV2FilePath);
-            if (File.Exists(_credV2FilePath))
+            Trace.Info("Saving {0} migrated credential @ {1}", credential.Scheme, _migratedCredFilePath);
+            if (File.Exists(_migratedCredFilePath))
             {
                 // Delete existing credential file first, since the file is hidden and not able to overwrite.
-                Trace.Info("Delete exist runner credential v2 file.");
-                IOUtil.DeleteFile(_credV2FilePath);
+                Trace.Info("Delete exist runner migrated credential file.");
+                IOUtil.DeleteFile(_migratedCredFilePath);
             }
 
-            IOUtil.SaveObject(credential, _credV2FilePath);
-            Trace.Info("v2 Credentials Saved.");
-            File.SetAttributes(_credV2FilePath, File.GetAttributes(_credV2FilePath) | FileAttributes.Hidden);
+            IOUtil.SaveObject(credential, _migratedCredFilePath);
+            Trace.Info("Migrated Credentials Saved.");
+            File.SetAttributes(_migratedCredFilePath, File.GetAttributes(_migratedCredFilePath) | FileAttributes.Hidden);
         }
 
         public void SaveSettings(RunnerSettings settings)
@@ -238,7 +238,7 @@ namespace GitHub.Runner.Common
         public void DeleteCredential()
         {
             IOUtil.Delete(_credFilePath, default(CancellationToken));
-            IOUtil.Delete(_credV2FilePath, default(CancellationToken));
+            IOUtil.Delete(_migratedCredFilePath, default(CancellationToken));
         }
 
         public void DeleteSettings()

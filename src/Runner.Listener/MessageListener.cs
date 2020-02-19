@@ -43,8 +43,8 @@ namespace GitHub.Runner.Listener
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
 
-        // Whether load credentials from .v2credentials file
-        internal bool _useV2Credentials;
+        // Whether load credentials from .credentials_migrated file
+        internal bool _useMigratedCredentials;
 
         // need to check auth url if there is only .credentials and auth schema is OAuth
         internal bool _needToCheckAuthorizationUrlUpdate;
@@ -73,8 +73,8 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            _useV2Credentials = !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_LEGACYAUTHURL"));
-            VssCredentials creds = _credMgr.LoadCredentials(_useV2Credentials);
+            _useMigratedCredentials = !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_SPSAUTHURL"));
+            VssCredentials creds = _credMgr.LoadCredentials(_useMigratedCredentials);
 
             var agent = new TaskAgentReference
             {
@@ -89,12 +89,12 @@ namespace GitHub.Runner.Listener
             string errorMessage = string.Empty;
             bool encounteringError = false;
 
-            var v1Creds = _configStore.GetCredentials();
-            var v2Creds = _configStore.GetV2Credentials();
-            if (v2Creds == null)
+            var originalCreds = _configStore.GetCredentials();
+            var migratedCreds = _configStore.GetMigratedCredentials();
+            if (migratedCreds == null)
             {
-                _useV2Credentials = false;
-                if (v1Creds.Scheme == Constants.Configuration.OAuth)
+                _useMigratedCredentials = false;
+                if (originalCreds.Scheme == Constants.Configuration.OAuth)
                 {
                     _needToCheckAuthorizationUrlUpdate = true;
                 }
@@ -152,14 +152,15 @@ namespace GitHub.Runner.Listener
 
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
-                        if (_useV2Credentials)
+                        if (_useMigratedCredentials)
                         {
-                            // v2 credentials might cause lose permission during permission check,
-                            // we will force to use v1 credential and try again
-                            _useV2Credentials = false;
-                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(TimeSpan.FromDays(2), token); // retry v2 creds in 2 days.
+                            // migrated credentials might cause lose permission during permission check,
+                            // we will force to use original credential and try again
+                            _useMigratedCredentials = false;
+                            var reattemptBackoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromHours(24), TimeSpan.FromHours(36));
+                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(reattemptBackoff, token); // retry migrated creds in 24-36 hours.
                             creds = _credMgr.LoadCredentials(false);
-                            Trace.Error("Fallback to v1 credentials and try again.");
+                            Trace.Error("Fallback to original credentials and try again.");
                         }
                         else
                         {
@@ -241,8 +242,8 @@ namespace GitHub.Runner.Listener
                             {
                                 var newCred = await _authorizationUrlMigrationBackgroundTask;
                                 await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), newCred);
-                                Trace.Info("Updated connection to use new credential for next GetMessage call.");
-                                _useV2Credentials = true;
+                                Trace.Info("Updated connection to use migrated credential for next GetMessage call.");
+                                _useMigratedCredentials = true;
                                 _authorizationUrlMigrationBackgroundTask = null;
                                 _needToCheckAuthorizationUrlUpdate = false;
                             }
@@ -258,11 +259,11 @@ namespace GitHub.Runner.Listener
                     {
                         try
                         {
-                            // we rolled back to use v1 creds 2 days before, now it's a good time to try v2 creds again.
-                            Trace.Info("Re-attempt to use v2 credential");
-                            var v2Creds = _credMgr.LoadCredentials();
-                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), v2Creds);
-                            _useV2Credentials = true;
+                            // we rolled back to use original creds about 2 days before, now it's a good time to try migrated creds again.
+                            Trace.Info("Re-attempt to use migrated credential");
+                            var migratedCreds = _credMgr.LoadCredentials();
+                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), migratedCreds);
+                            _useMigratedCredentials = true;
                             _authorizationUrlRollbackReattemptDelayBackgroundTask = null;
                         }
                         catch (Exception ex)
@@ -294,15 +295,16 @@ namespace GitHub.Runner.Listener
                     }
                     else if (!IsGetNextMessageExceptionRetriable(ex))
                     {
-                        if (_useV2Credentials)
+                        if (_useMigratedCredentials)
                         {
-                            // v2 credentials might cause lose permission during permission check,
-                            // we will force to use v1 credential and try again
-                            _useV2Credentials = false;
-                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(TimeSpan.FromDays(2), token); // retry v2 creds in 2 days.
-                            var v1Creds = _credMgr.LoadCredentials(false);
-                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), v1Creds);
-                            Trace.Error("Fallback to v1 credentials and try again.");
+                            // migrated credentials might cause lose permission during permission check,
+                            // we will force to use original credential and try again
+                            _useMigratedCredentials = false;
+                            var reattemptBackoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromHours(24), TimeSpan.FromHours(36));
+                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(reattemptBackoff, token); // retry migrated creds in 24-36 hours.
+                            var originalCreds = _credMgr.LoadCredentials(false);
+                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), originalCreds);
+                            Trace.Error("Fallback to original credentials and try again.");
                         }
                         else
                         {
@@ -510,15 +512,15 @@ namespace GitHub.Runner.Listener
 
                 try
                 {
-                    var v2AuthorizationUrl = await _runnerServer.GetRunnerAuthUrlAsync(_settings.PoolId, _settings.AgentId);
-                    if (!string.IsNullOrEmpty(v2AuthorizationUrl))
+                    var migratedAuthorizationUrl = await _runnerServer.GetRunnerAuthUrlAsync(_settings.PoolId, _settings.AgentId);
+                    if (!string.IsNullOrEmpty(migratedAuthorizationUrl))
                     {
                         var credData = _configStore.GetCredentials();
                         var clientId = credData.Data.GetValueOrDefault("clientId", null);
                         var currentAuthorizationUrl = credData.Data.GetValueOrDefault("authorizationUrl", null);
-                        Trace.Info($"Current authorization url: {currentAuthorizationUrl}, new authorization url: {v2AuthorizationUrl}");
+                        Trace.Info($"Current authorization url: {currentAuthorizationUrl}, new authorization url: {migratedAuthorizationUrl}");
 
-                        if (string.Equals(currentAuthorizationUrl, v2AuthorizationUrl, StringComparison.OrdinalIgnoreCase))
+                        if (string.Equals(currentAuthorizationUrl, migratedAuthorizationUrl, StringComparison.OrdinalIgnoreCase))
                         {
                             // We don't need to update credentials.
                             Trace.Info("No needs to update authorization url");
@@ -528,28 +530,28 @@ namespace GitHub.Runner.Listener
                         var keyManager = HostContext.GetService<IRSAKeyManager>();
                         var signingCredentials = VssSigningCredentials.Create(() => keyManager.GetKey());
 
-                        var v2ClientCredential = new VssOAuthJwtBearerClientCredential(clientId, v2AuthorizationUrl, signingCredentials);
-                        var v2RunnerCredential = new VssOAuthCredential(new Uri(v2AuthorizationUrl, UriKind.Absolute), VssOAuthGrant.ClientCredentials, v2ClientCredential);
+                        var migratedClientCredential = new VssOAuthJwtBearerClientCredential(clientId, migratedAuthorizationUrl, signingCredentials);
+                        var migratedRunnerCredential = new VssOAuthCredential(new Uri(migratedAuthorizationUrl, UriKind.Absolute), VssOAuthGrant.ClientCredentials, migratedClientCredential);
 
-                        Trace.Info("Try connect service with v2 OAuth endpoint.");
+                        Trace.Info("Try connect service with Token Service OAuth endpoint.");
                         var runnerServer = HostContext.CreateService<IRunnerServer>();
-                        await runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), v2RunnerCredential);
+                        await runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), migratedRunnerCredential);
                         await runnerServer.GetAgentPoolsAsync();
                         Trace.Info($"Successfully connected service with new authorization url.");
 
-                        var credDataV2 = new CredentialData
+                        var migratedCredData = new CredentialData
                         {
                             Scheme = Constants.Configuration.OAuth,
                             Data =
                             {
                                 { "clientId", clientId },
-                                { "authorizationUrl", v2AuthorizationUrl },
-                                { "oauthEndpointUrl", v2AuthorizationUrl },
+                                { "authorizationUrl", migratedAuthorizationUrl },
+                                { "oauthEndpointUrl", migratedAuthorizationUrl },
                             },
                         };
 
-                        _configStore.SaveV2Credential(credDataV2);
-                        return v2RunnerCredential;
+                        _configStore.SaveMigratedCredential(migratedCredData);
+                        return migratedRunnerCredential;
                     }
                     else
                     {

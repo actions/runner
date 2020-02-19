@@ -13,7 +13,7 @@ namespace GitHub.Runner.Listener.Configuration
     public interface ICredentialManager : IRunnerService
     {
         ICredentialProvider GetCredentialProvider(string credType);
-        VssCredentials LoadCredentials(bool preferV2 = true);
+        VssCredentials LoadCredentials(bool preferMigrated = true);
     }
 
     public class CredentialManager : RunnerService, ICredentialManager
@@ -40,7 +40,7 @@ namespace GitHub.Runner.Listener.Configuration
             return creds;
         }
 
-        public VssCredentials LoadCredentials(bool preferV2 = true)
+        public VssCredentials LoadCredentials(bool preferMigrated = true)
         {
             IConfigurationStore store = HostContext.GetService<IConfigurationStore>();
 
@@ -51,12 +51,12 @@ namespace GitHub.Runner.Listener.Configuration
 
             CredentialData credData = store.GetCredentials();
 
-            if (preferV2)
+            if (preferMigrated)
             {
-                var v2Cred = store.GetV2Credentials();
-                if (v2Cred != null)
+                var migratedCred = store.GetMigratedCredentials();
+                if (migratedCred != null)
                 {
-                    credData = v2Cred;
+                    credData = migratedCred;
                 }
             }
 
