@@ -53,6 +53,7 @@ namespace GitHub.Runner.Common
 
         // runner authorization url
         Task<string> GetRunnerAuthUrlAsync(int runnerPoolId, int runnerId);
+        Task ReportRunnerAuthUrlErrorAsync(int runnerPoolId, int runnerId, string error);
     }
 
     public sealed class RunnerServer : RunnerService, IRunnerServer
@@ -345,6 +346,12 @@ namespace GitHub.Runner.Common
         {
             CheckConnection(RunnerConnectionType.MessageQueue);
             return _messageTaskAgentClient.GetAgentAuthUrlAsync(runnerPoolId, runnerId);
+        }
+
+        public Task ReportRunnerAuthUrlErrorAsync(int runnerPoolId, int runnerId, string error)
+        {
+            CheckConnection(RunnerConnectionType.MessageQueue);
+            return _messageTaskAgentClient.ReportAgentAuthUrlMigrationErrorAsync(runnerPoolId, runnerId, error);
         }
     }
 }

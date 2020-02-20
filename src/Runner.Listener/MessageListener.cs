@@ -562,6 +562,17 @@ namespace GitHub.Runner.Listener
                 {
                     Trace.Error("Fail to get/test new authorization url.");
                     Trace.Error(ex);
+
+                    try
+                    {
+                        await _runnerServer.ReportRunnerAuthUrlErrorAsync(_settings.PoolId, _settings.AgentId, ex.ToString());
+                    }
+                    catch (Exception e)
+                    {
+                        // best effort
+                        Trace.Error("Fail to report the migration error");
+                        Trace.Error(e);
+                    }
                 }
             }
         }
