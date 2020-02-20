@@ -1,4 +1,4 @@
-# ADR 275: Custom Label Support
+# ADR 275: Support adding custom labels during runner config
 **Date**: 2020-01-14
 
 **Status**: Proposed
