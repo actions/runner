@@ -5,17 +5,14 @@ using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -524,7 +521,8 @@ namespace GitHub.Runner.Listener.Configuration
 
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken)
         {
-            var githubApiUrl = "https://api.github.com/actions/register-runner";
+            var gitHubUrlBuilder = new UriBuilder(githubUrl);
+            var githubApiUrl = $"https://api.{gitHubUrlBuilder.Host}/actions/register-runner";
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler))
             {
@@ -532,12 +530,12 @@ namespace GitHub.Runner.Listener.Configuration
                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.shuri-preview+json"));
 
-                var bodyObject = new JObject
+                var bodyObject = new Dictionary<string, string>()
                 {
-                    new JProperty( "url", githubUrl)
+                    {"url", githubUrl}
                 };
 
-                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(JsonConvert.SerializeObject(bodyObject), null, "application/json"));
+                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
 
                 if (response.IsSuccessStatusCode)
                 {
