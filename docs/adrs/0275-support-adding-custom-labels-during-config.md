@@ -36,6 +36,8 @@ To add multiple labels:
 ```
 This would add both labels `my-extra-label` and `yet-another-label`.
 
+It would not be possible to remove labels from an existing runner using `config.sh`, instead labels would have to be removed using the GitHub UI.
+
 ## Consequences
 
 The ability to add custom labels to a self-hosted runner would enable most scenarios where job runner selection based on runner capabilities or characteristics are required.
