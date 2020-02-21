@@ -522,13 +522,12 @@ namespace GitHub.Runner.Listener.Configuration
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken)
         {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            var githubApiUrl = $"https://api.{gitHubUrlBuilder.Host}/actions/register-runner";
-            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+            var githubApiUrl = $"https://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
+           using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler))
             {
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
-                httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.shuri-preview+json"));
 
                 var bodyObject = new Dictionary<string, string>()
                 {
