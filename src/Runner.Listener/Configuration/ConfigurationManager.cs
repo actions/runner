@@ -1,19 +1,18 @@
 using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace GitHub.Runner.Listener.Configuration
 {
@@ -522,15 +521,20 @@ namespace GitHub.Runner.Listener.Configuration
 
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken)
         {
-            var gitHubUrl = new UriBuilder(githubUrl);
-            var githubApiUrl = $"https://api.{gitHubUrl.Host}/repos/{gitHubUrl.Path.Trim('/')}/actions-runners/registration";
-            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+            var gitHubUrlBuilder = new UriBuilder(githubUrl);
+            var githubApiUrl = $"https://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
+           using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler))
             {
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
-                httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github.shuri-preview+json"));
-                var response = await httpClient.PostAsync(githubApiUrl, new StringContent("", null, "application/json"));
+
+                var bodyObject = new Dictionary<string, string>()
+                {
+                    {"url", githubUrl}
+                };
+
+                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
 
                 if (response.IsSuccessStatusCode)
                 {
