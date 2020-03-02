@@ -108,7 +108,7 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     runnerSettings.GitHubUrl = inputUrl;
                     var githubToken = command.GetRunnerRegisterToken();
-                    GitHubAuthResult authResult = await GetTenantCredential(inputUrl, githubToken);
+                    GitHubAuthResult authResult = await GetTenantCredential(inputUrl, githubToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
@@ -375,7 +375,7 @@ namespace GitHub.Runner.Listener.Configuration
                     else
                     {
                         var githubToken = command.GetRunnerDeletionToken();
-                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken);
+                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken, Constants.RunnerEvent.Remove);
                         creds = authResult.ToVssCredentials();
                         Trace.Info("cred retrieved via GitHub auth");
                     }
@@ -519,7 +519,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
         }
 
-        private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken)
+        private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken, string runnerEvent)
         {
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             var githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
@@ -531,7 +531,8 @@ namespace GitHub.Runner.Listener.Configuration
 
                 var bodyObject = new Dictionary<string, string>()
                 {
-                    {"url", githubUrl}
+                    {"url", githubUrl},
+                    {"runner_event", runnerEvent}
                 };
 
                 var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
