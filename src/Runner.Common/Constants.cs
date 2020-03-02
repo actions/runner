@@ -136,6 +136,12 @@ namespace GitHub.Runner.Common
             }
         }
 
+        public static class RunnerEvent
+        {
+            public static readonly string Register = "register";
+            public static readonly string Remove = "remove";
+        }
+
         public static class Pipeline
         {
             public static class Path

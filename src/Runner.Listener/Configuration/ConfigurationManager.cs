@@ -108,7 +108,7 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     runnerSettings.GitHubUrl = inputUrl;
                     var githubToken = command.GetRunnerRegisterToken();
-                    GitHubAuthResult authResult = await GetTenantCredential(inputUrl, githubToken, RunnerCredentialEvents.RegisterRunner);
+                    GitHubAuthResult authResult = await GetTenantCredential(inputUrl, githubToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
@@ -375,7 +375,7 @@ namespace GitHub.Runner.Listener.Configuration
                     else
                     {
                         var githubToken = command.GetRunnerDeletionToken();
-                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken, RunnerCredentialEvents.RemoveRunner);
+                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken, Constants.RunnerEvent.Remove);
                         creds = authResult.ToVssCredentials();
                         Trace.Info("cred retrieved via GitHub auth");
                     }
@@ -552,12 +552,6 @@ namespace GitHub.Runner.Listener.Configuration
                     return null;
                 }
             }
-        }
-
-        private static class RunnerCredentialEvents
-        {
-            public const string RegisterRunner = "register";
-            public const string RemoveRunner = "remove";
         }
     }
 }
