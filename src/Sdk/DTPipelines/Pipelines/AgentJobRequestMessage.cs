@@ -39,7 +39,8 @@ namespace GitHub.DistributedTask.Pipelines
             DictionaryContextData contextData,
             WorkspaceOptions workspaceOptions,
             IEnumerable<JobStep> steps,
-            IEnumerable<ContextScope> scopes)
+            IEnumerable<ContextScope> scopes,
+            IList<String> fileTable)
         {
             this.MessageType = JobRequestMessageTypes.PipelineAgentJobRequest;
             this.Plan = plan;
@@ -73,6 +74,11 @@ namespace GitHub.DistributedTask.Pipelines
                 {
                     this.ContextData[pair.Key] = pair.Value;
                 }
+            }
+
+            if (fileTable?.Count > 0)
+            {
+                m_fileTable = new List<String>(fileTable);
             }
         }
 
@@ -237,6 +243,18 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
+        public IList<String> FileTable
+        {
+            get
+            {
+                if (m_fileTable == null)
+                {
+                    m_fileTable = new List<String>();
+                }
+                return m_fileTable;
+            }
+        }
+
         // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
         public void SetJobSidecarContainers(IDictionary<String, String> value)
         {
@@ -345,6 +363,11 @@ namespace GitHub.DistributedTask.Pipelines
                 m_environmentVariables = null;
             }
 
+            if (m_fileTable?.Count == 0)
+            {
+                m_fileTable = null;
+            }
+
             if (m_maskHints?.Count == 0)
             {
                 m_maskHints = null;
@@ -373,6 +396,9 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "EnvironmentVariables", EmitDefaultValue = false)]
         private List<TemplateToken> m_environmentVariables;
+
+        [DataMember(Name = "FileTable", EmitDefaultValue = false)]
+        private List<String> m_fileTable;
 
         [DataMember(Name = "Mask", EmitDefaultValue = false)]
         private List<MaskHint> m_maskHints;

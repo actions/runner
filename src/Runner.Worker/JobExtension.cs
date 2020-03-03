@@ -78,9 +78,7 @@ namespace GitHub.Runner.Worker
 
                     // Evaluate the job-level environment variables
                     context.Debug("Evaluating job-level environment variables");
-                    var templateTrace = context.ToTemplateTraceWriter();
-                    var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-                    var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                    var templateEvaluator = context.ToPipelineTemplateEvaluator();
                     foreach (var token in message.EnvironmentVariables)
                     {
                         var environmentVariables = templateEvaluator.EvaluateStepEnvironment(token, jobContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);

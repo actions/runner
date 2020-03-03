@@ -98,9 +98,7 @@ namespace GitHub.Runner.Worker
                         step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
 
                         // Evaluate and merge action's env block to env context
-                        var templateTrace = step.ExecutionContext.ToTemplateTraceWriter();
-                        var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-                        var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                         var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var env in actionEnvironment)
                         {
@@ -247,7 +245,7 @@ namespace GitHub.Runner.Worker
 
             // Set the timeout
             var timeoutMinutes = 0;
-            var templateEvaluator = CreateTemplateEvaluator(step.ExecutionContext);
+            var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
             try
             {
                 timeoutMinutes = templateEvaluator.EvaluateStepTimeout(step.Timeout, step.ExecutionContext.ExpressionValues);
@@ -389,7 +387,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Debug($"Initializing scope '{scope.Name}'");
                     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
                     executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
-                    var templateEvaluator = CreateTemplateEvaluator(executionContext);
+                    var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
                     var inputs = default(DictionaryContextData);
                     try
                     {
@@ -445,7 +443,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Debug($"Finalizing scope '{scope.Name}'");
                     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.Name);
                     executionContext.ExpressionValues["inputs"] = null;
-                    var templateEvaluator = CreateTemplateEvaluator(executionContext);
+                    var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
                     var outputs = default(DictionaryContextData);
                     try
                     {
@@ -476,13 +474,6 @@ namespace GitHub.Runner.Worker
             }
 
             executionContext.Complete(result, resultCode: resultCode);
-        }
-
-        private PipelineTemplateEvaluator CreateTemplateEvaluator(IExecutionContext executionContext)
-        {
-            var templateTrace = executionContext.ToTemplateTraceWriter();
-            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-            return new PipelineTemplateEvaluator(templateTrace, schema);
         }
     }
 }

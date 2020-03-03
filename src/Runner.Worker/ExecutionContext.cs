@@ -11,6 +11,7 @@ using GitHub.Runner.Worker.Container;
 using GitHub.Services.WebApi;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
@@ -49,6 +50,7 @@ namespace GitHub.Runner.Worker
         HashSet<string> OutputVariables { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
+        IList<String> FileTable { get; }
         StepsContext StepsContext { get; }
         DictionaryContextData ExpressionValues { get; }
         List<string> PrependPath { get; }
@@ -141,6 +143,7 @@ namespace GitHub.Runner.Worker
         public HashSet<string> OutputVariables => _outputvariables;
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, ContextScope> Scopes { get; private set; }
+        public IList<String> FileTable { get; private set; }
         public StepsContext StepsContext { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public bool WriteDebug { get; private set; }
@@ -266,6 +269,7 @@ namespace GitHub.Runner.Worker
             }
             child.EnvironmentVariables = EnvironmentVariables;
             child.Scopes = Scopes;
+            child.FileTable = FileTable;
             child.StepsContext = StepsContext;
             foreach (var pair in ExpressionValues)
             {
@@ -568,6 +572,9 @@ namespace GitHub.Runner.Worker
                     Scopes[scope.Name] = scope;
                 }
             }
+
+            // File table
+            FileTable = new List<String>(message.FileTable ?? new string[0]);
 
             // Expression functions
             if (Variables.GetBoolean("System.HashFilesV2") == true)
@@ -884,6 +891,13 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
+        }
+
+        public static PipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context)
+        {
+            var templateTrace = context.ToTemplateTraceWriter();
+            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
+            return new PipelineTemplateEvaluator(templateTrace, schema, context.FileTable);
         }
 
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)
