@@ -184,6 +184,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 id = FileIds.Count + 1;
                 FileIds.Add(file, id);
                 FileNames.Add(file);
+                Memory.AddBytes(file);
             }
 
             return id;
@@ -191,7 +192,12 @@ namespace GitHub.DistributedTask.ObjectTemplating
 
         internal String GetFileName(Int32 fileId)
         {
-            return FileNames[fileId - 1];
+            return FileNames.Count >= fileId ? FileNames[fileId - 1] : null;
+        }
+
+        internal IReadOnlyList<String> GetFileTable()
+        {
+            return FileNames.AsReadOnly();
         }
 
         private String GetErrorPrefix(
@@ -199,9 +205,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             Int32? line,
             Int32? column)
         {
-            if (fileId != null)
+            var fileName = fileId.HasValue ? GetFileName(fileId.Value) : null;
+            if (!String.IsNullOrEmpty(fileName))
             {
-                var fileName = GetFileName(fileId.Value);
                 if (line != null && column != null)
                 {
                     return $"{fileName} {TemplateStrings.LineColumn(line, column)}:";

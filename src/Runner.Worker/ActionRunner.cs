@@ -141,9 +141,7 @@ namespace GitHub.Runner.Worker
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
-            var templateTrace = ExecutionContext.ToTemplateTraceWriter();
-            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-            var templateEvaluator = new PipelineTemplateEvaluator(templateTrace, schema);
+            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues);
 
             foreach (KeyValuePair<string, string> input in inputs)
@@ -295,8 +293,7 @@ namespace GitHub.Runner.Worker
                 return displayName;
             }
             // Try evaluating fully
-            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-            var templateEvaluator = new PipelineTemplateEvaluator(context.ToTemplateTraceWriter(), schema);
+            var templateEvaluator = context.ToPipelineTemplateEvaluator();
             try
             {
                 didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, out displayName);

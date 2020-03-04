@@ -19,7 +19,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     {
         public PipelineTemplateEvaluator(
             ITraceWriter trace,
-            TemplateSchema schema)
+            TemplateSchema schema,
+            IList<String> fileTable)
         {
             if (!String.Equals(schema.Version, PipelineTemplateConstants.Workflow_1_0, StringComparison.Ordinal))
             {
@@ -28,6 +29,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             m_trace = trace;
             m_schema = schema;
+            m_fileTable = fileTable;
         }
 
         public Int32 MaxDepth => 50;
@@ -324,6 +326,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 TraceWriter = m_trace,
             };
 
+            // Add the file table
+            if (m_fileTable?.Count > 0)
+            {
+                foreach (var file in m_fileTable)
+                {
+                    result.GetFileId(file);
+                }
+            }
+
+            // Add named context
             if (contextData != null)
             {
                 foreach (var pair in contextData)
@@ -346,6 +358,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         private readonly ITraceWriter m_trace;
         private readonly TemplateSchema m_schema;
+        private readonly IList<String> m_fileTable;
         private readonly String[] s_contextNames = new[]
         {
             PipelineTemplateConstants.GitHub,

@@ -115,13 +115,12 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             Object value,
             JsonSerializer serializer)
         {
-            base.WriteJson(writer, value, serializer);
             if (value is TemplateToken token)
             {
                 switch (token.Type)
                 {
                     case TokenType.Null:
-                        if (token.Line == null && token.Column == null)
+                        if (token.FileId == null && token.Line == null && token.Column == null)
                         {
                             writer.WriteNull();
                         }
@@ -130,12 +129,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                             writer.WriteStartObject();
                             writer.WritePropertyName("type");
                             writer.WriteValue(token.Type);
+                            if (token.FileId != null)
+                            {
+                                writer.WritePropertyName("file");
+                                writer.WriteValue(token.FileId);
+                            }
                             if (token.Line != null)
                             {
                                 writer.WritePropertyName("line");
                                 writer.WriteValue(token.Line);
                             }
-                            if (token.Line != null)
+                            if (token.Column != null)
                             {
                                 writer.WritePropertyName("col");
                                 writer.WriteValue(token.Column);
@@ -146,7 +150,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
                     case TokenType.Boolean:
                         var booleanToken = token as BooleanToken;
-                        if (token.Line == null && token.Column == null)
+                        if (token.FileId == null && token.Line == null && token.Column == null)
                         {
                             writer.WriteValue(booleanToken.Value);
                         }
@@ -155,12 +159,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                             writer.WriteStartObject();
                             writer.WritePropertyName("type");
                             writer.WriteValue(token.Type);
+                            if (token.FileId != null)
+                            {
+                                writer.WritePropertyName("file");
+                                writer.WriteValue(token.FileId);
+                            }
                             if (token.Line != null)
                             {
                                 writer.WritePropertyName("line");
                                 writer.WriteValue(token.Line);
                             }
-                            if (token.Line != null)
+                            if (token.Column != null)
                             {
                                 writer.WritePropertyName("col");
                                 writer.WriteValue(token.Column);
@@ -173,7 +182,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
                     case TokenType.Number:
                         var numberToken = token as NumberToken;
-                        if (token.Line == null && token.Column == null)
+                        if (token.FileId == null && token.Line == null && token.Column == null)
                         {
                             writer.WriteValue(numberToken.Value);
                         }
@@ -182,12 +191,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                             writer.WriteStartObject();
                             writer.WritePropertyName("type");
                             writer.WriteValue(token.Type);
+                            if (token.FileId != null)
+                            {
+                                writer.WritePropertyName("file");
+                                writer.WriteValue(token.FileId);
+                            }
                             if (token.Line != null)
                             {
                                 writer.WritePropertyName("line");
                                 writer.WriteValue(token.Line);
                             }
-                            if (token.Line != null)
+                            if (token.Column != null)
                             {
                                 writer.WritePropertyName("col");
                                 writer.WriteValue(token.Column);
@@ -200,7 +214,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 
                     case TokenType.String:
                         var stringToken = token as StringToken;
-                        if (token.Line == null && token.Column == null)
+                        if (token.FileId == null && token.Line == null && token.Column == null)
                         {
                             writer.WriteValue(stringToken.Value);
                         }
@@ -209,12 +223,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                             writer.WriteStartObject();
                             writer.WritePropertyName("type");
                             writer.WriteValue(token.Type);
+                            if (token.FileId != null)
+                            {
+                                writer.WritePropertyName("file");
+                                writer.WriteValue(token.FileId);
+                            }
                             if (token.Line != null)
                             {
                                 writer.WritePropertyName("line");
                                 writer.WriteValue(token.Line);
                             }
-                            if (token.Line != null)
+                            if (token.Column != null)
                             {
                                 writer.WritePropertyName("col");
                                 writer.WriteValue(token.Column);
@@ -230,12 +249,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         writer.WriteStartObject();
                         writer.WritePropertyName("type");
                         writer.WriteValue(token.Type);
+                        if (token.FileId != null)
+                        {
+                            writer.WritePropertyName("file");
+                            writer.WriteValue(token.FileId);
+                        }
                         if (token.Line != null)
                         {
                             writer.WritePropertyName("line");
                             writer.WriteValue(token.Line);
                         }
-                        if (token.Line != null)
+                        if (token.Column != null)
                         {
                             writer.WritePropertyName("col");
                             writer.WriteValue(token.Column);
@@ -253,12 +277,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         writer.WriteStartObject();
                         writer.WritePropertyName("type");
                         writer.WriteValue(token.Type);
+                        if (token.FileId != null)
+                        {
+                            writer.WritePropertyName("file");
+                            writer.WriteValue(token.FileId);
+                        }
                         if (token.Line != null)
                         {
                             writer.WritePropertyName("line");
                             writer.WriteValue(token.Line);
                         }
-                        if (token.Line != null)
+                        if (token.Column != null)
                         {
                             writer.WritePropertyName("col");
                             writer.WriteValue(token.Column);
@@ -273,12 +302,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         writer.WriteStartObject();
                         writer.WritePropertyName("type");
                         writer.WriteValue(token.Type);
+                        if (token.FileId != null)
+                        {
+                            writer.WritePropertyName("file");
+                            writer.WriteValue(token.FileId);
+                        }
                         if (token.Line != null)
                         {
                             writer.WritePropertyName("line");
                             writer.WriteValue(token.Line);
                         }
-                        if (token.Line != null)
+                        if (token.Column != null)
                         {
                             writer.WritePropertyName("col");
                             writer.WriteValue(token.Column);
@@ -301,12 +335,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
                         writer.WriteStartObject();
                         writer.WritePropertyName("type");
                         writer.WriteValue(token.Type);
+                        if (token.FileId != null)
+                        {
+                            writer.WritePropertyName("file");
+                            writer.WriteValue(token.FileId);
+                        }
                         if (token.Line != null)
                         {
                             writer.WritePropertyName("line");
                             writer.WriteValue(token.Line);
                         }
-                        if (token.Line != null)
+                        if (token.Column != null)
                         {
                             writer.WritePropertyName("col");
                             writer.WriteValue(token.Column);
