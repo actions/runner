@@ -31,13 +31,13 @@ When a workflow is run, its labels are evaluated, it is matched to a runner and 
 The runner is listening for jobs via the message queue HTTP long poll.  
 The message is encrypted with the runner's public key, stored during runner configuration.  
 
-A workflow is queued as a result of a triggered [event](https://help.github.com/en/actions/reference/events-that-trigger-workflows). Workflows can be scheduled to [run at specific UTC times](https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule) using POSIX cron syntax.
-A [JWT token](http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html) is generated, granting limited access to the project or collection level build service account (see options tab of build definition).  
+A workflow is queued as a result of a triggered [event](https://help.github.com/en/actions/reference/events-that-trigger-workflows). Workflows can be scheduled to [run at specific UTC times](https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule) using POSIX `cron` syntax.
+A [JWT token](http://self-issued.info/docs/draft-ietf-oauth-json-web-token.html) is generated, granting limited access to the host in Actions Service associated with the github.com repository/organization.
 The lifetime of the JWT token is the lifetime of the run or at most the [job timeout (default: 6 hours)](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes), plus 10 additional minutes.
 
 ## Accessing GitHub resources
 
-The job message sent to the runner contains the token to talk back to GitHub.
+The job message sent to the runner contains the token to talk back to the Actions Service.
 The runner listener parent process will spawn a runner worker process for that job and send it the job message over IPC.
 The token is never persisted.
 
@@ -45,8 +45,8 @@ Each action is run as a unique subprocess.
 The encrypted access token will be provided as an environment variable in each action subprocess.  
 The token is registered with the runner as a secret and scrubbed from the logs as they are written.
 
-Authentication in a workflow run can also be accomplished by using the [GITHUB_TOKEN](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token#about-the-github_token-secret)) secret. This token expires after 60 minutes.
+Authentication in a workflow run to github.com can be accomplished by using the [GITHUB_TOKEN](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token#about-the-github_token-secret)) secret. This token expires after 60 minutes. Please note that this token is different from the JWT token that the runner uses to talk to the Actions Service.
 
 ## Hosted runner authentication
 
-Hosted runner authentication differs from self-hosted authentication in that runners do not undergo a registration process, but instead, they get a 'limited scope token' at runtime to talk back to the service. This is an implementation detail that workflow authors do not have to worry about when authoring/running workflows.
+Hosted runner authentication differs from self-hosted authentication in that runners do not undergo a registration process, but instead, they get a 'limited scope token' at runtime to talk back to the Actions Service. The scope is limited for a given workflow job execution, and the token is revoked as soon as the job is finished. This is an implementation detail that workflow authors do not have to worry about when authoring/running workflows.
