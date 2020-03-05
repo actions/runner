@@ -198,7 +198,7 @@ namespace GitHub.Runner.Common.Tests
 
                 case WellKnownDirectory.Tools:
                     path = Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE");
-                    
+
                     if (string.IsNullOrEmpty(path))
                     {
                         path = Path.Combine(

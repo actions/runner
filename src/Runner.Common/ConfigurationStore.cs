@@ -78,8 +78,10 @@ namespace GitHub.Runner.Common
         bool IsServiceConfigured();
         bool HasCredentials();
         CredentialData GetCredentials();
+        CredentialData GetMigratedCredentials();
         RunnerSettings GetSettings();
         void SaveCredential(CredentialData credential);
+        void SaveMigratedCredential(CredentialData credential);
         void SaveSettings(RunnerSettings settings);
         void DeleteCredential();
         void DeleteSettings();
@@ -90,9 +92,11 @@ namespace GitHub.Runner.Common
         private string _binPath;
         private string _configFilePath;
         private string _credFilePath;
+        private string _migratedCredFilePath;
         private string _serviceConfigFilePath;
 
         private CredentialData _creds;
+        private CredentialData _migratedCreds;
         private RunnerSettings _settings;
 
         public override void Initialize(IHostContext hostContext)
@@ -114,6 +118,9 @@ namespace GitHub.Runner.Common
             _credFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Credentials);
             Trace.Info("CredFilePath: {0}", _credFilePath);
 
+            _migratedCredFilePath = hostContext.GetConfigFile(WellKnownConfigFile.MigratedCredentials);
+            Trace.Info("MigratedCredFilePath: {0}", _migratedCredFilePath);
+
             _serviceConfigFilePath = hostContext.GetConfigFile(WellKnownConfigFile.Service);
             Trace.Info("ServiceConfigFilePath: {0}", _serviceConfigFilePath);
         }
@@ -123,7 +130,7 @@ namespace GitHub.Runner.Common
         public bool HasCredentials()
         {
             Trace.Info("HasCredentials()");
-            bool credsStored = (new FileInfo(_credFilePath)).Exists;
+            bool credsStored = (new FileInfo(_credFilePath)).Exists || (new FileInfo(_migratedCredFilePath)).Exists;
             Trace.Info("stored {0}", credsStored);
             return credsStored;
         }
@@ -152,6 +159,16 @@ namespace GitHub.Runner.Common
             }
 
             return _creds;
+        }
+
+        public CredentialData GetMigratedCredentials()
+        {
+            if (_migratedCreds == null && File.Exists(_migratedCredFilePath))
+            {
+                _migratedCreds = IOUtil.LoadObject<CredentialData>(_migratedCredFilePath);
+            }
+
+            return _migratedCreds;
         }
 
         public RunnerSettings GetSettings()
@@ -188,6 +205,21 @@ namespace GitHub.Runner.Common
             File.SetAttributes(_credFilePath, File.GetAttributes(_credFilePath) | FileAttributes.Hidden);
         }
 
+        public void SaveMigratedCredential(CredentialData credential)
+        {
+            Trace.Info("Saving {0} migrated credential @ {1}", credential.Scheme, _migratedCredFilePath);
+            if (File.Exists(_migratedCredFilePath))
+            {
+                // Delete existing credential file first, since the file is hidden and not able to overwrite.
+                Trace.Info("Delete exist runner migrated credential file.");
+                IOUtil.DeleteFile(_migratedCredFilePath);
+            }
+
+            IOUtil.SaveObject(credential, _migratedCredFilePath);
+            Trace.Info("Migrated Credentials Saved.");
+            File.SetAttributes(_migratedCredFilePath, File.GetAttributes(_migratedCredFilePath) | FileAttributes.Hidden);
+        }
+
         public void SaveSettings(RunnerSettings settings)
         {
             Trace.Info("Saving runner settings.");
@@ -206,6 +238,7 @@ namespace GitHub.Runner.Common
         public void DeleteCredential()
         {
             IOUtil.Delete(_credFilePath, default(CancellationToken));
+            IOUtil.Delete(_migratedCredFilePath, default(CancellationToken));
         }
 
         public void DeleteSettings()

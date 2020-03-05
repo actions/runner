@@ -17,6 +17,7 @@ namespace GitHub.Runner.Listener
     [ServiceLocator(Default = typeof(SelfUpdater))]
     public interface ISelfUpdater : IRunnerService
     {
+        bool Busy { get; }
         Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token);
     }
 
@@ -30,6 +31,8 @@ namespace GitHub.Runner.Listener
         private IRunnerServer _runnerServer;
         private int _poolId;
         private int _agentId;
+
+        public bool Busy { get; private set; }
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -45,52 +48,60 @@ namespace GitHub.Runner.Listener
 
         public async Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
         {
-            if (!await UpdateNeeded(updateMessage.TargetVersion, token))
+            Busy = true;
+            try
             {
-                Trace.Info($"Can't find available update package.");
-                return false;
-            }
+                if (!await UpdateNeeded(updateMessage.TargetVersion, token))
+                {
+                    Trace.Info($"Can't find available update package.");
+                    return false;
+                }
 
-            Trace.Info($"An update is available.");
+                Trace.Info($"An update is available.");
 
-            // Print console line that warn user not shutdown runner.
-            await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
-            await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
+                // Print console line that warn user not shutdown runner.
+                await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
+                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
 
-            await DownloadLatestRunner(token);
-            Trace.Info($"Download latest runner and unzip into runner root.");
+                await DownloadLatestRunner(token);
+                Trace.Info($"Download latest runner and unzip into runner root.");
 
-            // wait till all running job finish
-            await UpdateRunnerUpdateStateAsync("Waiting for current job finish running.");
+                // wait till all running job finish
+                await UpdateRunnerUpdateStateAsync("Waiting for current job finish running.");
 
-            await jobDispatcher.WaitAsync(token);
-            Trace.Info($"All running job has exited.");
+                await jobDispatcher.WaitAsync(token);
+                Trace.Info($"All running job has exited.");
 
-            // delete runner backup
-            DeletePreviousVersionRunnerBackup(token);
-            Trace.Info($"Delete old version runner backup.");
+                // delete runner backup
+                DeletePreviousVersionRunnerBackup(token);
+                Trace.Info($"Delete old version runner backup.");
 
-            // generate update script from template
-            await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
+                // generate update script from template
+                await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
 
-            string updateScript = GenerateUpdateScript(restartInteractiveRunner);
-            Trace.Info($"Generate update script into: {updateScript}");
+                string updateScript = GenerateUpdateScript(restartInteractiveRunner);
+                Trace.Info($"Generate update script into: {updateScript}");
 
-            // kick off update script
-            Process invokeScript = new Process();
+                // kick off update script
+                Process invokeScript = new Process();
 #if OS_WINDOWS
             invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
             invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
 #elif (OS_OSX || OS_LINUX)
-            invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
-            invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
+                invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
+                invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
 #endif
-            invokeScript.Start();
-            Trace.Info($"Update script start running");
+                invokeScript.Start();
+                Trace.Info($"Update script start running");
 
-            await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should back online within 10 seconds.");
+                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should back online within 10 seconds.");
 
-            return true;
+                return true;
+            }
+            finally
+            {
+                Busy = false;
+            }
         }
 
         private async Task<bool> UpdateNeeded(string targetVersion, CancellationToken token)

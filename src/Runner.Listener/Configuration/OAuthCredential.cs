@@ -1,6 +1,5 @@
 ﻿using System;
 using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
@@ -29,7 +28,7 @@ namespace GitHub.Runner.Listener.Configuration
             var authorizationUrl = this.CredentialData.Data.GetValueOrDefault("authorizationUrl", null);
 
             // For back compat with .credential file that doesn't has 'oauthEndpointUrl' section
-            var oathEndpointUrl = this.CredentialData.Data.GetValueOrDefault("oauthEndpointUrl", authorizationUrl);
+            var oauthEndpointUrl = this.CredentialData.Data.GetValueOrDefault("oauthEndpointUrl", authorizationUrl);
 
             ArgUtil.NotNullOrEmpty(clientId, nameof(clientId));
             ArgUtil.NotNullOrEmpty(authorizationUrl, nameof(authorizationUrl));
@@ -39,7 +38,7 @@ namespace GitHub.Runner.Listener.Configuration
             var keyManager = context.GetService<IRSAKeyManager>();
             var signingCredentials = VssSigningCredentials.Create(() => keyManager.GetKey());
             var clientCredential = new VssOAuthJwtBearerClientCredential(clientId, authorizationUrl, signingCredentials);
-            var agentCredential = new VssOAuthCredential(new Uri(oathEndpointUrl, UriKind.Absolute), VssOAuthGrant.ClientCredentials, clientCredential);
+            var agentCredential = new VssOAuthCredential(new Uri(oauthEndpointUrl, UriKind.Absolute), VssOAuthGrant.ClientCredentials, clientCredential);
 
             // Construct a credentials cache with a single OAuth credential for communication. The windows credential
             // is explicitly set to null to ensure we never do that negotiation.

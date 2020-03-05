@@ -260,5 +260,8 @@ namespace GitHub.DistributedTask.WebApi
         public static readonly Guid CheckpointResourcesLocationId = new Guid(CheckpointResourcesLocationIdString);
         public const String CheckpointResourcesResource = "references";
 
+        public static readonly Guid RunnerAuthUrl = new Guid("{A82A119C-1E46-44B6-8D75-C82A79CF975B}");
+        public const string RunnerAuthUrlResource = "authurl";
+
     }
 }
