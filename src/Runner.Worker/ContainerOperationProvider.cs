@@ -49,7 +49,7 @@ namespace GitHub.Runner.Worker
                                                 data: data);
             
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
-            executionContext.RegisterPostJobStep(nameof(StopContainersAsync), postJobStep);
+            executionContext.RegisterPostJobStep(postJobStep);
 
             // Check whether we are inside a container.
             // Our container feature requires to map working directory from host to the container.
