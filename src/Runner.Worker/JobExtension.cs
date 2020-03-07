@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
@@ -14,6 +15,16 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
+    [DataContract]
+    public class SetupInfo
+    {
+        [DataMember]
+        public string Group { get; set; }
+
+        [DataMember]
+        public string Detail { get; set; }
+    }
+
     [ServiceLocator(Default = typeof(JobExtension))]
 
     public interface IJobExtension : IRunnerService
@@ -49,6 +60,44 @@ namespace GitHub.Runner.Worker
                     context.Start();
                     context.Debug($"Starting: Set up job");
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
+
+                    var setupInfoFile = HostContext.GetConfigFile(WellKnownConfigFile.SetupInfo);
+                    if (File.Exists(setupInfoFile))
+                    {
+                        Trace.Info($"Load machine setup info from {setupInfoFile}");
+                        try
+                        {
+                            var setupInfo = IOUtil.LoadObject<List<SetupInfo>>(setupInfoFile);
+                            if (setupInfo?.Count > 0)
+                            {
+                                foreach (var info in setupInfo)
+                                {
+                                    if (!string.IsNullOrEmpty(info?.Detail))
+                                    {
+                                        var groupName = info.Group;
+                                        if (string.IsNullOrEmpty(groupName))
+                                        {
+                                            groupName = "Machine Setup Info";
+                                        }
+
+                                        context.Output($"##[group]{groupName}");
+                                        var multiLines = info.Detail.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+                                        foreach (var line in multiLines)
+                                        {
+                                            context.Output(line);
+                                        }
+                                        context.Output("##[endgroup]");
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Output($"Fail to load and print machine setup info: {ex.Message}");
+                            Trace.Error(ex);
+                        }
+                    }
+
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
                     context.Debug($"Primary repository: {repoFullName}");
