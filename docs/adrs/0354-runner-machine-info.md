@@ -11,7 +11,7 @@
 
 ## Decision
 
-The runner will look for a file `.extra_setup_info` under the runner's root directory, The file can be a JSON with a simple schema.
+The runner will look for a file `.setup_info` under the runner's root directory, The file can be a JSON with a simple schema.
 ```json
 [
   {
