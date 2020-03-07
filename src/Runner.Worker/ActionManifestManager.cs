@@ -280,6 +280,9 @@ namespace GitHub.Runner.Worker
             var envToken = default(MappingToken);
             var mainToken = default(StringToken);
             var pluginToken = default(StringToken);
+            var preToken = default(StringToken);
+            var preEntrypointToken = default(StringToken);
+            var preIfToken = default(StringToken);
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
@@ -318,6 +321,15 @@ namespace GitHub.Runner.Worker
                     case "post-if":
                         postIfToken = run.Value.AssertString("post-if");
                         break;
+                    case "pre":
+                        preToken = run.Value.AssertString("pre");
+                        break;
+                    case "pre-entrypoint":
+                        preEntrypointToken = run.Value.AssertString("pre-entrypoint");
+                        break;
+                    case "pre-if":
+                        preIfToken = run.Value.AssertString("pre-if");
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -340,6 +352,8 @@ namespace GitHub.Runner.Worker
                             Arguments = argsToken,
                             EntryPoint = entrypointToken?.Value,
                             Environment = envToken,
+                            Init = preEntrypointToken?.Value,
+                            InitCondition = preIfToken?.Value ?? "always()",
                             Cleanup = postEntrypointToken?.Value,
                             CleanupCondition = postIfToken?.Value ?? "always()"
                         };
@@ -356,6 +370,8 @@ namespace GitHub.Runner.Worker
                         return new NodeJSActionExecutionData()
                         {
                             Script = mainToken.Value,
+                            Init = preToken?.Value,
+                            InitCondition = preIfToken?.Value ?? "always()",
                             Cleanup = postToken?.Value,
                             CleanupCondition = postIfToken?.Value ?? "always()"
                         };

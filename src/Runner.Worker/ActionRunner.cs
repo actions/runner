@@ -18,6 +18,7 @@ namespace GitHub.Runner.Worker
 {
     public enum ActionRunStage
     {
+        Pre,
         Main,
         Post,
     }

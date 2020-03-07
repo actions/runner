@@ -21,11 +21,24 @@ using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplat
 
 namespace GitHub.Runner.Worker
 {
+    public class PrepareResult
+    {
+        public PrepareResult(List<JobExtensionRunner> containerSetupSteps, Dictionary<Guid, IActionRunner> preStepTracker)
+        {
+            this.ContainerSetupSteps = containerSetupSteps;
+            this.PreStepTracker = preStepTracker;
+        }
+
+        public List<JobExtensionRunner> ContainerSetupSteps { get; set; }
+
+        public Dictionary<Guid, IActionRunner> PreStepTracker { get; set; }
+    }
+
     [ServiceLocator(Default = typeof(ActionManager))]
     public interface IActionManager : IRunnerService
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
-        Task<List<JobExtensionRunner>> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
+        Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
@@ -39,7 +52,7 @@ namespace GitHub.Runner.Worker
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
 
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
-        public async Task<List<JobExtensionRunner>> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
+        public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(steps, nameof(steps));
@@ -49,6 +62,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, List<Guid>> imagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, ActionContainer> imagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase);
             List<JobExtensionRunner> containerSetupSteps = new List<JobExtensionRunner>();
+            Dictionary<Guid, IActionRunner> preStepTracker = new Dictionary<Guid, IActionRunner>();
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
 
             // TODO: Depreciate the PREVIEW_ACTION_TOKEN
@@ -59,7 +73,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Clear the cache (local runner)
-            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            // IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
 
             foreach (var action in actions)
             {
@@ -111,6 +125,20 @@ namespace GitHub.Runner.Worker
                             imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
                         }
                     }
+
+                    if (!(action.Reference is Pipelines.RepositoryPathReference repoAction) || repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
+                    {
+                        var definition = LoadAction(executionContext, action);
+                        if (definition.Data.Execution.HasInit)
+                        {
+                            var actionRunner = HostContext.CreateService<IActionRunner>();
+                            actionRunner.Action = action;
+                            actionRunner.Stage = ActionRunStage.Pre;
+                            actionRunner.Condition = definition.Data.Execution.InitCondition;
+
+                            preStepTracker[action.Id] = actionRunner;
+                        }
+                    }
                 }
             }
 
@@ -147,7 +175,7 @@ namespace GitHub.Runner.Worker
             }
 #endif
 
-            return containerSetupSteps;
+            return new PrepareResult(containerSetupSteps, preStepTracker);
         }
 
         public Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action)
@@ -772,6 +800,8 @@ namespace GitHub.Runner.Worker
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Container;
 
+        public override bool HasInit => !string.IsNullOrEmpty(Init);
+
         public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
 
         public string Image { get; set; }
@@ -782,6 +812,8 @@ namespace GitHub.Runner.Worker
 
         public MappingToken Environment { get; set; }
 
+        public string Init { get; set; }
+
         public string Cleanup { get; set; }
     }
 
@@ -789,9 +821,13 @@ namespace GitHub.Runner.Worker
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.NodeJS;
 
+        public override bool HasInit => !string.IsNullOrEmpty(Init);
+
         public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
 
         public string Script { get; set; }
+
+        public string Init { get; set; }
 
         public string Cleanup { get; set; }
     }
@@ -799,6 +835,8 @@ namespace GitHub.Runner.Worker
     public sealed class PluginActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Plugin;
+
+        public override bool HasInit => false;
 
         public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
 
@@ -810,22 +848,30 @@ namespace GitHub.Runner.Worker
     public sealed class ScriptActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Script;
-
+        public override bool HasInit => false;
         public override bool HasCleanup => false;
     }
 
     public abstract class ActionExecutionData
     {
+        private string _initCondition = $"{Constants.Expressions.Always}()";
         private string _cleanupCondition = $"{Constants.Expressions.Always}()";
 
         public abstract ActionExecutionType ExecutionType { get; }
 
+        public abstract bool HasInit { get; }
         public abstract bool HasCleanup { get; }
 
         public string CleanupCondition
         {
             get { return _cleanupCondition; }
             set { _cleanupCondition = value; }
+        }
+
+        public string InitCondition
+        {
+            get { return _initCondition; }
+            set { _initCondition = value; }
         }
     }
 

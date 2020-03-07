@@ -60,6 +60,10 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 target = Data.Script;
             }
+            else if (stage == ActionRunStage.Pre)
+            {
+                target = Data.Init;
+            }
             else if (stage == ActionRunStage.Post)
             {
                 target = Data.Cleanup;
