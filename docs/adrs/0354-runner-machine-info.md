@@ -26,7 +26,7 @@ The runner will look for a file `.extra_setup_info` under the runner's root dire
 ```
 The runner will use `##[group]` and `##[endgroup]` to fold all detail info into an expandable group.
 
-Both [virtual-environments](https://github.com/actions/virtual-environments) and self-hosted runner can leverage this mechanism to add extra logging info to `Set up job` step's log.
+Both [virtual-environments](https://github.com/actions/virtual-environments) and self-hosted runners can use this mechanism to add extra logging info to the `Set up job` step's log.
 
 ## Consequences
 
