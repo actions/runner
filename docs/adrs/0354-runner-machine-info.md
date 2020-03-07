@@ -6,7 +6,7 @@
 
 ## Context
 
-- Provide an mechanism in the runner to include extra information in `Set up job` step's log.
+- Provide a mechanism in the runner to include extra information in `Set up job` step's log.
   Ex: Include OS/Software info from Hosted image.
 
 ## Decision
