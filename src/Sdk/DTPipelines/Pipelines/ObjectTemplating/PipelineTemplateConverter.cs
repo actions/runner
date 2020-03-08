@@ -16,6 +16,20 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
     internal static class PipelineTemplateConverter
     {
+        internal static Boolean ConvertToIfResult(
+            TemplateContext context,
+            TemplateToken ifResult)
+        {
+            var expression = ifResult.Traverse().FirstOrDefault(x => x is ExpressionToken);
+            if (expression != null)
+            {
+                throw new ArgumentException($"Unexpected type '{expression.GetType().Name}' encountered while reading 'if'.");
+            }
+
+            var evaluationResult = EvaluationResult.CreateIntermediateResult(null, ifResult);
+            return evaluationResult.IsTruthy;
+        }
+
         internal static Boolean? ConvertToStepContinueOnError(
             TemplateContext context,
             TemplateToken token,

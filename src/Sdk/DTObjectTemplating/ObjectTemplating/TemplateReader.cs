@@ -780,15 +780,8 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Lookup the definition
                 Definition = m_schema.GetDefinition(name);
 
-                // Determine whether to expand
-                if (Definition.Context.Length > 0)
-                {
-                    AllowedContext = Definition.Context;
-                }
-                else
-                {
-                    AllowedContext = new String[0];
-                }
+                // Record allowed context
+                AllowedContext = Definition.ReaderContext;
             }
 
             public DefinitionInfo(
@@ -800,10 +793,10 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 // Lookup the definition
                 Definition = m_schema.GetDefinition(name);
 
-                // Determine whether to expand
-                if (Definition.Context.Length > 0)
+                // Record allowed context
+                if (Definition.ReaderContext.Length > 0)
                 {
-                    AllowedContext = new HashSet<String>(parent.AllowedContext.Concat(Definition.Context)).ToArray();
+                    AllowedContext = new HashSet<String>(parent.AllowedContext.Concat(Definition.ReaderContext), StringComparer.OrdinalIgnoreCase).ToArray();
                 }
                 else
                 {

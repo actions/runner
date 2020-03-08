@@ -1,4 +1,5 @@
-﻿using GitHub.DistributedTask.ObjectTemplating.Tokens;
+﻿using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
@@ -322,6 +323,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.ExpressionValues).Returns(_context);
+            _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Setup(x => x.IntraActionState).Returns(new Dictionary<string, string>());
             _ec.Setup(x => x.EnvironmentVariables).Returns(new Dictionary<string, string>());
             _ec.Setup(x => x.SetGitHubContext(It.IsAny<string>(), It.IsAny<string>()));

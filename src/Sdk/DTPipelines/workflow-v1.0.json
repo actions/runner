@@ -38,8 +38,8 @@
     "steps-scope-input-value": {
       "context": [
         "github",
-        "strategy",
         "needs",
+        "strategy",
         "matrix",
         "secrets",
         "steps",
@@ -66,9 +66,9 @@
     "steps-scope-output-value": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "inputs",
@@ -91,9 +91,9 @@
       "description": "Default input values for a steps template",
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "one-of": [
         "string",
@@ -114,9 +114,9 @@
       "description": "Output values for a steps template",
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
@@ -204,6 +204,25 @@
       "string": {}
     },
 
+    "job-if-result": {
+      "context": [
+        "github",
+        "needs",
+        "always(0,0)",
+        "failure(0,MAX)",
+        "cancelled(0,0)",
+        "success(0,MAX)"
+      ],
+      "one-of": [
+        "null",
+        "boolean",
+        "number",
+        "string",
+        "sequence",
+        "mapping"
+      ]
+    },
+
     "strategy": {
       "context": [
         "github",
@@ -272,9 +291,9 @@
     "runs-on": {
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "one-of": [
         "non-empty-string",
@@ -297,10 +316,10 @@
     "job-env": {
       "context": [
         "github",
-        "secrets",
+        "needs",
         "strategy",
         "matrix",
-        "needs"
+        "secrets"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -444,9 +463,9 @@
     "step-if": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "steps",
         "job",
         "runner",
@@ -454,7 +473,8 @@
         "always(0,0)",
         "failure(0,0)",
         "cancelled(0,0)",
-        "success(0,0)"
+        "success(0,0)",
+        "hashFiles(1,255)"
       ],
       "string": {}
     },
@@ -462,9 +482,9 @@
     "step-if-in-template": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "steps",
         "inputs",
         "job",
@@ -473,9 +493,61 @@
         "always(0,0)",
         "failure(0,0)",
         "cancelled(0,0)",
-        "success(0,0)"
+        "success(0,0)",
+        "hashFiles(1,255)"
       ],
       "string": {}
+    },
+
+    "step-if-result": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "always(0,0)",
+        "failure(0,0)",
+        "cancelled(0,0)",
+        "success(0,0)",
+        "hashFiles(1,255)"
+      ],
+      "one-of": [
+        "null",
+        "boolean",
+        "number",
+        "string",
+        "sequence",
+        "mapping"
+      ]
+    },
+
+    "step-if-result-in-template": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env",
+        "always(0,0)",
+        "failure(0,0)",
+        "cancelled(0,0)",
+        "success(0,0)",
+        "hashFiles(1,255)"
+      ],
+      "one-of": [
+        "null",
+        "boolean",
+        "number",
+        "string",
+        "sequence",
+        "mapping"
+      ]
     },
 
     "steps-template-reference": {
@@ -501,9 +573,9 @@
     "steps-template-reference-inputs": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
@@ -519,9 +591,9 @@
     "steps-template-reference-inputs-in-template": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "inputs",
@@ -538,14 +610,15 @@
     "step-env": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -556,15 +629,16 @@
     "step-env-in-template": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "inputs",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -575,14 +649,35 @@
     "step-with": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "step-with-in-template": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env",
+        "hashFiles(1,255)"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -593,9 +688,9 @@
     "container": {
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "one-of": [
         "string",
@@ -618,9 +713,9 @@
     "services": {
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "mapping": {
         "loose-key-type": "non-empty-string",
@@ -631,9 +726,9 @@
     "services-container": {
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "one-of": [
         "non-empty-string",
@@ -648,25 +743,6 @@
       }
     },
 
-    "step-with-in-template": {
-        "context": [
-          "github",
-          "strategy",
-          "matrix",
-          "needs",
-          "secrets",
-          "steps",
-          "inputs",
-          "job",
-          "runner",
-          "env"
-        ],
-        "mapping": {
-          "loose-key-type": "non-empty-string",
-          "loose-value-type": "string"
-        }
-      },
-  
     "non-empty-string": {
       "string": {
         "require-non-empty": true
@@ -682,9 +758,9 @@
     "boolean-strategy-context": {
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "boolean": {}
     },
@@ -692,9 +768,9 @@
     "number-strategy-context": {
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "number": {}
     },
@@ -702,9 +778,9 @@
     "string-strategy-context": {
       "context": [
         "github",
+        "needs",
         "strategy",
-        "matrix",
-        "needs"
+        "matrix"
       ],
       "string": {}
     },
@@ -712,14 +788,15 @@
     "boolean-steps-context": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "boolean": {}
     },
@@ -727,15 +804,16 @@
     "boolean-steps-context-in-template": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "inputs",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "boolean": {}
     },
@@ -743,14 +821,15 @@
     "number-steps-context": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "number": {}
     },
@@ -758,15 +837,16 @@
     "number-steps-context-in-template": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "inputs",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "number": {}
     },
@@ -774,9 +854,9 @@
     "string-runner-context": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
@@ -789,14 +869,15 @@
     "string-steps-context": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "string": {}
     },
@@ -804,15 +885,16 @@
     "string-steps-context-in-template": {
       "context": [
         "github",
+        "needs",
         "strategy",
         "matrix",
-        "needs",
         "secrets",
         "steps",
         "inputs",
         "job",
         "runner",
-        "env"
+        "env",
+        "hashFiles(1,255)"
       ],
       "string": {}
     }

@@ -1,7 +1,9 @@
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Expressions;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -533,26 +535,26 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionManifest = new ActionManifestManager();
                 actionManifest.Initialize(_hc);
 
-                var githubContext = new DictionaryContextData();
-                githubContext.Add("ref", new StringContextData("refs/heads/master"));
-
-                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-                evaluateContext["github"] = githubContext;
-                evaluateContext["strategy"] = new DictionaryContextData();
-                evaluateContext["matrix"] = new DictionaryContextData();
-                evaluateContext["steps"] = new DictionaryContextData();
-                evaluateContext["job"] = new DictionaryContextData();
-                evaluateContext["runner"] = new DictionaryContextData();
-                evaluateContext["env"] = new DictionaryContextData();
+                _ec.Object.ExpressionValues["github"] = new DictionaryContextData
+                {
+                    { "ref", new StringContextData("refs/heads/master") },
+                };
+                _ec.Object.ExpressionValues["strategy"] = new DictionaryContextData();
+                _ec.Object.ExpressionValues["matrix"] = new DictionaryContextData();
+                _ec.Object.ExpressionValues["steps"] = new DictionaryContextData();
+                _ec.Object.ExpressionValues["job"] = new DictionaryContextData();
+                _ec.Object.ExpressionValues["runner"] = new DictionaryContextData();
+                _ec.Object.ExpressionValues["env"] = new DictionaryContextData();
+                _ec.Object.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>("hashFiles", 1, 255));
 
                 //Act
-                var result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new StringToken(null, null, null, "defaultValue"), evaluateContext);
+                var result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new StringToken(null, null, null, "defaultValue"));
 
                 //Assert
                 Assert.Equal("defaultValue", result);
 
                 //Act
-                result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new BasicExpressionToken(null, null, null, "github.ref"), evaluateContext);
+                result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new BasicExpressionToken(null, null, null, "github.ref"));
 
                 //Assert
                 Assert.Equal("refs/heads/master", result);
@@ -575,6 +577,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.WriteDebug).Returns(true);
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             _ec.Setup(x => x.Variables).Returns(new Variables(_hc, new Dictionary<string, VariableValue>()));
+            _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
+            _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
         }

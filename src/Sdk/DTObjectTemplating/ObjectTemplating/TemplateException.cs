@@ -49,6 +49,14 @@ namespace GitHub.DistributedTask.ObjectTemplating
             m_errors = new List<TemplateValidationError>(errors ?? Enumerable.Empty<TemplateValidationError>());
         }
 
+        public TemplateValidationException(
+            String message,
+            IEnumerable<TemplateValidationError> errors)
+            : this(message)
+        {
+            m_errors = new List<TemplateValidationError>(errors ?? Enumerable.Empty<TemplateValidationError>());
+        }
+
         public TemplateValidationException(String message)
             : base(message)
         {

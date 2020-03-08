@@ -62,7 +62,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
             {
                 var nestedDefinition = schema.GetDefinition(nestedType);
 
-                if (nestedDefinition.Context.Length > 0)
+                if (nestedDefinition.ReaderContext.Length > 0)
                 {
                     throw new ArgumentException($"'{name}' is a one-of definition and references another definition that defines context. This is currently not supported.");
                 }

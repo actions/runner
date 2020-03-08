@@ -1,14 +1,15 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using GitHub.Runner.Worker.Container;
-using GitHub.Services.WebApi;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
@@ -16,12 +17,11 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
+using GitHub.Services.WebApi;
 using Newtonsoft.Json;
-using System.Text;
-using System.Collections;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.DistributedTask.Expressions2;
 
 namespace GitHub.Runner.Worker
 {
@@ -55,6 +55,7 @@ namespace GitHub.Runner.Worker
         IList<String> FileTable { get; }
         StepsContext StepsContext { get; }
         DictionaryContextData ExpressionValues { get; }
+        IList<IFunctionInfo> ExpressionFunctions { get; }
         List<string> PrependPath { get; }
         ContainerInfo Container { get; set; }
         List<ContainerInfo> ServiceContainers { get; }
@@ -148,6 +149,7 @@ namespace GitHub.Runner.Worker
         public IList<String> FileTable { get; private set; }
         public StepsContext StepsContext { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
+        public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
         public bool WriteDebug { get; private set; }
         public List<string> PrependPath { get; private set; }
         public ContainerInfo Container { get; set; }
@@ -279,6 +281,10 @@ namespace GitHub.Runner.Worker
             foreach (var pair in ExpressionValues)
             {
                 child.ExpressionValues[pair.Key] = pair.Value;
+            }
+            foreach (var item in ExpressionFunctions)
+            {
+                child.ExpressionFunctions.Add(item);
             }
             child._cancellationTokenSource = new CancellationTokenSource();
             child.WriteDebug = WriteDebug;
@@ -592,12 +598,6 @@ namespace GitHub.Runner.Worker
 
             // File table
             FileTable = new List<String>(message.FileTable ?? new string[0]);
-
-            // Expression functions
-            if (Variables.GetBoolean("System.HashFilesV2") == true)
-            {
-                ExpressionConstants.UpdateFunction<Handlers.HashFiles>("hashFiles", 1, byte.MaxValue);
-            }
 
             // Expression values
             if (message.ContextData?.Count > 0)
@@ -915,11 +915,19 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public static PipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context)
+        public static IEnumerable<KeyValuePair<string, object>> ToExpressionState(this IExecutionContext context)
         {
-            var templateTrace = context.ToTemplateTraceWriter();
-            var schema = new PipelineTemplateSchemaFactory().CreateSchema();
-            return new PipelineTemplateEvaluator(templateTrace, schema, context.FileTable);
+            return new[] { new KeyValuePair<string, object>(nameof(IExecutionContext), context) };
+        }
+
+        public static PipelineTemplateEvaluator ToPipelineTemplateEvaluator(this IExecutionContext context, ObjectTemplating.ITraceWriter traceWriter = null)
+        {
+            if (traceWriter == null)
+            {
+                traceWriter = context.ToTemplateTraceWriter();
+            }
+            var schema = PipelineTemplateSchemaFactory.GetSchema();
+            return new PipelineTemplateEvaluator(traceWriter, schema, context.FileTable);
         }
 
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)
@@ -934,6 +942,7 @@ namespace GitHub.Runner.Worker
 
         internal TemplateTraceWriter(IExecutionContext executionContext)
         {
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
             _executionContext = executionContext;
         }
 
