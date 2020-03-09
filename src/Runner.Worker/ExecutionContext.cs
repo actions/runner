@@ -736,7 +736,7 @@ namespace GitHub.Runner.Worker
                 var owners = config.Matchers.Select(x => $"'{x.Owner}'");
                 var joinedOwners = string.Join(", ", owners);
                 // todo: loc
-                this.Output($"Added matchers: {joinedOwners}. Problem matchers scan action output for known warning or error strings and report these inline.");
+                this.Debug($"Added matchers: {joinedOwners}. Problem matchers scan action output for known warning or error strings and report these inline.");
             }
         }
 
@@ -778,7 +778,7 @@ namespace GitHub.Runner.Worker
                 owners = removedMatchers.Select(x => $"'{x.Owner}'");
                 var joinedOwners = string.Join(", ", owners);
                 // todo: loc
-                this.Output($"Removed matchers: {joinedOwners}");
+                this.Debug($"Removed matchers: {joinedOwners}");
             }
         }
 
