@@ -1,0 +1,52 @@
+# Markup used to generate the runner auth diagrams: https://websequencediagrams.com
+
+title Runner Configuration (self-hosted only)
+
+note left of Runner: GitHub repo URL as input
+Runner->github.com: Retrieve Actions Service access using runner registration token
+github.com->Runner: Access token for Actions Service
+note left of Runner: Generate RSA key pair
+note left of Runner: Store encrypted RSA private key on disk
+Runner->Actions Service: Register runner using Actions Service access token
+note right of Runner: Runner name, RSA public key sent
+note right of Actions Service: Public key stored
+Actions Service->Token Service: Register runner as an app along with the RSA public key
+note right of Token Service: Public key stored
+Token Service->Actions Service: Client Id for the runner application
+Actions Service->Runner: Client Id and Token Endpoint URL
+note left of Runner: Store runner configuration info into .runner file
+note left of Runner: Store Token registration info into .credentials file
+
+title Runner Start and Running (self-hosted only)
+
+Runner.Listener->Runner.Listener: Start
+note left of Runner.Listener: Load config info from .runner
+note left of Runner.Listener: Load token registration from .credentials
+Runner.Listener->Token Service: Exchange OAuth token (happens every 50 mins)
+note right of Runner.Listener: Construct JWT token, use Client Id signed by RSA private key
+note left of Actions Service: Find corresponding RSA public key, use Client Id\nVerify JWT token's signature
+Token Service->Runner.Listener: OAuth token with limited permission and valid for 50 mins
+Runner.Listener->Actions Service: Connect to Actions Service with OAuth token
+Actions Service->Runner.Listener: Workflow job
+
+title Running workflow
+
+Runner.Listener->Service (Message Queue): Get message
+note right of Runner.Listener: Authenticate with exchanged OAuth token
+Event->Actions Service: Queue workflow
+Actions Service->Actions Service: Generate OAuth token per job
+Actions Service->Actions Service: Build job message with the OAuth token
+Actions Service->Actions Service: Encrypt job message with the target runner's public key
+Actions Service->Service (Message Queue): Send encrypted job message to runner
+Service (Message Queue)->Runner.Listener: Send job
+note right of Runner.Listener: Decrypt message with runner's private key
+Runner.Listener->Runner.Worker: Create worker process per job and run the job
+
+title Runner Configuration, Start and Running (hosted only)
+
+Machine Management Service->Runner.Listener: Construct .runner configuration file, store token in .credentials
+Runner.Listener->Runner.Listener: Start
+note left of Runner.Listener: Load config info from .runner
+note left of Runner.Listener: Load OAuth token from .credentials
+Runner.Listener->Actions Service: Connect to Actions Service with OAuth token in .credentials
+Actions Service->Runner.Listener: Workflow job
