@@ -231,7 +231,7 @@ namespace GitHub.Runner.Worker
             }
 
             Trace.Info("Raising job completed event.");
-            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result);
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs);
 
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();

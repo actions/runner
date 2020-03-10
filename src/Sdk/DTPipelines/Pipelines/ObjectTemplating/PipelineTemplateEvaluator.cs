@@ -231,6 +231,42 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        public Dictionary<String, String> EvaluateJobOutput(
+            TemplateToken token,
+            DictionaryContextData contextData)
+        {
+            var result = default(Dictionary<String, String>);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(contextData);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.JobOutputs, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+                    var mapping = token.AssertMapping("outputs");
+                    foreach (var pair in mapping)
+                    {
+                        // Literal key
+                        var key = pair.Key.AssertString("output key");
+
+                        // Literal value
+                        var value = pair.Value.AssertString("output value");
+                        result[key.Value] = value.Value;
+                    }
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
+
         public IList<KeyValuePair<String, JobContainer>> EvaluateJobServiceContainers(
             TemplateToken token,
             DictionaryContextData contextData)
@@ -364,6 +400,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             PipelineTemplateConstants.GitHub,
             PipelineTemplateConstants.Strategy,
             PipelineTemplateConstants.Matrix,
+            PipelineTemplateConstants.Needs,
             PipelineTemplateConstants.Secrets,
             PipelineTemplateConstants.Steps,
             PipelineTemplateConstants.Inputs,

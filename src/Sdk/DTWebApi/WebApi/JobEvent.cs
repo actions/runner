@@ -31,7 +31,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         protected JobEvent(
-            String name, 
+            String name,
             Guid jobId)
         {
             this.Name = name;
@@ -123,11 +123,12 @@ namespace GitHub.DistributedTask.WebApi
             Int64 requestId,
             Guid jobId,
             TaskResult result,
-            IDictionary<String, VariableValue> outputVariables)
+            Dictionary<String, VariableValue> outputs)
             : base(JobEventTypes.JobCompleted, jobId)
         {
             this.RequestId = requestId;
             this.Result = result;
+            this.Outputs = outputs;
         }
 
         [DataMember(EmitDefaultValue = false)]
@@ -143,6 +144,13 @@ namespace GitHub.DistributedTask.WebApi
             get;
             set;
         }
+
+        [DataMember(EmitDefaultValue = false)]
+        public IDictionary<String, VariableValue> Outputs
+        {
+            get;
+            set;
+        }
     }
 
     [DataContract]
@@ -153,9 +161,9 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         protected TaskEvent(
-            string name, 
-            Guid jobId, 
-            Guid taskId) 
+            string name,
+            Guid jobId,
+            Guid taskId)
             : base(name, jobId)
         {
             TaskId = taskId;
@@ -185,9 +193,9 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         public override Object ReadJson(
-            JsonReader reader, 
-            Type objectType, 
-            Object existingValue, 
+            JsonReader reader,
+            Type objectType,
+            Object existingValue,
             JsonSerializer serializer)
         {
             var eventObject = JObject.Load(reader);

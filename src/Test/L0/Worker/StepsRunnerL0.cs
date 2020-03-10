@@ -55,6 +55,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _ec.Setup(x => x.PostJobSteps).Returns(new Stack<IStep>());
 
+            var trace = hc.GetTrace();
+            _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
+            
             _stepsRunner = new StepsRunner();
             _stepsRunner.Initialize(hc);
             return hc;

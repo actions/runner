@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
@@ -241,6 +242,59 @@ namespace GitHub.Runner.Worker
                 {
                     context.Start();
                     context.Debug("Starting: Complete job");
+
+                    // Evaluate job outputs
+                    if (message.JobOutputs != null)
+                    {
+                        try
+                        {
+                            context.Output($"Evaluate and set job outputs");
+
+                            // Populate env context for each step
+                            Trace.Info("Initialize Env context for evaluating job outputs");
+#if OS_WINDOWS
+                            var envContext = new DictionaryContextData();
+#else
+                            var envContext = new CaseSensitiveDictionaryContextData();
+#endif
+                            context.ExpressionValues["env"] = envContext;
+                            foreach (var pair in context.EnvironmentVariables)
+                            {
+                                envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                            }
+
+                            Trace.Info("Initialize steps context for evaluating job outputs");
+                            context.ExpressionValues["steps"] = context.StepsContext.GetScope(context.ScopeName);
+
+                            var templateTrace = context.ToTemplateTraceWriter();
+                            var templateEvaluator = context.ToPipelineTemplateEvaluator();
+                            var outputs = templateEvaluator.EvaluateJobOutput(message.JobOutputs, context.ExpressionValues);
+                            foreach (var output in outputs)
+                            {
+                                if (string.IsNullOrEmpty(output.Value))
+                                {
+                                    context.Debug($"Skip output '{output.Key}' since it's empty");
+                                    continue;
+                                }
+
+                                if (!string.Equals(output.Value, HostContext.SecretMasker.MaskSecrets(output.Value)))
+                                {
+                                    context.Warning($"Skip output '{output.Key}' since it may contain secret.");
+                                    continue;
+                                }
+
+                                context.Output($"Set output '{output.Key}'");
+                                jobContext.JobOutputs[output.Key] = output.Value;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Result = TaskResult.Failed;
+                            context.Error($"Fail to evaluate job outputs");
+                            context.Error(ex);
+                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+                        }
+                    }
 
                     if (context.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
                     {

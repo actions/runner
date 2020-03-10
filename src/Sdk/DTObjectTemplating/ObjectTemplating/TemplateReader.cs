@@ -178,14 +178,15 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
 
             var keys = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
+            var hasExpressionKey = false;
 
             while (m_objectReader.AllowLiteral(out LiteralToken rawLiteral))
             {
                 var nextKeyScalar = ParseScalar(rawLiteral, definition.AllowedContext);
-
                 // Expression
                 if (nextKeyScalar is ExpressionToken)
                 {
+                    hasExpressionKey = true;
                     // Legal
                     if (definition.AllowedContext.Length > 0)
                     {
@@ -280,7 +281,19 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 String listToDeDuplicate = String.Join(", ", nonDuplicates);
                 m_context.Error(mapping, TemplateStrings.UnableToDetermineOneOf(listToDeDuplicate));
             }
-
+            else if (mappingDefinitions.Count == 1 && !hasExpressionKey)
+            {
+                foreach (var property in mappingDefinitions[0].Properties)
+                {
+                    if (property.Value.Required)
+                    {
+                        if (!keys.Contains(property.Key))
+                        {
+                            m_context.Error(mapping, $"Required property is missing: {property.Key}");
+                        }
+                    }
+                }
+            }
             ExpectMappingEnd();
         }
 
