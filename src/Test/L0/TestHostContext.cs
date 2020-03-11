@@ -279,6 +279,13 @@ namespace GitHub.Runner.Common.Tests
                         GetDirectory(WellKnownDirectory.Root),
                         ".options");
                     break;
+
+                case WellKnownConfigFile.SetupInfo:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        ".setup_info");
+                    break;
+
                 default:
                     throw new NotSupportedException($"Unexpected well known config file: '{configFile}'");
             }

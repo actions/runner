@@ -25,6 +25,7 @@ namespace GitHub.Runner.Common
         CredentialStore,
         Certificates,
         Options,
+        SetupInfo,
     }
 
     public static class Constants
