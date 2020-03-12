@@ -89,6 +89,7 @@
             "context": [
                 "github",
                 "strategy",
+                "matrix",
                 "job",
                 "runner"
             ],
