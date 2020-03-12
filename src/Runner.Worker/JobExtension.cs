@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
@@ -244,7 +245,7 @@ namespace GitHub.Runner.Worker
                     context.Debug("Starting: Complete job");
 
                     // Evaluate job outputs
-                    if (message.JobOutputs != null)
+                    if (message.JobOutputs != null && message.JobOutputs.Type != TokenType.Null)
                     {
                         try
                         {
@@ -266,7 +267,6 @@ namespace GitHub.Runner.Worker
                             Trace.Info("Initialize steps context for evaluating job outputs");
                             context.ExpressionValues["steps"] = context.StepsContext.GetScope(context.ScopeName);
 
-                            var templateTrace = context.ToTemplateTraceWriter();
                             var templateEvaluator = context.ToPipelineTemplateEvaluator();
                             var outputs = templateEvaluator.EvaluateJobOutput(message.JobOutputs, context.ExpressionValues);
                             foreach (var output in outputs)
