@@ -14,6 +14,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Clean = "clean";
         public const String Container = "container";
         public const String ContinueOnError = "continue-on-error";
+        public const String Defaults = "defaults";
         public const String Env = "env";
         public const String Event = "event";
         public const String EventPattern = "github.event";
@@ -29,6 +30,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Include = "include";
         public const String Inputs = "inputs";
         public const String Job = "job";
+        public const String JobDefaultsRun = "job-defaults-run";
         public const String JobOutputs = "job-outputs";
         public const String Jobs = "jobs";
         public const String Labels = "labels";

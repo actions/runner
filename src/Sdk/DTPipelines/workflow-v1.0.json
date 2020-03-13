@@ -9,6 +9,7 @@
         "properties": {
           "on": "any",
           "name": "string",
+          "defaults": "workflow-defaults",
           "env": "workflow-env",
           "jobs": "jobs"
         }
@@ -125,6 +126,23 @@
       "string": {}
     },
 
+    "workflow-defaults": {
+      "mapping": {
+        "properties": {
+          "run": "workflow-defaults-run"
+        }
+      }
+    },
+
+    "workflow-defaults-run": {
+      "mapping": {
+        "properties": {
+          "shell": "non-empty-string",
+          "working-directory": "non-empty-string"
+        }
+      }
+    },
+
     "workflow-env": {
       "context": [
         "github",
@@ -161,6 +179,7 @@
           "services": "services",
           "env": "job-env",
           "outputs": "job-outputs",
+          "defaults": "job-defaults",
           "steps": "steps"
         }
       }
@@ -286,6 +305,30 @@
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "string"
+      }
+    },
+
+    "job-defaults": {
+      "mapping": {
+        "properties": {
+          "run": "job-defaults-run"
+        }
+      }
+    },
+
+    "job-defaults-run": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "needs",
+        "env"
+      ],
+      "mapping": {
+        "properties": {
+          "shell": "non-empty-string",
+          "working-directory": "non-empty-string"
+        }
       }
     },
 

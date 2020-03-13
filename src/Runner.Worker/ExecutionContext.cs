@@ -48,6 +48,7 @@ namespace GitHub.Runner.Worker
         PlanFeatures Features { get; }
         Variables Variables { get; }
         Dictionary<string, string> IntraActionState { get; }
+        IDictionary<String, IDictionary<String, String>> JobDefaults { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
@@ -140,6 +141,7 @@ namespace GitHub.Runner.Worker
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public Variables Variables { get; private set; }
         public Dictionary<string, string> IntraActionState { get; private set; }
+        public IDictionary<String, IDictionary<String, String>> JobDefaults { get; private set; }
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, ContextScope> Scopes { get; private set; }
@@ -270,6 +272,7 @@ namespace GitHub.Runner.Worker
                 child.IntraActionState = intraActionState;
             }
             child.EnvironmentVariables = EnvironmentVariables;
+            child.JobDefaults = JobDefaults;
             child.Scopes = Scopes;
             child.FileTable = FileTable;
             child.StepsContext = StepsContext;
@@ -564,6 +567,9 @@ namespace GitHub.Runner.Worker
 
             // Environment variables shared across all actions
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
+
+            // Job defaults shared across all actions
+            JobDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);

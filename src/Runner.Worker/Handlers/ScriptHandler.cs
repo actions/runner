@@ -58,12 +58,21 @@ namespace GitHub.Runner.Worker.Handlers
             string shellCommandPath = null;
             bool validateShellOnHost = !(StepHost is ContainerStepHost);
             string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
-            Inputs.TryGetValue("shell", out var shell);
+            string shell = null;
+            if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
+            {
+                // TODO: figure out how defaults interact with template later
+                // for now, we won't check job.defaults if we are inside a template.
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.JobDefaults.TryGetValue("run", out var runDefaults))
+                {
+                    runDefaults.TryGetValue("shell", out shell);
+                }
+            }
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
                 shellCommand = "pwsh";
-                if(validateShellOnHost)
+                if (validateShellOnHost)
                 {
                     shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
                     if (string.IsNullOrEmpty(shellCommandPath))
@@ -139,11 +148,36 @@ namespace GitHub.Runner.Worker.Handlers
             Inputs.TryGetValue("script", out var contents);
             contents = contents ?? string.Empty;
 
-            Inputs.TryGetValue("workingDirectory", out var workingDirectory);
+            string workingDirectory = null;
+            if (!Inputs.TryGetValue("workingDirectory", out workingDirectory))
+            {
+                // TODO: figure out how defaults interact with template later
+                // for now, we won't check job.defaults if we are inside a template.
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.JobDefaults.TryGetValue("run", out var runDefaults))
+                {
+                    if (runDefaults.TryGetValue("working-directory", out workingDirectory))
+                    {
+                        ExecutionContext.Debug("Overwrite 'working-directory' base on job defaults.");
+                    }
+                }
+            }
             var workspaceDir = githubContext["workspace"] as StringContextData;
             workingDirectory = Path.Combine(workspaceDir, workingDirectory ?? string.Empty);
 
-            Inputs.TryGetValue("shell", out var shell);
+            string shell = null;
+            if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
+            {
+                // TODO: figure out how defaults interact with template later
+                // for now, we won't check job.defaults if we are inside a template.
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.JobDefaults.TryGetValue("run", out var runDefaults))
+                {
+                    if (runDefaults.TryGetValue("shell", out shell))
+                    {
+                        ExecutionContext.Debug("Overwrite 'shell' base on job defaults.");
+                    }
+                }
+            }
+
             var isContainerStepHost = StepHost is ContainerStepHost;
 
             string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
