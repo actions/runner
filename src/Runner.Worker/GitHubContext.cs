@@ -14,6 +14,7 @@ namespace GitHub.Runner.Worker
             "event_name",
             "event_path",
             "head_ref",
+            "job",
             "ref",
             "repository",
             "run_id",
