@@ -22,9 +22,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
         internal const String ItemType = "item-type";
         internal const String LooseKeyType = "loose-key-type";
         internal const String LooseValueType = "loose-value-type";
+        internal const String MaxConstant = "MAX";
         internal const String Mapping = "mapping";
         internal const String MappingDefinition = "mapping-definition";
         internal const String MappingDefinitionProperties = "mapping-definition-properties";
+        internal const String MappingPropertyValue = "mapping-property-value";
         internal const String NonEmptyString = "non-empty-string";
         internal const String Null = "null";
         internal const String NullDefinition = "null-definition";
@@ -35,7 +37,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
         internal const String OneOf = "one-of";
         internal const String OneOfDefinition = "one-of-definition";
         internal const String OpenExpression = "${{";
+        internal const String PropertyValue = "property-value";
         internal const String Properties = "properties";
+        internal const String Required = "required";
         internal const String RequireNonEmpty = "require-non-empty";
         internal const String Scalar = "scalar";
         internal const String ScalarDefinition = "scalar-definition";
@@ -43,6 +47,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         internal const String Sequence = "sequence";
         internal const String SequenceDefinition = "sequence-definition";
         internal const String SequenceDefinitionProperties = "sequence-definition-properties";
+        internal const String Type = "type";
         internal const String SequenceOfNonEmptyString = "sequence-of-non-empty-string";
         internal const String String = "string";
         internal const String StringDefinition = "string-definition";

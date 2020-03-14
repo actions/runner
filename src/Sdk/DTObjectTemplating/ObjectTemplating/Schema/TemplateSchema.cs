@@ -312,8 +312,8 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // template-schema
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Version, new PropertyValue(TemplateConstants.NonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.Definitions, new PropertyValue(TemplateConstants.Definitions));
+                    mappingDefinition.Properties.Add(TemplateConstants.Version, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Definitions, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Definitions)));
                     schema.Definitions.Add(TemplateConstants.TemplateSchema, mappingDefinition);
 
                     // definitions
@@ -335,9 +335,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // null-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.Null, new PropertyValue(TemplateConstants.NullDefinitionProperties));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Null, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NullDefinitionProperties)));
                     schema.Definitions.Add(TemplateConstants.NullDefinition, mappingDefinition);
 
                     // null-definition-properties
@@ -346,9 +346,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // boolean-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.Boolean, new PropertyValue(TemplateConstants.BooleanDefinitionProperties));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Boolean, new PropertyValue(new StringToken(null, null, null, TemplateConstants.BooleanDefinitionProperties)));
                     schema.Definitions.Add(TemplateConstants.BooleanDefinition, mappingDefinition);
 
                     // boolean-definition-properties
@@ -357,9 +357,9 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // number-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.Number, new PropertyValue(TemplateConstants.NumberDefinitionProperties));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Number, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NumberDefinitionProperties)));
                     schema.Definitions.Add(TemplateConstants.NumberDefinition, mappingDefinition);
 
                     // number-definition-properties
@@ -368,55 +368,68 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
                     // string-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.String, new PropertyValue(TemplateConstants.StringDefinitionProperties));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.String, new PropertyValue(new StringToken(null, null, null, TemplateConstants.StringDefinitionProperties)));
                     schema.Definitions.Add(TemplateConstants.StringDefinition, mappingDefinition);
 
                     // string-definition-properties
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Constant, new PropertyValue(TemplateConstants.NonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(TemplateConstants.Boolean));
-                    mappingDefinition.Properties.Add(TemplateConstants.RequireNonEmpty, new PropertyValue(TemplateConstants.Boolean));
+                    mappingDefinition.Properties.Add(TemplateConstants.Constant, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.IgnoreCase, new PropertyValue(new StringToken(null, null, null,TemplateConstants.Boolean)));
+                    mappingDefinition.Properties.Add(TemplateConstants.RequireNonEmpty, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
                     schema.Definitions.Add(TemplateConstants.StringDefinitionProperties, mappingDefinition);
 
                     // sequence-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.Sequence, new PropertyValue(TemplateConstants.SequenceDefinitionProperties));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Sequence, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceDefinitionProperties)));
                     schema.Definitions.Add(TemplateConstants.SequenceDefinition, mappingDefinition);
 
                     // sequence-definition-properties
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.ItemType, new PropertyValue(TemplateConstants.NonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.ItemType, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
                     schema.Definitions.Add(TemplateConstants.SequenceDefinitionProperties, mappingDefinition);
 
                     // mapping-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.Mapping, new PropertyValue(TemplateConstants.MappingDefinitionProperties));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Mapping, new PropertyValue(new StringToken(null, null, null, TemplateConstants.MappingDefinitionProperties)));
                     schema.Definitions.Add(TemplateConstants.MappingDefinition, mappingDefinition);
 
                     // mapping-definition-properties
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Properties, new PropertyValue(TemplateConstants.Properties));
-                    mappingDefinition.Properties.Add(TemplateConstants.LooseKeyType, new PropertyValue(TemplateConstants.NonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.LooseValueType, new PropertyValue(TemplateConstants.NonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.Properties, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Properties)));
+                    mappingDefinition.Properties.Add(TemplateConstants.LooseKeyType, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.LooseValueType, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
                     schema.Definitions.Add(TemplateConstants.MappingDefinitionProperties, mappingDefinition);
 
                     // properties
                     mappingDefinition = new MappingDefinition();
                     mappingDefinition.LooseKeyType = TemplateConstants.NonEmptyString;
-                    mappingDefinition.LooseValueType = TemplateConstants.NonEmptyString;
+                    mappingDefinition.LooseValueType = TemplateConstants.PropertyValue;
                     schema.Definitions.Add(TemplateConstants.Properties, mappingDefinition);
+
+                    // property-value
+                    oneOfDefinition = new OneOfDefinition();
+                    oneOfDefinition.OneOf.Add(TemplateConstants.NonEmptyString);
+                    oneOfDefinition.OneOf.Add(TemplateConstants.MappingPropertyValue);
+                    schema.Definitions.Add(TemplateConstants.PropertyValue, oneOfDefinition);
+
+                    // mapping-property-value
+                    mappingDefinition = new MappingDefinition();
+                    mappingDefinition.Properties.Add(TemplateConstants.Type, new PropertyValue(new StringToken(null, null, null, TemplateConstants.NonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Required, new PropertyValue(new StringToken(null, null, null, TemplateConstants.Boolean)));
+                    schema.Definitions.Add(TemplateConstants.MappingPropertyValue, mappingDefinition);
+
 
                     // one-of-definition
                     mappingDefinition = new MappingDefinition();
-                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(TemplateConstants.String));
-                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
-                    mappingDefinition.Properties.Add(TemplateConstants.OneOf, new PropertyValue(TemplateConstants.SequenceOfNonEmptyString));
+                    mappingDefinition.Properties.Add(TemplateConstants.Description, new PropertyValue(new StringToken(null, null, null, TemplateConstants.String)));
+                    mappingDefinition.Properties.Add(TemplateConstants.Context, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
+                    mappingDefinition.Properties.Add(TemplateConstants.OneOf, new PropertyValue(new StringToken(null, null, null, TemplateConstants.SequenceOfNonEmptyString)));
                     schema.Definitions.Add(TemplateConstants.OneOfDefinition, mappingDefinition);
 
                     // non-empty-string

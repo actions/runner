@@ -30,8 +30,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                                     foreach (var propertiesPair in properties)
                                     {
                                         var propertyName = propertiesPair.Key.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties} key");
-                                        var propertyValue = propertiesPair.Value.AssertString($"{TemplateConstants.Definition} {TemplateConstants.Mapping} {TemplateConstants.Properties} value");
-                                        Properties.Add(propertyName.Value, new PropertyValue(propertyValue.Value));
+                                        Properties.Add(propertyName.Value, new PropertyValue(propertiesPair.Value));
                                     }
                                     break;
 
@@ -85,7 +84,7 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 }
                 else
                 {
-                    throw new ArgumentException($"Property '{TemplateConstants.LooseKeyType}' is defined but '{TemplateConstants.LooseValueType}' is not defined");
+                    throw new ArgumentException($"Property '{TemplateConstants.LooseKeyType}' is defined but '{TemplateConstants.LooseValueType}' is not defined on '{name}'");
                 }
             }
             // Otherwise validate loose value type not be defined
@@ -95,9 +94,14 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
             }
 
             // Lookup each property
-            foreach (var property in Properties.Values)
+            foreach (var property in Properties)
             {
-                schema.GetDefinition(property.Type);
+                if (String.IsNullOrEmpty(property.Value.Type))
+                {
+                    throw new ArgumentException($"Type not specified for the '{property.Key}' property on the '{name}' type");
+                }
+
+                schema.GetDefinition(property.Value.Type);
             }
 
             if (!String.IsNullOrEmpty(Inherits))

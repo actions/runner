@@ -90,10 +90,8 @@
                 "github",
                 "strategy",
                 "matrix",
-                "steps",
                 "job",
-                "runner",
-                "env"
+                "runner"
             ],
             "string": {}
         },

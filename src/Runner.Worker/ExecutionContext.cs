@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker
         PlanFeatures Features { get; }
         Variables Variables { get; }
         Dictionary<string, string> IntraActionState { get; }
-        HashSet<string> OutputVariables { get; }
+        Dictionary<string, VariableValue> JobOutputs { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
         IList<String> FileTable { get; }
@@ -110,7 +110,6 @@ namespace GitHub.Runner.Worker
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
         private readonly object _loggerLock = new object();
-        private readonly HashSet<string> _outputvariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly object _matchersLock = new object();
 
         private event OnMatcherChanged _onMatcherChanged;
@@ -140,7 +139,7 @@ namespace GitHub.Runner.Worker
         public List<ServiceEndpoint> Endpoints { get; private set; }
         public Variables Variables { get; private set; }
         public Dictionary<string, string> IntraActionState { get; private set; }
-        public HashSet<string> OutputVariables => _outputvariables;
+        public Dictionary<string, VariableValue> JobOutputs { get; private set; }
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, ContextScope> Scopes { get; private set; }
         public IList<String> FileTable { get; private set; }
@@ -556,6 +555,9 @@ namespace GitHub.Runner.Worker
 
             // Environment variables shared across all actions
             EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
+
+            // Job Outputs
+            JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
             // Service container info
             ServiceContainers = new List<ContainerInfo>();
