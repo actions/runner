@@ -290,19 +290,9 @@
     },
 
     "job-outputs": {
-      "context": [
-        "github",
-        "strategy",
-        "matrix",
-        "needs",
-        "steps",
-        "job",
-        "runner",
-        "env"
-      ],
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "string"
+        "loose-value-type": "string-runner-context"
       }
     },
 
@@ -616,24 +606,24 @@
     },
 
     "step-with-in-template": {
-      "context": [
-        "github",
-        "strategy",
-        "matrix",
-        "needs",
-        "secrets",
-        "steps",
-        "inputs",
-        "job",
-        "runner",
-        "env"
-      ],
-      "mapping": {
-        "loose-key-type": "non-empty-string",
-        "loose-value-type": "string"
-      }
-    },
-
+        "context": [
+          "github",
+          "strategy",
+          "matrix",
+          "needs",
+          "secrets",
+          "steps",
+          "inputs",
+          "job",
+          "runner",
+          "env"
+        ],
+        "mapping": {
+          "loose-key-type": "non-empty-string",
+          "loose-value-type": "string"
+        }
+      },
+  
     "non-empty-string": {
       "string": {
         "require-non-empty": true
@@ -736,6 +726,21 @@
         "env"
       ],
       "number": {}
+    },
+
+    "string-runner-context": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "needs",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
     },
 
     "string-steps-context": {
