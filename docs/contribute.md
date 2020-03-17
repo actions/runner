@@ -44,7 +44,7 @@ Sample developer flow:
 ```bash
 git clone https://github.com/actions/runner
 cd ./src
-./dev.(sh/cmd) layout # the runner that build from source is in {root}/_layout
+./dev.(sh/cmd) layout # the runner that built from source is in {root}/_layout
 <make code changes>
 ./dev.(sh/cmd) build # {root}/_layout will get updated
 ./dev.(sh/cmd) test # run all unit tests before git commit/push
