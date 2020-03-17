@@ -8,6 +8,7 @@ using Xunit;
 using GitHub.Runner.Common.Util;
 using System.Threading.Channels;
 using GitHub.Runner.Sdk;
+using System.Linq;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -78,6 +79,102 @@ namespace GitHub.Runner.Common.Tests
 
                 trace.Info("Exit Code: {0}", exitCode);
                 Assert.Equal(0, exitCode);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task SetCIEnv()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                var existingCI = Environment.GetEnvironmentVariable("CI");
+                try
+                {
+                    // Clear out CI and make sure process invoker sets it.
+                    Environment.SetEnvironmentVariable("CI", null);
+
+                    Tracing trace = hc.GetTrace();
+
+                    Int32 exitCode = -1;
+                    var processInvoker = new ProcessInvokerWrapper();
+                    processInvoker.Initialize(hc);
+                    var stdout = new List<string>();
+                    var stderr = new List<string>();
+                    processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                    {
+                        trace.Info(e.Data);
+                        stdout.Add(e.Data);
+                    };
+                    processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                    {
+                        trace.Info(e.Data);
+                        stderr.Add(e.Data);
+                    };
+#if OS_WINDOWS
+                    exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %CI%\"", null, CancellationToken.None);
+#else
+                    exitCode = await processInvoker.ExecuteAsync("", "bash", "-c \"echo $CI\"", null, CancellationToken.None);
+#endif
+
+                    trace.Info("Exit Code: {0}", exitCode);
+                    Assert.Equal(0, exitCode);
+
+                    Assert.Equal("true", stdout.First(x => !string.IsNullOrWhiteSpace(x)));
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("CI", existingCI);
+                }
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public async Task KeepExistingCIEnv()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                var existingCI = Environment.GetEnvironmentVariable("CI");
+                try
+                {
+                    // Clear out CI and make sure process invoker sets it.
+                    Environment.SetEnvironmentVariable("CI", null);
+
+                    Tracing trace = hc.GetTrace();
+
+                    Int32 exitCode = -1;
+                    var processInvoker = new ProcessInvokerWrapper();
+                    processInvoker.Initialize(hc);
+                    var stdout = new List<string>();
+                    var stderr = new List<string>();
+                    processInvoker.OutputDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                    {
+                        trace.Info(e.Data);
+                        stdout.Add(e.Data);
+                    };
+                    processInvoker.ErrorDataReceived += (object sender, ProcessDataReceivedEventArgs e) =>
+                    {
+                        trace.Info(e.Data);
+                        stderr.Add(e.Data);
+                    };
+#if OS_WINDOWS
+                    exitCode = await processInvoker.ExecuteAsync("", "cmd.exe", "/c \"echo %CI%\"", new Dictionary<string, string>() { { "CI", "false" } }, CancellationToken.None);
+#else
+                    exitCode = await processInvoker.ExecuteAsync("", "bash", "-c \"echo $CI\"", new Dictionary<string, string>() { { "CI", "false" } }, CancellationToken.None);
+#endif
+
+                    trace.Info("Exit Code: {0}", exitCode);
+                    Assert.Equal(0, exitCode);
+
+                    Assert.Equal("false", stdout.First(x => !string.IsNullOrWhiteSpace(x)));
+                }
+                finally
+                {
+                    Environment.SetEnvironmentVariable("CI", existingCI);
+                }
             }
         }
 
