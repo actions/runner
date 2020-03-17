@@ -271,6 +271,14 @@ namespace GitHub.Runner.Sdk
             // Indicate GitHub Actions process.
             _proc.StartInfo.Environment["GITHUB_ACTIONS"] = "true";
 
+            // Set CI=true when no one else already set it.
+            // CI=true is common set in most CI provider in GitHub
+            if (!_proc.StartInfo.Environment.ContainsKey("CI") &&
+                Environment.GetEnvironmentVariable("CI") == null)
+            {
+                _proc.StartInfo.Environment["CI"] = "true";
+            }
+
             // Hook up the events.
             _proc.EnableRaisingEvents = true;
             _proc.Exited += ProcessExitedHandler;
