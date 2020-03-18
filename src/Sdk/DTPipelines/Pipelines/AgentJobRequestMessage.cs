@@ -41,7 +41,8 @@ namespace GitHub.DistributedTask.Pipelines
             IEnumerable<JobStep> steps,
             IEnumerable<ContextScope> scopes,
             IList<String> fileTable,
-            TemplateToken jobOutputs)
+            TemplateToken jobOutputs,
+            IList<TemplateToken> defaults)
         {
             this.MessageType = JobRequestMessageTypes.PipelineAgentJobRequest;
             this.Plan = plan;
@@ -67,6 +68,11 @@ namespace GitHub.DistributedTask.Pipelines
             if (environmentVariables?.Count > 0)
             {
                 m_environmentVariables = new List<TemplateToken>(environmentVariables);
+            }
+
+            if (defaults?.Count > 0)
+            {
+                m_defaults = new List<TemplateToken>(defaults);
             }
 
             this.ContextData = new Dictionary<String, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
@@ -214,6 +220,21 @@ namespace GitHub.DistributedTask.Pipelines
         }
 
         /// <summary>
+        /// Gets the hierarchy of defaults to overlay, last wins.
+        /// </summary>
+        public IList<TemplateToken> Defaults
+        {
+            get
+            {
+                if (m_defaults == null)
+                {
+                    m_defaults = new List<TemplateToken>();
+                }
+                return m_defaults;
+            }
+        }
+
+        /// <summary>
         /// Gets the collection of variables associated with the current context.
         /// </summary>
         public IDictionary<String, VariableValue> Variables
@@ -252,6 +273,9 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
+        /// <summary>
+        /// Gets the table of files used when parsing the pipeline (e.g. yaml files)
+        /// </summary>
         public IList<String> FileTable
         {
             get
@@ -372,6 +396,11 @@ namespace GitHub.DistributedTask.Pipelines
                 m_environmentVariables = null;
             }
 
+            if (m_defaults?.Count == 0)
+            {
+                m_defaults = null;
+            }
+
             if (m_fileTable?.Count == 0)
             {
                 m_fileTable = null;
@@ -405,6 +434,9 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "EnvironmentVariables", EmitDefaultValue = false)]
         private List<TemplateToken> m_environmentVariables;
+
+        [DataMember(Name = "Defaults", EmitDefaultValue = false)]
+        private List<TemplateToken> m_defaults;
 
         [DataMember(Name = "FileTable", EmitDefaultValue = false)]
         private List<String> m_fileTable;

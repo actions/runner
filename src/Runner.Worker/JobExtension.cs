@@ -161,6 +161,26 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Evaluate the job defaults
+                    context.Debug("Evaluating job defaults");
+                    foreach (var token in message.Defaults)
+                    {
+                        var defaults = token.AssertMapping("defaults");
+                        if (defaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            context.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            var defaultsRun = defaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
+                            var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, jobContext.ExpressionValues);
+                            foreach (var pair in jobDefaults)
+                            {
+                                if (!string.IsNullOrEmpty(pair.Value))
+                                {
+                                    context.JobDefaults["run"][pair.Key] = pair.Value;
+                                }
+                            }
+                        }
+                    }
+
                     // Build up 2 lists of steps, pre-job, job
                     // Download actions not already in the cache
                     Trace.Info("Downloading actions");
