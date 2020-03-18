@@ -11,6 +11,7 @@ using Xunit;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
@@ -57,7 +58,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             var trace = hc.GetTrace();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
-            
+
             _stepsRunner = new StepsRunner();
             _stepsRunner.Initialize(hc);
             return hc;
@@ -516,7 +517,78 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        private Mock<IActionRunner> CreateStep(TestHostContext hc, TaskResult result, string condition, Boolean continueOnError = false, MappingToken env = null, string name = "Test", bool setOutput = false)
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StepContextOutcome()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var step1 = CreateStep(hc, TaskResult.Succeeded, "success()", contextName: "step1");
+                var step2 = CreateStep(hc, TaskResult.Failed, "steps.step1.outcome == 'success'", continueOnError: true, contextName: "step2");
+                var step3 = CreateStep(hc, TaskResult.Succeeded, "steps.step1.outcome == 'success' && steps.step2.outcome == 'failure'", contextName: "step3");
+
+                _ec.Object.Result = null;
+
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
+
+                // Act.
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert.
+                Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
+
+                step1.Verify(x => x.RunAsync(), Times.Once);
+                step2.Verify(x => x.RunAsync(), Times.Once);
+                step3.Verify(x => x.RunAsync(), Times.Once);
+
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Failed.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["conclusion"].AssertString(""));
+
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async Task StepContextConclusion()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange.
+                var step1 = CreateStep(hc, TaskResult.Succeeded, "false", contextName: "step1");
+                var step2 = CreateStep(hc, TaskResult.Failed, "steps.step1.conclusion == 'skipped'", continueOnError: true, contextName: "step2");
+                var step3 = CreateStep(hc, TaskResult.Succeeded, "steps.step1.outcome == 'skipped' && steps.step2.outcome == 'failure' && steps.step2.conclusion == 'success'", contextName: "step3");
+
+                _ec.Object.Result = null;
+
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
+
+                // Act.
+                await _stepsRunner.RunAsync(jobContext: _ec.Object);
+
+                // Assert.
+                Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
+
+                step1.Verify(x => x.RunAsync(), Times.Never);
+                step2.Verify(x => x.RunAsync(), Times.Once);
+                step3.Verify(x => x.RunAsync(), Times.Once);
+
+                Assert.Equal(TaskResult.Skipped.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Skipped.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Failed.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["conclusion"].AssertString(""));
+            }
+        }
+
+        private Mock<IActionRunner> CreateStep(TestHostContext hc, TaskResult result, string condition, Boolean continueOnError = false, MappingToken env = null, string name = "Test", bool setOutput = false, string contextName = null)
         {
             // Setup the step.
             var step = new Mock<IActionRunner>();
@@ -527,7 +599,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     Name = name,
                     Id = Guid.NewGuid(),
-                    Environment = env
+                    Environment = env,
+                    ContextName = contextName ?? "Test"
                 });
 
             // Setup the step execution context.
@@ -539,6 +612,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             stepContext.Setup(x => x.ExpressionValues).Returns(_contexts);
             stepContext.Setup(x => x.JobContext).Returns(_jobContext);
             stepContext.Setup(x => x.StepsContext).Returns(_stepContext);
+            stepContext.Setup(x => x.ContextName).Returns(step.Object.Action.ContextName);
             stepContext.Setup(x => x.Complete(It.IsAny<TaskResult?>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((TaskResult? r, string currentOperation, string resultCode) =>
                 {
@@ -546,6 +620,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                     {
                         stepContext.Object.Result = r;
                     }
+
+                    _stepContext.SetOutcome("", stepContext.Object.ContextName, (stepContext.Object.Outcome ?? stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult().ToString());
+                    _stepContext.SetConclusion("", stepContext.Object.ContextName, (stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult().ToString());
                 });
             var trace = hc.GetTrace();
             stepContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });

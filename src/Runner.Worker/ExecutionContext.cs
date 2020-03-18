@@ -39,6 +39,7 @@ namespace GitHub.Runner.Worker
         string ContextName { get; }
         Task ForceCompleted { get; }
         TaskResult? Result { get; set; }
+        TaskResult? Outcome { get; set; }
         string ResultCode { get; set; }
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
@@ -170,6 +171,8 @@ namespace GitHub.Runner.Worker
                 _record.Result = value;
             }
         }
+
+        public TaskResult? Outcome { get; set; }
 
         public TaskResult? CommandResult { get; set; }
 
@@ -345,6 +348,12 @@ namespace GitHub.Runner.Worker
             _cancellationTokenSource?.Dispose();
 
             _logger.End();
+
+            if (!string.IsNullOrEmpty(ContextName))
+            {
+                StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult().ToString());
+                StepsContext.SetConclusion(ScopeName, ContextName, (Result ?? TaskResult.Succeeded).ToActionResult().ToString());
+            }
 
             return Result.Value;
         }

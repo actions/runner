@@ -351,6 +351,7 @@ namespace GitHub.Runner.Worker
 
                 if (continueOnError)
                 {
+                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
                     step.ExecutionContext.Result = TaskResult.Succeeded;
                     Trace.Info($"Updated step result (continue on error)");
                 }
