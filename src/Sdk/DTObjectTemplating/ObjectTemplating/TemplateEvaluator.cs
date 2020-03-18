@@ -47,7 +47,16 @@ namespace GitHub.DistributedTask.ObjectTemplating
             var evaluator = new TemplateEvaluator(context, template, removeBytes);
             try
             {
-                var availableContext = new HashSet<String>(context.ExpressionValues.Keys.Concat(context.ExpressionFunctions.Select(x => $"{x.Name}({x.MinParameters},{x.MaxParameters})")));
+                var availableContext = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
+                foreach (var key in context.ExpressionValues.Keys)
+                {
+                    availableContext.Add(key);
+                }
+                foreach (var function in context.ExpressionFunctions)
+                {
+                    availableContext.Add($"{function.Name}()");
+                }
+
                 var definitionInfo = new DefinitionInfo(context.Schema, type, availableContext);
                 result = evaluator.Evaluate(definitionInfo);
 
@@ -393,14 +402,13 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Definition = m_schema.GetDefinition(name);
 
                 // Determine whether to expand
-                if (Definition.Context.Length > 0)
+                m_allowedContext = Definition.EvaluatorContext;
+                if (Definition.EvaluatorContext.Length > 0)
                 {
-                    m_allowedContext = Definition.Context;
                     Expand = m_availableContext.IsSupersetOf(m_allowedContext);
                 }
                 else
                 {
-                    m_allowedContext = new String[0];
                     Expand = false;
                 }
             }
@@ -416,9 +424,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 Definition = m_schema.GetDefinition(name);
 
                 // Determine whether to expand
-                if (Definition.Context.Length > 0)
+                if (Definition.EvaluatorContext.Length > 0)
                 {
-                    m_allowedContext = new HashSet<String>(parent.m_allowedContext.Concat(Definition.Context)).ToArray();
+                    m_allowedContext = new HashSet<String>(parent.m_allowedContext.Concat(Definition.EvaluatorContext), StringComparer.OrdinalIgnoreCase).ToArray();
                     Expand = m_availableContext.IsSupersetOf(m_allowedContext);
                 }
                 else

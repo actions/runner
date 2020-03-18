@@ -1,8 +1,6 @@
-using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
@@ -10,8 +8,13 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Expressions;
+using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -63,11 +66,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 var step = jobContext.JobSteps.Dequeue();
-                IStep nextStep = null;
-                if (jobContext.JobSteps.Count > 0)
-                {
-                    nextStep = jobContext.JobSteps.Peek();
-                }
+                var nextStep = jobContext.JobSteps.Count > 0 ? jobContext.JobSteps.Peek() : null;
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
@@ -75,6 +74,13 @@ namespace GitHub.Runner.Worker
 
                 // Start
                 step.ExecutionContext.Start();
+
+                // Expression functions
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
                 // Initialize scope
                 if (InitializeScope(step, scopeInputs))
@@ -99,14 +105,13 @@ namespace GitHub.Runner.Worker
 
                         // Evaluate and merge action's env block to env context
                         var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-                        var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
+                        var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var env in actionEnvironment)
                         {
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
                         }
                     }
 
-                    var expressionManager = HostContext.GetService<IExpressionManager>();
                     try
                     {
                         // Register job cancellation call back only if job cancellation token not been fire before each step run
@@ -120,28 +125,29 @@ namespace GitHub.Runner.Worker
                                 jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
 
                                 step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
-                                ConditionResult conditionReTestResult;
+                                var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
+                                var conditionReTestResult = false;
                                 if (HostContext.RunnerShutdownToken.IsCancellationRequested)
                                 {
                                     step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
-                                    conditionReTestResult = false;
                                 }
                                 else
                                 {
                                     try
                                     {
-                                        conditionReTestResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition, hostTracingOnly: true);
+                                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionReTestTraceWriter);
+                                        var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                        conditionReTestResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
                                     }
                                     catch (Exception ex)
                                     {
                                         // Cancel the step since we get exception while re-evaluate step condition.
                                         Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
                                         step.ExecutionContext.Error(ex);
-                                        conditionReTestResult = false;
                                     }
                                 }
 
-                                if (!conditionReTestResult.Value)
+                                if (!conditionReTestResult)
                                 {
                                     // Cancel the step.
                                     Trace.Info("Cancel current running step.");
@@ -161,34 +167,35 @@ namespace GitHub.Runner.Worker
 
                         // Evaluate condition.
                         step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
-                        Exception conditionEvaluateError = null;
-                        ConditionResult conditionResult;
+                        var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
+                        var conditionResult = false;
+                        var conditionEvaluateError = default(Exception);
                         if (HostContext.RunnerShutdownToken.IsCancellationRequested)
                         {
                             step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
-                            conditionResult = false;
                         }
                         else
                         {
                             try
                             {
-                                conditionResult = expressionManager.Evaluate(step.ExecutionContext, step.Condition);
+                                var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
+                                var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
                             }
                             catch (Exception ex)
                             {
                                 Trace.Info("Caught exception from expression.");
                                 Trace.Error(ex);
-                                conditionResult = false;
                                 conditionEvaluateError = ex;
                             }
                         }
 
                         // no evaluate error but condition is false
-                        if (!conditionResult.Value && conditionEvaluateError == null)
+                        if (!conditionResult && conditionEvaluateError == null)
                         {
                             // Condition == false
                             Trace.Info("Skipping step due to condition evaluation.");
-                            CompleteStep(step, nextStep, TaskResult.Skipped, resultCode: conditionResult.Trace);
+                            CompleteStep(step, nextStep, TaskResult.Skipped, resultCode: conditionTraceWriter.Trace);
                         }
                         else if (conditionEvaluateError != null)
                         {
@@ -248,7 +255,7 @@ namespace GitHub.Runner.Worker
             var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
             try
             {
-                timeoutMinutes = templateEvaluator.EvaluateStepTimeout(step.Timeout, step.ExecutionContext.ExpressionValues);
+                timeoutMinutes = templateEvaluator.EvaluateStepTimeout(step.Timeout, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
             }
             catch (Exception ex)
             {
@@ -339,7 +346,7 @@ namespace GitHub.Runner.Worker
                 var continueOnError = false;
                 try
                 {
-                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues);
+                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
                 }
                 catch (Exception ex)
                 {
@@ -392,7 +399,7 @@ namespace GitHub.Runner.Worker
                     var inputs = default(DictionaryContextData);
                     try
                     {
-                        inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues);
+                        inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
                     }
                     catch (Exception ex)
                     {
@@ -448,7 +455,7 @@ namespace GitHub.Runner.Worker
                     var outputs = default(DictionaryContextData);
                     try
                     {
-                        outputs = templateEvaluator.EvaluateStepScopeOutputs(scope.Outputs, executionContext.ExpressionValues);
+                        outputs = templateEvaluator.EvaluateStepScopeOutputs(scope.Outputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
                     }
                     catch (Exception ex)
                     {
@@ -475,6 +482,44 @@ namespace GitHub.Runner.Worker
             }
 
             executionContext.Complete(result, resultCode: resultCode);
+        }
+
+        private sealed class ConditionTraceWriter : ObjectTemplating::ITraceWriter
+        {
+            private readonly IExecutionContext _executionContext;
+            private readonly Tracing _trace;
+            private readonly StringBuilder _traceBuilder = new StringBuilder();
+
+            public string Trace => _traceBuilder.ToString();
+
+            public ConditionTraceWriter(Tracing trace, IExecutionContext executionContext)
+            {
+                ArgUtil.NotNull(trace, nameof(trace));
+                _trace = trace;
+                _executionContext = executionContext;
+            }
+
+            public void Error(string format, params Object[] args)
+            {
+                var message = StringUtil.Format(format, args);
+                _trace.Error(message);
+                _executionContext?.Debug(message);
+            }
+
+            public void Info(string format, params Object[] args)
+            {
+                var message = StringUtil.Format(format, args);
+                _trace.Info(message);
+                _executionContext?.Debug(message);
+                _traceBuilder.AppendLine(message);
+            }
+
+            public void Verbose(string format, params Object[] args)
+            {
+                var message = StringUtil.Format(format, args);
+                _trace.Verbose(message);
+                _executionContext?.Debug(message);
+            }
         }
     }
 }

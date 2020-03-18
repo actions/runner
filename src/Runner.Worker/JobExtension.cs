@@ -132,7 +132,7 @@ namespace GitHub.Runner.Worker
                     var templateEvaluator = context.ToPipelineTemplateEvaluator();
                     foreach (var token in message.EnvironmentVariables)
                     {
-                        var environmentVariables = templateEvaluator.EvaluateStepEnvironment(token, jobContext.ExpressionValues, VarUtil.EnvironmentVariableKeyComparer);
+                        var environmentVariables = templateEvaluator.EvaluateStepEnvironment(token, jobContext.ExpressionValues, jobContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var pair in environmentVariables)
                         {
                             context.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
@@ -142,7 +142,7 @@ namespace GitHub.Runner.Worker
 
                     // Evaluate the job container
                     context.Debug("Evaluating job container");
-                    var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues);
+                    var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (container != null)
                     {
                         jobContext.Container = new Container.ContainerInfo(HostContext, container);
@@ -150,7 +150,7 @@ namespace GitHub.Runner.Worker
 
                     // Evaluate the job service containers
                     context.Debug("Evaluating job service containers");
-                    var serviceContainers = templateEvaluator.EvaluateJobServiceContainers(message.JobServiceContainers, jobContext.ExpressionValues);
+                    var serviceContainers = templateEvaluator.EvaluateJobServiceContainers(message.JobServiceContainers, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (serviceContainers?.Count > 0)
                     {
                         foreach (var pair in serviceContainers)
@@ -170,7 +170,7 @@ namespace GitHub.Runner.Worker
                         {
                             context.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                             var defaultsRun = defaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
-                            var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, jobContext.ExpressionValues);
+                            var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                             foreach (var pair in jobDefaults)
                             {
                                 if (!string.IsNullOrEmpty(pair.Value))
@@ -337,7 +337,7 @@ namespace GitHub.Runner.Worker
                             context.ExpressionValues["steps"] = context.StepsContext.GetScope(context.ScopeName);
 
                             var templateEvaluator = context.ToPipelineTemplateEvaluator();
-                            var outputs = templateEvaluator.EvaluateJobOutput(message.JobOutputs, context.ExpressionValues);
+                            var outputs = templateEvaluator.EvaluateJobOutput(message.JobOutputs, context.ExpressionValues, context.ExpressionFunctions);
                             foreach (var output in outputs)
                             {
                                 if (string.IsNullOrEmpty(output.Value))

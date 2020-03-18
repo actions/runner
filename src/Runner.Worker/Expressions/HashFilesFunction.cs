@@ -8,28 +8,9 @@ using System.Reflection;
 using System.Threading;
 using System.Collections.Generic;
 
-namespace GitHub.Runner.Worker.Handlers
+namespace GitHub.Runner.Worker.Expressions
 {
-    public class FunctionTrace : ITraceWriter
-    {
-        private GitHub.DistributedTask.Expressions2.ITraceWriter _trace;
-
-        public FunctionTrace(GitHub.DistributedTask.Expressions2.ITraceWriter trace)
-        {
-            _trace = trace;
-        }
-        public void Info(string message)
-        {
-            _trace.Info(message);
-        }
-
-        public void Verbose(string message)
-        {
-            _trace.Info(message);
-        }
-    }
-
-    public sealed class HashFiles : Function
+    public sealed class HashFilesFunction : Function
     {
         protected sealed override Object EvaluateCore(
             EvaluationContext context,
@@ -82,7 +63,7 @@ namespace GitHub.Runner.Worker.Handlers
             string node = Path.Combine(runnerRoot, "externals", "node12", "bin", $"node{IOUtil.ExeExtension}");
             string hashFilesScript = Path.Combine(binDir, "hashFiles");
             var hashResult = string.Empty;
-            var p = new ProcessInvoker(new FunctionTrace(context.Trace));
+            var p = new ProcessInvoker(new HashFilesTrace(context.Trace));
             p.ErrorDataReceived += ((_, data) =>
             {
                 if (!string.IsNullOrEmpty(data.Data) && data.Data.StartsWith("__OUTPUT__") && data.Data.EndsWith("__OUTPUT__"))
@@ -121,6 +102,25 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             return hashResult;
+        }
+
+        private sealed class HashFilesTrace : ITraceWriter
+        {
+            private GitHub.DistributedTask.Expressions2.ITraceWriter _trace;
+
+            public HashFilesTrace(GitHub.DistributedTask.Expressions2.ITraceWriter trace)
+            {
+                _trace = trace;
+            }
+            public void Info(string message)
+            {
+                _trace.Info(message);
+            }
+
+            public void Verbose(string message)
+            {
+                _trace.Info(message);
+            }
         }
     }
 }

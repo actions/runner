@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.Expressions2.Sdk;
 
 namespace GitHub.DistributedTask.ObjectTemplating.Tokens
 {
@@ -104,6 +107,43 @@ namespace GitHub.DistributedTask.ObjectTemplating.Tokens
             string objectDescription)
         {
             throw new ArgumentException($"Error while reading '{objectDescription}'. Unexpected value '{literal.ToString()}'");
+        }
+
+        /// <summary>
+        /// Traverses the token and checks whether all required expression values
+        /// and functions are provided.
+        /// </summary>
+        public static bool CheckHasRequiredContext(
+            this TemplateToken token,
+            IReadOnlyObject expressionValues,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            var expressionTokens = token.Traverse()
+                .OfType<BasicExpressionToken>()
+                .ToArray();
+            var parser = new ExpressionParser();
+            foreach (var expressionToken in expressionTokens)
+            {
+                var tree = parser.ValidateSyntax(expressionToken.Expression, null);
+                foreach (var node in tree.Traverse())
+                {
+                    if (node is NamedValue namedValue)
+                    {
+                        if (expressionValues?.Keys.Any(x => string.Equals(x, namedValue.Name, StringComparison.OrdinalIgnoreCase)) != true)
+                        {
+                            return false;
+                        }
+                    }
+                    else if (node is Function function &&
+                        !ExpressionConstants.WellKnownFunctions.ContainsKey(function.Name) &&
+                        expressionFunctions?.Any(x => string.Equals(x.Name, function.Name, StringComparison.OrdinalIgnoreCase)) != true)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
 
         /// <summary>

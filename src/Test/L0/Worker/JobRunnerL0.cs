@@ -53,9 +53,6 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
 
             _tokenSource = new CancellationTokenSource();
-            var expressionManager = new ExpressionManager();
-            expressionManager.Initialize(hc);
-            hc.SetSingleton<IExpressionManager>(expressionManager);
 
             _jobRunner = new JobRunner();
             _jobRunner.Initialize(hc);

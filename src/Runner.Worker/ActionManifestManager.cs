@@ -22,11 +22,11 @@ namespace GitHub.Runner.Worker
     {
         ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile);
 
-        List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, PipelineContextData> contextData);
+        List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
-        Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> contextData);
+        Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
-        string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token, IDictionary<string, PipelineContextData> contextData);
+        string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -54,7 +54,7 @@ namespace GitHub.Runner.Worker
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
-            var context = CreateContext(executionContext, null);
+            var context = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
             try
             {
@@ -133,13 +133,13 @@ namespace GitHub.Runner.Worker
         public List<string> EvaluateContainerArguments(
             IExecutionContext executionContext,
             SequenceToken token,
-            IDictionary<string, PipelineContextData> contextData)
+            IDictionary<string, PipelineContextData> extraExpressionValues)
         {
             var result = new List<string>();
 
             if (token != null)
             {
-                var context = CreateContext(executionContext, contextData);
+                var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
                     var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-args", token, 0, null, omitHeader: true);
@@ -172,13 +172,13 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, string> EvaluateContainerEnvironment(
             IExecutionContext executionContext,
             MappingToken token,
-            IDictionary<string, PipelineContextData> contextData)
+            IDictionary<string, PipelineContextData> extraExpressionValues)
         {
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             if (token != null)
             {
-                var context = CreateContext(executionContext, contextData);
+                var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
                     var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-env", token, 0, null, omitHeader: true);
@@ -216,13 +216,12 @@ namespace GitHub.Runner.Worker
         public string EvaluateDefaultInput(
             IExecutionContext executionContext,
             string inputName,
-            TemplateToken token,
-            IDictionary<string, PipelineContextData> contextData)
+            TemplateToken token)
         {
             string result = "";
             if (token != null)
             {
-                var context = CreateContext(executionContext, contextData);
+                var context = CreateContext(executionContext);
                 try
                 {
                     var evaluateResult = TemplateEvaluator.Evaluate(context, "input-default-context", token, 0, null, omitHeader: true);
@@ -247,7 +246,7 @@ namespace GitHub.Runner.Worker
 
         private TemplateContext CreateContext(
             IExecutionContext executionContext,
-            IDictionary<string, PipelineContextData> contextData)
+            IDictionary<string, PipelineContextData> extraExpressionValues = null)
         {
             var result = new TemplateContext
             {
@@ -261,12 +260,25 @@ namespace GitHub.Runner.Worker
                 TraceWriter = executionContext.ToTemplateTraceWriter(),
             };
 
-            if (contextData?.Count > 0)
+            // Expression values from execution context
+            foreach (var pair in executionContext.ExpressionValues)
             {
-                foreach (var pair in contextData)
+                result.ExpressionValues[pair.Key] = pair.Value;
+            }
+
+            // Extra expression values
+            if (extraExpressionValues?.Count > 0)
+            {
+                foreach (var pair in extraExpressionValues)
                 {
                     result.ExpressionValues[pair.Key] = pair.Value;
                 }
+            }
+
+            // Expression functions from execution context
+            foreach (var item in executionContext.ExpressionFunctions)
+            {
+                result.ExpressionFunctions.Add(item);
             }
 
             // Add the file table

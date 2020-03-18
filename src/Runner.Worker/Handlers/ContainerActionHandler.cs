@@ -97,14 +97,14 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-            evaluateContext["inputs"] = inputsContext;
+            var extraExpressionValues = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+            extraExpressionValues["inputs"] = inputsContext;
 
             var manifestManager = HostContext.GetService<IActionManifestManager>();
             if (Data.Arguments != null)
             {
                 container.ContainerEntryPointArgs = "";
-                var evaluatedArgs = manifestManager.EvaluateContainerArguments(ExecutionContext, Data.Arguments, evaluateContext);
+                var evaluatedArgs = manifestManager.EvaluateContainerArguments(ExecutionContext, Data.Arguments, extraExpressionValues);
                 foreach (var arg in evaluatedArgs)
                 {
                     if (!string.IsNullOrEmpty(arg))
@@ -124,7 +124,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (Data.Environment != null)
             {
-                var evaluatedEnv = manifestManager.EvaluateContainerEnvironment(ExecutionContext, Data.Environment, evaluateContext);
+                var evaluatedEnv = manifestManager.EvaluateContainerEnvironment(ExecutionContext, Data.Environment, extraExpressionValues);
                 foreach (var env in evaluatedEnv)
                 {
                     if (!this.Environment.ContainsKey(env.Key))

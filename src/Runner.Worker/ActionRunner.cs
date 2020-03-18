@@ -26,7 +26,7 @@ namespace GitHub.Runner.Worker
     public interface IActionRunner : IStep, IRunnerService
     {
         ActionRunStage Stage { get; set; }
-        Boolean TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context);
+        bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context);
         Pipelines.ActionStep Action { get; set; }
     }
 
@@ -142,7 +142,7 @@ namespace GitHub.Runner.Worker
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues);
+            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
 
             foreach (KeyValuePair<string, string> input in inputs)
             {
@@ -162,13 +162,7 @@ namespace GitHub.Runner.Worker
                     string key = input.Key.AssertString("action input name").Value;
                     if (!inputs.ContainsKey(key))
                     {
-                        var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-                        foreach (var data in ExecutionContext.ExpressionValues)
-                        {
-                            evaluateContext[data.Key] = data.Value;
-                        }
-
-                        inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value, evaluateContext);
+                        inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
                     }
                 }
             }
@@ -293,10 +287,14 @@ namespace GitHub.Runner.Worker
                 return displayName;
             }
             // Try evaluating fully
-            var templateEvaluator = context.ToPipelineTemplateEvaluator();
             try
             {
-                didFullyEvaluate = templateEvaluator.TryEvaluateStepDisplayName(tokenToParse, contextData, out displayName);
+                if (tokenToParse.CheckHasRequiredContext(contextData, context.ExpressionFunctions))
+                {
+                    var templateEvaluator = context.ToPipelineTemplateEvaluator();
+                    displayName = templateEvaluator.EvaluateStepDisplayName(tokenToParse, contextData, context.ExpressionFunctions);
+                    didFullyEvaluate = true;
+                }
             }
             catch (TemplateValidationException e)
             {

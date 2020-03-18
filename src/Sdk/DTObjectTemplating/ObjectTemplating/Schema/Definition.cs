@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
@@ -22,10 +23,27 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
                 {
                     var context = definition[i].Value.AssertSequence($"{TemplateConstants.Context}");
                     definition.RemoveAt(i);
-                    Context = context
-                        .Select(x => x.AssertString($"{TemplateConstants.Context} item").Value)
-                        .Distinct()
-                        .ToArray();
+                    var readerContext = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
+                    var evaluatorContext = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
+                    foreach (TemplateToken item in context)
+                    {
+                        var itemStr = item.AssertString($"{TemplateConstants.Context} item").Value;
+                        readerContext.Add(itemStr);
+
+                        // Remove min/max parameter info
+                        var paramIndex = itemStr.IndexOf('(');
+                        if (paramIndex > 0)
+                        {
+                            evaluatorContext.Add(String.Concat(itemStr.Substring(0, paramIndex + 1), ")"));
+                        }
+                        else
+                        {
+                            evaluatorContext.Add(itemStr);
+                        }
+                    }
+
+                    ReaderContext = readerContext.ToArray();
+                    EvaluatorContext = evaluatorContext.ToArray();
                 }
                 else if (String.Equals(definitionKey.Value, TemplateConstants.Description, StringComparison.Ordinal))
                 {
@@ -40,7 +58,17 @@ namespace GitHub.DistributedTask.ObjectTemplating.Schema
 
         internal abstract DefinitionType DefinitionType { get; }
 
-        internal String[] Context { get; private set; } = new String[0];
+        /// <summary>
+        /// Used by the template reader to determine allowed expression values and functions.
+        /// Also used by the template reader to validate function min/max parameters.
+        /// </summary>
+        internal String[] ReaderContext { get; private set; } = new String[0];
+
+        /// <summary>
+        /// Used by the template evaluator to determine allowed expression values and functions.
+        /// The min/max parameter info is omitted.
+        /// </summary>
+        internal String[] EvaluatorContext { get; private set; } = new String[0];
 
         internal abstract void Validate(
             TemplateSchema schema,

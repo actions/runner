@@ -1,20 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Expressions;
 using Moq;
 using Xunit;
-using GitHub.DistributedTask.Expressions2;
-using GitHub.DistributedTask.Pipelines.ContextData;
 
-namespace GitHub.Runner.Common.Tests.Worker
+namespace GitHub.Runner.Common.Tests.Worker.Expressions
 {
-    public sealed class ExpressionManagerL0
+    public sealed class ConditionFunctionsL0
     {
-        private Mock<IExecutionContext> _ec;
-        private ExpressionManager _expressionManager;
-        private DictionaryContextData _expressions;
+        private TemplateContext _templateContext;
         private JobContext _jobContext;
 
         [Fact]
@@ -38,7 +38,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _jobContext.Status = variableSet.JobStatus;
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, "always()").Value;
+                    bool actual = Evaluate("always()");
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, actual);
@@ -68,7 +68,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _jobContext.Status = variableSet.JobStatus;
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, "cancelled()").Value;
+                    bool actual = Evaluate("cancelled()");
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, actual);
@@ -97,7 +97,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _jobContext.Status = variableSet.JobStatus;
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, "failure()").Value;
+                    bool actual = Evaluate("failure()");
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, actual);
@@ -126,37 +126,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _jobContext.Status = variableSet.JobStatus;
 
                     // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, "success()").Value;
-
-                    // Assert.
-                    Assert.Equal(variableSet.Expected, actual);
-                }
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
-        public void ContextNamedValue()
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                // Arrange.
-                var variableSets = new[]
-                {
-                    new { Condition = "github.ref == 'refs/heads/master'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
-                    new { Condition = "github['ref'] == 'refs/heads/master'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
-                    new { Condition = "github.nosuch || '' == ''", VariableName = "ref", VariableValue = "refs/heads/master", Expected = true },
-                    new { Condition = "github['ref'] == 'refs/heads/release'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
-                    new { Condition = "github.ref == 'refs/heads/release'", VariableName = "ref", VariableValue = "refs/heads/master", Expected = false },
-                };
-                foreach (var variableSet in variableSets)
-                {
-                    InitializeExecutionContext(hc);
-                    _ec.Object.ExpressionValues["github"] = new GitHubContext() { { variableSet.VariableName, new StringContextData(variableSet.VariableValue) } };
-
-                    // Act.
-                    bool actual = _expressionManager.Evaluate(_ec.Object, variableSet.Condition).Value;
+                    bool actual = Evaluate("success()");
 
                     // Assert.
                     Assert.Equal(variableSet.Expected, actual);
@@ -166,21 +136,34 @@ namespace GitHub.Runner.Common.Tests.Worker
 
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
-            var hc = new TestHostContext(this, testName);
-            _expressionManager = new ExpressionManager();
-            _expressionManager.Initialize(hc);
-            return hc;
+            return new TestHostContext(this, testName);
         }
 
         private void InitializeExecutionContext(TestHostContext hc)
         {
-            _expressions = new DictionaryContextData();
             _jobContext = new JobContext();
 
-            _ec = new Mock<IExecutionContext>();
-            _ec.SetupAllProperties();
-            _ec.Setup(x => x.ExpressionValues).Returns(_expressions);
-            _ec.Setup(x => x.JobContext).Returns(_jobContext);
+            var executionContext = new Mock<IExecutionContext>();
+            executionContext.SetupAllProperties();
+            executionContext.Setup(x => x.JobContext).Returns(_jobContext);
+
+            _templateContext = new TemplateContext();
+            _templateContext.State[nameof(IExecutionContext)] = executionContext.Object;
+        }
+
+        private bool Evaluate(string expression)
+        {
+            var parser = new ExpressionParser();
+            var functions = new IFunctionInfo[]
+            {
+                new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0),
+                new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0),
+                new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0),
+                new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0),
+            };
+            var tree = parser.CreateTree(expression, null, null, functions);
+            var result = tree.Evaluate(null, null, _templateContext, null);
+            return result.IsTruthy;
         }
     }
 }
