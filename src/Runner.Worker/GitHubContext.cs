@@ -17,6 +17,7 @@ namespace GitHub.Runner.Worker
             "job",
             "ref",
             "repository",
+            "repository_owner",
             "run_id",
             "run_number",
             "sha",

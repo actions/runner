@@ -130,6 +130,13 @@ namespace GitHub.Runner.Worker.Container
             // Watermark for GitHub Action environment
             dockerOptions.Add("-e GITHUB_ACTIONS=true");
 
+            // Set CI=true when no one else already set it.
+            // CI=true is common set in most CI provider in GitHub
+            if (!container.ContainerEnvironmentVariables.ContainsKey("CI"))
+            {
+                dockerOptions.Add("-e CI=true");
+            }
+
             foreach (var volume in container.MountVolumes)
             {
                 // replace `"` with `\"` and add `"{0}"` to all path.
@@ -188,6 +195,13 @@ namespace GitHub.Runner.Worker.Container
 
             // Watermark for GitHub Action environment
             dockerOptions.Add("-e GITHUB_ACTIONS=true");
+
+            // Set CI=true when no one else already set it.
+            // CI=true is common set in most CI provider in GitHub
+            if (!container.ContainerEnvironmentVariables.ContainsKey("CI"))
+            {
+                dockerOptions.Add("-e CI=true");
+            }
 
             if (!string.IsNullOrEmpty(container.ContainerEntryPoint))
             {
