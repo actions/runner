@@ -27,12 +27,6 @@ Node Action Example:
    pre: 'setup.js'
    pre-if: 'success()' // Optional
    main: 'index.js'
-
- name: 'My action with post'
- description: 'My action with post'
- runs:
-   using: 'node12'
-   main: 'index.js'
    post: 'cleanup.js'
    post-if: 'success()' // Optional
 ```
@@ -48,26 +42,34 @@ Container Action Example:
    pre-entrypoint: 'setup.sh'
    pre-if: 'success()' // Optional
    entrypoint: 'entrypoint.sh'
-
- name: 'My action with post'
- description: 'My action with post'
- runs:
-   using: 'docker'
-   image: 'mycontainer:latest'
-   entrypoint: 'entrypoint.sh'
    post-entrypoint: 'cleanup.sh'
    post-if: 'success()' // Optional
 ```
 
 Both `pre` and `post` will has default `pre-if/post-if` sets to `always()`.  
-`pre` executes in order of how the steps are defined and `post` runs in the opposite order.
+Setting `pre` to `always()` will make sure no matter what condition evaluate result the `main` gets at runtime, the `pre` has always run already.   
+`pre` executes in order of how the steps are defined.  
 `pre` will always be added to job steps list during job setup.  
 > Action referenced from local repository (`./my-action`) won't get `pre` setup correctly since the repository haven't checkout during job initialize.  
 > We can't use GitHub api to download the repository since there is a about 3 mins delay between `git push` and the new commit available to download using GitHub api.
 
-`post` will be added to steps list lazily when the action's main execution passed `if` condition check and about to run.
+`post` will be pushed into a `poststeps` stack lazily when the action's `pre` or `main` execution passed `if` condition check and about to run, you can't have an action that only contains a `post`, we will pop and run each `post` after all `pre` and `main` finished.
 > Currently `post` works for both repository action (`org/repo@v1`) and local action (`./my-action`)
 
-When you use an action in the job, it can be a stand alone action which doesn't need `pre` and `post`, or it can be an action that serves steps before it which might need `pre` to initialize or it can be an action that serves steps after it which might need `post` to cleanup.
-It doesn't really make sense to me that an action needs to have `pre`, `main` and `post` all together.   
-Plus, since `post` is added to steps list lazily, when some actions has both `pre` and `post`, it might cause action which only has `post` doesn't run its `post` in the right order.
+Valid action:
+- only hss `main`
+- only has `pre`
+- has `pre` and `main`
+- has `pre` and `post`
+- has `main` and `post`
+- has `pre`, `main` and `post`
+
+Invalid action:
+- only has `post`
+
+Potential downside of introducing `pre`:
+
+- Extra magic wrt step order. Users should control the step order. Especially when we introduce templates.  
+- Eliminates the possibility to lazily download the action tarball, since `pre` always run by default, we have to download the tarball to check whether action defined a `pre`  
+- `pre` doesn't work with local action, we suggested customer use local action for testing their action changes, ex CI for their action, to avoid delay between `git push` and GitHub repo tarball download api.  
+- Condition on the `pre` can't be controlled using dynamic step outputs. `pre` executes too early.
