@@ -73,7 +73,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Clear the cache (local runner)
-            // IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
 
             foreach (var action in actions)
             {
@@ -126,7 +126,8 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    if (!(action.Reference is Pipelines.RepositoryPathReference repoAction) || repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
+                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
                     {
                         var definition = LoadAction(executionContext, action);
                         if (definition.Data.Execution.HasInit)
@@ -137,6 +138,10 @@ namespace GitHub.Runner.Worker
                             actionRunner.Condition = definition.Data.Execution.InitCondition;
 
                             preStepTracker[action.Id] = actionRunner;
+                        }
+                        else if (!definition.Data.Execution.HasMain && definition.Data.Execution.HasCleanup)
+                        {
+                            throw new NotSupportedException($"Action {repoAction.Name}@{repoAction.Ref} only has `post` execution, `pre` or `main` is required for an actions.");
                         }
                     }
                 }
@@ -801,7 +806,7 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.Container;
 
         public override bool HasInit => !string.IsNullOrEmpty(Init);
-
+        public override bool HasMain => !string.IsNullOrEmpty(EntryPoint);
         public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
 
         public string Image { get; set; }
@@ -822,7 +827,7 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.NodeJS;
 
         public override bool HasInit => !string.IsNullOrEmpty(Init);
-
+        public override bool HasMain => !string.IsNullOrEmpty(Script);
         public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
 
         public string Script { get; set; }
@@ -837,6 +842,7 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.Plugin;
 
         public override bool HasInit => false;
+        public override bool HasMain => true;
 
         public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
 
@@ -849,6 +855,7 @@ namespace GitHub.Runner.Worker
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Script;
         public override bool HasInit => false;
+        public override bool HasMain => true;
         public override bool HasCleanup => false;
     }
 
@@ -860,6 +867,7 @@ namespace GitHub.Runner.Worker
         public abstract ActionExecutionType ExecutionType { get; }
 
         public abstract bool HasInit { get; }
+        public abstract bool HasMain { get; }
         public abstract bool HasCleanup { get; }
 
         public string CleanupCondition

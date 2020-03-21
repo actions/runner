@@ -199,20 +199,20 @@ namespace GitHub.Runner.Common.Tests.Worker
 
 
                 var postRunner1 = hc.CreateService<IActionRunner>();
-                postRunner1.Action = new Pipelines.ActionStep() { Name = "post1", DisplayName = "Test 1", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner1.Action = new Pipelines.ActionStep() { Id = Guid.NewGuid(), Name = "post1", DisplayName = "Test 1", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
                 postRunner1.Stage = ActionRunStage.Post;
                 postRunner1.Condition = "always()";
                 postRunner1.DisplayName = "post1";
 
 
                 var postRunner2 = hc.CreateService<IActionRunner>();
-                postRunner2.Action = new Pipelines.ActionStep() { Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner2.Action = new Pipelines.ActionStep() { Id = Guid.NewGuid(), Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
                 postRunner2.Stage = ActionRunStage.Post;
                 postRunner2.Condition = "always()";
                 postRunner2.DisplayName = "post2";
 
-                action1.RegisterPostJobStep("post1", postRunner1);
-                action2.RegisterPostJobStep("post2", postRunner2);
+                action1.RegisterPostJobStep(postRunner1);
+                action2.RegisterPostJobStep(postRunner2);
 
                 Assert.NotNull(jobContext.JobSteps);
                 Assert.NotNull(jobContext.PostJobSteps);

@@ -98,7 +98,7 @@ namespace GitHub.Runner.Worker
 
         // others
         void ForceTaskComplete();
-        void RegisterPostJobStep(string refName, IStep step);
+        void RegisterPostJobStep(IStep step);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -153,6 +153,9 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
+
+        // Only job level ExecutionContext has StepsWithPostRegisted
+        public HashSet<Guid> StepsWithPostRegisted { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
 
@@ -239,9 +242,15 @@ namespace GitHub.Runner.Worker
             });
         }
 
-        public void RegisterPostJobStep(string refName, IStep step)
+        public void RegisterPostJobStep(IStep step)
         {
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, refName, IntraActionState);
+            if (step is IActionRunner actionRunner && !Root.StepsWithPostRegisted.Add(actionRunner.Action.Id))
+            {
+                Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
+                return;
+            }
+
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, ScopeName, ContextName, IntraActionState);
             Root.PostJobSteps.Push(step);
         }
 
@@ -618,6 +627,9 @@ namespace GitHub.Runner.Worker
             // PostJobSteps for job ExecutionContext
             PostJobSteps = new Stack<IStep>();
 
+            // StepsWithPostRegisted for job ExecutionContext
+            StepsWithPostRegisted = new HashSet<Guid>();
+
             // Job timeline record.
             InitializeTimelineRecord(
                 timelineId: message.Timeline.Id,
@@ -818,7 +830,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private IExecutionContext CreatePostChild(string displayName, string refName, Dictionary<string, string> intraActionState)
+        private IExecutionContext CreatePostChild(string displayName, string scopeName, string contextName, Dictionary<string, string> intraActionState)
         {
             if (!_expandedForPostJob)
             {
@@ -827,7 +839,8 @@ namespace GitHub.Runner.Worker
                 _childTimelineRecordOrder = _childTimelineRecordOrder * 2;
             }
 
-            return CreateChild(Guid.NewGuid(), displayName, refName, null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
+            var newGuid = Guid.NewGuid();
+            return CreateChild(newGuid, displayName, newGuid.ToString("N"), scopeName, contextName, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
         }
     }
 

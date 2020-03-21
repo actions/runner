@@ -163,15 +163,7 @@ namespace GitHub.Runner.Worker
                             {
                                 Trace.Info($"Adding pre-{action.DisplayName}.");
                                 preStep.TryEvaluateDisplayName(contextData, context);
-                                if (preStep.DisplayName.StartsWith(PipelineTemplateConstants.RunDisplayPrefix))
-                                {
-                                    preStep.DisplayName = $"Pre {preStep.DisplayName.Substring(PipelineTemplateConstants.RunDisplayPrefix.Length)}";
-                                }
-                                else
-                                {
-                                    preStep.DisplayName = $"Pre {preStep.DisplayName}";
-                                }
-
+                                preStep.DisplayName = $"Pre {preStep.DisplayName}";
                                 preJobSteps.Add(preStep);
                             }
                         }
@@ -197,7 +189,7 @@ namespace GitHub.Runner.Worker
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, null, null, stepId.ToString("N"), intraActionStates[actionStep.Action.Id]);
+                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, null, actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionStates[actionStep.Action.Id]);
                         }
                     }
 
