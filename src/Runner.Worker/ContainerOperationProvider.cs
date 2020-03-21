@@ -25,10 +25,12 @@ namespace GitHub.Runner.Worker
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
         private IDockerCommandManager _dockerManger;
+        private bool _allowDockerInDocker;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            _allowDockerInDocker = hostContext.AllowDockerInDocker;
             _dockerManger = HostContext.GetService<IDockerCommandManager>();
         }
 
@@ -57,13 +59,13 @@ namespace GitHub.Runner.Worker
 #if OS_WINDOWS
             // service CExecSvc is Container Execution Agent.
             ServiceController[] scServices = ServiceController.GetServices();
-            if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
+            if (!_allowDockerInDocker && scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
             {
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
 #else
             var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+            if (!_allowDockerInDocker && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
             {
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }

@@ -36,6 +36,7 @@ namespace GitHub.Runner.Common
         event EventHandler Unloading;
         void ShutdownRunner(ShutdownReason reason);
         void WritePerfCounter(string counter);
+        bool AllowDockerInDocker { get; set; }
     }
 
     public enum StartupType
@@ -65,6 +66,7 @@ namespace GitHub.Runner.Common
         private IDisposable _httpTraceSubscription;
         private IDisposable _diagListenerSubscription;
         private StartupType _startupType;
+        private bool _allowDockerInDocker;
         private string _perfFile;
         private RunnerWebProxy _webProxy = new RunnerWebProxy();
 
@@ -437,6 +439,18 @@ namespace GitHub.Runner.Common
             set
             {
                 _startupType = value;
+            }
+        }
+
+        public bool AllowDockerInDocker
+        {
+            get
+            {
+                return _allowDockerInDocker;
+            }
+            set
+            {
+                _allowDockerInDocker = value;
             }
         }
 

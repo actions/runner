@@ -27,6 +27,7 @@ namespace GitHub.Runner.Listener
 
         private readonly string[] validFlags =
         {
+            Constants.Runner.CommandLine.Flags.AllowDockerInDocker,
             Constants.Runner.CommandLine.Flags.Commit,
             Constants.Runner.CommandLine.Flags.Help,
             Constants.Runner.CommandLine.Flags.Replace,
@@ -64,6 +65,8 @@ namespace GitHub.Runner.Listener
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
 
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
+
+        public bool AllowDockerInDocker => TestFlag(Constants.Runner.CommandLine.Flags.AllowDockerInDocker);
 
         // Constructor.
         public CommandSettings(IHostContext context, string[] args)

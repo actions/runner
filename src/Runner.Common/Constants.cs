@@ -118,6 +118,7 @@ namespace GitHub.Runner.Common
                 //validFlags array as well present in the CommandSettings.cs
                 public static class Flags
                 {
+                    public static readonly string AllowDockerInDocker = "allow-docker-in-docker";
                     public static readonly string Commit = "commit";
                     public static readonly string Help = "help";
                     public static readonly string Replace = "replace";
