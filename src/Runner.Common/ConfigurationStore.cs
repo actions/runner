@@ -15,6 +15,9 @@ namespace GitHub.Runner.Common
     [DataContract]
     public sealed class RunnerSettings
     {
+        [DataMember(Name = "IsHostedServer", EmitDefaultValue = false)]
+        private bool? _isHostedServer;
+
         [DataMember(EmitDefaultValue = false)]
         public int AgentId { get; set; }
 
@@ -42,6 +45,21 @@ namespace GitHub.Runner.Common
         [DataMember(EmitDefaultValue = false)]
         public string MonitorSocketAddress { get; set; }
 
+        [IgnoreDataMember]
+        public bool IsHostedServer
+        {
+            get
+            {
+                // Old runners do not have this property. Hosted runners likely don't have this property either.
+                return _isHostedServer ?? true;
+            }
+
+            set
+            {
+                _isHostedServer = value;
+            }
+        }
+
         /// <summary>
         // Computed property for convenience. Can either return:
         // 1. If runner was configured at the repo level, returns something like: "myorg/myrepo"
@@ -67,6 +85,15 @@ namespace GitHub.Runner.Common
                 }
 
                 return repoOrOrgName;
+            }
+        }
+
+        [OnSerializing]
+        private void OnSerializing(StreamingContext context)
+        {
+            if (_isHostedServer.HasValue && _isHostedServer.Value)
+            {
+                _isHostedServer = null;
             }
         }
     }
