@@ -195,6 +195,7 @@ namespace GitHub.Runner.Worker
                 Data = new ActionDefinitionData()
             };
 
+            // bool localAction = false;
             if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
                 Trace.Info("Load action that reference container from registry.");
@@ -213,6 +214,7 @@ namespace GitHub.Runner.Worker
                 var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                 if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
                 {
+                    // localAction = true;
                     actionDirectory = executionContext.GetGitHubContext("workspace");
                     if (!string.IsNullOrEmpty(repoAction.Path))
                     {
@@ -272,6 +274,11 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Action container env: {StringUtil.ConvertToJson(containerAction.Environment)}.");
                         }
 
+                        if (!string.IsNullOrEmpty(containerAction.Init))
+                        {
+                            Trace.Info($"Action container init entrypoint: {containerAction.Init}.");
+                        }
+
                         if (!string.IsNullOrEmpty(containerAction.EntryPoint))
                         {
                             Trace.Info($"Action container entrypoint: {containerAction.EntryPoint}.");
@@ -291,6 +298,7 @@ namespace GitHub.Runner.Worker
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.NodeJS)
                     {
                         var nodeAction = definition.Data.Execution as NodeJSActionExecutionData;
+                        Trace.Info($"Action init node.js file: {nodeAction.Init ?? "N/A"}.");
                         Trace.Info($"Action node.js file: {nodeAction.Script}.");
                         Trace.Info($"Action cleanup node.js file: {nodeAction.Cleanup ?? "N/A"}.");
                     }
