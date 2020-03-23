@@ -61,6 +61,7 @@ namespace GitHub.Runner.Worker.Container
                 foreach (var volume in container.Volumes)
                 {
                     UserMountVolumes[volume] = volume;
+                    MountVolumes.Add(new MountVolume(volume));
                 }
             }
 
