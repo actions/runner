@@ -57,15 +57,15 @@ Setting `pre` to `always()` will make sure no matter what condition evaluate res
 > Currently `post` works for both repository action (`org/repo@v1`) and local action (`./my-action`)
 
 Valid action:
-- only hss `main`
-- only has `pre`
+- only has `main`
 - has `pre` and `main`
-- has `pre` and `post`
 - has `main` and `post`
 - has `pre`, `main` and `post`
 
 Invalid action:
+- only has `pre`
 - only has `post`
+- has `pre` and `post`
 
 Potential downside of introducing `pre`:
 
