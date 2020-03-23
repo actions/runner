@@ -82,6 +82,13 @@ namespace GitHub.Runner.Worker
             ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
 
+            if (handlerData.HasInit &&
+                Action.Reference is Pipelines.RepositoryPathReference repoAction &&
+                string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                ExecutionContext.Warning($"`pre` execution is not supported for local action from '{repoAction.Path}'");
+            }
+
             // The action has post cleanup defined.
             // we need to create timeline record for them and add them to the step list that StepRunner is using
             if (handlerData.HasCleanup && (Stage == ActionRunStage.Pre || Stage == ActionRunStage.Main))

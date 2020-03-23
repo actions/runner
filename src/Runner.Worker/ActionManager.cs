@@ -139,10 +139,6 @@ namespace GitHub.Runner.Worker
 
                             preStepTracker[action.Id] = actionRunner;
                         }
-                        else if (!definition.Data.Execution.HasMain && definition.Data.Execution.HasCleanup)
-                        {
-                            throw new NotSupportedException($"Action {repoAction.Name}@{repoAction.Ref} only has `post` execution, `pre` or `main` is required for an actions.");
-                        }
                     }
                 }
             }
