@@ -21,6 +21,7 @@ using System.Collections;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Expressions2;
+using System.Diagnostics;
 
 namespace GitHub.Runner.Worker
 {
@@ -99,6 +100,8 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
+        Task<string> GetGitHubToken();
+        Task UpdateGitHubTokenInContext();
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -110,6 +113,7 @@ namespace GitHub.Runner.Worker
         private readonly object _loggerLock = new object();
         private readonly HashSet<string> _outputvariables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly object _matchersLock = new object();
+        public readonly List<Task> _getGitHubTokenTasks = new List<Task>();
 
         private event OnMatcherChanged _onMatcherChanged;
 
@@ -129,6 +133,13 @@ namespace GitHub.Runner.Worker
 
         // only job level ExecutionContext will track throttling delay.
         private long _totalThrottlingDelayInMilliseconds = 0;
+
+        private Guid _jobId;
+        private Guid _scopeIdentifier;
+        private string _hubName;
+        private Guid _planId;
+
+        private Stopwatch _githubTokenExpireTimer = new Stopwatch();
 
         public Guid Id => _record.Id;
         public string ScopeName { get; private set; }
@@ -240,6 +251,59 @@ namespace GitHub.Runner.Worker
                 await Task.Delay(TimeSpan.FromSeconds(5));
                 _forceCompleted?.TrySetResult(1);
             });
+        }
+
+        public Task<string> GetGitHubToken()
+        {
+            Trace.Info($"Try get new GITHUB_TOKEN");
+            return Root.RefreshGitHubToken();
+        }
+
+        public async Task UpdateGitHubTokenInContext()
+        {
+            try
+            {
+                await Root.EnsureGitHubToken();
+            }
+            catch (Exception ex)
+            {
+                this.Warning($"Fail to get a new GITHUB_TOKEN, error: {ex.Message}");
+                this.Debug(ex.ToString());
+            }
+        }
+
+        private async Task<string> RefreshGitHubToken()
+        {
+            Trace.Info("Request new GITHUB_TOKEN");
+            var jobServer = HostContext.GetService<IJobServer>();
+            var githubToken = await jobServer.RefreshGitHubTokenAsync(_scopeIdentifier, _hubName, _planId, _jobId, CancellationToken.None);
+
+            if (!string.IsNullOrEmpty(githubToken?.Token))
+            {
+                // register secret masker
+                Trace.Info("Register secret masker for new GITHUB_TOKEN");
+                HostContext.SecretMasker.AddValue(githubToken.Token);
+                return githubToken.Token;
+            }
+            else
+            {
+                throw new InvalidOperationException("Get empty GTIHUB_TOKEN.");
+            }
+        }
+
+        private async Task EnsureGitHubToken()
+        {
+            // needs to refresh GITHUB_TOKEN every 50 mins since the token is good for 60 min by default
+            if (_githubTokenExpireTimer.Elapsed.TotalMilliseconds > 10)
+            {
+                var githubToken = await this.RefreshGitHubToken();
+                var secretsContext = ExpressionValues["secrets"] as DictionaryContextData;
+                secretsContext["GITHUB_TOKEN"] = new StringContextData(githubToken);
+                var githubContext = ExpressionValues["github"] as GitHubContext;
+                githubContext["token"] = new StringContextData(githubToken);
+
+                _githubTokenExpireTimer.Restart();
+            }
         }
 
         public void RegisterPostJobStep(IStep step)
@@ -617,6 +681,7 @@ namespace GitHub.Runner.Worker
 
             ExpressionValues["env"] = new CaseSensitiveDictionaryContextData();
 #endif
+            _githubTokenExpireTimer.Start();
 
             // Prepend Path
             PrependPath = new List<string>();
@@ -629,6 +694,11 @@ namespace GitHub.Runner.Worker
 
             // StepsWithPostRegisted for job ExecutionContext
             StepsWithPostRegisted = new HashSet<Guid>();
+
+            _scopeIdentifier = message.Plan.ScopeIdentifier;
+            _hubName = message.Plan.PlanType;
+            _jobId = message.JobId;
+            _planId = message.Plan.PlanId;
 
             // Job timeline record.
             InitializeTimelineRecord(

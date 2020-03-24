@@ -317,5 +317,40 @@ namespace GitHub.DistributedTask.WebApi
                 userState: userState,
                 cancellationToken: cancellationToken);
         }
+
+
+        /// <summary>
+        /// [Preview API]
+        /// </summary>
+        /// <param name="scopeIdentifier">The project GUID to scope the request</param>
+        /// <param name="hubName">The name of the server hub: "build" for the Build server or "rm" for the Release Management server</param>
+        /// <param name="planId"></param>
+        /// <param name="jobId"></param>
+        /// <param name="userState"></param>
+        /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
+        public virtual Task<GitHubToken> RefreshTokenAsync(
+            Guid scopeIdentifier,
+            string hubName,
+            Guid planId,
+            Guid jobId,
+            object userState = null,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("GET");
+            Guid locationId = new Guid("8aa8aff7-751b-496e-be8d-b7818770efb3");
+            object routeValues = new { scopeIdentifier = scopeIdentifier, hubName = hubName, planId = planId };
+
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+            queryParams.Add("jobId", jobId.ToString());
+
+            return SendAsync<GitHubToken>(
+                httpMethod,
+                locationId,
+                routeValues: routeValues,
+                version: new ApiResourceVersion(6.0, 1),
+                queryParameters: queryParams,
+                userState: userState,
+                cancellationToken: cancellationToken);
+        }
     }
 }

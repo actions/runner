@@ -4,6 +4,17 @@ using System.Runtime.Serialization;
 
 namespace GitHub.DistributedTask.WebApi
 {
+
+    [DataContract]
+    public class GitHubToken
+    {
+        [DataMember(EmitDefaultValue = false)]
+        public string Token { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public DateTime Expires_at { get; set; }
+    }
+
     [DataContract]
     public class Issue
     {

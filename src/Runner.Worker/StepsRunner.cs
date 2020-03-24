@@ -75,6 +75,7 @@ namespace GitHub.Runner.Worker
 
                 // Start
                 step.ExecutionContext.Start();
+                await step.ExecutionContext.UpdateGitHubTokenInContext();
 
                 // Initialize scope
                 if (InitializeScope(step, scopeInputs))

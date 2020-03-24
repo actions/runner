@@ -288,6 +288,30 @@ namespace GitHub.Runner.Worker
         }
     }
 
+    public sealed class RefreshTokenCommandExtension : RunnerService, IActionCommandExtension
+    {
+        public string Command => "refresh-token";
+        public bool OmitEcho => false;
+
+        public Type ExtensionType => typeof(IActionCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
+        {
+            ArgUtil.NotNullOrEmpty(command.Data, "token file");
+            var runnerTemp = HostContext.GetDirectory(WellKnownDirectory.Temp);
+            var tempFile = Path.Combine(runnerTemp, command.Data);
+            if (!tempFile.StartsWith(runnerTemp + Path.DirectorySeparatorChar))
+            {
+                throw new Exception($"'{command.Data}' has to be under runner temp directory '{runnerTemp}'");
+            }
+
+            Trace.Info("Here");
+            var githubToken = context.GetGitHubToken().GetAwaiter().GetResult();
+            File.WriteAllText(tempFile, githubToken);
+            Trace.Info("HereAgain");
+        }
+    }
+
     public sealed class AddMatcherCommandExtension : RunnerService, IActionCommandExtension
     {
         public string Command => "add-matcher";

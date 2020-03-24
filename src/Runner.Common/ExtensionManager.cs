@@ -46,6 +46,7 @@ namespace GitHub.Runner.Common
                     Add<T>(extensions, "GitHub.Runner.Worker.SetOutputCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.SaveStateCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.AddPathCommandExtension, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.RefreshTokenCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.AddMaskCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.AddMatcherCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.RemoveMatcherCommandExtension, Runner.Worker");

@@ -22,6 +22,7 @@ namespace GitHub.Runner.Common
         Task<List<TimelineRecord>> UpdateTimelineRecordsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
         Task RaisePlanEventAsync<T>(Guid scopeIdentifier, string hubName, Guid planId, T eventData, CancellationToken cancellationToken) where T : JobEvent;
         Task<Timeline> GetTimelineAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, CancellationToken cancellationToken);
+        Task<GitHubToken> RefreshGitHubTokenAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, CancellationToken cancellationToken);
     }
 
     public sealed class JobServer : RunnerService, IJobServer
@@ -112,6 +113,12 @@ namespace GitHub.Runner.Common
         {
             CheckConnection();
             return _taskClient.GetTimelineAsync(scopeIdentifier, hubName, planId, timelineId, includeRecords: true, cancellationToken: cancellationToken);
+        }
+
+        public Task<GitHubToken> RefreshGitHubTokenAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, CancellationToken cancellationToken)
+        {
+            CheckConnection();
+            return _taskClient.RefreshTokenAsync(scopeIdentifier, hubName, planId, jobId, cancellationToken: cancellationToken);
         }
     }
 }
