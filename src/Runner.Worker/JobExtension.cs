@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -126,6 +127,17 @@ namespace GitHub.Runner.Worker
                     string _workDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
                     context.SetRunnerContext("workspace", Path.Combine(_workDirectory, trackingConfig.PipelineDirectory));
                     context.SetGitHubContext("workspace", Path.Combine(_workDirectory, trackingConfig.WorkspaceDirectory));
+
+                    // Temporary hack for GHES alpha
+                    var configurationStore = HostContext.GetService<IConfigurationStore>();
+                    var runnerSettings = configurationStore.GetSettings();
+                    if (!runnerSettings.IsHostedServer && !string.IsNullOrEmpty(runnerSettings.GitHubUrl))
+                    {
+                        var url = new Uri(runnerSettings.GitHubUrl);
+                        var portInfo = url.IsDefaultPort ? string.Empty : $":{url.Port.ToString(CultureInfo.InvariantCulture)}";
+                        context.SetGitHubContext("url", $"{url.Scheme}://{url.Host}{portInfo}");
+                        context.SetGitHubContext("api_url", $"{url.Scheme}://api.{url.Host}{portInfo}");
+                    }
 
                     // Evaluate the job-level environment variables
                     context.Debug("Evaluating job-level environment variables");
