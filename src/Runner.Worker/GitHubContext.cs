@@ -10,6 +10,7 @@ namespace GitHub.Runner.Worker
         {
             "action",
             "actor",
+            "api_url", // temp for GHES alpha release
             "base_ref",
             "event_name",
             "event_path",
@@ -21,6 +22,7 @@ namespace GitHub.Runner.Worker
             "run_id",
             "run_number",
             "sha",
+            "url", // temp for GHES alpha release
             "workflow",
             "workspace",
         };
