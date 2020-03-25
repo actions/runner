@@ -114,6 +114,57 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_SkipDownloadActionFromGraphWhenCached_OnPremises()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "actions/no-such-action",
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+                _configurationStore.Object.GetSettings().IsHostedServer = false;
+                var actionDirectory = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/no-such-action", "master");
+                Directory.CreateDirectory(actionDirectory);
+                var watermarkFile = $"{actionDirectory}.completed";
+                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
+                var actionFile = Path.Combine(actionDirectory, "action.yml");
+                File.WriteAllText(actionFile, @"
+name: ""no-such-action""
+runs:
+  using: node12
+  main: no-such-action.js
+");
+                var testFile = Path.Combine(actionDirectory, "test-file");
+                File.WriteAllText(testFile, "asdf");
+
+                // Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                // Assert
+                Assert.True(File.Exists(testFile));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_AlwaysClearActionsCache()
         {
             try

@@ -86,7 +86,6 @@ namespace GitHub.Runner.Listener.Configuration
 
             RunnerSettings runnerSettings = new RunnerSettings();
 
-            bool isHostedServer = false;
             // Loop getting url and creds until you can connect
             ICredentialProvider credProvider = null;
             VssCredentials creds = null;
@@ -117,7 +116,7 @@ namespace GitHub.Runner.Listener.Configuration
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    isHostedServer = await IsHostedServer(runnerSettings.ServerUrl, creds);
+                    runnerSettings.IsHostedServer = await IsHostedServer(runnerSettings.ServerUrl, creds);
 
                     // Validate can connect.
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
@@ -248,7 +247,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 UriBuilder configServerUrl = new UriBuilder(runnerSettings.ServerUrl);
                 UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
-                if (!isHostedServer && Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
+                if (!runnerSettings.IsHostedServer && Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     oauthEndpointUrlBuilder.Scheme = configServerUrl.Scheme;
                     oauthEndpointUrlBuilder.Host = configServerUrl.Host;
@@ -381,7 +380,6 @@ namespace GitHub.Runner.Listener.Configuration
                     }
 
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    bool isHostedServer = await IsHostedServer(settings.ServerUrl, creds);
                     await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
                     var agents = await _runnerServer.GetAgentsAsync(settings.PoolId, settings.AgentName);

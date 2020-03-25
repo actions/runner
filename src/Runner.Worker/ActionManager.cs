@@ -58,8 +58,14 @@ namespace GitHub.Runner.Worker
                 executionContext.Warning("The 'PREVIEW_ACTION_TOKEN' secret is depreciated. Please remove it from the repository's secrets");
             }
 
-            // Clear the cache (local runner)
-            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            // Clear the cache (for self-hosted runners)
+            // Note, temporarily avoid this step for the on-premises product, to avoid rate limiting.
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
+            if (isHostedServer)
+            {
+                IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            }
 
             foreach (var action in actions)
             {
@@ -448,7 +454,8 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
 
             string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
-            if (File.Exists(destDirectory + ".completed"))
+            string watermarkFile = destDirectory + ".completed";
+            if (File.Exists(watermarkFile))
             {
                 executionContext.Debug($"Action '{repositoryReference.Name}@{repositoryReference.Ref}' already downloaded at '{destDirectory}'.");
                 return;
@@ -498,24 +505,33 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
-                                if (string.IsNullOrEmpty(authToken))
+                                var configurationStore = HostContext.GetService<IConfigurationStore>();
+                                var isHostedServer = configurationStore.GetSettings().IsHostedServer;
+                                if (isHostedServer)
                                 {
-                                    // TODO: Depreciate the PREVIEW_ACTION_TOKEN
-                                    authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
-                                }
+                                    var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
+                                    if (string.IsNullOrEmpty(authToken))
+                                    {
+                                        // TODO: Depreciate the PREVIEW_ACTION_TOKEN
+                                        authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
+                                    }
 
-                                if (!string.IsNullOrEmpty(authToken))
-                                {
-                                    HostContext.SecretMasker.AddValue(authToken);
-                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
-                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                    if (!string.IsNullOrEmpty(authToken))
+                                    {
+                                        HostContext.SecretMasker.AddValue(authToken);
+                                        var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
+                                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                    }
+                                    else
+                                    {
+                                        var accessToken = executionContext.GetGitHubContext("token");
+                                        var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
+                                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                    }
                                 }
                                 else
                                 {
-                                    var accessToken = executionContext.GetGitHubContext("token");
-                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
-                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                    // Intentionally empty. Temporary for GHES alpha release, download from dotcom unauthenticated.
                                 }
 
                                 httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
@@ -610,7 +626,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 Trace.Verbose("Create watermark file indicate action download succeed.");
-                File.WriteAllText(destDirectory + ".completed", DateTime.UtcNow.ToString());
+                File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
 
                 executionContext.Debug($"Archive '{archiveFile}' has been unzipped into '{destDirectory}'.");
                 Trace.Info("Finished getting action repository.");
