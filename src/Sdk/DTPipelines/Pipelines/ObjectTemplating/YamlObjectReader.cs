@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     /// <summary>
     /// Converts a YAML file into a TemplateToken
     /// </summary>
-    public sealed class YamlObjectReader : IObjectReader
+    internal sealed class YamlObjectReader : IObjectReader
     {
         internal YamlObjectReader(
             Int32? fileId,

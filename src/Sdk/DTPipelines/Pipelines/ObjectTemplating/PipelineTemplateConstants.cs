@@ -8,6 +8,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     {
         public const String Always = "always";
         public const String BooleanStepsContext = "boolean-steps-context";
+        public const String BooleanStrategyContext = "boolean-strategy-context";
         public const String CancelTimeoutMinutes = "cancel-timeout-minutes";
         public const String Cancelled = "cancelled";
         public const String Checkout = "checkout";
