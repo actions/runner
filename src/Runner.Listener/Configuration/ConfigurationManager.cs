@@ -94,8 +94,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 // Get the URL
                 var inputUrl = command.GetUrl();
-                if (!inputUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase) &&
-                    !inputUrl.Contains("github.localhost", StringComparison.OrdinalIgnoreCase))
+                if (inputUrl.Contains("codedev.ms", StringComparison.OrdinalIgnoreCase))
                 {
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
@@ -198,7 +197,7 @@ namespace GitHub.Runner.Listener.Configuration
                 }
                 else
                 {
-                    // Create a new agent. 
+                    // Create a new agent.
                     agent = CreateNewAgent(runnerSettings.AgentName, publicKey);
 
                     try
@@ -290,7 +289,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 // there are two exception messages server send that indicate clock skew.
                 // 1. The bearer token expired on {jwt.ValidTo}. Current server time is {DateTime.UtcNow}.
-                // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.                
+                // 2. The bearer token is not valid until {jwt.ValidFrom}. Current server time is {DateTime.UtcNow}.
                 Trace.Error("Catch exception during test agent connection.");
                 Trace.Error(ex);
                 throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
@@ -402,7 +401,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine("Cannot connect to server, because config files are missing. Skipping removing runner from the server.");
                 }
 
-                //delete credential config files               
+                //delete credential config files
                 currentAction = "Removing .credentials";
                 if (hasCredentials)
                 {
@@ -416,7 +415,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine("Does not exist. Skipping " + currentAction);
                 }
 
-                //delete settings config file                
+                //delete settings config file
                 currentAction = "Removing .runner";
                 if (isConfigured)
                 {
@@ -519,8 +518,19 @@ namespace GitHub.Runner.Listener.Configuration
 
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken, string runnerEvent)
         {
+            var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            var githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
+            if (string.Equals(gitHubUrlBuilder.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(gitHubUrlBuilder.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(gitHubUrlBuilder.Host, "github.localhost", StringComparison.OrdinalIgnoreCase))
+            {
+                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
+            }
+            else
+            {
+                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runner-registration";
+            }
+
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
             using (var httpClient = new HttpClient(httpClientHandler))
             {

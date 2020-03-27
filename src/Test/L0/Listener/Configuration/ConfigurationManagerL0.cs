@@ -37,7 +37,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
 
         private Mock<IRSAKeyManager> _rsaKeyManager;
         private string _expectedToken = "expectedToken";
-        private string _expectedServerUrl = "https://localhost";
+        private string _expectedServerUrl = "https://codedev.ms";
         private string _expectedAgentName = "expectedAgentName";
         private string _expectedPoolName = "poolName";
         private string _expectedAuthType = "pat";
