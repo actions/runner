@@ -93,9 +93,11 @@ namespace GitHub.Runner.Listener.Configuration
             while (true)
             {
                 // Get the URL
+                var isGitHub = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("_IS_GITHUB"));
                 var inputUrl = command.GetUrl();
                 if (!inputUrl.Contains("github.com", StringComparison.OrdinalIgnoreCase) &&
-                    !inputUrl.Contains("github.localhost", StringComparison.OrdinalIgnoreCase))
+                    !inputUrl.Contains("github.localhost", StringComparison.OrdinalIgnoreCase) &&
+                    !isGitHub)
                 {
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
