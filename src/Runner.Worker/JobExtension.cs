@@ -136,7 +136,7 @@ namespace GitHub.Runner.Worker
                         var url = new Uri(runnerSettings.GitHubUrl);
                         var portInfo = url.IsDefaultPort ? string.Empty : $":{url.Port.ToString(CultureInfo.InvariantCulture)}";
                         context.SetGitHubContext("url", $"{url.Scheme}://{url.Host}{portInfo}");
-                        context.SetGitHubContext("api_url", $"{url.Scheme}://api.{url.Host}{portInfo}");
+                        context.SetGitHubContext("api_url", $"{url.Scheme}://{url.Host}{portInfo}/api/v3");
                     }
 
                     // Evaluate the job-level environment variables
