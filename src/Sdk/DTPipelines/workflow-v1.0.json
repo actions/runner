@@ -739,7 +739,7 @@
     "container-env": {
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "string"
+        "loose-value-type": "string-runner-context"
       }
     },
 
