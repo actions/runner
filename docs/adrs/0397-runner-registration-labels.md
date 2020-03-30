@@ -1,5 +1,5 @@
-# ADR 0xxx: Support adding custom labels during runner config
-**Date**: 2020-01-14
+# ADR 0397: Support adding custom labels during runner config
+**Date**: 2020-03-30
 
 **Status**: Proposed
 
@@ -8,6 +8,8 @@
 Since configuring self-hosted runners is commonly automated via scripts, the labels need to be able to be created during configuration.  The runner currently registers the built-in labels (os, arch) during registration but does not accept labels via command line args to extend the set registered.
 
 See Issue: https://github.com/actions/runner/issues/262
+
+This is another version of [ADR275](https://github.com/actions/runner/pull/275)
 
 ## Decision
 
