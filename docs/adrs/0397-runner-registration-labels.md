@@ -1,7 +1,7 @@
 # ADR 0397: Support adding custom labels during runner config
 **Date**: 2020-03-30
 
-**Status**: Proposed
+**Status**: Approved
 
 ## Context
 
