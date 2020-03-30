@@ -41,11 +41,10 @@ It would not be possible to remove labels from an existing runner using `config.
 
 ## Overriding built-in labels
 
-Note that it is possible to register "built-in" hosted labels like `ubuntu-latest` and is not considered an error.  This is an effective way for the org / runner admin to dictate by policy through registration that this set of runners will be used without having to edit all the workflow files not and in the future.
+Note that it is possible to register "built-in" hosted labels like `ubuntu-latest` and is not considered an error.  This is an effective way for the org / runner admin to dictate by policy through registration that this set of runners will be used without having to edit all the workflow files now and in the future.
 
 We will also not make other restrictions such as limiting explicitly adding os / arch labels and validating.  We will assume that explicit labels were added for a reason and not restricting offers the most flexibility and future proofing / compat.
 
 ## Consequences
 
 The ability to add custom labels to a self-hosted runner would enable most scenarios where job runner selection based on runner capabilities or characteristics are required.
-
