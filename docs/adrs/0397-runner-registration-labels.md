@@ -39,6 +39,12 @@ runs-on: [self-hosted, mylabel, anotherlabel]
 
 It would not be possible to remove labels from an existing runner using `config.sh`, instead labels would have to be removed using the GitHub UI.
 
+The labels argument will split on commas, trim and discard empty strings.  That effectively means don't use commans in unattended config label names.  Alternatively we could choose to escape commans but it's a nice to have.
+
+## Replace
+
+If an existing runner exists and the option to replace is chosen (interactively of via unattend as in this scenario), then the labels will be replaced / overwritten (not merged).
+
 ## Overriding built-in labels
 
 Note that it is possible to register "built-in" hosted labels like `ubuntu-latest` and is not considered an error.  This is an effective way for the org / runner admin to dictate by policy through registration that this set of runners will be used without having to edit all the workflow files now and in the future.
