@@ -393,7 +393,8 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(setupInfo, nameof(setupInfo));
             ArgUtil.NotNullOrEmpty(setupInfo.Container.Dockerfile, nameof(setupInfo.Container.Dockerfile));
 
-            executionContext.Output($"Build container for action use: '{setupInfo.Container.Dockerfile}'.");
+            string sourceVersion = executionContext.GetGitHubContext("sha");
+            executionContext.Output($"Build container for action use: '{setupInfo.Container.Dockerfile}' (git: {sourceVersion}).");
 
             // Build docker image with retry up to 3 times
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
