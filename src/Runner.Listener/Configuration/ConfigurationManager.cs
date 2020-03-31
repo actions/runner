@@ -246,14 +246,6 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 UriBuilder configServerUrl = new UriBuilder(runnerSettings.ServerUrl);
                 UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
-                if (!runnerSettings.IsHostedServer && Uri.Compare(configServerUrl.Uri, oauthEndpointUrlBuilder.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
-                {
-                    oauthEndpointUrlBuilder.Scheme = configServerUrl.Scheme;
-                    oauthEndpointUrlBuilder.Host = configServerUrl.Host;
-                    oauthEndpointUrlBuilder.Port = configServerUrl.Port;
-                    Trace.Info($"Set oauth endpoint url's scheme://host:port component to match runner configure url's scheme://host:port: '{oauthEndpointUrlBuilder.Uri.AbsoluteUri}'.");
-                }
-
                 var credentialData = new CredentialData
                 {
                     Scheme = Constants.Configuration.OAuth,
