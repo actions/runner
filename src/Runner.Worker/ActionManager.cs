@@ -633,7 +633,7 @@ namespace GitHub.Runner.Worker
                         // we will print the short SHA when action is referenced via branch/tag
                         if (repositoryReference.Ref.StartsWith(shortSha, StringComparison.OrdinalIgnoreCase))
                         {
-                            // actions is already referenced by SHA
+                            // action is already referenced by SHA
                             shortSha = null;
                         }
                     }
@@ -909,4 +909,3 @@ namespace GitHub.Runner.Worker
         public string ActionRepository { get; set; }
     }
 }
-
