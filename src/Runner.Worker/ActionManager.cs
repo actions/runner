@@ -465,7 +465,7 @@ namespace GitHub.Runner.Worker
                 // make sure we get a clean folder ready to use.
                 IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
                 Directory.CreateDirectory(destDirectory);
-                executionContext.Output($"Download action repository '{repositoryReference.Name}@{repositoryReference.Ref}'");
+                executionContext.Debug($"Downloading action repository '{repositoryReference.Name}@{repositoryReference.Ref}'");
             }
 
 #if OS_WINDOWS
@@ -613,7 +613,10 @@ namespace GitHub.Runner.Worker
                 }
 #endif
 
-                // repository archive from github always contains a nested folder
+                // repository archive from github always contains a nested folder, the nested folder contains the short SHA for the ref
+                // ex: actions/checkout@master the nested folder looks like actions-checkout-01aeccc
+                // However, when you reference action using tag, the SHA in the folder name is not really the commit SHA, it's the SHA for the tag itself.
+                var shortSha = "";
                 var subDirectories = new DirectoryInfo(stagingDirectory).GetDirectories();
                 if (subDirectories.Length != 1)
                 {
@@ -621,6 +624,24 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
+                    shortSha = subDirectories[0].Name;
+                    var splitIndex = shortSha.LastIndexOf('-');
+                    if (splitIndex > 0 && splitIndex < shortSha.Length - 1)
+                    {
+                        shortSha = shortSha.Substring(splitIndex + 1);
+
+                        // we will print the short SHA when action is referenced via branch/tag
+                        if (repositoryReference.Ref.StartsWith(shortSha, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // actions is already referenced by SHA
+                            shortSha = null;
+                        }
+                    }
+                    else
+                    {
+                        shortSha = null;
+                    }
+
                     executionContext.Debug($"Unwrap '{subDirectories[0].Name}' to '{destDirectory}'");
                     IOUtil.CopyDirectory(subDirectories[0].FullName, destDirectory, executionContext.CancellationToken);
                 }
@@ -630,6 +651,15 @@ namespace GitHub.Runner.Worker
 
                 executionContext.Debug($"Archive '{archiveFile}' has been unzipped into '{destDirectory}'.");
                 Trace.Info("Finished getting action repository.");
+
+                if (string.IsNullOrEmpty(shortSha))
+                {
+                    executionContext.Output($"Download action repository '{repositoryReference.Name}@{repositoryReference.Ref}'");
+                }
+                else
+                {
+                    executionContext.Output($"Download action repository '{repositoryReference.Name}@{repositoryReference.Ref}' (SHA: {shortSha})");
+                }
             }
             finally
             {
