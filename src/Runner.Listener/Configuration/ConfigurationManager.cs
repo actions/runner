@@ -115,7 +115,7 @@ namespace GitHub.Runner.Listener.Configuration
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    runnerSettings.IsHostedServer = IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
+                    runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
 
                     // Validate can connect.
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
