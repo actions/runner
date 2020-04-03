@@ -14,10 +14,10 @@ namespace GitHub.Runner.Sdk
 {
     public static class VssUtil
     {
-        public static void InitializeVssClientSettings(ProductInfoHeaderValue additionalUserAgent, IWebProxy proxy)
+        public static void InitializeVssClientSettings(List<ProductInfoHeaderValue> additionalUserAgents, IWebProxy proxy)
         {
             var headerValues = new List<ProductInfoHeaderValue>();
-            headerValues.Add(additionalUserAgent);
+            headerValues.AddRange(additionalUserAgents);
             headerValues.Add(new ProductInfoHeaderValue($"({RuntimeInformation.OSDescription.Trim()})"));
 
             if (VssClientHttpRequestSettings.Default.UserAgent != null && VssClientHttpRequestSettings.Default.UserAgent.Count > 0)

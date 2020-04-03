@@ -86,7 +86,7 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
-        public ProductInfoHeaderValue UserAgent => new ProductInfoHeaderValue("L0Test", "0.0");
+        public List<ProductInfoHeaderValue> UserAgents => new List<ProductInfoHeaderValue>() { new ProductInfoHeaderValue("L0Test", "0.0") };
 
         public RunnerWebProxy WebProxy => new RunnerWebProxy();
 

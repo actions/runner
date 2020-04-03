@@ -172,7 +172,7 @@ get_current_os_name() {
         return 0
     elif [ "$uname" = "FreeBSD" ]; then
         echo "freebsd"
-        return 0        
+        return 0
     elif [ "$uname" = "Linux" ]; then
         local linux_platform_name
         linux_platform_name="$(get_linux_platform_name)" || { echo "linux" && return 0 ; }
@@ -728,11 +728,12 @@ downloadcurl() {
     # Append feed_credential as late as possible before calling curl to avoid logging feed_credential
     remote_path="${remote_path}${feed_credential}"
 
+    local curl_options="--retry 20 --retry-delay 2 --connect-timeout 15 -sSL -f --create-dirs "
     local failed=false
     if [ -z "$out_path" ]; then
-        curl --retry 10 -sSL -f --create-dirs "$remote_path" || failed=true
+        curl $curl_options "$remote_path" || failed=true
     else
-        curl --retry 10 -sSL -f --create-dirs -o "$out_path" "$remote_path" || failed=true
+        curl $curl_options -o "$out_path" "$remote_path" || failed=true
     fi
     if [ "$failed" = true ]; then
         say_verbose "Curl download failed"
@@ -748,12 +749,12 @@ downloadwget() {
 
     # Append feed_credential as late as possible before calling wget to avoid logging feed_credential
     remote_path="${remote_path}${feed_credential}"
-
+    local wget_options="--tries 20 --waitretry 2 --connect-timeout 15 "
     local failed=false
     if [ -z "$out_path" ]; then
-        wget -q --tries 10 -O - "$remote_path" || failed=true
+        wget -q $wget_options -O - "$remote_path" || failed=true
     else
-        wget --tries 10 -O "$out_path" "$remote_path" || failed=true
+        wget $wget_options -O "$out_path" "$remote_path" || failed=true
     fi
     if [ "$failed" = true ]; then
         say_verbose "Wget download failed"
