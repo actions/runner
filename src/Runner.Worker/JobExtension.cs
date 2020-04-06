@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -33,7 +34,7 @@ namespace GitHub.Runner.Worker
     public interface IJobExtension : IRunnerService
     {
         Task<List<IStep>> InitializeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message);
-        void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
+        Task FinalizeJobAsync(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc);
     }
 
     public sealed class JobExtension : RunnerService, IJobExtension
@@ -311,7 +312,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void FinalizeJob(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
+        public async Task FinalizeJobAsync(IExecutionContext jobContext, Pipelines.AgentJobRequestMessage message, DateTime jobStartTimeUtc)
         {
             Trace.Entering();
             ArgUtil.NotNull(jobContext, nameof(jobContext));
@@ -324,6 +325,39 @@ namespace GitHub.Runner.Worker
                 {
                     context.Start();
                     context.Debug("Starting: Complete job");
+
+                    // Revoke GITHUB_TOKEN
+                    context.Debug("Revoking GITHUB_TOKEN");
+                    var githubApiUrl = context.GetGitHubContext("api_url");
+                    if (string.IsNullOrEmpty(githubApiUrl))
+                    {
+                        githubApiUrl = "https://api.github.com";
+                    }
+
+                    var githubToken = context.GetGitHubContext("token");
+                    try
+                    {
+                        var githubServer = HostContext.GetService<IGitHubServer>();
+                        var result = await githubServer.RevokeInstallationToken(githubApiUrl, githubToken);
+                        if (result.StatusCode == HttpStatusCode.NoContent)
+                        {
+                            context.Debug("GITHUB_TOKEN revoked");
+                        }
+                        else if (result.StatusCode == HttpStatusCode.Unauthorized)
+                        {
+                            context.Debug("GITHUB_TOKEN already expired");
+                        }
+                        else
+                        {
+                            Trace.Error("Fail to revoke GITHUB_TOKEN");
+                            Trace.Error(result.Message);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error("Fail to revoke GITHUB_TOKEN");
+                        Trace.Error(ex);
+                    }
 
                     // Evaluate job outputs
                     if (message.JobOutputs != null && message.JobOutputs.Type != TokenType.Null)

@@ -184,7 +184,7 @@ namespace GitHub.Runner.Worker
                 finally
                 {
                     Trace.Info("Finalize job.");
-                    jobExtension.FinalizeJob(jobContext, message, jobStartTimeUtc);
+                    await jobExtension.FinalizeJobAsync(jobContext, message, jobStartTimeUtc);
                 }
 
                 Trace.Info($"Job result after all job steps finish: {jobContext.Result ?? TaskResult.Succeeded}");

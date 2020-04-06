@@ -207,7 +207,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void UploadDiganosticLogIfEnvironmentVariableSet()
+        public async Task UploadDiganosticLogIfEnvironmentVariableSet()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -220,7 +220,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _jobEc.Initialize(hc);
                 _jobEc.InitializeJob(_message, _tokenSource.Token);
 
-                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+                await jobExtension.FinalizeJobAsync(_jobEc, _message, DateTime.UtcNow);
 
                 _diagnosticLogManager.Verify(x =>
                     x.UploadDiagnosticLogs(
@@ -235,7 +235,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void DontUploadDiagnosticLogIfEnvironmentVariableFalse()
+        public async Task DontUploadDiagnosticLogIfEnvironmentVariableFalse()
         {
             using (TestHostContext hc = CreateTestContext())
             {
@@ -248,7 +248,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _jobEc.Initialize(hc);
                 _jobEc.InitializeJob(_message, _tokenSource.Token);
 
-                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+                await jobExtension.FinalizeJobAsync(_jobEc, _message, DateTime.UtcNow);
 
                 _diagnosticLogManager.Verify(x =>
                     x.UploadDiagnosticLogs(
@@ -263,14 +263,14 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void DontUploadDiagnosticLogIfEnvironmentVariableMissing()
+        public async Task DontUploadDiagnosticLogIfEnvironmentVariableMissing()
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 var jobExtension = new JobExtension();
                 jobExtension.Initialize(hc);
 
-                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+                await jobExtension.FinalizeJobAsync(_jobEc, _message, DateTime.UtcNow);
 
                 _diagnosticLogManager.Verify(x =>
                     x.UploadDiagnosticLogs(
