@@ -1,24 +1,11 @@
 ## Features
-  - Update Runner Register GitHub API URL to Support Org-level Runner (#339 #345 #352) 
-  - Preserve workflow file/line/column for better error messages (#356)
-  - Switch to use token service instead of SPS for exchanging oauth token. (#325)
-  - Load and print machine setup info from .setup_info (#364)
-  - Expose job name as $GITHUB_JOB (#366)
-  - Add support for job outputs. (#365) 
-  - Set CI=true when launch process in actions runner. (#374)
-  - Set steps.<id>.outcome and steps.<id>.conclusion. (#372)
-  - Add support for workflow/job defaults. (#369)
-  - Expose GITHUB_REPOSITORY_OWNER and ${{github.repository_owner}}. (#378)
-
+  - Runner support for GHES Alpha (#381 #386 #390 #393 $401) 
+  - Allow secrets context in Container.env (#388)
 ## Bugs
-  - Use authenticate endpoint for testing runner connection. (#311) 
-  - Commands translate file path from container action (#331)
-  - Change problem matchers output to debug (#363)
-  - Switch hashFiles to extension function (#362)
-  - Add expanded volumes strings to container mounts (#384)
-
+  - Raise warning when volume mount root. (#413)
+  - Fix typo (#394)
 ## Misc
-  - Add runner auth documentation (#357) 
+  - N/A
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows
