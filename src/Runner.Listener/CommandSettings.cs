@@ -252,7 +252,7 @@ namespace GitHub.Runner.Listener
 
         public ISet<string> GetLabels()
         {
-            var labelSet = new HashSet<string>();
+            var labelSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             string labels = GetArg(Constants.Runner.CommandLine.Args.Labels);
 
             if (!string.IsNullOrEmpty(labels))
