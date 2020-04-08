@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker
                                                 condition: $"{PipelineTemplateConstants.Always}()",
                                                 displayName: "Stop containers",
                                                 data: data);
-            
+
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(nameof(StopContainersAsync), postJobStep);
 
@@ -180,6 +180,11 @@ namespace GitHub.Runner.Worker
             foreach (var volume in container.UserMountVolumes)
             {
                 Trace.Info($"User provided volume: {volume.Value}");
+                var mount = new MountVolume(volume.Value);
+                if (string.Equals(mount.SourceVolumePath, "/", StringComparison.OrdinalIgnoreCase))
+                {
+                    executionContext.Warning($"Volume mount {volume.Value} is going to mount '/' into the container which may cause file ownership change in the entire file system and cause Actions Runner to lose permission to access the disk.");
+                }
             }
 
             // Pull down docker image with retry up to 3 times
