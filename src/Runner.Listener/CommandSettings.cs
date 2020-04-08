@@ -39,6 +39,7 @@ namespace GitHub.Runner.Listener
         private readonly string[] validArgs =
         {
             Constants.Runner.CommandLine.Args.Auth,
+            Constants.Runner.CommandLine.Args.Labels,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
             Constants.Runner.CommandLine.Args.Name,
             Constants.Runner.CommandLine.Args.Pool,
@@ -247,6 +248,19 @@ namespace GitHub.Runner.Listener
         public string GetStartupType()
         {
             return GetArg(Constants.Runner.CommandLine.Args.StartupType);
+        }
+
+        public ISet<string> GetLabels()
+        {
+            var labelSet = new HashSet<string>();
+            string labels = GetArg(Constants.Runner.CommandLine.Args.Labels);
+
+            if (!string.IsNullOrEmpty(labels))
+            {
+                labelSet = labels.Split(',').Where(x => !string.IsNullOrEmpty(x)).ToHashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            return labelSet;
         }
 
         //

@@ -164,6 +164,8 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 runnerSettings.AgentName = command.GetRunnerName();
 
+                var userLabels = command.GetLabels();
+
                 _term.WriteLine();
 
                 var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
@@ -175,7 +177,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey);
+                        agent = UpdateExistingAgent(agent, publicKey, userLabels);
 
                         try
                         {
@@ -198,7 +200,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels);
 
                     try
                     {
@@ -448,7 +450,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -456,18 +458,25 @@ namespace GitHub.Runner.Listener.Configuration
                 PublicKey = new TaskAgentPublicKey(publicKey.Exponent, publicKey.Modulus),
             };
 
-            // update - update instead of delete so we don't lose labels etc...
+            // update should replace the existing labels
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
+            
+            agent.Labels.Clear();
 
-            agent.Labels.Add("self-hosted");
-            agent.Labels.Add(VarUtil.OS);
-            agent.Labels.Add(VarUtil.OSArchitecture);
+            agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
+            agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
+            agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
 
+            foreach (var userLabel in userLabels)
+            {
+                agent.Labels.Add(new AgentLabel(userLabel, LabelType.User));
+            }
+            
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels)
         {
             TaskAgent agent = new TaskAgent(agentName)
             {
@@ -480,9 +489,14 @@ namespace GitHub.Runner.Listener.Configuration
                 OSDescription = RuntimeInformation.OSDescription,
             };
 
-            agent.Labels.Add("self-hosted");
-            agent.Labels.Add(VarUtil.OS);
-            agent.Labels.Add(VarUtil.OSArchitecture);
+            agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
+            agent.Labels.Add(new AgentLabel(VarUtil.OS, LabelType.System));
+            agent.Labels.Add(new AgentLabel(VarUtil.OSArchitecture, LabelType.System));
+
+            foreach (var userLabel in userLabels)
+            {
+                agent.Labels.Add(new AgentLabel(userLabel, LabelType.User));
+            }
 
             return agent;
         }
