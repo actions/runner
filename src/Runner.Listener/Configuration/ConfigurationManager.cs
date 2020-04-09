@@ -511,7 +511,7 @@ namespace GitHub.Runner.Listener.Configuration
             using (var httpClient = new HttpClient(httpClientHandler))
             {
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
-                httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
+                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
 
                 var bodyObject = new Dictionary<string, string>()
                 {

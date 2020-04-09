@@ -37,7 +37,7 @@ namespace GitHub.Runner.Listener
         {
             try
             {
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, HostContext.WebProxy);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
 
                 _inConfigStage = true;
                 _completedCommand.Reset();

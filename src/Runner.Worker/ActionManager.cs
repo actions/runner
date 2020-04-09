@@ -534,7 +534,7 @@ namespace GitHub.Runner.Worker
                                     // Intentionally empty. Temporary for GHES alpha release, download from dotcom unauthenticated.
                                 }
 
-                                httpClient.DefaultRequestHeaders.UserAgent.Add(HostContext.UserAgent);
+                                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var result = await httpClient.GetStreamAsync(archiveLink))
                                 {
                                     await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);

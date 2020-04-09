@@ -40,7 +40,7 @@ namespace GitHub.Runner.Worker
                 // Validate args.
                 ArgUtil.NotNullOrEmpty(pipeIn, nameof(pipeIn));
                 ArgUtil.NotNullOrEmpty(pipeOut, nameof(pipeOut));
-                VssUtil.InitializeVssClientSettings(HostContext.UserAgent, HostContext.WebProxy);
+                VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
                 var jobRunner = HostContext.CreateService<IJobRunner>();
 
                 using (var channel = HostContext.CreateService<IProcessChannel>())
