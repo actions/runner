@@ -96,7 +96,7 @@ namespace GitHub.Services.WebApi.Jwt
             return ret;
         }
 
-        internal static IEnumerable<Claim> ExtractClaims(this JsonWebToken token)
+        public static IEnumerable<Claim> ExtractClaims(this JsonWebToken token)
         {
             ArgumentUtility.CheckForNull(token, nameof(token));
 

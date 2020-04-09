@@ -12,6 +12,7 @@ using System.Linq;
 using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Services.WebApi.Jwt;
 
 namespace GitHub.Runner.Listener
 {
@@ -86,15 +87,30 @@ namespace GitHub.Runner.Listener
                 }
             }
 
+            var orchestrationId = string.Empty;
+            var systemConnection = jobRequestMessage.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            if (systemConnection?.Authorization != null &&
+                systemConnection.Authorization.Parameters.TryGetValue("AccessToken", out var accessToken) &&
+                !string.IsNullOrEmpty(accessToken))
+            {
+                var jwt = JsonWebToken.Create(accessToken);
+                var claims = jwt.ExtractClaims();
+                orchestrationId = claims.FirstOrDefault(x => string.Equals(x.Type, "orchid", StringComparison.OrdinalIgnoreCase))?.Value;
+                if (!string.IsNullOrEmpty(orchestrationId))
+                {
+                    Trace.Info($"Pull OrchestrationId {orchestrationId} from JWT claims");
+                }
+            }
+
             WorkerDispatcher newDispatch = new WorkerDispatcher(jobRequestMessage.JobId, jobRequestMessage.RequestId);
             if (runOnce)
             {
                 Trace.Info("Start dispatcher for one time used runner.");
-                newDispatch.WorkerDispatch = RunOnceAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
+                newDispatch.WorkerDispatch = RunOnceAsync(jobRequestMessage, orchestrationId, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
             }
             else
             {
-                newDispatch.WorkerDispatch = RunAsync(jobRequestMessage, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
+                newDispatch.WorkerDispatch = RunAsync(jobRequestMessage, orchestrationId, currentDispatch, newDispatch.WorkerCancellationTokenSource.Token, newDispatch.WorkerCancelTimeoutKillTokenSource.Token);
             }
 
             _jobInfos.TryAdd(newDispatch.JobId, newDispatch);
@@ -284,11 +300,11 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task RunOnceAsync(Pipelines.AgentJobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken, CancellationToken workerCancelTimeoutKillToken)
+        private async Task RunOnceAsync(Pipelines.AgentJobRequestMessage message, string orchestrationId, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken, CancellationToken workerCancelTimeoutKillToken)
         {
             try
             {
-                await RunAsync(message, previousJobDispatch, jobRequestCancellationToken, workerCancelTimeoutKillToken);
+                await RunAsync(message, orchestrationId, previousJobDispatch, jobRequestCancellationToken, workerCancelTimeoutKillToken);
             }
             finally
             {
@@ -297,7 +313,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task RunAsync(Pipelines.AgentJobRequestMessage message, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken, CancellationToken workerCancelTimeoutKillToken)
+        private async Task RunAsync(Pipelines.AgentJobRequestMessage message, string orchestrationId, WorkerDispatcher previousJobDispatch, CancellationToken jobRequestCancellationToken, CancellationToken workerCancelTimeoutKillToken)
         {
             Busy = true;
             try
@@ -328,7 +344,7 @@ namespace GitHub.Runner.Listener
 
                     // start renew job request
                     Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
-                    Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, firstJobRequestRenewed, lockRenewalTokenSource.Token);
+                    Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
 
                     // wait till first renew succeed or job request is canceled
                     // not even start worker if the first renew fail
@@ -607,7 +623,7 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        public async Task RenewJobRequestAsync(int poolId, long requestId, Guid lockToken, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
+        public async Task RenewJobRequestAsync(int poolId, long requestId, Guid lockToken, string orchestrationId, TaskCompletionSource<int> firstJobRequestRenewed, CancellationToken token)
         {
             var runnerServer = HostContext.GetService<IRunnerServer>();
             TaskAgentJobRequest request = null;
@@ -620,7 +636,7 @@ namespace GitHub.Runner.Listener
             {
                 try
                 {
-                    request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, token);
+                    request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, orchestrationId, token);
 
                     Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
 

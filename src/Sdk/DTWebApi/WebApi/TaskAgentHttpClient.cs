@@ -95,6 +95,7 @@ namespace GitHub.DistributedTask.WebApi
             Int64 requestId,
             Guid lockToken,
             DateTime? expiresOn = null,
+            string orchestrationId = null,
             Object userState = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -104,7 +105,30 @@ namespace GitHub.DistributedTask.WebApi
                 LockedUntil = expiresOn,
             };
 
-            return UpdateAgentRequestAsync(poolId, requestId, lockToken, request, userState, cancellationToken);
+            var additionalHeaders = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(orchestrationId))
+            {
+                additionalHeaders["X-VSS-OrchestrationId"] = orchestrationId;
+            }
+
+            HttpMethod httpMethod = new HttpMethod("PATCH");
+            Guid locationId = new Guid("fc825784-c92a-4299-9221-998a02d1b54f");
+            object routeValues = new { poolId = poolId, requestId = requestId };
+            HttpContent content = new ObjectContent<TaskAgentJobRequest>(request, new VssJsonMediaTypeFormatter(true));
+
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+            queryParams.Add("lockToken", lockToken.ToString());
+
+            return SendAsync<TaskAgentJobRequest>(
+                httpMethod,
+                additionalHeaders,
+                locationId,
+                routeValues: routeValues,
+                version: new ApiResourceVersion(5.1, 1),
+                queryParameters: queryParams,
+                userState: userState,
+                cancellationToken: cancellationToken,
+                content: content);
         }
 
         public Task<TaskAgent> ReplaceAgentAsync(
@@ -171,5 +195,5 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         private readonly ApiResourceVersion m_currentApiVersion = new ApiResourceVersion(3.0, 1);
-    } 
+    }
 }
