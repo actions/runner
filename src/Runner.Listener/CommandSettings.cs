@@ -250,12 +250,12 @@ namespace GitHub.Runner.Listener
             return GetArg(Constants.Runner.CommandLine.Args.StartupType);
         }
 
-        public ISet<string> GetLabels(string description)
+        public ISet<string> GetLabels()
         {
             var labelSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             string labels = GetArgOrPrompt(
                 name: Constants.Runner.CommandLine.Args.Labels,
-                description: description,
+                description: $"This runner will have the following labels: 'self-hosted', '{VarUtil.OS}', '{VarUtil.OSArchitecture}' \nEnter any additional labels (ex. label-1,label-2):",
                 defaultValue: string.Empty,
                 validator: Validators.LabelsValidator,
                 isOptional: true);

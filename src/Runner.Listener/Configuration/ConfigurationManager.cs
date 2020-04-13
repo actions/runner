@@ -160,18 +160,13 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             TaskAgent agent;
-            ISet<string> userLabels = null;
             while (true)
             {
                 runnerSettings.AgentName = command.GetRunnerName();
 
                 _term.WriteLine();
 
-                if (userLabels == null)
-                {
-                    userLabels = command.GetLabels($"This runner will have the following labels: 'self-hosted', '{VarUtil.OS}', '{VarUtil.OSArchitecture}' \nEnter any additional labels (ex. label-1,label-2):");
-                }
-                
+                var userLabels = command.GetLabels();
                 _term.WriteLine();
 
                 var agents = await _runnerServer.GetAgentsAsync(runnerSettings.PoolId, runnerSettings.AgentName);
