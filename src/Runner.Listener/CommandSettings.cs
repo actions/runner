@@ -250,10 +250,15 @@ namespace GitHub.Runner.Listener
             return GetArg(Constants.Runner.CommandLine.Args.StartupType);
         }
 
-        public ISet<string> GetLabels()
+        public ISet<string> GetLabels(string description)
         {
             var labelSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            string labels = GetArg(Constants.Runner.CommandLine.Args.Labels);
+            string labels = GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Labels,
+                description: description,
+                defaultValue: string.Empty,
+                validator: Validators.LabelsValidator,
+                isOptional: true);
 
             if (!string.IsNullOrEmpty(labels))
             {
@@ -294,7 +299,8 @@ namespace GitHub.Runner.Listener
             string name,
             string description,
             string defaultValue,
-            Func<string, bool> validator)
+            Func<string, bool> validator,
+            bool isOptional = false)
         {
             // Check for the arg in the command line parser.
             ArgUtil.NotNull(validator, nameof(validator));
@@ -325,7 +331,8 @@ namespace GitHub.Runner.Listener
                 secret: Constants.Runner.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase)),
                 defaultValue: defaultValue,
                 validator: validator,
-                unattended: Unattended);
+                unattended: Unattended,
+                isOptional: isOptional);
         }
 
         private string GetEnvArg(string name)

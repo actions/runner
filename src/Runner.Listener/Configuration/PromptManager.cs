@@ -20,7 +20,8 @@ namespace GitHub.Runner.Listener.Configuration
             bool secret,
             string defaultValue,
             Func<String, bool> validator,
-            bool unattended);
+            bool unattended,
+            bool isOptional = false);
     }
 
     public sealed class PromptManager : RunnerService, IPromptManager
@@ -56,7 +57,8 @@ namespace GitHub.Runner.Listener.Configuration
             bool secret,
             string defaultValue,
             Func<string, bool> validator,
-            bool unattended)
+            bool unattended,
+            bool isOptional = false)
         {
             Trace.Info(nameof(ReadValue));
             ArgUtil.NotNull(validator, nameof(validator));
@@ -85,18 +87,28 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     _terminal.Write($"[press Enter for {defaultValue}] ");
                 }
+                else if (isOptional){
+                    _terminal.Write($"[press Enter to skip] ");
+                }
 
                 // Read and trim the value.
                 value = secret ? _terminal.ReadSecret() : _terminal.ReadLine();
                 value = value?.Trim() ?? string.Empty;
 
                 // Return the default if not specified.
-                if (string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(defaultValue))
+                if (string.IsNullOrEmpty(value))
                 {
-                    Trace.Info($"Falling back to the default: '{defaultValue}'");
-                    return defaultValue;
+                    if (!string.IsNullOrEmpty(defaultValue))
+                    {
+                        Trace.Info($"Falling back to the default: '{defaultValue}'");
+                        return defaultValue;
+                    }
+                    else if (isOptional)
+                    {
+                        return string.Empty;
+                    }
                 }
-
+                
                 // Return the value if it is not empty and it is valid.
                 // Otherwise try the loop again.
                 if (!string.IsNullOrEmpty(value))

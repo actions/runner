@@ -1,6 +1,7 @@
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using System;
+using System.Linq;
 using System.IO;
 using System.Security.Principal;
 
@@ -44,6 +45,21 @@ namespace GitHub.Runner.Listener.Configuration
                    string.Equals(value, "false", StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(value, "Y", StringComparison.CurrentCultureIgnoreCase) ||
                    string.Equals(value, "N", StringComparison.CurrentCultureIgnoreCase);
+        }
+
+        public static bool LabelsValidator(string labels)
+        {
+            if (!string.IsNullOrEmpty(labels))
+            {
+                var labelSet = labels.Split(',').Where(x => !string.IsNullOrEmpty(x)).ToHashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                if (labelSet.Any(x => x.Length > 256))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public static bool NonEmptyValidator(string value)
