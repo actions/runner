@@ -21,11 +21,24 @@ using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplat
 
 namespace GitHub.Runner.Worker
 {
+    public class PrepareResult
+    {
+        public PrepareResult(List<JobExtensionRunner> containerSetupSteps, Dictionary<Guid, IActionRunner> preStepTracker)
+        {
+            this.ContainerSetupSteps = containerSetupSteps;
+            this.PreStepTracker = preStepTracker;
+        }
+
+        public List<JobExtensionRunner> ContainerSetupSteps { get; set; }
+
+        public Dictionary<Guid, IActionRunner> PreStepTracker { get; set; }
+    }
+
     [ServiceLocator(Default = typeof(ActionManager))]
     public interface IActionManager : IRunnerService
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
-        Task<List<JobExtensionRunner>> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
+        Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
@@ -39,7 +52,7 @@ namespace GitHub.Runner.Worker
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
 
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
-        public async Task<List<JobExtensionRunner>> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
+        public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ArgUtil.NotNull(steps, nameof(steps));
@@ -49,6 +62,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, List<Guid>> imagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, ActionContainer> imagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase);
             List<JobExtensionRunner> containerSetupSteps = new List<JobExtensionRunner>();
+            Dictionary<Guid, IActionRunner> preStepTracker = new Dictionary<Guid, IActionRunner>();
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
 
             // TODO: Deprecate the PREVIEW_ACTION_TOKEN
@@ -117,6 +131,22 @@ namespace GitHub.Runner.Worker
                             imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
                         }
                     }
+
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
+                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
+                    {
+                        var definition = LoadAction(executionContext, action);
+                        if (definition.Data.Execution.HasPre)
+                        {
+                            var actionRunner = HostContext.CreateService<IActionRunner>();
+                            actionRunner.Action = action;
+                            actionRunner.Stage = ActionRunStage.Pre;
+                            actionRunner.Condition = definition.Data.Execution.InitCondition;
+
+                            Trace.Info($"Add 'pre' execution for {action.Id}");
+                            preStepTracker[action.Id] = actionRunner;
+                        }
+                    }
                 }
             }
 
@@ -153,7 +183,7 @@ namespace GitHub.Runner.Worker
             }
 #endif
 
-            return containerSetupSteps;
+            return new PrepareResult(containerSetupSteps, preStepTracker);
         }
 
         public Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action)
@@ -245,14 +275,19 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Action container env: {StringUtil.ConvertToJson(containerAction.Environment)}.");
                         }
 
+                        if (!string.IsNullOrEmpty(containerAction.Pre))
+                        {
+                            Trace.Info($"Action container pre entrypoint: {containerAction.Pre}.");
+                        }
+
                         if (!string.IsNullOrEmpty(containerAction.EntryPoint))
                         {
                             Trace.Info($"Action container entrypoint: {containerAction.EntryPoint}.");
                         }
 
-                        if (!string.IsNullOrEmpty(containerAction.Cleanup))
+                        if (!string.IsNullOrEmpty(containerAction.Post))
                         {
-                            Trace.Info($"Action container cleanup entrypoint: {containerAction.Cleanup}.");
+                            Trace.Info($"Action container post entrypoint: {containerAction.Post}.");
                         }
 
                         if (CachedActionContainers.TryGetValue(action.Id, out var container))
@@ -264,8 +299,9 @@ namespace GitHub.Runner.Worker
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.NodeJS)
                     {
                         var nodeAction = definition.Data.Execution as NodeJSActionExecutionData;
+                        Trace.Info($"Action pre node.js file: {nodeAction.Pre ?? "N/A"}.");
                         Trace.Info($"Action node.js file: {nodeAction.Script}.");
-                        Trace.Info($"Action cleanup node.js file: {nodeAction.Cleanup ?? "N/A"}.");
+                        Trace.Info($"Action post node.js file: {nodeAction.Post ?? "N/A"}.");
                     }
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Plugin)
                     {
@@ -281,7 +317,7 @@ namespace GitHub.Runner.Worker
 
                         if (!string.IsNullOrEmpty(plugin.PostPluginTypeName))
                         {
-                            pluginAction.Cleanup = plugin.PostPluginTypeName;
+                            pluginAction.Post = plugin.PostPluginTypeName;
                             Trace.Info($"Action cleanup plugin: {plugin.PluginTypeName}.");
                         }
                     }
@@ -788,7 +824,8 @@ namespace GitHub.Runner.Worker
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Container;
 
-        public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
+        public override bool HasPre => !string.IsNullOrEmpty(Pre);
+        public override bool HasPost => !string.IsNullOrEmpty(Post);
 
         public string Image { get; set; }
 
@@ -798,50 +835,65 @@ namespace GitHub.Runner.Worker
 
         public MappingToken Environment { get; set; }
 
-        public string Cleanup { get; set; }
+        public string Pre { get; set; }
+
+        public string Post { get; set; }
     }
 
     public sealed class NodeJSActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.NodeJS;
 
-        public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
+        public override bool HasPre => !string.IsNullOrEmpty(Pre);
+        public override bool HasPost => !string.IsNullOrEmpty(Post);
 
         public string Script { get; set; }
 
-        public string Cleanup { get; set; }
+        public string Pre { get; set; }
+
+        public string Post { get; set; }
     }
 
     public sealed class PluginActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Plugin;
 
-        public override bool HasCleanup => !string.IsNullOrEmpty(Cleanup);
+        public override bool HasPre => false;
+
+        public override bool HasPost => !string.IsNullOrEmpty(Post);
 
         public string Plugin { get; set; }
 
-        public string Cleanup { get; set; }
+        public string Post { get; set; }
     }
 
     public sealed class ScriptActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Script;
-
-        public override bool HasCleanup => false;
+        public override bool HasPre => false;
+        public override bool HasPost => false;
     }
 
     public abstract class ActionExecutionData
     {
+        private string _initCondition = $"{Constants.Expressions.Always}()";
         private string _cleanupCondition = $"{Constants.Expressions.Always}()";
 
         public abstract ActionExecutionType ExecutionType { get; }
 
-        public abstract bool HasCleanup { get; }
+        public abstract bool HasPre { get; }
+        public abstract bool HasPost { get; }
 
         public string CleanupCondition
         {
             get { return _cleanupCondition; }
             set { _cleanupCondition = value; }
+        }
+
+        public string InitCondition
+        {
+            get { return _initCondition; }
+            set { _initCondition = value; }
         }
     }
 

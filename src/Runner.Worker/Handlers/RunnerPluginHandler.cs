@@ -31,7 +31,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else if (stage == ActionRunStage.Post)
             {
-                plugin = Data.Cleanup;
+                plugin = Data.Post;
             }
 
             ArgUtil.NotNullOrEmpty(plugin, nameof(plugin));

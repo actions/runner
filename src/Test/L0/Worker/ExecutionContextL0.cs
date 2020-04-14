@@ -199,20 +199,20 @@ namespace GitHub.Runner.Common.Tests.Worker
 
 
                 var postRunner1 = hc.CreateService<IActionRunner>();
-                postRunner1.Action = new Pipelines.ActionStep() { Name = "post1", DisplayName = "Test 1", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner1.Action = new Pipelines.ActionStep() { Id = Guid.NewGuid(), Name = "post1", DisplayName = "Test 1", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
                 postRunner1.Stage = ActionRunStage.Post;
                 postRunner1.Condition = "always()";
                 postRunner1.DisplayName = "post1";
 
 
                 var postRunner2 = hc.CreateService<IActionRunner>();
-                postRunner2.Action = new Pipelines.ActionStep() { Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner2.Action = new Pipelines.ActionStep() { Id = Guid.NewGuid(), Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
                 postRunner2.Stage = ActionRunStage.Post;
                 postRunner2.Condition = "always()";
                 postRunner2.DisplayName = "post2";
 
-                action1.RegisterPostJobStep("post1", postRunner1);
-                action2.RegisterPostJobStep("post2", postRunner2);
+                action1.RegisterPostJobStep(postRunner1);
+                action2.RegisterPostJobStep(postRunner2);
 
                 Assert.NotNull(jobContext.JobSteps);
                 Assert.NotNull(jobContext.PostJobSteps);
@@ -235,6 +235,91 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal("2", (post1 as IActionRunner).ExecutionContext.IntraActionState["state"]);
                 Assert.Equal("1", (post2 as IActionRunner).ExecutionContext.IntraActionState["state"]);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void RegisterPostJobAction_NotRegisterPostTwice()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+                jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var pagingLogger3 = new Mock<IPagingLogger>();
+                var pagingLogger4 = new Mock<IPagingLogger>();
+                var pagingLogger5 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+                jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>())).Callback((Guid id, string msg) => { hc.GetTrace().Info(msg); });
+
+                var actionRunner1 = new ActionRunner();
+                actionRunner1.Initialize(hc);
+                var actionRunner2 = new ActionRunner();
+                actionRunner2.Initialize(hc);
+
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.EnqueueInstance(pagingLogger3.Object);
+                hc.EnqueueInstance(pagingLogger4.Object);
+                hc.EnqueueInstance(pagingLogger5.Object);
+                hc.EnqueueInstance(actionRunner1 as IActionRunner);
+                hc.EnqueueInstance(actionRunner2 as IActionRunner);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                // Act.
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                var action1 = jobContext.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null);
+                var action2 = jobContext.CreateChild(Guid.NewGuid(), "action_1_main", "action_1_main", null, null);
+
+                var actionId = Guid.NewGuid();
+                var postRunner1 = hc.CreateService<IActionRunner>();
+                postRunner1.Action = new Pipelines.ActionStep() { Id = actionId, Name = "post1", DisplayName = "Test 1", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner1.Stage = ActionRunStage.Post;
+                postRunner1.Condition = "always()";
+                postRunner1.DisplayName = "post1";
+
+
+                var postRunner2 = hc.CreateService<IActionRunner>();
+                postRunner2.Action = new Pipelines.ActionStep() { Id = actionId, Name = "post2", DisplayName = "Test 2", Reference = new Pipelines.RepositoryPathReference() { Name = "actions/action" } };
+                postRunner2.Stage = ActionRunStage.Post;
+                postRunner2.Condition = "always()";
+                postRunner2.DisplayName = "post2";
+
+                action1.RegisterPostJobStep(postRunner1);
+                action2.RegisterPostJobStep(postRunner2);
+
+                Assert.NotNull(jobContext.JobSteps);
+                Assert.NotNull(jobContext.PostJobSteps);
+                Assert.Equal(1, jobContext.PostJobSteps.Count);
+                var post1 = jobContext.PostJobSteps.Pop();
+
+                Assert.Equal("post1", (post1 as IActionRunner).Action.Name);
+
+                Assert.Equal(ActionRunStage.Post, (post1 as IActionRunner).Stage);
+
+                Assert.Equal("always()", (post1 as IActionRunner).Condition);
             }
         }
 

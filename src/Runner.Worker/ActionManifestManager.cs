@@ -305,6 +305,9 @@ namespace GitHub.Runner.Worker
             var envToken = default(MappingToken);
             var mainToken = default(StringToken);
             var pluginToken = default(StringToken);
+            var preToken = default(StringToken);
+            var preEntrypointToken = default(StringToken);
+            var preIfToken = default(StringToken);
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
@@ -343,6 +346,15 @@ namespace GitHub.Runner.Worker
                     case "post-if":
                         postIfToken = run.Value.AssertString("post-if");
                         break;
+                    case "pre":
+                        preToken = run.Value.AssertString("pre");
+                        break;
+                    case "pre-entrypoint":
+                        preEntrypointToken = run.Value.AssertString("pre-entrypoint");
+                        break;
+                    case "pre-if":
+                        preIfToken = run.Value.AssertString("pre-if");
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -365,7 +377,9 @@ namespace GitHub.Runner.Worker
                             Arguments = argsToken,
                             EntryPoint = entrypointToken?.Value,
                             Environment = envToken,
-                            Cleanup = postEntrypointToken?.Value,
+                            Pre = preEntrypointToken?.Value,
+                            InitCondition = preIfToken?.Value ?? "always()",
+                            Post = postEntrypointToken?.Value,
                             CleanupCondition = postIfToken?.Value ?? "always()"
                         };
                     }
@@ -374,14 +388,16 @@ namespace GitHub.Runner.Worker
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
-                        throw new ArgumentNullException($"Entry javascript fils is not provided.");
+                        throw new ArgumentNullException($"Entry javascript file is not provided.");
                     }
                     else
                     {
                         return new NodeJSActionExecutionData()
                         {
                             Script = mainToken.Value,
-                            Cleanup = postToken?.Value,
+                            Pre = preToken?.Value,
+                            InitCondition = preIfToken?.Value ?? "always()",
+                            Post = postToken?.Value,
                             CleanupCondition = postIfToken?.Value ?? "always()"
                         };
                     }

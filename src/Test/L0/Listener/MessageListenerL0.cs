@@ -660,7 +660,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                         _settings.AgentId))
                     .Returns(async () =>
                     {
-                        await Task.Delay(10);
+                        await Task.Delay(100);
                         return "https://t.server";
                     });
 
