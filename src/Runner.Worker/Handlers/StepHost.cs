@@ -110,9 +110,9 @@ namespace GitHub.Runner.Worker.Handlers
 
             // try to resolve path inside container if the request path is part of the mount volume
 #if OS_WINDOWS
-            if (Container.MountVolumes.Exists(x => path.StartsWith(x.SourceVolumePath, StringComparison.OrdinalIgnoreCase)))
+            if (Container.MountVolumes.Exists(x => x != null && path.StartsWith(x.SourceVolumePath, StringComparison.OrdinalIgnoreCase)))
 #else
-            if (Container.MountVolumes.Exists(x => path.StartsWith(x.SourceVolumePath)))
+            if (Container.MountVolumes.Exists(x => x != null && path.StartsWith(x.SourceVolumePath)))
 #endif
             {
                 return Container.TranslateToContainerPath(path);
