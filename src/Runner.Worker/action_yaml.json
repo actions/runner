@@ -43,6 +43,8 @@
                     "entrypoint": "non-empty-string",
                     "args": "container-runs-args",
                     "env": "container-runs-env",
+                    "pre-entrypoint": "non-empty-string",
+                    "pre-if": "non-empty-string",
                     "post-entrypoint": "non-empty-string",
                     "post-if": "non-empty-string"
                 }
@@ -67,6 +69,8 @@
                 "properties": {
                     "using": "non-empty-string",
                     "main": "non-empty-string",
+                    "pre": "non-empty-string",
+                    "pre-if": "non-empty-string",
                     "post": "non-empty-string",
                     "post-if": "non-empty-string"
                 }

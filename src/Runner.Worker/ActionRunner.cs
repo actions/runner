@@ -18,6 +18,7 @@ namespace GitHub.Runner.Worker
 {
     public enum ActionRunStage
     {
+        Pre,
         Main,
         Post,
     }
@@ -81,20 +82,18 @@ namespace GitHub.Runner.Worker
             ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
 
+            if (handlerData.HasPre &&
+                Action.Reference is Pipelines.RepositoryPathReference repoAction &&
+                string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                ExecutionContext.Warning($"`pre` execution is not supported for local action from '{repoAction.Path}'");
+            }
+
             // The action has post cleanup defined.
             // we need to create timeline record for them and add them to the step list that StepRunner is using
-            if (handlerData.HasCleanup && Stage == ActionRunStage.Main)
+            if (handlerData.HasPost && (Stage == ActionRunStage.Pre || Stage == ActionRunStage.Main))
             {
-                string postDisplayName = null;
-                if (this.DisplayName.StartsWith(PipelineTemplateConstants.RunDisplayPrefix))
-                {
-                    postDisplayName = $"Post {this.DisplayName.Substring(PipelineTemplateConstants.RunDisplayPrefix.Length)}";
-                }
-                else
-                {
-                    postDisplayName = $"Post {this.DisplayName}";
-                }
-
+                string postDisplayName = $"Post {this.DisplayName}";
                 var repositoryReference = Action.Reference as RepositoryPathReference;
                 var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
                 var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
@@ -108,7 +107,7 @@ namespace GitHub.Runner.Worker
                 actionRunner.Condition = handlerData.CleanupCondition;
                 actionRunner.DisplayName = postDisplayName;
 
-                ExecutionContext.RegisterPostJobStep($"{actionRunner.Action.Name}_post", actionRunner);
+                ExecutionContext.RegisterPostJobStep(actionRunner);
             }
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();

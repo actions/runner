@@ -82,9 +82,13 @@ namespace GitHub.Runner.Worker.Handlers
                     container.ContainerEntryPoint = Inputs.GetValueOrDefault("entryPoint");
                 }
             }
+            else if (stage == ActionRunStage.Pre)
+            {
+                container.ContainerEntryPoint = Data.Pre;
+            }
             else if (stage == ActionRunStage.Post)
             {
-                container.ContainerEntryPoint = Data.Cleanup;
+                container.ContainerEntryPoint = Data.Post;
             }
 
             // create inputs context for template evaluation

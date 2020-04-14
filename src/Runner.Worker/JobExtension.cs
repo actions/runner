@@ -197,8 +197,8 @@ namespace GitHub.Runner.Worker
                     // Download actions not already in the cache
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
-                    var prepareSteps = await actionManager.PrepareActionsAsync(context, message.Steps);
-                    preJobSteps.AddRange(prepareSteps);
+                    var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
+                    preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
 
                     // Add start-container steps, record and stop-container steps
                     if (jobContext.Container != null || jobContext.ServiceContainers.Count > 0)
@@ -239,7 +239,21 @@ namespace GitHub.Runner.Worker
 
                             actionRunner.TryEvaluateDisplayName(contextData, context);
                             jobSteps.Add(actionRunner);
+
+                            if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
+                            {
+                                Trace.Info($"Adding pre-{action.DisplayName}.");
+                                preStep.TryEvaluateDisplayName(contextData, context);
+                                preStep.DisplayName = $"Pre {preStep.DisplayName}";
+                                preJobSteps.Add(preStep);
+                            }
                         }
+                    }
+
+                    var intraActionStates = new Dictionary<Guid, Dictionary<string, string>>();
+                    foreach (var preStep in prepareResult.PreStepTracker)
+                    {
+                        intraActionStates[preStep.Key] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     }
 
                     // Create execution context for pre-job steps
@@ -252,6 +266,12 @@ namespace GitHub.Runner.Worker
                             Guid stepId = Guid.NewGuid();
                             extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, null, null, stepId.ToString("N"));
                         }
+                        else if (step is IActionRunner actionStep)
+                        {
+                            ArgUtil.NotNull(actionStep, step.DisplayName);
+                            Guid stepId = Guid.NewGuid();
+                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, stepId.ToString("N"), null, null, intraActionStates[actionStep.Action.Id]);
+                        }
                     }
 
                     // Create execution context for job steps
@@ -260,7 +280,8 @@ namespace GitHub.Runner.Worker
                         if (step is IActionRunner actionStep)
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName);
+                            intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionState);
                         }
                     }
 
