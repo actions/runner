@@ -51,7 +51,7 @@ namespace GitHub.DistributedTask.WebApi
 
             if (agentToBeCloned.m_labels != null && agentToBeCloned.m_labels.Count > 0)
             {
-                m_labels = new HashSet<string>(agentToBeCloned.m_labels, StringComparer.OrdinalIgnoreCase);
+                m_labels = new HashSet<AgentLabel>(agentToBeCloned.m_labels);
             }
         }
 
@@ -118,13 +118,13 @@ namespace GitHub.DistributedTask.WebApi
         /// <summary>
         /// The labels of the runner
         /// </summary>
-        public ISet<string> Labels
+        public ISet<AgentLabel> Labels
         {
             get
             {
                 if (m_labels == null)
                 {
-                    m_labels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    m_labels = new HashSet<AgentLabel>();
                 }
                 return m_labels;
             }
@@ -164,6 +164,6 @@ namespace GitHub.DistributedTask.WebApi
         private PropertiesCollection m_properties;
 
         [DataMember(IsRequired = false, EmitDefaultValue = false, Name = "Labels")]
-        private HashSet<string> m_labels;
+        private HashSet<AgentLabel> m_labels;
     }
 }

@@ -317,7 +317,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        true)) // unattended
+                        true, // unattended
+                        false)) // isOptional
                     .Returns("some runner");
 
                 // Act.
@@ -344,7 +345,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         Environment.MachineName, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some runner");
 
                 // Act.
@@ -371,7 +373,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         "some default auth", // defaultValue
                         Validators.AuthSchemeValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some auth");
 
                 // Act.
@@ -398,7 +401,8 @@ namespace GitHub.Runner.Common.Tests
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some token");
 
                 // Act.
@@ -475,7 +479,8 @@ namespace GitHub.Runner.Common.Tests
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some token");
 
                 // Act.
@@ -502,7 +507,8 @@ namespace GitHub.Runner.Common.Tests
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some token");
 
                 // Act.
@@ -529,7 +535,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some url");
 
                 // Act.
@@ -556,7 +563,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         "some default account", // defaultValue
                         Validators.NTAccountValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some windows logon account");
 
                 // Act.
@@ -584,7 +592,8 @@ namespace GitHub.Runner.Common.Tests
                         true, // secret
                         string.Empty, // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some windows logon password");
 
                 // Act.
@@ -611,7 +620,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         "_work", // defaultValue
                         Validators.NonEmptyValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some work");
 
                 // Act.
@@ -640,7 +650,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some url");
 
                 // Act.
@@ -669,7 +680,8 @@ namespace GitHub.Runner.Common.Tests
                         false, // secret
                         string.Empty, // defaultValue
                         Validators.ServerUrlValidator, // validator
-                        false)) // unattended
+                        false, // unattended
+                        false)) // isOptional
                     .Returns("some url");
 
                 // Act.

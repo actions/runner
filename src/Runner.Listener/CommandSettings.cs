@@ -39,6 +39,7 @@ namespace GitHub.Runner.Listener
         private readonly string[] validArgs =
         {
             Constants.Runner.CommandLine.Args.Auth,
+            Constants.Runner.CommandLine.Args.Labels,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
             Constants.Runner.CommandLine.Args.Name,
             Constants.Runner.CommandLine.Args.Pool,
@@ -249,6 +250,24 @@ namespace GitHub.Runner.Listener
             return GetArg(Constants.Runner.CommandLine.Args.StartupType);
         }
 
+        public ISet<string> GetLabels()
+        {
+            var labelSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string labels = GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.Labels,
+                description: $"This runner will have the following labels: 'self-hosted', '{VarUtil.OS}', '{VarUtil.OSArchitecture}' \nEnter any additional labels (ex. label-1,label-2):",
+                defaultValue: string.Empty,
+                validator: Validators.LabelsValidator,
+                isOptional: true);
+
+            if (!string.IsNullOrEmpty(labels))
+            {
+                labelSet = labels.Split(',').Where(x => !string.IsNullOrEmpty(x)).ToHashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            return labelSet;
+        }
+
         //
         // Private helpers.
         //
@@ -280,7 +299,8 @@ namespace GitHub.Runner.Listener
             string name,
             string description,
             string defaultValue,
-            Func<string, bool> validator)
+            Func<string, bool> validator,
+            bool isOptional = false)
         {
             // Check for the arg in the command line parser.
             ArgUtil.NotNull(validator, nameof(validator));
@@ -311,7 +331,8 @@ namespace GitHub.Runner.Listener
                 secret: Constants.Runner.CommandLine.Args.Secrets.Any(x => string.Equals(x, name, StringComparison.OrdinalIgnoreCase)),
                 defaultValue: defaultValue,
                 validator: validator,
-                unattended: Unattended);
+                unattended: Unattended,
+                isOptional: isOptional);
         }
 
         private string GetEnvArg(string name)
