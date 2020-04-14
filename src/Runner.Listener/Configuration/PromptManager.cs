@@ -72,6 +72,10 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     return defaultValue;
                 }
+                else if (isOptional) 
+                {
+                    return string.Empty;
+                }
 
                 // Otherwise throw.
                 throw new Exception($"Invalid configuration provided for {argName}. Terminating unattended configuration.");
