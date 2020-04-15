@@ -42,6 +42,9 @@ if [ -z "${RUNNER_CFG_PAT}" ]; then fatal "RUNNER_CFG_PAT must be set before cal
 which curl || fatal "curl required.  Please install in PATH with apt-get, brew, etc"
 which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
 
+runner_plat=linux
+[ ! -z "$(which sw_vers)" ] && runner_plat=osx;
+
 #--------------------------------------
 # Get a remove token
 #--------------------------------------
