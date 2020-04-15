@@ -16,11 +16,11 @@ export RUNNER_CFG_PAT=yourPAT
 
 Repo level one liner; replace yourorg/yourrepo
 ```bash
-curl https://github.com/actions/runner/blob/automate/scripts/latest-svc.sh | bash -s yourorg/yourrepo
+curl https://raw.githubusercontent.com/actions/runner/automate/scripts/latest-svc.sh | bash -s yourorg/yourrepo
 ```
 
 Org level one liner; replace yourorg
 
 ```bash
-curl https://github.com/actions/runner/blob/automate/scripts/latest-svc.sh | bash -s yourorg
+curl https://raw.githubusercontent.com/actions/runner/automate/scripts/latest-svc.sh | bash -s yourorg
 ```
