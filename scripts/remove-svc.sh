@@ -1,3 +1,7 @@
+#/bin/bash
+
+set -e
+
 #
 # Removes a runner running as a service
 # Must be run on the machine where the service is run

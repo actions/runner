@@ -1,3 +1,7 @@
+#/bin/bash
+
+set -e
+
 #
 # Force deletes a runner from the service
 # The caller should have already ensured the runner is gone and/or stopped
