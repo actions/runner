@@ -126,5 +126,10 @@ sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNE
 #---------------------------------------
 echo
 echo "Configuring as a service ..."
-./svc.sh install ${svc_user}
-./svc.sh start
+prefix=""
+if [ "${runner_plat}" == "linux" ]; then 
+    prefix="sudo "
+fi 
+
+${prefix}./svc.sh install ${svc_user}
+${prefix}./svc.sh start

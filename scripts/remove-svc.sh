@@ -62,6 +62,6 @@ echo $REMOVE_TOKEN
 echo
 echo "Uninstall the service ..."
 pushd ./runner
-./svc.sh stop
-./svc.sh uninstall
+${prefix}./svc.sh stop
+${prefix}./svc.sh uninstall
 ./config.sh remove --token $REMOVE_TOKEN
