@@ -64,6 +64,10 @@ if [ -z "$REMOVE_TOKEN" ]; then fatal "Failed to get a token"; fi
 echo
 echo "Uninstall the service ..."
 pushd ./runner
+prefix=""
+if [ "${runner_plat}" == "linux" ]; then 
+    prefix="sudo "
+fi 
 ${prefix}./svc.sh stop
 ${prefix}./svc.sh uninstall
 ./config.sh remove --token $REMOVE_TOKEN
