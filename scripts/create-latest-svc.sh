@@ -7,14 +7,15 @@ set -e
 # Configures as a service
 #
 # Examples:
-# RUNNER_CFG_PAT=<yourPAT> ./nix-svc.sh myuser/myrepo
-# RUNNER_CFG_PAT=<yourPAT> ./nix-svc.sh myorg
+# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo
+# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg
 #
 # Usage:
 #     export RUNNER_CFG_PAT=<yourPAT>
-#     ./nix-svc.sh scope [name] [user]
+#     ./create-latest-svc scope [name] [user]
 #
 #      scope required  repo (:owner/:repo) or org (:organization)
+#      name  optional  defaults to hostname
 #      user  optional  user svc will run as. defaults to current
 # 
 # Notes:
@@ -66,13 +67,12 @@ echo
 echo "Generating a registration token..."
 
 # if the scope has a slash, it's an repo runner
+base_api_url="https://api.github.com/orgs"
 if [[ "$runner_scope" == *\/* ]]; then
-    base_api_url="https://api.github.com/repos/${runner_scope}"
-else 
-    base_api_url="https://api.github.com/orgs/${runner_scope}"
+    base_api_url="https://api.github.com/repos"
 fi
 
-export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
+export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
 
 if [ -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi 
 
@@ -128,3 +128,5 @@ echo
 echo "Configuring as a service ..."
 ./svc.sh install ${svc_user}
 ./svc.sh start
+
+
