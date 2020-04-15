@@ -35,6 +35,9 @@ function fatal()
 if [ -z "${runner_scope}" ]; then fatal "supply scope as argument 1"; fi
 if [ -z "${RUNNER_CFG_PAT}" ]; then fatal "RUNNER_CFG_PAT must be set before calling"; fi
 
+which curl || fatal "curl required.  Please install in PATH with apt-get, brew, etc"
+which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
+
 #--------------------------------------
 # Get a remove token
 #--------------------------------------
