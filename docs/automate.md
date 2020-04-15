@@ -2,26 +2,57 @@
 
 ## Latest Release as Service on Nix VMs
 
-[Run or copy this script for your use](../scripts/create-latest-svc.sh) to automate configuring a runner as a service on Linux or Mac
+## Export PAT
 
-### Export PAT
-
-Create a GitHub PAT and export it before running the script
+Before running any of these sample scripts, create a GitHub PAT and export it before running the script
 
 ```bash
 export RUNNER_CFG_PAT=yourPAT
 ```
 
-### Ceate service one liner
+### Create running as a service
 
-Repo level one liner; replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+**Scenario**: Run on a machine or VM (not container) which automates:
+
+ - Resolving latest released runner
+ - Download and extract latest
+ - Acquire a registration token
+ - Configure the runner
+ - Run as a systemd (linux) or Launchd (osx) service
+
+[Sample script here](../scripts/create-latest-svc.sh) 
+
+Run as a one-line. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
 curl https://raw.githubusercontent.com/actions/runner/automate/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
 
-### Uninstall service one liner
+### Uninstall running as service 
 
-Repo level one liner; replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+**Scenario**: Run on a machine or VM (not container) which automates:
+
+ - Stops and uninstalls the systemd (linux) or Launchd (osx) service
+ - Acquires a removal token
+ - Removes the runner
+
+[Sample script here](../scripts/remove-svc.sh) 
+
+Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
 curl https://raw.githubusercontent.com/actions/runner/automate/scripts/remove-svc.sh | bash -s yourorg/yourrepo
+```
+
+### Delete an offline runner
+
+**Scenario**: Deletes a registered runner that is offline:
+
+ - Ensures the runner is offline
+ - Resolves id from name
+ - Deletes the runner
+
+[Sample script here](../scripts/delete.sh) 
+
+Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) and replace runnername
+```bash
+curl https://raw.githubusercontent.com/actions/runner/automate/scripts/remove-svc.sh | bash -s yourorg/yourrepo runnername
 ```
