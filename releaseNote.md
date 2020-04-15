@@ -1,9 +1,10 @@
 ## Features
-  - Runner support for GHES Alpha (#381 #386 #390 #393 $401) 
-  - Allow secrets context in Container.env (#388)
+  - Better telemetry tracing for self-hosted runner. (#405)
+  - Launch middle man process on macOS to workaround SIP limit (#416)
+  - Added support for custom labels (#414, #425)
+  - support 'pre' execution for actions. (#389)
 ## Bugs
-  - Raise warning when volume mount root. (#413)
-  - Fix typo (#394)
+  - ArgumentNullException: Value cannot be null, for anonymous volume mounts (#426)
 ## Misc
   - N/A
 
