@@ -1,6 +1,5 @@
-# Automate Configuring Self-Hosted Runner Pools
+# Automate Configuring Self-Hosted Runners
 
-## Latest Release as Service on Nix VMs
 
 ## Export PAT
 
@@ -10,7 +9,7 @@ Before running any of these sample scripts, create a GitHub PAT and export it be
 export RUNNER_CFG_PAT=yourPAT
 ```
 
-### Create running as a service
+## Create running as a service
 
 **Scenario**: Run on a machine or VM (not container) which automates:
 
@@ -20,14 +19,14 @@ export RUNNER_CFG_PAT=yourPAT
  - Configure the runner
  - Run as a systemd (linux) or Launchd (osx) service
 
-[Sample script here](../scripts/create-latest-svc.sh) 
+:point_right: [Sample script here](../scripts/create-latest-svc.sh) :point_left:
 
 Run as a one-line. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
 curl https://raw.githubusercontent.com/actions/runner/automate/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
 
-### Uninstall running as service 
+## Uninstall running as service 
 
 **Scenario**: Run on a machine or VM (not container) which automates:
 
@@ -35,7 +34,7 @@ curl https://raw.githubusercontent.com/actions/runner/automate/scripts/create-la
  - Acquires a removal token
  - Removes the runner
 
-[Sample script here](../scripts/remove-svc.sh) 
+:point_right: [Sample script here](../scripts/remove-svc.sh) :point_left:
 
 Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
@@ -50,7 +49,7 @@ curl https://raw.githubusercontent.com/actions/runner/automate/scripts/remove-sv
  - Resolves id from name
  - Deletes the runner
 
-[Sample script here](../scripts/delete.sh) 
+:point_right: [Sample script here](../scripts/delete.sh) :point_left:
 
 Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) and replace runnername
 ```bash
