@@ -52,7 +52,8 @@ fi
 #--------------------------------------
 # Get id of runner to remove
 #--------------------------------------
-runner_id=$(curl -s -X GET ${base_api_url}/${runner_scope}/actions/runners  -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -M -j ".runners | .[] | [select(.name == \"${runner_name}\")] | .[0].id")
+runner_id=$(curl -s -X GET ${base_api_url}/${runner_scope}/actions/runners  -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" \
+        | jq -M -j ".runners | .[] | [select(.name == \"${runner_name}\")] | .[0].id")
 
 if [ -z "${runner_id}" ]; then 
     fatal "Could not find runner with name ${runner_name}"

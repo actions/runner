@@ -2,9 +2,9 @@
 
 ## Latest Release as Service on Nix VMs
 
-[Run or copy this script for your use](../scripts/latest-svc.sh) to automate configuring a runner as a service on Linux or Mac
+[Run or copy this script for your use](../scripts/create-latest-svc.sh) to automate configuring a runner as a service on Linux or Mac
 
-### Step 1: export PAT
+### Export PAT
 
 Create a GitHub PAT and export it before running the script
 
@@ -12,15 +12,16 @@ Create a GitHub PAT and export it before running the script
 export RUNNER_CFG_PAT=yourPAT
 ```
 
-### Step 2: config one liner
+### Ceate service one liner
 
-Repo level one liner; replace yourorg/yourrepo
+Repo level one liner; replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
-curl https://raw.githubusercontent.com/actions/runner/automate/scripts/latest-svc.sh | bash -s yourorg/yourrepo
+curl https://raw.githubusercontent.com/actions/runner/automate/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
 
-Org level one liner; replace yourorg
+### Uninstall service one liner
 
+Repo level one liner; replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
-curl https://raw.githubusercontent.com/actions/runner/automate/scripts/latest-svc.sh | bash -s yourorg
+curl https://raw.githubusercontent.com/actions/runner/automate/scripts/remove-svc.sh | bash -s yourorg/yourrepo
 ```
