@@ -278,6 +278,59 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("${{ matrix.node }}", _actionRunner.DisplayName);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void WarnInvalidInputs()
+        {
+            //Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var actionInputs = new MappingToken(null, null, null);
+            actionInputs.Add(new StringToken(null, null, null, "input1"), new StringToken(null, null, null, "test1"));
+            actionInputs.Add(new StringToken(null, null, null, "input2"), new StringToken(null, null, null, "test2"));
+            actionInputs.Add(new StringToken(null, null, null, "invalid1"), new StringToken(null, null, null, "invalid1"));
+            actionInputs.Add(new StringToken(null, null, null, "invalid2"), new StringToken(null, null, null, "invalid2"));
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.ContainerRegistryReference()
+                {
+                    Image = "ubuntu:16.04"
+                },
+                Inputs = actionInputs
+            };
+
+            _actionRunner.Action = action;
+
+            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>()))
+                           .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory) =>
+                           {
+                               finialInputs = inputs;
+                           })
+                           .Returns(new Mock<IHandler>().Object);
+
+            //Act
+            await _actionRunner.RunAsync();
+
+            foreach (var input in finialInputs)
+            {
+                _hc.GetTrace().Info($"Input: {input.Key}={input.Value}");
+            }
+
+            //Assert
+            Assert.Equal("test1", finialInputs["input1"]);
+            Assert.Equal("test2", finialInputs["input2"]);
+            Assert.Equal("github", finialInputs["input3"]);
+            Assert.Equal("invalid1", finialInputs["invalid1"]);
+            Assert.Equal("invalid2", finialInputs["invalid2"]);
+
+            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input 'invalid1'")), It.IsAny<string>()), Times.Once);
+            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input 'invalid2'")), It.IsAny<string>()), Times.Once);
+        }
+
         private void Setup([CallerMemberName] string name = "")
         {
             _ecTokenSource?.Dispose();
