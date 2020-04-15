@@ -128,5 +128,3 @@ echo
 echo "Configuring as a service ..."
 ./svc.sh install ${svc_user}
 ./svc.sh start
-
-
