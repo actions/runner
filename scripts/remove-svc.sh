@@ -46,7 +46,7 @@ which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
 # Get a remove token
 #--------------------------------------
 echo
-echo "Generating a registration token..."
+echo "Generating a removal token..."
 
 # if the scope has a slash, it's an repo runner
 base_api_url="https://api.github.com/orgs"
@@ -57,8 +57,6 @@ fi
 export REMOVE_TOKEN=$(curl -s -X POST ${base_api_url}/${runner_scope}/actions/runners/remove-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
 
 if [ -z "$REMOVE_TOKEN" ]; then fatal "Failed to get a token"; fi 
-
-echo $REMOVE_TOKEN
 
 #---------------------------------------
 # Stop and uninstall the service
