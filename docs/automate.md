@@ -21,7 +21,7 @@ export RUNNER_CFG_PAT=yourPAT
 
 :point_right: [Sample script here](../scripts/create-latest-svc.sh) :point_left:
 
-Run as a one-line. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
 curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
@@ -51,7 +51,7 @@ curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/remove
 
 :point_right: [Sample script here](../scripts/delete.sh) :point_left:
 
-Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) and replace runnername
+Repo level one-liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) and replace runnername
 ```bash
 curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/delete.sh | bash -s yourorg/yourrepo runnername
 ```
