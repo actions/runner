@@ -73,4 +73,4 @@ if [ "${runner_plat}" == "linux" ]; then
 fi 
 ${prefix}./svc.sh stop
 ${prefix}./svc.sh uninstall
-./config.sh remove --token $REMOVE_TOKEN
+${prefix}./config.sh remove --token $REMOVE_TOKEN
