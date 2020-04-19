@@ -9,7 +9,7 @@ fi
 
 # Determine OS type 
 # Debian based OS (Debian, Ubuntu, Linux Mint) has /etc/debian_version
-# Fedora based OS (Fedora, Redhat, Centos, Oracle Linux 7) has /etc/redhat-release
+# Fedora based OS (Fedora, Red Hat Enterprise Linux, CentOS, Oracle Linux 7) has /etc/redhat-release
 # SUSE based OS (OpenSUSE, SUSE Enterprise) has ID_LIKE=suse in /etc/os-release
 
 function print_errormessage() 
@@ -116,12 +116,12 @@ then
     elif [ -e /etc/redhat-release ]
     then
         echo "The current OS is Fedora based"
-        echo "--------Redhat Version--------"
+        echo "--Fedora/RHEL/CentOS Version--"
         cat /etc/redhat-release
         echo "------------------------------"
 
         # use dnf on fedora
-        # use yum on centos and redhat
+        # use yum on centos and rhel
         if [ -e /etc/fedora-release ]
         then
             command -v dnf
@@ -191,7 +191,7 @@ then
     redhatRelease=$(</etc/redhat-release)
     if [[ $redhatRelease == "CentOS release 6."* || $redhatRelease == "Red Hat Enterprise Linux Server release 6."* ]]
     then
-        echo "The current OS is Red Hat Enterprise Linux 6 or Centos 6"
+        echo "The current OS is Red Hat Enterprise Linux 6 or CentOS 6"
 
         # Install known dependencies, as a best effort.
         # The remaining dependencies are covered by the GitHub doc that will be shown by `print_rhel6message`
