@@ -1,19 +1,18 @@
-﻿using GitHub.Runner.Common.Util;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Net.Http;
-using System.Diagnostics.Tracing;
 using GitHub.DistributedTask.Logging;
-using System.Net.Http.Headers;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
@@ -614,7 +613,8 @@ namespace GitHub.Runner.Common
     {
         public static HttpClientHandler CreateHttpClientHandler(this IHostContext context)
         {
-            HttpClientHandler clientHandler = new HttpClientHandler();
+            var handlerFactory = context.GetService<IHttpClientHandlerFactory>();
+            var clientHandler = handlerFactory.CreateClientHandler();
             clientHandler.Proxy = context.WebProxy;
             return clientHandler;
         }
