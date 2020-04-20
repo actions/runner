@@ -490,7 +490,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
 
             string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
-            string watermarkFile = destDirectory + ".completed";
+            string watermarkFile = GetWatermarkFilePath(destDirectory);
             if (File.Exists(watermarkFile))
             {
                 executionContext.Debug($"Action '{repositoryReference.Name}@{repositoryReference.Ref}' already downloaded at '{destDirectory}'.");
@@ -504,27 +504,90 @@ namespace GitHub.Runner.Worker
                 executionContext.Output($"Download action repository '{repositoryReference.Name}@{repositoryReference.Ref}'");
             }
 
-#if OS_WINDOWS
-            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/zipball/{repositoryReference.Ref}";
-#else
-            string archiveLink = $"https://api.github.com/repos/{repositoryReference.Name}/tarball/{repositoryReference.Ref}";
-#endif
-            Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
+            if (isHostedServer)
+            {
+                string apiUrl = GetApiUrl(executionContext, forceDotCom: true);
+                string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
+                Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
+                await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
+            }
+            else
+            {
+                string apiUrl = GetApiUrl(executionContext);
 
+                // URLs to try:
+                var archiveLinks = new List<string> {
+                    // API_URL/repos/{repository}/zipball/{ref}  - A built-in action or an action the user has created, on their GHES instance
+                    BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
+                    // API_URL/repos/actions/community-{repository.replace(/,_)}/zipball/{ref}  - A community action, synced to their GHES instance
+                    BuildLinkToActionArchive(apiUrl, $"actions/community-{repositoryReference.Name.Replace("/", "_")}", repositoryReference.Ref)
+                };
+
+                // // https://api.github.com/repos/{repository}/zipball/{ref}  - An action on DotCom, if fallback is allowed
+                // string dotComApiUrl = GetApiUrl(executionContext, forceDotCom: true);
+                // archiveLinks.Add(BuildLinkToActionArchive(dotComApiUrl), repositoryReference.Name, repositoryReference.Ref);
+
+                for (var i = 0; i < archiveLinks.Count; i++)
+                {
+                    var archiveLink = archiveLinks[i];
+                    Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
+                    try
+                    {
+                        // TODO: Indicate we have a fallback URL so don't error
+                        // var haveFallbackUrl = i < archiveLinks.Count - 1;
+                        await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
+                        return;
+                    }
+                    catch //(HttpException exception) when exception.Status == 404
+                    {
+                        Trace.Info($"Failed to find the action at {archiveLink}");
+                        continue;
+                    }
+                }
+                throw new NotSupportedException($"Failed to find the action '{repositoryReference.Name}'.  Paths attempted: {string.Join(", ", archiveLinks)}");
+            }
+        }
+
+        private string GetApiUrl(IExecutionContext executionContext, bool forceDotCom = false)
+        {
+            if (forceDotCom)
+            {
+                return "https://api.github.com";
+            }
+            string apiUrl = executionContext.GetGitHubContext("api_url");
+            if (string.IsNullOrEmpty(apiUrl))
+            {
+                throw new InvalidOperationException("Cannot get the link to the action archive: 'api_url' is not defined");
+            }
+            return apiUrl;
+        }
+
+        private static string BuildLinkToActionArchive(string apiUrl, string repository, string @ref)
+        {
+#if OS_WINDOWS
+            return $"{apiUrl}/repos/{repository}/zipball/{@ref}";
+#else
+            return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
+#endif
+        }
+
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, string link, string destDirectory)
+        {
             //download and extract action in a temp folder and rename it on success
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
             Directory.CreateDirectory(tempDirectory);
-
 
 #if OS_WINDOWS
             string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.zip");
 #else
             string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.tar.gz");
 #endif
-            Trace.Info($"Save archive '{archiveLink}' into {archiveFile}.");
+
+            Trace.Info($"Save archive '{link}' into {archiveFile}.");
             try
             {
-
                 int retryCount = 0;
 
                 // Allow up to 20 * 60s for any action to be downloaded from github graph.
@@ -571,7 +634,7 @@ namespace GitHub.Runner.Worker
                                 }
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                                using (var result = await httpClient.GetStreamAsync(archiveLink))
+                                using (var result = await httpClient.GetStreamAsync(link))
                                 {
                                     await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
                                     await fs.FlushAsync(actionDownloadCancellation.Token);
@@ -589,16 +652,16 @@ namespace GitHub.Runner.Worker
                         catch (Exception ex) when (retryCount < 2)
                         {
                             retryCount++;
-                            Trace.Error($"Fail to download archive '{archiveLink}' -- Attempt: {retryCount}");
+                            Trace.Error($"Fail to download archive '{link}' -- Attempt: {retryCount}");
                             Trace.Error(ex);
                             if (actionDownloadTimeout.Token.IsCancellationRequested)
                             {
                                 // action download didn't finish within timeout
-                                executionContext.Warning($"Action '{archiveLink}' didn't finish download within {timeoutSeconds} seconds.");
+                                executionContext.Warning($"Action '{link}' didn't finish download within {timeoutSeconds} seconds.");
                             }
                             else
                             {
-                                executionContext.Warning($"Failed to download action '{archiveLink}'. Error {ex.Message}");
+                                executionContext.Warning($"Failed to download action '{link}'. Error {ex.Message}");
                             }
                         }
                     }
@@ -612,7 +675,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 ArgUtil.NotNullOrEmpty(archiveFile, nameof(archiveFile));
-                executionContext.Debug($"Download '{archiveLink}' to '{archiveFile}'");
+                executionContext.Debug($"Download '{link}' to '{archiveFile}'");
 
                 var stagingDirectory = Path.Combine(tempDirectory, "_staging");
                 Directory.CreateDirectory(stagingDirectory);
@@ -662,6 +725,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 Trace.Verbose("Create watermark file indicate action download succeed.");
+                string watermarkFile = GetWatermarkFilePath(destDirectory);
                 File.WriteAllText(watermarkFile, DateTime.UtcNow.ToString());
 
                 executionContext.Debug($"Archive '{archiveFile}' has been unzipped into '{destDirectory}'.");
@@ -685,6 +749,8 @@ namespace GitHub.Runner.Worker
                 }
             }
         }
+
+        private string GetWatermarkFilePath(string directory) => directory + ".completed";
 
         private ActionContainer PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
         {
