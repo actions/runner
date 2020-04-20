@@ -173,6 +173,127 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public async void PrepareActions_DownloadCommunityActionFromGraph_OnPremises()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+                const string ActionName = "ownerName/sample-action";
+                const string MungedActionName = "actions/community-ownerName_sample-action";
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = ActionName,
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                // Return a valid action from GHES via mock
+                const string ApiUrl = "https://ghes.example.com/api/v3";
+                string builtInArchiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "master");
+                string mungedArchiveLink = GetLinkToActionArchive(ApiUrl, MungedActionName, "master");
+                string archiveFile = await CreateRepoArchive();
+                using var stream = File.OpenRead(archiveFile);
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(builtInArchiveLink)), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(mungedArchiveLink)), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+
+                _ec.Setup(x => x.GetGitHubContext("api_url")).Returns(ApiUrl);
+                _configurationStore.Object.GetSettings().IsHostedServer = false;
+
+                //Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master.completed");
+                Assert.True(File.Exists(watermarkFile));
+
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master", "action.yml");
+                Assert.True(File.Exists(actionYamlFile));
+                _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_DownloadUnknownActionFromGraph_OnPremises()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+                const string ActionName = "ownerName/sample-action";
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = ActionName,
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                // Return a valid action from GHES via mock
+                const string ApiUrl = "https://ghes.example.com/api/v3";
+                string archiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "master");
+                string archiveFile = await CreateRepoArchive();
+                using var stream = File.OpenRead(archiveFile);
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
+
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+
+                _ec.Setup(x => x.GetGitHubContext("api_url")).Returns(ApiUrl);
+                _configurationStore.Object.GetSettings().IsHostedServer = false;
+
+                //Act
+                Func<Task> action = async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                await Assert.ThrowsAsync<NotSupportedException>(action);
+
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master.completed");
+                Assert.False(File.Exists(watermarkFile));
+
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master", "action.yml");
+                Assert.False(File.Exists(actionYamlFile));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async void PrepareActions_SkipDownloadActionFromGraphWhenCached_OnPremises()
         {
             try
