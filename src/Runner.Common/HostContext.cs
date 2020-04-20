@@ -614,9 +614,7 @@ namespace GitHub.Runner.Common
         public static HttpClientHandler CreateHttpClientHandler(this IHostContext context)
         {
             var handlerFactory = context.GetService<IHttpClientHandlerFactory>();
-            var clientHandler = handlerFactory.CreateClientHandler();
-            clientHandler.Proxy = context.WebProxy;
-            return clientHandler;
+            return handlerFactory.CreateClientHandler(context.WebProxy);
         }
     }
 
