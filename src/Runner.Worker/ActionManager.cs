@@ -1,21 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.Common;
-using Newtonsoft.Json;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
 
@@ -529,20 +526,17 @@ namespace GitHub.Runner.Worker
                 // string dotComApiUrl = GetApiUrl(executionContext, forceDotCom: true);
                 // archiveLinks.Add(BuildLinkToActionArchive(dotComApiUrl), repositoryReference.Name, repositoryReference.Ref);
 
-                for (var i = 0; i < archiveLinks.Count; i++)
+                foreach (var archiveLink in archiveLinks)
                 {
-                    var archiveLink = archiveLinks[i];
                     Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
                     try
                     {
-                        // TODO: Indicate we have a fallback URL so don't error
-                        // var haveFallbackUrl = i < archiveLinks.Count - 1;
                         await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
                         return;
                     }
-                    catch //(HttpException exception) when exception.Status == 404
+                    catch (ActionNotFoundException ex)
                     {
-                        Trace.Info($"Failed to find the action at {archiveLink}");
+                        Trace.Info($"Failed to find the action at {ex.ActionUri}");
                         continue;
                     }
                 }
@@ -634,19 +628,40 @@ namespace GitHub.Runner.Worker
                                 }
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                                using (var result = await httpClient.GetStreamAsync(link))
+                                using (var response = await httpClient.GetAsync(link))
                                 {
-                                    await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
-                                    await fs.FlushAsync(actionDownloadCancellation.Token);
+                                    if (response.IsSuccessStatusCode)
+                                    {
+                                        using (var result = await httpClient.GetStreamAsync(link))
+                                        {
+                                            await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
+                                            await fs.FlushAsync(actionDownloadCancellation.Token);
 
-                                    // download succeed, break out the retry loop.
-                                    break;
+                                            // download succeed, break out the retry loop.
+                                            break;
+                                        }
+                                    }
+                                    else if (response.StatusCode == HttpStatusCode.NotFound)
+                                    {
+                                        // It doesn't make sense to retry in this case, so just stop
+                                        throw new ActionNotFoundException(link);
+                                    }
+                                    else
+                                    {
+                                        // Something else bad happened, let's go to our retry logic
+                                        response.EnsureSuccessStatusCode();
+                                    }
                                 }
                             }
                         }
                         catch (OperationCanceledException) when (executionContext.CancellationToken.IsCancellationRequested)
                         {
-                            Trace.Info($"Action download has been cancelled.");
+                            Trace.Info("Action download has been cancelled.");
+                            throw;
+                        }
+                        catch (ActionNotFoundException ex)
+                        {
+                            Trace.Info($"The action at '{ex.ActionUri}' does not exist");
                             throw;
                         }
                         catch (Exception ex) when (retryCount < 2)
@@ -997,4 +1012,3 @@ namespace GitHub.Runner.Worker
         public string ActionRepository { get; set; }
     }
 }
-
