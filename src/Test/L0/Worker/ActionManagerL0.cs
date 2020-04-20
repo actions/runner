@@ -1,19 +1,20 @@
-﻿using GitHub.DistributedTask.Expressions2;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
-using GitHub.Runner.Worker;
-using GitHub.Runner.Worker.Container;
-using Moq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
-using System.Reflection;
+using System.Net;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Expressions2;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Container;
+using Moq;
+using Moq.Protected;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -102,6 +103,64 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.True(File.Exists(watermarkFile));
 
                 var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "master", "action.yml");
+                Assert.True(File.Exists(actionYamlFile));
+                _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_DownloadBuiltInActionFromGraph_OnPremises()
+        {
+            try
+            {
+                // Arrange
+                Setup();
+                const string ActionName = "actions/sample-action";
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = Guid.NewGuid(),
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = ActionName,
+                            Ref = "master",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                // Return a valid action from GHES via mock
+                const string ApiUrl = "https://ghes.example.com/api/v3";
+                string expectedArchiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "master");
+                string archiveFile = await CreateRepoArchive();
+                using var stream = File.OpenRead(archiveFile);
+                var mockClientHandler = new Mock<HttpClientHandler>();
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(expectedArchiveLink)), ItExpr.IsAny<CancellationToken>())
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+
+                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
+                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
+                _hc.SetSingleton(mockHandlerFactory.Object);
+
+                _ec.Setup(x => x.GetGitHubContext("api_url")).Returns(ApiUrl);
+                _configurationStore.Object.GetSettings().IsHostedServer = false;
+
+                //Act
+                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+
+                //Assert
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master.completed");
+                Assert.True(File.Exists(watermarkFile));
+
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master", "action.yml");
                 Assert.True(File.Exists(actionYamlFile));
                 _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
             }
@@ -862,7 +921,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -962,7 +1021,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1061,7 +1120,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1129,7 +1188,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1211,7 +1270,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1310,7 +1369,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1408,7 +1467,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1476,7 +1535,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1547,7 +1606,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'GitHub'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1647,7 +1706,7 @@ runs:
 name: 'Hello World'
 description: 'Greet the world and record the time'
 author: 'Test Corporation'
-inputs: 
+inputs:
   greeting: # id of input
     description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
     required: true
@@ -1737,6 +1796,74 @@ runs:
             };
         }
 
+        /// <summary>
+        /// Creates a sample action in an archive on disk, similar to the archive
+        /// retrieved from GitHub' or GHES' repository API.
+        /// </summary>
+        private async Task<string> CreateRepoArchive()
+        {
+            const string Content = @"
+# Container action
+name: 'Hello World'
+description: 'Greet the world'
+author: 'GitHub'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'node12'
+  main: 'task.js'
+";
+            CreateAction(yamlContent: Content, instance: out _, directory: out string directory);
+
+            var archiveFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), Path.GetTempFileName());
+            var trace = _hc.GetTrace();
+
+#if OS_WINDOWS
+            ZipFile.CreateFromDirectory(archiveFile, directory);
+#else
+            string tar = WhichUtil.Which("tar", require: true, trace: trace);
+
+            // tar -xzf
+            using (var processInvoker = new ProcessInvokerWrapper())
+            {
+                processInvoker.Initialize(_hc);
+                processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
+                {
+                    if (!string.IsNullOrEmpty(args.Data))
+                    {
+                        trace.Info(args.Data);
+                    }
+                });
+
+                processInvoker.ErrorDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
+                {
+                    if (!string.IsNullOrEmpty(args.Data))
+                    {
+                        trace.Error(args.Data);
+                    }
+                });
+
+                string cwd = Path.GetDirectoryName(directory);
+                string inputDirectory = Path.GetFileName(directory);
+                int exitCode = await processInvoker.ExecuteAsync(_hc.GetDirectory(WellKnownDirectory.Bin), tar, $"-czf \"{archiveFile}\" -C \"{cwd}\" \"{inputDirectory}\"", null, CancellationToken.None);
+                if (exitCode != 0)
+                {
+                    throw new NotSupportedException($"Can't use 'tar -czf' to create archive file: {archiveFile}. return code: {exitCode}.");
+                }
+            }
+#endif
+            return archiveFile;
+        }
+
+        private static string GetLinkToActionArchive(string apiUrl, string repository, string @ref)
+        {
+#if OS_WINDOWS
+            return $"{apiUrl}/repos/{repository}/zipball/{@ref}";
+#else
+            return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
+#endif
+        }
+
         private void Setup([CallerMemberName] string name = "")
         {
             _ecTokenSource?.Dispose();
@@ -1772,6 +1899,7 @@ runs:
             _hc.SetSingleton<IDockerCommandManager>(_dockerManager.Object);
             _hc.SetSingleton<IRunnerPluginManager>(_pluginManager.Object);
             _hc.SetSingleton<IActionManifestManager>(actionManifest);
+            _hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
             _configurationStore = new Mock<IConfigurationStore>();
             _configurationStore
