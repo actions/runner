@@ -522,10 +522,6 @@ namespace GitHub.Runner.Worker
                     BuildLinkToActionArchive(apiUrl, $"actions/community-{repositoryReference.Name.Replace("/", "_")}", repositoryReference.Ref)
                 };
 
-                // // https://api.github.com/repos/{repository}/zipball/{ref}  - An action on DotCom, if fallback is allowed
-                // string dotComApiUrl = GetApiUrl(executionContext, forceDotCom: true);
-                // archiveLinks.Add(BuildLinkToActionArchive(dotComApiUrl), repositoryReference.Name, repositoryReference.Ref);
-
                 foreach (var archiveLink in archiveLinks)
                 {
                     Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
