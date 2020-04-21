@@ -500,7 +500,7 @@ namespace GitHub.Runner.Worker
             var isHostedServer = configurationStore.GetSettings().IsHostedServer;
             if (isHostedServer)
             {
-                string apiUrl = GetApiUrl(executionContext, forceDotCom: true);
+                string apiUrl = GetApiUrl(executionContext);
                 string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
                 Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
                 await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
@@ -538,18 +538,15 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private string GetApiUrl(IExecutionContext executionContext, bool forceDotCom = false)
+        private string GetApiUrl(IExecutionContext executionContext)
         {
-            if (forceDotCom)
-            {
-                return "https://api.github.com";
-            }
             string apiUrl = executionContext.GetGitHubContext("api_url");
-            if (string.IsNullOrEmpty(apiUrl))
+            if (!string.IsNullOrEmpty(apiUrl))
             {
-                throw new InvalidOperationException("Cannot get the link to the action archive: 'api_url' is not defined");
+                return apiUrl;
             }
-            return apiUrl;
+            // Once the api_url is set for hosted, we can remove this fallback (it doesn't make sense for GHES)
+            return "https://api.github.com";
         }
 
         private static string BuildLinkToActionArchive(string apiUrl, string repository, string @ref)
