@@ -531,11 +531,11 @@ namespace GitHub.Runner.Worker
                     }
                     catch (ActionNotFoundException)
                     {
-                        Trace.Info($"Failed to find the action '{repositoryReference.Name}' at {archiveLink}");
+                        Trace.Info($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}' at {archiveLink}");
                         continue;
                     }
                 }
-                throw new ActionNotFoundException($"Failed to find the action '{repositoryReference.Name}'.  Paths attempted: {string.Join(", ", archiveLinks)}");
+                throw new ActionNotFoundException($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}'.  Paths attempted: {string.Join(", ", archiveLinks)}");
             }
         }
 
