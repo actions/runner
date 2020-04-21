@@ -511,10 +511,13 @@ namespace GitHub.Runner.Worker
 
                 // URLs to try:
                 var archiveLinks = new List<string> {
-                    // API_URL/repos/{repository}/zipball/{ref}  - A built-in action or an action the user has created, on their GHES instance
+                    // A built-in action or an action the user has created, on their GHES instance
+                    // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
                     BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
-                    // API_URL/repos/actions/community-{repository.replace(/,_)}/zipball/{ref}  - A community action, synced to their GHES instance
-                    BuildLinkToActionArchive(apiUrl, $"actions/community-{repositoryReference.Name.Replace("/", "_")}", repositoryReference.Ref)
+
+                    // A community action, synced to their GHES instance
+                    // Example:  https://my-ghes/api/v3/repos/actions-community/some-org_some-action/tarball/v1
+                    BuildLinkToActionArchive(apiUrl, $"actions-community/{repositoryReference.Name.Replace("/", "_")}", repositoryReference.Ref)
                 };
 
                 foreach (var archiveLink in archiveLinks)
