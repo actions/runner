@@ -504,6 +504,7 @@ namespace GitHub.Runner.Worker
                 string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
                 Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
                 await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
+                return;
             }
             else
             {
