@@ -71,13 +71,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Clear the cache (for self-hosted runners)
-            // Note, temporarily avoid this step for the on-premises product, to avoid rate limiting.
-            var configurationStore = HostContext.GetService<IConfigurationStore>();
-            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
-            if (isHostedServer)
-            {
-                IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
-            }
+            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
 
             foreach (var action in actions)
             {
