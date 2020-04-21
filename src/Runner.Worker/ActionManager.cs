@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -623,7 +623,7 @@ namespace GitHub.Runner.Worker
                                 {
                                     if (response.IsSuccessStatusCode)
                                     {
-                                        using (var result = await httpClient.GetStreamAsync(link))
+                                        using (var result = await response.Content.ReadAsStreamAsync())
                                         {
                                             await result.CopyToAsync(fs, _defaultCopyBufferSize, actionDownloadCancellation.Token);
                                             await fs.FlushAsync(actionDownloadCancellation.Token);
