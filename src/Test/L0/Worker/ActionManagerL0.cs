@@ -1920,9 +1920,14 @@ runs:
 
         /// <summary>
         /// Creates a sample action in an archive on disk, similar to the archive
-        /// retrieved from GitHub' or GHES' repository API.
+        /// retrieved from GitHub's or GHES' repository API.
         /// </summary>
+        /// <returns>The path on disk to the archive.</returns>
+#if OS_WINDOWS
+        private Task<string> CreateRepoArchive()
+#else
         private async Task<string> CreateRepoArchive()
+#endif
         {
             const string Content = @"
 # Container action
@@ -1942,6 +1947,7 @@ runs:
 
 #if OS_WINDOWS
             ZipFile.CreateFromDirectory(archiveFile, directory);
+            return Task.FromResult(archiveFile);
 #else
             string tar = WhichUtil.Which("tar", require: true, trace: trace);
 
@@ -1973,8 +1979,8 @@ runs:
                     throw new NotSupportedException($"Can't use 'tar -czf' to create archive file: {archiveFile}. return code: {exitCode}.");
                 }
             }
-#endif
             return archiveFile;
+#endif
         }
 
         private static string GetLinkToActionArchive(string apiUrl, string repository, string @ref)
