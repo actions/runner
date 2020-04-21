@@ -143,8 +143,10 @@ namespace GitHub.Runner.Worker
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
 
+            var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> input in inputs)
             {
+                userInputs.Add(input.Key);
                 string message = "";
                 if (definition.Data?.Deprecated?.TryGetValue(input.Key, out message) == true)
                 {
@@ -152,17 +154,27 @@ namespace GitHub.Runner.Worker
                 }
             }
 
+            var validInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
                 var manifestManager = HostContext.GetService<IActionManifestManager>();
-                foreach (var input in (definition.Data?.Inputs))
+                foreach (var input in definition.Data.Inputs)
                 {
                     string key = input.Key.AssertString("action input name").Value;
+                    validInputs.Add(key);
                     if (!inputs.ContainsKey(key))
                     {
                         inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
                     }
+                }
+            }
+
+            foreach (var input in userInputs)
+            {
+                if (!validInputs.Contains(input))
+                {
+                    ExecutionContext.Warning($"Unexpected input '{input}', valid inputs are ['{string.Join("', '", validInputs)}']");
                 }
             }
 
