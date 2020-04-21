@@ -9,15 +9,11 @@ namespace GitHub.Runner.Common
         HttpClientHandler CreateClientHandler(RunnerWebProxy webProxy);
     }
 
-    public class HttpClientHandlerFactory : IHttpClientHandlerFactory
+    public class HttpClientHandlerFactory : RunnerService, IHttpClientHandlerFactory
     {
         public HttpClientHandler CreateClientHandler(RunnerWebProxy webProxy)
         {
             return new HttpClientHandler() { Proxy = webProxy };
-        }
-
-        public void Initialize(IHostContext context)
-        {
         }
     }
 }
