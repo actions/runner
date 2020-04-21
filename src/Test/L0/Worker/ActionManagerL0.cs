@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -278,7 +278,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Func<Task> action = async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                await Assert.ThrowsAsync<NotSupportedException>(action);
+                await Assert.ThrowsAsync<ActionNotFoundException>(action);
 
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master.completed");
                 Assert.False(File.Exists(watermarkFile));

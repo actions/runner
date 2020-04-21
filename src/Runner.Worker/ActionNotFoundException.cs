@@ -5,22 +5,19 @@ namespace GitHub.Runner.Worker
 {
     public class ActionNotFoundException : Exception
     {
-        public ActionNotFoundException(string actionUri)
+        public ActionNotFoundException(Uri actionUri)
             : base(FormatMessage(actionUri))
         {
-            ActionUri = actionUri;
         }
 
-        public ActionNotFoundException(string actionUri, string message)
+        public ActionNotFoundException(string message)
             : base(message)
         {
-            ActionUri = actionUri;
         }
 
-        public ActionNotFoundException(string actionUri, string message, System.Exception inner)
+        public ActionNotFoundException(string message, System.Exception inner)
             : base(message, inner)
         {
-            ActionUri = actionUri;
         }
 
         protected ActionNotFoundException(SerializationInfo info, StreamingContext context)
@@ -28,9 +25,7 @@ namespace GitHub.Runner.Worker
         {
         }
 
-        public string ActionUri { get; }
-
-        private static string FormatMessage(string actionUri)
+        private static string FormatMessage(Uri actionUri)
         {
             return $"An action could not be found at the URI '{actionUri}'";
         }

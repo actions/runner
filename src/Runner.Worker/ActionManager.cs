@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -528,13 +528,13 @@ namespace GitHub.Runner.Worker
                         await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
                         return;
                     }
-                    catch (ActionNotFoundException ex)
+                    catch (ActionNotFoundException)
                     {
-                        Trace.Info($"Failed to find the action at {ex.ActionUri}");
+                        Trace.Info($"Failed to find the action '{repositoryReference.Name}' at {archiveLink}");
                         continue;
                     }
                 }
-                throw new NotSupportedException($"Failed to find the action '{repositoryReference.Name}'.  Paths attempted: {string.Join(", ", archiveLinks)}");
+                throw new ActionNotFoundException($"Failed to find the action '{repositoryReference.Name}'.  Paths attempted: {string.Join(", ", archiveLinks)}");
             }
         }
 
@@ -635,7 +635,7 @@ namespace GitHub.Runner.Worker
                                     else if (response.StatusCode == HttpStatusCode.NotFound)
                                     {
                                         // It doesn't make sense to retry in this case, so just stop
-                                        throw new ActionNotFoundException(link);
+                                        throw new ActionNotFoundException(new Uri(link));
                                     }
                                     else
                                     {
@@ -650,9 +650,9 @@ namespace GitHub.Runner.Worker
                             Trace.Info("Action download has been cancelled.");
                             throw;
                         }
-                        catch (ActionNotFoundException ex)
+                        catch (ActionNotFoundException)
                         {
-                            Trace.Info($"The action at '{ex.ActionUri}' does not exist");
+                            Trace.Info($"The action at '{link}' does not exist");
                             throw;
                         }
                         catch (Exception ex) when (retryCount < 2)
