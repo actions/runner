@@ -60,6 +60,20 @@ namespace GitHub.DistributedTask.Logging
             return SecurityElement.Escape(value);
         }
 
+        public static String TrimDoubleQuotes(String value)
+        {
+            var trimmed = string.Empty;
+            if (!string.IsNullOrEmpty(value) &&
+                value.Length > 8 &&
+                value.StartsWith('"') &&
+                value.EndsWith('"'))
+            {
+                trimmed = value.Substring(1, value.Length - 2);
+            }
+
+            return trimmed;
+        }
+
         private static string Base64StringEscapeShift(String value, int shift)
         {
             var bytes = Encoding.UTF8.GetBytes(value);

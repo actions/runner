@@ -85,6 +85,8 @@ namespace GitHub.Runner.Common.Tests
                 _hc.SecretMasker.AddValue("Pass word 123!");
                 _hc.SecretMasker.AddValue("Pass<word>123!");
                 _hc.SecretMasker.AddValue("Pass'word'123!");
+                _hc.SecretMasker.AddValue("\"Password123!!\"");
+                _hc.SecretMasker.AddValue("\"short\"");
 
                 // Assert.
                 Assert.Equal("123***123", _hc.SecretMasker.MaskSecrets("123Password123!123"));
@@ -99,6 +101,9 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("YWJjOlBh***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"abc:Password123!"))));
                 Assert.Equal("YWJjZDpQ***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"abcd:Password123!"))));
                 Assert.Equal("YWJjZGU6***", _hc.SecretMasker.MaskSecrets(Convert.ToBase64String(Encoding.UTF8.GetBytes($"abcde:Password123!"))));
+                Assert.Equal("123***123", _hc.SecretMasker.MaskSecrets("123Password123!!123"));
+                Assert.Equal("123short123", _hc.SecretMasker.MaskSecrets("123short123"));
+                Assert.Equal("123***123", _hc.SecretMasker.MaskSecrets("123\"short\"123"));
             }
             finally
             {
