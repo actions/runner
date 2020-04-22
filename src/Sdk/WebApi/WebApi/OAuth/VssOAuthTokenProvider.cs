@@ -119,6 +119,15 @@ namespace GitHub.Services.OAuth
             }
         }
 
+        public async Task<string> ValidateCredentialAsync(CancellationToken cancellationToken)
+        {
+            var tokenHttpClient = new VssOAuthTokenHttpClient(this.SignInUrl);
+            var tokenResponse = await tokenHttpClient.GetTokenAsync(this.Grant, this.ClientCredential, this.TokenParameters, cancellationToken);
+
+            // return the underlying authentication error
+            return tokenResponse.Error;
+        }
+
         /// <summary>
         /// Issues a token request to the configured secure token service. On success, the access token issued by the 
         /// token service is returned to the caller
@@ -131,7 +140,7 @@ namespace GitHub.Services.OAuth
             CancellationToken cancellationToken)
         {
             if (this.SignInUrl == null ||
-                this.Grant == null || 
+                this.Grant == null ||
                 this.ClientCredential == null)
             {
                 return null;
