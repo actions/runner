@@ -181,7 +181,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Arrange
                 Setup();
                 const string ActionName = "ownerName/sample-action";
-                const string MungedActionName = "actions-community/ownerName_sample-action";
+                const string MungedActionName = "actions-community/ownerName-sample-action";
                 var actions = new List<Pipelines.ActionStep>
                 {
                     new Pipelines.ActionStep()
