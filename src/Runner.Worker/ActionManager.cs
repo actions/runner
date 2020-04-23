@@ -590,33 +590,24 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                var configurationStore = HostContext.GetService<IConfigurationStore>();
-                                var isHostedServer = configurationStore.GetSettings().IsHostedServer;
-                                if (isHostedServer)
+                                var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
+                                if (string.IsNullOrEmpty(authToken))
                                 {
-                                    var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
-                                    if (string.IsNullOrEmpty(authToken))
-                                    {
-                                        // TODO: Deprecate the PREVIEW_ACTION_TOKEN
-                                        authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
-                                    }
+                                    // TODO: Deprecate the PREVIEW_ACTION_TOKEN
+                                    authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
+                                }
 
-                                    if (!string.IsNullOrEmpty(authToken))
-                                    {
-                                        HostContext.SecretMasker.AddValue(authToken);
-                                        var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
-                                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-                                    }
-                                    else
-                                    {
-                                        var accessToken = executionContext.GetGitHubContext("token");
-                                        var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
-                                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-                                    }
+                                if (!string.IsNullOrEmpty(authToken))
+                                {
+                                    HostContext.SecretMasker.AddValue(authToken);
+                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
+                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
                                 }
                                 else
                                 {
-                                    // Intentionally empty. Temporary for GHES alpha release, download from dotcom unauthenticated.
+                                    var accessToken = executionContext.GetGitHubContext("token");
+                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
+                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
                                 }
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
@@ -668,7 +659,7 @@ namespace GitHub.Runner.Worker
                             }
                             else
                             {
-                                executionContext.Warning($"Failed to download action '{link}'. Error {ex.Message}");
+                                executionContext.Warning($"Failed to download action '{link}'. Error: {ex.Message}");
                             }
                         }
                     }
