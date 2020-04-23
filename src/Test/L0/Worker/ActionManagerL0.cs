@@ -1891,11 +1891,13 @@ runs:
 ";
             CreateAction(yamlContent: Content, instance: out _, directory: out string directory);
 
-            var archiveFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), Path.GetTempFileName());
+            var tempDir = _hc.GetDirectory(WellKnownDirectory.Temp);
+            Directory.CreateDirectory(tempDir);
+            var archiveFile = Path.Combine(tempDir, Path.GetRandomFileName());
             var trace = _hc.GetTrace();
 
 #if OS_WINDOWS
-            ZipFile.CreateFromDirectory(archiveFile, directory);
+            ZipFile.CreateFromDirectory(directory, archiveFile, CompressionLevel.Fastest, includeBaseDirectory: true);
             return Task.FromResult(archiveFile);
 #else
             string tar = WhichUtil.Which("tar", require: true, trace: trace);
