@@ -89,7 +89,6 @@ namespace GitHub.Runner.Common
             this.SecretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.XmlDataEscape);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
 
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
