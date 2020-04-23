@@ -858,7 +858,6 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        // TODO: We need send detailInfo back to DT in order to add an issue for the job
         private async Task CompleteJobRequestAsync(int poolId, Pipelines.AgentJobRequestMessage message, Guid lockToken, TaskResult result, string detailInfo = null)
         {
             Trace.Entering();
@@ -952,8 +951,10 @@ namespace GitHub.Runner.Listener
                 ArgUtil.NotNull(timeline, nameof(timeline));
                 TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                 ArgUtil.NotNull(jobRecord, nameof(jobRecord));
+                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                unhandledExceptionIssue.Data["_worker_crash_unhandled_exception"] = string.Empty;
                 jobRecord.ErrorCount++;
-                jobRecord.Issues.Add(new Issue() { Type = IssueType.Error, Message = errorMessage });
+                jobRecord.Issues.Add(unhandledExceptionIssue);
                 await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
             }
             catch (Exception ex)
