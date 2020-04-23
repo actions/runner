@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -517,8 +517,8 @@ namespace GitHub.Runner.Worker
                     BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
 
                     // A community action, synced to their GHES instance
-                    // Example:  https://my-ghes/api/v3/repos/actions-community/some-org_some-action/tarball/v1
-                    BuildLinkToActionArchive(apiUrl, $"actions-community/{repositoryReference.Name.Replace("/", "_")}", repositoryReference.Ref)
+                    // Example:  https://my-ghes/api/v3/repos/actions-community/some-org-some-action/tarball/v1
+                    BuildLinkToActionArchive(apiUrl, $"actions-community/{repositoryReference.Name.Replace("/", "-")}", repositoryReference.Ref)
                 };
 
                 foreach (var archiveLink in archiveLinks)
