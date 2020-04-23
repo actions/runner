@@ -952,7 +952,7 @@ namespace GitHub.Runner.Listener
                 TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                 ArgUtil.NotNull(jobRecord, nameof(jobRecord));
                 var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
-                unhandledExceptionIssue.Data["_worker_crash_unhandled_exception"] = string.Empty;
+                unhandledExceptionIssue.Data[Constants.Runner.WorkerCrashIssueDataKey] = string.Empty;
                 jobRecord.ErrorCount++;
                 jobRecord.Issues.Add(unhandledExceptionIssue);
                 await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
