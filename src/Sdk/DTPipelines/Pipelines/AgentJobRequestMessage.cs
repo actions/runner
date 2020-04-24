@@ -288,12 +288,6 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
-        // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
-        public void SetJobSidecarContainers(IDictionary<String, String> value)
-        {
-            m_jobSidecarContainers = value;
-        }
-
         public TaskAgentMessage GetAgentMessage()
         {
             var body = JsonUtility.ToString(this);
@@ -303,89 +297,6 @@ namespace GitHub.DistributedTask.Pipelines
                 Body = body,
                 MessageType = JobRequestMessageTypes.PipelineAgentJobRequest
             };
-        }
-
-        // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
-        internal static TemplateToken ConvertToTemplateToken(ContainerResource resource)
-        {
-            var result = new MappingToken(null, null, null);
-
-            var image = resource.Image;
-            if (!string.IsNullOrEmpty(image))
-            {
-                result.Add(new StringToken(null, null, null, "image"), new StringToken(null, null, null, image));
-            }
-
-            var options = resource.Options;
-            if (!string.IsNullOrEmpty(options))
-            {
-                result.Add(new StringToken(null, null, null, "options"), new StringToken(null, null, null, options));
-            }
-
-            var environment = resource.Environment;
-            if (environment?.Count > 0)
-            {
-                var mapping = new MappingToken(null, null, null);
-                foreach (var pair in environment)
-                {
-                    mapping.Add(new StringToken(null, null, null, pair.Key), new StringToken(null, null, null, pair.Value));
-                }
-                result.Add(new StringToken(null, null, null, "env"), mapping);
-            }
-
-            var ports = resource.Ports;
-            if (ports?.Count > 0)
-            {
-                var sequence = new SequenceToken(null, null, null);
-                foreach (var item in ports)
-                {
-                    sequence.Add(new StringToken(null, null, null, item));
-                }
-                result.Add(new StringToken(null, null, null, "ports"), sequence);
-            }
-
-            var volumes = resource.Volumes;
-            if (volumes?.Count > 0)
-            {
-                var sequence = new SequenceToken(null, null, null);
-                foreach (var item in volumes)
-                {
-                    sequence.Add(new StringToken(null, null, null, item));
-                }
-                result.Add(new StringToken(null, null, null, "volumes"), sequence);
-            }
-
-            return result;
-        }
-
-        [OnDeserialized]
-        private void OnDeserialized(StreamingContext context)
-        {
-            // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
-            if (JobContainer is StringToken jobContainerStringToken)
-            {
-                var resourceAlias = jobContainerStringToken.Value;
-                var resource = Resources?.Containers.SingleOrDefault(x => string.Equals(x.Alias, resourceAlias, StringComparison.OrdinalIgnoreCase));
-                if (resource != null)
-                {
-                    JobContainer = ConvertToTemplateToken(resource);
-                    m_jobContainerResourceAlias = resourceAlias;
-                }
-            }
-
-            // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
-            if (m_jobSidecarContainers?.Count > 0 && (JobServiceContainers == null || JobServiceContainers.Type == TokenType.Null))
-            {
-                var services = new MappingToken(null, null, null);
-                foreach (var pair in m_jobSidecarContainers)
-                {
-                    var networkAlias = pair.Key;
-                    var serviceResourceAlias = pair.Value;
-                    var serviceResource = Resources.Containers.Single(x => string.Equals(x.Alias, serviceResourceAlias, StringComparison.OrdinalIgnoreCase));
-                    services.Add(new StringToken(null, null, null, networkAlias), ConvertToTemplateToken(serviceResource));
-                }
-                JobServiceContainers = services;
-            }
         }
 
         [OnSerializing]
@@ -424,12 +335,6 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 m_variables = null;
             }
-
-            // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
-            if (!string.IsNullOrEmpty(m_jobContainerResourceAlias))
-            {
-                JobContainer = new StringToken(null, null, null, m_jobContainerResourceAlias);
-            }
         }
 
         [DataMember(Name = "EnvironmentVariables", EmitDefaultValue = false)]
@@ -452,13 +357,5 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "Variables", EmitDefaultValue = false)]
         private IDictionary<String, VariableValue> m_variables;
-
-        // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
-        [DataMember(Name = "JobSidecarContainers", EmitDefaultValue = false)]
-        private IDictionary<String, String> m_jobSidecarContainers;
-
-        // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
-        [IgnoreDataMember]
-        private string m_jobContainerResourceAlias;
     }
 }
