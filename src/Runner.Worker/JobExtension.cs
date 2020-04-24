@@ -131,7 +131,7 @@ namespace GitHub.Runner.Worker
                     // Temporary hack for GHES alpha
                     var configurationStore = HostContext.GetService<IConfigurationStore>();
                     var runnerSettings = configurationStore.GetSettings();
-                    if (!runnerSettings.IsHostedServer && !string.IsNullOrEmpty(runnerSettings.GitHubUrl))
+                    if (string.IsNullOrEmpty(context.GetGitHubContext("url")) && !runnerSettings.IsHostedServer && !string.IsNullOrEmpty(runnerSettings.GitHubUrl))
                     {
                         var url = new Uri(runnerSettings.GitHubUrl);
                         var portInfo = url.IsDefaultPort ? string.Empty : $":{url.Port.ToString(CultureInfo.InvariantCulture)}";
