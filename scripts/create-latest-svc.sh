@@ -68,9 +68,9 @@ sudo -u ${svc_user} mkdir runner
 echo
 echo "Generating a registration token..."
 
-base_api_url="https://api.github.com/"
-if [ -z "${ghe_hostname}" ]; then
-    base_api_url="https://${ghe_hostname}/api/v3/"
+base_api_url="https://api.github.com"
+if [ -n "${ghe_hostname}" ]; then
+    base_api_url="https://${ghe_hostname}/api/v3"
 fi
 
 # if the scope has a slash, it's a repo runner
@@ -124,7 +124,7 @@ pushd ./runner
 # Unattend config
 #---------------------------------------
 runner_url="https://github.com/${runner_scope}"
-if [ -z "${ghe_hostname}" ]; then
+if [ -n "${ghe_hostname}" ]; then
     runner_url="https://${ghe_hostname}/${runner_scope}"
 fi
 
@@ -140,7 +140,7 @@ echo
 echo "Configuring as a service ..."
 prefix=""
 if [ "${runner_plat}" == "linux" ]; then
-    prefix="sudo "
+prefix="sudo "
 fi
 
 ${prefix}./svc.sh install ${svc_user}
