@@ -16,9 +16,7 @@ namespace GitHub.Runner.Common.Tests
         private static readonly List<string> SkippedFiles = new List<string>()
         {
             "Runner.Common\\HostContext.cs",
-            "Runner.Common/HostContext.cs",
-            "Runner.Common\\HttpClientHandlerFactory.cs",
-            "Runner.Common/HttpClientHandlerFactory.cs"
+            "Runner.Common/HostContext.cs"
         };
 
         [Fact]
