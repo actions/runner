@@ -150,6 +150,20 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
+                    if (ex is VssOAuthTokenRequestException && creds.Federated is VssOAuthCredential vssOAuthCred)
+                    {
+                        // Check whether we get 401 because the runner registration already removed by the service.
+                        // If the runner registration get deleted, we can't exchange oauth token.
+                        Trace.Error("Test oauth app registration.");
+                        var oauthTokenProvider = new VssOAuthTokenProvider(vssOAuthCred, new Uri(serverUrl));
+                        var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
+                        if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure.");
+                            return false;
+                        }
+                    }
+
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
                         if (_useMigratedCredentials)
