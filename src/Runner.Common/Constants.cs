@@ -138,7 +138,8 @@ namespace GitHub.Runner.Common
                 public const int RunOnceRunnerUpdating = 4;
             }
 
-            public static readonly string WorkerCrashIssueDataKey = "_worker_crash_unhandled_exception";
+            public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
+            public static readonly string WorkerCrash = "WORKER_CRASH";
         }
 
         public static class RunnerEvent

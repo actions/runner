@@ -486,7 +486,7 @@ namespace GitHub.Runner.Worker
 
             foreach (var property in command.Properties)
             {
-                if (!string.Equals(property.Key, Constants.Runner.WorkerCrashIssueDataKey, StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(property.Key, Constants.Runner.InternalTelemetryIssueDataKey, StringComparison.OrdinalIgnoreCase))
                 {
                     issue.Data[property.Key] = property.Value;
                 }
