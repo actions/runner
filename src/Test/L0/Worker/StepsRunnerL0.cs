@@ -536,12 +536,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 step2.Verify(x => x.RunAsync(), Times.Once);
                 step3.Verify(x => x.RunAsync(), Times.Once);
 
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["outcome"].AssertString(""));
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["conclusion"].AssertString(""));
-                Assert.Equal(TaskResult.Failed.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["outcome"].AssertString(""));
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["conclusion"].AssertString(""));
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["outcome"].AssertString(""));
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Failed.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["conclusion"].AssertString(""));
 
             }
         }
@@ -572,12 +572,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 step2.Verify(x => x.RunAsync(), Times.Once);
                 step3.Verify(x => x.RunAsync(), Times.Once);
 
-                Assert.Equal(TaskResult.Skipped.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["outcome"].AssertString(""));
-                Assert.Equal(TaskResult.Skipped.ToActionResult().ToString(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["conclusion"].AssertString(""));
-                Assert.Equal(TaskResult.Failed.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["outcome"].AssertString(""));
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["conclusion"].AssertString(""));
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["outcome"].AssertString(""));
-                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Skipped.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Skipped.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step1"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Failed.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step2"].AssertDictionary("")["conclusion"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["outcome"].AssertString(""));
+                Assert.Equal(TaskResult.Succeeded.ToActionResult().ToString().ToLowerInvariant(), _stepContext.GetScope(null)["step3"].AssertDictionary("")["conclusion"].AssertString(""));
             }
         }
 
@@ -615,8 +615,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                         stepContext.Object.Result = r;
                     }
 
-                    _stepContext.SetOutcome("", stepContext.Object.ContextName, (stepContext.Object.Outcome ?? stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult().ToString());
-                    _stepContext.SetConclusion("", stepContext.Object.ContextName, (stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult().ToString());
+                    _stepContext.SetOutcome("", stepContext.Object.ContextName, (stepContext.Object.Outcome ?? stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
+                    _stepContext.SetConclusion("", stepContext.Object.ContextName, (stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
                 });
             var trace = hc.GetTrace();
             stepContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });

@@ -369,8 +369,8 @@ namespace GitHub.Runner.Worker
 
             if (!string.IsNullOrEmpty(ContextName))
             {
-                StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult().ToString());
-                StepsContext.SetConclusion(ScopeName, ContextName, (Result ?? TaskResult.Succeeded).ToActionResult().ToString());
+                StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
+                StepsContext.SetConclusion(ScopeName, ContextName, (Result ?? TaskResult.Succeeded).ToActionResult());
             }
 
             return Result.Value;
