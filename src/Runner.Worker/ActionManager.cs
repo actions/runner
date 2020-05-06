@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Worker
 
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
         private const int _defaultCopyBufferSize = 81920;
-
+        private const string _dotcomApiUrl = "https://api.github.com";
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
 
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
@@ -503,39 +503,40 @@ namespace GitHub.Runner.Worker
                 string apiUrl = GetApiUrl(executionContext);
                 string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
                 Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
-                await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
+                await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory, ConfigureAuthorization);
                 return;
             }
             else
             {
                 string apiUrl = GetApiUrl(executionContext);
 
-                // URLs to try:
-                var archiveLinks = new List<string> {
-                    // A built-in action or an action the user has created, on their GHES instance
-                    // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
-                    BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
+                // A built-in action or an action the user has created, on their GHES instance
+                // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
+                var archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
 
-                    // A community action, synced to their GHES instance
-                    // Example:  https://my-ghes/api/v3/repos/actions-community/some-org-some-action/tarball/v1
-                    BuildLinkToActionArchive(apiUrl, $"actions-community/{repositoryReference.Name.Replace("/", "-")}", repositoryReference.Ref)
-                };
-
-                foreach (var archiveLink in archiveLinks)
+                Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
+                try
                 {
+                    await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory, ConfigureAuthorization);
+                }
+                catch (ActionNotFoundException)
+                {
+                    Trace.Info($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}' at {archiveLink}");
+
+                    // The same action, on GitHub.com
+                    // Example:  https://api.github.com/repos/my-org/my-action/tarball/v1
+                    archiveLink = BuildLinkToActionArchive(_dotcomApiUrl, repositoryReference.Name, repositoryReference.Ref);
                     Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
                     try
                     {
-                        await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory);
-                        return;
+                        await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory, configureAuthorization: (e,h) => { /* no auth for dotcom */ });
                     }
                     catch (ActionNotFoundException)
                     {
                         Trace.Info($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}' at {archiveLink}");
-                        continue;
+                        throw;
                     }
                 }
-                throw new ActionNotFoundException($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}'.  Paths attempted: {string.Join(", ", archiveLinks)}");
             }
         }
 
@@ -547,7 +548,7 @@ namespace GitHub.Runner.Worker
                 return apiUrl;
             }
             // Once the api_url is set for hosted, we can remove this fallback (it doesn't make sense for GHES)
-            return "https://api.github.com";
+            return _dotcomApiUrl;
         }
 
         private static string BuildLinkToActionArchive(string apiUrl, string repository, string @ref)
@@ -559,7 +560,7 @@ namespace GitHub.Runner.Worker
 #endif
         }
 
-        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, string link, string destDirectory)
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, string link, string destDirectory, Action<IExecutionContext, HttpClient> configureAuthorization)
         {
             //download and extract action in a temp folder and rename it on success
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
@@ -590,25 +591,7 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
-                                if (string.IsNullOrEmpty(authToken))
-                                {
-                                    // TODO: Deprecate the PREVIEW_ACTION_TOKEN
-                                    authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
-                                }
-
-                                if (!string.IsNullOrEmpty(authToken))
-                                {
-                                    HostContext.SecretMasker.AddValue(authToken);
-                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
-                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-                                }
-                                else
-                                {
-                                    var accessToken = executionContext.GetGitHubContext("token");
-                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
-                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-                                }
+                                configureAuthorization(executionContext, httpClient);
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
@@ -745,6 +728,29 @@ namespace GitHub.Runner.Worker
                     //it is not critical if we fail to delete the temp folder
                     Trace.Warning("Failed to delete temp folder '{0}'. Exception: {1}", tempDirectory, ex);
                 }
+            }
+        }
+
+        private void ConfigureAuthorization(IExecutionContext executionContext, HttpClient httpClient)
+        {
+            var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
+            if (string.IsNullOrEmpty(authToken))
+            {
+                // TODO: Deprecate the PREVIEW_ACTION_TOKEN
+                authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
+            }
+
+            if (!string.IsNullOrEmpty(authToken))
+            {
+                HostContext.SecretMasker.AddValue(authToken);
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+            }
+            else
+            {
+                var accessToken = executionContext.GetGitHubContext("token");
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
             }
         }
 
