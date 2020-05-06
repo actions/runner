@@ -503,40 +503,44 @@ namespace GitHub.Runner.Worker
                 string apiUrl = GetApiUrl(executionContext);
                 string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
                 Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
-                await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory, ConfigureAuthorization);
+                var downloadDetails = new ActionDownloadDetails(archiveLink, ConfigureAuthorization);
+                await DownloadRepositoryActionAsync(executionContext, downloadDetails, destDirectory);
                 return;
             }
             else
             {
                 string apiUrl = GetApiUrl(executionContext);
 
-                // A built-in action or an action the user has created, on their GHES instance
-                // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
-                var archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
-
-                Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
-                try
-                {
-                    await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory, ConfigureAuthorization);
-                }
-                catch (ActionNotFoundException)
-                {
-                    Trace.Info($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}' at {archiveLink}");
+                // URLs to try:
+                var downloadAttempts = new List<ActionDownloadDetails> {
+                    // A built-in action or an action the user has created, on their GHES instance
+                    // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
+                    new ActionDownloadDetails(
+                        BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
+                        ConfigureAuthorization),
 
                     // The same action, on GitHub.com
                     // Example:  https://api.github.com/repos/my-org/my-action/tarball/v1
-                    archiveLink = BuildLinkToActionArchive(_dotcomApiUrl, repositoryReference.Name, repositoryReference.Ref);
-                    Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
+                    new ActionDownloadDetails(
+                        BuildLinkToActionArchive(_dotcomApiUrl, repositoryReference.Name, repositoryReference.Ref),
+                        configureAuthorization: (e,h) => { /* no authorization for dotcom */ })
+                };
+
+                foreach (var downloadAttempt in downloadAttempts)
+                {
+                    Trace.Info($"Download archive '{downloadAttempt.ArchiveLink}' to '{destDirectory}'.");
                     try
                     {
-                        await DownloadRepositoryActionAsync(executionContext, archiveLink, destDirectory, configureAuthorization: (e,h) => { /* no auth for dotcom */ });
+                        await DownloadRepositoryActionAsync(executionContext, downloadAttempt, destDirectory);
+                        return;
                     }
                     catch (ActionNotFoundException)
                     {
-                        Trace.Info($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}' at {archiveLink}");
-                        throw;
+                        Trace.Info($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}' at {downloadAttempt.ArchiveLink}");
+                        continue;
                     }
                 }
+                throw new ActionNotFoundException($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}'.  Paths attempted: {string.Join(", ", downloadAttempts.Select(d => d.ArchiveLink))}");
             }
         }
 
@@ -560,7 +564,7 @@ namespace GitHub.Runner.Worker
 #endif
         }
 
-        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, string link, string destDirectory, Action<IExecutionContext, HttpClient> configureAuthorization)
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, ActionDownloadDetails actionDownloadDetails, string destDirectory)
         {
             //download and extract action in a temp folder and rename it on success
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
@@ -572,6 +576,7 @@ namespace GitHub.Runner.Worker
             string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.tar.gz");
 #endif
 
+            string link = actionDownloadDetails.ArchiveLink;
             Trace.Info($"Save archive '{link}' into {archiveFile}.");
             try
             {
@@ -591,7 +596,7 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                configureAuthorization(executionContext, httpClient);
+                                actionDownloadDetails.ConfigureAuthorization(executionContext, httpClient);
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
@@ -859,6 +864,19 @@ namespace GitHub.Runner.Worker
             {
                 var fullPath = IOUtil.ResolvePath(actionEntryDirectory, "."); // resolve full path without access filesystem.
                 throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
+            }
+        }
+
+        private class ActionDownloadDetails
+        {
+            public string ArchiveLink { get; }
+
+            public Action<IExecutionContext, HttpClient> ConfigureAuthorization { get; }
+
+            public ActionDownloadDetails(string archiveLink, Action<IExecutionContext, HttpClient> configureAuthorization)
+            {
+                ArchiveLink = archiveLink;
+                ConfigureAuthorization = configureAuthorization;
             }
         }
     }
