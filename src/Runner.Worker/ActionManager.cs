@@ -503,7 +503,7 @@ namespace GitHub.Runner.Worker
                 string apiUrl = GetApiUrl(executionContext);
                 string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
                 Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
-                var downloadDetails = new ActionDownloadDetails(archiveLink, ConfigureAuthorization);
+                var downloadDetails = new ActionDownloadDetails(archiveLink, ConfigureAuthorizationFromContext);
                 await DownloadRepositoryActionAsync(executionContext, downloadDetails, destDirectory);
                 return;
             }
@@ -517,7 +517,7 @@ namespace GitHub.Runner.Worker
                     // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
                     new ActionDownloadDetails(
                         BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
-                        ConfigureAuthorization),
+                        ConfigureAuthorizationFromContext),
 
                     // The same action, on GitHub.com
                     // Example:  https://api.github.com/repos/my-org/my-action/tarball/v1
@@ -736,7 +736,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private void ConfigureAuthorization(IExecutionContext executionContext, HttpClient httpClient)
+        private void ConfigureAuthorizationFromContext(IExecutionContext executionContext, HttpClient httpClient)
         {
             var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
             if (string.IsNullOrEmpty(authToken))
