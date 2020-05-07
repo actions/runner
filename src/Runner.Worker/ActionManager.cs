@@ -438,7 +438,8 @@ namespace GitHub.Runner.Worker
             var imageName = $"{dockerManger.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
             while (retryCount < 3)
             {
-                buildExitCode = await dockerManger.DockerBuild(executionContext, setupInfo.Container.WorkingDirectory, Directory.GetParent(setupInfo.Container.Dockerfile).FullName, imageName);
+                buildExitCode = await dockerManger.DockerBuild(executionContext, setupInfo.Container.WorkingDirectory, setupInfo.Container.Dockerfile, imageName);
+                // buildExitCode = await dockerManger.DockerBuild(executionContext, setupInfo.Container.WorkingDirectory, Directory.GetParent(setupInfo.Container.Dockerfile).FullName, imageName);
                 if (buildExitCode == 0)
                 {
                     break;
@@ -740,6 +741,10 @@ namespace GitHub.Runner.Worker
 
                         setupInfo.Dockerfile = dockerFileFullPath;
                         setupInfo.WorkingDirectory = destDirectory;
+                        if (File.Exists(dockerFileFullPath))
+                        {
+
+                        }
                         return setupInfo;
                     }
                     else if (containerAction.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
