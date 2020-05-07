@@ -56,8 +56,7 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext,
                     ExecutionContext.GetGitHubContext("workspace"),
                     dockerFile,
-                    Directory.GetParent(dockerFile).FullName, imageName
-                );
+                    Directory.GetParent(dockerFile).FullName, imageName);
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");

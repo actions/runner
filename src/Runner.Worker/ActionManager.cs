@@ -745,7 +745,6 @@ namespace GitHub.Runner.Worker
 
                         setupInfo.Dockerfile = dockerFileFullPath;
                         setupInfo.WorkingDirectory = destDirectory;
-
                         return setupInfo;
                     }
                     else if (containerAction.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
