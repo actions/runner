@@ -70,8 +70,8 @@ namespace GitHub.Runner.Worker
                 executionContext.Warning("The 'PREVIEW_ACTION_TOKEN' secret is deprecated. Please remove it from the repository's secrets");
             }
 
-            // Clear the cache (for self-hosted runners)
-            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            // // Clear the cache (for self-hosted runners)
+            // IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
 
             foreach (var action in actions)
             {
@@ -516,9 +516,9 @@ namespace GitHub.Runner.Worker
                     // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
                     BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
 
-                    // A community action, synced to their GHES instance
-                    // Example:  https://my-ghes/api/v3/repos/actions-community/some-org-some-action/tarball/v1
-                    BuildLinkToActionArchive(apiUrl, $"actions-community/{repositoryReference.Name.Replace("/", "-")}", repositoryReference.Ref)
+                    // // A community action, synced to their GHES instance
+                    // // Example:  https://my-ghes/api/v3/repos/actions-community/some-org-some-action/tarball/v1
+                    // BuildLinkToActionArchive(apiUrl, $"actions-community/{repositoryReference.Name.Replace("/", "-")}", repositoryReference.Ref)
                 };
 
                 foreach (var archiveLink in archiveLinks)
@@ -553,9 +553,9 @@ namespace GitHub.Runner.Worker
         private static string BuildLinkToActionArchive(string apiUrl, string repository, string @ref)
         {
 #if OS_WINDOWS
-            return $"{apiUrl}/repos/{repository}/zipball/{@ref}";
+            return $"https://github.com/{repository}/zipball/{@ref}";
 #else
-            return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
+            return $"https://github.com/{repository}/tarball/{@ref}";
 #endif
         }
 
@@ -590,25 +590,25 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
-                                if (string.IsNullOrEmpty(authToken))
-                                {
-                                    // TODO: Deprecate the PREVIEW_ACTION_TOKEN
-                                    authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
-                                }
+                                // var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
+                                // if (string.IsNullOrEmpty(authToken))
+                                // {
+                                //     // TODO: Deprecate the PREVIEW_ACTION_TOKEN
+                                //     authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
+                                // }
 
-                                if (!string.IsNullOrEmpty(authToken))
-                                {
-                                    HostContext.SecretMasker.AddValue(authToken);
-                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
-                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-                                }
-                                else
-                                {
-                                    var accessToken = executionContext.GetGitHubContext("token");
-                                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
-                                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
-                                }
+                                // if (!string.IsNullOrEmpty(authToken))
+                                // {
+                                //     HostContext.SecretMasker.AddValue(authToken);
+                                //     var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"PAT:{authToken}"));
+                                //     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                // }
+                                // else
+                                // {
+                                //     var accessToken = executionContext.GetGitHubContext("token");
+                                //     var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
+                                //     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", base64EncodingToken);
+                                // }
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
