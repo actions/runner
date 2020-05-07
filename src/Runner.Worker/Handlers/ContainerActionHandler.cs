@@ -52,7 +52,12 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
 
                 var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, ExecutionContext.GetGitHubContext("workspace"), dockerFile, imageName);
+                var buildExitCode = await dockerManger.DockerBuild(
+                    ExecutionContext,
+                    ExecutionContext.GetGitHubContext("workspace"),
+                    dockerFile,
+                    Directory.GetParent(dockerFile).FullName, imageName
+                );
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");

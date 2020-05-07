@@ -17,7 +17,7 @@ namespace GitHub.Runner.Worker.Container
         string DockerInstanceLabel { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
         Task<int> DockerPull(IExecutionContext context, string image);
-        Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string tag);
+        Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
         Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
         Task<int> DockerStart(IExecutionContext context, string containerId);
@@ -87,9 +87,9 @@ namespace GitHub.Runner.Worker.Container
             return await ExecuteDockerCommandAsync(context, "pull", image, context.CancellationToken);
         }
 
-        public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string tag)
+        public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
         {
-            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag} -f \"{dockerFile}\" {workingDirectory}", workingDirectory, context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag} -f \"{dockerFile}\" {dockerContext}", workingDirectory, context.CancellationToken);
         }
 
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
