@@ -174,14 +174,13 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DownloadCommunityActionFromGraph_OnPremises()
+        public async void PrepareActions_DownloadActionFromDotCom_OnPremises()
         {
             try
             {
                 // Arrange
                 Setup();
                 const string ActionName = "ownerName/sample-action";
-                const string MungedActionName = "actions-community/ownerName-sample-action";
                 var actions = new List<Pipelines.ActionStep>
                 {
                     new Pipelines.ActionStep()
@@ -200,13 +199,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Return a valid action from GHES via mock
                 const string ApiUrl = "https://ghes.example.com/api/v3";
                 string builtInArchiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "master");
-                string mungedArchiveLink = GetLinkToActionArchive(ApiUrl, MungedActionName, "master");
+                string dotcomArchiveLink = GetLinkToActionArchive("https://api.github.com", ActionName, "master");
                 string archiveFile = await CreateRepoArchive();
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
                 mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(builtInArchiveLink)), ItExpr.IsAny<CancellationToken>())
                     .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
-                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(mungedArchiveLink)), ItExpr.IsAny<CancellationToken>())
+                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(dotcomArchiveLink)), ItExpr.IsAny<CancellationToken>())
                     .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
 
                 var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
