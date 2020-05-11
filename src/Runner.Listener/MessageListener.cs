@@ -164,9 +164,30 @@ namespace GitHub.Runner.Listener
                         }
                     }
 
+                    if (ex is TaskAgentSessionConflictException)
+                    {
+                        try
+                        {
+                            var newCred = await GetNewOAuthAuthorizationSetting(token, true);
+                            if (newCred != null)
+                            {
+                                await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), newCred);
+                                Trace.Info("Updated connection to use migrated credential for next CreateSession call.");
+                                _useMigratedCredentials = true;
+                                _authorizationUrlMigrationBackgroundTask = null;
+                                _needToCheckAuthorizationUrlUpdate = false;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Trace.Error("Fail to refresh connection with new authorization url.");
+                            Trace.Error(e);
+                        }
+                    }
+
                     if (!IsSessionCreationExceptionRetriable(ex))
                     {
-                        if (_useMigratedCredentials)
+                        if (_useMigratedCredentials && !(ex is TaskAgentSessionConflictException))
                         {
                             // migrated credentials might cause lose permission during permission check,
                             // we will force to use original credential and try again
@@ -516,14 +537,11 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task<VssCredentials> GetNewOAuthAuthorizationSetting(CancellationToken token)
+        private async Task<VssCredentials> GetNewOAuthAuthorizationSetting(CancellationToken token, bool adhoc = false)
         {
             Trace.Info("Start checking oauth authorization url update.");
             while (true)
             {
-                var backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(45));
-                await HostContext.Delay(backoff, token);
-
                 try
                 {
                     var migratedAuthorizationUrl = await _runnerServer.GetRunnerAuthUrlAsync(_settings.PoolId, _settings.AgentId);
@@ -538,7 +556,14 @@ namespace GitHub.Runner.Listener
                         {
                             // We don't need to update credentials.
                             Trace.Info("No needs to update authorization url");
-                            await Task.Delay(TimeSpan.FromMilliseconds(-1), token);
+                            if (adhoc)
+                            {
+                                return null;
+                            }
+                            else
+                            {
+                                await Task.Delay(TimeSpan.FromMilliseconds(-1), token);
+                            }
                         }
 
                         var keyManager = HostContext.GetService<IRSAKeyManager>();
@@ -572,7 +597,7 @@ namespace GitHub.Runner.Listener
                         Trace.Verbose("No authorization url updates");
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!token.IsCancellationRequested)
                 {
                     Trace.Error("Fail to get/test new authorization url.");
                     Trace.Error(ex);
@@ -587,6 +612,16 @@ namespace GitHub.Runner.Listener
                         Trace.Error("Fail to report the migration error");
                         Trace.Error(e);
                     }
+                }
+
+                if (adhoc)
+                {
+                    return null;
+                }
+                else
+                {
+                    var backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(45));
+                    await HostContext.Delay(backoff, token);
                 }
             }
         }

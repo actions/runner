@@ -1,4 +1,5 @@
-﻿using GitHub.DistributedTask.WebApi;
+﻿using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
 using System;
@@ -320,6 +321,60 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(ActionRunStage.Post, (post1 as IActionRunner).Stage);
 
                 Assert.Equal("always()", (post1 as IActionRunner).Condition);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ActionResult_Lowercase()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+                jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger1 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                hc.EnqueueInstance(pagingLogger1.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var jobContext = new Runner.Worker.ExecutionContext();
+                jobContext.Initialize(hc);
+
+                // Act.
+                jobContext.InitializeJob(jobRequest, CancellationToken.None);
+
+                jobContext.StepsContext.SetConclusion(null, "step1", ActionResult.Success);
+                var conclusion1 = (jobContext.StepsContext.GetScope(null)["step1"] as DictionaryContextData)["conclusion"].ToString();
+                Assert.Equal(conclusion1, conclusion1.ToLowerInvariant());
+
+                jobContext.StepsContext.SetOutcome(null, "step2", ActionResult.Cancelled);
+                var outcome1 = (jobContext.StepsContext.GetScope(null)["step2"] as DictionaryContextData)["outcome"].ToString();
+                Assert.Equal(outcome1, outcome1.ToLowerInvariant());
+
+                jobContext.StepsContext.SetConclusion(null, "step3", ActionResult.Failure);
+                var conclusion2 = (jobContext.StepsContext.GetScope(null)["step3"] as DictionaryContextData)["conclusion"].ToString();
+                Assert.Equal(conclusion2, conclusion2.ToLowerInvariant());
+
+                jobContext.StepsContext.SetOutcome(null, "step4", ActionResult.Skipped);
+                var outcome2 = (jobContext.StepsContext.GetScope(null)["step4"] as DictionaryContextData)["outcome"].ToString();
+                Assert.Equal(outcome2, outcome2.ToLowerInvariant());
+
+                jobContext.JobContext.Status = ActionResult.Success;
+                Assert.Equal(jobContext.JobContext["status"].ToString(), jobContext.JobContext["status"].ToString().ToLowerInvariant());
             }
         }
 

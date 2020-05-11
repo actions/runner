@@ -59,19 +59,19 @@ namespace GitHub.Runner.Worker
         public void SetConclusion(
             string scopeName,
             string stepName,
-            string conclusion)
+            ActionResult conclusion)
         {
             var step = GetStep(scopeName, stepName);
-            step["conclusion"] = new StringContextData(conclusion);
+            step["conclusion"] = new StringContextData(conclusion.ToString().ToLowerInvariant());
         }
 
         public void SetOutcome(
             string scopeName,
             string stepName,
-            string outcome)
+            ActionResult outcome)
         {
             var step = GetStep(scopeName, stepName);
-            step["outcome"] = new StringContextData(outcome);
+            step["outcome"] = new StringContextData(outcome.ToString().ToLowerInvariant());
         }
 
         private DictionaryContextData GetStep(string scopeName, string stepName)
