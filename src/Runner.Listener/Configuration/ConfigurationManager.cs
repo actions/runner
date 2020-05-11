@@ -92,11 +92,11 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteSection("Authentication");
             while (true)
             {
-                // For testing against a dev deployment of Actions Service, set this environment variable to the deployment URL
-                var actionsServiceTestUrl = Environment.GetEnvironmentVariable("DEV_ACTIONS_SERVICE_TEST_URL");
-                var inputUrl = actionsServiceTestUrl ?? command.GetUrl();
+                // When testing against a dev deployment of Actions Service, set this environment variable
+                var useDevActionsServiceUrl = Environment.GetEnvironmentVariable("USE_DEV_ACTIONS_SERVICE_URL");
+                var inputUrl = command.GetUrl();
                 if (inputUrl.Contains("codedev.ms", StringComparison.OrdinalIgnoreCase)
-                    || actionsServiceTestUrl != null)
+                    || useDevActionsServiceUrl != null)
                 {
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
