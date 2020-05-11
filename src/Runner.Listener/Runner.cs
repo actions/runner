@@ -466,6 +466,7 @@ Config Options:
  --url string     Repository to add the runner to. Required if unattended
  --token string   Registration token. Required if unattended
  --name string    Name of the runner to configure (default {Environment.MachineName ?? "myrunner"})
+ --labels string  Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --work string    Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace        Replace any existing runner with the same name (default false)");
 #if OS_WINDOWS
@@ -478,7 +479,9 @@ Examples:
  Configure a runner non-interactively:
   .{separator}config.{ext} --unattended --url <url> --token <token>
  Configure a runner non-interactively, replacing any existing runner with the same name:
-  .{separator}config.{ext} --unattended --url <url> --token <token> --replace [--name <name>]");
+  .{separator}config.{ext} --unattended --url <url> --token <token> --replace [--name <name>]
+ Configure a runner non-interactively with three extra labels:
+  .{separator}config.{ext} --unattended --url <url> --token <token> --labels L1,L2,L3");
 #if OS_WINDOWS
     _term.WriteLine($@" Configure a runner to run as a service:");
     _term.WriteLine($@"  .{separator}config.{ext} --url <url> --token <token> --runasservice");
