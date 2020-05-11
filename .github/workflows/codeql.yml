@@ -24,13 +24,13 @@ jobs:
       uses: github/codeql-action/init@v1
 
     - name: Manual build (Windows)
-      if: runner.os == windows
+      if: runner.os == 'windows'
       run : |
         dev.cmd layout Release
       working-directory: src
 
     - name: Manual build (Non-Windows)
-      if: runner.os != windows
+      if: runner.os != 'windows'
       run : |
         ./dev.sh layout Release
       working-directory: src
