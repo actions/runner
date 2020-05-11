@@ -1,11 +1,20 @@
 ## Features
-  - Runner support for GHES Alpha (#381 #386 #390 #393 $401) 
-  - Allow secrets context in Container.env (#388)
+  - Sample scripts to automate scalable runners (#427)
+  - Raise warning when action input does not match action.yml. (#429)
+  - Add secret masker for trimming double quotes. (#440)
+  - Use the API_URL and munge action URLs for GHES (#437 #469)
+  - Help trace worker crash in Kusto. (#450)
+  - update checkout@v1 for GHES (#470)
 ## Bugs
-  - Raise warning when volume mount root. (#413)
-  - Fix typo (#394)
+  - Print node version in debug instead of output. (#433)
+  - Better error when runner removed from service. (#441)
+  - Add help info for '--labels' config option (#472)
+  - Sps/token migration fix, job.status/steps.outcome/steps.conclusion case match with GitHub check suites conclusion. (#462)
+  - Docker build using -f instead of implied default (#471)
 ## Misc
-  - N/A
+  - Make release notes code blocks copy-paste-able (#430)
+  - Fix spelling of RHEL and CentOS. (#436)
+  - Add CodeQL Analysis workflow (#459)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
