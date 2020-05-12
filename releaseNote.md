@@ -11,10 +11,12 @@
   - Add help info for '--labels' config option (#472)
   - Sps/token migration fix, job.status/steps.outcome/steps.conclusion case match with GitHub check suites conclusion. (#462)
   - Docker build using -f instead of implied default (#471)
+  - Fix configure as service with runner name has space. (#474)
 ## Misc
   - Make release notes code blocks copy-paste-able (#430)
   - Fix spelling of RHEL and CentOS. (#436)
   - Add CodeQL Analysis workflow (#459)
+  - Use an env var to point to an Actions Service dev instance (#468) 
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
