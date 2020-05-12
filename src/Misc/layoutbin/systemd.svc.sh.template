@@ -1,6 +1,7 @@
 #!/bin/bash
 
 SVC_NAME="{{SvcNameVar}}"
+SVC_NAME=${SVC_NAME// /_}
 SVC_DESCRIPTION="{{SvcDescription}}"
 
 SVC_CMD=$1
