@@ -109,6 +109,7 @@ namespace GitHub.Runner.Worker
     public sealed class ExecutionContext : RunnerService, IExecutionContext
     {
         private const int _maxIssueCount = 10;
+        private const int _throttlingDelayReportThreshold = 10 * 1000; // Don't report throttling with less than 10 seconds delay
 
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
@@ -335,7 +336,7 @@ namespace GitHub.Runner.Worker
             }
 
             // report total delay caused by server throttling.
-            if (_totalThrottlingDelayInMilliseconds > 0)
+            if (_totalThrottlingDelayInMilliseconds > _throttlingDelayReportThreshold)
             {
                 this.Warning($"The job has experienced {TimeSpan.FromMilliseconds(_totalThrottlingDelayInMilliseconds).TotalSeconds} seconds total delay caused by server throttling.");
             }
@@ -851,7 +852,8 @@ namespace GitHub.Runner.Worker
         {
             Interlocked.Add(ref _totalThrottlingDelayInMilliseconds, Convert.ToInt64(data.Delay.TotalMilliseconds));
 
-            if (!_throttlingReported)
+            if (!_throttlingReported && 
+                _totalThrottlingDelayInMilliseconds > _throttlingDelayReportThreshold)
             {
                 this.Warning(string.Format("The job is currently being throttled by the server. You may experience delays in console line output, job status reporting, and action log uploads."));
 

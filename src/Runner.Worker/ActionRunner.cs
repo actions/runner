@@ -170,11 +170,15 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            foreach (var input in userInputs)
+            // Validate inputs only for actions with action.yml
+            if (Action.Reference.Type == Pipelines.ActionSourceType.Repository)
             {
-                if (!validInputs.Contains(input))
+                foreach (var input in userInputs)
                 {
-                    ExecutionContext.Warning($"Unexpected input '{input}', valid inputs are ['{string.Join("', '", validInputs)}']");
+                    if (!validInputs.Contains(input))
+                    {
+                        ExecutionContext.Warning($"Unexpected input '{input}', valid inputs are ['{string.Join("', '", validInputs)}']");
+                    }
                 }
             }
 
