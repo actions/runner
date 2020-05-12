@@ -295,9 +295,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Name = "action",
                 Id = actionId,
-                Reference = new Pipelines.ContainerRegistryReference()
+                Reference = new Pipelines.RepositoryPathReference()
                 {
-                    Image = "ubuntu:16.04"
+                    Name = "actions/runner",
+                    Ref = "v1"
                 },
                 Inputs = actionInputs
             };
