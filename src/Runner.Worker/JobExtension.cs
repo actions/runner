@@ -131,12 +131,13 @@ namespace GitHub.Runner.Worker
                     // Temporary hack for GHES alpha
                     var configurationStore = HostContext.GetService<IConfigurationStore>();
                     var runnerSettings = configurationStore.GetSettings();
-                    if (string.IsNullOrEmpty(context.GetGitHubContext("url")) && !runnerSettings.IsHostedServer && !string.IsNullOrEmpty(runnerSettings.GitHubUrl))
+                    if (string.IsNullOrEmpty(context.GetGitHubContext("server_url")) && !runnerSettings.IsHostedServer && !string.IsNullOrEmpty(runnerSettings.GitHubUrl))
                     {
                         var url = new Uri(runnerSettings.GitHubUrl);
                         var portInfo = url.IsDefaultPort ? string.Empty : $":{url.Port.ToString(CultureInfo.InvariantCulture)}";
-                        context.SetGitHubContext("url", $"{url.Scheme}://{url.Host}{portInfo}");
+                        context.SetGitHubContext("server_url", $"{url.Scheme}://{url.Host}{portInfo}");
                         context.SetGitHubContext("api_url", $"{url.Scheme}://{url.Host}{portInfo}/api/v3");
+                        context.SetGitHubContext("graphql_url", $"{url.Scheme}://{url.Host}{portInfo}/api/graphql");
                     }
 
                     // Evaluate the job-level environment variables

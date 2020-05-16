@@ -22,8 +22,8 @@ namespace GitHub.Runner.Worker
             "repository_owner",
             "run_id",
             "run_number",
+            "server_url",
             "sha",
-            "url",
             "workflow",
             "workspace",
         };
