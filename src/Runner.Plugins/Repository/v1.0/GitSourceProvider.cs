@@ -82,7 +82,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
             executionContext.Output($"Syncing repository: {repoFullName}");
 
             // Repository URL
-            var githubUrl = executionContext.GetGitHubContext("url");
+            var githubUrl = executionContext.GetGitHubContext("server_url");
             var githubUri = new Uri(!string.IsNullOrEmpty(githubUrl) ? githubUrl : "https://github.com");
             var portInfo = githubUri.IsDefaultPort ? string.Empty : $":{githubUri.Port}";
             Uri repositoryUrl = new Uri($"{githubUri.Scheme}://{githubUri.Host}{portInfo}/{repoFullName}");
