@@ -352,15 +352,24 @@ namespace GitHub.Runner.Worker.Handlers
                 if (File.Exists(gitConfigPath))
                 {
                     // Check if the config contains the workflow repository url
-                    var qualifiedRepository = _executionContext.GetGitHubContext("repository");
-                    var configMatch = $"url = https://github.com/{qualifiedRepository}";
+                    var serverUrl = _executionContext.GetGitHubContext("server_url");
+                    serverUrl = !string.IsNullOrEmpty(serverUrl) ? serverUrl : "https://github.com";
+                    var host = new Uri(serverUrl, UriKind.Absolute).Host;
+                    var nameWithOwner = _executionContext.GetGitHubContext("repository");
+                    var patterns = new[] {
+                        $"url = {serverUrl}/{nameWithOwner}",
+                        $"url = git@{host}:{nameWithOwner}.git",
+                    };
                     var content = File.ReadAllText(gitConfigPath);
                     foreach (var line in content.Split("\n").Select(x => x.Trim()))
                     {
-                        if (String.Equals(line, configMatch, StringComparison.OrdinalIgnoreCase))
+                        foreach (var pattern in patterns)
                         {
-                            repositoryPath = directoryPath;
-                            break;
+                            if (String.Equals(line, pattern, StringComparison.OrdinalIgnoreCase))
+                            {
+                                repositoryPath = directoryPath;
+                                break;
+                            }
                         }
                     }
                 }
