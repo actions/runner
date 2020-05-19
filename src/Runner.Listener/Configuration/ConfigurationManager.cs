@@ -160,8 +160,11 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             TaskAgent agent;
+            int attemptCount = 5;
+
             while (true)
             {
+                attemptCount--;
                 runnerSettings.AgentName = command.GetRunnerName();
 
                 _term.WriteLine();
@@ -192,10 +195,10 @@ namespace GitHub.Runner.Listener.Configuration
                             _term.WriteError("Failed to replace the runner.  Try again or ctrl-c to quit");
                         }
                     }
-                    else if (command.Unattended)
+                    else if (command.Unattended || attemptCount <= 0)
                     {
                         // if not replace and it is unattended config.
-                        throw new TaskAgentExistsException($"Pool {runnerSettings.PoolId} already contains a runner with name {runnerSettings.AgentName}.");
+                        throw new TaskAgentExistsException($"A runner already exists with the name {runnerSettings.AgentName}.");
                     }
                 }
                 else
@@ -216,6 +219,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                 }
             }
+
             // Add Agent Id to settings
             runnerSettings.AgentId = agent.Id;
 
