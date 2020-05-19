@@ -686,14 +686,17 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // <WORKSPACE>/workflow-repo/nested-other-repo
                 // <WORKSPACE>/other-repo
                 // <WORKSPACE>/other-repo/nested-workflow-repo
+                // <WORKSPACE>/workflow-repo-using-ssh
                 var workflowRepository = Path.Combine(workspaceDirectory, "workflow-repo");
                 var nestedOtherRepository = Path.Combine(workspaceDirectory, "workflow-repo", "nested-other-repo");
                 var otherRepository = Path.Combine(workspaceDirectory, workflowRepository, "nested-other-repo");
                 var nestedWorkflowRepository = Path.Combine(workspaceDirectory, "other-repo", "nested-workflow-repo");
+                var workflowRepositoryUsingSsh = Path.Combine(workspaceDirectory, "workflow-repo-using-ssh");
                 await CreateRepository(hostContext, workflowRepository, "https://github.com/my-org/workflow-repo");
                 await CreateRepository(hostContext, nestedOtherRepository, "https://github.com/my-org/other-repo");
                 await CreateRepository(hostContext, otherRepository, "https://github.com/my-org/other-repo");
                 await CreateRepository(hostContext, nestedWorkflowRepository, "https://github.com/my-org/workflow-repo");
+                await CreateRepository(hostContext, workflowRepositoryUsingSsh, "git@github.com:my-org/workflow-repo.git");
 
                 // Create test files
                 var file_noRepository = Path.Combine(workspaceDirectory, "no-repo.txt");
@@ -703,7 +706,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var file_nestedOtherRepository = Path.Combine(nestedOtherRepository, "nested-other-repo");
                 var file_otherRepository = Path.Combine(otherRepository, "other-repo.txt");
                 var file_nestedWorkflowRepository = Path.Combine(nestedWorkflowRepository, "nested-workflow-repo.txt");
-                foreach (var file in new[] { file_noRepository, file_workflowRepository, file_workflowRepository_nestedDirectory, file_workflowRepository_failsafe, file_nestedOtherRepository, file_otherRepository, file_nestedWorkflowRepository })
+                var file_workflowRepositoryUsingSsh = Path.Combine(workflowRepositoryUsingSsh, "workflow-repo-using-ssh.txt");
+                foreach (var file in new[] { file_noRepository, file_workflowRepository, file_workflowRepository_nestedDirectory, file_workflowRepository_failsafe, file_nestedOtherRepository, file_otherRepository, file_nestedWorkflowRepository, file_workflowRepositoryUsingSsh })
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(file));
                     File.WriteAllText(file, "");
@@ -718,8 +722,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Process($"{file_nestedOtherRepository}: some error 6");
                 Process($"{file_otherRepository}: some error 7");
                 Process($"{file_nestedWorkflowRepository}: some error 8");
+                Process($"{file_workflowRepositoryUsingSsh}: some error 9");
 
-                Assert.Equal(8, _issues.Count);
+                Assert.Equal(9, _issues.Count);
 
                 Assert.Equal("some error 1", _issues[0].Item1.Message);
                 Assert.False(_issues[0].Item1.Data.ContainsKey("file"));
@@ -744,6 +749,9 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.Equal("some error 8", _issues[7].Item1.Message);
                 Assert.Equal(file_nestedWorkflowRepository.Substring(nestedWorkflowRepository.Length + 1).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), _issues[7].Item1.Data["file"]);
+
+                Assert.Equal("some error 9", _issues[8].Item1.Message);
+                Assert.Equal(file_workflowRepositoryUsingSsh.Substring(workflowRepositoryUsingSsh.Length + 1).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), _issues[8].Item1.Data["file"]);
             }
 
             Environment.SetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE", "");
