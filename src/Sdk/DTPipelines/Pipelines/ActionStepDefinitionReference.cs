@@ -22,7 +22,7 @@ namespace GitHub.DistributedTask.Pipelines
     [DataContract]
     [KnownType(typeof(ContainerRegistryReference))]
     [KnownType(typeof(RepositoryPathReference))]
-    [KnownType(typeof(ScriptReference))]    
+    [KnownType(typeof(ScriptReference))]
     [JsonConverter(typeof(ActionStepDefinitionReferenceConverter))]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class ActionStepDefinitionReference
@@ -127,6 +127,11 @@ namespace GitHub.DistributedTask.Pipelines
         public override ActionStepDefinitionReference Clone()
         {
             return new RepositoryPathReference(this);
+        }
+
+        public override string ToString()
+        {
+            return $"ActionRef,RepositoryPath: {Name}@{Ref}";
         }
     }
 

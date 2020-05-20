@@ -271,7 +271,7 @@ namespace GitHub.Runner.Worker
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, stepId.ToString("N"), null, null, intraActionStates[actionStep.Action.Id]);
+                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, actionStep.Action.Reference.ToString(), null, null, intraActionStates[actionStep.Action.Id]);
                         }
                     }
 
@@ -282,7 +282,7 @@ namespace GitHub.Runner.Worker
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionState);
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Reference.ToString(), actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionState);
                         }
                     }
 

@@ -254,13 +254,20 @@ namespace GitHub.Runner.Worker
 
         public void RegisterPostJobStep(IStep step)
         {
-            if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
+            var actionRunner = step as IActionRunner;
+            if (actionRunner != null && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
                 return;
             }
 
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState);
+            string refName = null;
+            if (actionRunner != null)
+            {
+                refName = actionRunner.Action.Reference.ToString();
+            }
+
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, refName, IntraActionState);
             Root.PostJobSteps.Push(step);
         }
 
@@ -852,7 +859,7 @@ namespace GitHub.Runner.Worker
         {
             Interlocked.Add(ref _totalThrottlingDelayInMilliseconds, Convert.ToInt64(data.Delay.TotalMilliseconds));
 
-            if (!_throttlingReported && 
+            if (!_throttlingReported &&
                 _totalThrottlingDelayInMilliseconds > _throttlingDelayReportThreshold)
             {
                 this.Warning(string.Format("The job is currently being throttled by the server. You may experience delays in console line output, job status reporting, and action log uploads."));
@@ -861,7 +868,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState)
+        private IExecutionContext CreatePostChild(string displayName, string refName, Dictionary<string, string> intraActionState)
         {
             if (!_expandedForPostJob)
             {
@@ -871,7 +878,7 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
+            return CreateChild(newGuid, displayName, refName ?? newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
         }
     }
 
