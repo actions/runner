@@ -150,7 +150,8 @@ namespace GitHub.Runner.Worker
                     containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
                                                                    condition: $"{PipelineTemplateConstants.Success}()",
                                                                    displayName: $"Pull {imageToPull.Key}",
-                                                                   data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
+                                                                   data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key),
+                                                                   repositoryRef: null));
                 }
             }
 
@@ -163,7 +164,8 @@ namespace GitHub.Runner.Worker
                     containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
                                                                    condition: $"{PipelineTemplateConstants.Success}()",
                                                                    displayName: $"Build {setupInfo.ActionRepository}",
-                                                                   data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
+                                                                   data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory),
+                                                                   repositoryRef: setupInfo.RepositoryRef));
                 }
             }
 
@@ -776,6 +778,7 @@ namespace GitHub.Runner.Worker
             }
 
             var setupInfo = new ActionContainer();
+            setupInfo.RepositoryRef = repositoryReference;
             string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
             string actionEntryDirectory = destDirectory;
             string dockerFileRelativePath = repositoryReference.Name;
@@ -1022,5 +1025,6 @@ namespace GitHub.Runner.Worker
         public string Dockerfile { get; set; }
         public string WorkingDirectory { get; set; }
         public string ActionRepository { get; set; }
+        public Pipelines.RepositoryPathReference RepositoryRef { get; set; }
     }
 }

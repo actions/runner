@@ -254,18 +254,13 @@ namespace GitHub.Runner.Worker
 
         public void RegisterPostJobStep(IStep step)
         {
-            var actionRunner = step as IActionRunner;
-            if (actionRunner != null && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
+            if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
                 return;
             }
 
-            string refName = null;
-            if (actionRunner != null)
-            {
-                refName = actionRunner.Action.Reference.ToString();
-            }
+            string refName = step.GetRefName();
 
             step.ExecutionContext = Root.CreatePostChild(step.DisplayName, refName, IntraActionState);
             Root.PostJobSteps.Push(step);

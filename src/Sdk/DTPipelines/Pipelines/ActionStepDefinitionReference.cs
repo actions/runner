@@ -128,11 +128,6 @@ namespace GitHub.DistributedTask.Pipelines
         {
             return new RepositoryPathReference(this);
         }
-
-        public override string ToString()
-        {
-            return $"ActionRef,RepositoryPath: {Name}@{Ref}";
-        }
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]

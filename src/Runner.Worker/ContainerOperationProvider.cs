@@ -46,7 +46,8 @@ namespace GitHub.Runner.Worker
             var postJobStep = new JobExtensionRunner(runAsync: this.StopContainersAsync,
                                                 condition: $"{PipelineTemplateConstants.Always}()",
                                                 displayName: "Stop containers",
-                                                data: data);
+                                                data: data,
+                                                repositoryRef: null);
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);

@@ -213,9 +213,10 @@ namespace GitHub.Runner.Worker
                         containers.AddRange(jobContext.ServiceContainers);
 
                         preJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
-                                                                          condition: $"{PipelineTemplateConstants.Success}()",
-                                                                          displayName: "Initialize containers",
-                                                                          data: (object)containers));
+                                                               condition: $"{PipelineTemplateConstants.Success}()",
+                                                               displayName: "Initialize containers",
+                                                               data: (object)containers,
+                                                               repositoryRef: null));
                     }
 
                     // Add action steps
@@ -260,18 +261,19 @@ namespace GitHub.Runner.Worker
                     // Create execution context for pre-job steps
                     foreach (var step in preJobSteps)
                     {
-                        if (step is JobExtensionRunner)
+                        if (step is JobExtensionRunner extensionStep)
                         {
-                            JobExtensionRunner extensionStep = step as JobExtensionRunner;
-                            ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
+                            ArgUtil.NotNull(extensionStep, step.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, null, null, stepId.ToString("N"));
+                            var refName = step.GetRefName(defaultRefName: null);
+                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, refName, null, stepId.ToString("N"));
                         }
                         else if (step is IActionRunner actionStep)
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, actionStep.Action.Reference.ToString(), null, null, intraActionStates[actionStep.Action.Id]);
+                            var refName = step.GetRefName(defaultRefName: stepId.ToString("N"));
+                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, refName, null, null, intraActionStates[actionStep.Action.Id]);
                         }
                     }
 
@@ -282,7 +284,8 @@ namespace GitHub.Runner.Worker
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Reference.ToString(), actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionState);
+                            var refName = step.GetRefName(defaultRefName: actionStep.Action.Name);
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, refName, actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionState);
                         }
                     }
 
