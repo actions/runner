@@ -50,11 +50,13 @@ then
     fi
 
     libpath=${LD_LIBRARY_PATH:-}
-    $LDCONFIG_COMMAND -NXv ${libpath//:/} 2>&1 | grep libicu >/dev/null 2>&1
-    if [ $? -ne 0 ]; then
-        echo "Libicu's dependencies is missing for Dotnet Core 3.0"
-        echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 3.0 dependencies."
-        exit 1
+    if [[ -n ${libpath} ]]; then
+        $LDCONFIG_COMMAND -NXv ${libpath//:/} 2>&1 | grep libicu >/dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "Libicu's dependencies is missing for Dotnet Core 3.0"
+            echo "Execute ./bin/installdependencies.sh to install any missing Dotnet Core 3.0 dependencies."
+            exit 1
+        fi
     fi
 fi
 
