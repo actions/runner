@@ -141,7 +141,6 @@ function container ()
     pushd "${LAYOUT_DIR}" > /dev/null
     ls -la
     docker build -t actions-runner .
-    # popd > /dev/null
 }
 
 function runtest ()
