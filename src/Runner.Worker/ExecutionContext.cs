@@ -364,7 +364,11 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            _cancellationTokenSource?.Dispose();
+            if (Root != this)
+            {
+                // only dispose TokenSource for step level ExecutionContext 
+                _cancellationTokenSource?.Dispose();
+            }
 
             _logger.End();
 
@@ -852,7 +856,7 @@ namespace GitHub.Runner.Worker
         {
             Interlocked.Add(ref _totalThrottlingDelayInMilliseconds, Convert.ToInt64(data.Delay.TotalMilliseconds));
 
-            if (!_throttlingReported && 
+            if (!_throttlingReported &&
                 _totalThrottlingDelayInMilliseconds > _throttlingDelayReportThreshold)
             {
                 this.Warning(string.Format("The job is currently being throttled by the server. You may experience delays in console line output, job status reporting, and action log uploads."));

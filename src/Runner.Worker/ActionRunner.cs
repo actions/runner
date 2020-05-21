@@ -94,6 +94,13 @@ namespace GitHub.Runner.Worker
             if (handlerData.HasPost && (Stage == ActionRunStage.Pre || Stage == ActionRunStage.Main))
             {
                 string postDisplayName = $"Post {this.DisplayName}";
+                if (Stage == ActionRunStage.Pre &&
+                    this.DisplayName.StartsWith("Pre ", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Trim the leading `Pre ` from the display name.
+                    // Otherwise, we will get `Post Pre xxx` as DisplayName for the Post step.
+                    postDisplayName = $"Post {this.DisplayName.Substring("Pre ".Length)}";
+                }
                 var repositoryReference = Action.Reference as RepositoryPathReference;
                 var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
                 var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
@@ -155,6 +162,13 @@ namespace GitHub.Runner.Worker
             }
 
             var validInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (handlerData.ExecutionType == ActionExecutionType.Container)
+            {
+                // container action always accept 'entryPoint' and 'args' as inputs
+                // https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepswithargs
+                validInputs.Add("entryPoint");
+                validInputs.Add("args");
+            }
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {

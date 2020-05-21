@@ -254,6 +254,12 @@ namespace GitHub.Runner.Worker
                     Trace.Error(ex);
                     return TaskResult.Failed;
                 }
+                catch (TaskOrchestrationPlanTerminatedException ex)
+                {
+                    Trace.Error($"TaskOrchestrationPlanTerminatedException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
+                    Trace.Error(ex);
+                    return TaskResult.Failed;
+                }
                 catch (Exception ex)
                 {
                     Trace.Error($"Catch exception while attempting to raise JobCompletedEvent for job {message.JobId}, job request {message.RequestId}.");
