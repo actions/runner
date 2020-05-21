@@ -270,6 +270,12 @@ namespace GitHub.Runner.Worker
         {
             Trace.Entering();
 
+            // TODO: Null out old, non-json refNames only if a FF is set.
+            if (refName != null && !refName.StartsWith("{"))
+            {
+                refName = null;
+            }
+
             var child = new ExecutionContext();
             child.Initialize(HostContext);
             child.ScopeName = scopeName;
@@ -873,7 +879,9 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-            return CreateChild(newGuid, displayName, refName ?? newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
+
+            // TODO: Check feature flag here, conditionally set refName to newGuid.ToString("N").
+            return CreateChild(newGuid, displayName, refName, null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
         }
     }
 
