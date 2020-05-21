@@ -129,14 +129,19 @@ function layout ()
     bash ./Misc/externals.sh $RUNTIME_ID || checkRC externals.sh
 }
 
+#./dev.sh container Release
 function container ()
 {
-    heading "Building container ..."
     RUNTIME_ID="alpine-x64"
-    BUILDCONFIG="Release"
+    heading "Building container for ${RUNTIME_ID}..."
+    #BUILDCONFIG="Release"
     layout 
 
-    docker build -t actions-runner ${SCRIPT_DIR}
+    echo "${LAYOUT_DIR}"
+    pushd "${LAYOUT_DIR}" > /dev/null
+    ls -la
+    docker build -t actions-runner .
+    # popd > /dev/null
 }
 
 function runtest ()
@@ -239,6 +244,8 @@ fi
 case $DEV_CMD in
     "build") build;;
     "b") build;;
+    "container") container;;
+    "c") container;;
     "test") runtest;;
     "t") runtest;;
     "layout") layout;;
