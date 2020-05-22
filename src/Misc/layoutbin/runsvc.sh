@@ -10,6 +10,13 @@ if [ -f ".path" ]; then
     echo ".path=${PATH}"
 fi
 
+if [ -f ".debug-runner-disable-ssl-verify" ]; then
+    export GIT_SSL_NO_VERIFY=true
+    export NODE_TLS_REJECT_UNAUTHORIZED=0
+    echo "SSL verification for Git and Node disabled"
+    echo "   *** DO NOT RUN THIS IN PRODUCTION ***"
+fi
+
 # insert anything to setup env when running as a service
 
 # run the host process which keep the listener alive
