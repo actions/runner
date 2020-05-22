@@ -55,13 +55,9 @@ function remove_runner {
 trap remove_runner EXIT
 
 # Generate registration token
-echo "curl -s -X POST ${GITHUB_API_URL}/${orgs_or_repos}/${RUNNER_SCOPE}/actions/runners/registration-token -H \"authorization: token $RUNNER_PAT\" -H \"accept: application/vnd.github.everest-preview+json\""
 RUNNER_REG_TOKEN=$(curl -s -X POST ${GITHUB_API_URL}/${orgs_or_repos}/${RUNNER_SCOPE}/actions/runners/registration-token -H "authorization: token $RUNNER_PAT" -H "accept: application/vnd.github.everest-preview+json" | jq -r '.token')
 
-echo $RUNNER_REG_TOKEN
-
 # Create the runner and configure it
-echo "./config.sh --unattended --name $RUNNER_NAME --url $RUNNER_REG_URL --token $RUNNER_REG_TOKEN $RUNNER_LABELS_ARG --replace"
 ./config.sh --unattended --name $RUNNER_NAME --url $RUNNER_REG_URL --token $RUNNER_REG_TOKEN $RUNNER_LABELS_ARG --replace
 
 # Run it
