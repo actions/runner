@@ -39,6 +39,11 @@ function acquireExternalTool() {
     local download_basename="$(basename "$download_target")"
     local download_dir="$(dirname "$download_target")"
 
+    echo "download_source=${download_source}"
+    echo "target_dir=${target_dir}"
+    echo "download_target=${download_target}"
+    echo "download_basename=${download_basename}"
+
     if [[ "$PRECACHE" != "" ]]; then
         if [ -f "$download_target" ]; then
             echo "Download exists: $download_basename"
@@ -151,5 +156,6 @@ if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
 fi
 
 if [[ "$PACKAGERUNTIME" == "alpine-x64" ]]; then 
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
     acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-${NODE12_VERSION}-alpine-x64.tar.gz" node12_alpine
 fi

@@ -129,11 +129,15 @@ function layout ()
     bash ./Misc/externals.sh $RUNTIME_ID || checkRC externals.sh
 }
 
-#./dev.sh container Release
+#./dev.sh container Release alpine-x64
 function container ()
 {
-    RUNTIME_ID="alpine-x64"
     heading "Building container for ${RUNTIME_ID}..."
+
+    if [ "${RUNTIME_ID}" != "alpine-x64" ]; then
+        fail "Only support building alpine-x64 container"
+    fi
+
     #BUILDCONFIG="Release"
     layout 
 
