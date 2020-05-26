@@ -45,8 +45,10 @@ fi
 
 # Watch for EXIT signal to be able to shut down gracefully
 # Remove runner upon receiving an EXIT signal
+# won't be required with ephemeral
 function remove_runner {
     echo "\nCaught EXIT signal. Removing runner and exiting.\n"
+    RUNNER_PAT=$(cat PAT)
     RUNNER_REM_TOKEN=$(curl --data "" -H "Authorization: Bearer $RUNNER_PAT" ${GITHUB_API_URL}/${orgs_or_repos}/${RUNNER_SCOPE}/actions/runners/remove-token | jq -r '.token')
     ./config.sh remove --token $RUNNER_REM_TOKEN
     exit $?
@@ -56,6 +58,10 @@ trap remove_runner EXIT
 
 # Generate registration token
 RUNNER_REG_TOKEN=$(curl -s -X POST ${GITHUB_API_URL}/${orgs_or_repos}/${RUNNER_SCOPE}/actions/runners/registration-token -H "authorization: token $RUNNER_PAT" -H "accept: application/vnd.github.everest-preview+json" | jq -r '.token')
+
+# ensure PAT available for removal at shutdown.  won't be required with ephemeral
+echo $RUNNER_PAT > PAT
+unset RUNNER_PAT
 
 # Create the runner and configure it
 ./config.sh --unattended --name $RUNNER_NAME --url $RUNNER_REG_URL --token $RUNNER_REG_TOKEN $RUNNER_LABELS_ARG --replace
