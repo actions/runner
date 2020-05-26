@@ -40,7 +40,7 @@ echo "Runner Labels    : ${RUNNER_LABELS:=""}"
 
 RUNNER_LABELS_ARG=""
 if [ -n "${RUNNER_LABELS}" ]; then
-    RUNNER_LABELS_ARG="--labels \"${RUNNER_LABELS}\""
+    RUNNER_LABELS_ARG="--labels ${RUNNER_LABELS}"
 fi
 
 # Watch for EXIT signal to be able to shut down gracefully
