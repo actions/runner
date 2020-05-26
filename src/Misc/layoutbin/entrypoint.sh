@@ -34,7 +34,7 @@ RUNNER_REG_URL="${GITHUB_SERVER_URL:=https://github.com}/${RUNNER_SCOPE}"
 echo "Runner Name      : ${RUNNER_NAME}"
 echo "Registration URL : ${RUNNER_REG_URL}"
 echo "GitHub API URL   : ${GITHUB_API_URL:=https://api.github.com}"
-echo "Runner Labels    : ${RUNNER_LABELS}"
+echo "Runner Labels    : ${RUNNER_LABELS:=""}"
 
 # TODO: if api url is not default, validate it ends in /api/v3
 
