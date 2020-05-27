@@ -18,6 +18,7 @@ RUN apk upgrade
 RUN apk add bash
 RUN apk add jq
 RUN apk add curl
+RUN apk add ca-certificates
 
 # Directory for runner to operate in
 RUN mkdir /actions-runner

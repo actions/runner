@@ -141,9 +141,18 @@ function container ()
     #BUILDCONFIG="Release"
     layout 
 
-    echo "${LAYOUT_DIR}"
+    echo 
+    echo Building podmgr...
+    pushd $SCRIPT_DIR/podmgr 
+
+    # https://stackoverflow.com/questions/48366173/how-do-i-build-a-static-go-binary-for-the-docker-alpine-image
+    # https://rollout.io/blog/building-minimal-docker-containers-for-go-applications/
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ../../_layout/bin/podmgr .
+    popd > /dev/null
+
+    echo 
+    echo Building container ...
     pushd "${LAYOUT_DIR}" > /dev/null
-    ls -la
     docker build -t actions-runner .
 }
 
