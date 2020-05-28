@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -68,68 +69,6 @@ func getCoreV1() (v1.CoreV1Interface, error) {
 	//pods, _ := clientset.CoreV1().Pods("").List(v1.ListOptions{})
 }
 
-// func createJobContainer(namespace string) error {
-// 	config, err := getConfig()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	client, err := dynamic.NewForConfig(config)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	ephemeralRes := schema.GroupVersionResource{Group: "", Version: "v1", Resource: "ephemeralcontainers"}
-
-// 	// {
-// 	// 	"apiVersion": "v1",
-// 	// 	"kind": "EphemeralContainers",
-// 	// 	"metadata": {
-// 	// 			"name": "example-pod"
-// 	// 	},
-// 	// 	"ephemeralContainers": [{
-// 	// 		"command": [
-// 	// 			"sh"
-// 	// 		],
-// 	// 		"image": "busybox",
-// 	// 		"imagePullPolicy": "IfNotPresent",
-// 	// 		"name": "debugger",
-// 	// 		"stdin": true,
-// 	// 		"tty": true,
-// 	// 		"terminationMessagePolicy": "File"
-// 	// 	}]
-// 	// }
-// 	ephemeralContainer := &unstructured.Unstructured{
-// 		Object: map[string]interface{}{
-// 			"apiVersion": "v1",
-// 			"kind":       "EphemeralContainers",
-// 			"metadata": map[string]interface{}{
-// 				"name": "job-container",
-// 			},
-// 			"ephemeralContainers": []map[string]interface{}{
-// 				{
-// 					"name":                     "job-container",
-// 					"image":                    "busybox",
-// 					"imagePullPolicy":          "IfNotPresent",
-// 					"stdin":                    true,
-// 					"tty":                      true,
-// 					"terminationMessagePolicy": "File",
-// 				},
-// 			},
-// 		},
-// 	}
-
-// 	// Create Deployment
-// 	fmt.Println("Creating deployment...")
-// 	result, err := client.Resource(ephemeralRes).Namespace(namespace).Update(ephemeralContainer, v1.UpdateOptions{})
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	fmt.Printf("Created deployment %q.\n", result.GetName())
-
-// 	return nil
-// }
-
 func createEphemeralContainer(podName string, imageName string, namespace string) error {
 	v1Client, err := getCoreV1()
 	if err != nil {
@@ -138,8 +77,8 @@ func createEphemeralContainer(podName string, imageName string, namespace string
 
 	// Get the pod
 	fmt.Printf("Getting %v from %v\n", podName, namespace)
-	pod, err := v1Client.Pods(namespace).Get(podName, metav1.GetOptions{})
-	fmt.Printf("got pod %v\n", pod.Name)
+	pod, err := v1Client.Pods(namespace).Get(context.TODO(), podName, metav1.GetOptions{})
+	fmt.Printf("Retrieved pod: %v\n", pod.Name)
 
 	ec := apicorev1.EphemeralContainer{}
 	ec.Name = "job-container"
@@ -158,13 +97,15 @@ func createEphemeralContainer(podName string, imageName string, namespace string
 
 	fmt.Printf("%v\n", ecSubRes)
 
-	pods, _ := v1Client.Pods("").List(metav1.ListOptions{})
+	// pods, _ := v1Client.Pods("").List(metav1.ListOptions{})
 
-	for i, pod := range pods.Items {
-		fmt.Printf("Pod %d, %v\n", i, pod.Name)
-	}
+	// for i, pod := range pods.Items {
+	// 	fmt.Printf("Pod %d, %v\n", i, pod.Name)
+	// }
 
-	_, err = v1Client.Pods(namespace).UpdateEphemeralContainers(pod.Name, &ecSubRes)
+	// hmmm, pod.Name is empty inside the pod
+	fmt.Printf("Updating pod %v\n", podName)
+	_, err = v1Client.Pods(namespace).UpdateEphemeralContainers(context.TODO(), podName, &ecSubRes, metav1.UpdateOptions{})
 	if err != nil {
 		return err
 	}
