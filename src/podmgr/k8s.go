@@ -136,6 +136,11 @@ func createEphemeralContainer(podName string, imageName string, namespace string
 		return err
 	}
 
+	// Get the pod
+	fmt.Printf("Getting %v from %v\n", podName, namespace)
+	pod, err := v1Client.Pods(namespace).Get(podName, metav1.GetOptions{})
+	fmt.Printf("got pod %v\n", pod.Name)
+
 	ec := apicorev1.EphemeralContainer{}
 	ec.Name = "job-container"
 	ec.Image = imageName
@@ -148,7 +153,8 @@ func createEphemeralContainer(podName string, imageName string, namespace string
 	ecSubRes := apicorev1.EphemeralContainers{}
 	ecSubRes.APIVersion = "v1"
 	ecSubRes.Kind = "EphemeralContainers"
-	ecSubRes.EphemeralContainers = append(ecSubRes.EphemeralContainers, ec)
+	ecSubRes.ObjectMeta.Name = podName
+	ecSubRes.EphemeralContainers = append(pod.Spec.EphemeralContainers, ec)
 
 	fmt.Printf("%v\n", ecSubRes)
 
@@ -157,10 +163,6 @@ func createEphemeralContainer(podName string, imageName string, namespace string
 	for i, pod := range pods.Items {
 		fmt.Printf("Pod %d, %v\n", i, pod.Name)
 	}
-
-	fmt.Printf("Getting %v from %v\n", podName, namespace)
-	pod, err := v1Client.Pods(namespace).Get(podName, metav1.GetOptions{})
-	fmt.Printf("got pod %v\n", pod.Name)
 
 	_, err = v1Client.Pods(namespace).UpdateEphemeralContainers(pod.Name, &ecSubRes)
 	if err != nil {
