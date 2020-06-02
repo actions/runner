@@ -73,6 +73,11 @@ namespace GitHub.Runner.Worker
             // Clear the cache (for self-hosted runners)
             IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
 
+            // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
+            var newActionMetadata = executionContext.Variables.GetBoolean("DistributedTask.NewActionMetadata") ?? false;
+
+            var repositoryActions = new List<Pipelines.ActionStep>();
+
             foreach (var action in actions)
             {
                 if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
@@ -90,12 +95,88 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Action {action.Name} ({action.Id}) needs to pull image '{containerReference.Image}'");
                     imagesToPull[containerReference.Image].Add(action.Id);
                 }
-                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
+                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository && !newActionMetadata)
                 {
                     // only download the repository archive
                     await DownloadRepositoryActionAsync(executionContext, action);
 
                     // more preparation base on content in the repository (action.yml)
+                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
+                    if (setupInfo != null)
+                    {
+                        if (!string.IsNullOrEmpty(setupInfo.Image))
+                        {
+                            if (!imagesToPull.ContainsKey(setupInfo.Image))
+                            {
+                                imagesToPull[setupInfo.Image] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
+                            imagesToPull[setupInfo.Image].Add(action.Id);
+                        }
+                        else
+                        {
+                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
+
+                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
+                            {
+                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
+                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
+                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
+                        }
+                    }
+
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
+                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
+                    {
+                        var definition = LoadAction(executionContext, action);
+                        if (definition.Data.Execution.HasPre)
+                        {
+                            var actionRunner = HostContext.CreateService<IActionRunner>();
+                            actionRunner.Action = action;
+                            actionRunner.Stage = ActionRunStage.Pre;
+                            actionRunner.Condition = definition.Data.Execution.InitCondition;
+
+                            Trace.Info($"Add 'pre' execution for {action.Id}");
+                            preStepTracker[action.Id] = actionRunner;
+                        }
+                    }
+                }
+                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository && newActionMetadata)
+                {
+                    repositoryActions.Add(action);
+                }
+            }
+
+            if (repositoryActions.Count > 0)
+            {
+                // Get the download info
+                var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
+
+                // Download each action
+                foreach (var action in repositoryActions)
+                {
+                    var lookupKey = GetDownloadInfoLookupKey(action);
+                    if (string.IsNullOrEmpty(lookupKey))
+                    {
+                        continue;
+                    }
+
+                    if (!downloadInfos.TryGetValue(lookupKey, out var downloadInfo))
+                    {
+                        throw new Exception($"Missing download info for {lookupKey}");
+                    }
+
+                    await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                }
+
+                // More preparation based on content in the repository (action.yml)
+                foreach (var action in repositoryActions)
+                {
                     var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
                     if (setupInfo != null)
                     {
@@ -464,6 +545,127 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        // This implementation is temporary and will be removed when we switch to a REST API call to the service to resolve the download info
+        private async Task<bool> RepoExistsAsync(IExecutionContext executionContext, Pipelines.RepositoryPathReference repositoryReference, string authorization)
+        {
+            var apiUrl = GetApiUrl(executionContext);
+            var repoUrl = $"{apiUrl}/repos/{repositoryReference.Name}";
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                executionContext.Debug($"Checking whether repo exists: {repoUrl}");
+                try
+                {
+                    using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                    using (var httpClient = new HttpClient(httpClientHandler))
+                    {
+                        httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(authorization);
+                        httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                        using (var response = await httpClient.GetAsync(repoUrl))
+                        {
+                            if (response.IsSuccessStatusCode)
+                            {
+                                return true;
+                            }
+                            else if (response.StatusCode == HttpStatusCode.NotFound)
+                            {
+                                return false;
+                            }
+                            else
+                            {
+                                // Throw
+                                response.EnsureSuccessStatusCode();
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (attempt < 3)
+                    {
+                        executionContext.Debug($"Failed checking whether repo '{repositoryReference.Name}' exists: {ex.Message}");
+                    }
+                    else
+                    {
+                        executionContext.Error($"Failed checking whether repo '{repositoryReference.Name}' exists: {ex.Message}");
+                        throw;
+                    }
+                }
+            }
+
+            return false; // Never reaches here
+        }
+
+        // This implementation is temporary and will be replaced with a REST API call to the service to resolve
+        private async Task<Dictionary<string, ActionDownloadInfo>> GetDownloadInfoAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions)
+        {
+            var result = new Dictionary<string, ActionDownloadInfo>(StringComparer.OrdinalIgnoreCase);
+
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var runnerSettings = configurationStore.GetSettings();
+            var apiUrl = GetApiUrl(executionContext);
+            var accessToken = executionContext.GetGitHubContext("token");
+            var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{accessToken}"));
+            var authorization = $"Basic {base64EncodingToken}";
+
+            foreach (var action in actions)
+            {
+                var lookupKey = GetDownloadInfoLookupKey(action);
+                if (string.IsNullOrEmpty(lookupKey) || result.ContainsKey(lookupKey))
+                {
+                    continue;
+                }
+
+                var repositoryReference = action.Reference as Pipelines.RepositoryPathReference;
+                ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
+
+                var downloadInfo = default(ActionDownloadInfo);
+
+                if (runnerSettings.IsHostedServer)
+                {
+                    downloadInfo = new ActionDownloadInfo
+                    {
+                        NameWithOwner = repositoryReference.Name,
+                        Ref = repositoryReference.Ref,
+                        ArchiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
+                        Authorization = authorization,
+                    };
+                }
+                // Test whether the repo exists in the instance
+                else if (await RepoExistsAsync(executionContext, repositoryReference, authorization))
+                {
+                    downloadInfo = new ActionDownloadInfo
+                    {
+                        NameWithOwner = repositoryReference.Name,
+                        Ref = repositoryReference.Ref,
+                        ArchiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
+                        Authorization = authorization,
+                    };
+                }
+                // Fallback to dotcom
+                else
+                {
+                    downloadInfo = new ActionDownloadInfo
+                    {
+                        NameWithOwner = repositoryReference.Name,
+                        Ref = repositoryReference.Ref,
+                        ArchiveLink = BuildLinkToActionArchive(_dotcomApiUrl, repositoryReference.Name, repositoryReference.Ref),
+                        Authorization = null,
+                    };
+                }
+
+                result.Add(lookupKey, downloadInfo);
+            }
+
+            // Register secrets
+            foreach (var downloadInfo in result.Values)
+            {
+                HostContext.SecretMasker.AddValue(downloadInfo.Authorization);
+            }
+
+            return result;
+        }
+
+        // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
         {
             Trace.Entering();
@@ -509,7 +711,7 @@ namespace GitHub.Runner.Worker
                 string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
                 Trace.Info($"Download archive '{archiveLink}' to '{destDirectory}'.");
                 var downloadDetails = new ActionDownloadDetails(archiveLink, ConfigureAuthorizationFromContext);
-                await DownloadRepositoryActionAsync(executionContext, downloadDetails, destDirectory);
+                await DownloadRepositoryActionAsync(executionContext, downloadDetails, null, destDirectory);
                 return;
             }
             else
@@ -536,7 +738,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Download archive '{downloadAttempt.ArchiveLink}' to '{destDirectory}'.");
                     try
                     {
-                        await DownloadRepositoryActionAsync(executionContext, downloadAttempt, destDirectory);
+                        await DownloadRepositoryActionAsync(executionContext, downloadAttempt, null, destDirectory);
                         return;
                     }
                     catch (ActionNotFoundException)
@@ -547,6 +749,33 @@ namespace GitHub.Runner.Worker
                 }
                 throw new ActionNotFoundException($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}'.  Paths attempted: {string.Join(", ", downloadAttempts.Select(d => d.ArchiveLink))}");
             }
+        }
+
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, ActionDownloadInfo downloadInfo)
+        {
+            Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(downloadInfo, nameof(downloadInfo));
+            ArgUtil.NotNullOrEmpty(downloadInfo.NameWithOwner, nameof(downloadInfo.NameWithOwner));
+            ArgUtil.NotNullOrEmpty(downloadInfo.Ref, nameof(downloadInfo.Ref));
+
+            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), downloadInfo.NameWithOwner.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), downloadInfo.Ref);
+            string watermarkFile = GetWatermarkFilePath(destDirectory);
+            if (File.Exists(watermarkFile))
+            {
+                executionContext.Debug($"Action '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}' already downloaded at '{destDirectory}'.");
+                return;
+            }
+            else
+            {
+                // make sure we get a clean folder ready to use.
+                IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
+                Directory.CreateDirectory(destDirectory);
+                executionContext.Output($"Download action repository '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}'");
+            }
+
+            Trace.Info($"Download archive '{downloadInfo.ArchiveLink}' to '{destDirectory}'.");
+            await DownloadRepositoryActionAsync(executionContext, null, downloadInfo, destDirectory);
         }
 
         private string GetApiUrl(IExecutionContext executionContext)
@@ -569,7 +798,8 @@ namespace GitHub.Runner.Worker
 #endif
         }
 
-        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, ActionDownloadDetails actionDownloadDetails, string destDirectory)
+        // todo: Remove the parameter "actionDownloadDetails" when feature flag DistributedTask.NewActionMetadata is removed
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, ActionDownloadDetails actionDownloadDetails, ActionDownloadInfo downloadInfo, string destDirectory)
         {
             //download and extract action in a temp folder and rename it on success
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
@@ -581,7 +811,7 @@ namespace GitHub.Runner.Worker
             string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.tar.gz");
 #endif
 
-            string link = actionDownloadDetails.ArchiveLink;
+            string link = downloadInfo != null ? downloadInfo.ArchiveLink : actionDownloadDetails.ArchiveLink;
             Trace.Info($"Save archive '{link}' into {archiveFile}.");
             try
             {
@@ -601,7 +831,16 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                actionDownloadDetails.ConfigureAuthorization(executionContext, httpClient);
+                                // Legacy
+                                if (downloadInfo == null)
+                                {
+                                    actionDownloadDetails.ConfigureAuthorization(executionContext, httpClient);
+                                }
+                                // FF DistributedTask.NewActionMetadata
+                                else
+                                {
+                                    httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadInfo.Authorization);
+                                }
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
@@ -741,6 +980,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
         private void ConfigureAuthorizationFromContext(IExecutionContext executionContext, HttpClient httpClient)
         {
             var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
@@ -872,6 +1112,48 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        private static string GetDownloadInfoLookupKey(Pipelines.ActionStep action)
+        {
+            if (action.Reference.Type != Pipelines.ActionSourceType.Repository)
+            {
+                return null;
+            }
+
+            var repositoryReference = action.Reference as Pipelines.RepositoryPathReference;
+            ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
+
+            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (!string.Equals(repositoryReference.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new NotSupportedException(repositoryReference.RepositoryType);
+            }
+
+            ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
+            ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
+            return $"{repositoryReference.Name}@{repositoryReference.Ref}";
+        }
+
+        private static AuthenticationHeaderValue CreateAuthHeader(string authorization)
+        {
+            if (string.IsNullOrEmpty(authorization))
+            {
+                return null;
+            }
+
+            var split = authorization.Split(new char[] { ' ' }, 2);
+            if (split.Length != 2 || string.IsNullOrWhiteSpace(split[0]) || string.IsNullOrWhiteSpace(split[1]))
+            {
+                throw new Exception("Unexpected authorization header format");
+            }
+
+            return new AuthenticationHeaderValue(split[0].Trim(), split[1].Trim());
+        }
+
+        // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
         private class ActionDownloadDetails
         {
             public string ArchiveLink { get; }
@@ -883,6 +1165,17 @@ namespace GitHub.Runner.Worker
                 ArchiveLink = archiveLink;
                 ConfigureAuthorization = configureAuthorization;
             }
+        }
+
+        private class ActionDownloadInfo
+        {
+            public string NameWithOwner { get; set; }
+
+            public string Ref { get; set; }
+
+            public string ArchiveLink { get; set; }
+
+            public string Authorization { get; set; }
         }
     }
 
