@@ -102,7 +102,9 @@ namespace GitHub.Runner.Listener
                 IRunner runner = context.GetService<IRunner>();
                 try
                 {
-                    return await runner.ExecuteCommand(command);
+                    var returnCode = await runner.ExecuteCommand(command);
+                    trace.Info($"Runner execution has finished with return code {returnCode}");
+                    return returnCode;
                 }
                 catch (OperationCanceledException) when (context.RunnerShutdownToken.IsCancellationRequested)
                 {

@@ -119,6 +119,17 @@ namespace GitHub.Runner.Listener.Configuration
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
 
+                    // Warn if the Actions server url and GHES server url has different Host
+                    if (!runnerSettings.IsHostedServer)
+                    {
+                        var actionsServerUrl = new Uri(runnerSettings.ServerUrl);
+                        var githubServerUrl = new Uri(runnerSettings.GitHubUrl);
+                        if (!string.Equals(actionsServerUrl.Authority, githubServerUrl.Authority, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _term.Write($"[WARN] GitHub Actions is not properly configured in GHES. GHES url: {runnerSettings.GitHubUrl}, Actions url: {runnerSettings.ServerUrl}.", ConsoleColor.Yellow);
+                        }
+                    }
+
                     // Validate can connect.
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
 
@@ -221,36 +232,11 @@ namespace GitHub.Runner.Listener.Configuration
             // Add Agent Id to settings
             runnerSettings.AgentId = agent.Id;
 
-            // respect the serverUrl resolve by server.
-            // in case of agent configured using collection url instead of account url.
-            string agentServerUrl;
-            if (agent.Properties.TryGetValidatedValue<string>("ServerUrl", out agentServerUrl) &&
-                !string.IsNullOrEmpty(agentServerUrl))
-            {
-                Trace.Info($"Agent server url resolve by server: '{agentServerUrl}'.");
-
-                // we need make sure the Schema/Host/Port component of the url remain the same.
-                UriBuilder inputServerUrl = new UriBuilder(runnerSettings.ServerUrl);
-                UriBuilder serverReturnedServerUrl = new UriBuilder(agentServerUrl);
-                if (Uri.Compare(inputServerUrl.Uri, serverReturnedServerUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
-                {
-                    inputServerUrl.Path = serverReturnedServerUrl.Path;
-                    Trace.Info($"Replace server returned url's scheme://host:port component with user input server url's scheme://host:port: '{inputServerUrl.Uri.AbsoluteUri}'.");
-                    runnerSettings.ServerUrl = inputServerUrl.Uri.AbsoluteUri;
-                }
-                else
-                {
-                    runnerSettings.ServerUrl = agentServerUrl;
-                }
-            }
-
             // See if the server supports our OAuth key exchange for credentials
             if (agent.Authorization != null &&
                 agent.Authorization.ClientId != Guid.Empty &&
                 agent.Authorization.AuthorizationUrl != null)
             {
-                UriBuilder configServerUrl = new UriBuilder(runnerSettings.ServerUrl);
-                UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
                 var credentialData = new CredentialData
                 {
                     Scheme = Constants.Configuration.OAuth,
@@ -258,7 +244,6 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
                         { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
-                        { "oauthEndpointUrl", oauthEndpointUrlBuilder.Uri.AbsoluteUri },
                     },
                 };
 
@@ -464,7 +449,7 @@ namespace GitHub.Runner.Listener.Configuration
             // update should replace the existing labels
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
-            
+
             agent.Labels.Clear();
 
             agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
@@ -475,7 +460,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 agent.Labels.Add(new AgentLabel(userLabel, LabelType.User));
             }
-            
+
             return agent;
         }
 

@@ -108,9 +108,9 @@ namespace GitHub.Runner.Common
         CredentialData GetMigratedCredentials();
         RunnerSettings GetSettings();
         void SaveCredential(CredentialData credential);
-        void SaveMigratedCredential(CredentialData credential);
         void SaveSettings(RunnerSettings settings);
         void DeleteCredential();
+        void DeleteMigratedCredential();
         void DeleteSettings();
     }
 
@@ -232,21 +232,6 @@ namespace GitHub.Runner.Common
             File.SetAttributes(_credFilePath, File.GetAttributes(_credFilePath) | FileAttributes.Hidden);
         }
 
-        public void SaveMigratedCredential(CredentialData credential)
-        {
-            Trace.Info("Saving {0} migrated credential @ {1}", credential.Scheme, _migratedCredFilePath);
-            if (File.Exists(_migratedCredFilePath))
-            {
-                // Delete existing credential file first, since the file is hidden and not able to overwrite.
-                Trace.Info("Delete exist runner migrated credential file.");
-                IOUtil.DeleteFile(_migratedCredFilePath);
-            }
-
-            IOUtil.SaveObject(credential, _migratedCredFilePath);
-            Trace.Info("Migrated Credentials Saved.");
-            File.SetAttributes(_migratedCredFilePath, File.GetAttributes(_migratedCredFilePath) | FileAttributes.Hidden);
-        }
-
         public void SaveSettings(RunnerSettings settings)
         {
             Trace.Info("Saving runner settings.");
@@ -265,6 +250,11 @@ namespace GitHub.Runner.Common
         public void DeleteCredential()
         {
             IOUtil.Delete(_credFilePath, default(CancellationToken));
+            IOUtil.Delete(_migratedCredFilePath, default(CancellationToken));
+        }
+
+        public void DeleteMigratedCredential()
+        {
             IOUtil.Delete(_migratedCredFilePath, default(CancellationToken));
         }
 
