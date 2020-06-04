@@ -122,11 +122,13 @@ namespace GitHub.Runner.Listener.Configuration
                     // Warn if the Actions server url and GHES server url has different Host
                     if (!runnerSettings.IsHostedServer)
                     {
+                        // Example actionsServerUrl is https://my-ghes/_services/pipelines/[...]
+                        // Example githubServerUrl is https://my-ghes
                         var actionsServerUrl = new Uri(runnerSettings.ServerUrl);
                         var githubServerUrl = new Uri(runnerSettings.GitHubUrl);
                         if (!string.Equals(actionsServerUrl.Authority, githubServerUrl.Authority, StringComparison.OrdinalIgnoreCase))
                         {
-                            _term.Write($"[WARN] GitHub Actions is not properly configured in GHES. GHES url: {runnerSettings.GitHubUrl}, Actions url: {runnerSettings.ServerUrl}.", ConsoleColor.Yellow);
+                            throw new InvalidOperationException($"GitHub Actions is not properly configured in GHES. GHES url: {runnerSettings.GitHubUrl}, Actions url: {runnerSettings.ServerUrl}.");
                         }
                     }
 
