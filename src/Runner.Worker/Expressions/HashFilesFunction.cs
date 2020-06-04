@@ -12,6 +12,8 @@ namespace GitHub.Runner.Worker.Expressions
 {
     public sealed class HashFilesFunction : Function
     {
+        private const int _hashFileTimeoutSeconds = 120;
+
         protected sealed override Object EvaluateCore(
             EvaluationContext context,
             out ResultMemory resultMemory)
@@ -89,19 +91,29 @@ namespace GitHub.Runner.Worker.Expressions
             }
             env["patterns"] = string.Join(Environment.NewLine, patterns);
 
-            int exitCode = p.ExecuteAsync(workingDirectory: githubWorkspace,
-                                          fileName: node,
-                                          arguments: $"\"{hashFilesScript.Replace("\"", "\\\"")}\"",
-                                          environment: env,
-                                          requireExitCodeZero: false,
-                                          cancellationToken: new CancellationTokenSource(TimeSpan.FromSeconds(120)).Token).GetAwaiter().GetResult();
-
-            if (exitCode != 0)
+            using (var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(_hashFileTimeoutSeconds)))
             {
-                throw new InvalidOperationException($"hashFiles('{ExpressionUtility.StringEscape(string.Join(", ", patterns))}') failed. Fail to hash files under directory '{githubWorkspace}'");
-            }
+                try
+                {
+                    int exitCode = p.ExecuteAsync(workingDirectory: githubWorkspace,
+                                                  fileName: node,
+                                                  arguments: $"\"{hashFilesScript.Replace("\"", "\\\"")}\"",
+                                                  environment: env,
+                                                  requireExitCodeZero: false,
+                                                  cancellationToken: tokenSource.Token).GetAwaiter().GetResult();
 
-            return hashResult;
+                    if (exitCode != 0)
+                    {
+                        throw new InvalidOperationException($"hashFiles('{ExpressionUtility.StringEscape(string.Join(", ", patterns))}') failed. Fail to hash files under directory '{githubWorkspace}'");
+                    }
+                }
+                catch (OperationCanceledException) when (tokenSource.IsCancellationRequested)
+                {
+                    throw new TimeoutException($"hashFiles('{ExpressionUtility.StringEscape(string.Join(", ", patterns))}') couldn't finish within {_hashFileTimeoutSeconds} seconds.");
+                }
+
+                return hashResult;
+            }
         }
 
         private sealed class HashFilesTrace : ITraceWriter
