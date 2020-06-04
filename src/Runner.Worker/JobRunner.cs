@@ -5,21 +5,13 @@ using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
-using System.Text;
-using System.IO.Compression;
-using System.Diagnostics;
-using Newtonsoft.Json.Linq;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.DistributedTask.ObjectTemplating;
 
 namespace GitHub.Runner.Worker
 {
@@ -121,13 +113,6 @@ namespace GitHub.Runner.Worker
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
-
-                // // Expand container properties
-                // jobContext.Container?.ExpandProperties(jobContext.Variables);
-                // foreach (var sidecar in jobContext.SidecarContainers)
-                // {
-                //     sidecar.ExpandProperties(jobContext.Variables);
-                // }
 
                 // Get the job extension.
                 Trace.Info("Getting job extension.");

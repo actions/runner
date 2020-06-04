@@ -50,10 +50,6 @@ namespace GitHub.Runner.Common
 
         // agent update
         Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState);
-
-        // runner authorization url
-        Task<string> GetRunnerAuthUrlAsync(int runnerPoolId, int runnerId);
-        Task ReportRunnerAuthUrlErrorAsync(int runnerPoolId, int runnerId, string error);
     }
 
     public sealed class RunnerServer : RunnerService, IRunnerServer
