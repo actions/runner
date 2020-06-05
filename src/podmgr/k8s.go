@@ -69,7 +69,12 @@ func getCoreV1() (v1.CoreV1Interface, error) {
 	//pods, _ := clientset.CoreV1().Pods("").List(v1.ListOptions{})
 }
 
-func createEphemeralContainer(podName string, imageName string, namespace string) error {
+func ensureEphemeralContainer(
+	namespace string,
+	podName string,
+	containerName string,
+	imageName string,
+	debug bool) error {
 	v1Client, err := getCoreV1()
 	if err != nil {
 		return err
@@ -81,12 +86,24 @@ func createEphemeralContainer(podName string, imageName string, namespace string
 	fmt.Printf("Retrieved pod: %v\n", pod.Name)
 
 	ec := apicorev1.EphemeralContainer{}
-	ec.Name = "job-container"
+	ec.Name = containerName
 	ec.Image = imageName
+	// Should likely switch to Always for security reasons
 	ec.ImagePullPolicy = "IfNotPresent"
 	ec.TerminationMessagePolicy = "File"
-	ec.Stdin = true
-	ec.TTY = true
+	ec.Stdin = debug
+	ec.TTY = debug
+	// TODO: this should come from a config / param
+	ec.VolumeMounts = []apicorev1.VolumeMount{
+		{
+			Name:      "work-dir",
+			MountPath: "/actions-runner/_work",
+		}}
+	// ec.VolumeDevices = []apicorev1.VolumeDevice{
+	// 	{
+	// 		Name:       "work-dir",
+	// 		DevicePath: "/actions-runner/_work",
+	// 	}}
 
 	// https://kubernetes.io/docs/concepts/workloads/pods/ephemeral-containers/#ephemeral-containers-api
 	ecSubRes := apicorev1.EphemeralContainers{}
@@ -97,13 +114,7 @@ func createEphemeralContainer(podName string, imageName string, namespace string
 
 	fmt.Printf("%v\n", ecSubRes)
 
-	// pods, _ := v1Client.Pods("").List(metav1.ListOptions{})
-
-	// for i, pod := range pods.Items {
-	// 	fmt.Printf("Pod %d, %v\n", i, pod.Name)
-	// }
-
-	// hmmm, pod.Name is empty inside the pod
+	// hmmm, pod.Name is empty inside the pod.  use the one passed
 	fmt.Printf("Updating pod %v\n", podName)
 	_, err = v1Client.Pods(namespace).UpdateEphemeralContainers(context.TODO(), podName, &ecSubRes, metav1.UpdateOptions{})
 	if err != nil {

@@ -16,6 +16,8 @@ func help() {
 	fmt.Println("\tverbs:")
 	fmt.Println("\t\tadd job-container <imageName>")
 	fmt.Println("\t\trm job-container <imageName>")
+	fmt.Println("\t\tadd debug-container <imageName>")
+	fmt.Println("\t\trm debug-container <imageName>")
 	fmt.Println("")
 }
 
@@ -58,7 +60,10 @@ func main() {
 	var err error
 	switch action {
 	case "add:job-container":
-		err = addJobContainer(pod, data[0])
+		err = ensureJobContainer(pod, data[0])
+		break
+	case "add:debug-container":
+		err = ensureDebugContainer(pod, data[0])
 		break
 	case "rm:job-container":
 		err = rmJobContainer(pod, data[0])
