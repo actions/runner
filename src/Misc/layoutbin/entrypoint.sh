@@ -21,7 +21,7 @@ function fatal() {
 
 # Use container id to gen unique runner name
 CONTAINER_ID=$(cat /proc/self/cgroup | head -n 1 | tr '/' '\n' | tail -1 | cut -c1-12)
-RUNNER_NAME="alpine-${CONTAINER_ID}"
+RUNNER_NAME="k8s-${CONTAINER_ID}"
 
 # if the scope has a slash, it's a repo runner
 orgs_or_repos="orgs"

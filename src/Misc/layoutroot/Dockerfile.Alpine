@@ -3,15 +3,16 @@
 FROM mcr.microsoft.com/dotnet/core/runtime-deps:3.1-alpine
 
 # src$ ./dev.sh container Release alpine-x64
-# _layout$ docker build -t actions-runner .
+# _layout$ docker build -t actions-runner:alpine ./Dockerfile.Alpine
 #
-# Spin a runner up
-# export RUNNER_REG_URL=https://github.com/YOURORG/YOURREPO
-# export RUNNER_PAT_TOKEN
-# docker run --env RUNNER_SCOPE=$RUNNER_SCOPE --env RUNNER_PAT=$RUNNER_PAT --env RUNNER_LABELS=$RUNNER_LABELS --network host --rm -it actions-runner
+# Spin a container interactively
+# export RUNNER_SCOPE=YOURORG/YOURREPO or YOURORG
+# export RUNNER_PAT=YOURPAT
+# export RUNNER_LABELS=listof,additional,labels
+# docker run --env RUNNER_SCOPE=$RUNNER_SCOPE --env RUNNER_PAT=$RUNNER_PAT --env RUNNER_LABELS=$RUNNER_LABELS --network host --rm -it actions-runner:debian
 #
 # interactive shell
-# docker run --network host --rm -it --entrypoint /bin/bash actions-runner
+# docker run --network host --rm -it --entrypoint /bin/bash actions-runner:alpine
 
 RUN apk update
 RUN apk upgrade

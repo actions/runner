@@ -1,0 +1,59 @@
+# https://github.com/dotnet/dotnet-docker/blob/d68460ceab4fe635d95a28bfca410db1a1d57caa/3.1/runtime-deps/buster-slim/amd64/Dockerfile
+FROM mcr.microsoft.com/dotnet/core/runtime-deps:3.1-buster-slim
+
+# src$ ./dev.sh container Release linux-x64
+# _layout$ docker build -t actions-runner:debian -t actions-runner:slim -f Dockerfile.Debian .
+#
+# Spin a container interactively
+# export RUNNER_SCOPE=YOURORG/YOURREPO or YOURORG
+# export RUNNER_PAT=YOURPAT
+# export RUNNER_LABELS=listof,additional,labels
+# docker run --env RUNNER_SCOPE=$RUNNER_SCOPE --env RUNNER_PAT=$RUNNER_PAT --env RUNNER_LABELS=$RUNNER_LABELS --network host --rm -it actions-runner
+#
+# interactive shell
+# docker run --network host --rm -it --entrypoint /bin/bash actions-runner:alpine
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        jq \
+        curl \
+        # kubectl
+        gnupg2 \
+        apt-utils \
+        apt-transport-https \
+    && rm -rf /var/lib/apt/lists/*
+
+#kubectl
+RUN curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+RUN echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list
+RUN apt-get update
+RUN apt-get install -y kubectl
+
+# img 0.5.10
+ENV IMG_SHA256="5b9a3b1720ea7bd2b85cb0e1d433b4e171f513fea74ea589f6f5aa8060f2a6ab"
+RUN curl -fSL "https://github.com/genuinetools/img/releases/download/v0.5.10/img-linux-amd64" -o "/usr/local/bin/img" \
+	&& echo "${IMG_SHA256}  /usr/local/bin/img" | sha256sum -c - \
+	&& chmod a+x "/usr/local/bin/img"
+
+# podman
+# Debian 10
+RUN echo 'deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_10/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+RUN curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/Debian_10/Release.key | apt-key add -
+
+RUN apt-get update -qq
+RUN apt-get -qq -y install podman
+
+# git 
+# TODO: remove.  not needed by runner and using for spike
+RUN apt-get install -y git
+
+# Directory for runner to operate in
+RUN mkdir /actions-runner
+WORKDIR /actions-runner
+COPY . /actions-runner
+
+# Allow runner to run as root
+ENV RUNNER_ALLOW_RUNASROOT=1
+ENV NODE12_ACTION_RUNTIME_PATH=/actions-runner/externals/node12/bin/node
+
+ENTRYPOINT ["./bin/entrypoint.sh"]

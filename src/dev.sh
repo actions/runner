@@ -70,7 +70,7 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
        exit 1
     fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
-    if [[ ("$RUNTIME_ID" != 'osx-x64') && ("$RUNTIME_ID" != 'alpine-x64') ]]; then
+    if [[ ("$RUNTIME_ID" != 'osx-x64') && ("$RUNTIME_ID" != 'alpine-x64') && ("$RUNTIME_ID" != 'linux-x64') ]]; then
        echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
        exit 1
     fi
@@ -129,13 +129,13 @@ function layout ()
     bash ./Misc/externals.sh $RUNTIME_ID || checkRC externals.sh
 }
 
-#./dev.sh container Release alpine-x64
+#./dev.sh container Release [alpine-x64 | linux-x64]
 function container ()
 {
     heading "Building container for ${RUNTIME_ID}..."
 
-    if [ "${RUNTIME_ID}" != "alpine-x64" ]; then
-        fail "Only support building alpine-x64 container"
+    if [[ ("${RUNTIME_ID}" != "alpine-x64") && ("${RUNTIME_ID}" != "linux-x64") ]]; then
+        failed "Only support building linux-x64 or alpine-x64 containers"
     fi
 
     #BUILDCONFIG="Release"
@@ -153,7 +153,12 @@ function container ()
     echo 
     echo Building container ...
     pushd "${LAYOUT_DIR}" > /dev/null
-    docker build -t actions-runner .
+
+    if [ "${RUNTIME_ID}" == "alpine-x64" ]; then
+        docker build -t actions-runner:alpine -f Dockerfile.Alpine .
+    elif [ "${RUNTIME_ID}" == "linux-x64" ]; then
+        docker build -t actions-runner:debian -t actions-runner:slim -f Dockerfile.Debian .
+    fi
 }
 
 function runtest ()
