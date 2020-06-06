@@ -328,8 +328,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             Assert.Equal("invalid1", finialInputs["invalid1"]);
             Assert.Equal("invalid2", finialInputs["invalid2"]);
 
-            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input 'invalid1'")), It.IsAny<string>()), Times.Once);
-            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input 'invalid2'")), It.IsAny<string>()), Times.Once);
+            _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input(s) 'invalid1', 'invalid2'")), It.IsAny<string>()), Times.Once);
         }
 
         private void Setup([CallerMemberName] string name = "")
