@@ -173,6 +173,57 @@ function package ()
         powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${zip_name}\")"
     fi
 
+    runner_patch_pkg_name="actions-runner-${RUNTIME_ID}-${runner_ver}-patch"
+
+    heading "Packaging Patch Version ${runner_patch_pkg_name}"
+
+    echo "Downloading latest runner ..."
+
+    mkdir -p "_temp"
+    pushd "_temp" > /dev/null
+
+    latest_version_label=$(curl -s -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
+    latest_version=$(echo ${latest_version_label:1})
+    latest_version_runner_file=""
+    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+        latest_version_runner_file="actions-runner-${RUNTIME_ID}-${latest_version}.tar.gz"
+    elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
+        latest_version_runner_file="actions-runner-${RUNTIME_ID}-${latest_version}.zip"
+    fi
+
+    latest_version_download_url="https://github.com/actions/runner/releases/download/${latest_version_label}/${latest_version_runner_file}"
+
+    echo "Downloading ${latest_version_label} for ${RUNTIME_ID} ..."
+    echo $latest_version_download_url
+
+    curl -O -L ${latest_version_download_url}
+
+    mkdir -p "latest_runner"
+    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+        tar xzf "./${latest_version_runner_file}" -C latest_runner
+    elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
+        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::ExtractToDirectory(\"./${latest_version_runner_file}\", \"latest_runner\")"
+    fi
+
+    mkdir -p "_patch"
+    diff -qrN "${LAYOUT_DIR}" "latest_runner" | cut -d " " -f 2 | xargs -t -I file cp file "_patch/"$(echo file | cut -c ${#LAYOUT_DIR}- | cut -c 3-)
+
+    popd > /dev/null
+
+    if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+        patch_tar_name="${runner_patch_pkg_name}.tar.gz"
+        echo "Creating $patch_tar_name in ${PACKAGE_DIR}/_temp/_patch"
+        tar -czf "${patch_tar_name}" -C "${PACKAGE_DIR}/_temp/_patch" .
+    elif [[ ("$CURRENT_PLATFORM" == "windows") ]]; then
+        patch_zip_name="${runner_patch_pkg_name}.zip"
+        echo "Convert ${PACKAGE_DIR} to Windows style path"
+        window_path=${PACKAGE_DIR:1}
+        window_path=${window_path:0:1}:${window_path:1}
+        echo "Creating $patch_zip_name in ${window_path}/_temp/_patch"
+        powershell -NoLogo -Sta -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command "Add-Type -Assembly \"System.IO.Compression.FileSystem\"; [System.IO.Compression.ZipFile]::CreateFromDirectory(\"${window_path}\", \"${patch_zip_name}\")"
+    fi
+    
+    rm -Rf "${PACKAGE_DIR}/_temp"
     popd > /dev/null
 }
 
