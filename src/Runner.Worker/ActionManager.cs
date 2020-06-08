@@ -636,7 +636,7 @@ namespace GitHub.Runner.Worker
                 }
                 catch (Exception ex) when (attempt < 3)
                 {
-                    executionContext.Output(ex.Message);
+                    executionContext.Output($"Failed to resolve action download info. Error: {ex.Message}");
                     executionContext.Debug(ex.ToString());
                     if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))
                     {
