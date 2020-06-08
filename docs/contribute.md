@@ -23,7 +23,7 @@ An ADR is an Architectural Decision Record.  This allows consensus on the direct
 
 ### Required Dev Dependencies
 
-![Win](res/win_sm.png) Git for Windows [Install Here](https://git-scm.com/downloads) (needed for dev sh script)
+![Win](res/win_sm.png) ![*nix](res/linux_sm.png)  Git for Windows and Linux [Install Here](https://git-scm.com/downloads) (needed for dev sh script)
 
 ### To Build, Test, Layout 
 
@@ -53,7 +53,7 @@ cd ./src
 ### Editors
 
 [Using Visual Studio Code](https://code.visualstudio.com/)
-[Using Visual Studio 2019](https://www.visualstudio.com/vs/)  
+[Using Visual Studio](https://code.visualstudio.com/docs)  
 
 ### Styling
 
