@@ -43,6 +43,7 @@ Sample developer flow:
 
 ```bash
 git clone https://github.com/actions/runner
+cd runner
 cd ./src
 ./dev.(sh/cmd) layout # the runner that built from source is in {root}/_layout
 <make code changes>
