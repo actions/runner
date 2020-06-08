@@ -54,8 +54,9 @@ cd ./src
 ### Editors
 
 [Using Visual Studio Code](https://code.visualstudio.com/)
-[Using Visual Studio](https://code.visualstudio.com/docs)  
 
+[Using Visual Studio](https://code.visualstudio.com/docs)  
+We recommend using [Visual Studio 2019](https://visualstudio.microsoft.com/vs/) since it has built in support for .NET and other libraries that are helpful for contributing and running this repo while newer versions of Visual Studio does not have support for these libraries as of yet. 
 ### Styling
 
 We use the .NET Foundation and CoreCLR style guidelines [located here](
