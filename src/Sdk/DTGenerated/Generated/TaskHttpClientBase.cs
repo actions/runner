@@ -317,5 +317,37 @@ namespace GitHub.DistributedTask.WebApi
                 userState: userState,
                 cancellationToken: cancellationToken);
         }
+
+        /// <summary>
+        /// [Preview API] Resolves information required to download actions (URL, token) defined in an orchestration.
+        /// </summary>
+        /// <param name="scopeIdentifier">The project GUID to scope the request</param>
+        /// <param name="hubName">The name of the server hub: "build" for the Build server or "rm" for the Release Management server</param>
+        /// <param name="planId"></param>
+        /// <param name="actionReferenceList"></param>
+        /// <param name="userState"></param>
+        /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
+        public virtual Task<ActionDownloadInfoCollection> ResolveActionDownloadInfoAsync(
+            Guid scopeIdentifier,
+            string hubName,
+            Guid planId,
+            ActionReferenceList actionReferenceList,
+            object userState = null,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("POST");
+            Guid locationId = new Guid("27d7f831-88c1-4719-8ca1-6a061dad90eb");
+            object routeValues = new { scopeIdentifier = scopeIdentifier, hubName = hubName, planId = planId };
+            HttpContent content = new ObjectContent<ActionReferenceList>(actionReferenceList, new VssJsonMediaTypeFormatter(true));
+
+            return SendAsync<ActionDownloadInfoCollection>(
+                httpMethod,
+                locationId,
+                routeValues: routeValues,
+                version: new ApiResourceVersion(6.0, 1),
+                userState: userState,
+                cancellationToken: cancellationToken,
+                content: content);
+        }
     }
 }

@@ -44,6 +44,7 @@ namespace GitHub.Runner.Worker
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
         List<ServiceEndpoint> Endpoints { get; }
+        TaskOrchestrationPlanReference Plan { get; }
 
         PlanFeatures Features { get; }
         Variables Variables { get; }
@@ -141,6 +142,7 @@ namespace GitHub.Runner.Worker
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public List<ServiceEndpoint> Endpoints { get; private set; }
+        public TaskOrchestrationPlanReference Plan { get; private set; }
         public Variables Variables { get; private set; }
         public Dictionary<string, string> IntraActionState { get; private set; }
         public IDictionary<String, IDictionary<String, String>> JobDefaults { get; private set; }
@@ -275,6 +277,7 @@ namespace GitHub.Runner.Worker
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
+            child.Plan = Plan;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -576,7 +579,8 @@ namespace GitHub.Runner.Worker
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            // Features
+            // Plan
+            Plan = message.Plan;
             Features = PlanUtil.GetFeatures(message.Plan);
 
             // Endpoints
