@@ -63,6 +63,7 @@ namespace GitHub.Runner.Worker
                 jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
+                // User will see this message too
                 jobContext.Debug($"Starting: {message.JobDisplayName}");
 
                 runnerShutdownRegistration = HostContext.RunnerShutdownToken.Register(() =>

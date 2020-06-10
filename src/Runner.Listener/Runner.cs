@@ -37,6 +37,8 @@ namespace GitHub.Runner.Listener
         {
             try
             {
+                _term.WriteLine("Runner Repo TESTING VERSION OF RUNNER...");
+                Trace.Info("Hey I'm in the log file yay!");
                 VssUtil.InitializeVssClientSettings(HostContext.UserAgents, HostContext.WebProxy);
 
                 _inConfigStage = true;

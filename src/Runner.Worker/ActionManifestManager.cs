@@ -311,6 +311,13 @@ namespace GitHub.Runner.Worker
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
+            // TODO: How do I represent stepsToken as a list of steps?
+            // Well for default value, we can set it to this?
+            // var stepsToken = runsMapping.AssertMapping("steps");
+            // Actually, not sure, let's just set it to MappingToken since AssertMapping("steps") 
+            // returns a MappingToken
+            var stepsToken = default(MappingToken);
+
             foreach (var run in runsMapping)
             {
                 var runsKey = run.Key.AssertString("runs key").Value;
@@ -354,6 +361,9 @@ namespace GitHub.Runner.Worker
                         break;
                     case "pre-if":
                         preIfToken = run.Value.AssertString("pre-if");
+                        break;
+                    case "steps":
+                        stepsToken = run.Value.AssertMapping("steps");
                         break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
@@ -399,6 +409,21 @@ namespace GitHub.Runner.Worker
                             InitCondition = preIfToken?.Value ?? "always()",
                             Post = postToken?.Value,
                             CleanupCondition = postIfToken?.Value ?? "always()"
+                        };
+                    }
+                }
+                // TODO: add composite stuff here
+                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (stepsToken.Count <= 0)
+                    {
+                        throw new ArgumentNullException($"No steps provided.");
+                    }
+                    else
+                    {
+                        return new CompositeActionExecutionData()
+                        {
+                            Steps = stepsToken
                         };
                     }
                 }

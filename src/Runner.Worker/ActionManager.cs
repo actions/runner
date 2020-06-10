@@ -395,6 +395,9 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Action cleanup plugin: {plugin.PluginTypeName}.");
                         }
                     }
+                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite) {
+                        // Don't do anything for now
+                    }
                     else
                     {
                         throw new NotSupportedException(definition.Data.Execution.ExecutionType.ToString());
@@ -446,6 +449,15 @@ namespace GitHub.Runner.Worker
                 definition.Data.Name = "Run";
                 definition.Data.Description = "Execute a script";
             }
+            // else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite) {
+            //     // var compositeAction = definition.Data.Execution as CompositeActionExecutionData;
+            //     // // add Trace Info here later => maybe we don't need this?
+            //     // Trace.Info($"Action pre composite file: {compositeAction.Pre ?? "N/A"}.");
+            //     // // Trace.Info($"Action composite file: {compositeAction.Script}.");
+            //     // Trace.Info($"Action post composite file: {compositeAction.Post ?? "N/A"}.");
+
+            //     // We don't have to do anything since definition.Data contains everything we need. 
+            // }
             else
             {
                 throw new NotSupportedException(action.Reference.Type.ToString());
@@ -1101,6 +1113,11 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Action plugin: {(actionDefinitionData.Execution as PluginActionExecutionData).Plugin}, no more preparation.");
                     return null;
                 }
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite)
+                {
+                    // Trace.Info($"Action composite: {(actionDefinitionData.Execution as CompositeActionExecutionData).Unknown}, no more preparation.");
+                    return null;
+                }
                 else
                 {
                     throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
@@ -1211,6 +1228,7 @@ namespace GitHub.Runner.Worker
         NodeJS,
         Plugin,
         Script,
+        Composite
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
@@ -1265,6 +1283,25 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.Script;
         public override bool HasPre => false;
         public override bool HasPost => false;
+    }
+
+    public sealed class CompositeActionExecutionData : ActionExecutionData
+    {
+        // Do I actually need this??
+        // Pre => pre execution for checking steps before, ibid for post
+        // Look at Script for dummy example
+
+        public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
+        public override bool HasPre => false;
+        public override bool HasPost => false;
+
+        public MappingToken Steps {get; set;}
+
+        // public string Script { get; set; }
+
+        // public string Pre { get; set; }
+
+        // public string Post { get; set; }
     }
 
     public abstract class ActionExecutionData

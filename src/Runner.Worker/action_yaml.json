@@ -32,7 +32,8 @@
             "one-of": [
                 "container-runs",
                 "node12-runs",
-                "plugin-runs"
+                "plugin-runs",
+                "composite-runs"
             ]
         },
         "container-runs": {
@@ -80,6 +81,21 @@
             "mapping": {
                 "properties": {
                     "plugin": "non-empty-string"
+                }
+            }
+        },
+        "composite-runs": {
+            "mapping" : {
+                "properties": {
+                    "using": "non-empty-string",
+                    "steps": "steps"
+                }
+            }
+        },
+        "steps" : {
+            "mapping": {
+                "properties": {
+                    "run": "non-empty-string"
                 }
             }
         },
