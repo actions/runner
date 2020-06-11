@@ -239,6 +239,7 @@ namespace GitHub.Runner.Worker
                             }
 
                             actionRunner.TryEvaluateDisplayName(contextData, context);
+
                             jobSteps.Add(actionRunner);
 
                             if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
@@ -284,6 +285,13 @@ namespace GitHub.Runner.Worker
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
                             actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionState);
                         }
+
+                        // TODO: Maybe add EvaluateStep stuff here too?
+                        // TODO: INSERT CONVERTSTEPS FUNCTION HERE FOR EVALUATING STEPS
+                            // Maybe we don't need to do this here do we need to initialize the job?
+                            context.Debug("Evaluating job evaluating steps");
+                            var stepsEvaluation = templateEvaluator.EvaluateSteps(contextData, context, context.ExpressionFunctions);
+                            ////////
                     }
 
                     List<IStep> steps = new List<IStep>();

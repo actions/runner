@@ -68,6 +68,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else if (data.ExecutionType == ActionExecutionType.Composite)
             {
+                // TODO
                 // Runner plugin
                 handler = HostContext.CreateService<ICompositeHandler>();
                 // handler = CompositeHandler;

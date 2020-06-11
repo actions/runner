@@ -14,6 +14,7 @@ using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using System.Globalization;
 using System.Linq;
+using GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -92,7 +93,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(context, actionPair.Value);
+                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value);
                             break;
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
@@ -294,8 +295,10 @@ namespace GitHub.Runner.Worker
         }
 
         private ActionExecutionData ConvertRuns(
+            IExecutionContext executionContext,
             TemplateContext context,
-            TemplateToken inputsToken)
+            TemplateToken inputsToken
+            )
         {
             var runsMapping = inputsToken.AssertMapping("runs");
             var usingToken = default(StringToken);
@@ -316,7 +319,9 @@ namespace GitHub.Runner.Worker
             // var stepsToken = runsMapping.AssertMapping("steps");
             // Actually, not sure, let's just set it to MappingToken since AssertMapping("steps") 
             // returns a MappingToken
-            var stepsToken = default(MappingToken);
+            // var stepsToken = default(SequenceToken);
+            var stepsLoaded = default(List<ActionStep>);
+            // It should be a array (aka sequence)
 
             foreach (var run in runsMapping)
             {
@@ -363,13 +368,20 @@ namespace GitHub.Runner.Worker
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
                     case "steps":
-                        stepsToken = run.Value.AssertMapping("steps");
+                        // stepsToken = run.Value.AssertMapping("steps");
                         // Maybe insert a for loop here instead since MappingToken is not supposed to be used in HandlerFactory.cs
-                        // var steps = run.Value.AssertMapping("steps");
+                        // Just support 1 layer of steps w/ just run
+                        var steps = run.Value.AssertMapping("steps");
                         // foreach (var s in steps) {
                         //     // Create list of steps
-                        //     //
+                        //     loadS
                         // }
+                        // foreach (var run in runsMapping)
+                        // stepsToken = List
+                        // Call load steps here
+                        // var test = new PipelineTemplateEvaluator();
+                        var evaluator = executionContext.ToPipelineTemplateEvaluator();
+                        stepsLoaded = evaluator.LoadSteps(steps, null, null);
                         break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
@@ -421,15 +433,18 @@ namespace GitHub.Runner.Worker
                 // TODO: add composite stuff here
                 else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (stepsToken.Count <= 0)
-                    {
+                    // if (stepsToken.Count <= 0)
+                    // {
+                    //     throw new ArgumentNullException($"No steps provided.");
+                    // }
+                    if (stepsLoaded == null) {
                         throw new ArgumentNullException($"No steps provided.");
                     }
                     else
                     {
                         return new CompositeActionExecutionData()
                         {
-                            Steps = stepsToken
+                            Steps = stepsLoaded
                         };
                     }
                 }

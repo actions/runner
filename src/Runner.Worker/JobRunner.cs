@@ -60,6 +60,7 @@ namespace GitHub.Runner.Worker
             {
                 // Create the job execution context.
                 jobContext = HostContext.CreateService<IExecutionContext>();
+                // HERE
                 jobContext.InitializeJob(message, jobRequestCancellationToken);
                 Trace.Info("Starting the job execution context.");
                 jobContext.Start();
