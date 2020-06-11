@@ -449,15 +449,6 @@ namespace GitHub.Runner.Worker
                 definition.Data.Name = "Run";
                 definition.Data.Description = "Execute a script";
             }
-            // else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite) {
-            //     // var compositeAction = definition.Data.Execution as CompositeActionExecutionData;
-            //     // // add Trace Info here later => maybe we don't need this?
-            //     // Trace.Info($"Action pre composite file: {compositeAction.Pre ?? "N/A"}.");
-            //     // // Trace.Info($"Action composite file: {compositeAction.Script}.");
-            //     // Trace.Info($"Action post composite file: {compositeAction.Post ?? "N/A"}.");
-
-            //     // We don't have to do anything since definition.Data contains everything we need. 
-            // }
             else
             {
                 throw new NotSupportedException(action.Reference.Type.ToString());

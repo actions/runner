@@ -364,6 +364,7 @@ namespace GitHub.Runner.Worker
                         break;
                     case "steps":
                         stepsToken = run.Value.AssertMapping("steps");
+                        // Maybe insert a for loop here instead since MappingToken is not supposed to be used in HandlerFactory.cs
                         break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
