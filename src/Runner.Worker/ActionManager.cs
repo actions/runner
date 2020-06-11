@@ -1286,7 +1286,7 @@ namespace GitHub.Runner.Worker
         public override bool HasPre => false;
         public override bool HasPost => false;
 
-        public List<Pipelines.Step> Steps {get; set;}
+        public List<Pipelines.ActionStep> Steps {get; set;}
 
         // public string Script { get; set; }
 
