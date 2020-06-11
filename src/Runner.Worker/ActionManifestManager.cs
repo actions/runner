@@ -365,6 +365,11 @@ namespace GitHub.Runner.Worker
                     case "steps":
                         stepsToken = run.Value.AssertMapping("steps");
                         // Maybe insert a for loop here instead since MappingToken is not supposed to be used in HandlerFactory.cs
+                        // var steps = run.Value.AssertMapping("steps");
+                        // foreach (var s in steps) {
+                        //     // Create list of steps
+                        //     //
+                        // }
                         break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
