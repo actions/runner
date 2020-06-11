@@ -210,7 +210,7 @@ namespace GitHub.Runner.Listener.Configuration
                     else if (command.Unattended)
                     {
                         // if not replace and it is unattended config.
-                        throw new TaskAgentExistsException($"Pool {runnerSettings.PoolId} already contains a runner with name {runnerSettings.AgentName}.");
+                        throw new TaskAgentExistsException($"A runner exists with the same name {runnerSettings.AgentName}.");
                     }
                 }
                 else
