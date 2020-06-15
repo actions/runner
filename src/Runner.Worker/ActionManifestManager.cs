@@ -371,7 +371,7 @@ namespace GitHub.Runner.Worker
                         // stepsToken = run.Value.AssertMapping("steps");
                         // Maybe insert a for loop here instead since MappingToken is not supposed to be used in HandlerFactory.cs
                         // Just support 1 layer of steps w/ just run
-                        var steps = run.Value.AssertMapping("steps");
+                        var steps = run.Value.AssertSequence("steps");
                         // foreach (var s in steps) {
                         //     // Create list of steps
                         //     loadS

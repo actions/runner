@@ -98,7 +98,16 @@
             }
         },
         "steps-item": {
-            "run-step": "non-empty-string"
+            "one-of": [
+                "run-step"
+            ]
+        },
+        "run-step": {
+            "mapping": {
+              "properties": {
+                "run": "non-empty-string"
+              }
+            }
         },
         "container-runs-context": {
             "context": [
