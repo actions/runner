@@ -395,7 +395,7 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Action cleanup plugin: {plugin.PluginTypeName}.");
                         }
                     }
-                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite) {
+                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA"))) {
                         // Don't do anything for now
                     }
                     else
@@ -1104,9 +1104,10 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Action plugin: {(actionDefinitionData.Execution as PluginActionExecutionData).Plugin}, no more preparation.");
                     return null;
                 }
-                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite)
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                 {
                     // Trace.Info($"Action composite: {(actionDefinitionData.Execution as CompositeActionExecutionData).Unknown}, no more preparation.");
+                    
                     return null;
                 }
                 else
