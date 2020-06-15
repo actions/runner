@@ -289,8 +289,8 @@ namespace GitHub.Runner.Worker
                         // TODO: Maybe add EvaluateStep stuff here too?
                         // TODO: INSERT CONVERTSTEPS FUNCTION HERE FOR EVALUATING STEPS
                             // Maybe we don't need to do this here do we need to initialize the job?
-                            context.Debug("Evaluating job evaluating steps");
-                            var stepsEvaluation = templateEvaluator.EvaluateSteps(contextData, context, context.ExpressionFunctions);
+                            // context.Debug("Evaluating job evaluating steps");
+                            // var stepsEvaluation = templateEvaluator.EvaluateSteps(contextData, context, context.ExpressionFunctions);
                             ////////
                     }
 

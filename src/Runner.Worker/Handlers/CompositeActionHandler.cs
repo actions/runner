@@ -29,7 +29,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             // Just keep as same as ScriptHandler.cs for now
             var target = Data.Steps;
-            var runStepInputs= target[0].Inputs;
+            var runStepInputs = target[0].Inputs;
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(runStepInputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
             var taskManager = HostContext.GetService<IActionManager>();
@@ -61,7 +61,7 @@ namespace GitHub.Runner.Worker.Handlers
                 throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
             }
 
-            ar multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+            var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
             foreach (var line in multiLines)
             {
                 // Bright Cyan color
@@ -143,7 +143,7 @@ namespace GitHub.Runner.Worker.Handlers
             ExecutionContext.Output("##[endgroup]");
         }
 
-        public async Task RunAsync(ActionRunStage stage) 
+        public async Task RunAsync(ActionRunStage stage)
         {
             // DELETE LATER
             // await Task.Yield();
@@ -172,7 +172,7 @@ namespace GitHub.Runner.Worker.Handlers
             // For now, just assume it is 1 Run step
             // We will adapt this in the future. 
             // Copied from ActionRunner.cs RunAsync() function => Maybe we don't need a handler and need to avoid this preplicatoin in the future?
-            var runStepInputs= target[0].Inputs;
+            var runStepInputs = target[0].Inputs;
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(runStepInputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
             var taskManager = HostContext.GetService<IActionManager>();
@@ -227,7 +227,24 @@ namespace GitHub.Runner.Worker.Handlers
             // Detect operating system for fileName + arguments
 
             var contents = runValue ?? string.Empty;
-            
+
+            string workingDirectory = null;
+            if (!Inputs.TryGetValue("workingDirectory", out workingDirectory))
+            {
+                // TODO: figure out how defaults interact with template later
+                // for now, we won't check job.defaults if we are inside a template.
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.JobDefaults.TryGetValue("run", out var runDefaults))
+                {
+                    if (runDefaults.TryGetValue("working-directory", out workingDirectory))
+                    {
+                        ExecutionContext.Debug("Overwrite 'working-directory' base on job defaults.");
+                    }
+                }
+            }
+            var workspaceDir = githubContext["workspace"] as StringContextData;
+            workingDirectory = Path.Combine(workspaceDir, workingDirectory ?? string.Empty);
+
+
             string shell = null;
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
@@ -361,6 +378,5 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        }
     }
 }

@@ -70,9 +70,9 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // TODO
                 // Runner plugin
-                handler = HostContext.CreateService<ICompositeHandler>();
+                handler = HostContext.CreateService<ICompositeActionHandler>();
                 // handler = CompositeHandler;
-                (handler as ICompositeHandler).Data = data as CompositeActionExecutionData;
+                (handler as ICompositeActionHandler).Data = data as CompositeActionExecutionData;
             }
             else
             {
