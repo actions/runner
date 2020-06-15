@@ -45,7 +45,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
             var contents = runValue ?? string.Empty;
-            if (Action.Type == Pipelines.ActionSourceType.Script)
+            if (Action.Type == Pipelines.ActionSourceType.Repository)
             {
                 var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
                 var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
@@ -168,11 +168,22 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Resolve steps
             var target = Data.Steps;
+            if (target == null) {
+                Trace.Error("Data.Steps in CompositeActionHandler is null");
+            } else {
+                Trace.Info($"Data Steps Value for Composite Actions is: {target}.");
+            }
+
 
             // For now, just assume it is 1 Run step
             // We will adapt this in the future. 
             // Copied from ActionRunner.cs RunAsync() function => Maybe we don't need a handler and need to avoid this preplicatoin in the future?
             var runStepInputs = target[0].Inputs;
+            if (runStepInputs == null) {
+                Trace.Error("runStepInputs in CompositeActionHandler is null");
+            } else {
+                Trace.Info($"runStepInputs Value for Composite Actions is: {runStepInputs}.");
+            }
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(runStepInputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
             var taskManager = HostContext.GetService<IActionManager>();
@@ -183,7 +194,11 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 userInputs.Add(input.Key);
                 userInputs.Add(input.Value);
-                if (input.Key.Equals("run"))
+                Trace.Info($"Composite Action Handler. Key: {input.Key} Value: {input.Value}");
+                // Why is the key should not be "run" => because the "run" keyword is recorgnized as something that will be a "script"?
+                // Or should we create another key that delineates between "script" and "run"?
+                // ^ Perhaps we can explore this in the next version with the changes the to action.yaml template
+                if (input.Key.Equals("script"))
                 {
                     runValue = input.Value;
                 }
@@ -197,6 +212,8 @@ namespace GitHub.Runner.Worker.Handlers
                 // Get the run bash value that we want to run
                 // In the future, we would apply and validate the template => maybe using the manifest manager to recursively load the json schema.
             }
+
+            Trace.Info($"Run Value for Composite Actions is: {runValue}.");
 
             // Let's think about validating inputs later
             // Validate inputs only for actions with action.yml
