@@ -6,6 +6,8 @@ TODO: Change file name to represent the correct PR number (PR is not created yet
 
 **Status**: Proposed
 
+**Relevant PR**: https://github.com/actions/runner/pull/549
+
 ## Context
 Customers want to be able to compose actions from actions (ex: https://github.com/actions/runner/issues/438)
 
@@ -181,7 +183,7 @@ steps:
   - run: Server: ${{ env.SERVER }} 
 ```
 
-**TODO: This implementation is up to discussion.** 
+**TODO: This if condition implementation is up to discussion.** 
 
 See the paragraph below for a rudimentary approach:
 
@@ -189,6 +191,44 @@ The immediate if condition holds the most importance and only effects the curren
 
 In the example above, the `always()` condition in the `foo` step affects the composite action steps `foo2` and `foo3`. Since `foo3` has an if condition defined, it overrides its parent condition so `foo3` will have an if condition `success()`. Let's say that the `foo2` step fails, then `foo3` will not run since a past step failed and its if condition is `succcess()` but `foo4` will run because its if condition is inherited from `foo` which is `always()`.   
     
+### Timeout-minutes
+Example `user/test/composite-action.yml`:
+```
+using: 'composite' 
+steps: 
+  - id: foo1
+    run: echo test 1
+    timeout-minutes: 10
+  - id: foo2
+    run: echo test 2
+  - id: foo3
+    run: echo test 3
+    timeout-minutes: 10
+```
+
+Example `workflow.yml`:
+```
+steps: 
+  - id: bar
+    uses: user/test@v1
+    timeout-minutes: 50
+```
+**TODO: This timeout-minutes condition implementation is up to discussion.** 
+
+A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
+
+If the time taken for any of the steps in combination or individually exceed the whole composite action `timeout-minutes` attribute, the whole job will fail. If an individual step exceeds its own `timeout-minutes` attribute but the total time that has been used including this step is below the overall composite action `timeout-minutes`, the individual step will fail but the rest of the steps will run. 
+
+For reference, in the example above, if the composite step `foo1` takes 11 minutes to run, that step will fail but the rest of the steps, `foo1` and `foo2`, will proceed as long as their total runtime with the previous failed `foo1` action is less than the composite action's `timeout-minutes` (50 minutes). If the composite step `foo2` takes 51 minutes to run, it will cause the whole composite action job to fail. I
+
+The rationale behind this is that users can configure their steps with the `needs` attribute or `if` condition to conditionally set how steps rely on each other. Due to the additional capabilities that are offered with combining '=`timeout-minutes`, `needs`, and/or `if`, we wanted the `timeout-minutes` condition to be as dumb as possible and not effect other steps. 
+
+### Needs
+
+### Continue-on-error
+
+**TODO: This continue-on-error condition implementation is up to discussion.** 
+
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
 
