@@ -262,13 +262,21 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState);
+            string refName = step.GetRefName();
+
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, refName, IntraActionState);
             Root.PostJobSteps.Push(step);
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
         {
             Trace.Entering();
+
+            // TODO: Null out old, non-json refNames only if a FF is set.
+            if (refName != null && !refName.StartsWith("{"))
+            {
+                refName = null;
+            }
 
             var child = new ExecutionContext();
             child.Initialize(HostContext);
@@ -869,7 +877,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState)
+        private IExecutionContext CreatePostChild(string displayName, string refName, Dictionary<string, string> intraActionState)
         {
             if (!_expandedForPostJob)
             {
@@ -879,7 +887,9 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
+
+            // TODO: Check feature flag here, conditionally set refName to newGuid.ToString("N").
+            return CreateChild(newGuid, displayName, refName, null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
         }
     }
 

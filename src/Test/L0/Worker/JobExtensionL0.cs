@@ -176,7 +176,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobExtension.Initialize(hc);
 
                 _actionManager.Setup(x => x.PrepareActionsAsync(It.IsAny<IExecutionContext>(), It.IsAny<IEnumerable<Pipelines.JobStep>>()))
-                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>() { new JobExtensionRunner(null, "", "prepare1", null), new JobExtensionRunner(null, "", "prepare2", null) }, new Dictionary<Guid, IActionRunner>())));
+                              .Returns(Task.FromResult(new PrepareResult(new List<JobExtensionRunner>() { new JobExtensionRunner(null, "", "prepare1", null, null), new JobExtensionRunner(null, "", "prepare2", null, null) }, new Dictionary<Guid, IActionRunner>())));
 
                 List<IStep> result = await jobExtension.InitializeJob(_jobEc, _message);
 
