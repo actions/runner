@@ -66,17 +66,17 @@ steps:
     uses: user/test@v1
     with:
       your_name: "Octocat"
-  - run: echo hello ${{ steps.inputs.your_name }} 2
+  - run: echo hello ${{ steps.foo.inputs.your_name }} 2
 ```
 
 Example Output:
 ```
 hello Octocat
-ERROR
+Error
 ```
-Each input variable in the composite action is only viewable to those in the same scope as composite action or is a child of the composite action such as the composite steps (and eventually nested actions).
+We plan to use inputs for Composite Actions similar to how parameters are used in programming languages like Python in terms of [lexical scoping](https://inst.eecs.berkeley.edu/~cs61a/fa19/assets/slides/29-Tail_Calls_full.pdf). In Python, let's say you have "Function A", parameters in this function are stored as local variables in this function frame. Let's say we have a "Function B" that a parent frame "Function A" (aka "Function B" is called in "Function A") will have access to those input variables unless its overwritten locally in the body of this child function.
 
-As seen in the last output message, in the workflow file, you cannot access the inputs of the composite action.
+Similar to how Python treats its parameters, for our case, each input variable in the composite action is viewable in its own scope as well as its descendants' scope (when we have nested composite functions). On the flip side, a child action cannot view its ancestors' inputs. Similarly, as seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
 
 ### Outputs
 Example `user/test/composite-action.yml`:
@@ -111,12 +111,17 @@ Example Output:
 hello Octocat
 woahhhhhh hello Octocat
 ```
-Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. 
+Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its immediete parent.
 
-In the example above, note that in our `workflow.yml` file, it should not have access to all of the input variables (i.e. `your_name`) nor should it have access to `my-step`. For example, in the `workflow.yml` file, you can't run `my-step.outputs.bar`
+Moreover, the output ids are only accessible within the scope where it was defined. In the example above, note that in our `workflow.yml` file, it should not have access to output id (i.e. `my-output`). For example, in the `workflow.yml` file, you can't run `foo.steps.my-step.my-output`.
 
 ### Context
 Similar to the workflow file, the composite action has access to the [same context objects](https://help.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#contexts) (ex: `github`, `env`, `strategy`). 
+
+### Environment
+The environment variables will flow from the parent node to its children node. More concretely, whatever workflow/action calls a composite action, that composite action has access to whatever environment variables its caller workflow/action has. Nevertheless, the composite action can append its own environment variables or overwrite its parent's environment variables. 
+
+
 
 ### If condition?
 TODO: Figure out: What does it mean if the composite step is "always()" but inner step is not? What should the behavior be:
