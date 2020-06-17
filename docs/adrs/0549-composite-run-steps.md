@@ -46,8 +46,7 @@ echo hello world 2
 echo hello world 3
 echo hello world 4
 ```
-We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step 
-sequentially. 
+We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step sequentially. If any step fails and there are no `if` conditions defined, the whole composite action job fails. 
 
 ### Inputs
 Example `user/test/composite-action.yml`:
@@ -221,13 +220,15 @@ If the time taken for any of the steps in combination or individually exceed the
 
 For reference, in the example above, if the composite step `foo1` takes 11 minutes to run, that step will fail but the rest of the steps, `foo1` and `foo2`, will proceed as long as their total runtime with the previous failed `foo1` action is less than the composite action's `timeout-minutes` (50 minutes). If the composite step `foo2` takes 51 minutes to run, it will cause the whole composite action job to fail. I
 
-The rationale behind this is that users can configure their steps with the `needs` attribute or `if` condition to conditionally set how steps rely on each other. Due to the additional capabilities that are offered with combining '=`timeout-minutes`, `needs`, and/or `if`, we wanted the `timeout-minutes` condition to be as dumb as possible and not effect other steps. 
+The rationale behind this is that users can configure their steps with the `if` condition to conditionally set how steps rely on each other. Due to the additional capabilities that are offered with combining `timeout-minutes` and/or `if`, we wanted the `timeout-minutes` condition to be as dumb as possible and not effect other steps. 
 
-### Needs
+[Usage limits still apply](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions?query=if%28%29#usage-limits)
+
 
 ### Continue-on-error
 
 **TODO: This continue-on-error condition implementation is up to discussion.** 
+For now, if `continue-on-error` is set to `true` for any of the composite action steps, the composite action job proceeds with the next step and ignores that failure. 
 
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
@@ -244,3 +245,4 @@ Here is a visual represenation of the [first example](#Steps)
 
 
 ## Conclusion
+This ADR lays the framework for eventually supporting nested Composite Actions within Composite Actions. This ADR allows for users to run multiple run steps within a GitHub Composite Action with the support of inputs, outputs, environment, and context for use in any steps as well as the if, timeout-minutes, and the continue-on-error attributes for each Composite Action step. 
