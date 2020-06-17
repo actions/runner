@@ -157,11 +157,37 @@ We plan to use environment variables for Composite Actions similar to the parent
 Similar to the above logic, the environment variables will flow from the parent node to its children node. More concretely, whatever workflow/action calls a composite action, that composite action has access to whatever environment variables its caller workflow/action has. Note that the composite action can append its own environment variables or overwrite its parent's environment variables. 
 
 
-### If condition?
-TODO: Figure out: What does it mean if the composite step is "always()" but inner step is not? What should the behavior be:
-steps:
-  - uses: my-composite-action@v1
-    if: cancel()
+### If Condition
+
+Example `user/test/composite-action.yml`:
+```
+using: 'composite' 
+steps: 
+  - id: foo2
+    run: ERROR
+  - id: foo3
+    run: echo test 2
+    if: success()
+  - id: foo4
+    run: echo test 3
+```
+
+Example `workflow.yml`:
+```
+steps: 
+  - id: foo
+    uses: user/test@v1
+    if: always()
+  - run: Server: ${{ env.SERVER }} 
+```
+
+**TODO: This implementation is up to discussion.** 
+
+See the paragraph below for a rudimentary approach:
+
+The immediate if condition holds the most importance and only effects the current if condition. If there is no if condition for a step, it defaults to its parent's if condition (if that parent's if condition is not defined, it takes the grandparent's if condition, and so on)
+
+In the example above, the `always()` condition in the `foo` step affects the composite action steps `foo2` and `foo3`. Since `foo3` has an if condition defined, it overrides its parent condition so `foo3` will have an if condition `success()`. Let's say that the `foo2` step fails, then `foo3` will not run since a past step failed and its if condition is `succcess()` but `foo4` will run because its if condition is inherited from `foo` which is `always()`.   
     
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
