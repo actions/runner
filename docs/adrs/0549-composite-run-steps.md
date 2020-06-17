@@ -111,7 +111,7 @@ Example Output:
 hello Octocat
 oh hello Octocat
 ```
-Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its immediete parent.
+Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its parent using dot notation (ex `steps.foo.outputs.bar`).
 
 Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `my-output`). For example, in the `workflow.yml` file, you can't run `foo.steps.my-step.my-output`.
 
