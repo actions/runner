@@ -22,8 +22,8 @@ Example `user/test/composite-action.yml`
 ...
 using: 'composite' 
 steps:
-  - run: echo hello world 1
-  - run: echo hello world 2
+  - run: pip install -r requirements.txt
+  - run: npm install
 ```
 Example `workflow.yml`
 ```
@@ -32,7 +32,12 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
+    - id: job1
+      uses: actions/setup-python@v1
+    - id: job2
+      uses: actions/setup-node@v2
     - uses: actions/checkout@v2
+      needs: [job1, job2]
     - uses: user/test@v1
     - name: workflow step 1
       run: echo hello world 3
@@ -41,8 +46,8 @@ jobs:
 ```
 Example Output
 ```
-echo hello world 1
-echo hello world 2
+[npm installation output]
+[pip requirements output]
 echo hello world 3
 echo hello world 4
 ```
