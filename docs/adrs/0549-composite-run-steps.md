@@ -15,8 +15,6 @@ An important step towards meeting this goal is to build in functionality for act
 In this ADR, we support running multiple steps in an Action. In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
 ### Steps
-We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step 
-sequentially. 
 Example `user/test/composite-action.yml`
 ```
 ...
@@ -46,6 +44,9 @@ echo hello world 2
 echo hello world 3
 echo hello world 4
 ```
+We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step 
+sequentially. 
+
 ### Inputs
 Example `user/test/composite-action.yml`:
 ```
@@ -74,9 +75,8 @@ Example Output:
 hello Octocat
 Error
 ```
-We plan to use inputs for Composite Actions similar to how parameters are used in programming languages like Python in terms of [lexical scoping](https://inst.eecs.berkeley.edu/~cs61a/fa19/assets/slides/29-Tail_Calls_full.pdf). In Python, let's say you have "Function A", parameters in this function are stored as local variables in this function frame. Let's say we have a "Function B" that a parent frame "Function A" (aka "Function B" is called in "Function A") will have access to those input variables unless its overwritten locally in the body of this child function.
 
-Similar to how Python treats its parameters, for our case, each input variable in the composite action is viewable in its own scope as well as its descendants' scope (when we have nested composite functions). On the flip side, a child action cannot view its ancestors' inputs. Similarly, as seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
+Each input variable in the composite action is only viewable in its own scope (unlike environment variables). As seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
 
 ### Outputs
 Example `user/test/composite-action.yml`:
@@ -103,13 +103,13 @@ steps:
     uses: user/test@v1
     with:
       your_name: "Octocat"
-  - run: echo woahhhhhh ${{ steps.foo.outputs.bar }} 
+  - run: echo oh ${{ steps.foo.outputs.bar }} 
 ```
 
 Example Output:
 ```
 hello Octocat
-woahhhhhh hello Octocat
+oh hello Octocat
 ```
 Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its immediete parent.
 
@@ -119,8 +119,42 @@ Moreover, the output ids are only accessible within the scope where it was defin
 Similar to the workflow file, the composite action has access to the [same context objects](https://help.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#contexts) (ex: `github`, `env`, `strategy`). 
 
 ### Environment
-The environment variables will flow from the parent node to its children node. More concretely, whatever workflow/action calls a composite action, that composite action has access to whatever environment variables its caller workflow/action has. Nevertheless, the composite action can append its own environment variables or overwrite its parent's environment variables. 
+Example `user/test/composite-action.yml`:
+```
+using: 'composite' 
+env:
+  NAME2: test2
+  SERVER: development
+steps: 
+  - id: my-step
+    run: |
+      echo NAME1: ${{ env.NAME1 }} 
+      echo NAME2: ${{ env.NAME2 }} 
+      echo Server: ${{ env.SERVER }} 
+```
 
+Example `workflow.yml`:
+```
+env:
+  NAME1: test1
+  SERVER: production
+steps: 
+  - id: foo
+    uses: user/test@v1
+  - run: Server: ${{ env.SERVER }} 
+```
+
+Example Output:
+```
+NAME1: test1
+NAME2: test2
+Server: development
+server: production
+```
+
+We plan to use environment variables for Composite Actions similar to the parent/child relationship between nested function calls in programming languages like Python in terms of [lexical scoping](https://inst.eecs.berkeley.edu/~cs61a/fa19/assets/slides/29-Tail_Calls_full.pdf). In Python, let's say you have `functionA` that has local variables called `a` and `b` in this function frame. Let's say we have a `functionB` whose parent frame is `functionA` and has local variable `a` (aka `functionB` is called and defined in `functionA`). `functionB` will have access to its parent input variables that are not overwritten in the local scope (`a`) as well as its own local variable `b`. [Visual Example](http://www.pythontutor.com/visualize.html#code=def%20functionA%28%29%3A%0A%20%20%20%20a%20%3D%201%0A%20%20%20%20b%20%3D%202%0A%20%20%20%20def%20functionB%28%29%3A%0A%20%20%20%20%20%20%20%20b%20%3D%203%0A%20%20%20%20%20%20%20%20print%28%22a%22,%20a%29%0A%20%20%20%20%20%20%20%20print%28%22b%22,%20b%29%0A%20%20%20%20%20%20%20%20return%20b%0A%20%20%20%20return%20functionB%28%29%0A%0A%0A%0AfunctionA%28%29&cumulative=false&curInstr=14&heapPrimitives=nevernest&mode=display&origin=opt-frontend.js&py=3&rawInputLstJSON=%5B%5D&textReferences=false) 
+
+Similar to the above logic, the environment variables will flow from the parent node to its children node. More concretely, whatever workflow/action calls a composite action, that composite action has access to whatever environment variables its caller workflow/action has. Note that the composite action can append its own environment variables or overwrite its parent's environment variables. 
 
 
 ### If condition?
