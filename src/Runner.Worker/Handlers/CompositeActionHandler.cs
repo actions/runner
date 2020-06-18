@@ -36,14 +36,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Resolve action steps
             var actionSteps = Data.Steps;
-            if (actionSteps == null)
-            {
-                Trace.Error("Data.Steps in CompositeActionHandler is null");
-            }
-            else
-            {
-                Trace.Info($"Data Steps Value for Composite Actions is: {actionSteps}.");
-            }
 
             // Create Context Data to reuse for each composite action step
             var inputsData = new DictionaryContextData();
