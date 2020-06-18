@@ -291,8 +291,6 @@ namespace GitHub.Runner.Worker
             // placed after the queued composite steps
             // This will take only O(n+m) time which would be just as efficient if we refactored the code of JobSteps to a PriorityQueue
             // This temp Queue is created in the CompositeActionHandler. 
-
-            Trace.Info("Adding Composite Action Step");
             var newGuid = Guid.NewGuid();
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
@@ -319,7 +317,6 @@ namespace GitHub.Runner.Worker
                 Root.JobSteps.Clear();
                 foreach (var cs in steps)
                 {
-                    Trace.Info($"EnqueueAllCompositeSteps : Adding Composite action step {cs}");
                     Root.JobSteps.Enqueue(cs);
                 }
                 foreach (var s in temp)
@@ -332,7 +329,6 @@ namespace GitHub.Runner.Worker
                 Root.JobSteps = new Queue<IStep>();
                 foreach (var cs in steps)
                 {
-                    Trace.Info($"EnqueueAllCompositeSteps : Adding Composite action step {cs}");
                     Root.JobSteps.Enqueue(cs);
                 }
             }
