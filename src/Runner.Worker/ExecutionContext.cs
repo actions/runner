@@ -105,8 +105,9 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData);
+        IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData, PipelineContextData envData);
         void EnqueueAllCompositeSteps(Queue<IStep> steps);
+        ExecutionContext getParentExecutionContext();
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -271,7 +272,7 @@ namespace GitHub.Runner.Worker
             RegisterCompositeStep is a helper function used in CompositeActionHandler::RunAsync to 
             add a child node, aka a step, to the current job to the front of the queue for processing. 
         */
-        public IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData)
+        public IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData, PipelineContextData envData)
         {
             // ~Brute Force Method~
             // There is no way to put this current job in front of the queue in < O(n) time where n = # of elements in JobSteps
@@ -296,6 +297,10 @@ namespace GitHub.Runner.Worker
             var newGuid = Guid.NewGuid();
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
+            step.ExecutionContext.ExpressionValues["env"] = envData;
+
+            // TODO add environment variables for individual composite action steps
+            
             return step;
         }
 
@@ -327,6 +332,11 @@ namespace GitHub.Runner.Worker
                     Root.JobSteps.Enqueue(cs);
                 }
             }
+        }
+
+        public ExecutionContext getParentExecutionContext()
+        {
+            return _parentExecutionContext;
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)

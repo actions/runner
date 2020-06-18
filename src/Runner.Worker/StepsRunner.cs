@@ -90,6 +90,7 @@ namespace GitHub.Runner.Worker
                 // Initialize scope
                 if (InitializeScope(step, scopeInputs))
                 {
+                    // TODO Check if this adds env context to each composite action step
                     // Populate env context for each step
                     Trace.Info("Initialize Env context for step");
 #if OS_WINDOWS

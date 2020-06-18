@@ -1283,6 +1283,7 @@ namespace GitHub.Runner.Worker
         public override bool HasPre => false;
         public override bool HasPost => false;
         public List<Pipelines.ActionStep> Steps { get; set; }
+        public MappingToken Environment { get; set; }
     }
 
     public abstract class ActionExecutionData
