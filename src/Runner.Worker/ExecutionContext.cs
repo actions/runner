@@ -105,9 +105,8 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData, PipelineContextData envData);
+        IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData, Dictionary<string, string> envData);
         void EnqueueAllCompositeSteps(Queue<IStep> steps);
-        ExecutionContext getParentExecutionContext();
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -272,7 +271,7 @@ namespace GitHub.Runner.Worker
             RegisterCompositeStep is a helper function used in CompositeActionHandler::RunAsync to 
             add a child node, aka a step, to the current job to the front of the queue for processing. 
         */
-        public IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData, PipelineContextData envData)
+        public IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData, Dictionary<string, string> envData)
         {
             // ~Brute Force Method~
             // There is no way to put this current job in front of the queue in < O(n) time where n = # of elements in JobSteps
@@ -297,10 +296,15 @@ namespace GitHub.Runner.Worker
             var newGuid = Guid.NewGuid();
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-            step.ExecutionContext.ExpressionValues["env"] = envData;
 
-            // TODO add environment variables for individual composite action steps
-            
+            // Add the composite action environment variables to each step.
+            // If the key already exists, we override it since the composite action env variables will have higher precedence
+            // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
+            foreach (var e in envData)
+            {
+                step.ExecutionContext.EnvironmentVariables[e.Key] = e.Value;
+            }
+
             return step;
         }
 
@@ -332,11 +336,6 @@ namespace GitHub.Runner.Worker
                     Root.JobSteps.Enqueue(cs);
                 }
             }
-        }
-
-        public ExecutionContext getParentExecutionContext()
-        {
-            return _parentExecutionContext;
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)

@@ -36,14 +36,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Resolve action steps
             var actionSteps = Data.Steps;
-            if (actionSteps == null)
-            {
-                Trace.Error("Data.Steps in CompositeActionHandler is null");
-            }
-            else
-            {
-                Trace.Info($"Data Steps Value for Composite Actions is: {actionSteps}.");
-            }
 
             // Create Context Data to reuse for each composite action step
             var inputsData = new DictionaryContextData();
@@ -52,31 +44,12 @@ namespace GitHub.Runner.Worker.Handlers
                 inputsData[i.Key] = new StringContextData(i.Value);
             }
 
-            // Set up parent's environment data and then add on composite action environment data
-#if OS_WINDOWS
-            var envData = ExecutionContext.ExpressionValues["env"].Clone() as DictionaryContextData;
-#else
-            var envData = ExecutionContext.ExpressionValues["env"].Clone() as CaseSensitiveDictionaryContextData;
-#endif
-            // Composite action will have already inherited the root env attributes. 
-            // We evaluated the env simimilar to how ContainerActionHandler does it.
-            if (Data.Environment == null) {
-                Trace.Info($"Composite Env Mapping Token is null");
-            } else {
-                Trace.Info($"Composite Env Mapping Token {Data.Environment}");
-            }
+            
+            // Get Environment Data for Composite Action
             var extraExpressionValues = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             extraExpressionValues["inputs"] = inputsData;
             var manifestManager = HostContext.GetService<IActionManifestManager>();
-            var evaluatedEnv = manifestManager.EvaluateCompositeActionEnvironment(ExecutionContext, Data.Environment, extraExpressionValues);
-            foreach (var e in evaluatedEnv)
-            {
-                // How to add to EnvironmentContextData
-                // We need to use IEnvironmentContextData because ScriptHandler uses this type for environment variables
-                Trace.Info($"Composite Action Env Key: {e.Key}");
-                Trace.Info($"Composite Action Env Value: {e.Value}");
-                envData[e.Key] = new StringContextData(e.Value);
-            }
+            var envData = manifestManager.EvaluateCompositeActionEnvironment(ExecutionContext, Data.Environment, extraExpressionValues);
 
             // Add each composite action step to the front of the queue
             var compositeActionSteps = new Queue<IStep>();

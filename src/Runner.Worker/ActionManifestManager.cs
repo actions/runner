@@ -183,7 +183,7 @@ namespace GitHub.Runner.Worker
                 var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-env", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, null, omitHeader: true);
                     context.Errors.Check();
 
                     Trace.Info($"Environments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
@@ -215,8 +215,6 @@ namespace GitHub.Runner.Worker
             return result;
         }
 
-        // TODO: Add Evaluate Composite Action Env Function Here
-        // Steps will be evaluated already in StepsRunner
         public Dictionary<string, string> EvaluateCompositeActionEnvironment(
             IExecutionContext executionContext,
             MappingToken token,
@@ -229,34 +227,19 @@ namespace GitHub.Runner.Worker
                 var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-env", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, null, omitHeader: true);
                     context.Errors.Check();
-                    if (evaluateResult != null) {
-                        Trace.Info($"EvaluateCompositeActionEnvironment evaluateResult {evaluateResult}");
-                    } else {
-                        Trace.Info($"EvaluateCompositeActionEnvironment evaluateResult is null");
-                    }
-
-
-                    Trace.Info($"Composite Action Environments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
 
                     // Mapping
                     var mapping = evaluateResult.AssertMapping("composite env");
-                    if (mapping != null) {
-                        Trace.Info($"EvaluateCompositeActionEnvironment Mapping {mapping}");
-                    } else {
-                        Trace.Info($"EvaluateCompositeActionEnvironment Mapping is null");
-                    }
 
                     foreach (var pair in mapping)
                     {
                         // Literal key
                         var key = pair.Key.AssertString("composite env key");
-                        Trace.Info($"EvaluateCompositeActionEnvironment Key{key.Value}");
 
                         // Literal value
                         var value = pair.Value.AssertString("composite env value");
-                        Trace.Info($"EvaluateCompositeActionEnvironment Value{value.Value}");
                         result[key.Value] = value.Value;
 
                         Trace.Info($"Add env {key} = {value}");

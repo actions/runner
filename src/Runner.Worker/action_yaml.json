@@ -43,7 +43,7 @@
                     "image": "non-empty-string",
                     "entrypoint": "non-empty-string",
                     "args": "container-runs-args",
-                    "env": "container-runs-env",
+                    "env": "runs-env",
                     "pre-entrypoint": "non-empty-string",
                     "pre-if": "non-empty-string",
                     "post-entrypoint": "non-empty-string",
@@ -56,7 +56,7 @@
                 "item-type": "container-runs-context"
             }
         },
-        "container-runs-env": {
+        "runs-env": {
             "context": [
                 "inputs"
             ],
@@ -88,7 +88,7 @@
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
-                    "env": "container-runs-env",
+                    "env": "runs-env",
                     "steps": "composite-steps"
                 }
             }

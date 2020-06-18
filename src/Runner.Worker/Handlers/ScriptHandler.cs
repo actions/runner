@@ -255,14 +255,6 @@ namespace GitHub.Runner.Worker.Handlers
                         Environment[env.Key] = env.Value;
                     }
                 }
-
-                // if (context.Key == "env" && context.Value != null && !String.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                // {
-                //     foreach (var env in context.Value as DictionaryContextData)
-                //     {
-                //         Environment[env.Key] = env.Value as StringContextData;
-                //     }
-                // }
             }
 
             // dump out the command
