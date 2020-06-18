@@ -395,6 +395,10 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Action cleanup plugin: {plugin.PluginTypeName}.");
                         }
                     }
+                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                    {
+                        // Don't do anything for now
+                    }
                     else
                     {
                         throw new NotSupportedException(definition.Data.Execution.ExecutionType.ToString());
@@ -1101,6 +1105,11 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Action plugin: {(actionDefinitionData.Execution as PluginActionExecutionData).Plugin}, no more preparation.");
                     return null;
                 }
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                {
+                    Trace.Info($"Action composite: {(actionDefinitionData.Execution as CompositeActionExecutionData).Steps}, no more preparation.");
+                    return null;
+                }
                 else
                 {
                     throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
@@ -1211,6 +1220,7 @@ namespace GitHub.Runner.Worker
         NodeJS,
         Plugin,
         Script,
+        Composite
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
@@ -1265,6 +1275,14 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.Script;
         public override bool HasPre => false;
         public override bool HasPost => false;
+    }
+
+    public sealed class CompositeActionExecutionData : ActionExecutionData
+    {
+        public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
+        public override bool HasPre => false;
+        public override bool HasPost => false;
+        public List<Pipelines.ActionStep> Steps { get; set; }
     }
 
     public abstract class ActionExecutionData

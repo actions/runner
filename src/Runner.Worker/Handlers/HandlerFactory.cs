@@ -66,6 +66,14 @@ namespace GitHub.Runner.Worker.Handlers
                 handler = HostContext.CreateService<IRunnerPluginHandler>();
                 (handler as IRunnerPluginHandler).Data = data as PluginActionExecutionData;
             }
+            else if (data.ExecutionType == ActionExecutionType.Composite)
+            {
+                // TODO
+                // Runner plugin
+                handler = HostContext.CreateService<ICompositeActionHandler>();
+                // handler = CompositeHandler;
+                (handler as ICompositeActionHandler).Data = data as CompositeActionExecutionData;
+            }
             else
             {
                 // This should never happen.

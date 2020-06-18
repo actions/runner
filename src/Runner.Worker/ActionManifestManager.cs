@@ -14,6 +14,7 @@ using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using System.Globalization;
 using System.Linq;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
@@ -92,7 +93,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(context, actionPair.Value);
+                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value);
                             break;
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
@@ -284,7 +285,7 @@ namespace GitHub.Runner.Worker
             // Add the file table
             if (_fileTable?.Count > 0)
             {
-                for (var i = 0 ; i < _fileTable.Count ; i++)
+                for (var i = 0; i < _fileTable.Count; i++)
                 {
                     result.GetFileId(_fileTable[i]);
                 }
@@ -294,6 +295,7 @@ namespace GitHub.Runner.Worker
         }
 
         private ActionExecutionData ConvertRuns(
+            IExecutionContext executionContext,
             TemplateContext context,
             TemplateToken inputsToken)
         {
@@ -311,6 +313,8 @@ namespace GitHub.Runner.Worker
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
+            var stepsLoaded = default(List<Pipelines.ActionStep>);
+
             foreach (var run in runsMapping)
             {
                 var runsKey = run.Key.AssertString("runs key").Value;
@@ -355,6 +359,15 @@ namespace GitHub.Runner.Worker
                     case "pre-if":
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
+                    case "steps":
+                        if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                        {
+                            var steps = run.Value.AssertSequence("steps");
+                            var evaluator = executionContext.ToPipelineTemplateEvaluator();
+                            stepsLoaded = evaluator.LoadCompositeSteps(steps);
+                            break;
+                        }
+                        throw new Exception("You aren't supposed to be using Composite Actions yet!");
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -399,6 +412,20 @@ namespace GitHub.Runner.Worker
                             InitCondition = preIfToken?.Value ?? "always()",
                             Post = postToken?.Value,
                             CleanupCondition = postIfToken?.Value ?? "always()"
+                        };
+                    }
+                }
+                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase) && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                {
+                    if (stepsLoaded == null)
+                    {
+                        throw new ArgumentNullException($"No steps provided.");
+                    }
+                    else
+                    {
+                        return new CompositeActionExecutionData()
+                        {
+                            Steps = stepsLoaded,
                         };
                     }
                 }
