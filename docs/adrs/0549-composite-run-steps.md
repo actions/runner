@@ -136,6 +136,8 @@ steps:
     run: |
       echo NAME2 $NAME2
       echo Server $SERVER 
+    env:
+      NAME2: test3
 ```
 
 Example `workflow.yml`:
@@ -151,7 +153,7 @@ steps:
 
 Example Output:
 ```
-NAME2 test2
+NAME2 test3
 Server development
 Server production
 ```
