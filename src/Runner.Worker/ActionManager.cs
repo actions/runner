@@ -399,6 +399,7 @@ namespace GitHub.Runner.Worker
                     {
                         var compositeAction = definition.Data.Execution as CompositeActionExecutionData;
                         Trace.Info($"Action steps: {compositeAction.Steps}.");
+                        Trace.Info($"Action environment: {compositeAction.Environment}.");
                     }
                     else
                     {
