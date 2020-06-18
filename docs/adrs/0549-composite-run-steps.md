@@ -134,8 +134,8 @@ env:
 steps: 
   - id: my-step
     run: |
-      echo NAME2: $NAME2
-      echo Server: $SERVER 
+      echo NAME2 $NAME2
+      echo Server $SERVER 
 ```
 
 Example `workflow.yml`:
@@ -146,14 +146,14 @@ env:
 steps: 
   - id: foo
     uses: user/test@v1
-  - run: echo Server: $SERVER
+  - run: echo Server $SERVER
 ```
 
 Example Output:
 ```
-NAME2: test2
-Server: development
-Server: production
+NAME2 test2
+Server development
+Server production
 ```
 
 We plan to use environment variables for Composite Actions similar to the parent/child relationship between nested function calls in programming languages like Python in terms of [lexical scoping](https://inst.eecs.berkeley.edu/~cs61a/fa19/assets/slides/29-Tail_Calls_full.pdf). In Python, let's say you have `functionA` that has local variables called `a` and `b` in this function frame. Let's say we have a `functionB` whose parent frame is `functionA` and has local variable `a` (aka `functionB` is called and defined in `functionA`). `functionB` will have access to its parent input variables that are not overwritten in the local scope (`a`) as well as its own local variable `b`. [Visual Example](http://www.pythontutor.com/visualize.html#code=def%20functionA%28%29%3A%0A%20%20%20%20a%20%3D%201%0A%20%20%20%20b%20%3D%202%0A%20%20%20%20def%20functionB%28%29%3A%0A%20%20%20%20%20%20%20%20b%20%3D%203%0A%20%20%20%20%20%20%20%20print%28%22a%22,%20a%29%0A%20%20%20%20%20%20%20%20print%28%22b%22,%20b%29%0A%20%20%20%20%20%20%20%20return%20b%0A%20%20%20%20return%20functionB%28%29%0A%0A%0A%0AfunctionA%28%29&cumulative=false&curInstr=14&heapPrimitives=nevernest&mode=display&origin=opt-frontend.js&py=3&rawInputLstJSON=%5B%5D&textReferences=false) 
