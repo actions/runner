@@ -44,12 +44,28 @@ namespace GitHub.Runner.Worker.Handlers
                 inputsData[i.Key] = new StringContextData(i.Value);
             }
 
-            
+
             // Get Environment Data for Composite Action
             var extraExpressionValues = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
             extraExpressionValues["inputs"] = inputsData;
             var manifestManager = HostContext.GetService<IActionManifestManager>();
-            var envData = manifestManager.EvaluateCompositeActionEnvironment(ExecutionContext, Data.Environment, extraExpressionValues);
+
+            // Add the composite action environment variables to each step.
+            // If the key already exists, we override it since the composite action env variables will have higher precedence
+            // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
+            var compositeEnvData = manifestManager.EvaluateCompositeActionEnvironment(ExecutionContext, Data.Environment, extraExpressionValues);
+            var envData = new Dictionary<string, string>();
+
+            // Copy over parent environment
+            foreach (var env in ExecutionContext.EnvironmentVariables)
+            {
+                envData[env.Key] = env.Value;
+            }
+            // Overwrite with current env
+            foreach (var env in compositeEnvData)
+            {
+                envData[env.Key] = env.Value;
+            }
 
             // Add each composite action step to the front of the queue
             var compositeActionSteps = new Queue<IStep>();

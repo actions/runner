@@ -107,6 +107,7 @@ namespace GitHub.Runner.Worker
         void RegisterPostJobStep(IStep step);
         IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData, Dictionary<string, string> envData);
         void EnqueueAllCompositeSteps(Queue<IStep> steps);
+        public void SetEnvironmentVariables(Dictionary<string, string> dict);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -298,12 +299,14 @@ namespace GitHub.Runner.Worker
             // Add the composite action environment variables to each step.
             // If the key already exists, we override it since the composite action env variables will have higher precedence
             // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
-            foreach (var e in envData)
-            {
-                step.ExecutionContext.EnvironmentVariables[e.Key] = e.Value;
-            }
+            step.ExecutionContext.SetEnvironmentVariables(envData);
 
             return step;
+        }
+
+        public void SetEnvironmentVariables(Dictionary<string, string> dict)
+        {
+            this.EnvironmentVariables = dict;
         }
 
         // Add Composite Steps first and then requeue the rest of the job steps. 
@@ -333,7 +336,6 @@ namespace GitHub.Runner.Worker
                 }
             }
         }
-
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
         {
             Trace.Entering();
