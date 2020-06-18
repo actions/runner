@@ -134,9 +134,8 @@ env:
 steps: 
   - id: my-step
     run: |
-      echo NAME1: ${{ env.NAME1 }} 
-      echo NAME2: ${{ env.NAME2 }} 
-      echo Server: ${{ env.SERVER }} 
+      echo NAME2: $NAME2
+      echo Server: $SERVER 
 ```
 
 Example `workflow.yml`:
@@ -147,12 +146,11 @@ env:
 steps: 
   - id: foo
     uses: user/test@v1
-  - run: echo Server: ${{ env.SERVER }} 
+  - run: echo Server: $SERVER
 ```
 
 Example Output:
 ```
-NAME1: test1
 NAME2: test2
 Server: development
 Server: production
