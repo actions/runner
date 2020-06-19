@@ -68,11 +68,6 @@ namespace GitHub.Runner.Worker
                 var step = jobContext.JobSteps[0];
                 jobContext.JobSteps.RemoveAt(0);
                 var nextStep = jobContext.JobSteps.Count > 0 ? jobContext.JobSteps[0] : null;
-                // TODO: Fix this temporary workaround for Composite Actions
-                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                {
-                    nextStep = null;
-                }
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
