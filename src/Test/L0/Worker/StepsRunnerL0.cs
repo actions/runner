@@ -80,7 +80,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -115,7 +115,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -154,7 +154,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -208,7 +208,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -287,7 +287,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -330,7 +330,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Step.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Step.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -361,7 +361,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -391,7 +391,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -417,7 +417,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -455,7 +455,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -493,7 +493,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -524,7 +524,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -560,7 +560,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);

@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Add each composite action step to the front of the queue
-            var compositeActionSteps = new Queue<IStep>();
+            int location = 0;
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Ex: 
@@ -86,7 +86,7 @@ namespace GitHub.Runner.Worker.Handlers
                 //          - run echo hello world 3 (d)
                 //          - run echo hello world 4 (e)
                 // 
-                // Stack (LIFO) [Bottom => Middle => Top]:
+                // Steps processed as follow:
                 // | a |
                 // | a | => | d |
                 // (Run step d)
@@ -109,9 +109,9 @@ namespace GitHub.Runner.Worker.Handlers
                 // TODO: Do we need to add any context data from the job message?
                 // (See JobExtension.cs ~line 236)
 
-                compositeActionSteps.Enqueue(ExecutionContext.RegisterCompositeStep(actionRunner, inputsData, envData));
+                ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
+                location++;
             }
-            ExecutionContext.EnqueueAllCompositeSteps(compositeActionSteps);
 
             return Task.CompletedTask;
         }
