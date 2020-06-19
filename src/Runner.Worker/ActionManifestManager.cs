@@ -403,7 +403,7 @@ namespace GitHub.Runner.Worker
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
                     case "steps":
-                        if (!String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                         {
                             var steps = run.Value.AssertSequence("steps");
                             var evaluator = executionContext.ToPipelineTemplateEvaluator();
@@ -458,7 +458,7 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase) && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                 {
                     if (stepsLoaded == null)
                     {

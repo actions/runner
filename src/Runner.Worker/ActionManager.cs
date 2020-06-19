@@ -395,7 +395,7 @@ namespace GitHub.Runner.Worker
                             Trace.Info($"Action cleanup plugin: {plugin.PluginTypeName}.");
                         }
                     }
-                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                    else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                     {
                         var compositeAction = definition.Data.Execution as CompositeActionExecutionData;
                         Trace.Info($"Action steps: {compositeAction.Steps}.");
@@ -1107,7 +1107,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Action plugin: {(actionDefinitionData.Execution as PluginActionExecutionData).Plugin}, no more preparation.");
                     return null;
                 }
-                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite && !String.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                 {
                     Trace.Info($"Action composite: {(actionDefinitionData.Execution as CompositeActionExecutionData).Steps}, no more preparation.");
                     return null;
@@ -1222,7 +1222,7 @@ namespace GitHub.Runner.Worker
         NodeJS,
         Plugin,
         Script,
-        Composite
+        Composite,
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
