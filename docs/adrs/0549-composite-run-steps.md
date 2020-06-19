@@ -236,7 +236,9 @@ The rationale behind this is that users can configure their steps with the `if` 
 ### Continue-on-error
 
 **TODO: This continue-on-error condition implementation is up to discussion.** 
-For now, if `continue-on-error` is set to `true` for any of the composite action steps, the composite action job proceeds with the next step and ignores that failure. 
+For now, if `continue-on-error` is set to `true` for any of the composite action steps, the composite action job proceeds to the next step and ignores that failure. 
+
+Note, that since the composite action is not a workflow, it does not have jobs and thus it is not within scope at the moment to support something like `strategy` with `continue-on-error` as seen in this [example](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idcontinue-on-error).
 
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
