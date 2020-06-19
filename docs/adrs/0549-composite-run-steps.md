@@ -17,7 +17,7 @@ An important step towards meeting this goal is to build in functionality for act
 In this ADR, we support running multiple steps in an Action. In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
 ### Steps
-Example `user/test/composite-action.yml`
+Example `user/composite/action.yml`
 ```
 ...
 using: 'composite' 
@@ -38,7 +38,7 @@ jobs:
       uses: actions/setup-node@v2
     - uses: actions/checkout@v2
       needs: [job1, job2]
-    - uses: user/test@v1
+    - uses: user/composite@v1
     - name: workflow step 1
       run: echo hello world 3
     - name: workflow step 2
@@ -54,7 +54,7 @@ echo hello world 4
 We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step sequentially. If any step fails and there are no `if` conditions defined, the whole composite action job fails. 
 
 ### Inputs
-Example `user/test/composite-action.yml`:
+Example `user/composite/action.yml`:
 ```
 using: 'composite' 
 inputs:
@@ -70,7 +70,7 @@ Example `workflow.yml`:
 ...
 steps: 
   - id: foo
-    uses: user/test@v1
+    uses: user/composite@v1
     with:
       your_name: "Octocat"
   - run: echo hello ${{ steps.foo.inputs.your_name }} 2
@@ -85,7 +85,7 @@ Error
 Each input variable in the composite action is only viewable in its own scope (unlike environment variables). As seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
 
 ### Outputs
-Example `user/test/composite-action.yml`:
+Example `user/composite/action.yml`:
 ```
 using: 'composite' 
 inputs:
@@ -106,7 +106,7 @@ Example `workflow.yml`:
 ...
 steps: 
   - id: foo
-    uses: user/test@v1
+    uses: user/composite@v1
     with:
       your_name: "Octocat"
   - run: echo oh ${{ steps.foo.outputs.bar }} 
@@ -125,7 +125,7 @@ Moreover, the output ids are only accessible within the scope where it was defin
 Similar to the workflow file, the composite action has access to the [same context objects](https://help.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#contexts) (ex: `github`, `env`, `strategy`). 
 
 ### Environment
-Example `user/test/composite-action.yml`:
+Example `user/composite/action.yml`:
 ```
 using: 'composite' 
 env:
@@ -165,24 +165,27 @@ Similar to the above logic, the environment variables will flow from the parent 
 
 ### If Condition
 
-Example `user/test/composite-action.yml`:
+Example `user/composite/action.yml`:
 ```
 using: 'composite' 
 steps: 
   - id: foo2
-    run: ERROR
+    run: htop                 <= Results in Error because htop is not installed
   - id: foo3
-    run: echo test 2
+    run: npm install
     if: success()
   - id: foo4
-    run: echo test 3
+    run: htop                 <= This step will not run at all because "foo2" failed
 ```
 
 Example `workflow.yml`:
 ```
 steps: 
+  - uses: actions/setup-python@v1
+  - uses: actions/setup-node@v2
+  - uses: actions/checkout@v2
   - id: foo
-    uses: user/test@v1
+    uses: user/composite@v1
     if: always()
   - run: Server: ${{ env.SERVER }} 
 ```
@@ -193,10 +196,10 @@ See the paragraph below for a rudimentary approach:
 
 The immediate if condition holds the most importance and only effects the current if condition. If there is no if condition for a step, it defaults to its parent's if condition (if that parent's if condition is not defined, it takes the grandparent's if condition, and so on)
 
-In the example above, the `always()` condition in the `foo` step affects the composite action steps `foo2` and `foo3`. Since `foo3` has an if condition defined, it overrides its parent condition so `foo3` will have an if condition `success()`. Let's say that the `foo2` step fails, then `foo3` will not run since a past step failed and its if condition is `succcess()` but `foo4` will run because its if condition is inherited from `foo` which is `always()`.   
+In the example above, the `always()` condition in the `foo` step applies to the composite action steps `foo2`, `foo3`, and `foo4`. But since `foo3` has an if condition defined, it overrides its parent condition so `foo3` will have an if condition `success()`. Let's say that the `foo2` step fails, then `foo3` will not run since a past step failed and its if condition is `succcess()`, but `foo4` will run because its if condition is inherited from `foo` which is `always()`.   
     
 ### Timeout-minutes
-Example `user/test/composite-action.yml`:
+Example `user/composite/action.yml`:
 ```
 using: 'composite' 
 steps: 
