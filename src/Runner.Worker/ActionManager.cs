@@ -1221,7 +1221,7 @@ namespace GitHub.Runner.Worker
         NodeJS,
         Plugin,
         Script,
-        Composite
+        Composite,
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
