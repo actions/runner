@@ -63,7 +63,7 @@ namespace GitHub.Runner.Worker
         JobContext JobContext { get; }
 
         // Only job level ExecutionContext has JobSteps
-        Queue<IStep> JobSteps { get; }
+        List<IStep> JobSteps { get; }
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
@@ -105,8 +105,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData);
-        void EnqueueAllCompositeSteps(Queue<IStep> steps);
+        void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -161,7 +160,7 @@ namespace GitHub.Runner.Worker
         public List<ContainerInfo> ServiceContainers { get; private set; }
 
         // Only job level ExecutionContext has JobSteps
-        public Queue<IStep> JobSteps { get; private set; }
+        public List<IStep> JobSteps { get; private set; }
 
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
@@ -267,62 +266,17 @@ namespace GitHub.Runner.Worker
             Root.PostJobSteps.Push(step);
         }
 
-        /*
-            RegisterCompositeStep is a helper function used in CompositeActionHandler::RunAsync to 
-            add a child node, aka a step, to the current job to the front of the queue for processing. 
-        */
-        public IStep RegisterCompositeStep(IStep step, DictionaryContextData inputsData)
+        /// <summary>
+        /// Helper function used in CompositeActionHandler::RunAsync to
+        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
+        /// </summary>
+        public void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location)
         {
-            // ~Brute Force Method~
-            // There is no way to put this current job in front of the queue in < O(n) time where n = # of elements in JobSteps
-            // Everytime we add a new step, you could requeue every item to put those steps from that stack in JobSteps which 
-            // would result in O(n) for each time we add a composite action step where n = number of jobSteps which would compound 
-            // to O(n*m) where m = number of composite steps
-            // var temp = Root.JobSteps.ToArray();
-            // Root.JobSteps.Clear();
-            // Root.JobSteps.Enqueue(step);
-            // foreach(var s in temp)
-            //     Root.JobSteps.Enqueue(s);
-
-            // ~Optimized Method~
-            // Alterative solution: We add to another temp Queue
-            // After we add all the transformed composite steps to this temp queue, we requeue the whole JobSteps accordingly in EnqueueAllCompositeSteps()
-            // where the queued composite steps are at the front of the JobSteps Queue and the rest of the jobs maintain its order and are 
-            // placed after the queued composite steps
-            // This will take only O(n+m) time which would be just as efficient if we refactored the code of JobSteps to a PriorityQueue
-            // This temp Queue is created in the CompositeActionHandler. 
+            // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-            return step;
-        }
-
-        // Add Composite Steps first and then requeue the rest of the job steps. 
-        public void EnqueueAllCompositeSteps(Queue<IStep> steps)
-        {
-            // TODO: For UI purposes, look at figuring out how to condense steps in one node
-            //  maybe use "this" instead of "Root"?
-            if (Root.JobSteps != null)
-            {
-                var temp = Root.JobSteps.ToArray();
-                Root.JobSteps.Clear();
-                foreach (var cs in steps)
-                {
-                    Root.JobSteps.Enqueue(cs);
-                }
-                foreach (var s in temp)
-                {
-                    Root.JobSteps.Enqueue(s);
-                }
-            }
-            else
-            {
-                Root.JobSteps = new Queue<IStep>();
-                foreach (var cs in steps)
-                {
-                    Root.JobSteps.Enqueue(cs);
-                }
-            }
+            Root.JobSteps.Insert(0, step);
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
@@ -719,7 +673,7 @@ namespace GitHub.Runner.Worker
             PrependPath = new List<string>();
 
             // JobSteps for job ExecutionContext
-            JobSteps = new Queue<IStep>();
+            JobSteps = new List<IStep>();
 
             // PostJobSteps for job ExecutionContext
             PostJobSteps = new Stack<IStep>();

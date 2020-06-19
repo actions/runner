@@ -59,14 +59,15 @@ namespace GitHub.Runner.Worker
                     checkPostJobActions = true;
                     while (jobContext.PostJobSteps.TryPop(out var postStep))
                     {
-                        jobContext.JobSteps.Enqueue(postStep);
+                        jobContext.JobSteps.Add(postStep);
                     }
 
                     continue;
                 }
 
-                var step = jobContext.JobSteps.Dequeue();
-                var nextStep = jobContext.JobSteps.Count > 0 ? jobContext.JobSteps.Peek() : null;
+                var step = jobContext.JobSteps[0];
+                jobContext.JobSteps.RemoveAt(0);
+                var nextStep = jobContext.JobSteps.Count > 0 ? jobContext.JobSteps[0] : null;
                 // TODO: Fix this temporary workaround for Composite Actions
                 if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                 {
