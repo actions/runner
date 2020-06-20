@@ -7,6 +7,7 @@
                     "name": "string",
                     "description": "string",
                     "inputs": "inputs",
+                    "env": "runs-env",
                     "runs": "runs"
                 },
                 "loose-key-type": "non-empty-string",
@@ -88,7 +89,6 @@
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
-                    "env": "runs-env",
                     "steps": "composite-steps"
                 }
             }

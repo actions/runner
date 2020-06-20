@@ -75,6 +75,8 @@ namespace GitHub.Runner.Worker
                 }
 
                 var actionMapping = token.AssertMapping("action manifest root");
+                var envComposite = default(MappingToken);
+
                 foreach (var actionPair in actionMapping)
                 {
                     var propertyName = actionPair.Key.AssertString($"action.yml property key");
@@ -93,9 +95,14 @@ namespace GitHub.Runner.Worker
                             ConvertInputs(context, actionPair.Value, actionDefinition);
                             break;
 
-                        case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value);
+                        case "env":
+                            envComposite = actionPair.Value.AssertMapping("env");
                             break;
+
+                        case "runs":
+                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value, envComposite);
+                            break;
+
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
                             break;
@@ -340,7 +347,8 @@ namespace GitHub.Runner.Worker
         private ActionExecutionData ConvertRuns(
             IExecutionContext executionContext,
             TemplateContext context,
-            TemplateToken inputsToken)
+            TemplateToken inputsToken,
+            MappingToken envComposite)
         {
             var runsMapping = inputsToken.AssertMapping("runs");
             var usingToken = default(StringToken);
@@ -469,9 +477,14 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = stepsLoaded,
-                            Environment = envToken
+                            Environment = envComposite
                         };
                     }
+                }
+                // If there is an env set and it's not for composite action, yield an error
+                if (envComposite != null && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                {
+                    throw new ArgumentException("You cannot use env unless you are using Composite Actions");
                 }
                 else
                 {
