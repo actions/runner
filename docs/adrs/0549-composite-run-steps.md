@@ -167,36 +167,52 @@ Similar to the above logic, the environment variables will flow from the parent 
 
 Example `user/composite/action.yml`:
 ```
-using: 'composite' 
-steps: 
-  - id: foo2
-    run: htop                 <= Results in Error because htop is not installed
-  - id: foo3
-    run: npm install
-    if: success()
-  - id: foo4
-    run: htop                 <= This step will not run at all because "foo2" failed
+steps:
+  - run: exit 1
+  - uses: user/composite@v1  # <--- this will run, as it's marked as always runing
+    if: always()
 ```
 
 Example `workflow.yml`:
 ```
-steps: 
-  - uses: actions/setup-python@v1
-  - uses: actions/setup-node@v2
-  - uses: actions/checkout@v2
-  - id: foo
-    uses: user/composite@v1
-    if: always()
-  - run: Server: ${{ env.SERVER }} 
+steps:
+  - run: echo "just succeeding"
+  - run: echo "I will run, as my current scope is succeeding"
+    if: success()
+  - run: exit 1
+  - run: echo "I will not run, as my current scope is now failing"
 ```
 
-**TODO: This if condition implementation is up to discussion.** 
+**TODO: This if condition implementation is up to discussion.
+Discussions: https://github.com/actions/runner/pull/554#discussion_r443661891, ...
+** 
 
-See the paragraph below for a rudimentary approach:
+See the paragraph below for a rudimentary approach (thank you to @cybojenix for the idea, example, and explanation for this approach):
 
-The immediate if condition holds the most importance and only effects the current if condition. If there is no if condition for a step, it defaults to its parent's if condition (if that parent's if condition is not defined, it takes the grandparent's if condition, and so on)
+The `if` statement in the parent (in the example above, this is the `workflow.yml`) shows whether or not we should run the composite action. So, our composite action will run since the `if` condition for running the composite action is `always()`.
 
-In the example above, the `always()` condition in the `foo` step applies to the composite action steps `foo2`, `foo3`, and `foo4`. But since `foo3` has an if condition defined, it overrides its parent condition so `foo3` will have an if condition `success()`. Let's say that the `foo2` step fails, then `foo3` will not run since a past step failed and its if condition is `succcess()`, but `foo4` will run because its if condition is inherited from `foo` which is `always()`.   
+**Note that the if condition on the parent does not propogate to the rest of its children though.**
+
+In the child action (in this example, this is the `action.yml`), it starts with a clean slate (in other words, no imposing if conditions). Similar to the logic in the paragraph above, `echo "I will run, as my current scope is succeeding"` will run since the `if` condition checks if the previous steps **within this composite action** has not failed. `run: echo "I will not run, as my current scope is now failing"` will not run since the previous step resulted in an error and by default, the if expression is set to `success()` if the if condition is not set for a step.
+
+
+#### Exposing Parent's If Condition to Children Via a Variable
+It would be nice to have a way to access information from a parent's if condition. We could have a parent variable that is contained in the context similar to other context variables `github`, `strategy`, etc.:
+
+Example `user/composite/action.yml`
+steps:
+  - run: echo "preparing the slack bot..."  # <--- This will run, as nothing has failed within the composite yet
+  - run: slack.post("All builds passing, ready for a deploy")  # <-- this will not run, as the parent fails
+    if: ${{ parent.success() }}
+  - run: slack.post("A failure has happened, fix things now", alert=true)  # <--- This will run, as the parent fails
+    if: ${{ parent.failure() }}
+
+Example `workflow.yml`
+steps:
+  - run: exit 1
+  - uses: user/composite@v1
+    if: always()
+
     
 ### Timeout-minutes
 Example `user/composite/action.yml`:
