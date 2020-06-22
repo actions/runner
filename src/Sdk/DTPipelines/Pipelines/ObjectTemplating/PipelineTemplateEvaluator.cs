@@ -160,7 +160,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
         public List<ActionStep> LoadCompositeSteps(
-            TemplateToken token
+            TemplateToken token,
+            Int32 fileID
         )
         {
             var result = default(List<ActionStep>);
@@ -170,7 +171,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 // TODO: we might want to to have a bool to prevent it from filling in with missing context w/ dummy variables
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, fileID, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToSteps(context, token);
                 }

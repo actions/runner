@@ -27,7 +27,7 @@ namespace GitHub.Runner.Worker
 
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
-        public Dictionary<string, string> EvaluateCompositeActionEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
+        public Dictionary<string, string> EvaluateCompositeActionEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues, Int32 fileID);
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
     }
 
@@ -100,7 +100,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value, envComposite);
+                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value, envComposite, fileId);
                             break;
 
                         default:
@@ -225,7 +225,8 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, string> EvaluateCompositeActionEnvironment(
             IExecutionContext executionContext,
             MappingToken token,
-            IDictionary<string, PipelineContextData> extraExpressionValues)
+            IDictionary<string, PipelineContextData> extraExpressionValues,
+            Int32 fileID)
         {
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -234,7 +235,7 @@ namespace GitHub.Runner.Worker
                 var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, fileID, omitHeader: true);
                     context.Errors.Check();
 
                     // Mapping
@@ -348,7 +349,8 @@ namespace GitHub.Runner.Worker
             IExecutionContext executionContext,
             TemplateContext context,
             TemplateToken inputsToken,
-            MappingToken envComposite)
+            MappingToken envComposite = null,
+            Int32 fileID = default(Int32))
         {
             var runsMapping = inputsToken.AssertMapping("runs");
             var usingToken = default(StringToken);
@@ -415,7 +417,7 @@ namespace GitHub.Runner.Worker
                         {
                             var steps = run.Value.AssertSequence("steps");
                             var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                            stepsLoaded = evaluator.LoadCompositeSteps(steps);
+                            stepsLoaded = evaluator.LoadCompositeSteps(steps, fileID);
                             break;
                         }
                         throw new Exception("You aren't supposed to be using Composite Actions yet!");
@@ -477,7 +479,8 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = stepsLoaded,
-                            Environment = envComposite
+                            Environment = envComposite,
+                            FileID = fileID
                         };
                     }
                 }
