@@ -100,7 +100,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value, envComposite, fileId);
+                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value, fileId, envComposite);
                             break;
 
                         default:
@@ -235,7 +235,7 @@ namespace GitHub.Runner.Worker
                 var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, fileID, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, fileID, omitHeader: false);
                     context.Errors.Check();
 
                     // Mapping
@@ -349,9 +349,12 @@ namespace GitHub.Runner.Worker
             IExecutionContext executionContext,
             TemplateContext context,
             TemplateToken inputsToken,
-            MappingToken envComposite = null,
-            Int32 fileID = default(Int32))
+            Int32 fileID,
+            MappingToken envComposite = null
+            )
         {
+            Trace.Info($"COMPOSITE ACTIONS FILEID: {fileID}");
+
             var runsMapping = inputsToken.AssertMapping("runs");
             var usingToken = default(StringToken);
             var imageToken = default(StringToken);
@@ -415,9 +418,15 @@ namespace GitHub.Runner.Worker
                     case "steps":
                         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                         {
+                            Trace.Info($"COMPOSITE ACTIONS FILEID inside steps case: {fileID}");
+                            Trace.Info($"COMPOSITE ACTIONS file name inside steps case {context.GetFileName(fileID)}");
+                            // File name is loaded correctly!!
+                            // WHY DOESN'T THE CONTEXT GET PASED DOWN CORRECTLY?
                             var steps = run.Value.AssertSequence("steps");
                             var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                            stepsLoaded = evaluator.LoadCompositeSteps(steps, fileID);
+                            // stepsLoaded = evaluator.LoadCompositeSteps(steps, context.GetFileTable(), fileID);
+                            string fileName = context.GetFileName(fileID);
+                            stepsLoaded = evaluator.LoadCompositeSteps(steps, fileName);
                             break;
                         }
                         throw new Exception("You aren't supposed to be using Composite Actions yet!");

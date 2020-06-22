@@ -28,10 +28,11 @@ namespace GitHub.DistributedTask.ObjectTemplating
             TemplateToken template,
             Int32 removeBytes,
             Int32? fileId,
-            Boolean omitHeader = false)
+            Boolean omitHeader = false,
+            String fileName = default(string))
         {
             TemplateToken result;
-
+            context.TraceWriter.Info("I'm in Evaluate!");
             if (!omitHeader)
             {
                 if (fileId != null)
@@ -67,7 +68,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             }
             catch (Exception ex)
             {
-                context.Error(fileId, null, null, ex);
+                context.Error(fileId, null, null, ex, fileName: fileName);
                 result = null;
             }
 
