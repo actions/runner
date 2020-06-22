@@ -184,8 +184,7 @@ steps:
 ```
 
 **TODO: This if condition implementation is up to discussion.
-Discussions: https://github.com/actions/runner/pull/554#discussion_r443661891, ...
-** 
+Discussions: https://github.com/actions/runner/pull/554#discussion_r443661891, ...** 
 
 See the paragraph below for a rudimentary approach (thank you to @cybojenix for the idea, example, and explanation for this approach):
 
