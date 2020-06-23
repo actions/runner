@@ -104,6 +104,10 @@
                 "job",
                 "runner",
                 "env",
+                "always(0,0)",
+                "failure(0,0)",
+                "cancelled(0,0)",
+                "success(0,0)",
                 "hashFiles(1,255)"
             ],
             "sequence": {
