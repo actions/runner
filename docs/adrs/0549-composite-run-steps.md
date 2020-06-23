@@ -222,6 +222,8 @@ The `if` statement in the parent (in the example above, this is the `workflow.ym
 In the child action (in this example, this is the `action.yml`), it starts with a clean slate (in other words, no imposing if conditions). Similar to the logic in the paragraph above, `echo "I will run, as my current scope is succeeding"` will run since the `if` condition checks if the previous steps **within this composite action** has not failed. `run: echo "I will not run, as my current scope is now failing"` will not run since the previous step resulted in an error and by default, the if expression is set to `success()` if the if condition is not set for a step.
 
 
+What if a step has `cancelled()`? We do the opposite of our approach above if `cancelled()` is used for any of our composite run steps. We will cancel any step that has this condition if the workflow is cancelled at all.
+
 #### Exposing Parent's If Condition to Children Via a Variable
 It would be nice to have a way to access information from a parent's if condition. We could have a parent variable that is contained in the context similar to other context variables `github`, `strategy`, etc.:
 
