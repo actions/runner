@@ -1,14 +1,18 @@
 ## Features
-  - N/A
+  - Resolve action download info from server (#508, #515, #550)
+  - Print runner and machine name to log. (#539)
 ## Bugs
-  - Handle `jq` returns "null" if the field does not exist in create-latest-svc.sh (#478)
-  - Switch GITHUB_URL to GITHUB_SERVER_URL (#482)
-  - Fix problem matcher for GHES (#488)
-  - Fix container action inputs validation warning (#490)
-  - Fix post step display name (#490)
-  - Fix worker crash due to exception from evaluating step.env (#490)
+  - Reduce input validation warnings (#506) 
+  - Fix null ref exception in SecretMasker caused by `hashfiles` timeout. (#516)
+  - Add libicu66 to `./installDependencies.sh` for Ubuntu 20.04 (#535)
+  - Fix DataContract with Token service (#532)
+  - Skip search $PATH on command with fully qualified path (#526)
+  - Restore SELinux context on service file when SELinux is enabled (#525)
 ## Misc
-  - N/A
+  - Remove SPS/Token migration code. Remove GHES url manipulate code. (#513) 
+  - Add sub-step for developer flow for clarity (#523)
+  - Update Links and Language to Git + VSCode (#522)
+  - Update runner configuration exception message (#540)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
