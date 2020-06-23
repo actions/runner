@@ -14,7 +14,7 @@ Customers want to be able to compose actions from actions (ex: https://github.co
 An important step towards meeting this goal is to build in functionality for actions where users can simply execute any number of steps. 
 
 ## Decision
-In this ADR, we support running multiple steps in an Action. In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
+**In this ADR, we only support running multiple steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
 ### Steps
 Example `user/composite/action.yml`
