@@ -282,7 +282,7 @@ namespace GitHub.Runner.Worker
             // If the key already exists, we override it since the composite action env variables will have higher precedence
             // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
             step.ExecutionContext.SetEnvironmentVariables(envData);
-            Root.JobSteps.Insert(0, step);
+            Root.JobSteps.Insert(location, step);
         }
 
         public void SetEnvironmentVariables(Dictionary<string, string> dict)
