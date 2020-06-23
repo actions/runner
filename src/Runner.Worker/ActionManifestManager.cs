@@ -476,6 +476,7 @@ namespace GitHub.Runner.Worker
                 {
                     if (stepsLoaded == null)
                     {
+                        // TODO: Add a more helpful error message + including file name, etc. to show user that it's because of their yaml file
                         throw new ArgumentNullException($"No steps provided.");
                     }
                     else
