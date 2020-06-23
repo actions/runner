@@ -23,7 +23,7 @@ We don't want the workflow author to need to know how the internal workings of t
 
 **In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
-### Steps
+## Steps
 
 Example `workflow.yml`
 
@@ -65,7 +65,7 @@ echo hello world 4
 
 We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step sequentially. If any step fails and there are no `if` conditions defined, the whole composite action job fails. 
 
-### Inputs
+## Inputs
 
 Example `workflow.yml`:
 
@@ -99,7 +99,7 @@ Error
 
 Each input variable in the composite action is only viewable in its own scope (unlike environment variables). As seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
 
-### Outputs
+## Outputs
 
 Example `workflow.yml`:
 
@@ -141,11 +141,11 @@ Each of the output variables from the composite action is viewable from the work
 
 Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `my-output`). For example, in the `workflow.yml` file, you can't run `foo.steps.my-step.my-output`.
 
-### Context
+## Context
 
 Similar to the workflow file, the composite action has access to the [same context objects](https://help.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#contexts) (ex: `github`, `env`, `strategy`). 
 
-### Environment
+## Environment
 
 Example `workflow.yml`:
 
@@ -188,7 +188,7 @@ We plan to use environment variables for Composite Actions similar to the parent
 Similar to the above logic, the environment variables will flow from the parent node to its children node. More concretely, whatever workflow/action calls a composite action, that composite action has access to whatever environment variables its caller workflow/action has. Note that the composite action can append its own environment variables or overwrite its parent's environment variables. 
 
 
-### If Condition
+## If Condition
 
 Example `workflow.yml`:
 
@@ -247,7 +247,7 @@ steps:
     if: ${{ parent.failure() }}
 ```
     
-### Timeout-minutes
+## Timeout-minutes
 
 Example `workflow.yml`:
 
@@ -286,14 +286,14 @@ The rationale behind this is that users can configure their steps with the `if` 
 [Usage limits still apply](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions?query=if%28%29#usage-limits)
 
 
-### Continue-on-error
+## Continue-on-error
 
 **TODO: This continue-on-error condition implementation is up to discussion.** 
 For now, if `continue-on-error` is set to `true` for any of the composite action steps, the composite action job proceeds to the next step and ignores that failure. 
 
 Note, that since the composite action is not a workflow, it does not have jobs and thus it is not within scope at the moment to support something like `strategy` with `continue-on-error` as seen in this [example](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idcontinue-on-error).
 
-### Visualizing Composite Action in the GitHub Actions UI
+## Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
 
 Here is a visual represenation of the [first example](#Steps)
