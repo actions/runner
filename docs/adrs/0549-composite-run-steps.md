@@ -1,6 +1,6 @@
 TODO: Change file name to represent the correct PR number (PR is not created yet for this ADR)
 
-# ADR 0549: Composite Run Steps
+# ADR 054x: Composite Run Steps
 
 **Date**: 2020-06-17
 
@@ -13,6 +13,11 @@ TODO: Change file name to represent the correct PR number (PR is not created yet
 Customers want to be able to compose actions from actions (ex: https://github.com/actions/runner/issues/438)
 
 An important step towards meeting this goal is to build in functionality for actions where users can simply execute any number of steps. 
+
+## Guiding Principles
+
+We don't want the workflow author to need to know how the internal workings of the action work. Users shouldn't know the internal workings of the composite action (for example, `default.shell` and `default.workingDir` should not be inherited from the workflow file to the action file). When deciding how to design certain parts of composite run steps, we want to think one logical step from the consumer.
+
 
 ## Decision
 
@@ -135,8 +140,6 @@ oh hello Octocat
 Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its parent using dot notation (ex `steps.foo.outputs.bar`).
 
 Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `my-output`). For example, in the `workflow.yml` file, you can't run `foo.steps.my-step.my-output`.
-
-Our philosophy is we don't want the workflow author to need to know how the internal workings of the action work.
 
 ### Context
 
