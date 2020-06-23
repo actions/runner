@@ -159,33 +159,24 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        // public List<ActionStep> LoadCompositeSteps(
-        //     TemplateToken token,
-        //     IReadOnlyList<String> fileTable,
-        //     Int32 fileID)
-        // {
         public List<ActionStep> LoadCompositeSteps(
             TemplateToken token,
-            String fileName)
+            IReadOnlyList<String> fileTable)
         {
-            //  HOW DO WE LOG INFORMATION IN THIS FILE??????
             var result = default(List<ActionStep>);
             if (token != null && token.Type != TokenType.Null)
             {
                 // Create New Context Object
                 var context = CreateContext(null, null, setMissingContext: false);
 
-                // Pass original filetable to the context:
-                // foreach (var f in fileTable) {
-                //     context.GetFileId(f);
-                // }
+                // Pass original filetable to the new context:
+                foreach (var f in fileTable) {
+                    context.GetFileId(f);
+                }
 
-                // TODO: we might want to to have a bool to prevent it from filling in with missing context w/ dummy variables
-
-                // TODO: context does not have the fileTable associated with it!!!
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: false, fileName: fileName);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: false);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToSteps(context, token);
                 }

@@ -70,7 +70,8 @@ namespace GitHub.Runner.Worker
                 var fileContent = File.ReadAllText(manifestFile);
                 using (var stringReader = new StringReader(fileContent))
                 {
-                    var yamlObjectReader = new YamlObjectReader(null, stringReader);
+                    // Does setting fileID will help for token to return correct fileerror.
+                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
                     token = TemplateReader.Read(context, "action-root", yamlObjectReader, fileId, out _);
                 }
 
@@ -418,15 +419,9 @@ namespace GitHub.Runner.Worker
                     case "steps":
                         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                         {
-                            Trace.Info($"COMPOSITE ACTIONS FILEID inside steps case: {fileID}");
-                            Trace.Info($"COMPOSITE ACTIONS file name inside steps case {context.GetFileName(fileID)}");
-                            // File name is loaded correctly!!
-                            // WHY DOESN'T THE CONTEXT GET PASED DOWN CORRECTLY?
                             var steps = run.Value.AssertSequence("steps");
                             var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                            // stepsLoaded = evaluator.LoadCompositeSteps(steps, context.GetFileTable(), fileID);
-                            string fileName = context.GetFileName(fileID);
-                            stepsLoaded = evaluator.LoadCompositeSteps(steps, fileName);
+                            stepsLoaded = evaluator.LoadCompositeSteps(steps, context.GetFileTable());
                             break;
                         }
                         throw new Exception("You aren't supposed to be using Composite Actions yet!");

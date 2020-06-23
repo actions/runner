@@ -137,11 +137,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
             Int32? fileId,
             Int32? line,
             Int32? column,
-            Exception ex, 
-            String fileName = default(string))
+            Exception ex)
         {
-            TraceWriter.Info($"Error fileId: {fileId}");
-            var prefix = GetErrorPrefix(fileId, line, column, fileName: fileName);
+            var prefix = GetErrorPrefix(fileId, line, column);
             Errors.Add(prefix, ex);
             TraceWriter.Error(prefix, ex);
         }
@@ -205,16 +203,9 @@ namespace GitHub.DistributedTask.ObjectTemplating
         private String GetErrorPrefix(
             Int32? fileId,
             Int32? line,
-            Int32? column,
-            string fileName = default(string))
+            Int32? column)
         {
-            TraceWriter.Info($"GetErrorPrefix FileID: {fileId}");
-
-            // if (String.IsNullOrEmpty(fileName)) {
-            //     fileName = fileId.HasValue ? GetFileName(fileId.Value) : null;
-            // }
-            // var fileName = fileId.HasValue ? GetFileName(fileId.Value) : null;
-            fileName = "TESTING";
+            var fileName = fileId.HasValue ? GetFileName(fileId.Value) : null;
             if (!String.IsNullOrEmpty(fileName))
             {
                 if (line != null && column != null)

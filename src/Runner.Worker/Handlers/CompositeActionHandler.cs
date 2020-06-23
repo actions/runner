@@ -1,15 +1,16 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using System;
-using System.Linq;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using System.Collections.Generic;
-using GitHub.DistributedTask.Pipelines.ContextData;
+
 
 namespace GitHub.Runner.Worker.Handlers
 {
