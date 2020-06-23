@@ -291,6 +291,13 @@ For now, if `continue-on-error` is set to `true` for any of the composite action
 
 Note, that since the composite action is not a workflow, it does not have jobs and thus it is not within scope at the moment to support something like `strategy` with `continue-on-error` as seen in this [example](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idcontinue-on-error).
 
+## Defaults
+TODO
+
+Shell & WorkingDir
+
+Initial thoughts: the composite action takes the workingDir from the workflow file and the shell for the composite action is set by default only by the composite action itself. 
+
 ## Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
 
