@@ -25,15 +25,6 @@ We don't want the workflow author to need to know how the internal workings of t
 
 ### Steps
 
-Example `user/composite/action.yml`
-
-```yaml
-using: 'composite' 
-steps:
-  - run: pip install -r requirements.txt
-  - run: npm install
-```
-
 Example `workflow.yml`
 
 ```yaml
@@ -54,6 +45,15 @@ jobs:
       run: echo hello world 4
 ```
 
+Example `user/composite/action.yml`
+
+```yaml
+using: 'composite' 
+steps:
+  - run: pip install -r requirements.txt
+  - run: npm install
+```
+
 Example Output
 
 ```yaml
@@ -67,6 +67,17 @@ We add a token called "composite" which allows our Runner code to process compos
 
 ### Inputs
 
+Example `workflow.yml`:
+
+```yaml
+steps: 
+  - id: foo
+    uses: user/composite@v1
+    with:
+      your_name: "Octocat"
+  - run: echo hello ${{ steps.foo.inputs.your_name }} 2
+```
+
 Example `user/composite/action.yml`:
 
 ```yaml
@@ -79,17 +90,6 @@ steps:
   - run: echo hello ${{ inputs.your_name }}
 ```
 
-Example `workflow.yml`:
-
-```yaml
-steps: 
-  - id: foo
-    uses: user/composite@v1
-    with:
-      your_name: "Octocat"
-  - run: echo hello ${{ steps.foo.inputs.your_name }} 2
-```
-
 Example Output:
 
 ```
@@ -100,6 +100,18 @@ Error
 Each input variable in the composite action is only viewable in its own scope (unlike environment variables). As seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
 
 ### Outputs
+
+Example `workflow.yml`:
+
+```yaml
+...
+steps: 
+  - id: foo
+    uses: user/composite@v1
+    with:
+      your_name: "Octocat"
+  - run: echo oh ${{ steps.foo.outputs.bar }} 
+```
 
 Example `user/composite/action.yml`:
 
@@ -116,18 +128,6 @@ steps:
     run: |
       echo ::set-output name=my-output::my-value
       echo hello ${{ inputs.your_name }} 
-```
-
-Example `workflow.yml`:
-
-```yaml
-...
-steps: 
-  - id: foo
-    uses: user/composite@v1
-    with:
-      your_name: "Octocat"
-  - run: echo oh ${{ steps.foo.outputs.bar }} 
 ```
 
 Example Output:
@@ -147,6 +147,18 @@ Similar to the workflow file, the composite action has access to the [same conte
 
 ### Environment
 
+Example `workflow.yml`:
+
+```yaml
+env:
+  NAME1: test1
+  SERVER: production
+steps: 
+  - id: foo
+    uses: user/test@v1
+  - run: echo Server $SERVER
+```
+
 Example `user/composite/action.yml`:
 
 ```yaml
@@ -161,18 +173,6 @@ steps:
       echo Server $SERVER 
     env:
       NAME2: test3
-```
-
-Example `workflow.yml`:
-
-```yaml
-env:
-  NAME1: test1
-  SERVER: production
-steps: 
-  - id: foo
-    uses: user/test@v1
-  - run: echo Server $SERVER
 ```
 
 Example Output:
@@ -190,6 +190,15 @@ Similar to the above logic, the environment variables will flow from the parent 
 
 ### If Condition
 
+Example `workflow.yml`:
+
+```yaml
+steps:
+  - run: exit 1
+  - uses: user/composite@v1  # <--- this will run, as it's marked as always runing
+    if: always()
+```
+
 Example `user/composite/action.yml`:
 
 ```yaml
@@ -199,15 +208,6 @@ steps:
     if: success()
   - run: exit 1
   - run: echo "I will not run, as my current scope is now failing"
-```
-
-Example `workflow.yml`:
-
-```yaml
-steps:
-  - run: exit 1
-  - uses: user/composite@v1  # <--- this will run, as it's marked as always runing
-    if: always()
 ```
 
 **TODO: This if condition implementation is up to discussion.
@@ -227,6 +227,15 @@ What if a step has `cancelled()`? We do the opposite of our approach above if `c
 #### Exposing Parent's If Condition to Children Via a Variable
 It would be nice to have a way to access information from a parent's if condition. We could have a parent variable that is contained in the context similar to other context variables `github`, `strategy`, etc.:
 
+Example `workflow.yml`
+
+```yaml
+steps:
+  - run: exit 1
+  - uses: user/composite@v1
+    if: always()
+```
+
 Example `user/composite/action.yml`
 
 ```yaml
@@ -237,18 +246,18 @@ steps:
   - run: slack.post("A failure has happened, fix things now", alert=true)  # <--- This will run, as the parent fails
     if: ${{ parent.failure() }}
 ```
-
-Example `workflow.yml`
-
-```yaml
-steps:
-  - run: exit 1
-  - uses: user/composite@v1
-    if: always()
-```
-
     
 ### Timeout-minutes
+
+Example `workflow.yml`:
+
+```yaml
+steps: 
+  - id: bar
+    uses: user/test@v1
+    timeout-minutes: 50
+```
+
 Example `user/composite/action.yml`:
 
 ```yaml
@@ -262,15 +271,6 @@ steps:
   - id: foo3
     run: echo test 3
     timeout-minutes: 10
-```
-
-Example `workflow.yml`:
-
-```yaml
-steps: 
-  - id: bar
-    uses: user/test@v1
-    timeout-minutes: 50
 ```
 
 **TODO: This timeout-minutes condition implementation is up to discussion.** 
