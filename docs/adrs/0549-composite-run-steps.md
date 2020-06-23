@@ -168,19 +168,19 @@ Similar to the above logic, the environment variables will flow from the parent 
 Example `user/composite/action.yml`:
 ```
 steps:
-  - run: exit 1
-  - uses: user/composite@v1  # <--- this will run, as it's marked as always runing
-    if: always()
-```
-
-Example `workflow.yml`:
-```
-steps:
   - run: echo "just succeeding"
   - run: echo "I will run, as my current scope is succeeding"
     if: success()
   - run: exit 1
   - run: echo "I will not run, as my current scope is now failing"
+```
+
+Example `workflow.yml`:
+```
+steps:
+  - run: exit 1
+  - uses: user/composite@v1  # <--- this will run, as it's marked as always runing
+    if: always()
 ```
 
 **TODO: This if condition implementation is up to discussion.
