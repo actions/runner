@@ -27,7 +27,7 @@ namespace GitHub.Runner.Worker
 
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
-        public Dictionary<string, string> EvaluateCompositeActionEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues, Int32 fileID);
+        public Dictionary<string, string> EvaluateCompositeActionEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
     }
 
@@ -226,8 +226,7 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, string> EvaluateCompositeActionEnvironment(
             IExecutionContext executionContext,
             MappingToken token,
-            IDictionary<string, PipelineContextData> extraExpressionValues,
-            Int32 fileID)
+            IDictionary<string, PipelineContextData> extraExpressionValues)
         {
             var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -236,7 +235,7 @@ namespace GitHub.Runner.Worker
                 var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, fileID, omitHeader: false);
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, null, omitHeader: false);
                     context.Errors.Check();
 
                     // Mapping
@@ -484,8 +483,7 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = stepsLoaded,
-                            Environment = envComposite,
-                            FileID = fileID
+                            Environment = envComposite
                         };
                     }
                 }

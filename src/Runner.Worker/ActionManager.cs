@@ -402,7 +402,6 @@ namespace GitHub.Runner.Worker
                         Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction.Steps)}");
                         Trace.Info($"Load: {compositeAction.Environment} environment steps");
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Environment)}");
-                        Trace.Info($"Composite Action File ID: {compositeAction.FileID.ToString()}");
                     }
                     else
                     {
@@ -1291,7 +1290,6 @@ namespace GitHub.Runner.Worker
         public override bool HasPost => false;
         public List<Pipelines.ActionStep> Steps { get; set; }
         public MappingToken Environment { get; set; }
-        public Int32 FileID { get; set; }
     }
 
     public abstract class ActionExecutionData
