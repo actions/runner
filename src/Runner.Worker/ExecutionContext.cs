@@ -63,7 +63,7 @@ namespace GitHub.Runner.Worker
         JobContext JobContext { get; }
 
         // Only job level ExecutionContext has JobSteps
-        Queue<IStep> JobSteps { get; }
+        List<IStep> JobSteps { get; }
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
@@ -105,6 +105,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
+        void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -159,7 +160,7 @@ namespace GitHub.Runner.Worker
         public List<ContainerInfo> ServiceContainers { get; private set; }
 
         // Only job level ExecutionContext has JobSteps
-        public Queue<IStep> JobSteps { get; private set; }
+        public List<IStep> JobSteps { get; private set; }
 
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
@@ -168,7 +169,6 @@ namespace GitHub.Runner.Worker
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
-
 
         public TaskResult? Result
         {
@@ -264,6 +264,20 @@ namespace GitHub.Runner.Worker
 
             step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState);
             Root.PostJobSteps.Push(step);
+        }
+
+        /// <summary>
+        /// Helper function used in CompositeActionHandler::RunAsync to
+        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
+        /// </summary>
+        public void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location)
+        {
+            // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
+            var newGuid = Guid.NewGuid();
+            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
+            step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
+            // TODO: confirm whether not copying message contexts is safe
+            Root.JobSteps.Insert(location, step);
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
@@ -660,7 +674,7 @@ namespace GitHub.Runner.Worker
             PrependPath = new List<string>();
 
             // JobSteps for job ExecutionContext
-            JobSteps = new Queue<IStep>();
+            JobSteps = new List<IStep>();
 
             // PostJobSteps for job ExecutionContext
             PostJobSteps = new Stack<IStep>();

@@ -159,6 +159,32 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        public List<ActionStep> LoadCompositeSteps(
+            TemplateToken token
+        )
+        {
+            var result = default(List<ActionStep>);
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(null, null, setMissingContext: false);
+                // TODO: we might want to to have a bool to prevent it from filling in with missing context w/ dummy variables
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = PipelineTemplateConverter.ConvertToSteps(context, token);
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+            return result;
+        }
+
+
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
             DictionaryContextData contextData,
@@ -400,7 +426,8 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private TemplateContext CreateContext(
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions,
-            IEnumerable<KeyValuePair<String, Object>> expressionState = null)
+            IEnumerable<KeyValuePair<String, Object>> expressionState = null,
+            bool setMissingContext = true)
         {
             var result = new TemplateContext
             {
@@ -449,18 +476,21 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             //   - Evaluating early when all referenced contexts are available, even though all allowed
             //     contexts may not yet be available. For example, evaluating step display name can often
             //     be performed early.
-            foreach (var name in s_expressionValueNames)
+            if (setMissingContext)
             {
-                if (!result.ExpressionValues.ContainsKey(name))
+                foreach (var name in s_expressionValueNames)
                 {
-                    result.ExpressionValues[name] = null;
+                    if (!result.ExpressionValues.ContainsKey(name))
+                    {
+                        result.ExpressionValues[name] = null;
+                    }
                 }
-            }
-            foreach (var name in s_expressionFunctionNames)
-            {
-                if (!functionNames.Contains(name))
+                foreach (var name in s_expressionFunctionNames)
                 {
-                    result.ExpressionFunctions.Add(new FunctionInfo<NoOperation>(name, 0, Int32.MaxValue));
+                    if (!functionNames.Contains(name))
+                    {
+                        result.ExpressionFunctions.Add(new FunctionInfo<NoOperation>(name, 0, Int32.MaxValue));
+                    }
                 }
             }
 

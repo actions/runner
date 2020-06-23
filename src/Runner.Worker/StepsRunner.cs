@@ -59,14 +59,15 @@ namespace GitHub.Runner.Worker
                     checkPostJobActions = true;
                     while (jobContext.PostJobSteps.TryPop(out var postStep))
                     {
-                        jobContext.JobSteps.Enqueue(postStep);
+                        jobContext.JobSteps.Add(postStep);
                     }
 
                     continue;
                 }
 
-                var step = jobContext.JobSteps.Dequeue();
-                var nextStep = jobContext.JobSteps.Count > 0 ? jobContext.JobSteps.Peek() : null;
+                var step = jobContext.JobSteps[0];
+                jobContext.JobSteps.RemoveAt(0);
+                var nextStep = jobContext.JobSteps.Count > 0 ? jobContext.JobSteps[0] : null;
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
@@ -409,7 +410,11 @@ namespace GitHub.Runner.Worker
                     scope = scopesToInitialize.Pop();
                     executionContext.Debug($"Initializing scope '{scope.Name}'");
                     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
-                    executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
+                    // TODO: Fix this temporary workaround for Composite Actions
+                    if (!executionContext.ExpressionValues.ContainsKey("inputs") && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                    {
+                        executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
+                    }
                     var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
                     var inputs = default(DictionaryContextData);
                     try
@@ -432,7 +437,11 @@ namespace GitHub.Runner.Worker
             // Setup expression values
             var scopeName = executionContext.ScopeName;
             executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
-            executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
+            // TODO: Fix this temporary workaround for Composite Actions
+            if (!executionContext.ExpressionValues.ContainsKey("inputs") && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+            {
+                executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
+            }
 
             return true;
         }
