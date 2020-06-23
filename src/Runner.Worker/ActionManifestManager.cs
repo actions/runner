@@ -34,8 +34,6 @@ namespace GitHub.Runner.Worker
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
     {
         private TemplateSchema _actionManifestSchema;
-        private IReadOnlyList<String> _fileTable;
-
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -56,23 +54,25 @@ namespace GitHub.Runner.Worker
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
-            var context = CreateContext(executionContext);
+            var templateContext = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
             try
             {
                 var token = default(TemplateToken);
 
                 // Get the file ID
-                var fileId = context.GetFileId(manifestFile);
-                _fileTable = context.GetFileTable();
+                var fileId = templateContext.GetFileId(manifestFile);
+                var fileName = templateContext.GetFileName(fileId);
+
+                // Add this file to the FileTable in executionContext
+                executionContext.FileTable.Add(fileName);
 
                 // Read the file
                 var fileContent = File.ReadAllText(manifestFile);
                 using (var stringReader = new StringReader(fileContent))
                 {
-                    // Does setting fileID will help for token to return correct fileerror.
                     var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
-                    token = TemplateReader.Read(context, "action-root", yamlObjectReader, fileId, out _);
+                    token = TemplateReader.Read(templateContext, "action-root", yamlObjectReader, fileId, out _);
                 }
 
                 var actionMapping = token.AssertMapping("action manifest root");
@@ -93,7 +93,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "inputs":
-                            ConvertInputs(context, actionPair.Value, actionDefinition);
+                            ConvertInputs(templateContext, actionPair.Value, actionDefinition);
                             break;
 
                         case "env":
@@ -101,7 +101,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value, fileId, envComposite);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, envComposite);
                             break;
 
                         default:
@@ -113,12 +113,12 @@ namespace GitHub.Runner.Worker
             catch (Exception ex)
             {
                 Trace.Error(ex);
-                context.Errors.Add(ex);
+                templateContext.Errors.Add(ex);
             }
 
-            if (context.Errors.Count > 0)
+            if (templateContext.Errors.Count > 0)
             {
-                foreach (var error in context.Errors)
+                foreach (var error in templateContext.Errors)
                 {
                     Trace.Error($"Action.yml load error: {error.Message}");
                     executionContext.Error(error.Message);
@@ -334,12 +334,12 @@ namespace GitHub.Runner.Worker
                 result.ExpressionFunctions.Add(item);
             }
 
-            // Add the file table
-            if (_fileTable?.Count > 0)
+            // Add the file table from the Execution Context
+            if (executionContext.FileTable.Count > 0)
             {
-                for (var i = 0; i < _fileTable.Count; i++)
+                for (var i = 0; i < executionContext.FileTable.Count; i++)
                 {
-                    result.GetFileId(_fileTable[i]);
+                    result.GetFileId(executionContext.FileTable[i]);
                 }
             }
 

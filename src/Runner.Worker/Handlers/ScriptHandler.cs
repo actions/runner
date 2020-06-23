@@ -291,8 +291,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // Error
                 if (exitCode != 0)
                 {
-                    // TODO: Maybe add FileID here to pass to ScriptHandler for more helpful error message?
-                    // ExecutionContext.Error($"Process completed with exit code {exitCode} erroring in {GetFileName(Data.FileID)}");
                     ExecutionContext.Error($"Process completed with exit code {exitCode}");
                     ExecutionContext.Result = TaskResult.Failed;
                 }
