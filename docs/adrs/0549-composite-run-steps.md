@@ -32,9 +32,9 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
-    - id: job1
+    - id: step1
       uses: actions/setup-python@v1
-    - id: job2
+    - id: step2
       uses: actions/setup-node@v2
     - uses: actions/checkout@v2
       needs: [job1, job2]
