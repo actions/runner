@@ -277,7 +277,7 @@ namespace GitHub.Runner.Worker
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
             // TODO: confirm whether not copying message contexts is safe
-            Root.JobSteps.Insert(0, step);
+            Root.JobSteps.Insert(location, step);
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
