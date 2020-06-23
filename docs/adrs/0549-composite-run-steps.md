@@ -9,25 +9,29 @@ TODO: Change file name to represent the correct PR number (PR is not created yet
 **Relevant PR**: https://github.com/actions/runner/pull/549
 
 ## Context
+
 Customers want to be able to compose actions from actions (ex: https://github.com/actions/runner/issues/438)
 
 An important step towards meeting this goal is to build in functionality for actions where users can simply execute any number of steps. 
 
 ## Decision
+
 **In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
 ### Steps
+
 Example `user/composite/action.yml`
-```
-...
+
+```yaml
 using: 'composite' 
 steps:
   - run: pip install -r requirements.txt
   - run: npm install
 ```
+
 Example `workflow.yml`
-```
-...
+
+```yaml
 jobs:
   build:
     runs-on: self-hosted
@@ -44,18 +48,23 @@ jobs:
     - name: workflow step 2
       run: echo hello world 4
 ```
+
 Example Output
-```
+
+```yaml
 [npm installation output]
 [pip requirements output]
 echo hello world 3
 echo hello world 4
 ```
+
 We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step sequentially. If any step fails and there are no `if` conditions defined, the whole composite action job fails. 
 
 ### Inputs
+
 Example `user/composite/action.yml`:
-```
+
+```yaml
 using: 'composite' 
 inputs:
   your_name:
@@ -66,8 +75,8 @@ steps:
 ```
 
 Example `workflow.yml`:
-```
-...
+
+```yaml
 steps: 
   - id: foo
     uses: user/composite@v1
@@ -77,6 +86,7 @@ steps:
 ```
 
 Example Output:
+
 ```
 hello Octocat
 Error
@@ -85,8 +95,10 @@ Error
 Each input variable in the composite action is only viewable in its own scope (unlike environment variables). As seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
 
 ### Outputs
+
 Example `user/composite/action.yml`:
-```
+
+```yaml
 using: 'composite' 
 inputs:
   your_name:
@@ -102,7 +114,8 @@ steps:
 ```
 
 Example `workflow.yml`:
-```
+
+```yaml
 ...
 steps: 
   - id: foo
@@ -113,10 +126,12 @@ steps:
 ```
 
 Example Output:
+
 ```
 hello Octocat
 oh hello Octocat
 ```
+
 Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its parent using dot notation (ex `steps.foo.outputs.bar`).
 
 Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `my-output`). For example, in the `workflow.yml` file, you can't run `foo.steps.my-step.my-output`.
@@ -124,11 +139,14 @@ Moreover, the output ids are only accessible within the scope where it was defin
 Our philosophy is we don't want the workflow author to need to know how the internal workings of the action work.
 
 ### Context
+
 Similar to the workflow file, the composite action has access to the [same context objects](https://help.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#contexts) (ex: `github`, `env`, `strategy`). 
 
 ### Environment
+
 Example `user/composite/action.yml`:
-```
+
+```yaml
 using: 'composite' 
 env:
   NAME2: test2
@@ -143,7 +161,8 @@ steps:
 ```
 
 Example `workflow.yml`:
-```
+
+```yaml
 env:
   NAME1: test1
   SERVER: production
@@ -154,6 +173,7 @@ steps:
 ```
 
 Example Output:
+
 ```
 NAME2 test3
 Server development
@@ -168,7 +188,8 @@ Similar to the above logic, the environment variables will flow from the parent 
 ### If Condition
 
 Example `user/composite/action.yml`:
-```
+
+```yaml
 steps:
   - run: echo "just succeeding"
   - run: echo "I will run, as my current scope is succeeding"
@@ -178,7 +199,8 @@ steps:
 ```
 
 Example `workflow.yml`:
-```
+
+```yaml
 steps:
   - run: exit 1
   - uses: user/composite@v1  # <--- this will run, as it's marked as always runing
@@ -201,23 +223,30 @@ In the child action (in this example, this is the `action.yml`), it starts with 
 It would be nice to have a way to access information from a parent's if condition. We could have a parent variable that is contained in the context similar to other context variables `github`, `strategy`, etc.:
 
 Example `user/composite/action.yml`
+
+```yaml
 steps:
   - run: echo "preparing the slack bot..."  # <--- This will run, as nothing has failed within the composite yet
   - run: slack.post("All builds passing, ready for a deploy")  # <-- this will not run, as the parent fails
     if: ${{ parent.success() }}
   - run: slack.post("A failure has happened, fix things now", alert=true)  # <--- This will run, as the parent fails
     if: ${{ parent.failure() }}
+```
 
 Example `workflow.yml`
+
+```yaml
 steps:
   - run: exit 1
   - uses: user/composite@v1
     if: always()
+```
 
     
 ### Timeout-minutes
 Example `user/composite/action.yml`:
-```
+
+```yaml
 using: 'composite' 
 steps: 
   - id: foo1
@@ -231,12 +260,14 @@ steps:
 ```
 
 Example `workflow.yml`:
-```
+
+```yaml
 steps: 
   - id: bar
     uses: user/test@v1
     timeout-minutes: 50
 ```
+
 **TODO: This timeout-minutes condition implementation is up to discussion.** 
 
 A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
@@ -261,7 +292,8 @@ Note, that since the composite action is not a workflow, it does not have jobs a
 We want all the composite action's steps to be condensed into the original composite action node. 
 
 Here is a visual represenation of the [first example](#Steps)
-```
+
+```yaml
 | composite_action_node |
     | echo hello world 1 | 
     | echo hello world 2 |
