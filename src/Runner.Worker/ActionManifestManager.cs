@@ -34,9 +34,12 @@ namespace GitHub.Runner.Worker
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
     {
         private TemplateSchema _actionManifestSchema;
+        private IHostContext _hostContext;
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+
+            _hostContext = hostContext;
 
             var assembly = Assembly.GetExecutingAssembly();
             var json = default(string);
@@ -56,13 +59,19 @@ namespace GitHub.Runner.Worker
         {
             var templateContext = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
+
+            // Clean up file name real quick
+            // Instead of using Regex which can be computationally expensive, 
+            // we can just remove the # of characters from the fileName according to the length of the basePath
+            string basePath = _hostContext.GetDirectory(WellKnownDirectory.Actions);
+            var fileName = manifestFile.Remove(0, basePath.Length + 1);
+
             try
             {
                 var token = default(TemplateToken);
 
                 // Get the file ID
-                var fileId = templateContext.GetFileId(manifestFile);
-                var fileName = templateContext.GetFileName(fileId);
+                var fileId = templateContext.GetFileId(fileName);
 
                 // Add this file to the FileTable in executionContext
                 executionContext.FileTable.Add(fileName);
@@ -124,7 +133,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Error(error.Message);
                 }
 
-                throw new ArgumentException($"Fail to load {manifestFile}");
+                throw new ArgumentException($"Fail to load {fileName}");
             }
 
             if (actionDefinition.Execution == null)
