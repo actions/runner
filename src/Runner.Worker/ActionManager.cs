@@ -1279,8 +1279,6 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.Script;
         public override bool HasPre => false;
         public override bool HasPost => false;
-
-        // TODO: Maybe add FileID here to pass to ScriptHandler for more helpful error message?
     }
 
     public sealed class CompositeActionExecutionData : ActionExecutionData
