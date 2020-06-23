@@ -75,7 +75,6 @@ steps:
     uses: user/composite@v1
     with:
       your_name: "Octocat"
-  - run: echo hello ${{ steps.foo.inputs.your_name }} 2
 ```
 
 Example `user/composite/action.yml`:
@@ -94,10 +93,9 @@ Example Output:
 
 ```
 hello Octocat
-Error
 ```
 
-Each input variable in the composite action is only viewable in its own scope (unlike environment variables). As seen in the last line in the example output, in the workflow file, it will not have access to the action's `inputs` attribute.
+Each input variable in the composite action is only viewable in its own scope.
 
 ## Outputs
 
