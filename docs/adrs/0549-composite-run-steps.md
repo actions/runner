@@ -113,7 +113,8 @@ Example `user/composite/action.yml`:
 ```yaml
 using: 'composite' 
 outputs:
-  random-number: ${{ steps.my-step.my-output}}
+  random-number: 
+    description: "random number"
 steps: 
   - run: echo "::set-output name=my-output::$(echo $RANDOM)"
 ```
@@ -121,7 +122,7 @@ steps:
 Example Output:
 
 ```
-43243
+::set-output name=my-output::43243
 random-number 43243
 ```
 
