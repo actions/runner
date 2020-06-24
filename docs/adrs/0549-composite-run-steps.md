@@ -105,33 +105,27 @@ Example `workflow.yml`:
 steps: 
   - id: foo
     uses: user/composite@v1
-    with:
-      your_name: "Octocat"
-  - run: echo oh ${{ steps.foo.outputs.bar }} 
+  - run: echo random-number ${{ steps.foo.outputs.random-number }} 
 ```
 
 Example `user/composite/action.yml`:
 
 ```yaml
 using: 'composite' 
-inputs:
-  your_name:
-    description: 'Your name'
-    default: 'Ethan'
 outputs:
-  bar: ${{ steps.my-step.my-output}}
+  random-number: ${{ steps.my-step.my-output}}
 steps: 
   - id: my-step
     run: |
       echo ::set-output name=my-output::my-value
-      echo hello ${{ inputs.your_name }} 
+      echo $RANDOM
 ```
 
 Example Output:
 
 ```
-hello Octocat
-oh hello Octocat
+43243
+random-number 43243
 ```
 
 Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its parent using dot notation (ex `steps.foo.outputs.bar`).
