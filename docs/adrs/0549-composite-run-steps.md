@@ -115,10 +115,7 @@ using: 'composite'
 outputs:
   random-number: ${{ steps.my-step.my-output}}
 steps: 
-  - id: my-step
-    run: |
-      echo ::set-output name=my-output::my-value
-      echo $RANDOM
+  - run: echo "::set-output name=my-output::$(echo $RANDOM)"
 ```
 
 Example Output:
