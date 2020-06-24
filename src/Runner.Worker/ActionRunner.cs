@@ -20,6 +20,7 @@ namespace GitHub.Runner.Worker
     {
         Pre,
         Main,
+        CompositePost,
         Post,
     }
 

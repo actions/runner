@@ -385,6 +385,7 @@ namespace GitHub.Runner.Worker
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
         }
 
+        // TODO: Clean up w/ process of condensing output cleanup into one composite action step.
         private bool InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
         {
             var executionContext = step.ExecutionContext;

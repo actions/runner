@@ -112,6 +112,14 @@ namespace GitHub.Runner.Worker.Handlers
                 location++;
             }
 
+            // Gather outputs and clean up outputs in one step
+            var postStepRunner = HostContext.CreateService<IActionRunner>();
+            postStepRunner.Action = new Pipelines.ActionStep();
+            postStepRunner.Stage = ActionRunStage.CompositePost;
+            postStepRunner.Condition = "always()";
+            postStepRunner.DisplayName = "Composite Post Step Cleanup";
+            ExecutionContext.RegisterNestedStep(postStepRunner, inputsData, location, envData);
+
             return Task.CompletedTask;
         }
 
