@@ -119,7 +119,7 @@ outputs:
 runs:
   using: "composite"
   steps: 
-    - run: echo "::set-output name=my-output::$(echo $RANDOM)"
+    - run: echo "::set-output name=random-number::$(echo $RANDOM)"
 ```
 
 Example Output:
