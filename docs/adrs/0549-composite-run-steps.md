@@ -184,6 +184,9 @@ We plan to use environment variables for Composite Actions similar to the parent
 
 Similar to the above logic, the environment variables will flow from the parent node to its children node. More concretely, whatever workflow/action calls a composite action, that composite action has access to whatever environment variables its caller workflow/action has. Note that the composite action can append its own environment variables or overwrite its parent's environment variables. 
 
+## Secrets
+
+We'll pass the secrets from the composite action's parents (ex: the workflow file) to the composite action. Secrets cannot be created in a composite action.
 
 ## If Condition
 
