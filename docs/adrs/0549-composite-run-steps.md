@@ -47,10 +47,11 @@ jobs:
 Example `user/composite/action.yml`
 
 ```yaml
-using: 'composite' 
-steps:
-  - run: pip install -r requirements.txt
-  - run: npm install
+runs:
+  using: "composite"
+  steps:
+    - run: pip install -r requirements.txt
+    - run: npm install
 ```
 
 Example Output
@@ -79,13 +80,14 @@ steps:
 Example `user/composite/action.yml`:
 
 ```yaml
-using: 'composite' 
 inputs:
   your_name:
     description: 'Your name'
     default: 'Ethan'
-steps: 
-  - run: echo hello ${{ inputs.your_name }}
+runs:
+  using: "composite"
+  steps: 
+    - run: echo hello ${{ inputs.your_name }}
 ```
 
 Example Output:
@@ -111,12 +113,13 @@ steps:
 Example `user/composite/action.yml`:
 
 ```yaml
-using: 'composite' 
 outputs:
   random-number: 
     description: "random number"
-steps: 
-  - run: echo "::set-output name=my-output::$(echo $RANDOM)"
+runs:
+  using: "composite"
+  steps: 
+    - run: echo "::set-output name=my-output::$(echo $RANDOM)"
 ```
 
 Example Output:
@@ -155,13 +158,15 @@ using: 'composite'
 env:
   NAME2: test2
   SERVER: development
-steps: 
-  - id: my-step
-    run: |
-      echo NAME2 $NAME2
-      echo Server $SERVER 
-    env:
-      NAME2: test3
+runs:
+  using: "composite"
+  steps: 
+    - id: my-step
+      run: |
+        echo NAME2 $NAME2
+        echo Server $SERVER 
+      env:
+        NAME2: test3
 ```
 
 Example Output:
@@ -194,12 +199,14 @@ steps:
 Example `user/composite/action.yml`:
 
 ```yaml
-steps:
-  - run: echo "just succeeding"
-  - run: echo "I will run, as my current scope is succeeding"
-    if: success()
-  - run: exit 1
-  - run: echo "I will not run, as my current scope is now failing"
+runs:
+  using: "composite"
+  steps:
+    - run: echo "just succeeding"
+    - run: echo "I will run, as my current scope is succeeding"
+      if: success()
+    - run: exit 1
+    - run: echo "I will not run, as my current scope is now failing"
 ```
 
 **TODO: This if condition implementation is up to discussion.
@@ -231,12 +238,14 @@ steps:
 Example `user/composite/action.yml`
 
 ```yaml
-steps:
-  - run: echo "preparing the slack bot..."  # <--- This will run, as nothing has failed within the composite yet
-  - run: slack.post("All builds passing, ready for a deploy")  # <-- this will not run, as the parent fails
-    if: ${{ parent.success() }}
-  - run: slack.post("A failure has happened, fix things now", alert=true)  # <--- This will run, as the parent fails
-    if: ${{ parent.failure() }}
+runs:
+  using: "composite"
+  steps:
+    - run: echo "preparing the slack bot..."  # <--- This will run, as nothing has failed within the composite yet
+    - run: slack.post("All builds passing, ready for a deploy")  # <-- this will not run, as the parent fails
+      if: ${{ parent.success() }}
+    - run: slack.post("A failure has happened, fix things now", alert=true)  # <--- This will run, as the parent fails
+      if: ${{ parent.failure() }}
 ```
     
 ## Timeout-minutes
@@ -253,16 +262,17 @@ steps:
 Example `user/composite/action.yml`:
 
 ```yaml
-using: 'composite' 
-steps: 
-  - id: foo1
-    run: echo test 1
-    timeout-minutes: 10
-  - id: foo2
-    run: echo test 2
-  - id: foo3
-    run: echo test 3
-    timeout-minutes: 10
+runs:
+  using: "composite"
+  steps: 
+    - id: foo1
+      run: echo test 1
+      timeout-minutes: 10
+    - id: foo2
+      run: echo test 2
+    - id: foo3
+      run: echo test 3
+      timeout-minutes: 10
 ```
 
 **TODO: This timeout-minutes condition implementation is up to discussion.** 
