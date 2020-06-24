@@ -470,6 +470,11 @@ namespace GitHub.Runner.Worker
 
                 // Finalize current and ancestor scopes
                 var stepsContext = step.ExecutionContext.StepsContext;
+
+                // TODO: Remove
+                if (scopesToFinalize?.Count > 0) {
+                    Trace.Info("scopesToFinalize?.Count > 0");
+                }
                 while (scopesToFinalize?.Count > 0)
                 {
                     scope = scopesToFinalize.Dequeue();
@@ -480,6 +485,7 @@ namespace GitHub.Runner.Worker
                     var outputs = default(DictionaryContextData);
                     try
                     {
+                        // TODO: Figure out how to process all the outputs from the composite action as 1 job step.
                         outputs = templateEvaluator.EvaluateStepScopeOutputs(scope.Outputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
                     }
                     catch (Exception ex)
@@ -499,6 +505,7 @@ namespace GitHub.Runner.Worker
                         {
                             var outputName = pair.Key;
                             var outputValue = pair.Value.ToString();
+                            // TODO: Figure out what scope to use for setting output for Composite Action
                             stepsContext.SetOutput(parentScopeName, contextName, outputName, outputValue, out var reference);
                             executionContext.Debug($"{reference}='{outputValue}'");
                         }

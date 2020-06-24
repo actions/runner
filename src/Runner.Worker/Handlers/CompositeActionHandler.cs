@@ -103,6 +103,27 @@ namespace GitHub.Runner.Worker.Handlers
                 // Done.
 
                 var actionRunner = HostContext.CreateService<IActionRunner>();
+                // Maybe we have to change the type of Step to Composite Step
+                // and create a new type of Step
+                // We have to keep track of the collection of the composite steps as a whole
+                // Like the composite steps should have the same ID
+                // Example attributes for a composite step instance:
+                /*
+                {
+                    composite_id: ~string defined in the workflow file?~,
+                    step_number: ~int~,
+
+                }
+                */
+                // ^ Benefits of this approach is: 
+                // 1) We can easily condense these steps into one node retroactively or actively.
+                // 2) Easily aggregate the outputs together.
+
+                // Or maybe we would use a different handler type?
+                // Like we could have CompositeActionOutputHandler
+                // and ActionExecutionType.CompositeActionOutput
+                // But how would hte handler differentiate between steps from different composite actions?
+                // Maybe add an attribute to an ExecutionContext.
                 actionRunner.Action = aStep;
                 actionRunner.Stage = stage;
                 actionRunner.Condition = aStep.Condition;
@@ -113,12 +134,14 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Gather outputs and clean up outputs in one step
-            var postStepRunner = HostContext.CreateService<IActionRunner>();
-            postStepRunner.Action = new Pipelines.ActionStep();
-            postStepRunner.Stage = ActionRunStage.CompositePost;
-            postStepRunner.Condition = "always()";
-            postStepRunner.DisplayName = "Composite Post Step Cleanup";
-            ExecutionContext.RegisterNestedStep(postStepRunner, inputsData, location, envData);
+
+            // Maybe we want to condense this into a function in ExecutionContext?
+            // var postStepRunner = HostContext.CreateService<IActionRunner>();
+            // postStepRunner.Action = new Pipelines.ActionStep();
+            // postStepRunner.Stage = ActionRunStage.CompositePost;
+            // postStepRunner.Condition = "always()";
+            // postStepRunner.DisplayName = "Composite Post Step Cleanup";
+            // ExecutionContext.RegisterNestedStep(postStepRunner, inputsData, location, envData);
 
             return Task.CompletedTask;
         }
