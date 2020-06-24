@@ -37,7 +37,6 @@ jobs:
     - id: step2
       uses: actions/setup-node@v2
     - uses: actions/checkout@v2
-      needs: [job1, job2]
     - uses: user/composite@v1
     - name: workflow step 1
       run: echo hello world 3
