@@ -293,16 +293,37 @@ The rationale behind this is that users can configure their steps with the `if` 
 ## Continue-on-error
 
 **TODO: This continue-on-error condition implementation is up to discussion.** 
-For now, if `continue-on-error` is set to `true` for any of the composite action steps, the composite action job proceeds to the next step and ignores that failure. 
 
-Note, that since the composite action is not a workflow, it does not have jobs and thus it is not within scope at the moment to support something like `strategy` with `continue-on-error` as seen in this [example](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idcontinue-on-error).
+Example `workflow.yml`:
+
+```yaml
+steps: 
+  - run: exit 1
+  - id: bar
+    uses: user/test@v1
+    continue-on-error: false
+  - id: foo
+    run: echo "Hello World" <------- This step will not run
+```
+
+Example `user/composite/action.yml`:
+
+```yaml
+runs:
+  using: "composite"
+  steps: 
+    - run: exit 1
+      continue-on-error: true
+    - run: echo "Hello World 2" <----- This step will run
+```
+
+If any of the steps fail in the composite action and the `continue-on-error` is set to `false` for the whole composite action step in the workflow file, then the steps below it will run. On the flip side, if `continue-on-error` is set to `true` for the whole composite action step in the workflow file, the next job step will run.
+
+For the composite action steps, it follows the same logic as above. In this example, `"Hello World 2"` will be outputted because the previous step has `continue-on-error` set to `true` although that previous step errored. 
 
 ## Defaults
-TODO
 
-Shell & WorkingDir
-
-Initial thoughts: the composite action should not be able to take the workingDir from the workflow file. Similarly, the shell for the composite action is set by default only by the composite action itself. 
+The composite action author will be required to set the `shell` and `workingDir` of the composite action. Moreover, the composite action author will be able to explicitly set the shell for each composite run step. The workflow author will not have the ability to change these attributes. 
 
 ## Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
