@@ -185,31 +185,6 @@ In the child action (in this example, this is the `action.yml`), it starts with 
 
 
 What if a step has `cancelled()`? We do the opposite of our approach above if `cancelled()` is used for any of our composite run steps. We will cancel any step that has this condition if the workflow is cancelled at all.
-
-#### Exposing Parent's If Condition to Children Via a Variable
-It would be nice to have a way to access information from a parent's if condition. We could have a parent variable that is contained in the context similar to other context variables `github`, `strategy`, etc.:
-
-Example `workflow.yml`
-
-```yaml
-steps:
-  - run: exit 1
-  - uses: user/composite@v1
-    if: always()
-```
-
-Example `user/composite/action.yml`
-
-```yaml
-runs:
-  using: "composite"
-  steps:
-    - run: echo "preparing the slack bot..."  # <--- This will run, as nothing has failed within the composite yet
-    - run: slack.post("All builds passing, ready for a deploy")  # <-- this will not run, as the parent fails
-      if: ${{ parent.success() }}
-    - run: slack.post("A failure has happened, fix things now", alert=true)  # <--- This will run, as the parent fails
-      if: ${{ parent.failure() }}
-```
     
 ## Timeout-minutes
 
