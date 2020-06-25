@@ -106,7 +106,7 @@ namespace GitHub.Runner.Worker
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
         public void SetEnvironmentVariables(Dictionary<string, string> dict);
-        void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData);
+        IStep RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -271,7 +271,7 @@ namespace GitHub.Runner.Worker
         /// Helper function used in CompositeActionHandler::RunAsync to
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
-        public void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData)
+        public IStep RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData)
         {
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
@@ -283,6 +283,7 @@ namespace GitHub.Runner.Worker
             // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
             step.ExecutionContext.SetEnvironmentVariables(envData);
             Root.JobSteps.Insert(location, step);
+            return step;
         }
 
         public void SetEnvironmentVariables(Dictionary<string, string> dict)
