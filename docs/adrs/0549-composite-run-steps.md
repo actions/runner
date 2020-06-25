@@ -181,6 +181,8 @@ We plan to use environment variables for Composite Actions similar to the parent
 
 Similar to the above logic, the environment variables will flow from the parent node to its children node. More concretely, whatever workflow/action calls a composite action, that composite action has access to whatever environment variables its caller workflow/action has. Note that the composite action can append its own environment variables or overwrite its parent's environment variables. 
 
+`::set-env::` will only scope to the composite action.
+
 ## Secrets
 
 We'll pass the secrets from the composite action's parents (ex: the workflow file) to the composite action. Secrets cannot be created in a composite action.
@@ -300,7 +302,7 @@ TODO
 
 Shell & WorkingDir
 
-Initial thoughts: the composite action takes the workingDir from the workflow file. On the other hand, the shell for the composite action is set by default only by the composite action itself. 
+Initial thoughts: the composite action should not be able to take the workingDir from the workflow file. Similarly, the shell for the composite action is set by default only by the composite action itself. 
 
 ## Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
