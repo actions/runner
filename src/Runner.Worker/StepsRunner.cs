@@ -83,155 +83,151 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
-                // Initialize scope
-                if (InitializeScope(step, scopeInputs))
-                {
-                    // Populate env context for each step
-                    Trace.Info("Initialize Env context for step");
+                // Populate env context for each step
+                Trace.Info("Initialize Env context for step");
 #if OS_WINDOWS
-                    var envContext = new DictionaryContextData();
+                var envContext = new DictionaryContextData();
 #else
-                    var envContext = new CaseSensitiveDictionaryContextData();
+                var envContext = new CaseSensitiveDictionaryContextData();
 #endif
-                    step.ExecutionContext.ExpressionValues["env"] = envContext;
-                    foreach (var pair in step.ExecutionContext.EnvironmentVariables)
-                    {
-                        envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-                    }
+                step.ExecutionContext.ExpressionValues["env"] = envContext;
+                foreach (var pair in step.ExecutionContext.EnvironmentVariables)
+                {
+                    envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                }
 
-                    bool evaluateStepEnvFailed = false;
-                    if (step is IActionRunner actionStep)
-                    {
-                        // Set GITHUB_ACTION
-                        step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                bool evaluateStepEnvFailed = false;
+                if (step is IActionRunner actionStep)
+                {
+                    // Set GITHUB_ACTION
+                    step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
 
-                        try
+                    try
+                    {
+                        // Evaluate and merge action's env block to env context
+                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                        var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
+                        foreach (var env in actionEnvironment)
                         {
-                            // Evaluate and merge action's env block to env context
-                            var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-                            var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
-                            foreach (var env in actionEnvironment)
+                            envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // fail the step since there is an evaluate error.
+                        Trace.Info("Caught exception from expression for step.env");
+                        evaluateStepEnvFailed = true;
+                        step.ExecutionContext.Error(ex);
+                        CompleteStep(step, nextStep, TaskResult.Failed);
+                    }
+                }
+
+                if (!evaluateStepEnvFailed)
+                {
+                    try
+                    {
+                        // Register job cancellation call back only if job cancellation token not been fire before each step run
+                        if (!jobContext.CancellationToken.IsCancellationRequested)
+                        {
+                            // Test the condition again. The job was canceled after the condition was originally evaluated.
+                            jobCancelRegister = jobContext.CancellationToken.Register(() =>
                             {
-                                envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                                // mark job as cancelled
+                                jobContext.Result = TaskResult.Canceled;
+                                jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
+
+                                step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
+                                var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
+                                var conditionReTestResult = false;
+                                if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                                {
+                                    step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionReTestTraceWriter);
+                                        var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                        conditionReTestResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Cancel the step since we get exception while re-evaluate step condition.
+                                        Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
+                                        step.ExecutionContext.Error(ex);
+                                    }
+                                }
+
+                                if (!conditionReTestResult)
+                                {
+                                    // Cancel the step.
+                                    Trace.Info("Cancel current running step.");
+                                    step.ExecutionContext.CancelToken();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            if (jobContext.Result != TaskResult.Canceled)
+                            {
+                                // mark job as cancelled
+                                jobContext.Result = TaskResult.Canceled;
+                                jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
                             }
                         }
-                        catch (Exception ex)
+
+                        // Evaluate condition.
+                        step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
+                        var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
+                        var conditionResult = false;
+                        var conditionEvaluateError = default(Exception);
+                        if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                        {
+                            step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
+                        }
+                        else
+                        {
+                            try
+                            {
+                                var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
+                                var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Info("Caught exception from expression.");
+                                Trace.Error(ex);
+                                conditionEvaluateError = ex;
+                            }
+                        }
+
+                        // no evaluate error but condition is false
+                        if (!conditionResult && conditionEvaluateError == null)
+                        {
+                            // Condition == false
+                            Trace.Info("Skipping step due to condition evaluation.");
+                            CompleteStep(step, nextStep, TaskResult.Skipped, resultCode: conditionTraceWriter.Trace);
+                        }
+                        else if (conditionEvaluateError != null)
                         {
                             // fail the step since there is an evaluate error.
-                            Trace.Info("Caught exception from expression for step.env");
-                            evaluateStepEnvFailed = true;
-                            step.ExecutionContext.Error(ex);
+                            step.ExecutionContext.Error(conditionEvaluateError);
                             CompleteStep(step, nextStep, TaskResult.Failed);
                         }
-                    }
-
-                    if (!evaluateStepEnvFailed)
-                    {
-                        try
+                        else
                         {
-                            // Register job cancellation call back only if job cancellation token not been fire before each step run
-                            if (!jobContext.CancellationToken.IsCancellationRequested)
-                            {
-                                // Test the condition again. The job was canceled after the condition was originally evaluated.
-                                jobCancelRegister = jobContext.CancellationToken.Register(() =>
-                                {
-                                    // mark job as cancelled
-                                    jobContext.Result = TaskResult.Canceled;
-                                    jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
-
-                                    step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
-                                    var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
-                                    var conditionReTestResult = false;
-                                    if (HostContext.RunnerShutdownToken.IsCancellationRequested)
-                                    {
-                                        step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
-                                    }
-                                    else
-                                    {
-                                        try
-                                        {
-                                            var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionReTestTraceWriter);
-                                            var condition = new BasicExpressionToken(null, null, null, step.Condition);
-                                            conditionReTestResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            // Cancel the step since we get exception while re-evaluate step condition.
-                                            Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
-                                            step.ExecutionContext.Error(ex);
-                                        }
-                                    }
-
-                                    if (!conditionReTestResult)
-                                    {
-                                        // Cancel the step.
-                                        Trace.Info("Cancel current running step.");
-                                        step.ExecutionContext.CancelToken();
-                                    }
-                                });
-                            }
-                            else
-                            {
-                                if (jobContext.Result != TaskResult.Canceled)
-                                {
-                                    // mark job as cancelled
-                                    jobContext.Result = TaskResult.Canceled;
-                                    jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
-                                }
-                            }
-
-                            // Evaluate condition.
-                            step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
-                            var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
-                            var conditionResult = false;
-                            var conditionEvaluateError = default(Exception);
-                            if (HostContext.RunnerShutdownToken.IsCancellationRequested)
-                            {
-                                step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
-                                    var condition = new BasicExpressionToken(null, null, null, step.Condition);
-                                    conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
-                                }
-                                catch (Exception ex)
-                                {
-                                    Trace.Info("Caught exception from expression.");
-                                    Trace.Error(ex);
-                                    conditionEvaluateError = ex;
-                                }
-                            }
-
-                            // no evaluate error but condition is false
-                            if (!conditionResult && conditionEvaluateError == null)
-                            {
-                                // Condition == false
-                                Trace.Info("Skipping step due to condition evaluation.");
-                                CompleteStep(step, nextStep, TaskResult.Skipped, resultCode: conditionTraceWriter.Trace);
-                            }
-                            else if (conditionEvaluateError != null)
-                            {
-                                // fail the step since there is an evaluate error.
-                                step.ExecutionContext.Error(conditionEvaluateError);
-                                CompleteStep(step, nextStep, TaskResult.Failed);
-                            }
-                            else
-                            {
-                                // Run the step.
-                                await RunStepAsync(step, jobContext.CancellationToken);
-                                CompleteStep(step, nextStep);
-                            }
+                            // Run the step.
+                            await RunStepAsync(step, jobContext.CancellationToken);
+                            CompleteStep(step, nextStep);
                         }
-                        finally
+                    }
+                    finally
+                    {
+                        if (jobCancelRegister != null)
                         {
-                            if (jobCancelRegister != null)
-                            {
-                                jobCancelRegister?.Dispose();
-                                jobCancelRegister = null;
-                            }
+                            jobCancelRegister?.Dispose();
+                            jobCancelRegister = null;
                         }
                     }
                 }
@@ -383,68 +379,6 @@ namespace GitHub.Runner.Worker
 
             // Complete the step context.
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
-        }
-
-        // TODO: Clean up w/ process of condensing output cleanup into one composite action step.
-        private bool InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
-        {
-            var executionContext = step.ExecutionContext;
-            var stepsContext = executionContext.StepsContext;
-            if (!string.IsNullOrEmpty(executionContext.ScopeName))
-            {
-                // Gather uninitialized current and ancestor scopes
-                var scope = executionContext.Scopes[executionContext.ScopeName];
-                var scopesToInitialize = default(Stack<ContextScope>);
-                while (scope != null && !scopeInputs.ContainsKey(scope.Name))
-                {
-                    if (scopesToInitialize == null)
-                    {
-                        scopesToInitialize = new Stack<ContextScope>();
-                    }
-                    scopesToInitialize.Push(scope);
-                    scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
-                }
-
-                // Initialize current and ancestor scopes
-                while (scopesToInitialize?.Count > 0)
-                {
-                    scope = scopesToInitialize.Pop();
-                    executionContext.Debug($"Initializing scope '{scope.Name}'");
-                    executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
-                    // TODO: Fix this temporary workaround for Composite Actions
-                    if (!executionContext.ExpressionValues.ContainsKey("inputs") && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                    {
-                        executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
-                    }
-                    var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
-                    var inputs = default(DictionaryContextData);
-                    try
-                    {
-                        inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
-                        Trace.Error(ex);
-                        executionContext.Error(ex);
-                        executionContext.Complete(TaskResult.Failed);
-                        return false;
-                    }
-
-                    scopeInputs[scope.Name] = inputs;
-                }
-            }
-
-            // Setup expression values
-            var scopeName = executionContext.ScopeName;
-            executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
-            // TODO: Fix this temporary workaround for Composite Actions
-            if (!executionContext.ExpressionValues.ContainsKey("inputs") && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-            {
-                executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
-            }
-
-            return true;
         }
 
         private void CompleteStep(IStep step, IStep nextStep, TaskResult? result = null, string resultCode = null)

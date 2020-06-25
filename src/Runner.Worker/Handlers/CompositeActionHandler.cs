@@ -23,6 +23,64 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public CompositeActionExecutionData Data { get; set; }
 
+        private void InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
+        {
+            var executionContext = step.ExecutionContext;
+            var stepsContext = executionContext.StepsContext;
+            if (!string.IsNullOrEmpty(executionContext.ScopeName))
+            {
+                // Gather uninitialized current and ancestor scopes
+                var scope = executionContext.Scopes[executionContext.ScopeName];
+                var scopesToInitialize = default(Stack<Pipelines.ContextScope>);
+                while (scope != null && !scopeInputs.ContainsKey(scope.Name))
+                {
+                    if (scopesToInitialize == null)
+                    {
+                        scopesToInitialize = new Stack<Pipelines.ContextScope>();
+                    }
+                    scopesToInitialize.Push(scope);
+                    scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
+                }
+
+                // Initialize current and ancestor scopes
+                while (scopesToInitialize?.Count > 0)
+                {
+                    scope = scopesToInitialize.Pop();
+                    executionContext.Debug($"Initializing scope '{scope.Name}'");
+
+                    // This is what matters, it stomps the current "steps" attribute with the parent's scope at first. 
+                    executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
+                    if (!executionContext.ExpressionValues.ContainsKey("inputs"))
+                    {
+                        executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
+                    }
+                    var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
+                    var inputs = default(DictionaryContextData);
+                    try
+                    {
+                        inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
+                        Trace.Error(ex);
+                        executionContext.Error(ex);
+                        executionContext.Complete(TaskResult.Failed);
+                    }
+
+                    scopeInputs[scope.Name] = inputs;
+                }
+            }
+
+            // Setup expression values
+            var scopeName = executionContext.ScopeName;
+            executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
+            if (!executionContext.ExpressionValues.ContainsKey("inputs"))
+            {
+                executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
+            }
+        }
+
         public Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
@@ -44,7 +102,6 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 inputsData[i.Key] = new StringContextData(i.Value);
             }
-
 
             // Get Environment Data for Composite Action
             var extraExpressionValues = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
@@ -103,33 +160,17 @@ namespace GitHub.Runner.Worker.Handlers
                 // Done.
 
                 var actionRunner = HostContext.CreateService<IActionRunner>();
-                // Maybe we have to change the type of Step to Composite Step
-                // and create a new type of Step
-                // We have to keep track of the collection of the composite steps as a whole
-                // Like the composite steps should have the same ID
-                // Example attributes for a composite step instance:
-                /*
-                {
-                    composite_id: ~string defined in the workflow file?~,
-                    step_number: ~int~,
-
-                }
-                */
-                // ^ Benefits of this approach is: 
-                // 1) We can easily condense these steps into one node retroactively or actively.
-                // 2) Easily aggregate the outputs together.
-
-                // Or maybe we would use a different handler type?
-                // Like we could have CompositeActionOutputHandler
-                // and ActionExecutionType.CompositeActionOutput
-                // But how would hte handler differentiate between steps from different composite actions?
-                // Maybe add an attribute to an ExecutionContext.
                 actionRunner.Action = aStep;
                 actionRunner.Stage = stage;
                 actionRunner.Condition = aStep.Condition;
                 actionRunner.DisplayName = aStep.DisplayName;
+                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
 
-                ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
+                // Initialize Scope and Env Here
+                // For reference, this used to be part of StepsRunner.cs but would only be used for Composite Actions.
+                var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                InitializeScope(step, scopeInputs);
+
                 location++;
             }
 
