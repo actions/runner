@@ -18,6 +18,8 @@ An important step towards meeting this goal is to build in functionality for act
 
 We don't want the workflow author to need to know how the internal workings of the action work. Users shouldn't know the internal workings of the composite action (for example, `default.shell` and `default.workingDir` should not be inherited from the workflow file to the action file). When deciding how to design certain parts of composite run steps, we want to think one logical step from the consumer.
 
+A composite action is treated as **one** individual job step. 
+
 
 ## Decision
 
@@ -114,12 +116,12 @@ Example `user/composite/action.yml`:
 
 ```yaml
 outputs:
-  random-number: 
-    description: "random number"
+  random-number: ${{ steps.random-number-generator.outputs.random-id }}
 runs:
   using: "composite"
   steps: 
-    - run: echo "::set-output name=random-number::$(echo $RANDOM)"
+    - id: random-number-generator
+      run: echo "::set-output name=random-id::$(echo $RANDOM)"
 ```
 
 Example Output:
@@ -129,9 +131,9 @@ Example Output:
 random-number 43243
 ```
 
-Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its parent using dot notation (ex `steps.foo.outputs.bar`).
+Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its parent using dot notation (ex `steps.foo.outputs.random-number`).
 
-Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `my-output`). For example, in the `workflow.yml` file, you can't run `foo.steps.my-step.my-output`.
+Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `random-id`). The reason why we are doing this is because we don't want to require the workflow author to know the internal workings of the composite action.
 
 ## Context
 
