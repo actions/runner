@@ -58,7 +58,7 @@ namespace GitHub.Runner.Worker.Handlers
             var envData = new Dictionary<string, string>();
 
             // Copy over parent environment
-            foreach (var env in ExecutionContext.EnvironmentVariables)
+            foreach (var env in Environment)
             {
                 envData[env.Key] = env.Value;
             }
