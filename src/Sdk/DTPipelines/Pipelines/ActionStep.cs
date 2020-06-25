@@ -20,12 +20,14 @@ namespace GitHub.DistributedTask.Pipelines
             : base(actionToClone)
         {
             this.Reference = actionToClone.Reference?.Clone();
-
             Environment = actionToClone.Environment?.Clone();
             Inputs = actionToClone.Inputs?.Clone();
             ContextName = actionToClone?.ContextName;
             ScopeName = actionToClone?.ScopeName;
             DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
+            // TODO: Figure out how to assign as null
+            StepID = actionToClone.StepID;
+            GroupID = actionToClone.GroupID;
         }
 
         public override StepType Type => StepType.Action;
@@ -52,6 +54,8 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken Inputs { get; set; }
+        public Int32 StepID { get; set; }
+        public Int32 GroupID { get; set; }
 
         public override Step Clone()
         {

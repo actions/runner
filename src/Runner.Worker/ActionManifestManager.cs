@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker
         }
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
-        {
+        {            
             var templateContext = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
 
@@ -64,7 +64,10 @@ namespace GitHub.Runner.Worker
             // Instead of using Regex which can be computationally expensive, 
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = _hostContext.GetDirectory(WellKnownDirectory.Actions);
-            var fileName = manifestFile.Remove(0, basePath.Length + 1);
+            string fileName = manifestFile.Remove(0, basePath.Length + 1);
+
+            // Generate group id for composite action steps
+            int stepsGroupID = string.GetHashCode(fileName);
 
             try
             {
@@ -110,7 +113,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, envComposite);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, stepsGroupID, envComposite);
                             break;
 
                         default:
@@ -359,6 +362,7 @@ namespace GitHub.Runner.Worker
             TemplateContext context,
             TemplateToken inputsToken,
             Int32 fileID,
+            Int32 stepsGroupID,
             MappingToken envComposite = null
             )
         {
@@ -492,7 +496,8 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = stepsLoaded,
-                            Environment = envComposite
+                            Environment = envComposite,
+                            StepsGroupID = stepsGroupID
                         };
                     }
                 }

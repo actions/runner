@@ -127,6 +127,18 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Add each composite action step to the front of the queue
             int location = 0;
+
+            // ID for Composite Action Step
+            // You can easily identify it by doing ScopeName.<actionID> to get the specific step.
+            // Eventually we would want to assign IDs to job steps as well?
+            // We have to make sure that every job step is unique from each other
+            // We have to also make sure that every composite action step is unique from all other steps within its parent
+            int actionID = 0;
+
+            // File path has to be unique so we can just generate a UUID for the group of composite steps from that?
+            int groupID = Data.StepsGroupID;
+
+            Trace.Info($"Composite Action Scope Name: {ExecutionContext.ScopeName}");
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Ex: 
@@ -159,12 +171,40 @@ namespace GitHub.Runner.Worker.Handlers
                 // (Run step c)
                 // Done.
 
+                // Trace.Info($"CompositeAction Handler Step Number {aStep.Id}");
+
+                // There is an ID already assigned to each Step (See: PipelineTemplateConverter::ConvertToStep)
+                // In the future we want the GUID + Step ID to be the same.
+
+                // TODO: CONSIDER DOING THIS IN ConvertStep which is called by LoadCompositeSteps in PipelineTemplateEvaluator.
+                aStep.StepID = actionID;
+                aStep.GroupID = groupID;
+
+                // TODO: How do we create an ID to connect all steps within a composite action?
+                // We can create an GroupID to easily identify the scope of the step. 
+                // ^ should this be in the ExecutionContext?
+
                 var actionRunner = HostContext.CreateService<IActionRunner>();
                 actionRunner.Action = aStep;
                 actionRunner.Stage = stage;
                 actionRunner.Condition = aStep.Condition;
                 actionRunner.DisplayName = aStep.DisplayName;
+
                 var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
+
+                // How do we identify the ID of the parent? => Auto set when Runner is start?
+                // Lol, should we attach it to the token
+                // In ExecutionContext?
+
+                // TODO: Add Step IDs in a systemic fashion. 
+                // TODO: Add Scope ID in a systemic fashion. 
+                // ^ We are doing the above to easily resolve scopes in the future!
+                // Might be best to do this in LoadSteps!!
+                // ^ in the executionContext? or the ActionStep?
+                // ^ don't put it in template token that makes no sense.
+
+
+
 
                 // Initialize Scope and Env Here
                 // For reference, this used to be part of StepsRunner.cs but would only be used for Composite Actions.
@@ -172,9 +212,13 @@ namespace GitHub.Runner.Worker.Handlers
                 InitializeScope(step, scopeInputs);
 
                 location++;
+                actionID++;
             }
 
             // Gather outputs and clean up outputs in one step
+
+            // Basically we would do this in three steps:
+            //      Gather all steps that have the same parentScopeID, 
 
             // Maybe we want to condense this into a function in ExecutionContext?
             // var postStepRunner = HostContext.CreateService<IActionRunner>();

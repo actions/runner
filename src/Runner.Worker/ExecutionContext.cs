@@ -70,6 +70,8 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
+        string ActionID { get; set; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -170,6 +172,8 @@ namespace GitHub.Runner.Worker
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
+
+        public string ActionID { get; private set; }
 
         public TaskResult? Result
         {
@@ -282,6 +286,7 @@ namespace GitHub.Runner.Worker
             // If the key already exists, we override it since the composite action env variables will have higher precedence
             // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
             step.ExecutionContext.SetEnvironmentVariables(envData);
+
             Root.JobSteps.Insert(location, step);
             return step;
         }
