@@ -69,6 +69,8 @@ namespace GitHub.Runner.Worker
             // Generate group id for composite action steps
             int stepsGroupID = string.GetHashCode(fileName);
 
+            actionDefinition.GroupID = stepsGroupID;
+
             try
             {
                 var token = default(TemplateToken);

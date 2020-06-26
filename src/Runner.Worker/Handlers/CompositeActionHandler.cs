@@ -138,6 +138,8 @@ namespace GitHub.Runner.Worker.Handlers
             // File path has to be unique so we can just generate a UUID for the group of composite steps from that?
             int groupID = Data.StepsGroupID;
 
+            // Definition for the composite action step is located in ActionDefinition.GroupID
+
             Trace.Info($"Composite Action Scope Name: {ExecutionContext.ScopeName}");
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
@@ -190,6 +192,7 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Condition = aStep.Condition;
                 actionRunner.DisplayName = aStep.DisplayName;
 
+
                 var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
 
                 // How do we identify the ID of the parent? => Auto set when Runner is start?
@@ -202,9 +205,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // Might be best to do this in LoadSteps!!
                 // ^ in the executionContext? or the ActionStep?
                 // ^ don't put it in template token that makes no sense.
-
-
-
 
                 // Initialize Scope and Env Here
                 // For reference, this used to be part of StepsRunner.cs but would only be used for Composite Actions.
@@ -220,6 +220,17 @@ namespace GitHub.Runner.Worker.Handlers
             // Basically we would do this in three steps:
             //      Gather all steps that have the same parentScopeID, 
 
+            // We can attach the step of registered steps in the cleanOutputsStep!
+            // or maybe we could just do an easy search across steps?
+            // But they are popped from the step list.
+
+            Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
+            cleanOutputsStep.StepID = actionID;
+            cleanOutputsStep.GroupID = groupID;
+
+            // How do we mangle all the outputs steps together from 
+
+
             // Maybe we want to condense this into a function in ExecutionContext?
             // var postStepRunner = HostContext.CreateService<IActionRunner>();
             // postStepRunner.Action = new Pipelines.ActionStep();
@@ -227,6 +238,31 @@ namespace GitHub.Runner.Worker.Handlers
             // postStepRunner.Condition = "always()";
             // postStepRunner.DisplayName = "Composite Post Step Cleanup";
             // ExecutionContext.RegisterNestedStep(postStepRunner, inputsData, location, envData);
+
+
+            // TODO: 6/25/20 => 6/26/20
+            // We need to handle the Outputs Token in the general Action yaml file
+            // We need to attach an "Outputs" attribute to each step. You can think of it like:
+            // composite action : {
+            //     step-1: {
+            //         group-id: 
+            //         id: 
+            //         outputs: {
+            //             ...
+            //         }
+            //     }
+            //     step-2: {
+            //         group-id: 
+            //         id: 
+            //         outputs: {
+            //             ...
+            //         }
+            //     }
+            // }
+            // We need to add functionality to handle each output in each run step. See: SetOutputCommandExtension
+
+            // Pop scope
+
 
             return Task.CompletedTask;
         }

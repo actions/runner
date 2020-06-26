@@ -173,7 +173,7 @@ namespace GitHub.Runner.Worker
 
         public bool EchoOnActionCommand { get; set; }
 
-        public string ActionID { get; private set; }
+        public string ActionID { get; set; }
 
         public TaskResult? Result
         {
