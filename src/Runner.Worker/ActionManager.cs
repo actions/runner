@@ -404,6 +404,7 @@ namespace GitHub.Runner.Worker
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Environment)}");
                         Trace.Info($"StepsGroupID: {compositeAction.StepsGroupID}");
                     }
+                    // TODO: Add composite action output data here
                     else
                     {
                         throw new NotSupportedException(definition.Data.Execution.ExecutionType.ToString());
@@ -1115,6 +1116,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Action composite: {(actionDefinitionData.Execution as CompositeActionExecutionData).Steps}, no more preparation.");
                     return null;
                 }
+                // TODO: Add composite action output data here
                 else
                 {
                     throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
@@ -1228,6 +1230,7 @@ namespace GitHub.Runner.Worker
         Plugin,
         Script,
         Composite,
+        CompositeOutput
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
@@ -1292,6 +1295,12 @@ namespace GitHub.Runner.Worker
         public List<Pipelines.ActionStep> Steps { get; set; }
         public MappingToken Environment { get; set; }
         public Int32 StepsGroupID { get; set; }
+    }
+
+    public sealed class CompositeActionOutputExecutionData : ActionExecutionData
+    {
+        // TODO
+        public override ActionExecutionType ExecutionType => ActionExecutionType.CompositeOutput;
     }
 
     public abstract class ActionExecutionData

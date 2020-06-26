@@ -14,6 +14,7 @@ namespace GitHub.DistributedTask.Pipelines
         [JsonConstructor]
         public ActionStep()
         {
+            this.CleanUp = false;
         }
 
         private ActionStep(ActionStep actionToClone)
@@ -54,8 +55,15 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken Inputs { get; set; }
+        
+        [DataMember(EmitDefaultValue = false)]
         public Int32 StepID { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
         public Int32 GroupID { get; set; }
+        
+        [DataMember(EmitDefaultValue = false)]
+        public Boolean CleanUp { get; set; }
 
         public override Step Clone()
         {

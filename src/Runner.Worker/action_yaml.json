@@ -8,7 +8,8 @@
                     "description": "string",
                     "inputs": "inputs",
                     "env": "runs-env",
-                    "runs": "runs"
+                    "runs": "runs",
+                    "outputs": "action-outputs"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -27,6 +28,12 @@
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
+            }
+        },
+        "action-outputs": {
+            "mapping": {
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "string-runner-context"
             }
         },
         "runs": {
@@ -118,6 +125,20 @@
         "container-runs-context": {
             "context": [
                 "inputs"
+            ],
+            "string": {}
+        },
+        "string-runner-context": {
+            "context": [
+                "github",
+                "needs",
+                "strategy",
+                "matrix",
+                "secrets",
+                "steps",
+                "job",
+                "runner",
+                "env"
             ],
             "string": {}
         },

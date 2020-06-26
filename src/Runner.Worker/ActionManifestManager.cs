@@ -102,6 +102,11 @@ namespace GitHub.Runner.Worker
                             actionDefinition.Name = actionPair.Value.AssertString("name").Value;
                             break;
 
+                        case "outputs":
+                            // TODO: Create function for ConvertOutputs
+                            ConvertOutputs();
+                            break;
+
                         case "description":
                             actionDefinition.Description = actionPair.Value.AssertString("description").Value;
                             break;

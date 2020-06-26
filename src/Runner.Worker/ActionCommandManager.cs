@@ -59,6 +59,7 @@ namespace GitHub.Runner.Worker
             _registeredCommands.Remove("internal-set-repo-path");
         }
 
+        // TODO: LOOK AT THIS TO CHECK FUNCTIONALITY FOR SETTING OUTPUT
         public bool TryProcessCommand(IExecutionContext context, string input, ContainerInfo container)
         {
             if (string.IsNullOrEmpty(input))
@@ -212,6 +213,9 @@ namespace GitHub.Runner.Worker
             {
                 throw new Exception("Required field 'name' is missing in ##[set-output] command.");
             }
+            // TODO: Do we need to change this set up for composite actions?
+            // We probably need a new execution context
+            // step.ExecutionContext handles it already
 
             context.SetOutput(outputName, command.Data, out var reference);
             context.Debug($"{reference}='{command.Data}'");

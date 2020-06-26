@@ -211,6 +211,8 @@ namespace GitHub.Runner.Worker.Handlers
                 var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
                 InitializeScope(step, scopeInputs);
 
+                // We'll add the outputs in the scripthandler.cs instead
+
                 location++;
                 actionID++;
             }
@@ -222,13 +224,19 @@ namespace GitHub.Runner.Worker.Handlers
 
             // We can attach the step of registered steps in the cleanOutputsStep!
             // or maybe we could just do an easy search across steps?
-            // But they are popped from the step list.
+            // But they are popped from the step list: 
 
             Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;
+            cleanOutputsStep.CleanUp = true;
+
+            // Add pointers to outputs objects from each step since those steps will be removed from the JobSteps list
+            // and won't be viewable for the cleanoutputsstep
 
             // How do we mangle all the outputs steps together from 
+                //  handles it already
+            // WE WILL GO THROUGH EACH STEP'S step.ExecutionContext: step["outputs"]
 
 
             // Maybe we want to condense this into a function in ExecutionContext?

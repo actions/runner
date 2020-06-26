@@ -36,6 +36,7 @@ namespace GitHub.Runner.Worker
             return scope;
         }
 
+        // TODO: Do I need to change?
         public void SetOutput(
             string scopeName,
             string stepName,
