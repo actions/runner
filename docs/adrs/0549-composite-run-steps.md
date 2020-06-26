@@ -172,9 +172,6 @@ runs:
     - run: echo "I will not run, as my current scope is now failing"
 ```
 
-**TODO: This if condition implementation is up to discussion.
-Discussions: https://github.com/actions/runner/pull/554#discussion_r443661891, ...** 
-
 See the paragraph below for a rudimentary approach (thank you to @cybojenix for the idea, example, and explanation for this approach):
 
 The `if` statement in the parent (in the example above, this is the `workflow.yml`) shows whether or not we should run the composite action. So, our composite action will run since the `if` condition for running the composite action is `always()`.
@@ -213,8 +210,6 @@ runs:
       timeout-minutes: 10
 ```
 
-**TODO: This timeout-minutes condition implementation is up to discussion.** 
-
 A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
 
 If the time taken for any of the steps in combination or individually exceed the whole composite action `timeout-minutes` attribute, the whole job will fail (1). If an individual step exceeds its own `timeout-minutes` attribute but the total time that has been used including this step is below the overall composite action `timeout-minutes`, the individual step will fail but the rest of the steps will run based on their own `timeout-minutes` attribute (they will still abide by condition (1) though).
@@ -227,8 +222,6 @@ The rationale behind this is that users can configure their steps with the `if` 
 
 
 ## Continue-on-error
-
-**TODO: This continue-on-error condition implementation is up to discussion.** 
 
 Example `workflow.yml`:
 
