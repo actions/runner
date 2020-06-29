@@ -129,7 +129,7 @@
             ],
             "string": {}
         },
-        "string-runner-context": {
+        "steps-scope-output-value": {
             "context": [
                 "github",
                 "needs",
@@ -137,6 +137,7 @@
                 "matrix",
                 "secrets",
                 "steps",
+                "inputs",
                 "job",
                 "runner",
                 "env"

@@ -1303,6 +1303,8 @@ namespace GitHub.Runner.Worker
     public sealed class CompositeActionOutputExecutionData : ActionExecutionData
     {
         // TODO
+        public override bool HasPre => false;
+        public override bool HasPost => false;
         public override ActionExecutionType ExecutionType => ActionExecutionType.CompositeOutput;
     }
 

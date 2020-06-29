@@ -30,6 +30,12 @@ namespace GitHub.Runner.Worker.Handlers
             if (!string.IsNullOrEmpty(executionContext.ScopeName))
             {
                 // Gather uninitialized current and ancestor scopes
+                Trace.Info($"Composite Actions Scopes: {StringUtil.ConvertToJson(executionContext.Scopes)}");
+                // Add new scope if not created yet.
+                if (!executionContext.Scopes.ContainsKey(executionContext.ScopeName)) {
+                    executionContext.Scopes[executionContext.ScopeName] = new Pipelines.ContextScope();
+                    executionContext.Scopes[executionContext.ScopeName].Name = executionContext.ScopeName;
+                }
                 var scope = executionContext.Scopes[executionContext.ScopeName];
                 var scopesToInitialize = default(Stack<Pipelines.ContextScope>);
                 while (scope != null && !scopeInputs.ContainsKey(scope.Name))
@@ -138,11 +144,31 @@ namespace GitHub.Runner.Worker.Handlers
             // File path has to be unique so we can just generate a UUID for the group of composite steps from that?
             int groupID = Data.StepsGroupID;
 
+            Trace.Info($"Composite Action GroupID: {groupID}");
+
             // Definition for the composite action step is located in ActionDefinition.GroupID
+            // TODO: Scope Name not set for some reason
+            // I think only the scopes of the steps of the action are set for some reason.s
             Trace.Info($"Composite Action Scope Name: {ExecutionContext.ScopeName}");
+
+            // Nullified Outputs
+            if (Data.Outputs != null) {
+                foreach (var pair in Data.Outputs) {
+                    Trace.Info($"Composite Action Handler. Original Output Key: {pair.Key}");
+                    Trace.Info($"Composite Action Handler. Original Output Value: {pair.Value}");
+                    Data.Outputs[pair.Key] = null;
+                }
+            }
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
+                // Scope Names are not set for some reason for the Action nor for its steps.
+                // TODO: figure out why
+                // Trace.Info($"CompositeActionHandler ActionStep ScopeName {aStep.ScopeName}");
+                Trace.Info($"CompositeActionHandler ActionStep Name {aStep.Name}");
+
+                // TODO: We need to set the ScopeName to be able to evaluate the Outputs!!
+
                 // Ex: 
                 // runs:
                 //      using: "composite"
@@ -193,7 +219,8 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.DisplayName = aStep.DisplayName;
 
 
-                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData, Data.Outputs, ExecutionContext.ScopeName);
+                // TODO: pass in the name of the current action step
+                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
 
                 // How do we identify the ID of the parent? => Auto set when Runner is start?
                 // Lol, should we attach it to the token
@@ -225,6 +252,7 @@ namespace GitHub.Runner.Worker.Handlers
             // or maybe we could just do an easy search across steps?
             // But they are popped from the step list: 
 
+            // 
             Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;

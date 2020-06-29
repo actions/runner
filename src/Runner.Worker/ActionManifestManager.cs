@@ -64,7 +64,10 @@ namespace GitHub.Runner.Worker
             // Instead of using Regex which can be computationally expensive, 
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = _hostContext.GetDirectory(WellKnownDirectory.Actions);
-            string fileName = manifestFile.Remove(0, basePath.Length + 1);
+            string fileName = manifestFile;
+            if (manifestFile.Length > basePath.Length + 1) {
+                fileName = manifestFile.Remove(0, basePath.Length + 1);
+            }
 
             // Generate group id for composite action steps
             int stepsGroupID = string.GetHashCode(fileName);
@@ -112,7 +115,7 @@ namespace GitHub.Runner.Worker
                                 actionOutputsDictionary = evaluator.EvaluateStepScopeOutputs(actionOutputsDefinitions, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
                                 break;
                             }
-                            throw new Exception("You can't use outputs yet Composite Actions yet!");
+                            throw new Exception("You can't use outputs yet since Composite Actions hasn't been finished yet!");
 
                         case "description":
                             actionDefinition.Description = actionPair.Value.AssertString("description").Value;
