@@ -21,8 +21,10 @@ namespace GitHub.Runner.Worker.Handlers
 
     public sealed class CompositeActionOutputHandler: Handler, ICompositeActionOutputHandler
     {
+        public CompositeActionOutputExecutionData Data { get; set; }
         public Task RunAsync(ActionRunStage stage)
         {
+            return null;
         }
     }
 }

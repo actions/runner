@@ -403,6 +403,8 @@ namespace GitHub.Runner.Worker
                         Trace.Info($"Load: {compositeAction.Environment} environment steps");
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Environment)}");
                         Trace.Info($"StepsGroupID: {compositeAction.StepsGroupID}");
+                        Trace.Info($"Load: {compositeAction.Outputs} outputs");
+                        Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Outputs)}");
                     }
                     // TODO: Add composite action output data here
                     else
@@ -1295,6 +1297,7 @@ namespace GitHub.Runner.Worker
         public List<Pipelines.ActionStep> Steps { get; set; }
         public MappingToken Environment { get; set; }
         public Int32 StepsGroupID { get; set; }
+        public Pipelines.ContextData.DictionaryContextData Outputs { get; set; }
     }
 
     public sealed class CompositeActionOutputExecutionData : ActionExecutionData

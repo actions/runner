@@ -9,7 +9,7 @@
                     "inputs": "inputs",
                     "env": "runs-env",
                     "runs": "runs",
-                    "outputs": "action-outputs"
+                    "outputs": "steps-scope-outputs"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -30,10 +30,11 @@
                 "loose-value-type": "any"
             }
         },
-        "action-outputs": {
+        "steps-scope-outputs": {
+            "description": "Used when evaluating steps scope outputs",
             "mapping": {
                 "loose-key-type": "non-empty-string",
-                "loose-value-type": "string-runner-context"
+                "loose-value-type": "steps-scope-output-value"
             }
         },
         "runs": {

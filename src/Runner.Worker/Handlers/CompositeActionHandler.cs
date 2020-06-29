@@ -139,8 +139,8 @@ namespace GitHub.Runner.Worker.Handlers
             int groupID = Data.StepsGroupID;
 
             // Definition for the composite action step is located in ActionDefinition.GroupID
-
             Trace.Info($"Composite Action Scope Name: {ExecutionContext.ScopeName}");
+
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Ex: 
@@ -193,7 +193,7 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.DisplayName = aStep.DisplayName;
 
 
-                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
+                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData, Data.Outputs, ExecutionContext.ScopeName);
 
                 // How do we identify the ID of the parent? => Auto set when Runner is start?
                 // Lol, should we attach it to the token
@@ -211,7 +211,6 @@ namespace GitHub.Runner.Worker.Handlers
                 var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
                 InitializeScope(step, scopeInputs);
 
-                // We'll add the outputs in the scripthandler.cs instead
 
                 location++;
                 actionID++;
@@ -230,6 +229,10 @@ namespace GitHub.Runner.Worker.Handlers
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;
             cleanOutputsStep.CleanUp = true;
+
+            // ^ Goal is mainly to clean up the outputs scope
+
+            // Or we could just handle it when we execute each step. 
 
             // Add pointers to outputs objects from each step since those steps will be removed from the JobSteps list
             // and won't be viewable for the cleanoutputsstep

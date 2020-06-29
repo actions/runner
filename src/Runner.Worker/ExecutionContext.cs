@@ -108,7 +108,7 @@ namespace GitHub.Runner.Worker
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
         public void SetEnvironmentVariables(Dictionary<string, string> dict);
-        IStep RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData);
+        IStep RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, DictionaryContextData outputs, string scopeName);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -275,12 +275,22 @@ namespace GitHub.Runner.Worker
         /// Helper function used in CompositeActionHandler::RunAsync to
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
-        public IStep RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData)
+        public IStep RegisterNestedStep(
+            IStep step, DictionaryContextData inputsData, int location, 
+            Dictionary<string, string> envData, DictionaryContextData outputs, string scopeName)
         {
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
-            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
+            // How do we pass previous step's output variables here?
+            // The next composite action step should have access to the output variable
+            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), step., null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
+
+            // For each step, we inherit the outputs from the parent. 
+            // Later on we will process this after all the composite run steps have run 
+            // ExecutionContext.TryGetValue(scopeName, out var scopeValue)
+            // TODO: FIGURE OUT IF THERE IS A CLEANER WAY TO DO THIS
+            step.ExecutionContext.ExpressionValues["outputs"] = outputs;
 
             // Add the composite action environment variables to each step.
             // If the key already exists, we override it since the composite action env variables will have higher precedence
@@ -472,6 +482,9 @@ namespace GitHub.Runner.Worker
                 reference = null;
                 return;
             }
+
+            // TODO: Set output to composite actions StepsContext.
+            // StepsContext automatically inherited from parent.
 
             // todo: restrict multiline?
 

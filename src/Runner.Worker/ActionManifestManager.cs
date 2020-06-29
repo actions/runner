@@ -91,6 +91,7 @@ namespace GitHub.Runner.Worker
 
                 var actionMapping = token.AssertMapping("action manifest root");
                 var envComposite = default(MappingToken);
+                var actionOutputsDictionary = default(DictionaryContextData);
 
                 foreach (var actionPair in actionMapping)
                 {
@@ -104,8 +105,14 @@ namespace GitHub.Runner.Worker
 
                         case "outputs":
                             // TODO: Create function for ConvertOutputs
-                            ConvertOutputs();
-                            break;
+                            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                            {
+                                var actionOutputsDefinitions = actionPair.Value.AssertSequence("outputs");
+                                var evaluator = executionContext.ToPipelineTemplateEvaluator();
+                                actionOutputsDictionary = evaluator.EvaluateStepScopeOutputs(actionOutputsDefinitions, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
+                                break;
+                            }
+                            throw new Exception("You can't use outputs yet Composite Actions yet!");
 
                         case "description":
                             actionDefinition.Description = actionPair.Value.AssertString("description").Value;
@@ -120,7 +127,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, stepsGroupID, envComposite);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, stepsGroupID, envComposite, actionOutputsDictionary);
                             break;
 
                         default:
@@ -370,7 +377,8 @@ namespace GitHub.Runner.Worker
             TemplateToken inputsToken,
             Int32 fileID,
             Int32 stepsGroupID,
-            MappingToken envComposite = null
+            MappingToken envComposite = null, 
+            DictionaryContextData outputs = null
             )
         {
             Trace.Info($"COMPOSITE ACTIONS FILEID: {fileID}");
@@ -504,7 +512,8 @@ namespace GitHub.Runner.Worker
                         {
                             Steps = stepsLoaded,
                             Environment = envComposite,
-                            StepsGroupID = stepsGroupID
+                            StepsGroupID = stepsGroupID,
+                            Outputs = outputs
                         };
                     }
                 }
