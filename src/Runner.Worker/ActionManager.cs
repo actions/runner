@@ -458,6 +458,12 @@ namespace GitHub.Runner.Worker
                 definition.Data.Name = "Run";
                 definition.Data.Description = "Execute a script";
             }
+            else if (action.Reference.Type == Pipelines.ActionSourceType.CompositeOutput)
+            {
+                definition.Data.Execution = new CompositeActionOutputExecutionData();
+                definition.Data.Name = "Composite Output Clean up";
+                definition.Data.Description = "Cleans up composite outputs";
+            }
             else
             {
                 throw new NotSupportedException(action.Reference.Type.ToString());

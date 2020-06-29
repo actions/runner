@@ -71,7 +71,7 @@ namespace GitHub.Runner.Worker.Handlers
                 handler = HostContext.CreateService<ICompositeActionHandler>();
                 (handler as ICompositeActionHandler).Data = data as CompositeActionExecutionData;
             }
-            else if (data.ExecutionType == ActionExecutionType.Composite)
+            else if (data.ExecutionType == ActionExecutionType.CompositeOutput)
             {
                 handler = HostContext.CreateService<ICompositeActionOutputHandler>();
                 (handler as ICompositeActionOutputHandler).Data = data as CompositeActionOutputExecutionData;

@@ -218,7 +218,6 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Condition = aStep.Condition;
                 actionRunner.DisplayName = aStep.DisplayName;
 
-
                 // TODO: pass in the name of the current action step
                 var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, envData);
 
@@ -257,6 +256,16 @@ namespace GitHub.Runner.Worker.Handlers
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;
             cleanOutputsStep.CleanUp = true;
+            cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference();
+
+            var actionRunner2 = HostContext.CreateService<IActionRunner>();
+            actionRunner2.Action = cleanOutputsStep;
+            actionRunner2.Stage = ActionRunStage.CompositePost;
+            // actionRunner2.Condition = IStep.Condition;
+            actionRunner2.DisplayName = "Composite Action Steps Cleanup";
+
+            ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, envData);
+
 
             // ^ Goal is mainly to clean up the outputs scope
 

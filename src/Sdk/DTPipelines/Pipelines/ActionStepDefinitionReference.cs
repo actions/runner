@@ -16,7 +16,9 @@ namespace GitHub.DistributedTask.Pipelines
         ContainerRegistry = 2,
 
         [DataMember]
-        Script = 3
+        Script = 3,
+
+        CompositeOutput = 4,
     }
 
     [DataContract]
@@ -148,6 +150,27 @@ namespace GitHub.DistributedTask.Pipelines
         public override ActionStepDefinitionReference Clone()
         {
             return new ScriptReference(this);
+        }
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public class CompositeOutputReference : ActionStepDefinitionReference
+    {
+        [JsonConstructor]
+        public CompositeOutputReference()
+        {
+        }
+
+        private CompositeOutputReference(CompositeOutputReference referenceToClone)
+        {
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public override ActionSourceType Type => ActionSourceType.CompositeOutput;
+
+        public override ActionStepDefinitionReference Clone()
+        {
+            return new CompositeOutputReference(this);
         }
     }
 }
