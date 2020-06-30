@@ -261,7 +261,7 @@ namespace GitHub.Runner.Worker.Handlers
             var actionRunner2 = HostContext.CreateService<IActionRunner>();
             actionRunner2.Action = cleanOutputsStep;
             actionRunner2.Stage = ActionRunStage.CompositePost;
-            // actionRunner2.Condition = IStep.Condition;
+            actionRunner2.Condition = "always()";
             actionRunner2.DisplayName = "Composite Action Steps Cleanup";
 
             ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, envData);

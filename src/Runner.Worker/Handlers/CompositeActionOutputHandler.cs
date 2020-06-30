@@ -24,6 +24,7 @@ namespace GitHub.Runner.Worker.Handlers
         public CompositeActionOutputExecutionData Data { get; set; }
         public Task RunAsync(ActionRunStage stage)
         {
+            Trace.Info("In Composite Action Output Handler");
             return null;
         }
     }
