@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
@@ -25,6 +26,7 @@ namespace GitHub.DistributedTask.Pipelines
     [KnownType(typeof(ContainerRegistryReference))]
     [KnownType(typeof(RepositoryPathReference))]
     [KnownType(typeof(ScriptReference))]    
+    [KnownType(typeof(CompositeOutputReference))]    
     [JsonConverter(typeof(ActionStepDefinitionReferenceConverter))]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class ActionStepDefinitionReference
@@ -157,16 +159,27 @@ namespace GitHub.DistributedTask.Pipelines
     public class CompositeOutputReference : ActionStepDefinitionReference
     {
         [JsonConstructor]
-        public CompositeOutputReference()
+        public CompositeOutputReference(List<String> scopeNames)
         {
+            this.ScopeNames = scopeNames;
         }
 
         private CompositeOutputReference(CompositeOutputReference referenceToClone)
         {
+            // this.ParentEnv = referenceToClone.ParentEnv;
+            this.ScopeNames = referenceToClone.ScopeNames;
         }
 
         [DataMember(EmitDefaultValue = false)]
         public override ActionSourceType Type => ActionSourceType.CompositeOutput;
+
+        // [DataMember(EmitDefaultValue = false)]
+        // public Environ
+        public List<String> ScopeNames
+        {
+            get; 
+            set;
+        }
 
         public override ActionStepDefinitionReference Clone()
         {

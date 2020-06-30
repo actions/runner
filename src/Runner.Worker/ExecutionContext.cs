@@ -72,6 +72,8 @@ namespace GitHub.Runner.Worker
 
         string ActionID { get; set; }
 
+        IExecutionContext ParentExecutionContext { get; set; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -108,7 +110,7 @@ namespace GitHub.Runner.Worker
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
         public void SetEnvironmentVariables(Dictionary<string, string> dict);
-        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData);
+        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, Boolean cleanUp = false);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -174,6 +176,8 @@ namespace GitHub.Runner.Worker
         public bool EchoOnActionCommand { get; set; }
 
         public string ActionID { get; set; }
+
+        public IExecutionContext ParentExecutionContext { get; set; }
 
         public TaskResult? Result
         {
@@ -277,7 +281,8 @@ namespace GitHub.Runner.Worker
         /// </summary>
         public IStep RegisterNestedStep(
             IActionRunner step, DictionaryContextData inputsData, int location, 
-            Dictionary<string, string> envData)
+            Dictionary<string, string> envData,
+            Boolean cleanUp = false)
         {
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
@@ -299,6 +304,12 @@ namespace GitHub.Runner.Worker
             // Scope Name should be the ID in the workflow step.
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, childContextName);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
+
+            // Set Parent Attribute for Clean Up Step
+            if (cleanUp)
+            {
+                step.ExecutionContext.ParentExecutionContext = this;
+            }
 
             // Add the composite action environment variables to each step.
             // If the key already exists, we override it since the composite action env variables will have higher precedence

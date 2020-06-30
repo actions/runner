@@ -26,9 +26,16 @@ namespace GitHub.Runner.Worker.Handlers
         {
             Trace.Info("In Composite Action Output Handler");
 
-            // Pull coressponding outputs and place them in the Whole Composite Action Job Outputs Object
+            // TODO: Add the parent info to the handler _ParentScope + ContextName, etc. 
+            // ^ don't rely on executioncontext's parent stuff.
+            // Pass parent execution context down to handler data attribute.
 
-            // Remove the composite action steps scope from workflow view.
+            // Pull coressponding outputs and place them in the Whole Composite Action Job Outputs Object
+            // int limit = Exe
+
+            // Add the outputs from the composite steps to the corresponding outputs object. p
+
+            // Remove/Pop each of the composite steps scop from the StepsContext
             
             return null;
         }
