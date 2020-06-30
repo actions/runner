@@ -150,7 +150,9 @@ namespace GitHub.Runner.Worker.Handlers
             // TODO: Scope Name not set for some reason
             // I think only the scopes of the steps of the action are set for some reason.s
             // By default, let's set this to the filename just in case "name" is not set by user.
-            Trace.Info($"Composite Action Scope Name: {ExecutionContext.ScopeName}");
+
+            // We can just access the ContextName instead
+            Trace.Info($"Composite Action Context Name: {ExecutionContext.ContextName}");
 
             // Nullified Outputs
             // TODO: Pass these output key values to be set in the Job StepContext's Outputs variables. 
@@ -165,6 +167,8 @@ namespace GitHub.Runner.Worker.Handlers
             //         Data.Outputs[pair.Key] = null;
             //     }
             // }
+
+            List<string> scopes = new List<string>();
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
@@ -243,6 +247,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
                 InitializeScope(step, scopeInputs);
 
+                scopes.Add(step.ExecutionContext.ScopeName);
 
                 location++;
                 actionID++;
@@ -262,15 +267,24 @@ namespace GitHub.Runner.Worker.Handlers
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;
             cleanOutputsStep.CleanUp = true;
-            cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference();
+            cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference(
+                scopeNames: scopes
+            );
+            
+            // TODO: Pass parents stuff.
+            // We have access to this already via the step.Environment variable. 
+            // cleanOutputsStep.ScopeName = ExecutionContext.ContextName;
+            // Wait can't we just use the same executionContext as the parent for now?
 
             var actionRunner2 = HostContext.CreateService<IActionRunner>();
             actionRunner2.Action = cleanOutputsStep;
-            actionRunner2.Stage = ActionRunStage.CompositePost;
+            // actionRunner2.Stage = ActionRunStage.CompositePost;
             actionRunner2.Condition = "always()";
             actionRunner2.DisplayName = "Composite Action Steps Cleanup";
 
-            ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, envData);
+            // Figure out how to pass the steps stuff through. 
+
+            ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, envData, true);
 
 
             // ^ Goal is mainly to clean up the outputs scope

@@ -406,7 +406,6 @@ namespace GitHub.Runner.Worker
                         Trace.Info($"Load: {compositeAction.Outputs} outputs");
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Outputs)}");
                     }
-                    // TODO: Add composite action output data here
                     else
                     {
                         throw new NotSupportedException(definition.Data.Execution.ExecutionType.ToString());
@@ -460,7 +459,12 @@ namespace GitHub.Runner.Worker
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.CompositeOutput)
             {
-                definition.Data.Execution = new CompositeActionOutputExecutionData();
+                var compositeReferenceOutput = action.Reference as Pipelines.CompositeOutputReference;
+                definition.Data.Execution = new CompositeActionOutputExecutionData() 
+                {
+                    ScopeNames = compositeReferenceOutput.ScopeNames,
+                    ParentExecutionContext = executionContext.ParentExecutionContext
+                };
                 definition.Data.Name = "Composite Output Clean up";
                 definition.Data.Description = "Cleans up composite outputs";
             }
@@ -1309,9 +1313,11 @@ namespace GitHub.Runner.Worker
     public sealed class CompositeActionOutputExecutionData : ActionExecutionData
     {
         // TODO
+        public override ActionExecutionType ExecutionType => ActionExecutionType.CompositeOutput;
         public override bool HasPre => false;
         public override bool HasPost => false;
-        public override ActionExecutionType ExecutionType => ActionExecutionType.CompositeOutput;
+        public IExecutionContext ParentExecutionContext { get; set; }
+        public List<String> ScopeNames { get; set; }
     }
 
     public abstract class ActionExecutionData
