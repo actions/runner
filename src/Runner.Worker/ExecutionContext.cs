@@ -281,20 +281,23 @@ namespace GitHub.Runner.Worker
         {
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
-            // How do we pass previous step's output variables here?
-            // The next composite action step should have access to the output variable
-            // TODO: DO WE HAVE TO PASS THE SCOPE NAME? 
-            // We will need to pass the scope name to CreateChild when we support nested composite actions.
-            // HOW DO WE GET THE SCOPE NAME FROM the IStep instance?
-            // For handling the outputs, we just need to set the scope name above
-            // We'll handle the outputs retroactively in another step
 
-            // OLD APPROACH: Let's just use the GroupID as the ScopeName for now. 
-            // The reason why we want to treat all the composite action steps as one.
-            // New Appraoch: Use ContextName since that's synonymous with the Step ID.
-            var scopeName = step.Action?.ContextName;
-            Trace.Info($"Composite Step Scope Name {scopeName}");
-            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), scopeName, null);
+
+            // TODO: what if this.ContextName is empty/null?
+            // We want to make sure the context name is never null
+            // TODO: if the ContextName is null, we should generate "__<id>" for the ContextName for nested composite steps. 
+            // We should add 2 leading underscores.
+            // Maybe use ReferenceNameBuilder to generate a unique ID for the ContextName. 
+            // uses-repo-name, etc. 
+            // Use the Build function()
+            // Do this on the server.
+
+            // We support dot notation for scope name: <workflow step id>.<composite step id (aka context name)>.____
+            var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
+            var childContextName = step.Action.ContextName;
+
+            // Scope Name should be the ID in the workflow step.
+            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, childContextName);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Add the composite action environment variables to each step.
@@ -482,14 +485,13 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
+            // TODO: Change it so that if the ContextName starts with "__", then we short circuit. 
+            // TODO: On server side, we want to generate Context Names on server side for null context names (when the id is not set by user)
             if (String.IsNullOrEmpty(ContextName))
             {
                 reference = null;
                 return;
             }
-
-            // TODO: Set output to composite actions StepsContext.
-            // StepsContext automatically inherited from parent.
 
             // todo: restrict multiline?
 
