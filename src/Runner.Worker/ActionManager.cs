@@ -1303,7 +1303,7 @@ namespace GitHub.Runner.Worker
         public List<Pipelines.ActionStep> Steps { get; set; }
         public MappingToken Environment { get; set; }
         public Int32 StepsGroupID { get; set; }
-        public Pipelines.ContextData.DictionaryContextData Outputs { get; set; }
+        public MappingToken Outputs { get; set; }
     }
 
     public sealed class CompositeActionOutputExecutionData : ActionExecutionData

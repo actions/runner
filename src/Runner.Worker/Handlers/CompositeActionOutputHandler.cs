@@ -25,6 +25,11 @@ namespace GitHub.Runner.Worker.Handlers
         public Task RunAsync(ActionRunStage stage)
         {
             Trace.Info("In Composite Action Output Handler");
+
+            // Pull coressponding outputs and place them in the Whole Composite Action Job Outputs Object
+
+            // Remove the composite action steps scope from workflow view.
+            
             return null;
         }
     }

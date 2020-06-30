@@ -149,16 +149,22 @@ namespace GitHub.Runner.Worker.Handlers
             // Definition for the composite action step is located in ActionDefinition.GroupID
             // TODO: Scope Name not set for some reason
             // I think only the scopes of the steps of the action are set for some reason.s
+            // By default, let's set this to the filename just in case "name" is not set by user.
             Trace.Info($"Composite Action Scope Name: {ExecutionContext.ScopeName}");
 
             // Nullified Outputs
-            if (Data.Outputs != null) {
-                foreach (var pair in Data.Outputs) {
-                    Trace.Info($"Composite Action Handler. Original Output Key: {pair.Key}");
-                    Trace.Info($"Composite Action Handler. Original Output Value: {pair.Value}");
-                    Data.Outputs[pair.Key] = null;
-                }
-            }
+            // TODO: Pass these output key values to be set in the Job StepContext's Outputs variables. 
+            // TODO: How will the workflow file know how to access the StepContext's Outputs variables?
+
+            // TODO: Evaluate Outputs
+            // TODO: Add function for evaluating Outputs token.
+            // if (Data.Outputs != null) {
+            //     foreach (var pair in Data.Outputs) {
+            //         Trace.Info($"Composite Action Handler. Original Output Key: {pair.Key}");
+            //         Trace.Info($"Composite Action Handler. Original Output Value: {pair.Value}");
+            //         Data.Outputs[pair.Key] = null;
+            //     }
+            // }
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {

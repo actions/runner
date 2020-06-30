@@ -94,7 +94,7 @@ namespace GitHub.Runner.Worker
 
                 var actionMapping = token.AssertMapping("action manifest root");
                 var envComposite = default(MappingToken);
-                var actionOutputsDictionary = default(DictionaryContextData);
+                var actionOutputs = default(MappingToken);
 
                 foreach (var actionPair in actionMapping)
                 {
@@ -110,9 +110,10 @@ namespace GitHub.Runner.Worker
                             // TODO: Create function for ConvertOutputs
                             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                             {
-                                var actionOutputsDefinitions = actionPair.Value.AssertSequence("outputs");
-                                var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                                actionOutputsDictionary = evaluator.EvaluateStepScopeOutputs(actionOutputsDefinitions, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
+                                // var actionOutputsDefinitions = actionPair.Value.AssertSequence("outputs");
+                                // var evaluator = executionContext.ToPipelineTemplateEvaluator();
+                                // actionOutputsDictionary = evaluator.EvaluateStepScopeOutputs(actionOutputsDefinitions, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
+                                actionOutputs = actionPair.Value.AssertMapping("outputs");
                                 break;
                             }
                             throw new Exception("You can't use outputs yet since Composite Actions hasn't been finished yet!");
@@ -130,7 +131,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, stepsGroupID, envComposite, actionOutputsDictionary);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, stepsGroupID, envComposite, actionOutputs);
                             break;
 
                         default:
@@ -381,7 +382,7 @@ namespace GitHub.Runner.Worker
             Int32 fileID,
             Int32 stepsGroupID,
             MappingToken envComposite = null, 
-            DictionaryContextData outputs = null
+            MappingToken outputs = null
             )
         {
             Trace.Info($"COMPOSITE ACTIONS FILEID: {fileID}");

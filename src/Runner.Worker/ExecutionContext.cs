@@ -289,9 +289,12 @@ namespace GitHub.Runner.Worker
             // For handling the outputs, we just need to set the scope name above
             // We'll handle the outputs retroactively in another step
 
-            // Let's just use the GroupID as the ScopeName for now. 
+            // OLD APPROACH: Let's just use the GroupID as the ScopeName for now. 
             // The reason why we want to treat all the composite action steps as one.
-            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), step.Action.GroupID.ToString(), null);
+            // New Appraoch: Use ContextName since that's synonymous with the Step ID.
+            var scopeName = step.Action?.ContextName;
+            Trace.Info($"Composite Step Scope Name {scopeName}");
+            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), scopeName, null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Add the composite action environment variables to each step.
