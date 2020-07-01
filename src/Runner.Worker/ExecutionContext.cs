@@ -280,7 +280,7 @@ namespace GitHub.Runner.Worker
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
         public IStep RegisterNestedStep(
-            IActionRunner step, DictionaryContextData inputsData, int location, 
+            IActionRunner step, DictionaryContextData inputsData, int location,
             Dictionary<string, string> envData,
             Boolean cleanUp = false)
         {
@@ -298,7 +298,19 @@ namespace GitHub.Runner.Worker
             // Do this on the server.
 
             // We support dot notation for scope name: <workflow step id>.<composite step id (aka context name)>.____
-            var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
+            Trace.Info($"Original ScopeName: {this.ScopeName}");
+            Trace.Info($"Original ContextName: {this.ContextName}");
+            var childScopeName = "";
+            if (string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName))
+            {
+                childScopeName = $"{this.ContextName}.{step.Action.ContextName}";
+            }
+            else if (!string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName))
+            {
+                childScopeName = $"{this.ScopeName}.{this.ContextName}";
+            }
+            // var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
+            Trace.Info($"New Child Scope Name: {childScopeName}");
             var childContextName = step.Action.ContextName;
 
             // Scope Name should be the ID in the workflow step.
