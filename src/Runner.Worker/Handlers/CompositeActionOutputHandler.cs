@@ -25,19 +25,37 @@ namespace GitHub.Runner.Worker.Handlers
         public Task RunAsync(ActionRunStage stage)
         {
             Trace.Info("In Composite Action Output Handler");
+            Trace.Info($"Original Scope + Contexts: {StringUtil.ConvertToJson(Data.ScopeAndContextNames)}");
 
             // TODO: Add the parent info to the handler _ParentScope + ContextName, etc. 
             // ^ don't rely on executioncontext's parent stuff.
             // Pass parent execution context down to handler data attribute.
 
+
             // Pull coressponding outputs and place them in the Whole Composite Action Job Outputs Object
             // int limit = Exe
+            Dictionary<string, string> finalOutputs = new Dictionary<string, string>();
+
+            // The ScopeNames are in the same order as how the Steps Were Processed
+            // So the scopeNames will have the most recent value which is what we want!
+            foreach (var pair in Data.ScopeAndContextNames)
+            {
+                DictionaryContextData currentOutputs = ExecutionContext.StepsContext.GetOutput(pair.Key, pair.Value);
+                Trace.Info($"Scope {pair.Key}'s outputs: {currentOutputs}");
+                foreach (var outputs in currentOutputs) {
+                    StringContextData outputsValue = outputs.Value as StringContextData;
+                    finalOutputs[outputs.Key] = outputsValue.ToString();
+                }
+            }
+
+            Trace.Info($"Final outputs: {finalOutputs}");
 
             // Add the outputs from the composite steps to the corresponding outputs object. p
 
-            // Remove/Pop each of the composite steps scop from the StepsContext
+            // Remove/Pop each of the composite steps scop from the StepsContext to save memory and
+            // also to prevent any shenanigans from happening (ex: other actions accessing step level scope stuff)
             
-            return null;
+            return Task.CompletedTask;
         }
     }
 }
