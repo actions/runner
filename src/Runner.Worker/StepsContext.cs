@@ -36,7 +36,6 @@ namespace GitHub.Runner.Worker
             return scope;
         }
 
-        // TODO: Do I need to change?
         public void SetOutput(
             string scopeName,
             string stepName,
@@ -94,5 +93,12 @@ namespace GitHub.Runner.Worker
 
             return step;
         }
+
+        public DictionaryContextData GetOutput(string scopeName, string stepName) {
+            var step = GetStep(scopeName, stepName);
+            var outputs = step["outputs"].AssertDictionary("outputs");
+            return outputs;
+        }
+
     }
 }
