@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
+
 namespace GitHub.DistributedTask.Pipelines
 {
     [DataContract]
@@ -159,9 +161,10 @@ namespace GitHub.DistributedTask.Pipelines
     public class CompositeOutputReference : ActionStepDefinitionReference
     {
         [JsonConstructor]
-        public CompositeOutputReference(Dictionary<String, String> scopeAndContextNames)
+        public CompositeOutputReference(Dictionary<String, String> scopeAndContextNames, MappingToken outputs)
         {
             this.ScopeAndContextNames = scopeAndContextNames;
+            this.Outputs = outputs;
         }
 
         private CompositeOutputReference(CompositeOutputReference referenceToClone)
@@ -175,6 +178,12 @@ namespace GitHub.DistributedTask.Pipelines
 
         // [DataMember(EmitDefaultValue = false)]
         public Dictionary<String, String> ScopeAndContextNames
+        {
+            get; 
+            set;
+        }
+
+        public MappingToken Outputs
         {
             get; 
             set;

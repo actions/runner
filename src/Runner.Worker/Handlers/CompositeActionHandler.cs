@@ -292,31 +292,6 @@ namespace GitHub.Runner.Worker.Handlers
                     Name = parentScopeName
                 };
             }
-            
-            
-            // Prepare outputs to be sent over to the Composite Action Outputs Handler.
-            var outputs = new List<String>();
-            if (Data.Outputs != null) {
-                var evaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-                DictionaryContextData actionOutputs = evaluator.EvaluateStepScopeOutputs(Data.Outputs, ExecutionContext as DictionaryContextData, null);
-                foreach (var pair in actionOutputs) {
-                    Trace.Info($"Composite Action Handler. Original Output Key: {pair.Key}");
-                    Trace.Info($"Composite Action Handler. Original Output Value: {pair.Value}");
-                    // public void SetOutput(
-                    //     string scopeName,
-                    //     string stepName,
-                    //     string outputName,
-                    //     string value,
-                    //     out string reference)
-                    // var currentOutputDict = new DictionaryContextData();
-                    // ExecutionContext.StepsContext.SetOutput(parentScopeName, ExecutionContext);
-                    // ExecutionContext.Scopes[parentScopeName].Add(pair.Key, currentOutputDict);
-                    var outputsName = pair.Key;
-                    outputs.Add(outputsName);
-                }
-            }
-
-            Trace.Info($"Outputs Action Repre: {StringUtil.ConvertToJson(outputs)}");
 
             // Gather outputs and clean up outputs in one step
 
@@ -332,10 +307,10 @@ namespace GitHub.Runner.Worker.Handlers
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;
             cleanOutputsStep.CleanUp = true;
-            cleanOutputsStep.ScopeName = ExecutionContext.ScopeName;
             cleanOutputsStep.ContextName = ExecutionContext.ContextName;
             cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference(
-                scopeAndContextNames: scopesAndContexts
+                scopeAndContextNames: scopesAndContexts,
+                outputs: Data.Outputs
             );
 
             // TODO: Pass parents stuff.
@@ -352,52 +327,6 @@ namespace GitHub.Runner.Worker.Handlers
             // Figure out how to pass the steps stuff through. 
 
             ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, envData, true);
-
-
-            // ^ Goal is mainly to clean up the outputs scope
-
-            // Or we could just handle it when we execute each step. 
-
-            // Add pointers to outputs objects from each step since those steps will be removed from the JobSteps list
-            // and won't be viewable for the cleanoutputsstep
-
-            // How do we mangle all the outputs steps together from 
-            //  handles it already
-            // WE WILL GO THROUGH EACH STEP'S step.ExecutionContext: step["outputs"]
-
-
-            // Maybe we want to condense this into a function in ExecutionContext?
-            // var postStepRunner = HostContext.CreateService<IActionRunner>();
-            // postStepRunner.Action = new Pipelines.ActionStep();
-            // postStepRunner.Stage = ActionRunStage.CompositePost;
-            // postStepRunner.Condition = "always()";
-            // postStepRunner.DisplayName = "Composite Post Step Cleanup";
-            // ExecutionContext.RegisterNestedStep(postStepRunner, inputsData, location, envData);
-
-
-            // TODO: 6/25/20 => 6/26/20
-            // We need to handle the Outputs Token in the general Action yaml file
-            // We need to attach an "Outputs" attribute to each step. You can think of it like:
-            // composite action : {
-            //     step-1: {
-            //         group-id: 
-            //         id: 
-            //         outputs: {
-            //             ...
-            //         }
-            //     }
-            //     step-2: {
-            //         group-id: 
-            //         id: 
-            //         outputs: {
-            //             ...
-            //         }
-            //     }
-            // }
-            // We need to add functionality to handle each output in each run step. See: SetOutputCommandExtension
-
-            // Pop scope
-
 
             return Task.CompletedTask;
         }

@@ -463,7 +463,8 @@ namespace GitHub.Runner.Worker
                 definition.Data.Execution = new CompositeActionOutputExecutionData() 
                 {
                     ScopeAndContextNames = compositeReferenceOutput.ScopeAndContextNames,
-                    ParentExecutionContext = executionContext.ParentExecutionContext
+                    ParentExecutionContext = executionContext.ParentExecutionContext,
+                    Outputs = compositeReferenceOutput.Outputs
                 };
                 definition.Data.Name = "Composite Output Clean up";
                 definition.Data.Description = "Cleans up composite outputs";
@@ -1318,6 +1319,7 @@ namespace GitHub.Runner.Worker
         public override bool HasPost => false;
         public IExecutionContext ParentExecutionContext { get; set; }
         public Dictionary<String, String> ScopeAndContextNames { get; set; }
+        public MappingToken Outputs { get; set; }
     }
 
     public abstract class ActionExecutionData
