@@ -293,6 +293,7 @@ namespace GitHub.Runner.Worker.Handlers
                 };
             }
             
+            
             // Prepare outputs to be sent over to the Composite Action Outputs Handler.
             var outputs = new List<String>();
             if (Data.Outputs != null) {
@@ -331,6 +332,8 @@ namespace GitHub.Runner.Worker.Handlers
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;
             cleanOutputsStep.CleanUp = true;
+            cleanOutputsStep.ScopeName = ExecutionContext.ScopeName;
+            cleanOutputsStep.ContextName = ExecutionContext.ContextName;
             cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference(
                 scopeAndContextNames: scopesAndContexts
             );
