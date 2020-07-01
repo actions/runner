@@ -275,7 +275,9 @@ namespace GitHub.Runner.Worker.Handlers
                 // InitializeScope(step, scopeInputs);
                 InitializeScope(step);
 
-                scopesAndContexts.Add(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName);
+                if (!String.IsNullOrEmpty(step.ExecutionContext.ScopeName)) {
+                    scopesAndContexts.Add(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName);
+                }
 
                 location++;
                 actionID++;
