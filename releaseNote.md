@@ -8,6 +8,7 @@
   - Fix DataContract with Token service (#532)
   - Skip search $PATH on command with fully qualified path (#526)
   - Restore SELinux context on service file when SELinux is enabled (#525)
+  - Fix trailing '.0' for Int64 values in ContextData (#572)
 ## Misc
   - Remove SPS/Token migration code. Remove GHES url manipulate code. (#513) 
   - Add sub-step for developer flow for clarity (#523)
