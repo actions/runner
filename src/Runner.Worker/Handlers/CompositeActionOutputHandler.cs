@@ -48,12 +48,23 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            Trace.Info($"Final outputs: {finalOutputs}");
+            Trace.Info($"Final outputs: {StringUtil.ConvertToJson(finalOutputs)}");
 
-            // Add the outputs from the composite steps to the corresponding outputs object. p
+            // Add the outputs from the composite steps to the corresponding outputs object. 
+
 
             // Remove/Pop each of the composite steps scop from the StepsContext to save memory and
             // also to prevent any shenanigans from happening (ex: other actions accessing step level scope stuff)
+
+            var parentScopeName = !String.IsNullOrEmpty(ExecutionContext.ScopeName) ? ExecutionContext.ScopeName : ExecutionContext.ContextName;
+            Trace.Info($"Parent Scope Name {parentScopeName}");
+
+            // TODO: Figure out if we need to include workflow step ID for parentScopeName
+            if (!ExecutionContext.Scopes.ContainsKey(parentScopeName)) {
+                ExecutionContext.Scopes[parentScopeName] = new Pipelines.ContextScope() {
+                    Name = parentScopeName
+                };
+            }
             
             return Task.CompletedTask;
         }

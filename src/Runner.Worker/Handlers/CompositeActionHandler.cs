@@ -23,7 +23,8 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public CompositeActionExecutionData Data { get; set; }
 
-        private void InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
+        // private void InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
+        private void InitializeScope(IStep step)
         {
             var executionContext = step.ExecutionContext;
             var stepsContext = executionContext.StepsContext;
@@ -32,59 +33,85 @@ namespace GitHub.Runner.Worker.Handlers
                 // Gather uninitialized current and ancestor scopes
                 Trace.Info($"Composite Actions Scopes: {StringUtil.ConvertToJson(executionContext.Scopes)}");
                 // Add new scope if not created yet.
-                if (!executionContext.Scopes.ContainsKey(executionContext.ScopeName)) {
+                if (!executionContext.Scopes.ContainsKey(executionContext.ScopeName))
+                {
                     executionContext.Scopes[executionContext.ScopeName] = new Pipelines.ContextScope();
                     executionContext.Scopes[executionContext.ScopeName].Name = executionContext.ScopeName;
                 }
                 var scope = executionContext.Scopes[executionContext.ScopeName];
-                var scopesToInitialize = default(Stack<Pipelines.ContextScope>);
-                while (scope != null && !scopeInputs.ContainsKey(scope.Name))
-                {
-                    if (scopesToInitialize == null)
-                    {
-                        scopesToInitialize = new Stack<Pipelines.ContextScope>();
-                    }
-                    scopesToInitialize.Push(scope);
-                    scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
-                }
+                // var scopesToInitialize = default(Stack<Pipelines.ContextScope>);
+                // while (scope != null && !scopeInputs.ContainsKey(scope.Name))
+                // {
+                //     if (scopesToInitialize == null)
+                //     {
+                //         scopesToInitialize = new Stack<Pipelines.ContextScope>();
+                //     }
+                //     scopesToInitialize.Push(scope);
+                //     Trace.Info($"Scopes: {StringUtil.ConvertToJson(executionContext.Scopes)}");
+                //     scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
+                // }
+
 
                 // Initialize current and ancestor scopes
-                while (scopesToInitialize?.Count > 0)
+                // while (scopesToInitialize?.Count > 0)
+                // {
+                //     scope = scopesToInitialize.Pop();
+                //     executionContext.Debug($"Initializing scope '{scope.Name}'");
+
+                //     // This is what matters, it stomps the current "steps" attribute with the parent's scope at first. 
+                //     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
+                //     if (!executionContext.ExpressionValues.ContainsKey("inputs"))
+                //     {
+                //         executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
+                //     }
+                //     var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
+                //     var inputs = default(DictionaryContextData);
+                //     try
+                //     {
+                //         inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
+                //     }
+                //     catch (Exception ex)
+                //     {
+                //         Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
+                //         Trace.Error(ex);
+                //         executionContext.Error(ex);
+                //         executionContext.Complete(TaskResult.Failed);
+                //     }
+
+                //     scopeInputs[scope.Name] = inputs;
+                // }
+                executionContext.Debug($"Initializing scope '{scope.Name}'");
+
+                // This is what matters, it stomps the current "steps" attribute with the parent's scope at first. 
+                step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
+                // if (!step.ExecutionContext.ExpressionValues.ContainsKey("inputs"))
+                // {
+                //     step.ExecutionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
+                // }
+                var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
+                var inputs = default(DictionaryContextData);
+                try
                 {
-                    scope = scopesToInitialize.Pop();
-                    executionContext.Debug($"Initializing scope '{scope.Name}'");
-
-                    // This is what matters, it stomps the current "steps" attribute with the parent's scope at first. 
-                    executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
-                    if (!executionContext.ExpressionValues.ContainsKey("inputs"))
-                    {
-                        executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
-                    }
-                    var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
-                    var inputs = default(DictionaryContextData);
-                    try
-                    {
-                        inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
-                        Trace.Error(ex);
-                        executionContext.Error(ex);
-                        executionContext.Complete(TaskResult.Failed);
-                    }
-
-                    scopeInputs[scope.Name] = inputs;
+                    inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
                 }
+                catch (Exception ex)
+                {
+                    Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
+                    Trace.Error(ex);
+                    step.ExecutionContext.Error(ex);
+                    step.ExecutionContext.Complete(TaskResult.Failed);
+                }
+
+                // scopeInputs[scope.Name] = inputs;
             }
 
             // Setup expression values
             var scopeName = executionContext.ScopeName;
-            executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
-            if (!executionContext.ExpressionValues.ContainsKey("inputs"))
-            {
-                executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
-            }
+            step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
+            // if (!executionContext.ExpressionValues.ContainsKey("inputs"))
+            // {
+            //     executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
+            // }
         }
 
         public Task RunAsync(ActionRunStage stage)
@@ -168,7 +195,7 @@ namespace GitHub.Runner.Worker.Handlers
             //     }
             // }
 
-            List<string> scopes = new List<string>();
+            Dictionary<string, string> scopesAndContexts = new Dictionary<string, string>();
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
@@ -245,13 +272,48 @@ namespace GitHub.Runner.Worker.Handlers
                 // Initialize Scope and Env Here
                 // For reference, this used to be part of StepsRunner.cs but would only be used for Composite Actions.
                 var scopeInputs = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-                InitializeScope(step, scopeInputs);
+                // InitializeScope(step, scopeInputs);
+                InitializeScope(step);
 
-                scopes.Add(step.ExecutionContext.ScopeName);
+                scopesAndContexts.Add(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName);
 
                 location++;
                 actionID++;
             }
+
+            var parentScopeName = !String.IsNullOrEmpty(ExecutionContext.ScopeName) ? ExecutionContext.ScopeName : ExecutionContext.ContextName;
+            Trace.Info($"Parent Scope Name {parentScopeName}");
+
+            // TODO: Figure out if we need to include workflow step ID for parentScopeName
+            if (!ExecutionContext.Scopes.ContainsKey(parentScopeName)) {
+                ExecutionContext.Scopes[parentScopeName] = new Pipelines.ContextScope() {
+                    Name = parentScopeName
+                };
+            }
+            
+            // Prepare outputs to be sent over to the Composite Action Outputs Handler.
+            var outputs = new List<String>();
+            if (Data.Outputs != null) {
+                var evaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+                DictionaryContextData actionOutputs = evaluator.EvaluateStepScopeOutputs(Data.Outputs, ExecutionContext as DictionaryContextData, null);
+                foreach (var pair in actionOutputs) {
+                    Trace.Info($"Composite Action Handler. Original Output Key: {pair.Key}");
+                    Trace.Info($"Composite Action Handler. Original Output Value: {pair.Value}");
+                    // public void SetOutput(
+                    //     string scopeName,
+                    //     string stepName,
+                    //     string outputName,
+                    //     string value,
+                    //     out string reference)
+                    // var currentOutputDict = new DictionaryContextData();
+                    // ExecutionContext.StepsContext.SetOutput(parentScopeName, ExecutionContext);
+                    // ExecutionContext.Scopes[parentScopeName].Add(pair.Key, currentOutputDict);
+                    var outputsName = pair.Key;
+                    outputs.Add(outputsName);
+                }
+            }
+
+            Trace.Info($"Outputs Action Repre: {StringUtil.ConvertToJson(outputs)}");
 
             // Gather outputs and clean up outputs in one step
 
@@ -268,9 +330,9 @@ namespace GitHub.Runner.Worker.Handlers
             cleanOutputsStep.GroupID = groupID;
             cleanOutputsStep.CleanUp = true;
             cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference(
-                scopeNames: scopes
+                scopeAndContextNames: scopesAndContexts
             );
-            
+
             // TODO: Pass parents stuff.
             // We have access to this already via the step.Environment variable. 
             // cleanOutputsStep.ScopeName = ExecutionContext.ContextName;
@@ -295,7 +357,7 @@ namespace GitHub.Runner.Worker.Handlers
             // and won't be viewable for the cleanoutputsstep
 
             // How do we mangle all the outputs steps together from 
-                //  handles it already
+            //  handles it already
             // WE WILL GO THROUGH EACH STEP'S step.ExecutionContext: step["outputs"]
 
 

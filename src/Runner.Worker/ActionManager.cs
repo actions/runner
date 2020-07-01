@@ -462,7 +462,7 @@ namespace GitHub.Runner.Worker
                 var compositeReferenceOutput = action.Reference as Pipelines.CompositeOutputReference;
                 definition.Data.Execution = new CompositeActionOutputExecutionData() 
                 {
-                    ScopeNames = compositeReferenceOutput.ScopeNames,
+                    ScopeAndContextNames = compositeReferenceOutput.ScopeAndContextNames,
                     ParentExecutionContext = executionContext.ParentExecutionContext
                 };
                 definition.Data.Name = "Composite Output Clean up";
@@ -1317,7 +1317,7 @@ namespace GitHub.Runner.Worker
         public override bool HasPre => false;
         public override bool HasPost => false;
         public IExecutionContext ParentExecutionContext { get; set; }
-        public List<String> ScopeNames { get; set; }
+        public Dictionary<String, String> ScopeAndContextNames { get; set; }
     }
 
     public abstract class ActionExecutionData

@@ -159,23 +159,22 @@ namespace GitHub.DistributedTask.Pipelines
     public class CompositeOutputReference : ActionStepDefinitionReference
     {
         [JsonConstructor]
-        public CompositeOutputReference(List<String> scopeNames)
+        public CompositeOutputReference(Dictionary<String, String> scopeAndContextNames)
         {
-            this.ScopeNames = scopeNames;
+            this.ScopeAndContextNames = scopeAndContextNames;
         }
 
         private CompositeOutputReference(CompositeOutputReference referenceToClone)
         {
             // this.ParentEnv = referenceToClone.ParentEnv;
-            this.ScopeNames = referenceToClone.ScopeNames;
+            this.ScopeAndContextNames = referenceToClone.ScopeAndContextNames;
         }
 
         [DataMember(EmitDefaultValue = false)]
         public override ActionSourceType Type => ActionSourceType.CompositeOutput;
 
         // [DataMember(EmitDefaultValue = false)]
-        // public Environ
-        public List<String> ScopeNames
+        public Dictionary<String, String> ScopeAndContextNames
         {
             get; 
             set;
