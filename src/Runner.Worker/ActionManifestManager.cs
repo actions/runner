@@ -69,11 +69,6 @@ namespace GitHub.Runner.Worker
                 fileName = manifestFile.Remove(0, basePath.Length + 1);
             }
 
-            // Generate group id for composite action steps
-            int stepsGroupID = string.GetHashCode(fileName);
-
-            actionDefinition.GroupID = stepsGroupID;
-
             try
             {
                 var token = default(TemplateToken);
@@ -131,7 +126,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, stepsGroupID, envComposite, actionOutputs);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, envComposite, actionOutputs);
                             break;
 
                         default:
@@ -380,7 +375,6 @@ namespace GitHub.Runner.Worker
             TemplateContext context,
             TemplateToken inputsToken,
             Int32 fileID,
-            Int32 stepsGroupID,
             MappingToken envComposite = null, 
             MappingToken outputs = null
             )
@@ -516,7 +510,6 @@ namespace GitHub.Runner.Worker
                         {
                             Steps = stepsLoaded,
                             Environment = envComposite,
-                            StepsGroupID = stepsGroupID,
                             Outputs = outputs
                         };
                     }

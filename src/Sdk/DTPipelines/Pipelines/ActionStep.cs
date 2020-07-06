@@ -14,7 +14,6 @@ namespace GitHub.DistributedTask.Pipelines
         [JsonConstructor]
         public ActionStep()
         {
-            this.CleanUp = false;
         }
 
         private ActionStep(ActionStep actionToClone)
@@ -26,9 +25,6 @@ namespace GitHub.DistributedTask.Pipelines
             ContextName = actionToClone?.ContextName;
             ScopeName = actionToClone?.ScopeName;
             DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
-            // TODO: Figure out how to assign as null
-            StepID = actionToClone.StepID;
-            GroupID = actionToClone.GroupID;
         }
 
         public override StepType Type => StepType.Action;
@@ -55,15 +51,6 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken Inputs { get; set; }
-        
-        [DataMember(EmitDefaultValue = false)]
-        public Int32 StepID { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public Int32 GroupID { get; set; }
-        
-        [DataMember(EmitDefaultValue = false)]
-        public Boolean CleanUp { get; set; }
 
         public override Step Clone()
         {
