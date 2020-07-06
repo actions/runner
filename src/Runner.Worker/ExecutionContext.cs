@@ -287,7 +287,6 @@ namespace GitHub.Runner.Worker
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
 
-
             // TODO: what if this.ContextName is empty/null?
             // We want to make sure the context name is never null
             // TODO: if the ContextName is null, we should generate "__<id>" for the ContextName for nested composite steps. 
@@ -298,18 +297,29 @@ namespace GitHub.Runner.Worker
             // Do this on the server.
 
             // We support dot notation for scope name: <workflow step id>.<composite step id (aka context name)>.____
+            // TODO: Build in 
             Trace.Info($"Original ScopeName: {this.ScopeName}");
             Trace.Info($"Original ContextName: {this.ContextName}");
-            var childScopeName = "";
-            if (string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName))
+            Trace.Info($"Original step action ContextName: {step.Action.ContextName}");
+            // if (string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName) && !string.IsNullOrEmpty(step.Action.ContextName))
+            // {
+            //     Trace.Info($"First If");
+            //     childScopeName = $"{this.ContextName}.{step.Action.ContextName}";
+            // }
+            // else if (!string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName))
+            // {
+            //     Trace.Info($"Second If");
+            //     childScopeName = $"{this.ScopeName}.{this.ContextName}";
+            // }
+
+            // TODO: Fix Scope Name: 
+            // Every step's scope name would be the same within that composite action!
+            var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
+            if (String.IsNullOrEmpty(childScopeName))
             {
-                childScopeName = $"{this.ContextName}.{step.Action.ContextName}";
+                childScopeName = $"__{newGuid}";
             }
-            else if (!string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName))
-            {
-                childScopeName = $"{this.ScopeName}.{this.ContextName}";
-            }
-            // var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
+
             Trace.Info($"New Child Scope Name: {childScopeName}");
             var childContextName = step.Action.ContextName;
 
@@ -510,7 +520,11 @@ namespace GitHub.Runner.Worker
 
             // TODO: Change it so that if the ContextName starts with "__", then we short circuit. 
             // TODO: On server side, we want to generate Context Names on server side for null context names (when the id is not set by user)
-            if (String.IsNullOrEmpty(ContextName))
+            // if (String.IsNullOrEmpty(ContextName) || if contains __)
+            // Add check if the scope name starts with double underscore __NEWGUID
+            // if (String.IsNullOrEmpty(ContextName))
+            bool scopeNameCondition = !String.IsNullOrEmpty(ScopeName) && ScopeName.Length >= 36 && String.Equals(ScopeName.Substring(0, 2), "__") && Guid.TryParse(ScopeName.Substring(2, 36), out Guid test);
+            if (String.IsNullOrEmpty(ContextName) || scopeNameCondition)
             {
                 reference = null;
                 return;

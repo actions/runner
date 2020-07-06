@@ -161,9 +161,10 @@ namespace GitHub.DistributedTask.Pipelines
     public class CompositeOutputReference : ActionStepDefinitionReference
     {
         [JsonConstructor]
-        public CompositeOutputReference(Dictionary<String, String> scopeAndContextNames, MappingToken outputs)
+        public CompositeOutputReference(Dictionary<String, String> scopeAndContextNames, MappingToken outputs, String parentScopeName)
         {
             this.ScopeAndContextNames = scopeAndContextNames;
+            this.ParentScopeName = parentScopeName;
             this.Outputs = outputs;
         }
 
@@ -178,6 +179,12 @@ namespace GitHub.DistributedTask.Pipelines
 
         // [DataMember(EmitDefaultValue = false)]
         public Dictionary<String, String> ScopeAndContextNames
+        {
+            get; 
+            set;
+        }
+
+        public String ParentScopeName
         {
             get; 
             set;

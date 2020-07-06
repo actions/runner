@@ -59,7 +59,7 @@ namespace GitHub.Runner.Worker.Handlers
                 //     executionContext.Debug($"Initializing scope '{scope.Name}'");
 
                 //     // This is what matters, it stomps the current "steps" attribute with the parent's scope at first. 
-                //     executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
+                    // executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
                 //     if (!executionContext.ExpressionValues.ContainsKey("inputs"))
                 //     {
                 //         executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
@@ -197,6 +197,9 @@ namespace GitHub.Runner.Worker.Handlers
 
             Dictionary<string, string> scopesAndContexts = new Dictionary<string, string>();
 
+            var parentScopeName = !String.IsNullOrEmpty(ExecutionContext.ScopeName) ? ExecutionContext.ScopeName : ExecutionContext.ContextName;
+            Trace.Info($"Parent Scope Name {parentScopeName}");
+
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Scope Names are not set for some reason for the Action nor for its steps.
@@ -275,16 +278,19 @@ namespace GitHub.Runner.Worker.Handlers
                 // InitializeScope(step, scopeInputs);
                 InitializeScope(step);
 
-                if (!String.IsNullOrEmpty(step.ExecutionContext.ScopeName)) {
-                    scopesAndContexts.Add(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName);
-                }
+                // TODO: Ensure that the composite run step always has an ID. 
+                // If they didn't set an ID, then generate an ID and mark it as a "__asdf" => then in further code, don't process. 
+                // If scope name is "__"
+                Trace.Info("Scope Name: {step.ExecutionContext.ScopeName}");
+                // if (!String.IsNullOrEmpty(step.ExecutionContext.ScopeName)) {
+                //     scopesAndContexts.Add(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName);
+                // }
 
                 location++;
                 actionID++;
             }
 
-            var parentScopeName = !String.IsNullOrEmpty(ExecutionContext.ScopeName) ? ExecutionContext.ScopeName : ExecutionContext.ContextName;
-            Trace.Info($"Parent Scope Name {parentScopeName}");
+            
 
             // TODO: Figure out if we need to include workflow step ID for parentScopeName
             if (!ExecutionContext.Scopes.ContainsKey(parentScopeName)) {
@@ -302,16 +308,24 @@ namespace GitHub.Runner.Worker.Handlers
             // or maybe we could just do an easy search across steps?
             // But they are popped from the step list: 
 
-            // 
+            // TODO: Make the composite step have the same scope name as the nested steps. 
+
             Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
             cleanOutputsStep.StepID = actionID;
             cleanOutputsStep.GroupID = groupID;
             cleanOutputsStep.CleanUp = true;
             cleanOutputsStep.ContextName = ExecutionContext.ContextName;
+            // Go ask ting about implementation
+            
+            // TODO: Figure out a way to do this without Reference Type.
+            // Maybe put it on the Execution Context. 
             cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference(
-                scopeAndContextNames: scopesAndContexts,
+                scopeAndContextNames: null,
+                parentScopeName: parentScopeName,
                 outputs: Data.Outputs
             );
+
+            // Try changing data.ExecutionType to ActionSource
 
             // TODO: Pass parents stuff.
             // We have access to this already via the step.Environment variable. 

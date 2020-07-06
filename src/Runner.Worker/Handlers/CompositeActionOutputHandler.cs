@@ -40,77 +40,67 @@ namespace GitHub.Runner.Worker.Handlers
             // Pull coressponding outputs and place them in the Whole Composite Action Job Outputs Object
             // int limit = Exe
             // Dictionary<string, string> finalOutputs = new Dictionary<string, string>();
-            foreach (var pair in Data.ScopeAndContextNames)
-            {
-                Trace.Info("in for");
-                // Clone to prevent the System.InvalidOperationException: Collection was modified error
-                DictionaryContextData currentOutputs = ExecutionContext.StepsContext.GetOutput(pair.Key, pair.Value).Clone() as DictionaryContextData;
-                Trace.Info($"Scope {pair.Key}'s outputs: {StringUtil.ConvertToJson(currentOutputs)}");
-                foreach (var outputs in currentOutputs) {
-                    StringContextData outputsValue = outputs.Value as StringContextData;
-                    // finalOutputs[outputs.Key] = outputsValue.ToString();
-                    Data.ParentExecutionContext.StepsContext.SetOutput(pair.Key, pair.Value, outputs.Key, outputsValue, out string test);
-                    Trace.Info($"Composite Action Output Handler Reference: {test}");
-                }
-            }
 
-            // Trace.Info($"Final outputs: {StringUtil.ConvertToJson(finalOutputs)}");
-            // Trace.Info($"Current StepsContext: {StringUtil.ConvertToJson(ExecutionContext.StepsContext)}");
-            // Trace.Info($"Parent StepsContext: {StringUtil.ConvertToJson(Data.ParentExecutionContext.StepsContext)}");
+            var contextDataWithSteps = Data.ParentExecutionContext.ExpressionValues.Clone() as DictionaryContextData;
+            contextDataWithSteps["steps"] = new DictionaryContextData();
+            // var testContext = contextDataWithSteps["steps"] as DictionaryContextData;
+            // testContext[Data.ParentScopeName] = new DictionaryContextData();
+            // var parentContext = testContext[Data.ParentScopeName] as DictionaryContextData;
 
-            Trace.Info($"Output Handler Scopes {StringUtil.ConvertToJson(ExecutionContext.StepsContext.GetScope(ExecutionContext.ContextName))}");
+            // TODO FOR CLEANUP:
+            // Stuff built in to use:
+            //          StepsContext.GetScope(Step Name)
+            // foreach (var pair in Data.ScopeAndContextNames)
+            // {
+            //     Trace.Info("in for");
+            //     // Clone to prevent the System.InvalidOperationException: Collection was modified error
+            //     DictionaryContextData currentOutputs = ExecutionContext.StepsContext.GetOutput(pair.Key, pair.Value).Clone() as DictionaryContextData;
+            //     Trace.Info($"Scope {pair.Key}'s outputs: {StringUtil.ConvertToJson(currentOutputs)}");
+            //     Trace.Info($"Context Name: {pair.Value}");
+            //     // foreach (var outputs in currentOutputs) {
+            //     //     StringContextData outputsValue = outputs.Value as StringContextData;
+            //     //     // finalOutputs[outputs.Key] = outputsValue.ToString();
+            //     //     Data.ParentExecutionContext.StepsContext.SetOutput(pair.Key, pair.Value, outputs.Key, outputsValue, out string test);
+            //     //     Trace.Info($"Composite Action Output Handler Reference: {test}");
+            //     //     Trace.Info($"ParentExecutionContext StepsContext Test Scope {StringUtil.ConvertToJson(Data.ParentExecutionContext.StepsContext.GetScope(pair.Key))}");
+            //     // }
+            //     testContext[pair.Value] = new DictionaryContextData();
+            //     var test2 = testContext[pair.Value] as DictionaryContextData;
+            //     test2["outputs"] = new DictionaryContextData();
+            //     foreach (var outputs in currentOutputs) {
+            //         var test3 = test2["outputs"] as DictionaryContextData;
+            //         test3[outputs.Key] = outputs.Value;
+            //     }
+            //     // parentContext[pair.Value] = currentOutputs;
+            // }
+            contextDataWithSteps["steps"] = ExecutionContext.StepsContext.GetScope(Data.ParentScopeName);
 
-            // Prepare outputs to be sent over to the Composite Action Outputs Handler.
-            // TODO: Pass this stuff to the Output Handler! The values will then be evaluated correctly!
-            // TODO: 7/1/20 left off => look at how ScriptHandler does it
-            // OHHHHHHHHHM, WE NEED TO SET IT UP ABOVE!!!!!!!
-            // Figure out why it's still null when we search it.
+            Trace.Info($"Parent Step Context: {StringUtil.ConvertToJson(contextDataWithSteps["steps"])}");
 
-            // SEE:
-            //             [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]Evaluating: steps.random-number-generator.outputs.random-id
-            // 4459 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]Evaluating Index:
-            //    1 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]..Evaluating Index:
-            //    2 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]....Evaluating Index:
-            //    3 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]......Evaluating steps:
-            //    4 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]......=> null
-            //    5 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]....=> null
-            //    6 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]..=> null
-            //    7 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]=> null
-            //    8 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]Result: null
-            //    9 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]Evaluating: steps.food.outputs.test
-            //   10 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]Evaluating Index:
-            //   11 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]..Evaluating Index:
-            //   12 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]....Evaluating Index:
-            //   13 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]......Evaluating steps:
-            //   14 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]......=> null
-            //   15 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]....=> null
-            //   16 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]..=> null
-            //   17 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]=> null
-            //   18 [2020-07-01 20:58:23Z VERB JobServerQueue] Enqueue web console line queue: ##[debug]Result: null
+            // Look at Execution Context and see if we are in the right scope?
+            // Afterwards, how do we set the steps.composite1[outputs] = ....
             var outputsAction = new Dictionary<String, String>();
             if (Data.Outputs != null) {
                 var evaluator = Data.ParentExecutionContext.ToPipelineTemplateEvaluator();
-                DictionaryContextData actionOutputs = evaluator.EvaluateStepScopeOutputs(Data.Outputs, Data.ParentExecutionContext as DictionaryContextData, Data.ParentExecutionContext.ExpressionFunctions);
+
+                // Evaluate outputs so that we can store it later in the "outputs" object in the composite action step
+                DictionaryContextData actionOutputs = evaluator.EvaluateStepScopeOutputs(Data.Outputs, contextDataWithSteps, Data.ParentExecutionContext.ExpressionFunctions);
                 foreach (var pair in actionOutputs) {
                     Trace.Info($"Composite Action Output Handler. Original Output Key: {pair.Key}");
 
-                    // TODO: Figure out how to support mapping to specific ids
-                    // outputs:
-                    //  random-number: ${{ steps.random-number-generator.outputs.random-id }}
-                    //  food: ${{ steps.food.outputs.test }}
-
-                    // Just convert it to a string for now?
-                    // Changed action.yaml to reflect this. 
-                    // We have to make sure that in the OutputHandler, it has access to all the context variables (github, etc. )
-                    // Yes, but we still have to consider other context variables that are not steps....outputs
-                    // ex: steps.random-number-generator.outputs.random-id
-                    // And we can easily just compare if the strings are equal to each other in the output handler?
-
 
                     var outputsName = pair.Key;
-                    var outputsValue = pair.Value;
+                    
+                    var outputsValue = pair.Value as StringContextData;
                     Trace.Info($"Composite Action Output Handler. Original Output Value: {StringUtil.ConvertToJson(outputsValue)}");
+
+                    // You can 
+                    Data.ParentExecutionContext.SetOutput(outputsName, outputsValue, out string test);
+
                     outputsAction.Add(outputsName, outputsValue.ToString());
+
+                    // Set outputs in parent scope for steps
+                    // ex: get the step name aka composite1 in our example
                 }
             }
 

@@ -83,6 +83,8 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
+                step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.StepsContext.GetScope(step.ExecutionContext.ScopeName);
+
                 // Populate env context for each step
                 Trace.Info("Initialize Env context for step");
 #if OS_WINDOWS
@@ -381,6 +383,7 @@ namespace GitHub.Runner.Worker
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
         }
 
+        // TODO: DELETE Outdated stuff
         private void CompleteStep(IStep step, IStep nextStep, TaskResult? result = null, string resultCode = null)
         {
             var executionContext = step.ExecutionContext;
