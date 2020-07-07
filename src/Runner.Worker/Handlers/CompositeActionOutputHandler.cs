@@ -27,7 +27,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Evaluate the mapped outputs value
             if (Data.Outputs != null)
             {
-                // Evaluate in the steps context
+                // Evaluate the outputs in the steps context to easily retrieve the values
                 var evaluator = ExecutionContext.ToPipelineTemplateEvaluator();
 
                 // TODO: Check if Errors thrown are outputted in a good user experience way
