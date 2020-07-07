@@ -30,13 +30,12 @@ namespace GitHub.Runner.Worker.Handlers
                 // Evaluate the outputs in the steps context to easily retrieve the values
                 var evaluator = ExecutionContext.ToPipelineTemplateEvaluator();
 
-                // TODO: Check if Errors thrown are outputted in a good user experience way
-                // ex: fromJson('not json"'
                 DictionaryContextData actionOutputs = evaluator.EvaluateStepScopeOutputs(Data.Outputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
                 foreach (var pair in actionOutputs)
                 {
                     var outputsName = pair.Key;
                     var outputsValue = pair.Value as StringContextData;
+                    
                     // Set output in the whole composite scope. 
                     if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
                     {
