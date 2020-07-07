@@ -95,7 +95,6 @@ namespace GitHub.Runner.Worker
                         case "runs":
                             actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value);
                             break;
-
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
                             break;
@@ -426,7 +425,7 @@ namespace GitHub.Runner.Worker
                     {
                         return new CompositeActionExecutionData()
                         {
-                            Steps = stepsLoaded
+                            Steps = stepsLoaded,
                         };
                     }
                 }
