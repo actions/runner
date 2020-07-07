@@ -74,7 +74,6 @@ namespace GitHub.Runner.Worker
                 }
 
                 var actionMapping = token.AssertMapping("action manifest root");
-                var envComposite = default(MappingToken);
 
                 foreach (var actionPair in actionMapping)
                 {
@@ -92,10 +91,6 @@ namespace GitHub.Runner.Worker
 
                         case "inputs":
                             ConvertInputs(context, actionPair.Value, actionDefinition);
-                            break;
-
-                        case "env":
-                            envComposite = actionPair.Value.AssertMapping("env");
                             break;
 
                         case "runs":
@@ -150,7 +145,7 @@ namespace GitHub.Runner.Worker
                 var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-args", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-env", token, 0, null, omitHeader: true);
                     context.Errors.Check();
 
                     Trace.Info($"Arguments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
@@ -432,7 +427,7 @@ namespace GitHub.Runner.Worker
                     {
                         return new CompositeActionExecutionData()
                         {
-                            Steps = stepsLoaded
+                            Steps = stepsLoaded,
                         };
                     }
                 }
