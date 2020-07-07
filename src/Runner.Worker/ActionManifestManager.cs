@@ -389,6 +389,7 @@ namespace GitHub.Runner.Worker
                             Image = imageToken.Value,
                             Arguments = argsToken,
                             EntryPoint = entrypointToken?.Value,
+                            Environment = envToken,
                             Pre = preEntrypointToken?.Value,
                             InitCondition = preIfToken?.Value ?? "always()",
                             Post = postEntrypointToken?.Value,
