@@ -27,7 +27,6 @@ namespace GitHub.Runner.Worker
 
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
-        public Dictionary<string, string> EvaluateCompositeActionEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
     }
 
@@ -85,8 +84,6 @@ namespace GitHub.Runner.Worker
                 }
 
                 var actionMapping = token.AssertMapping("action manifest root");
-                var envComposite = default(MappingToken);
-
                 foreach (var actionPair in actionMapping)
                 {
                     var propertyName = actionPair.Key.AssertString($"action.yml property key");
@@ -105,14 +102,9 @@ namespace GitHub.Runner.Worker
                             ConvertInputs(templateContext, actionPair.Value, actionDefinition);
                             break;
 
-                        case "env":
-                            envComposite = actionPair.Value.AssertMapping("env");
-                            break;
-
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, envComposite);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId);
                             break;
-
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
                             break;
@@ -200,7 +192,7 @@ namespace GitHub.Runner.Worker
                 var context = CreateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, null, omitHeader: true);
+                    var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-env", token, 0, null, omitHeader: true);
                     context.Errors.Check();
 
                     Trace.Info($"Environments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
@@ -232,48 +224,6 @@ namespace GitHub.Runner.Worker
             return result;
         }
 
-        public Dictionary<string, string> EvaluateCompositeActionEnvironment(
-            IExecutionContext executionContext,
-            MappingToken token,
-            IDictionary<string, PipelineContextData> extraExpressionValues)
-        {
-            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            if (token != null)
-            {
-                var context = CreateContext(executionContext, extraExpressionValues);
-                try
-                {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "runs-env", token, 0, null, omitHeader: false);
-                    context.Errors.Check();
-
-                    // Mapping
-                    var mapping = evaluateResult.AssertMapping("composite env");
-
-                    foreach (var pair in mapping)
-                    {
-                        // Literal key
-                        var key = pair.Key.AssertString("composite env key");
-
-                        // Literal value
-                        var value = pair.Value.AssertString("composite env value");
-                        result[key.Value] = value.Value;
-
-                        Trace.Info($"Add env {key} = {value}");
-                    }
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    Trace.Error(ex);
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return result;
-
-        }
         public string EvaluateDefaultInput(
             IExecutionContext executionContext,
             string inputName,
@@ -358,9 +308,7 @@ namespace GitHub.Runner.Worker
             IExecutionContext executionContext,
             TemplateContext context,
             TemplateToken inputsToken,
-            Int32 fileID,
-            MappingToken envComposite = null
-            )
+            Int32 fileID)
         {
             Trace.Info($"COMPOSITE ACTIONS FILEID: {fileID}");
 
@@ -492,14 +440,8 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = stepsLoaded,
-                            Environment = envComposite
                         };
                     }
-                }
-                // If there is an env set and it's not for composite action, yield an error
-                if (envComposite != null && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                {
-                    throw new ArgumentException("You cannot use env unless you are using Composite Actions");
                 }
                 else
                 {

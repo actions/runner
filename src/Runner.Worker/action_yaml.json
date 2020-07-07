@@ -7,7 +7,6 @@
                     "name": "string",
                     "description": "string",
                     "inputs": "inputs",
-                    "env": "runs-env",
                     "runs": "runs"
                 },
                 "loose-key-type": "non-empty-string",
@@ -44,7 +43,7 @@
                     "image": "non-empty-string",
                     "entrypoint": "non-empty-string",
                     "args": "container-runs-args",
-                    "env": "runs-env",
+                    "env": "container-runs-env",
                     "pre-entrypoint": "non-empty-string",
                     "pre-if": "non-empty-string",
                     "post-entrypoint": "non-empty-string",
@@ -57,7 +56,7 @@
                 "item-type": "container-runs-context"
             }
         },
-        "runs-env": {
+        "container-runs-env": {
             "context": [
                 "inputs"
             ],

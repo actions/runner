@@ -400,8 +400,6 @@ namespace GitHub.Runner.Worker
                         var compositeAction = definition.Data.Execution as CompositeActionExecutionData;
                         Trace.Info($"Load {compositeAction.Steps.Count} action steps.");
                         Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction.Steps)}");
-                        Trace.Info($"Load: {compositeAction.Environment} environment steps");
-                        Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Environment)}");
                     }
                     else
                     {
@@ -1287,7 +1285,6 @@ namespace GitHub.Runner.Worker
         public override bool HasPre => false;
         public override bool HasPost => false;
         public List<Pipelines.ActionStep> Steps { get; set; }
-        public MappingToken Environment { get; set; }
     }
 
     public abstract class ActionExecutionData
