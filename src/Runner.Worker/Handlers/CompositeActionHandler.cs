@@ -45,12 +45,6 @@ namespace GitHub.Runner.Worker.Handlers
                 inputsData[i.Key] = new StringContextData(i.Value);
             }
 
-
-            // Get Environment Data for Composite Action
-            var extraExpressionValues = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-            extraExpressionValues["inputs"] = inputsData;
-            var manifestManager = HostContext.GetService<IActionManifestManager>();
-
             // Add each composite action step to the front of the queue
             int location = 0;
             foreach (Pipelines.ActionStep aStep in actionSteps)
