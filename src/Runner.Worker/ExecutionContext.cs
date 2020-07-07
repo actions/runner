@@ -52,7 +52,6 @@ namespace GitHub.Runner.Worker
         IDictionary<String, IDictionary<String, String>> JobDefaults { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
-        IDictionary<String, ContextScope> Scopes { get; }
         IList<String> FileTable { get; }
         StepsContext StepsContext { get; }
         DictionaryContextData ExpressionValues { get; }
@@ -70,9 +69,7 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
-        string ActionID { get; set; }
-
-        IExecutionContext ParentExecutionContext { get; set; }
+        IExecutionContext FinalizeContext { get; set; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -154,7 +151,6 @@ namespace GitHub.Runner.Worker
         public IDictionary<String, IDictionary<String, String>> JobDefaults { get; private set; }
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
-        public IDictionary<String, ContextScope> Scopes { get; private set; }
         public IList<String> FileTable { get; private set; }
         public StepsContext StepsContext { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
@@ -175,9 +171,7 @@ namespace GitHub.Runner.Worker
 
         public bool EchoOnActionCommand { get; set; }
 
-        public string ActionID { get; set; }
-
-        public IExecutionContext ParentExecutionContext { get; set; }
+        public IExecutionContext FinalizeContext { get; set; }
 
         public TaskResult? Result
         {
@@ -287,50 +281,26 @@ namespace GitHub.Runner.Worker
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
 
-            // TODO: what if this.ContextName is empty/null?
-            // We want to make sure the context name is never null
-            // TODO: if the ContextName is null, we should generate "__<id>" for the ContextName for nested composite steps. 
-            // We should add 2 leading underscores.
-            // Maybe use ReferenceNameBuilder to generate a unique ID for the ContextName. 
-            // uses-repo-name, etc. 
-            // Use the Build function()
-            // Do this on the server.
-
-            // We support dot notation for scope name: <workflow step id>.<composite step id (aka context name)>.____
-            // TODO: Build in 
-            Trace.Info($"Original ScopeName: {this.ScopeName}");
-            Trace.Info($"Original ContextName: {this.ContextName}");
-            Trace.Info($"Original step action ContextName: {step.Action.ContextName}");
-            // if (string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName) && !string.IsNullOrEmpty(step.Action.ContextName))
-            // {
-            //     Trace.Info($"First If");
-            //     childScopeName = $"{this.ContextName}.{step.Action.ContextName}";
-            // }
-            // else if (!string.IsNullOrEmpty(this.ScopeName) && !string.IsNullOrEmpty(this.ContextName))
-            // {
-            //     Trace.Info($"Second If");
-            //     childScopeName = $"{this.ScopeName}.{this.ContextName}";
-            // }
-
-            // TODO: Fix Scope Name: 
-            // Every step's scope name would be the same within that composite action!
+            // Set Scope Name. Note, for our design, we consider each step in a composite action to have the same scope
+            // This makes it much simpler to handle their outputs at the end of the Composite Action
             var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
+
+            // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
+            // "__<GUID>"
             if (String.IsNullOrEmpty(childScopeName))
             {
                 childScopeName = $"__{newGuid}";
             }
 
-            Trace.Info($"New Child Scope Name: {childScopeName}");
             var childContextName = step.Action.ContextName;
 
-            // Scope Name should be the ID in the workflow step.
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, childContextName);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Set Parent Attribute for Clean Up Step
             if (cleanUp)
             {
-                step.ExecutionContext.ParentExecutionContext = this;
+                step.ExecutionContext.FinalizeContext = this;
             }
 
             // Add the composite action environment variables to each step.
@@ -369,7 +339,6 @@ namespace GitHub.Runner.Worker
             }
             child.EnvironmentVariables = EnvironmentVariables;
             child.JobDefaults = JobDefaults;
-            child.Scopes = Scopes;
             child.FileTable = FileTable;
             child.StepsContext = StepsContext;
             foreach (var pair in ExpressionValues)
@@ -690,16 +659,6 @@ namespace GitHub.Runner.Worker
 
             // Steps context (StepsRunner manages adding the scoped steps context)
             StepsContext = new StepsContext();
-
-            // Scopes
-            Scopes = new Dictionary<String, ContextScope>(StringComparer.OrdinalIgnoreCase);
-            if (message.Scopes?.Count > 0)
-            {
-                foreach (var scope in message.Scopes)
-                {
-                    Scopes[scope.Name] = scope;
-                }
-            }
 
             // File table
             FileTable = new List<String>(message.FileTable ?? new string[0]);

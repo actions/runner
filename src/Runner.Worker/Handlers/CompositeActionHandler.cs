@@ -26,41 +26,8 @@ namespace GitHub.Runner.Worker.Handlers
         // private void InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
         private void InitializeScope(IStep step)
         {
-            var executionContext = step.ExecutionContext;
-            var stepsContext = executionContext.StepsContext;
-            if (!string.IsNullOrEmpty(executionContext.ScopeName))
-            {
-                // Gather uninitialized current and ancestor scopes
-                Trace.Info($"Composite Actions Scopes: {StringUtil.ConvertToJson(executionContext.Scopes)}");
-                // Add new scope if not created yet.
-                if (!executionContext.Scopes.ContainsKey(executionContext.ScopeName))
-                {
-                    executionContext.Scopes[executionContext.ScopeName] = new Pipelines.ContextScope();
-                    executionContext.Scopes[executionContext.ScopeName].Name = executionContext.ScopeName;
-                }
-                var scope = executionContext.Scopes[executionContext.ScopeName];
-                
-                executionContext.Debug($"Initializing scope '{scope.Name}'");
-
-                step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
-
-                var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
-                var inputs = default(DictionaryContextData);
-                try
-                {
-                    inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
-                    Trace.Error(ex);
-                    step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Complete(TaskResult.Failed);
-                }
-            }
-
-            // Setup expression values
-            var scopeName = executionContext.ScopeName;
+            var stepsContext = step.ExecutionContext.StepsContext;
+            var scopeName = step.ExecutionContext.ScopeName;
             step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
         }
 
@@ -118,13 +85,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
-                // Scope Names are not set for some reason for the Action nor for its steps.
-                // TODO: figure out why
-                // Trace.Info($"CompositeActionHandler ActionStep ScopeName {aStep.ScopeName}");
-                Trace.Info($"CompositeActionHandler ActionStep Name {aStep.Name}");
-
-                // TODO: We need to set the ScopeName to be able to evaluate the Outputs!!
-
                 // Ex: 
                 // runs:
                 //      using: "composite"
@@ -168,23 +128,20 @@ namespace GitHub.Runner.Worker.Handlers
                 location++;
             }
 
-            
-
             // TODO: Figure out if we need to include workflow step ID for parentScopeName
-            if (!ExecutionContext.Scopes.ContainsKey(parentScopeName)) {
-                ExecutionContext.Scopes[parentScopeName] = new Pipelines.ContextScope() {
-                    Name = parentScopeName
-                };
-            }
+            // if (!ExecutionContext.Scopes.ContainsKey(parentScopeName)) {
+            //     ExecutionContext.Scopes[parentScopeName] = new Pipelines.ContextScope() {
+            //         Name = parentScopeName
+            //     };
+            // }
 
             // Create a step that handles all the composite action steps' outputs
             Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
             cleanOutputsStep.ContextName = ExecutionContext.ContextName;
-            cleanOutputsStep.Reference = new Pipelines.CompositeOutputReference(
-                scopeAndContextNames: null,
-                parentScopeName: parentScopeName,
-                outputs: Data.Outputs
-            );
+            cleanOutputsStep.DisplayName = "Composite Action Steps Cleanup";
+            // Use the same reference type as our composite steps.
+            cleanOutputsStep.Reference = Action;
+
             var actionRunner2 = HostContext.CreateService<IActionRunner>();
             actionRunner2.Action = cleanOutputsStep;
             actionRunner2.Stage = ActionRunStage.Main;

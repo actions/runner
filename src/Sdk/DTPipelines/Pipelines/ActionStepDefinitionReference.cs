@@ -21,14 +21,14 @@ namespace GitHub.DistributedTask.Pipelines
         [DataMember]
         Script = 3,
 
-        CompositeOutput = 4,
+        // CompositeOutput = 4,
     }
 
     [DataContract]
     [KnownType(typeof(ContainerRegistryReference))]
     [KnownType(typeof(RepositoryPathReference))]
     [KnownType(typeof(ScriptReference))]    
-    [KnownType(typeof(CompositeOutputReference))]    
+    // [KnownType(typeof(CompositeOutputReference))]    
     [JsonConverter(typeof(ActionStepDefinitionReferenceConverter))]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class ActionStepDefinitionReference
@@ -157,48 +157,38 @@ namespace GitHub.DistributedTask.Pipelines
         }
     }
 
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public class CompositeOutputReference : ActionStepDefinitionReference
-    {
-        [JsonConstructor]
-        public CompositeOutputReference(Dictionary<String, String> scopeAndContextNames, MappingToken outputs, String parentScopeName)
-        {
-            this.ScopeAndContextNames = scopeAndContextNames;
-            this.ParentScopeName = parentScopeName;
-            this.Outputs = outputs;
-        }
+//     [EditorBrowsable(EditorBrowsableState.Never)]
+//     public class CompositeOutputReference : ActionStepDefinitionReference
+//     {
+//         [JsonConstructor]
+//         public CompositeOutputReference(MappingToken outputs, String parentScopeName)
+//         {
+//             this.ParentScopeName = parentScopeName;
+//             this.Outputs = outputs;
+//         }
 
-        private CompositeOutputReference(CompositeOutputReference referenceToClone)
-        {
-            // this.ParentEnv = referenceToClone.ParentEnv;
-            this.ScopeAndContextNames = referenceToClone.ScopeAndContextNames;
-        }
+//         private CompositeOutputReference(CompositeOutputReference referenceToClone)
+//         {
+//         }
 
-        [DataMember(EmitDefaultValue = false)]
-        public override ActionSourceType Type => ActionSourceType.CompositeOutput;
+//         [DataMember(EmitDefaultValue = false)]
+//         public override ActionSourceType Type => ActionSourceType.CompositeOutput;
 
-        // [DataMember(EmitDefaultValue = false)]
-        public Dictionary<String, String> ScopeAndContextNames
-        {
-            get; 
-            set;
-        }
+//         public String ParentScopeName
+//         {
+//             get; 
+//             set;
+//         }
 
-        public String ParentScopeName
-        {
-            get; 
-            set;
-        }
+//         public MappingToken Outputs
+//         {
+//             get; 
+//             set;
+//         }
 
-        public MappingToken Outputs
-        {
-            get; 
-            set;
-        }
-
-        public override ActionStepDefinitionReference Clone()
-        {
-            return new CompositeOutputReference(this);
-        }
-    }
+//         public override ActionStepDefinitionReference Clone()
+//         {
+//             return new CompositeOutputReference(this);
+//         }
+//     }
 }

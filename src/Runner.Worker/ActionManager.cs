@@ -404,6 +404,9 @@ namespace GitHub.Runner.Worker
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Environment)}");
                         Trace.Info($"Load: {compositeAction.Outputs} outputs");
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction.Outputs)}");
+
+                        // Don't check the executionContext since it's not the right type. 
+                        // Return the same execution data for the Output Handler. 
                     }
                     else
                     {
@@ -456,19 +459,19 @@ namespace GitHub.Runner.Worker
                 definition.Data.Name = "Run";
                 definition.Data.Description = "Execute a script";
             }
-            else if (action.Reference.Type == Pipelines.ActionSourceType.CompositeOutput)
-            {
-                var compositeReferenceOutput = action.Reference as Pipelines.CompositeOutputReference;
-                definition.Data.Execution = new CompositeActionOutputExecutionData() 
-                {
-                    ScopeAndContextNames = compositeReferenceOutput.ScopeAndContextNames,
-                    ParentExecutionContext = executionContext.ParentExecutionContext,
-                    Outputs = compositeReferenceOutput.Outputs,
-                    ParentScopeName = compositeReferenceOutput.ParentScopeName,
-                };
-                definition.Data.Name = "Composite Output Clean up";
-                definition.Data.Description = "Cleans up composite outputs";
-            }
+            // else if (action.Reference.Type == Pipelines.ActionSourceType.CompositeOutput)
+            // {
+            //     var compositeReferenceOutput = action.Reference as Pipelines.CompositeOutputReference;
+            //     definition.Data.Execution = new CompositeActionOutputExecutionData() 
+            //     {
+            //         ParentExecutionContext = executionContext.ParentExecutionContext,
+            //         Outputs = compositeReferenceOutput.Outputs,
+            //         ParentScopeName = compositeReferenceOutput.ParentScopeName,
+            //     };
+            //     definition.Data.Name = "Composite Output Clean up";
+            //     definition.Data.Description = "Cleans up composite outputs";
+            // }
+            // TODO: we don'
             else
             {
                 throw new NotSupportedException(action.Reference.Type.ToString());
@@ -1243,7 +1246,6 @@ namespace GitHub.Runner.Worker
         Plugin,
         Script,
         Composite,
-        CompositeOutput
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
@@ -1310,17 +1312,16 @@ namespace GitHub.Runner.Worker
         public MappingToken Outputs { get; set; }
     }
 
-    public sealed class CompositeActionOutputExecutionData : ActionExecutionData
-    {
-        // TODO
-        public override ActionExecutionType ExecutionType => ActionExecutionType.CompositeOutput;
-        public override bool HasPre => false;
-        public override bool HasPost => false;
-        public IExecutionContext ParentExecutionContext { get; set; }
-        public Dictionary<String, String> ScopeAndContextNames { get; set; }
-        public MappingToken Outputs { get; set; }
-        public String ParentScopeName { get; set; }
-    }
+    // public sealed class CompositeActionOutputExecutionData : ActionExecutionData
+    // {
+    //     // TODO
+    //     public override ActionExecutionType ExecutionType => ActionExecutionType.CompositeOutput;
+    //     public override bool HasPre => false;
+    //     public override bool HasPost => false;
+    //     public IExecutionContext ParentExecutionContext { get; set; }
+    //     public MappingToken Outputs { get; set; }
+    //     public String ParentScopeName { get; set; }
+    // }
 
     public abstract class ActionExecutionData
     {
