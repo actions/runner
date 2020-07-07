@@ -176,7 +176,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: false);
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = PipelineTemplateConverter.ConvertToSteps(context, token);
                 }
