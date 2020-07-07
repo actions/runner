@@ -1218,8 +1218,6 @@ namespace GitHub.Runner.Worker
         public ActionExecutionData Execution { get; set; }
 
         public Dictionary<String, String> Deprecated { get; set; }
-
-        public Int32 GroupID { get; set; }
     }
 
     public enum ActionExecutionType
@@ -1294,17 +1292,6 @@ namespace GitHub.Runner.Worker
         public MappingToken Environment { get; set; }
         public MappingToken Outputs { get; set; }
     }
-
-    // public sealed class CompositeActionOutputExecutionData : ActionExecutionData
-    // {
-    //     // TODO
-    //     public override ActionExecutionType ExecutionType => ActionExecutionType.CompositeOutput;
-    //     public override bool HasPre => false;
-    //     public override bool HasPost => false;
-    //     public IExecutionContext ParentExecutionContext { get; set; }
-    //     public MappingToken Outputs { get; set; }
-    //     public String ParentScopeName { get; set; }
-    // }
 
     public abstract class ActionExecutionData
     {

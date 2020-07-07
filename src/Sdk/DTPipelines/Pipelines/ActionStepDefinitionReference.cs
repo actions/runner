@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.Pipelines
         ContainerRegistry = 2,
 
         [DataMember]
-        Script = 3,
+        Script = 3
     }
 
     [DataContract]
