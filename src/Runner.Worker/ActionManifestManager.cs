@@ -63,7 +63,11 @@ namespace GitHub.Runner.Worker
             // Instead of using Regex which can be computationally expensive, 
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = _hostContext.GetDirectory(WellKnownDirectory.Actions);
-            var fileName = manifestFile.Remove(0, basePath.Length + 1);
+            string fileName = manifestFile;
+            if (manifestFile.Length > basePath.Length + 1)
+            {
+                fileName = manifestFile.Remove(0, basePath.Length + 1);
+            }
 
             try
             {
