@@ -24,20 +24,6 @@ namespace GitHub.Runner.Worker.Handlers
         public CompositeActionExecutionData Data { get; set; }
         public Task RunAsync(ActionRunStage stage)
         {
-            // Create "steps" attribute for ExpressionValues for when we evaluate the Outputs.
-            // var contextDataWithSteps = ExecutionContext.ExpressionValues.Clone() as DictionaryContextData;
-            // contextDataWithSteps["steps"] = new DictionaryContextData();
-            // contextDataWithSteps["steps"] = ExecutionContext.StepsContext.GetScope(Data.ParentScopeName);
-            // ^We don't need this since StepsRunner sets this already for us. 
-
-            // Trace.Info($"Scope: {StringUtil.ConvertToJson(ExecutionContext.StepsContext.GetScope(ExecutionContext.FinalizeContext.ScopeName))}");
-
-            // By default, ExecutionContext.ExpressionValues["steps"] is null. We need to sync it with the StepsContext.
-            // ExecutionContext.ExpressionValues["steps"] = new DictionaryContextData();
-            // ExecutionContext.ExpressionValues["steps"] = ExecutionContext.StepsContext.GetScope(ExecutionContext.FinalizeContext.ScopeName);
-
-            Trace.Info($"Steps: {StringUtil.ConvertToJson(ExecutionContext.ExpressionValues["steps"])}");
-
             // Evaluate the mapped outputs value
             if (Data.Outputs != null)
             {
@@ -58,15 +44,6 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
             }
-
-            // Create scope for Scopes to avoid null scope situation in the CompleteStep()
-            // if (!ExecutionContext.Scopes.ContainsKey(Data.ParentScopeName))
-            // {
-            //     ExecutionContext.Scopes[Data.ParentScopeName] = new Pipelines.ContextScope()
-            //     {
-            //         Name = Data.ParentScopeName
-            //     };
-            // }
 
             return Task.CompletedTask;
         }

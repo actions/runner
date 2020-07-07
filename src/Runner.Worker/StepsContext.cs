@@ -93,12 +93,5 @@ namespace GitHub.Runner.Worker
 
             return step;
         }
-
-        public DictionaryContextData GetOutput(string scopeName, string stepName) {
-            var step = GetStep(scopeName, stepName);
-            var outputs = step["outputs"].AssertDictionary("outputs");
-            return outputs;
-        }
-
     }
 }

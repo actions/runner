@@ -23,7 +23,6 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public CompositeActionExecutionData Data { get; set; }
 
-        // private void InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
         private void InitializeScope(IStep step)
         {
             var stepsContext = step.ExecutionContext.StepsContext;
@@ -127,13 +126,6 @@ namespace GitHub.Runner.Worker.Handlers
 
                 location++;
             }
-
-            // TODO: Figure out if we need to include workflow step ID for parentScopeName
-            // if (!ExecutionContext.Scopes.ContainsKey(parentScopeName)) {
-            //     ExecutionContext.Scopes[parentScopeName] = new Pipelines.ContextScope() {
-            //         Name = parentScopeName
-            //     };
-            // }
 
             // Create a step that handles all the composite action steps' outputs
             Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();

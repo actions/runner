@@ -20,7 +20,6 @@ namespace GitHub.Runner.Worker
     {
         Pre,
         Main,
-        CompositePost,
         Post,
     }
 
@@ -311,7 +310,6 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
-            // TODO: Add if condition for composite output.
             else
             {
                 context.Error($"Encountered an unknown action reference type when evaluating the display name: {action.Reference?.Type}");

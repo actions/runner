@@ -20,15 +20,12 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember]
         Script = 3,
-
-        // CompositeOutput = 4,
     }
 
     [DataContract]
     [KnownType(typeof(ContainerRegistryReference))]
     [KnownType(typeof(RepositoryPathReference))]
-    [KnownType(typeof(ScriptReference))]    
-    // [KnownType(typeof(CompositeOutputReference))]    
+    [KnownType(typeof(ScriptReference))]
     [JsonConverter(typeof(ActionStepDefinitionReferenceConverter))]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class ActionStepDefinitionReference
@@ -156,39 +153,4 @@ namespace GitHub.DistributedTask.Pipelines
             return new ScriptReference(this);
         }
     }
-
-//     [EditorBrowsable(EditorBrowsableState.Never)]
-//     public class CompositeOutputReference : ActionStepDefinitionReference
-//     {
-//         [JsonConstructor]
-//         public CompositeOutputReference(MappingToken outputs, String parentScopeName)
-//         {
-//             this.ParentScopeName = parentScopeName;
-//             this.Outputs = outputs;
-//         }
-
-//         private CompositeOutputReference(CompositeOutputReference referenceToClone)
-//         {
-//         }
-
-//         [DataMember(EmitDefaultValue = false)]
-//         public override ActionSourceType Type => ActionSourceType.CompositeOutput;
-
-//         public String ParentScopeName
-//         {
-//             get; 
-//             set;
-//         }
-
-//         public MappingToken Outputs
-//         {
-//             get; 
-//             set;
-//         }
-
-//         public override ActionStepDefinitionReference Clone()
-//         {
-//             return new CompositeOutputReference(this);
-//         }
-//     }
 }

@@ -83,7 +83,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions)
         {
-            // TODO: Do I have to change anything here?
             var result = default(DictionaryContextData);
 
             if (token != null && token.Type != TokenType.Null)

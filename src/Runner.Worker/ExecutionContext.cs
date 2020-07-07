@@ -487,12 +487,9 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // TODO: Change it so that if the ContextName starts with "__", then we short circuit. 
-            // TODO: On server side, we want to generate Context Names on server side for null context names (when the id is not set by user)
-            // if (String.IsNullOrEmpty(ContextName) || if contains __)
-            // Add check if the scope name starts with double underscore __NEWGUID
-            // if (String.IsNullOrEmpty(ContextName))
-            bool scopeNameCondition = !String.IsNullOrEmpty(ScopeName) && ScopeName.Length >= 36 && String.Equals(ScopeName.Substring(0, 2), "__") && Guid.TryParse(ScopeName.Substring(2, 36), out Guid test);
+            // Checks if scope name is null or 
+            // if the ScopeName follows the __GUID format which is set as the default value for ScopeNames if null for Composite Actions. 
+            bool scopeNameCondition = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")) && !String.IsNullOrEmpty(ScopeName) && ScopeName.Length >= 36 && String.Equals(ScopeName.Substring(0, 2), "__") && Guid.TryParse(ScopeName.Substring(2, 36), out Guid test);
             if (String.IsNullOrEmpty(ContextName) || scopeNameCondition)
             {
                 reference = null;

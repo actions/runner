@@ -269,10 +269,6 @@ namespace GitHub.Runner.Worker.Handlers
                 fileName = node12;
             }
 #endif
-            ExecutionContext.Debug($"{fileName} {arguments}");
-
-            Trace.Info($"ScriptHandler Scope Name {ExecutionContext.ScopeName}");
-            // Trace.Info($"ScriptHandler Name {ExecutionContext.}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))

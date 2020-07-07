@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker
         }
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
-        {            
+        {
             var templateContext = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
 
@@ -65,7 +65,8 @@ namespace GitHub.Runner.Worker
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = _hostContext.GetDirectory(WellKnownDirectory.Actions);
             string fileName = manifestFile;
-            if (manifestFile.Length > basePath.Length + 1) {
+            if (manifestFile.Length > basePath.Length + 1)
+            {
                 fileName = manifestFile.Remove(0, basePath.Length + 1);
             }
 
@@ -102,16 +103,12 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "outputs":
-                            // TODO: Create function for ConvertOutputs
                             if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                             {
-                                // var actionOutputsDefinitions = actionPair.Value.AssertSequence("outputs");
-                                // var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                                // actionOutputsDictionary = evaluator.EvaluateStepScopeOutputs(actionOutputsDefinitions, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
                                 actionOutputs = actionPair.Value.AssertMapping("outputs");
                                 break;
                             }
-                            throw new Exception("You can't use outputs yet since Composite Actions hasn't been finished yet!");
+                            throw new Exception("Outputs for a whole action is not supported yet");
 
                         case "description":
                             actionDefinition.Description = actionPair.Value.AssertString("description").Value;
@@ -375,7 +372,7 @@ namespace GitHub.Runner.Worker
             TemplateContext context,
             TemplateToken inputsToken,
             Int32 fileID,
-            MappingToken envComposite = null, 
+            MappingToken envComposite = null,
             MappingToken outputs = null
             )
         {
