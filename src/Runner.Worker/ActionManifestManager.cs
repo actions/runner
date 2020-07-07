@@ -314,8 +314,6 @@ namespace GitHub.Runner.Worker
             TemplateToken inputsToken,
             Int32 fileID)
         {
-            Trace.Info($"COMPOSITE ACTIONS FILEID: {fileID}");
-
             var runsMapping = inputsToken.AssertMapping("runs");
             var usingToken = default(StringToken);
             var imageToken = default(StringToken);
