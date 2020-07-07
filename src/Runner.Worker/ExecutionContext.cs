@@ -74,7 +74,7 @@ namespace GitHub.Runner.Worker
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null);
 
         // logging
         bool WriteDebug { get; }
@@ -279,7 +279,9 @@ namespace GitHub.Runner.Worker
             Boolean cleanUp = false)
         {
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
-            var newGuid = Guid.NewGuid();
+            // You don't want to create the NewGuid at all. We want to inherit the current node.
+            // We want to get the ID
+            // var newGuid = Guid.NewGuid();
 
             // Set Scope Name. Note, for our design, we consider each step in a composite action to have the same scope
             // This makes it much simpler to handle their outputs at the end of the Composite Action
@@ -289,12 +291,13 @@ namespace GitHub.Runner.Worker
             // "__<GUID>"
             if (String.IsNullOrEmpty(childScopeName))
             {
+                var newGuid = Guid.NewGuid();
                 childScopeName = $"__{newGuid}";
             }
 
             var childContextName = step.Action.ContextName;
 
-            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, childContextName);
+            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), childScopeName, childContextName, logger: _logger);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Set Parent Attribute for Clean Up Step
@@ -317,7 +320,7 @@ namespace GitHub.Runner.Worker
             this.EnvironmentVariables = dict;
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null)
         {
             Trace.Entering();
 
@@ -365,9 +368,15 @@ namespace GitHub.Runner.Worker
             {
                 child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
             }
-
-            child._logger = HostContext.CreateService<IPagingLogger>();
-            child._logger.Setup(_mainTimelineId, recordId);
+            if (logger != null)
+            {
+                child._logger = logger;
+            }
+            else
+            {
+                child._logger = HostContext.CreateService<IPagingLogger>();
+                child._logger.Setup(_mainTimelineId, recordId);
+            }
 
             return child;
         }
