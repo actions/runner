@@ -270,7 +270,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
 #endif
             ExecutionContext.Debug($"{fileName} {arguments}");
-            
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
