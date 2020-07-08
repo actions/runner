@@ -33,8 +33,6 @@ namespace GitHub.Runner.Worker
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
     {
         private TemplateSchema _actionManifestSchema;
-        private IReadOnlyList<String> _fileTable;
-
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -55,22 +53,39 @@ namespace GitHub.Runner.Worker
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
-            var context = CreateContext(executionContext);
+            var templateContext = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
+
+            // Clean up file name real quick
+            // Instead of using Regex which can be computationally expensive, 
+            // we can just remove the # of characters from the fileName according to the length of the basePath
+            string basePath = HostContext.GetDirectory(WellKnownDirectory.Actions);
+            string fileRelativePath = manifestFile;
+            if (manifestFile.Contains(basePath))
+            {
+                fileRelativePath = manifestFile.Remove(0, basePath.Length + 1);
+            }
+
             try
             {
                 var token = default(TemplateToken);
 
                 // Get the file ID
-                var fileId = context.GetFileId(manifestFile);
-                _fileTable = context.GetFileTable();
+                var fileId = templateContext.GetFileId(fileRelativePath);
+
+                // Add this file to the FileTable in executionContext if it hasn't been added already
+                // we use > since fileID is 1 indexed
+                if (fileId > executionContext.FileTable.Count)
+                {
+                    executionContext.FileTable.Add(fileRelativePath);
+                }
 
                 // Read the file
                 var fileContent = File.ReadAllText(manifestFile);
                 using (var stringReader = new StringReader(fileContent))
                 {
-                    var yamlObjectReader = new YamlObjectReader(null, stringReader);
-                    token = TemplateReader.Read(context, "action-root", yamlObjectReader, fileId, out _);
+                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
+                    token = TemplateReader.Read(templateContext, "action-root", yamlObjectReader, fileId, out _);
                 }
 
                 var actionMapping = token.AssertMapping("action manifest root");
@@ -89,11 +104,11 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "inputs":
-                            ConvertInputs(context, actionPair.Value, actionDefinition);
+                            ConvertInputs(templateContext, actionPair.Value, actionDefinition);
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, context, actionPair.Value);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value);
                             break;
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
@@ -104,24 +119,24 @@ namespace GitHub.Runner.Worker
             catch (Exception ex)
             {
                 Trace.Error(ex);
-                context.Errors.Add(ex);
+                templateContext.Errors.Add(ex);
             }
 
-            if (context.Errors.Count > 0)
+            if (templateContext.Errors.Count > 0)
             {
-                foreach (var error in context.Errors)
+                foreach (var error in templateContext.Errors)
                 {
                     Trace.Error($"Action.yml load error: {error.Message}");
                     executionContext.Error(error.Message);
                 }
 
-                throw new ArgumentException($"Fail to load {manifestFile}");
+                throw new ArgumentException($"Fail to load {fileRelativePath}");
             }
 
             if (actionDefinition.Execution == null)
             {
                 executionContext.Debug($"Loaded action.yml file: {StringUtil.ConvertToJson(actionDefinition)}");
-                throw new ArgumentException($"Top level 'runs:' section is required for {manifestFile}");
+                throw new ArgumentException($"Top level 'runs:' section is required for {fileRelativePath}");
             }
             else
             {
@@ -282,13 +297,10 @@ namespace GitHub.Runner.Worker
                 result.ExpressionFunctions.Add(item);
             }
 
-            // Add the file table
-            if (_fileTable?.Count > 0)
+            // Add the file table from the Execution Context
+            for (var i = 0; i < executionContext.FileTable.Count; i++)
             {
-                for (var i = 0; i < _fileTable.Count; i++)
-                {
-                    result.GetFileId(_fileTable[i]);
-                }
+                result.GetFileId(executionContext.FileTable[i]);
             }
 
             return result;
