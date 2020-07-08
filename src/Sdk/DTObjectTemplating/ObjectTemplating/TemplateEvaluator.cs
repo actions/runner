@@ -31,7 +31,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
             Boolean omitHeader = false)
         {
             TemplateToken result;
-            
+
             if (!omitHeader)
             {
                 if (fileId != null)
