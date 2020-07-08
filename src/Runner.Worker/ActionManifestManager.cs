@@ -33,12 +33,9 @@ namespace GitHub.Runner.Worker
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
     {
         private TemplateSchema _actionManifestSchema;
-        private IHostContext _hostContext;
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            _hostContext = hostContext;
 
             var assembly = Assembly.GetExecutingAssembly();
             var json = default(string);
@@ -62,11 +59,11 @@ namespace GitHub.Runner.Worker
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 
             // we can just remove the # of characters from the fileName according to the length of the basePath
-            string basePath = _hostContext.GetDirectory(WellKnownDirectory.Actions);
-            string fileName = manifestFile;
+            string basePath = HostContext.GetDirectory(WellKnownDirectory.Actions);
+            string fileRelativePath = manifestFile;
             if (manifestFile.Length > basePath.Length + 1)
             {
-                fileName = manifestFile.Remove(0, basePath.Length + 1);
+                fileRelativePath = manifestFile.Remove(0, basePath.Length + 1);
             }
 
             try
@@ -74,10 +71,13 @@ namespace GitHub.Runner.Worker
                 var token = default(TemplateToken);
 
                 // Get the file ID
-                var fileId = templateContext.GetFileId(fileName);
+                var fileId = templateContext.GetFileId(fileRelativePath);
 
-                // Add this file to the FileTable in executionContext
-                executionContext.FileTable.Add(fileName);
+                // Add this file to the FileTable in executionContext if it hasn't been added already
+                if (fileId > executionContext.FileTable.Count)
+                {
+                    executionContext.FileTable.Add(fileRelativePath);
+                }
 
                 // Read the file
                 var fileContent = File.ReadAllText(manifestFile);
@@ -107,7 +107,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value);
                             break;
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
@@ -129,7 +129,7 @@ namespace GitHub.Runner.Worker
                     executionContext.Error(error.Message);
                 }
 
-                throw new ArgumentException($"Fail to load {fileName}");
+                throw new ArgumentException($"Fail to load {fileRelativePath}");
             }
 
             if (actionDefinition.Execution == null)
@@ -311,8 +311,7 @@ namespace GitHub.Runner.Worker
         private ActionExecutionData ConvertRuns(
             IExecutionContext executionContext,
             TemplateContext context,
-            TemplateToken inputsToken,
-            Int32 fileID)
+            TemplateToken inputsToken)
         {
             var runsMapping = inputsToken.AssertMapping("runs");
             var usingToken = default(StringToken);
@@ -379,7 +378,7 @@ namespace GitHub.Runner.Worker
                         {
                             var steps = run.Value.AssertSequence("steps");
                             var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                            stepsLoaded = evaluator.LoadCompositeSteps(steps, context.GetFileTable());
+                            stepsLoaded = evaluator.LoadCompositeSteps(steps);
                             break;
                         }
                         throw new Exception("You aren't supposed to be using Composite Actions yet!");
