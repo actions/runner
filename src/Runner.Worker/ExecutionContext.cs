@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker
         Dictionary<string, VariableValue> JobOutputs { get; }
         IDictionary<String, String> EnvironmentVariables { get; }
         IDictionary<String, ContextScope> Scopes { get; }
-        IList<String> FileTable { get; }
+        IList<String> FileTable { get; set; }
         StepsContext StepsContext { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
@@ -150,7 +150,7 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
         public IDictionary<String, String> EnvironmentVariables { get; private set; }
         public IDictionary<String, ContextScope> Scopes { get; private set; }
-        public IList<String> FileTable { get; private set; }
+        public IList<String> FileTable { get; set; }
         public StepsContext StepsContext { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();

@@ -74,8 +74,12 @@ namespace GitHub.Runner.Worker
                 var fileId = templateContext.GetFileId(fileRelativePath);
 
                 // Add this file to the FileTable in executionContext if it hasn't been added already
-                // we use > since fileID is zero indexed
-                if (fileId > executionContext.FileTable?.Count)
+                // we use > since fileID is 1 indexed
+                if (executionContext.FileTable == null)
+                {
+                    executionContext.FileTable = new string[0];
+                }
+                else if (fileId > executionContext.FileTable.Count)
                 {
                     executionContext.FileTable.Add(fileRelativePath);
                 }
@@ -136,7 +140,7 @@ namespace GitHub.Runner.Worker
             if (actionDefinition.Execution == null)
             {
                 executionContext.Debug($"Loaded action.yml file: {StringUtil.ConvertToJson(actionDefinition)}");
-                throw new ArgumentException($"Top level 'runs:' section is required for {manifestFile}");
+                throw new ArgumentException($"Top level 'runs:' section is required for {fileRelativePath}");
             }
             else
             {
