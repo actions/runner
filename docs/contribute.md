@@ -51,6 +51,19 @@ cd ./src
 ./dev.(sh/cmd) test # run all unit tests before git commit/push
 ```
 
+View logs:
+```bash
+cd runner/_layout/_diag
+ls
+cat (Runner/Worker)_TIMESTAMP.log # view your log file
+```
+
+Run Runner:
+```bash
+cd runner/_layout
+./run.sh # run your custom runner
+```
+
 ### Editors
 
 [Using Visual Studio Code](https://code.visualstudio.com/)
