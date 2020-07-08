@@ -291,7 +291,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // Error
                 if (exitCode != 0)
                 {
-                    ExecutionContext.Error($"Process completed with exit code {exitCode}");
+                    ExecutionContext.Error($"Process completed with exit code {exitCode}.");
                     ExecutionContext.Result = TaskResult.Failed;
                 }
             }
