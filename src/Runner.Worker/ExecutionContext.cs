@@ -105,7 +105,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location);
+        void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -270,13 +270,28 @@ namespace GitHub.Runner.Worker
         /// Helper function used in CompositeActionHandler::RunAsync to
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
-        public void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location)
+        public void RegisterNestedStep(IStep step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData)
         {
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
             step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), null, null);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-            // TODO: confirm whether not copying message contexts is safe
+
+            // Add the composite action environment variables to each step.
+            // If the key already exists, we override it since the composite action env variables will have higher precedence
+            // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
+            // step.ExecutionContext.SetEnvironmentVariables(envData);
+#if OS_WINDOWS
+            var envContext = new DictionaryContextData();
+#else
+            var envContext = new CaseSensitiveDictionaryContextData();
+#endif
+            foreach (var pair in envData)
+            {
+                envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+            }
+            step.ExecutionContext.ExpressionValues["env"] = envContext;
+
             Root.JobSteps.Insert(location, step);
         }
 

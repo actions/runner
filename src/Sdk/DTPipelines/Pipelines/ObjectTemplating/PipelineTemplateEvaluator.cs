@@ -160,8 +160,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
         public List<ActionStep> LoadCompositeSteps(
-            TemplateToken token
-        )
+            TemplateToken token)
         {
             var result = default(List<ActionStep>);
             if (token != null && token.Type != TokenType.Null)

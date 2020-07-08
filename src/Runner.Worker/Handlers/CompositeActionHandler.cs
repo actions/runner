@@ -84,10 +84,8 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Stage = stage;
                 actionRunner.Condition = aStep.Condition;
                 actionRunner.DisplayName = aStep.DisplayName;
-                // TODO: Do we need to add any context data from the job message?
-                // (See JobExtension.cs ~line 236)
 
-                ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location);
+                ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, Environment);
                 location++;
             }
 
