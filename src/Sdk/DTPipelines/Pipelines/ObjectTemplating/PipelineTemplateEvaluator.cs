@@ -166,6 +166,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(null, null, setMissingContext: false);
+                // TODO: we might want to to have a bool to prevent it from filling in with missing context w/ dummy variables
                 try
                 {
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: true);
