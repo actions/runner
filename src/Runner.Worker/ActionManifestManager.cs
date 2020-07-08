@@ -61,7 +61,7 @@ namespace GitHub.Runner.Worker
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = HostContext.GetDirectory(WellKnownDirectory.Actions);
             string fileRelativePath = manifestFile;
-            if (manifestFile.Length > basePath.Length + 1)
+            if (manifestFile.Contains(basePath))
             {
                 fileRelativePath = manifestFile.Remove(0, basePath.Length + 1);
             }
