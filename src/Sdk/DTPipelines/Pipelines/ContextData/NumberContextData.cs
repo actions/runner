@@ -42,7 +42,12 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
             var floored = Math.Floor(m_value);
             if (m_value == floored && m_value <= (Double)Int32.MaxValue && m_value >= (Double)Int32.MinValue)
             {
-                Int32 flooredInt = (Int32)floored;
+                var flooredInt = (Int32)floored;
+                return (JToken)flooredInt;
+            }
+            else if (m_value == floored && m_value <= (Double)Int64.MaxValue && m_value >= (Double)Int64.MinValue)
+            {
+                var flooredInt = (Int64)floored;
                 return (JToken)flooredInt;
             }
             else

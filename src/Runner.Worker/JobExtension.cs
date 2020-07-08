@@ -64,6 +64,20 @@ namespace GitHub.Runner.Worker
                     context.Debug($"Starting: Set up job");
                     context.Output($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
 
+                    var setting = HostContext.GetService<IConfigurationStore>().GetSettings();
+                    var credFile = HostContext.GetConfigFile(WellKnownConfigFile.Credentials);
+                    if (File.Exists(credFile))
+                    {
+                        var credData = IOUtil.LoadObject<CredentialData>(credFile);
+                        if (credData != null &&
+                            credData.Data.TryGetValue("clientId", out var clientId))
+                        {
+                            // print out HostName for self-hosted runner
+                            context.Output($"Runner name: '{setting.AgentName}'");
+                            context.Output($"Machine name: '{Environment.MachineName}'");
+                        }
+                    }
+
                     var setupInfoFile = HostContext.GetConfigFile(WellKnownConfigFile.SetupInfo);
                     if (File.Exists(setupInfoFile))
                     {

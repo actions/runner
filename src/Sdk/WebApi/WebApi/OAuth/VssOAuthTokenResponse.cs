@@ -39,7 +39,7 @@ namespace GitHub.Services.OAuth
         /// <summary>
         /// Gets or sets the error description for the response.
         /// </summary>
-        [DataMember(Name = "errordescription", EmitDefaultValue = false)]
+        [DataMember(Name = "error_description", EmitDefaultValue = false)]
         public String ErrorDescription
         {
             get;

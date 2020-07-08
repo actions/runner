@@ -552,56 +552,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        // This implementation is temporary and will be removed when we switch to a REST API call to the service to resolve the download info
-        private async Task<bool> RepoExistsAsync(IExecutionContext executionContext, WebApi.ActionDownloadInfo actionDownloadInfo, string token)
-        {
-            var apiUrl = GetApiUrl(executionContext);
-            var repoUrl = $"{apiUrl}/repos/{actionDownloadInfo.NameWithOwner}";
-            for (var attempt = 1; attempt <= 3; attempt++)
-            {
-                executionContext.Debug($"Checking whether repo exists: {repoUrl}");
-                try
-                {
-                    using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-                    using (var httpClient = new HttpClient(httpClientHandler))
-                    {
-                        httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(token);
-                        httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                        using (var response = await httpClient.GetAsync(repoUrl))
-                        {
-                            if (response.IsSuccessStatusCode)
-                            {
-                                return true;
-                            }
-                            else if (response.StatusCode == HttpStatusCode.NotFound)
-                            {
-                                return false;
-                            }
-                            else
-                            {
-                                // Throw
-                                response.EnsureSuccessStatusCode();
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (attempt < 3)
-                    {
-                        executionContext.Debug($"Failed checking whether repo '{actionDownloadInfo.NameWithOwner}' exists: {ex.Message}");
-                    }
-                    else
-                    {
-                        executionContext.Error($"Failed checking whether repo '{actionDownloadInfo.NameWithOwner}' exists: {ex.Message}");
-                        throw;
-                    }
-                }
-            }
-
-            return false; // Never reaches here
-        }
-
         // This implementation is temporary and will be replaced with a REST API call to the service to resolve
         private async Task<IDictionary<string, WebApi.ActionDownloadInfo>> GetDownloadInfoAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions)
         {
@@ -665,23 +615,10 @@ namespace GitHub.Runner.Worker
                 // Add secret
                 HostContext.SecretMasker.AddValue(actionDownloadInfo.Authentication?.Token);
 
-                // Temporary code: Fix token and download URL
-                if (runnerSettings.IsHostedServer)
+                // Default auth token
+                if (string.IsNullOrEmpty(actionDownloadInfo.Authentication?.Token))
                 {
                     actionDownloadInfo.Authentication = new WebApi.ActionDownloadAuthentication { Token = defaultAccessToken };
-                    actionDownloadInfo.TarballUrl = actionDownloadInfo.TarballUrl.Replace("<GITHUB_API_URL>", apiUrl);
-                    actionDownloadInfo.ZipballUrl = actionDownloadInfo.ZipballUrl.Replace("<GITHUB_API_URL>", apiUrl);
-                }
-                else if (await RepoExistsAsync(executionContext, actionDownloadInfo, defaultAccessToken))
-                {
-                    actionDownloadInfo.Authentication = new WebApi.ActionDownloadAuthentication { Token = defaultAccessToken };
-                    actionDownloadInfo.TarballUrl = actionDownloadInfo.TarballUrl.Replace("<GITHUB_API_URL>", apiUrl);
-                    actionDownloadInfo.ZipballUrl = actionDownloadInfo.ZipballUrl.Replace("<GITHUB_API_URL>", apiUrl);
-                }
-                else
-                {
-                    actionDownloadInfo.TarballUrl = actionDownloadInfo.TarballUrl.Replace("<GITHUB_API_URL>", "https://api.github.com");
-                    actionDownloadInfo.ZipballUrl = actionDownloadInfo.ZipballUrl.Replace("<GITHUB_API_URL>", "https://api.github.com");
                 }
             }
 
