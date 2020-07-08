@@ -70,5 +70,24 @@ namespace GitHub.Runner.Common.Tests.Util
                 }
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WhichHandleFullyQualifiedPath()
+        {
+            using (TestHostContext hc = new TestHostContext(this))
+            {
+                //Arrange
+                Tracing trace = hc.GetTrace();
+
+                // Act.
+                var gitPath = WhichUtil.Which("git", require: true, trace: trace);
+                var gitPath2 = WhichUtil.Which(gitPath, require: true, trace: trace);
+
+                // Assert.
+                Assert.Equal(gitPath, gitPath2);
+            }
+        }
     }
 }

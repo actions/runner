@@ -160,20 +160,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
         public List<ActionStep> LoadCompositeSteps(
-            TemplateToken token,
-            IReadOnlyList<String> fileTable)
+            TemplateToken token)
         {
             var result = default(List<ActionStep>);
             if (token != null && token.Type != TokenType.Null)
             {
-                // Create New Context Object
                 var context = CreateContext(null, null, setMissingContext: false);
-
-                // Pass original filetable to the new context:
-                foreach (var f in fileTable) {
-                    context.GetFileId(f);
-                }
-
+                // TODO: we might want to to have a bool to prevent it from filling in with missing context w/ dummy variables
                 try
                 {
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: true);

@@ -106,7 +106,6 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        public void SetEnvironmentVariables(Dictionary<string, string> dict);
         IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, Boolean cleanUp = false);
     }
 
@@ -304,17 +303,20 @@ namespace GitHub.Runner.Worker
             }
 
             // Add the composite action environment variables to each step.
-            // If the key already exists, we override it since the composite action env variables will have higher precedence
-            // Note that for each composite action step, it's environment variables will be set in the StepRunner automatically
-            step.ExecutionContext.SetEnvironmentVariables(envData);
+#if OS_WINDOWS
+            var envContext = new DictionaryContextData();
+#else
+            var envContext = new CaseSensitiveDictionaryContextData();
+#endif
+            foreach (var pair in envData)
+            {
+                envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+            }
+            step.ExecutionContext.ExpressionValues["env"] = envContext;
 
             Root.JobSteps.Insert(location, step);
-            return step;
-        }
 
-        public void SetEnvironmentVariables(Dictionary<string, string> dict)
-        {
-            this.EnvironmentVariables = dict;
+            return step;
         }
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null)

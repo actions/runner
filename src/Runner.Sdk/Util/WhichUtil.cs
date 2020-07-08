@@ -11,6 +11,11 @@ namespace GitHub.Runner.Sdk
         {
             ArgUtil.NotNullOrEmpty(command, nameof(command));
             trace?.Info($"Which: '{command}'");
+            if (Path.IsPathFullyQualified(command) && File.Exists(command))
+            {
+                trace?.Info($"Fully qualified path: '{command}'");
+                return command;
+            }
             string path = Environment.GetEnvironmentVariable(PathUtil.PathVariable);
             if (string.IsNullOrEmpty(path))
             {
