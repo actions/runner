@@ -74,7 +74,8 @@ namespace GitHub.Runner.Worker
                 var fileId = templateContext.GetFileId(fileRelativePath);
 
                 // Add this file to the FileTable in executionContext if it hasn't been added already
-                if (fileId > executionContext.FileTable.Count)
+                // we use > since fileID is zero indexed
+                if (fileId > executionContext.FileTable?.Count)
                 {
                     executionContext.FileTable.Add(fileRelativePath);
                 }
@@ -297,7 +298,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Add the file table from the Execution Context
-            if (executionContext.FileTable.Count > 0)
+            if (executionContext.FileTable?.Count > 0)
             {
                 for (var i = 0; i < executionContext.FileTable.Count; i++)
                 {
