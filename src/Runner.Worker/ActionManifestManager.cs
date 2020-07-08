@@ -78,6 +78,7 @@ namespace GitHub.Runner.Worker
                 if (executionContext.FileTable == null)
                 {
                     executionContext.FileTable = new string[0];
+                    executionContext.FileTable.Add(fileRelativePath);
                 }
                 else if (fileId > executionContext.FileTable.Count)
                 {
