@@ -464,7 +464,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
 #if OS_WINDOWS
                 Assert.Equal("1000", step2.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("1000"));
-                Assert.Equal("github_actions", step2.Object.ExecutionContextExpressionValues["env"].AssertDictionary("env")["env3"].AssertString("github_actions"));
+                Assert.Equal("github_actions", step2.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env")["env3"].AssertString("github_actions"));
                 Assert.False(step2.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env").ContainsKey("env2"));
 #else
                 Assert.Equal("1000", step2.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("1000"));
