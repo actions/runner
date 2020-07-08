@@ -426,11 +426,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
 
 #if OS_WINDOWS
-                Assert.Equal("100", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("100"));
-                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env2"].AssertString("github_actions"));
+                Assert.Equal("100", step1.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("100"));
+                Assert.Equal("github_actions", step1.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env")["env2"].AssertString("github_actions"));
 #else
-                Assert.Equal("100", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("100"));
-                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env2"].AssertString("github_actions"));
+                Assert.Equal("100", step1.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("100"));
+                Assert.Equal("github_actions", step1.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env2"].AssertString("github_actions"));
 #endif
             }
         }
@@ -463,13 +463,13 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Assert.
                 Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
 #if OS_WINDOWS
-                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("1000"));
-                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env3"].AssertString("github_actions"));
-                Assert.False(_ec.Object.ExpressionValues["env"].AssertDictionary("env").ContainsKey("env2"));
+                Assert.Equal("1000", step2.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("github_actions", step2.Object.ExecutionContextExpressionValues["env"].AssertDictionary("env")["env3"].AssertString("github_actions"));
+                Assert.False(step2.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env").ContainsKey("env2"));
 #else
-                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("1000"));
-                Assert.Equal("github_actions", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env3"].AssertString("github_actions"));
-                Assert.False(_ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env").ContainsKey("env2"));
+                Assert.Equal("1000", step2.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("github_actions", step2.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env3"].AssertString("github_actions"));
+                Assert.False(step2.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env").ContainsKey("env2"));
 #endif
             }
         }
@@ -501,11 +501,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Assert.
                 Assert.Equal(TaskResult.Succeeded, _ec.Object.Result ?? TaskResult.Succeeded);
 #if OS_WINDOWS
-                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("1000"));
-                Assert.Equal("something", _ec.Object.ExpressionValues["env"].AssertDictionary("env")["env2"].AssertString("something"));
+                Assert.Equal("1000", step2.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("something", step2.Object.ExecutionContext.ExpressionValues["env"].AssertDictionary("env")["env2"].AssertString("something"));
 #else
-                Assert.Equal("1000", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("1000"));
-                Assert.Equal("something", _ec.Object.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env2"].AssertString("something"));
+                Assert.Equal("1000", step2.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env1"].AssertString("1000"));
+                Assert.Equal("something", step2.Object.ExecutionContext.ExpressionValues["env"].AssertCaseSensitiveDictionary("env")["env2"].AssertString("something"));
 #endif
             }
         }
@@ -602,7 +602,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             stepContext.Setup(x => x.WriteDebug).Returns(true);
             stepContext.Setup(x => x.Variables).Returns(_variables);
             stepContext.Setup(x => x.EnvironmentVariables).Returns(_env);
-            stepContext.Setup(x => x.ExpressionValues).Returns(_contexts);
+            stepContext.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             stepContext.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             stepContext.Setup(x => x.JobContext).Returns(_jobContext);
             stepContext.Setup(x => x.StepsContext).Returns(_stepContext);
