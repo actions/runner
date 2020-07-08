@@ -75,12 +75,7 @@ namespace GitHub.Runner.Worker
 
                 // Add this file to the FileTable in executionContext if it hasn't been added already
                 // we use > since fileID is 1 indexed
-                if (executionContext.FileTable == null)
-                {
-                    executionContext.FileTable = new string[0];
-                    executionContext.FileTable.Add(fileRelativePath);
-                }
-                else if (fileId > executionContext.FileTable.Count)
+                if (fileId > executionContext.FileTable.Count)
                 {
                     executionContext.FileTable.Add(fileRelativePath);
                 }
