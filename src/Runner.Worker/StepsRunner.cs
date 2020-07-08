@@ -93,11 +93,27 @@ namespace GitHub.Runner.Worker
 #else
                     var envContext = new CaseSensitiveDictionaryContextData();
 #endif
-                    step.ExecutionContext.ExpressionValues["env"] = envContext;
+                    // Global env
                     foreach (var pair in step.ExecutionContext.EnvironmentVariables)
                     {
                         envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
                     }
+
+                    // Stomps over with outside step env
+                    if (step.ExecutionContext.ExpressionValues.TryGetValue("env", out var envContextData))
+                    {
+#if OS_WINDOWS
+                        var dict = envContextData as DictionaryContextData;
+#else
+                        var dict = envContextData as CaseSensitiveDictionaryContextData;
+#endif
+                        foreach (var pair in dict)
+                        {
+                            envContext[pair.Key] = pair.Value;
+                        }
+                    }
+
+                    step.ExecutionContext.ExpressionValues["env"] = envContext;
 
                     bool evaluateStepEnvFailed = false;
                     if (step is IActionRunner actionStep)
