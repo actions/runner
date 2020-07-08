@@ -379,6 +379,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             _ec.Setup(x => x.IntraActionState).Returns(new Dictionary<string, string>());
             _ec.Setup(x => x.EnvironmentVariables).Returns(new Dictionary<string, string>());
+            _ec.Setup(x => x.FileTable).Returns(new List<String>());
             _ec.Setup(x => x.SetGitHubContext(It.IsAny<string>(), It.IsAny<string>()));
             _ec.Setup(x => x.GetGitHubContext(It.IsAny<string>())).Returns("{\"foo\":\"bar\"}");
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
