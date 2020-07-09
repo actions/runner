@@ -141,7 +141,10 @@
                 "runner",
                 "env"
             ],
-            "string": {}
+            "one-of": [
+                "string",
+                "mapping"
+            ]
         },
         "input-default-context": {
             "context": [
