@@ -114,7 +114,9 @@ Example `user/composite/action.yml`:
 
 ```yaml
 outputs:
-  random-number: ${{ steps.random-number-generator.outputs.random-id }}
+  random-number: 
+    description: "Random number"
+    value: ${{ steps.random-number-generator.outputs.random-id }}
 runs:
   using: "composite"
   steps: 
