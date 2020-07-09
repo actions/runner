@@ -80,10 +80,18 @@
     },
 
     "composite-outputs": {
-      "description": "Used when evaluating outputs of a composite action",
       "mapping": {
         "loose-key-type": "non-empty-string",
-        "loose-value-type": "composite-output-value"
+        "loose-value-type": "composite-outputs-attributes"
+      }
+    },
+
+    "composite-outputs-attributes": {
+      "mapping": {
+        "properties": {
+          "description": "string",
+          "value": "composite-output-value"
+        }
       }
     },
     
@@ -100,10 +108,7 @@
         "runner",
         "env"
       ],
-      "one-of": [
-        "string",
-        "mapping"
-      ]
+      "string": {}
     },
 
     "steps-template-inputs": {

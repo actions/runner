@@ -30,10 +30,17 @@
             }
         },
         "composite-outputs": {
-            "description": "Used when evaluating outputs of a composite action",
             "mapping": {
                 "loose-key-type": "non-empty-string",
-                "loose-value-type": "composite-output-value"
+                "loose-value-type": "composite-outputs-attributes"
+            }
+        },
+        "composite-outputs-attributes": {
+            "mapping": {
+                "properties": {
+                    "description": "string",
+                    "value": "composite-output-value"
+                }
             }
         },
         "runs": {
@@ -141,10 +148,7 @@
                 "runner",
                 "env"
             ],
-            "one-of": [
-                "string",
-                "mapping"
-            ]
+            "string": {}
         },
         "input-default-context": {
             "context": [

@@ -29,13 +29,33 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // Evaluate the outputs in the steps context to easily retrieve the values
                 var evaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-
                 DictionaryContextData actionOutputs = evaluator.EvaluateCompositeOutputs(Data.Outputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+
+                // Each pair is structured like this
+                // We ignore "description" for now
+                // "key": "output_id",
+                // {
+                //     "value": {
+                //         "t": 2,
+                //         "d": [
+                //         {
+                //             "k": "description",
+                //             "v": "string (can be null)"
+                //         },
+                //         {
+                //             "k": "value",
+                //             "v": "string/expression"
+                //         }
+                //         ]
+                //     }
+                // }
                 foreach (var pair in actionOutputs)
                 {
                     var outputsName = pair.Key;
-                    var outputsValue = pair.Value as StringContextData;
-                    
+                    var outputsAttributes = pair.Value as DictionaryContextData;
+                    outputsAttributes.TryGetValue("value", out var val);
+                    var outputsValue = val as StringContextData;
+
                     // Set output in the whole composite scope. 
                     if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
                     {
