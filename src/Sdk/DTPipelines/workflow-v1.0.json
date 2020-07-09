@@ -100,7 +100,10 @@
         "runner",
         "env"
       ],
-      "string": {}
+      "one-of": [
+        "string",
+        "mapping"
+      ]
     },
 
     "steps-template-inputs": {
