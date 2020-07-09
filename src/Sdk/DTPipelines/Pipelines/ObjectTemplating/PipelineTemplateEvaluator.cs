@@ -160,20 +160,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         }
 
         public List<ActionStep> LoadCompositeSteps(
-            TemplateToken token,
-            IReadOnlyList<String> fileTable)
+            TemplateToken token)
         {
             var result = default(List<ActionStep>);
             if (token != null && token.Type != TokenType.Null)
             {
-                // Create New Context Object
                 var context = CreateContext(null, null, setMissingContext: false);
-
-                // Pass original filetable to the new context:
-                foreach (var f in fileTable) {
-                    context.GetFileId(f);
-                }
-
+                // TODO: we might want to to have a bool to prevent it from filling in with missing context w/ dummy variables
                 try
                 {
                     token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: true);
@@ -188,6 +181,33 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 context.Errors.Check();
             }
             return result;
+        }
+
+        public DictionaryContextData EvaluateCompositeOutputs(
+            TemplateToken token,
+            DictionaryContextData contextData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            var result = default(DictionaryContextData);
+
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(contextData, expressionFunctions);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.CompositeOutputs, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = token.ToContextData().AssertDictionary("composite outputs");
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? new DictionaryContextData();
         }
 
 

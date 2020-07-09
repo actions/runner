@@ -30,7 +30,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // Evaluate the outputs in the steps context to easily retrieve the values
                 var evaluator = ExecutionContext.ToPipelineTemplateEvaluator();
 
-                DictionaryContextData actionOutputs = evaluator.EvaluateStepScopeOutputs(Data.Outputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+                DictionaryContextData actionOutputs = evaluator.EvaluateCompositeOutputs(Data.Outputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
                 foreach (var pair in actionOutputs)
                 {
                     var outputsName = pair.Key;

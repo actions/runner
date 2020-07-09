@@ -1,10 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
-
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 
 namespace GitHub.DistributedTask.Pipelines
 {
@@ -25,7 +22,7 @@ namespace GitHub.DistributedTask.Pipelines
     [DataContract]
     [KnownType(typeof(ContainerRegistryReference))]
     [KnownType(typeof(RepositoryPathReference))]
-    [KnownType(typeof(ScriptReference))]
+    [KnownType(typeof(ScriptReference))]    
     [JsonConverter(typeof(ActionStepDefinitionReferenceConverter))]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public abstract class ActionStepDefinitionReference

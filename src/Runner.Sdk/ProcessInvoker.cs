@@ -346,14 +346,14 @@ namespace GitHub.Runner.Sdk
                 // data buffers one last time before returning
                 ProcessOutput();
 
-                Trace.Info($"Finished process {_proc.Id} with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
-            }
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    // Ensure cancellation also finish on the cancellationToken.Register thread.
+                    await cancellationFinished.Task;
+                    Trace.Info($"Process Cancellation finished.");
+                }
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                // Ensure cancellation also finish on the cancellationToken.Register thread.
-                await cancellationFinished.Task;
-                Trace.Info($"Process Cancellation finished.");
+                Trace.Info($"Finished process {_proc.Id} with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
             }
 
             cancellationToken.ThrowIfCancellationRequested();

@@ -79,6 +79,33 @@
       "string": {}
     },
 
+    "composite-outputs": {
+      "description": "Used when evaluating outputs of a composite action",
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "composite-output-value"
+      }
+    },
+    
+    "composite-output-value": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "inputs",
+        "job",
+        "runner",
+        "env"
+      ],
+      "one-of": [
+        "string",
+        "mapping"
+      ]
+    },
+
     "steps-template-inputs": {
       "description": "Allowed inputs in a steps template",
       "mapping": {

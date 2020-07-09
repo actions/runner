@@ -20,6 +20,7 @@ namespace GitHub.DistributedTask.Pipelines
             : base(actionToClone)
         {
             this.Reference = actionToClone.Reference?.Clone();
+
             Environment = actionToClone.Environment?.Clone();
             Inputs = actionToClone.Inputs?.Clone();
             ContextName = actionToClone?.ContextName;

@@ -269,6 +269,7 @@ namespace GitHub.Runner.Worker.Handlers
                 fileName = node12;
             }
 #endif
+            ExecutionContext.Debug($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
@@ -290,7 +291,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // Error
                 if (exitCode != 0)
                 {
-                    ExecutionContext.Error($"Process completed with exit code {exitCode}");
+                    ExecutionContext.Error($"Process completed with exit code {exitCode}.");
                     ExecutionContext.Result = TaskResult.Failed;
                 }
             }

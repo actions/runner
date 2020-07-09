@@ -3584,6 +3584,7 @@ runs:
             _ec.Setup(x => x.Variables).Returns(new Variables(_hc, variables));
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
+            _ec.Setup(x => x.FileTable).Returns(new List<String>());
             _ec.Setup(x => x.Plan).Returns(new TaskOrchestrationPlanReference());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
@@ -3607,8 +3608,8 @@ runs:
                         {
                             NameWithOwner = action.NameWithOwner,
                             Ref = action.Ref,
-                            TarballUrl = $"<GITHUB_API_URL>/repos/{action.NameWithOwner}/tarball/{action.Ref}",
-                            ZipballUrl = $"<GITHUB_API_URL>/repos/{action.NameWithOwner}/zipball/{action.Ref}",
+                            TarballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/tarball/{action.Ref}",
+                            ZipballUrl = $"https://api.github.com/repos/{action.NameWithOwner}/zipball/{action.Ref}",
                         };
                     }
                     return Task.FromResult(result);

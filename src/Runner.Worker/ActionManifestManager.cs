@@ -33,12 +33,9 @@ namespace GitHub.Runner.Worker
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
     {
         private TemplateSchema _actionManifestSchema;
-        private IHostContext _hostContext;
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-
-            _hostContext = hostContext;
 
             var assembly = Assembly.GetExecutingAssembly();
             var json = default(string);
@@ -62,11 +59,11 @@ namespace GitHub.Runner.Worker
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 
             // we can just remove the # of characters from the fileName according to the length of the basePath
-            string basePath = _hostContext.GetDirectory(WellKnownDirectory.Actions);
-            string fileName = manifestFile;
-            if (manifestFile.Length > basePath.Length + 1)
+            string basePath = HostContext.GetDirectory(WellKnownDirectory.Actions);
+            string fileRelativePath = manifestFile;
+            if (manifestFile.Contains(basePath))
             {
-                fileName = manifestFile.Remove(0, basePath.Length + 1);
+                fileRelativePath = manifestFile.Remove(0, basePath.Length + 1);
             }
 
             try
@@ -74,10 +71,14 @@ namespace GitHub.Runner.Worker
                 var token = default(TemplateToken);
 
                 // Get the file ID
-                var fileId = templateContext.GetFileId(fileName);
+                var fileId = templateContext.GetFileId(fileRelativePath);
 
-                // Add this file to the FileTable in executionContext
-                executionContext.FileTable.Add(fileName);
+                // Add this file to the FileTable in executionContext if it hasn't been added already
+                // we use > since fileID is 1 indexed
+                if (fileId > executionContext.FileTable.Count)
+                {
+                    executionContext.FileTable.Add(fileRelativePath);
+                }
 
                 // Read the file
                 var fileContent = File.ReadAllText(manifestFile);
@@ -106,7 +107,8 @@ namespace GitHub.Runner.Worker
                                 actionOutputs = actionPair.Value.AssertMapping("outputs");
                                 break;
                             }
-                            throw new Exception("Outputs for a whole action is not supported yet");
+                            Trace.Info($"Ignore action property outputs. Outputs for a whole action is not supported yet.");
+                            break;
 
                         case "description":
                             actionDefinition.Description = actionPair.Value.AssertString("description").Value;
@@ -117,8 +119,9 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, fileId, actionOutputs);
+                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, actionOutputs);
                             break;
+                            
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
                             break;
@@ -139,13 +142,13 @@ namespace GitHub.Runner.Worker
                     executionContext.Error(error.Message);
                 }
 
-                throw new ArgumentException($"Fail to load {fileName}");
+                throw new ArgumentException($"Fail to load {fileRelativePath}");
             }
 
             if (actionDefinition.Execution == null)
             {
                 executionContext.Debug($"Loaded action.yml file: {StringUtil.ConvertToJson(actionDefinition)}");
-                throw new ArgumentException($"Top level 'runs:' section is required for {manifestFile}");
+                throw new ArgumentException($"Top level 'runs:' section is required for {fileRelativePath}");
             }
             else
             {
@@ -307,12 +310,9 @@ namespace GitHub.Runner.Worker
             }
 
             // Add the file table from the Execution Context
-            if (executionContext.FileTable.Count > 0)
+            for (var i = 0; i < executionContext.FileTable.Count; i++)
             {
-                for (var i = 0; i < executionContext.FileTable.Count; i++)
-                {
-                    result.GetFileId(executionContext.FileTable[i]);
-                }
+                result.GetFileId(executionContext.FileTable[i]);
             }
 
             return result;
@@ -322,7 +322,6 @@ namespace GitHub.Runner.Worker
             IExecutionContext executionContext,
             TemplateContext context,
             TemplateToken inputsToken,
-            Int32 fileID,
             MappingToken outputs = null)
         {
             var runsMapping = inputsToken.AssertMapping("runs");
@@ -390,7 +389,7 @@ namespace GitHub.Runner.Worker
                         {
                             var steps = run.Value.AssertSequence("steps");
                             var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                            stepsLoaded = evaluator.LoadCompositeSteps(steps, context.GetFileTable());
+                            stepsLoaded = evaluator.LoadCompositeSteps(steps);
                             break;
                         }
                         throw new Exception("You aren't supposed to be using Composite Actions yet!");
