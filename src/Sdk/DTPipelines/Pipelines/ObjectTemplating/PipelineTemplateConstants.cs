@@ -15,6 +15,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Clean = "clean";
         public const String Container = "container";
         public const String ContinueOnError = "continue-on-error";
+        public const String CompositeOutputs = "composite-outputs";
         public const String Defaults = "defaults";
         public const String Env = "env";
         public const String Event = "event";

@@ -8,7 +8,7 @@
                     "description": "string",
                     "inputs": "inputs",
                     "runs": "runs",
-                    "outputs": "steps-scope-outputs"
+                    "outputs": "composite-outputs"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -29,11 +29,11 @@
                 "loose-value-type": "any"
             }
         },
-        "steps-scope-outputs": {
-            "description": "Used when evaluating steps scope outputs",
+        "composite-outputs": {
+            "description": "Used when evaluating outputs of a composite action",
             "mapping": {
                 "loose-key-type": "non-empty-string",
-                "loose-value-type": "steps-scope-output-value"
+                "loose-value-type": "composite-output-value"
             }
         },
         "runs": {
@@ -128,7 +128,7 @@
             ],
             "string": {}
         },
-        "steps-scope-output-value": {
+        "composite-output-value": {
             "context": [
                 "github",
                 "needs",
