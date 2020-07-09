@@ -107,7 +107,8 @@ namespace GitHub.Runner.Worker
                                 actionOutputs = actionPair.Value.AssertMapping("outputs");
                                 break;
                             }
-                            throw new Exception("Outputs for a whole action is not supported yet");
+                            Trace.Info($"Ignore action property outputs. Outputs for a whole action is not supported yet.");
+                            break;
 
                         case "description":
                             actionDefinition.Description = actionPair.Value.AssertString("description").Value;
