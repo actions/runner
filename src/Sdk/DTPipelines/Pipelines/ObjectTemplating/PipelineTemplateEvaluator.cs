@@ -25,7 +25,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateSchema schema,
             IList<String> fileTable)
         {
-            if (!String.Equals(schema.Version, PipelineTemplateConstants.Workflow_1_0, StringComparison.Ordinal))
+            if (!String.Equals(schema.Version, PipelineTemplateConstants.Workflow_1_0, StringComparison.Ordinal) && !String.Equals(schema.Version, PipelineTemplateConstants.ActionYaml, StringComparison.Ordinal))
             {
                 throw new NotSupportedException($"Unexpected template schema version '{schema.Version}'");
             }

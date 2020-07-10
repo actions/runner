@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.ObjectTemplating.Schema;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
@@ -22,13 +23,19 @@ namespace GitHub.Runner.Worker.Handlers
     public sealed class CompositeActionOutputHandler : Handler, ICompositeActionOutputHandler
     {
         public CompositeActionExecutionData Data { get; set; }
+
+
         public Task RunAsync(ActionRunStage stage)
         {
             // Evaluate the mapped outputs value
             if (Data.Outputs != null)
             {
+                // We have to have this function because ExecutionContext.ToPipelineTemplateEvaluator calls
+                // PipelineTemplateSchemaFactory.GetSchema() which always uses workflow_v1.0.json 
+                // So, we have to manually create the evaluator
+                var evaluator = new Pipelines.ObjectTemplating.PipelineTemplateEvaluator(ExecutionContext.ToTemplateTraceWriter(), ExecutionContext.ActionManifestSchema, ExecutionContext.FinalizeContext.FileTable);
+
                 // Evaluate the outputs in the steps context to easily retrieve the values
-                var evaluator = ExecutionContext.ToPipelineTemplateEvaluator();
                 DictionaryContextData actionOutputs = evaluator.EvaluateCompositeOutputs(Data.Outputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
 
                 // Each pair is structured like this
