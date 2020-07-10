@@ -325,7 +325,7 @@ namespace GitHub.Runner.Worker
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
-            var stepsLoaded = default(List<Pipelines.ActionStep>);
+            var stepsLoaded = default(List<Pipelines.Step>);
 
             foreach (var run in runsMapping)
             {

@@ -159,11 +159,11 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        // Change to return a variety of steps.
-        public List<ActionStep> LoadCompositeSteps(
+        // TODO: Change to return a variety of steps.
+        public List<Step> LoadCompositeSteps(
             TemplateToken token)
         {
-            var result = default(List<ActionStep>);
+            var result = default(List<Step>);
             if (token != null && token.Type != TokenType.Null)
             {
                 var context = CreateContext(null, null, setMissingContext: false);
