@@ -71,6 +71,8 @@ namespace GitHub.Runner.Worker
 
         IExecutionContext FinalizeContext { get; set; }
 
+        ObjectTemplating.Schema.TemplateSchema ActionManifestSchema { get; set; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -171,6 +173,9 @@ namespace GitHub.Runner.Worker
         public bool EchoOnActionCommand { get; set; }
 
         public IExecutionContext FinalizeContext { get; set; }
+
+        // Attribute to easily share action manifest schema for reuse in cases such as Composite Actions
+        public ObjectTemplating.Schema.TemplateSchema ActionManifestSchema { get; set; }
 
         public TaskResult? Result
         {
@@ -370,6 +375,8 @@ namespace GitHub.Runner.Worker
 
             child._logger = HostContext.CreateService<IPagingLogger>();
             child._logger.Setup(_mainTimelineId, recordId);
+
+            child.ActionManifestSchema = ActionManifestSchema;
 
             return child;
         }

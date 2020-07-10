@@ -56,6 +56,9 @@ namespace GitHub.Runner.Worker
             var templateContext = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
 
+            // Set ActionManifestSchema so that we can use it for post processing in Composite Actions
+            executionContext.ActionManifestSchema = templateContext.Schema;
+
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 
             // we can just remove the # of characters from the fileName according to the length of the basePath
@@ -121,7 +124,7 @@ namespace GitHub.Runner.Worker
                         case "runs":
                             actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, actionOutputs);
                             break;
-                            
+
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
                             break;

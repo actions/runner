@@ -79,38 +79,6 @@
       "string": {}
     },
 
-    "composite-outputs": {
-      "mapping": {
-        "loose-key-type": "non-empty-string",
-        "loose-value-type": "composite-outputs-attributes"
-      }
-    },
-
-    "composite-outputs-attributes": {
-      "mapping": {
-        "properties": {
-          "description": "string",
-          "value": "composite-output-value"
-        }
-      }
-    },
-    
-    "composite-output-value": {
-      "context": [
-        "github",
-        "needs",
-        "strategy",
-        "matrix",
-        "secrets",
-        "steps",
-        "inputs",
-        "job",
-        "runner",
-        "env"
-      ],
-      "string": {}
-    },
-
     "steps-template-inputs": {
       "description": "Allowed inputs in a steps template",
       "mapping": {
