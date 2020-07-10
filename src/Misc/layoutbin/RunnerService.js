@@ -19,12 +19,16 @@ var listener = null;
 var runService = function() {
     var listenerExePath = path.join(__dirname, '../bin/Runner.Listener');
     var interactive = process.argv[2] === "interactive";
+    var runonce = process.argv[2] === "once";
 
     if(!stopping) {
         try {
             if (interactive) {
                 console.log('Starting Runner listener interactively');
                 listener = childProcess.spawn(listenerExePath, ['run'], { env: process.env });
+            } else if {
+                console.log('Staring runner listener in RunOnce mode');
+                listener = childProcess.spawn(listenerExePath, ['run', '--once'], { env: process.env });
             } else {
                 console.log('Starting Runner listener with startup type: service');
                 listener = childProcess.spawn(listenerExePath, ['run', '--startuptype', 'service'], { env: process.env });
