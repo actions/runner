@@ -159,6 +159,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        // Change to return a variety of steps.
         public List<ActionStep> LoadCompositeSteps(
             TemplateToken token)
         {

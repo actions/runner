@@ -47,6 +47,10 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Add each composite action step to the front of the queue
             int location = 0;
+
+            // TODO: Assume that each step is not an actionStep
+            // How do we handle all types of steps?????
+            
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Ex: 

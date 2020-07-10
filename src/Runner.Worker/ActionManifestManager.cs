@@ -376,6 +376,7 @@ namespace GitHub.Runner.Worker
                         {
                             var steps = run.Value.AssertSequence("steps");
                             var evaluator = executionContext.ToPipelineTemplateEvaluator();
+                            // TODO: Change this so that we process each type of step
                             stepsLoaded = evaluator.LoadCompositeSteps(steps);
                             break;
                         }
