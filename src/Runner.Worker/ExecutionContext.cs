@@ -106,7 +106,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, Boolean cleanUp = false);
+        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, bool cleanUp = false);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -273,27 +273,24 @@ namespace GitHub.Runner.Worker
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
         public IStep RegisterNestedStep(
-            IActionRunner step, DictionaryContextData inputsData, int location,
+            IActionRunner step,
+            DictionaryContextData inputsData,
+            int location,
             Dictionary<string, string> envData,
-            Boolean cleanUp = false)
+            bool cleanUp = false)
         {
             // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
             var newGuid = Guid.NewGuid();
 
-            // Set Scope Name. Note, for our design, we consider each step in a composite action to have the same scope
-            // This makes it much simpler to handle their outputs at the end of the Composite Action
-            var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
-
             // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
             // "__<GUID>"
-            if (String.IsNullOrEmpty(childScopeName))
-            {
-                childScopeName = $"__{newGuid}";
-            }
+            var safeContextName = !string.IsNullOrEmpty(ContextName) ? ContextName : $"__{newGuid}";
 
-            var childContextName = step.Action.ContextName;
+            // Set Scope Name. Note, for our design, we consider each step in a composite action to have the same scope
+            // This makes it much simpler to handle their outputs at the end of the Composite Action
+            var childScopeName = !string.IsNullOrEmpty(ScopeName) ? $"{ScopeName}.{safeContextName}" : safeContextName;
 
-            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, childContextName);
+            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, step.Action.ContextName);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Set Parent Attribute for Clean Up Step
