@@ -279,7 +279,7 @@ namespace GitHub.Runner.Worker
         public IStep RegisterNestedStep(
             IActionRunner step, DictionaryContextData inputsData, int location,
             Dictionary<string, string> envData,
-            Boolean cleanUp = false)
+            bool cleanUp = false)
         {
             // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
             // "__<GUID>"
