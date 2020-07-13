@@ -30,45 +30,21 @@ namespace GitHub.Runner.Worker.Handlers
             // Evaluate the mapped outputs value
             if (Data.Outputs != null)
             {
-                // We have to have this function because ExecutionContext.ToPipelineTemplateEvaluator calls
-                // PipelineTemplateSchemaFactory.GetSchema() which always uses workflow_v1.0.json 
-                // So, we have to manually create the evaluator
-                var evaluator = new Pipelines.ObjectTemplating.PipelineTemplateEvaluator(ExecutionContext.ToTemplateTraceWriter(), ExecutionContext.ActionManifestSchema, ExecutionContext.FinalizeContext.FileTable);
-
                 // Evaluate the outputs in the steps context to easily retrieve the values
-                DictionaryContextData actionOutputs = evaluator.EvaluateCompositeOutputs(Data.Outputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+                var actionManifestManager = HostContext.GetService<IActionManifestManager>();
 
-                // Each pair is structured like this
-                // We ignore "description" for now
-                // "key": "output_id",
-                // {
-                //     "value": {
-                //         "t": 2,
-                //         "d": [
-                //         {
-                //             "k": "description",
-                //             "v": "string (can be null)"
-                //         },
-                //         {
-                //             "k": "value",
-                //             "v": "string/expression"
-                //         }
-                //         ]
-                //     }
-                // }
-                foreach (var pair in actionOutputs)
+                // Format ExpressionValues to Dictionary<string, PipelineContextData>
+                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in ExecutionContext.ExpressionValues)
                 {
-                    var outputsName = pair.Key;
-                    var outputsAttributes = pair.Value as DictionaryContextData;
-                    outputsAttributes.TryGetValue("value", out var val);
-                    var outputsValue = val as StringContextData;
-
-                    // Set output in the whole composite scope. 
-                    if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
-                    {
-                        ExecutionContext.FinalizeContext.SetOutput(outputsName, outputsValue, out string test);
-                    }
+                    evaluateContext[pair.Key] = pair.Value;
                 }
+
+                // Get the evluated composite outputs' values mapped to the outputs named
+                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
+
+                // Set the outputs for the outputs object in the whole composite action
+                actionManifestManager.SetAllCompositeOutputs(ExecutionContext.FinalizeContext, actionOutputs);
             }
 
             return Task.CompletedTask;

@@ -23,11 +23,15 @@ namespace GitHub.Runner.Worker
     {
         ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile);
 
+        DictionaryContextData EvaluateCompositeOutputs(IExecutionContext executionContext, TemplateToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
+
         List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
+
+        void SetAllCompositeOutputs(IExecutionContext parentExecutionContext, DictionaryContextData actionOutputs);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -55,9 +59,6 @@ namespace GitHub.Runner.Worker
         {
             var templateContext = CreateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
-
-            // Set ActionManifestSchema so that we can use it for post processing in Composite Actions
-            executionContext.ActionManifestSchema = templateContext.Schema;
 
             // Clean up file name real quick
             // Instead of using Regex which can be computationally expensive, 
@@ -159,6 +160,61 @@ namespace GitHub.Runner.Worker
             }
 
             return actionDefinition;
+        }
+
+        public void SetAllCompositeOutputs(
+            IExecutionContext parentExecutionContext,
+            DictionaryContextData actionOutputs)
+        {
+            // Each pair is structured like this
+            // We ignore "description" for now
+            // {
+            //   "the-output-name": {
+            //     "description": "",
+            //     "value": "the value"
+            //   },
+            //   ...
+            // }
+            foreach (var pair in actionOutputs)
+            {
+                var outputsName = pair.Key;
+                var outputsAttributes = pair.Value as DictionaryContextData;
+                outputsAttributes.TryGetValue("value", out var val);
+                var outputsValue = val as StringContextData;
+
+                // Set output in the whole composite scope. 
+                if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
+                {
+                    parentExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                }
+            }
+        }
+
+        public DictionaryContextData EvaluateCompositeOutputs(
+            IExecutionContext executionContext,
+            TemplateToken token,
+            IDictionary<string, PipelineContextData> extraExpressionValues)
+        {
+            var result = default(DictionaryContextData);
+
+            if (token != null)
+            {
+                var context = CreateContext(executionContext, extraExpressionValues);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, "outputs", token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = token.ToContextData().AssertDictionary("composite outputs");
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? new DictionaryContextData();
         }
 
         public List<string> EvaluateContainerArguments(
