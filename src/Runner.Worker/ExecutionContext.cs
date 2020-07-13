@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -120,6 +121,9 @@ namespace GitHub.Runner.Worker
         private readonly object _matchersLock = new object();
 
         private event OnMatcherChanged _onMatcherChanged;
+
+        // Regex used for checking if ScopeName meets the condition that shows that its id is null.
+        private readonly static Regex _generatedContextNamePattern = new Regex("^__[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
         private IssueMatcherConfig[] _matchers;
 
@@ -290,7 +294,9 @@ namespace GitHub.Runner.Worker
             // This makes it much simpler to handle their outputs at the end of the Composite Action
             var childScopeName = !string.IsNullOrEmpty(ScopeName) ? $"{ScopeName}.{safeContextName}" : safeContextName;
 
-            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, step.Action.ContextName);
+            var childContextName = !string.IsNullOrEmpty(step.Action.ContextName) ? step.Action.ContextName : $"__{Guid.NewGuid()}";
+
+            step.ExecutionContext = Root.CreateChild(newGuid, step.DisplayName, newGuid.ToString("N"), childScopeName, childContextName);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Set Parent Attribute for Clean Up Step
@@ -486,10 +492,8 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // Checks if scope name is null or 
-            // if the ScopeName follows the __GUID format which is set as the default value for ScopeNames if null for Composite Actions. 
-            bool scopeNameCondition = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")) && !String.IsNullOrEmpty(ScopeName) && ScopeName.Length >= 36 && String.Equals(ScopeName.Substring(0, 2), "__") && Guid.TryParse(ScopeName.Substring(2, 36), out Guid test);
-            if (String.IsNullOrEmpty(ContextName) || scopeNameCondition)
+            // if the ContextName follows the __GUID format which is set as the default value for ContextName if null for Composite Actions. 
+            if (String.IsNullOrEmpty(ContextName) || _generatedContextNamePattern.IsMatch(ContextName))
             {
                 reference = null;
                 return;

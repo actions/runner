@@ -55,11 +55,6 @@ namespace GitHub.Runner.Worker.Handlers
             // Add each composite action step to the front of the queue
             int location = 0;
 
-            Dictionary<string, string> scopesAndContexts = new Dictionary<string, string>();
-
-            var parentScopeName = !String.IsNullOrEmpty(ExecutionContext.ScopeName) ? ExecutionContext.ScopeName : ExecutionContext.ContextName;
-            Trace.Info($"Parent Scope Name {parentScopeName}");
-
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Ex: 
