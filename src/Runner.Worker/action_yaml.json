@@ -10,7 +10,7 @@
                     "description": "string",
                     "inputs": "inputs",
                     "runs": "runs",
-                    "outputs": "composite-outputs"
+                    "outputs": "outputs"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -31,17 +31,17 @@
                 "loose-value-type": "any"
             }
         },
-        "composite-outputs": {
+        "outputs": {
             "mapping": {
                 "loose-key-type": "non-empty-string",
-                "loose-value-type": "composite-outputs-attributes"
+                "loose-value-type": "outputs-attributes"
             }
         },
-        "composite-outputs-attributes": {
+        "outputs-attributes": {
             "mapping": {
                 "properties": {
                     "description": "string",
-                    "value": "composite-output-value"
+                    "value": "output-value"
                 }
             }
         },
@@ -112,19 +112,13 @@
         "composite-steps": {
             "context": [
                 "github",
-                "needs",
                 "strategy",
                 "matrix",
-                "secrets",
                 "steps",
                 "inputs",
                 "job",
                 "runner",
                 "env",
-                "always(0,0)",
-                "failure(0,0)",
-                "cancelled(0,0)",
-                "success(0,0)",
                 "hashFiles(1,255)"
             ],
             "sequence": {
@@ -137,13 +131,11 @@
             ],
             "string": {}
         },
-        "composite-output-value": {
+        "output-value": {
             "context": [
                 "github",
-                "needs",
                 "strategy",
                 "matrix",
-                "secrets",
                 "steps",
                 "inputs",
                 "job",

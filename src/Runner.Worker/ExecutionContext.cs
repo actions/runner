@@ -6,6 +6,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -71,8 +72,6 @@ namespace GitHub.Runner.Worker
 
         IExecutionContext FinalizeContext { get; set; }
 
-        ObjectTemplating.Schema.TemplateSchema ActionManifestSchema { get; set; }
-
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -108,7 +107,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, Boolean cleanUp = false);
+        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, bool cleanUp = false);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -122,6 +121,9 @@ namespace GitHub.Runner.Worker
         private readonly object _matchersLock = new object();
 
         private event OnMatcherChanged _onMatcherChanged;
+
+        // Regex used for checking if ScopeName meets the condition that shows that its id is null.
+        private readonly static Regex _generatedContextNamePattern = new Regex("^__[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
         private IssueMatcherConfig[] _matchers;
 
@@ -173,9 +175,6 @@ namespace GitHub.Runner.Worker
         public bool EchoOnActionCommand { get; set; }
 
         public IExecutionContext FinalizeContext { get; set; }
-
-        // Attribute to easily share action manifest schema for reuse in cases such as Composite Actions
-        public ObjectTemplating.Schema.TemplateSchema ActionManifestSchema { get; set; }
 
         public TaskResult? Result
         {
@@ -282,26 +281,18 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> envData,
             Boolean cleanUp = false)
         {
-            // TODO: For UI purposes, look at figuring out how to condense steps in one node => maybe use the same previous GUID
-            // You don't want to create the NewGuid at all. We want to inherit the current node.
-            // We want to get the ID
-            // var newGuid = Guid.NewGuid();
+            // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
+            // "__<GUID>"
+            var safeContextName = !string.IsNullOrEmpty(ContextName) ? ContextName : $"__{Guid.NewGuid()}";
 
             // Set Scope Name. Note, for our design, we consider each step in a composite action to have the same scope
             // This makes it much simpler to handle their outputs at the end of the Composite Action
-            var childScopeName = !string.IsNullOrEmpty(this.ScopeName) ? $"{this.ScopeName}.{this.ContextName}" : this.ContextName;
+            var childScopeName = !string.IsNullOrEmpty(ScopeName) ? $"{ScopeName}.{safeContextName}" : safeContextName;
 
-            // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
-            // "__<GUID>"
-            if (String.IsNullOrEmpty(childScopeName))
-            {
-                var newGuid = Guid.NewGuid();
-                childScopeName = $"__{newGuid}";
-            }
-
-            var childContextName = step.Action.ContextName;
+            var childContextName = !string.IsNullOrEmpty(step.Action.ContextName) ? step.Action.ContextName : $"__{Guid.NewGuid()}";
 
             step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), childScopeName, childContextName, logger: _logger);
+            
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Set Parent Attribute for Clean Up Step
@@ -384,8 +375,6 @@ namespace GitHub.Runner.Worker
                 child._logger = HostContext.CreateService<IPagingLogger>();
                 child._logger.Setup(_mainTimelineId, recordId);
             }
-
-            child.ActionManifestSchema = ActionManifestSchema;
 
             return child;
         }
@@ -505,10 +494,8 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // Checks if scope name is null or 
-            // if the ScopeName follows the __GUID format which is set as the default value for ScopeNames if null for Composite Actions. 
-            bool scopeNameCondition = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")) && !String.IsNullOrEmpty(ScopeName) && ScopeName.Length >= 36 && String.Equals(ScopeName.Substring(0, 2), "__") && Guid.TryParse(ScopeName.Substring(2, 36), out Guid test);
-            if (String.IsNullOrEmpty(ContextName) || scopeNameCondition)
+            // if the ContextName follows the __GUID format which is set as the default value for ContextName if null for Composite Actions. 
+            if (String.IsNullOrEmpty(ContextName) || _generatedContextNamePattern.IsMatch(ContextName))
             {
                 reference = null;
                 return;
