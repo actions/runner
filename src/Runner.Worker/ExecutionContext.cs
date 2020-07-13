@@ -277,8 +277,8 @@ namespace GitHub.Runner.Worker
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
         public IStep RegisterNestedStep(
-            IActionRunner step, 
-            DictionaryContextData inputsData, 
+            IActionRunner step,
+            DictionaryContextData inputsData,
             int location,
             Dictionary<string, string> envData,
             bool cleanUp = false)
@@ -294,7 +294,7 @@ namespace GitHub.Runner.Worker
             var childContextName = !string.IsNullOrEmpty(step.Action.ContextName) ? step.Action.ContextName : $"__{Guid.NewGuid()}";
 
             step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), childScopeName, childContextName, logger: _logger);
-            
+
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
             // Set Parent Attribute for Clean Up Step
