@@ -94,6 +94,7 @@ namespace GitHub.Runner.Worker
 
                 var actionMapping = token.AssertMapping("action manifest root");
                 var actionOutputs = default(MappingToken);
+                var actionRunValueToken = default(TemplateToken);
 
                 foreach (var actionPair in actionMapping)
                 {
@@ -123,13 +124,20 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value, actionOutputs);
+                            // Defer runs token evaluation to after for loop to ensure that order of outputs doesn't matter.
+                            actionRunValueToken = actionPair.Value;
                             break;
 
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
                             break;
                     }
+                }
+
+                // Evaluate Runs Last
+                if (actionRunValueToken != null)
+                {
+                    actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionRunValueToken, actionOutputs);
                 }
             }
             catch (Exception ex)

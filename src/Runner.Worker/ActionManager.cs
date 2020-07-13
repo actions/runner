@@ -398,7 +398,6 @@ namespace GitHub.Runner.Worker
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                     {
                         var compositeAction = definition.Data.Execution as CompositeActionExecutionData;
-                        // TODO: Test with L0 tests to see if it's null
                         Trace.Info($"Load {compositeAction.Steps?.Count ?? 0} action steps.");
                         Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction?.Steps)}");
                         Trace.Info($"Load: {compositeAction.Outputs?.Count ?? 0} number of outputs");
