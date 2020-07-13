@@ -23,13 +23,6 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public CompositeActionExecutionData Data { get; set; }
 
-        private void InitializeScope(IStep step)
-        {
-            var stepsContext = step.ExecutionContext.StepsContext;
-            var scopeName = step.ExecutionContext.ScopeName;
-            step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
-        }
-
         public Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
@@ -117,5 +110,11 @@ namespace GitHub.Runner.Worker.Handlers
             return Task.CompletedTask;
         }
 
+        private void InitializeScope(IStep step)
+        {
+            var stepsContext = step.ExecutionContext.StepsContext;
+            var scopeName = step.ExecutionContext.ScopeName;
+            step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
+        }
     }
 }
