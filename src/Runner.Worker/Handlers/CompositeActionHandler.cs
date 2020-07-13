@@ -35,9 +35,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
-            // Resolve action steps
-            var actionSteps = Data.Steps;
-
             // Create Context Data to reuse for each composite action step
             var inputsData = new DictionaryContextData();
             foreach (var i in Inputs)
@@ -48,21 +45,47 @@ namespace GitHub.Runner.Worker.Handlers
             // Add each composite action step to the front of the queue
             int location = 0;
 
-            
+            // Resolve action steps
+            var compositeSteps = Data.Steps;
 
-            // While loop till we have reached the last layer?
-            Stack<Pipelines.Step> stepsToAppend = new Stack<Pipelines.Step>();
             // TODO: Assume that each step is not an actionStep
             // How do we handle all types of steps?????
 
-            // Append in reverse order since we are using a stack
-            for (int i = actionSteps.Count - 1; i --> 0; )
+            // While loop till we have reached the last layer?
+            List<Pipelines.Step> stepsToAppend = new List<Pipelines.Step>();
+
+            // First put each step in stepsToAppend
+            foreach (var step in compositeSteps)
             {
-                stepsToAppend.Append(actionSteps[i]);
+                stepsToAppend.Append(step);
             }
+
+            // We go through each step and push to the top of the stack its children. 
+            // That way, we go through each steps, steps of steps in order
+            // This is an ITERATIVE approach. While a recursive approach may be more elegant, 
+            // that would use a lot more memory in the call stack.
+            // Ex: 
+            // Let's say we have 4 composite steps with the first step that has 3 children
+            // A (composite step)=> a1, a2, a3
+            // B (non composite)
+            // C (non composite)
+            // D (non composite)
+            // It would be executed in this order => a1, a2, a3, A (steps within A), B, C, D
             while (stepsToAppend != null)
             {
-                var currentStep = stepsToAppend.Pop();
+                var currentStep = stepsToAppend[0];
+
+                // TODO: Create another StepsContext?
+                // In the original StepsRunner, we could lock the thread and only proceed after we finish processing these steps
+                // Then, we invoke the CompositeStepsRunner class?
+
+                // TODO: We have to create another Execution Context for Composite Actions
+                // See below
+
+                // TODO: Append to StepsRunner
+                // by invoking a RegisterNestedStep on the Composite Action Exeuction Context for Composite Action Steps
+
+
             }
 
             // foreach (Pipelines.Step aStep in actionSteps)
