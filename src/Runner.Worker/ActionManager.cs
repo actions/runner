@@ -398,8 +398,10 @@ namespace GitHub.Runner.Worker
                     else if (definition.Data.Execution.ExecutionType == ActionExecutionType.Composite && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
                     {
                         var compositeAction = definition.Data.Execution as CompositeActionExecutionData;
-                        Trace.Info($"Load {compositeAction.Steps.Count} action steps.");
-                        Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction.Steps)}");
+                        Trace.Info($"Load {compositeAction.Steps?.Count ?? 0} action steps.");
+                        Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction?.Steps)}");
+                        Trace.Info($"Load: {compositeAction.Outputs?.Count ?? 0} number of outputs");
+                        Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction?.Outputs)}");
                     }
                     else
                     {
@@ -1222,6 +1224,7 @@ namespace GitHub.Runner.Worker
         public override bool HasPre => false;
         public override bool HasPost => false;
         public List<Pipelines.ActionStep> Steps { get; set; }
+        public MappingToken Outputs { get; set; }
     }
 
     public abstract class ActionExecutionData

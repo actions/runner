@@ -7,7 +7,8 @@
                     "name": "string",
                     "description": "string",
                     "inputs": "inputs",
-                    "runs": "runs"
+                    "runs": "runs",
+                    "outputs": "outputs"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -26,6 +27,20 @@
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
+            }
+        },
+        "outputs": {
+            "mapping": {
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "outputs-attributes"
+            }
+        },
+        "outputs-attributes": {
+            "mapping": {
+                "properties": {
+                    "description": "string",
+                    "value": "output-value"
+                }
             }
         },
         "runs": {
@@ -95,19 +110,13 @@
         "composite-steps": {
             "context": [
                 "github",
-                "needs",
                 "strategy",
                 "matrix",
-                "secrets",
                 "steps",
                 "inputs",
                 "job",
                 "runner",
                 "env",
-                "always(0,0)",
-                "failure(0,0)",
-                "cancelled(0,0)",
-                "success(0,0)",
                 "hashFiles(1,255)"
             ],
             "sequence": {
@@ -117,6 +126,19 @@
         "container-runs-context": {
             "context": [
                 "inputs"
+            ],
+            "string": {}
+        },
+        "output-value": {
+            "context": [
+                "github",
+                "strategy",
+                "matrix",
+                "steps",
+                "inputs",
+                "job",
+                "runner",
+                "env"
             ],
             "string": {}
         },

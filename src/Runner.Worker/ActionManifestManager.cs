@@ -23,11 +23,15 @@ namespace GitHub.Runner.Worker
     {
         ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile);
 
+        DictionaryContextData EvaluateCompositeOutputs(IExecutionContext executionContext, TemplateToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
+
         List<string> EvaluateContainerArguments(IExecutionContext executionContext, SequenceToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
+
+        void SetAllCompositeOutputs(IExecutionContext parentExecutionContext, DictionaryContextData actionOutputs);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -89,6 +93,9 @@ namespace GitHub.Runner.Worker
                 }
 
                 var actionMapping = token.AssertMapping("action manifest root");
+                var actionOutputs = default(MappingToken);
+                var actionRunValueToken = default(TemplateToken);
+
                 foreach (var actionPair in actionMapping)
                 {
                     var propertyName = actionPair.Key.AssertString($"action.yml property key");
@@ -97,6 +104,15 @@ namespace GitHub.Runner.Worker
                     {
                         case "name":
                             actionDefinition.Name = actionPair.Value.AssertString("name").Value;
+                            break;
+
+                        case "outputs":
+                            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                            {
+                                actionOutputs = actionPair.Value.AssertMapping("outputs");
+                                break;
+                            }
+                            Trace.Info($"Ignore action property outputs. Outputs for a whole action is not supported yet.");
                             break;
 
                         case "description":
@@ -108,12 +124,20 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "runs":
-                            actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionPair.Value);
+                            // Defer runs token evaluation to after for loop to ensure that order of outputs doesn't matter.
+                            actionRunValueToken = actionPair.Value;
                             break;
+
                         default:
                             Trace.Info($"Ignore action property {propertyName}.");
                             break;
                     }
+                }
+
+                // Evaluate Runs Last
+                if (actionRunValueToken != null)
+                {
+                    actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionRunValueToken, actionOutputs);
                 }
             }
             catch (Exception ex)
@@ -144,6 +168,61 @@ namespace GitHub.Runner.Worker
             }
 
             return actionDefinition;
+        }
+
+        public void SetAllCompositeOutputs(
+            IExecutionContext parentExecutionContext,
+            DictionaryContextData actionOutputs)
+        {
+            // Each pair is structured like this
+            // We ignore "description" for now
+            // {
+            //   "the-output-name": {
+            //     "description": "",
+            //     "value": "the value"
+            //   },
+            //   ...
+            // }
+            foreach (var pair in actionOutputs)
+            {
+                var outputsName = pair.Key;
+                var outputsAttributes = pair.Value as DictionaryContextData;
+                outputsAttributes.TryGetValue("value", out var val);
+                var outputsValue = val as StringContextData;
+
+                // Set output in the whole composite scope. 
+                if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
+                {
+                    parentExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                }
+            }
+        }
+
+        public DictionaryContextData EvaluateCompositeOutputs(
+            IExecutionContext executionContext,
+            TemplateToken token,
+            IDictionary<string, PipelineContextData> extraExpressionValues)
+        {
+            var result = default(DictionaryContextData);
+
+            if (token != null)
+            {
+                var context = CreateContext(executionContext, extraExpressionValues);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, "outputs", token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = token.ToContextData().AssertDictionary("composite outputs");
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result ?? new DictionaryContextData();
         }
 
         public List<string> EvaluateContainerArguments(
@@ -309,7 +388,8 @@ namespace GitHub.Runner.Worker
         private ActionExecutionData ConvertRuns(
             IExecutionContext executionContext,
             TemplateContext context,
-            TemplateToken inputsToken)
+            TemplateToken inputsToken,
+            MappingToken outputs = null)
         {
             var runsMapping = inputsToken.AssertMapping("runs");
             var usingToken = default(StringToken);
@@ -439,6 +519,7 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = stepsLoaded,
+                            Outputs = outputs
                         };
                     }
                 }

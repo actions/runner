@@ -47,6 +47,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Add each composite action step to the front of the queue
             int location = 0;
+
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Ex: 
@@ -85,12 +86,35 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Condition = aStep.Condition;
                 actionRunner.DisplayName = aStep.DisplayName;
 
-                ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, Environment);
+                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, Environment);
+
+                InitializeScope(step);
+
                 location++;
             }
+
+            // Create a step that handles all the composite action steps' outputs
+            Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
+            cleanOutputsStep.ContextName = ExecutionContext.ContextName;
+            cleanOutputsStep.DisplayName = "Composite Action Steps Cleanup";
+            // Use the same reference type as our composite steps.
+            cleanOutputsStep.Reference = Action;
+
+            var actionRunner2 = HostContext.CreateService<IActionRunner>();
+            actionRunner2.Action = cleanOutputsStep;
+            actionRunner2.Stage = ActionRunStage.Main;
+            actionRunner2.Condition = "always()";
+            actionRunner2.DisplayName = "Composite Action Steps Cleanup";
+            ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, Environment, true);
 
             return Task.CompletedTask;
         }
 
+        private void InitializeScope(IStep step)
+        {
+            var stepsContext = step.ExecutionContext.StepsContext;
+            var scopeName = step.ExecutionContext.ScopeName;
+            step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
+        }
     }
 }
