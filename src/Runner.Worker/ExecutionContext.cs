@@ -277,7 +277,9 @@ namespace GitHub.Runner.Worker
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
         public IStep RegisterNestedStep(
-            IActionRunner step, DictionaryContextData inputsData, int location,
+            IActionRunner step, 
+            DictionaryContextData inputsData, 
+            int location,
             Dictionary<string, string> envData,
             bool cleanUp = false)
         {
