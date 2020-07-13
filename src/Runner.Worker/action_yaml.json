@@ -1,6 +1,4 @@
 ﻿{
-    "version": "action_v1.0",
-
     "definitions": {
         "action-root": {
             "description": "Action file",

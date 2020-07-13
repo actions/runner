@@ -25,7 +25,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TemplateSchema schema,
             IList<String> fileTable)
         {
-            if (!String.Equals(schema.Version, PipelineTemplateConstants.Workflow_1_0, StringComparison.Ordinal) && !String.Equals(schema.Version, PipelineTemplateConstants.ActionYaml, StringComparison.Ordinal))
+            if (!String.Equals(schema.Version, PipelineTemplateConstants.Workflow_1_0, StringComparison.Ordinal))
             {
                 throw new NotSupportedException($"Unexpected template schema version '{schema.Version}'");
             }
@@ -181,33 +181,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 context.Errors.Check();
             }
             return result;
-        }
-
-        public DictionaryContextData EvaluateCompositeOutputs(
-            TemplateToken token,
-            DictionaryContextData contextData,
-            IList<IFunctionInfo> expressionFunctions)
-        {
-            var result = default(DictionaryContextData);
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData, expressionFunctions);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.CompositeOutputs, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("composite outputs");
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return result ?? new DictionaryContextData();
         }
 
 

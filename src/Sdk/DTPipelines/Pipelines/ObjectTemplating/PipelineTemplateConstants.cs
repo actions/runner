@@ -6,7 +6,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class PipelineTemplateConstants
     {
-        public const String ActionYaml = "action_v1.0";
         public const String Always = "always";
         public const String BooleanStepsContext = "boolean-steps-context";
         public const String BooleanStrategyContext = "boolean-strategy-context";
@@ -16,7 +15,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Clean = "clean";
         public const String Container = "container";
         public const String ContinueOnError = "continue-on-error";
-        public const String CompositeOutputs = "composite-outputs";
         public const String Defaults = "defaults";
         public const String Env = "env";
         public const String Event = "event";
