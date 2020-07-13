@@ -84,7 +84,6 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Action = aStep;
                 actionRunner.Stage = stage;
                 actionRunner.Condition = aStep.Condition;
-                actionRunner.DisplayName = aStep.DisplayName;
 
                 var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, Environment);
 
@@ -96,7 +95,6 @@ namespace GitHub.Runner.Worker.Handlers
             // Create a step that handles all the composite action steps' outputs
             Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
             cleanOutputsStep.ContextName = ExecutionContext.ContextName;
-            cleanOutputsStep.DisplayName = "Composite Action Steps Cleanup";
             // Use the same reference type as our composite steps.
             cleanOutputsStep.Reference = Action;
 
@@ -104,7 +102,6 @@ namespace GitHub.Runner.Worker.Handlers
             actionRunner2.Action = cleanOutputsStep;
             actionRunner2.Stage = ActionRunStage.Main;
             actionRunner2.Condition = "always()";
-            actionRunner2.DisplayName = "Composite Action Steps Cleanup";
             ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, Environment, true);
 
             return Task.CompletedTask;
