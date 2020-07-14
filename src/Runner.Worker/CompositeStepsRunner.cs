@@ -18,7 +18,7 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
 {
-    [ServiceLocator(Default = typeof(StepsRunner))]
+    [ServiceLocator(Default = typeof(CompositeStepsRunner))]
     public interface ICompositeStepsRunner : IRunnerService
     {
         Task RunAsync(IExecutionContext Context);
