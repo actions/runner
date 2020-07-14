@@ -38,6 +38,8 @@ namespace GitHub.Runner.Worker
             // TODO: Add CompositeSteps attribute to ExecutionContext and replace that with this
             while (actionContext.CompositeSteps.Count > 0)
             {
+                System.Threading.Thread.Sleep(5000);
+
                 var step = actionContext.CompositeSteps[0];
                 actionContext.CompositeSteps.RemoveAt(0);
 
@@ -117,7 +119,9 @@ namespace GitHub.Runner.Worker
             // TODO: Remove Composite Action logic from StepsRunner and move it here
 
             // Namely, we need to move the envContext logic!
-            actionContext.Complete(TaskResult.Succeeded);
+
+            // For now, we let the stepsrunner finish it off.
+            // actionContext.Complete(TaskResult.Succeeded);
 
         }
 
