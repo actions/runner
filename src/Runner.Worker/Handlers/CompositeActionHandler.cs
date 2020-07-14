@@ -52,6 +52,9 @@ namespace GitHub.Runner.Worker.Handlers
             var compositeContext = HostContext.CreateService<IExecutionContext>();
             var compositeStepsRunner = HostContext.CreateService<ICompositeStepsRunner>();
 
+            // TODO: Create something similar to ExecutionContext::InitializeJob() for composite action steps.
+            compositeContext.InitializeCompositeAction();
+
             // TODO: Add initilize composite steps, messaging objects, etc. for UI
             // First try without doing this
             // Check out: jobContext.InitializeJob(message, jobRequestCancellationToken);

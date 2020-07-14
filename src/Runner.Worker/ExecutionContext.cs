@@ -80,6 +80,9 @@ namespace GitHub.Runner.Worker
         void CancelToken();
         IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null);
 
+        // Initialize Composite Action
+        void InitializeCompositeAction(ExecutionContext executionContext);
+
         // logging
         bool WriteDebug { get; }
         long Write(string tag, string message);
@@ -633,6 +636,126 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(displayName, nameof(displayName));
             _record.Name = displayName;
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+        }
+
+        public void InitializeCompositeAction(ExecutionContext executionContext)
+        {
+            // Based off of InitializeJob()
+            Trace.Entering();
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+
+            Plan = executionContext.Plan;
+            Features = executionContext.Features;
+
+            // Endpoints
+            Endpoints = executionContext.Endpoints;
+
+            // Variables
+            Variables = executionContext.Variables;
+
+            // Environment variables shared across all actions
+            EnvironmentVariables = executionContext.EnvironmentVariables;
+
+            // Job defaults shared across all actions
+            JobDefaults = executionContext.JobDefaults;
+
+            // Job Outputs
+            JobOutputs = executionContext.JobOutputs;
+
+            // Service container info
+            ServiceContainers = executionContext.ServiceContainers;
+
+            // Steps context (StepsRunner manages adding the scoped steps context)
+
+            // TODO: Create a seperate StepsContext?
+            StepsContext = new StepsContext();
+
+            // File table
+            FileTable = executionContext.FileTable;
+
+            // Expression values
+            // if (message.ContextData?.Count > 0)
+            // {
+            //     foreach (var pair in message.ContextData)
+            //     {
+            //         ExpressionValues[pair.Key] = pair.Value;
+            //     }
+            // }
+
+            // ExpressionValues["secrets"] = Variables.ToSecretsContext();
+            // ExpressionValues["runner"] = new RunnerContext();
+            // ExpressionValues["job"] = new JobContext();
+            foreach (var key in executionContext.ExpressionValues.Keys)
+            {
+                ExpressionValues[key] = executionContext.ExpressionValues[key];
+            }
+            // ExpressionValues = executionContext.ExpressionValues;
+
+            // Trace.Info("Initialize GitHub context");
+            // var githubAccessToken = new StringContextData(Variables.Get("system.github.token"));
+            // var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
+            // HostContext.SecretMasker.AddValue(base64EncodedToken);
+            // var githubJob = Variables.Get("system.github.job");
+            // var githubContext = new GitHubContext();
+            // githubContext["token"] = githubAccessToken;
+            // if (!string.IsNullOrEmpty(githubJob))
+            // {
+            //     githubContext["job"] = new StringContextData(githubJob);
+            // }
+            // var githubDictionary = ExpressionValues["github"].AssertDictionary("github");
+            // foreach (var pair in githubDictionary)
+            // {
+            //     githubContext[pair.Key] = pair.Value;
+            // }
+            // ExpressionValues["github"] = githubContext;
+
+//             Trace.Info("Initialize Env context");
+// #if OS_WINDOWS
+//             ExpressionValues["env"] = new DictionaryContextData();
+// #else
+
+//             ExpressionValues["env"] = new CaseSensitiveDictionaryContextData();
+// #endif
+
+            // Prepend Path
+            // PrependPath = new List<string>();
+
+            // JobSteps for job ExecutionContext
+            // JobSteps = new List<IStep>();
+
+            // PostJobSteps for job ExecutionContext
+            // PostJobSteps = new Stack<IStep>();
+
+            // StepsWithPostRegistered for job ExecutionContext
+            // StepsWithPostRegistered = new HashSet<Guid>();
+
+            CompositeSteps = new List<IStep>();
+
+            // TODO: Figure out how to create another timeline record
+
+            // Job timeline record.
+            // InitializeTimelineRecord(
+            //     timelineId: message.Timeline.Id,
+            //     timelineRecordId: message.JobId,
+            //     parentTimelineRecordId: null,
+            //     recordType: ExecutionContextType.Job,
+            //     displayName: message.JobDisplayName,
+            //     refName: message.JobName,
+            //     order: null); // The job timeline record's order is set by server.
+
+            // Logger (must be initialized before writing warnings).
+            // _logger = HostContext.CreateService<IPagingLogger>();
+            // _logger.Setup(_mainTimelineId, _record.Id);
+            _logger = executionContext._logger;
+
+            // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
+            EchoOnActionCommand = Variables.Step_Debug ?? false;
+
+            // Verbosity (from GitHub.Step_Debug).
+            WriteDebug = Variables.Step_Debug ?? false;
+
+            // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
+            // _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
         }
 
         public void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token)
