@@ -30,7 +30,7 @@ namespace GitHub.Runner.Worker
         public async Task RunAsync(IExecutionContext actionContext)
         {
             ArgUtil.NotNull(actionContext, nameof(actionContext));
-            ArgUtil.NotNull(actionContext.JobSteps, nameof(actionContext.CompositeSteps));
+            ArgUtil.NotNull(actionContext.CompositeSteps, nameof(actionContext.CompositeSteps));
 
             // TODO: Add CompositeSteps attribute to ExecutionContext and replace that with this
 

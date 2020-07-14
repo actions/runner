@@ -23,7 +23,7 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public CompositeActionExecutionData Data { get; set; }
 
-        public Task RunAsync(ActionRunStage stage)
+        public async Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
             Trace.Entering();
@@ -47,6 +47,10 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Add each composite action step to the front of the queue
             int location = 0;
+
+            // Initialize Steps Runner for Composite Steps and Environment for it
+            var compositeContext = HostContext.CreateService<IExecutionContext>();
+            var compositeStepsRunner = HostContext.CreateService<ICompositeStepsRunner>();
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
@@ -86,8 +90,11 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Condition = aStep.Condition;
 
                 var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, Environment);
-
                 InitializeScope(step);
+
+                // Add all steps to the Composite StepsRunner
+                // Follows similar logic to how JobRunner invokes the StepsRunner for job steps!
+                compositeContext.CompositeSteps.Add(step);
 
                 location++;
             }
@@ -104,7 +111,24 @@ namespace GitHub.Runner.Worker.Handlers
             actionRunner2.Condition = "always()";
             ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, Environment, true);
 
-            return Task.CompletedTask;
+            // Then run the Composite StepsRunner
+            try 
+            {
+                await compositeStepsRunner.RunAsync(compositeContext);
+            }
+            catch (Exception ex)
+            {
+                // StepRunner should never throw exception out.
+                // End up here mean there is a bug in StepRunner
+                // Log the error and fail the job.
+                Trace.Error($"Caught exception from composite steps {nameof(CompositeStepsRunner)}: {ex}");
+                compositeContext.Error(ex);
+                // return await CompleteCompositeActionAsync(jobServer, compositeContext, message, TaskResult.Failed);
+                ExecutionContext.Result = TaskResult.Failed;
+            }
+
+            ExecutionContext.Result = TaskResult.Succeeded;
+            // return Task.CompletedTask;
         }
 
         private void InitializeScope(IStep step)

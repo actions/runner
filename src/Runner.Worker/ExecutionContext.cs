@@ -72,6 +72,9 @@ namespace GitHub.Runner.Worker
 
         IExecutionContext FinalizeContext { get; set; }
 
+        // Only Composite Level ExecutionContext has CompositeSteps
+        List<IStep> CompositeSteps { get; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -171,6 +174,9 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has StepsWithPostRegistered
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
+
+        // Only Composite Level ExecutionContext has CompositeSteps
+        public List<IStep> CompositeSteps { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
 
@@ -315,7 +321,8 @@ namespace GitHub.Runner.Worker
             }
             step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-            Root.JobSteps.Insert(location, step);
+            // TODO Erase this!
+            // Root.JobSteps.Insert(location, step);
 
             return step;
         }
