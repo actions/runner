@@ -32,7 +32,8 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(actionContext, nameof(actionContext));
             ArgUtil.NotNull(actionContext.CompositeSteps, nameof(actionContext.CompositeSteps));
 
-            actionContext.Start();
+            // This is also not needed since the Composite aCtion is treated as one whole step in stepsRunner and is handled as such.
+            // actionContext.Start();
 
             // TODO: Add CompositeSteps attribute to ExecutionContext and replace that with this
             while (actionContext.CompositeSteps.Count > 0)
@@ -97,7 +98,7 @@ namespace GitHub.Runner.Worker
                         Trace.Info("Caught exception from expression for step.env");
                         // evaluateStepEnvFailed = true;
                         step.ExecutionContext.Error(ex);
-                        CompleteStep(step, TaskResult.Failed);
+                        // CompleteStep(step, TaskResult.Failed);
                     }
                 }
 
@@ -253,12 +254,14 @@ namespace GitHub.Runner.Worker
 
         }
 
-        private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
-        {
-            var executionContext = step.ExecutionContext;
+        // Since the composite action is treated as 1 step, this will not be needed
+        // private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
+        // {
+        //     Trace.Info("In Composite CompleteStep");
+        //     var executionContext = step.ExecutionContext;
 
-            executionContext.Complete(result, resultCode: resultCode);
-        }
+        //     executionContext.Complete(result, resultCode: resultCode);
+        // }
 
     }
 }

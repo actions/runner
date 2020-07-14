@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker.Handlers
             var compositeStepsRunner = HostContext.CreateService<ICompositeStepsRunner>();
 
             // TODO: Create something similar to ExecutionContext::InitializeJob() for composite action steps.
-            compositeContext.InitializeCompositeAction();
+            compositeContext.InitializeCompositeAction(ExecutionContext);
 
             // TODO: Add initilize composite steps, messaging objects, etc. for UI
             // First try without doing this

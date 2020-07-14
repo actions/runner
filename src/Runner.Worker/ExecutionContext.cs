@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker
         IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null);
 
         // Initialize Composite Action
-        void InitializeCompositeAction(ExecutionContext executionContext);
+        void InitializeCompositeAction(IExecutionContext executionContext);
 
         // logging
         bool WriteDebug { get; }
@@ -638,7 +638,7 @@ namespace GitHub.Runner.Worker
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
-        public void InitializeCompositeAction(ExecutionContext executionContext)
+        public void InitializeCompositeAction(IExecutionContext executionContext)
         {
             // Based off of InitializeJob()
             Trace.Entering();
@@ -746,7 +746,7 @@ namespace GitHub.Runner.Worker
             // Logger (must be initialized before writing warnings).
             // _logger = HostContext.CreateService<IPagingLogger>();
             // _logger.Setup(_mainTimelineId, _record.Id);
-            _logger = executionContext._logger;
+            // _logger = executionContext._logger;
 
             // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
             EchoOnActionCommand = Variables.Step_Debug ?? false;
