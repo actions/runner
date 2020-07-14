@@ -3,7 +3,7 @@ name: Runner CI
 on:
   push:
     branches:
-    - master
+    - main
     - releases/*
     paths-ignore:
     - '**.md'    

@@ -717,7 +717,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.ExpressionValues["github"] = new DictionaryContextData
                 {
-                    { "ref", new StringContextData("refs/heads/master") },
+                    { "ref", new StringContextData("refs/heads/main") },
                 };
                 _ec.Object.ExpressionValues["strategy"] = new DictionaryContextData();
                 _ec.Object.ExpressionValues["matrix"] = new DictionaryContextData();
@@ -737,7 +737,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new BasicExpressionToken(null, null, null, "github.ref"));
 
                 //Assert
-                Assert.Equal("refs/heads/master", result);
+                Assert.Equal("refs/heads/main", result);
             }
             finally
             {
