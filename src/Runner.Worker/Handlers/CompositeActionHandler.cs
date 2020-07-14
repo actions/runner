@@ -52,6 +52,12 @@ namespace GitHub.Runner.Worker.Handlers
             var compositeContext = HostContext.CreateService<IExecutionContext>();
             var compositeStepsRunner = HostContext.CreateService<ICompositeStepsRunner>();
 
+            // TODO: Add initilize composite steps, messaging objects, etc. for UI
+            // First try without doing this
+            // Check out: jobContext.InitializeJob(message, jobRequestCancellationToken);
+            
+            // TODO: Could we get rid of RegisterNestedStep in ExecutionContext?
+
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
                 // Ex: 
