@@ -35,13 +35,10 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(actionContext.CompositeSteps, nameof(actionContext.CompositeSteps));
 
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
-            while (actionContext.CompositeSteps.Count > 0)
+            foreach (IStep step in actionContext.CompositeSteps)
             {
                 // This is used for testing UI appearance.
                 // System.Threading.Thread.Sleep(5000);
-
-                var step = actionContext.CompositeSteps[0];
-                actionContext.CompositeSteps.RemoveAt(0);
 
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
