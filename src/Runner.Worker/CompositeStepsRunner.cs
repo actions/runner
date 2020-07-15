@@ -77,29 +77,28 @@ namespace GitHub.Runner.Worker
 
                 step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-                if (step is IActionRunner actionStep)
-                {
-                    // Set GITHUB_ACTION
-                    step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                var actionStep = step as IActionRunner;
 
-                    try
+                // Set GITHUB_ACTION
+                step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+
+                try
+                {
+                    // Evaluate and merge action's env block to env context
+                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                    var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
+                    foreach (var env in actionEnvironment)
                     {
-                        // Evaluate and merge action's env block to env context
-                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-                        var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
-                        foreach (var env in actionEnvironment)
-                        {
-                            envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
-                        }
+                        envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
                     }
-                    catch (Exception ex)
-                    {
-                        // fail the step since there is an evaluate error.
-                        Trace.Info("Caught exception in Composite Steps Runner from expression for step.env");
-                        // evaluateStepEnvFailed = true;
-                        step.ExecutionContext.Error(ex);
-                        // CompleteStep(step, TaskResult.Failed);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    // fail the step since there is an evaluate error.
+                    Trace.Info("Caught exception in Composite Steps Runner from expression for step.env");
+                    // evaluateStepEnvFailed = true;
+                    step.ExecutionContext.Error(ex);
+                    // CompleteStep(step, TaskResult.Failed);
                 }
 
                 // We don't have to worry about the cancellation token stuff because that's handled by the composite action level (in the StepsRunner)
@@ -113,12 +112,10 @@ namespace GitHub.Runner.Worker
 
         private async Task RunStepAsync(IStep step)
         {
-            // Check to see if we can expand the display name
-            if (step is IActionRunner actionRunner &&
-                actionRunner.Stage == ActionRunStage.Main &&
-                actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext))
+            // Try to evaluate the display name
+            if (step is IActionRunner actionRunner && actionRunner.Stage == ActionRunStage.Main)
             {
-                step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
+                actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext);
             }
 
             // Start the step.
