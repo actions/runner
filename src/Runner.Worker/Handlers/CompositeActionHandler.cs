@@ -49,7 +49,6 @@ namespace GitHub.Runner.Worker.Handlers
             int location = 0;
 
             // Initialize Steps Runner for Composite Steps and Environment for it
-            var compositeContext = HostContext.CreateService<IExecutionContext>();
             var compositeStepsRunner = HostContext.CreateService<ICompositeStepsRunner>();
 
             // Initialize Composite Steps List of Steps
@@ -97,7 +96,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Add all steps to the Composite StepsRunner
                 // Follows similar logic to how JobRunner invokes the StepsRunner for job steps!
-                compositeContext.CompositeSteps.Add(step);
+                ExecutionContext.CompositeSteps.Add(step);
 
                 location++;
             }
@@ -113,18 +112,18 @@ namespace GitHub.Runner.Worker.Handlers
             actionRunner2.Stage = ActionRunStage.Main;
             actionRunner2.Condition = "always()";
             var cleanUpStep = ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, Environment, true);
-            compositeContext.CompositeSteps.Add(cleanUpStep);
+            ExecutionContext.CompositeSteps.Add(cleanUpStep);
 
             // Then run the Composite StepsRunner
             try 
             {
-                await compositeStepsRunner.RunAsync(compositeContext);
+                await compositeStepsRunner.RunAsync(ExecutionContext);
             }
             catch (Exception ex)
             {
                 // Composite StepRunner should never throw exception out.
                 Trace.Error($"Caught exception from composite steps {nameof(CompositeStepsRunner)}: {ex}");
-                compositeContext.Error(ex);
+                ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
             }
             ExecutionContext.Result = TaskResult.Succeeded;
