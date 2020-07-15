@@ -424,7 +424,7 @@ namespace GitHub.Runner.Sdk
             throw new NotSupportedException($"Unable to validate execute permissions for directory '{directory}'. Exceeded maximum iterations.");
         }
 
-        public static void CheckWindowsEncoding(System.Threading.CancellationToken cancellationToken)
+        public static void CheckWindowsEncoding(string workingDir, System.Threading.CancellationToken cancellationToken)
         {
 #if OS_WINDOWS
             try
@@ -434,7 +434,7 @@ namespace GitHub.Runner.Sdk
                     using (var p = HostContext.CreateService<IProcessInvoker>())
                     {
                         // Use UTF8 code page
-                        int exitCode = await p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                        int exitCode = await p.ExecuteAsync(workingDirectory: workingDir,
                                                 fileName: WhichUtil.Which("chcp", true, Trace),
                                                 arguments: "65001",
                                                 environment: null,

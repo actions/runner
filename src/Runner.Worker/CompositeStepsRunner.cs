@@ -102,7 +102,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info("Caught exception in Composite Steps Runner from expression for step.env");
                     // evaluateStepEnvFailed = true;
                     step.ExecutionContext.Error(ex);
-                    // CompleteStep(step, TaskResult.Failed);
+                    CompleteStep(step, TaskResult.Failed);
                 }
 
                 // We don't have to worry about the cancellation token stuff because that's handled by the composite action level (in the StepsRunner)
@@ -112,6 +112,13 @@ namespace GitHub.Runner.Worker
                 // TODO: Add compat for other types of steps.
             }
             // Completion Status handled by StepsRunner for the whole Composite Action Step
+        }
+
+        private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
+        {
+            var executionContext = step.ExecutionContext;
+
+            executionContext.Complete(result, resultCode: resultCode);
         }
 
         private async Task RunStepAsync(IStep step)
@@ -146,7 +153,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.SetTimeout(timeout);
             }
 
-            IOUtil.CheckWindowsEncoding(step.ExecutionContext.CancellationToken);
+            IOUtil.CheckWindowsEncoding(HostContext.GetDirectory(WellKnownDirectory.Work), step.ExecutionContext.CancellationToken);
 
             try
             {

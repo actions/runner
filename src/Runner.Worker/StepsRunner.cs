@@ -285,7 +285,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.SetTimeout(timeout);
             }
 
-            IOUtil.CheckWindowsEncoding(step.ExecutionContext.CancellationToken);
+            IOUtil.CheckWindowsEncoding(HostContext.GetDirectory(WellKnownDirectory.Work), step.ExecutionContext.CancellationToken);
 
             try
             {
