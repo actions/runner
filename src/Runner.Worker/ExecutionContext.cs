@@ -320,10 +320,7 @@ namespace GitHub.Runner.Worker
                 envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
             }
             step.ExecutionContext.ExpressionValues["env"] = envContext;
-
-            // TODO Erase this!
-            // Root.JobSteps.Insert(location, step);
-
+            
             return step;
         }
 
