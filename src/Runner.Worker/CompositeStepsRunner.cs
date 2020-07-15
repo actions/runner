@@ -38,7 +38,7 @@ namespace GitHub.Runner.Worker
             while (actionContext.CompositeSteps.Count > 0)
             {
                 // This is used for testing UI appearance.
-                System.Threading.Thread.Sleep(5000);
+                // System.Threading.Thread.Sleep(5000);
 
                 var step = actionContext.CompositeSteps[0];
                 actionContext.CompositeSteps.RemoveAt(0);
