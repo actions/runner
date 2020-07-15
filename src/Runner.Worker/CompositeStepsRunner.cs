@@ -139,40 +139,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.SetTimeout(timeout);
             }
 
-#if OS_WINDOWS
-            try
-            {
-                if (Console.InputEncoding.CodePage != 65001)
-                {
-                    using (var p = HostContext.CreateService<IProcessInvoker>())
-                    {
-                        // Use UTF8 code page
-                        int exitCode = await p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                                                fileName: WhichUtil.Which("chcp", true, Trace),
-                                                arguments: "65001",
-                                                environment: null,
-                                                requireExitCodeZero: false,
-                                                outputEncoding: null,
-                                                killProcessOnCancel: false,
-                                                redirectStandardIn: null,
-                                                inheritConsoleHandler: true,
-                                                cancellationToken: step.ExecutionContext.CancellationToken);
-                        if (exitCode == 0)
-                        {
-                            Trace.Info("Successfully returned to code page 65001 (UTF8)");
-                        }
-                        else
-                        {
-                            Trace.Warning($"'chcp 65001' failed with exit code {exitCode}");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.Warning($"'chcp 65001' failed with exception {ex.Message}");
-            }
-#endif
+            IOUtil.CheckWindowsEncoding(step.ExecutionContext.CancellationToken);
 
             try
             {
