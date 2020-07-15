@@ -77,7 +77,14 @@ namespace GitHub.Runner.Worker
                 var actionStep = step as IActionRunner;
 
                 // Set GITHUB_ACTION
-                step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                if (!String.IsNullOrEmpty(step.ExecutionContext.ScopeName))
+                {
+                    step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ScopeName);
+                }
+                else 
+                {
+                    step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ContextName);
+                }
 
                 try
                 {
@@ -202,7 +209,6 @@ namespace GitHub.Runner.Worker
 
             // Complete the step context.
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
-
         }
     }
 }
