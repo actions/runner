@@ -52,14 +52,8 @@ namespace GitHub.Runner.Worker.Handlers
             var compositeContext = HostContext.CreateService<IExecutionContext>();
             var compositeStepsRunner = HostContext.CreateService<ICompositeStepsRunner>();
 
-            // TODO: Create something similar to ExecutionContext::InitializeJob() for composite action steps.
-            compositeContext.InitializeCompositeAction(ExecutionContext);
-
-            // TODO: Add initilize composite steps, messaging objects, etc. for UI
-            // First try without doing this
-            // Check out: jobContext.InitializeJob(message, jobRequestCancellationToken);
-            
-            // TODO: Could we get rid of RegisterNestedStep in ExecutionContext?
+            // Initialize Composite Steps List of Steps
+            ExecutionContext.CompositeSteps = new List<IStep>();
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
@@ -128,17 +122,12 @@ namespace GitHub.Runner.Worker.Handlers
             }
             catch (Exception ex)
             {
-                // StepRunner should never throw exception out.
-                // End up here mean there is a bug in StepRunner
-                // Log the error and fail the job.
+                // Composite StepRunner should never throw exception out.
                 Trace.Error($"Caught exception from composite steps {nameof(CompositeStepsRunner)}: {ex}");
                 compositeContext.Error(ex);
-                // return await CompleteCompositeActionAsync(jobServer, compositeContext, message, TaskResult.Failed);
                 ExecutionContext.Result = TaskResult.Failed;
             }
-
             ExecutionContext.Result = TaskResult.Succeeded;
-            // return Task.CompletedTask;
         }
 
         private void InitializeScope(IStep step)

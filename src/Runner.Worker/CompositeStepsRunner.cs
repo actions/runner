@@ -29,15 +29,17 @@ namespace GitHub.Runner.Worker
     {
         public async Task RunAsync(IExecutionContext actionContext)
         {
+            // Another approach we can explore, is moving all this logic to the CompositeActionHandler if it's small enough. 
+
             ArgUtil.NotNull(actionContext, nameof(actionContext));
             ArgUtil.NotNull(actionContext.CompositeSteps, nameof(actionContext.CompositeSteps));
 
-            // This is also not needed since the Composite aCtion is treated as one whole step in stepsRunner and is handled as such.
-            // actionContext.Start();
+            // TODO: Remove old logic from StepsRunner.
 
-            // TODO: Add CompositeSteps attribute to ExecutionContext and replace that with this
+            // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             while (actionContext.CompositeSteps.Count > 0)
             {
+                // This is used for testing UI appearance.
                 System.Threading.Thread.Sleep(5000);
 
                 var step = actionContext.CompositeSteps[0];
@@ -97,7 +99,7 @@ namespace GitHub.Runner.Worker
                     catch (Exception ex)
                     {
                         // fail the step since there is an evaluate error.
-                        Trace.Info("Caught exception from expression for step.env");
+                        Trace.Info("Caught exception in Composite Steps Runner from expression for step.env");
                         // evaluateStepEnvFailed = true;
                         step.ExecutionContext.Error(ex);
                         // CompleteStep(step, TaskResult.Failed);
@@ -106,23 +108,11 @@ namespace GitHub.Runner.Worker
 
                 // We don't have to worry about the cancellation token stuff because that's handled by the composite action level (in the StepsRunner)
 
-                // await RunStepAsync(step, actionContext.CancellationToken);
                 await RunStepAsync(step);
 
                 // TODO: Add compat for other types of steps.
             }
-
-
-            // Add status logic here (start when composite action steps start)
-            // End when clean up is done
-
-            // TODO: Remove Composite Action logic from StepsRunner and move it here
-
-            // Namely, we need to move the envContext logic!
-
-            // For now, we let the stepsrunner finish it off.
-            // actionContext.Complete(TaskResult.Succeeded);
-
+            // Completion Status handled by StepsRunner for the whole Composite Action Step
         }
 
         private async Task RunStepAsync(IStep step)
@@ -257,15 +247,5 @@ namespace GitHub.Runner.Worker
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
 
         }
-
-        // Since the composite action is treated as 1 step, this will not be needed
-        // private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
-        // {
-        //     Trace.Info("In Composite CompleteStep");
-        //     var executionContext = step.ExecutionContext;
-
-        //     executionContext.Complete(result, resultCode: resultCode);
-        // }
-
     }
 }
