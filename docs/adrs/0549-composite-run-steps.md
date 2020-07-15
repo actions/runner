@@ -4,8 +4,6 @@
 
 **Status**: Accepted
 
-**Relevant PR**: https://github.com/actions/runner/pull/549
-
 ## Context
 
 Customers want to be able to compose actions from actions (ex: https://github.com/actions/runner/issues/438)
