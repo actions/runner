@@ -1,8 +1,8 @@
-# ADR 054x: Composite Run Steps
+# ADR 0549: Composite Run Steps
 
 **Date**: 2020-06-17
 
-**Status**: Proposed
+**Status**: Accepted
 
 **Relevant PR**: https://github.com/actions/runner/pull/549
 
