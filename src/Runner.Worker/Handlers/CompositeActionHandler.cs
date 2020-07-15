@@ -35,6 +35,13 @@ namespace GitHub.Runner.Worker.Handlers
 
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
+            // If clean up outputs step, we finish setting the outputs object and then return out of this function.
+            if (ExecutionContext.FinalizeContext != null)
+            {
+                HandleOutput();
+                return;
+            }
+
             // Resolve action steps
             var actionSteps = Data.Steps;
 
@@ -127,6 +134,29 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Result = TaskResult.Failed;
             }
             ExecutionContext.Result = TaskResult.Succeeded;
+        }
+
+        private void HandleOutput()
+        {
+            // Evaluate the mapped outputs value
+            if (Data.Outputs != null)
+            {
+                // Evaluate the outputs in the steps context to easily retrieve the values
+                var actionManifestManager = HostContext.GetService<IActionManifestManager>();
+
+                // Format ExpressionValues to Dictionary<string, PipelineContextData>
+                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in ExecutionContext.ExpressionValues)
+                {
+                    evaluateContext[pair.Key] = pair.Value;
+                }
+
+                // Get the evluated composite outputs' values mapped to the outputs named
+                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
+
+                // Set the outputs for the outputs object in the whole composite action
+                actionManifestManager.SetAllCompositeOutputs(ExecutionContext.FinalizeContext, actionOutputs);
+            }
         }
 
         private void InitializeScope(IStep step)

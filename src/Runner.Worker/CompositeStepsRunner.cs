@@ -77,8 +77,6 @@ namespace GitHub.Runner.Worker
 
                 step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-
-
                 if (step is IActionRunner actionStep)
                 {
                     // Set GITHUB_ACTION
