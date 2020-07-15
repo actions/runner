@@ -115,7 +115,7 @@ namespace GitHub.Runner.Worker.Handlers
             ExecutionContext.CompositeSteps.Add(cleanUpStep);
 
             // Then run the Composite StepsRunner
-            try 
+            try
             {
                 await compositeStepsRunner.RunAsync(ExecutionContext);
             }
