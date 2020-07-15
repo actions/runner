@@ -34,8 +34,6 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(actionContext, nameof(actionContext));
             ArgUtil.NotNull(actionContext.CompositeSteps, nameof(actionContext.CompositeSteps));
 
-            // TODO: Remove old logic from StepsRunner.
-
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             while (actionContext.CompositeSteps.Count > 0)
             {
