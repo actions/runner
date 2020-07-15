@@ -133,7 +133,6 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
             }
-            ExecutionContext.Result = TaskResult.Succeeded;
         }
 
         private void HandleOutput()
