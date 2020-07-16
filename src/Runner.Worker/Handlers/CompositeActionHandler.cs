@@ -95,7 +95,7 @@ namespace GitHub.Runner.Worker.Handlers
             try
             {
                 // This is where we run each step.
-                await RunStepsAsync(compositeSteps);
+                await RunStepsAsync(compositeSteps, ExecutionContext);
 
                 // This is where we set the outputs.
                 // All steps have the same scope for their ExecutionContext/
@@ -154,7 +154,7 @@ namespace GitHub.Runner.Worker.Handlers
             step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
         }
 
-        private async Task RunStepsAsync(List<IStep> compositeSteps)
+        private async Task RunStepsAsync(List<IStep> compositeSteps, IExecutionContext executionContext)
         {
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
 
@@ -234,6 +234,14 @@ namespace GitHub.Runner.Worker.Handlers
 
                 await RunStepAsync(step);
 
+                // Handle Failed Step
+                // We will break out of loop immediately and display the result
+                if (step.ExecutionContext.Result == TaskResult.Failed)
+                {
+                    executionContext.Result = step.ExecutionContext.Result;
+                    break;
+                }
+
                 // TODO: Add compat for other types of steps.
             }
             // Completion Status handled by StepsRunner for the whole Composite Action Step
@@ -301,7 +309,6 @@ namespace GitHub.Runner.Worker.Handlers
                 Trace.Error($"Caught exception from step: {ex}");
                 step.ExecutionContext.Error(ex);
                 step.ExecutionContext.Result = TaskResult.Failed;
-
             }
 
             // Merge execution context result with command result
