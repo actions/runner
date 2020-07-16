@@ -107,7 +107,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, bool cleanUp = false);
+        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData, bool cleanUp = false);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -279,7 +279,6 @@ namespace GitHub.Runner.Worker
         public IStep RegisterNestedStep(
             IActionRunner step,
             DictionaryContextData inputsData,
-            int location,
             Dictionary<string, string> envData,
             bool cleanUp = false)
         {

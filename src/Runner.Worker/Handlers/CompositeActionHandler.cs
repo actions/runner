@@ -52,9 +52,6 @@ namespace GitHub.Runner.Worker.Handlers
                 inputsData[i.Key] = new StringContextData(i.Value);
             }
 
-            // Add each composite action step to the front of the queue
-            int location = 0;
-
             // Initialize Composite Steps List of Steps
             var compositeSteps = new List<IStep>();
 
@@ -95,14 +92,12 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Stage = stage;
                 actionRunner.Condition = aStep.Condition;
 
-                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, location, Environment);
+                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, Environment);
                 InitializeScope(step);
 
                 // Add all steps to the Composite StepsRunner
                 // Follows similar logic to how JobRunner invokes the StepsRunner for job steps!
                 compositeSteps.Add(step);
-
-                location++;
             }
 
             // Create a step that handles all the composite action steps' outputs
