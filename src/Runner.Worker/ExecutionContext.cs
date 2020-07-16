@@ -310,7 +310,9 @@ namespace GitHub.Runner.Worker
             var child = new ExecutionContext();
             child.Initialize(HostContext);
             child.ScopeName = scopeName;
-            child.ContextName = contextName;
+            // Temporary code to generate a context name. After M271-ish ContextName will never be empty.
+            // Generated context names will always start with "__".
+            child.ContextName = !string.IsNullOrEmpty(contextName) ? contextName : $"__{Guid.NewGuid()}";
             child.Features = Features;
             child.Variables = Variables;
             child.Endpoints = Endpoints;
@@ -417,8 +419,7 @@ namespace GitHub.Runner.Worker
 
             _logger.End();
 
-            // After M271-ish ContextName will never be empty.
-            // Generated context names will always start with "__".
+            // Generated context names start with "__"
             if (!string.IsNullOrEmpty(ContextName) && !ContextName.StartsWith("__"))
             {
                 StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
@@ -481,8 +482,7 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // After M271-ish ContextName will never be empty.
-            // Generated context names will always start with "__".
+            // Generated context names start with "__"
             if (string.IsNullOrEmpty(ContextName) || ContextName.StartsWith("__"))
             {
                 reference = null;
