@@ -98,7 +98,7 @@ namespace GitHub.Runner.Worker.Handlers
                 await RunStepsAsync(compositeSteps);
 
                 // This is where we set the outputs.
-                // All steps have the same initial ExecutionContext/
+                // All steps have the same scope for their ExecutionContext/
                 // So we can use one of them so that we can get the right "outputs" attribute.
                 HandleOutput(compositeSteps?[0].ExecutionContext);
             }
