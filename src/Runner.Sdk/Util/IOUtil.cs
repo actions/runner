@@ -424,44 +424,6 @@ namespace GitHub.Runner.Sdk
             throw new NotSupportedException($"Unable to validate execute permissions for directory '{directory}'. Exceeded maximum iterations.");
         }
 
-        public static void CheckWindowsEncoding(string workingDir, string util, System.Threading.CancellationToken cancellationToken)
-        {
-#if OS_WINDOWS
-            try
-            {
-                if (Console.InputEncoding.CodePage != 65001)
-                {
-                    using (var p = HostContext.CreateService<IProcessInvoker>())
-                    {
-                        // Use UTF8 code page
-                        int exitCode = await p.ExecuteAsync(workingDirectory: workingDir,
-                                                fileName: util,
-                                                arguments: "65001",
-                                                environment: null,
-                                                requireExitCodeZero: false,
-                                                outputEncoding: null,
-                                                killProcessOnCancel: false,
-                                                redirectStandardIn: null,
-                                                inheritConsoleHandler: true,
-                                                cancellationToken: step.ExecutionContext.CancellationToken);
-                        if (exitCode == 0)
-                        {
-                            Trace.Info("Successfully returned to code page 65001 (UTF8)");
-                        }
-                        else
-                        {
-                            Trace.Warning($"'chcp 65001' failed with exit code {exitCode}");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.Warning($"'chcp 65001' failed with exception {ex.Message}");
-            }
-#endif
-        }
-
         /// <summary>
         /// Recursively enumerates a directory without following directory reparse points.
         /// </summary>
