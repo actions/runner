@@ -35,13 +35,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
-            // If clean up outputs step, we finish setting the outputs object and then return out of this function.
-            if (ExecutionContext.FinalizeContext != null)
-            {
-                HandleOutput();
-                return;
-            }
-
             // Resolve action steps
             var actionSteps = Data.Steps;
 
@@ -100,23 +93,18 @@ namespace GitHub.Runner.Worker.Handlers
                 compositeSteps.Add(step);
             }
 
-            // Create a step that handles all the composite action steps' outputs
-            Pipelines.ActionStep cleanOutputsStep = new Pipelines.ActionStep();
-            cleanOutputsStep.ContextName = ExecutionContext.ContextName;
-            // Use the same reference type as our composite steps.
-            cleanOutputsStep.Reference = Action;
+            // All steps have the same initial ExecutionContext/
+            // We store one of these ExecutionContexts in this variable 
+            // so that we can process the outputs correctly.
+            var stepExecutionContext = compositeSteps?[0].ExecutionContext;
 
-            var actionRunner2 = HostContext.CreateService<IActionRunner>();
-            actionRunner2.Action = cleanOutputsStep;
-            actionRunner2.Stage = ActionRunStage.Main;
-            actionRunner2.Condition = "always()";
-            var cleanUpStep = ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, Environment, true);
-            compositeSteps.Add(cleanUpStep);
-
-            // Then run the Composite StepsRunner
             try
             {
+                // This is where we run each step.
                 await RunStepsAsync(compositeSteps);
+
+                // This is where we set the outputs.
+                HandleOutput(stepExecutionContext);
             }
             catch (Exception ex)
             {
@@ -134,7 +122,7 @@ namespace GitHub.Runner.Worker.Handlers
             executionContext.Complete(result, resultCode: resultCode);
         }
 
-        private void HandleOutput()
+        private void HandleOutput(IExecutionContext stepExecutionContext)
         {
             // Evaluate the mapped outputs value
             if (Data.Outputs != null)
@@ -144,16 +132,16 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Format ExpressionValues to Dictionary<string, PipelineContextData>
                 var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-                foreach (var pair in ExecutionContext.ExpressionValues)
+                foreach (var pair in stepExecutionContext.ExpressionValues)
                 {
                     evaluateContext[pair.Key] = pair.Value;
                 }
 
                 // Get the evluated composite outputs' values mapped to the outputs named
-                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
+                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(stepExecutionContext, Data.Outputs, evaluateContext);
 
                 // Set the outputs for the outputs object in the whole composite action
-                actionManifestManager.SetAllCompositeOutputs(ExecutionContext.FinalizeContext, actionOutputs);
+                actionManifestManager.SetAllCompositeOutputs(ExecutionContext, actionOutputs);
             }
         }
 
