@@ -268,7 +268,7 @@ namespace GitHub.Runner.Worker.Handlers
                 step.ExecutionContext.SetTimeout(timeout);
             }
 
-            Common.Util.EncodingUtil.EnsureUtfEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
+            Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
             try
             {
