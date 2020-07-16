@@ -121,7 +121,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Then run the Composite StepsRunner
             try
             {
-                await RunAsync(compositeSteps);
+                await RunStepsAsync(compositeSteps);
             }
             catch (Exception ex)
             {
@@ -131,7 +131,45 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Result = TaskResult.Failed;
             }
         }
-        public async Task RunAsync(List<IStep> compositeSteps)
+
+        private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
+        {
+            var executionContext = step.ExecutionContext;
+
+            executionContext.Complete(result, resultCode: resultCode);
+        }
+
+        private void HandleOutput()
+        {
+            // Evaluate the mapped outputs value
+            if (Data.Outputs != null)
+            {
+                // Evaluate the outputs in the steps context to easily retrieve the values
+                var actionManifestManager = HostContext.GetService<IActionManifestManager>();
+
+                // Format ExpressionValues to Dictionary<string, PipelineContextData>
+                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
+                foreach (var pair in ExecutionContext.ExpressionValues)
+                {
+                    evaluateContext[pair.Key] = pair.Value;
+                }
+
+                // Get the evluated composite outputs' values mapped to the outputs named
+                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
+
+                // Set the outputs for the outputs object in the whole composite action
+                actionManifestManager.SetAllCompositeOutputs(ExecutionContext.FinalizeContext, actionOutputs);
+            }
+        }
+
+        private void InitializeScope(IStep step)
+        {
+            var stepsContext = step.ExecutionContext.StepsContext;
+            var scopeName = step.ExecutionContext.ScopeName;
+            step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
+        }
+
+        private async Task RunStepsAsync(List<IStep> compositeSteps)
         {
             // Another approach we can explore, is moving all this logic to the CompositeActionHandler if it's small enough. 
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
@@ -214,43 +252,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // TODO: Add compat for other types of steps.
             }
             // Completion Status handled by StepsRunner for the whole Composite Action Step
-        }
-
-        private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
-        {
-            var executionContext = step.ExecutionContext;
-
-            executionContext.Complete(result, resultCode: resultCode);
-        }
-
-        private void HandleOutput()
-        {
-            // Evaluate the mapped outputs value
-            if (Data.Outputs != null)
-            {
-                // Evaluate the outputs in the steps context to easily retrieve the values
-                var actionManifestManager = HostContext.GetService<IActionManifestManager>();
-
-                // Format ExpressionValues to Dictionary<string, PipelineContextData>
-                var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-                foreach (var pair in ExecutionContext.ExpressionValues)
-                {
-                    evaluateContext[pair.Key] = pair.Value;
-                }
-
-                // Get the evluated composite outputs' values mapped to the outputs named
-                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
-
-                // Set the outputs for the outputs object in the whole composite action
-                actionManifestManager.SetAllCompositeOutputs(ExecutionContext.FinalizeContext, actionOutputs);
-            }
-        }
-
-        private void InitializeScope(IStep step)
-        {
-            var stepsContext = step.ExecutionContext.StepsContext;
-            var scopeName = step.ExecutionContext.ScopeName;
-            step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
         }
 
         private async Task RunStepAsync(IStep step)
