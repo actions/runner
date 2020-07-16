@@ -120,9 +120,6 @@ namespace GitHub.Runner.Worker
 
         private event OnMatcherChanged _onMatcherChanged;
 
-        // Regex used for checking if ScopeName meets the condition that shows that its id is null.
-        private readonly static Regex _generatedContextNamePattern = new Regex("^__[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-
         private IssueMatcherConfig[] _matchers;
 
         private IPagingLogger _logger;
@@ -420,7 +417,9 @@ namespace GitHub.Runner.Worker
 
             _logger.End();
 
-            if (!string.IsNullOrEmpty(ContextName))
+            // After M271-ish ContextName will never be empty.
+            // Generated context names will always start with "__".
+            if (!string.IsNullOrEmpty(ContextName) && !ContextName.StartsWith("__"))
             {
                 StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
                 StepsContext.SetConclusion(ScopeName, ContextName, (Result ?? TaskResult.Succeeded).ToActionResult());
@@ -482,8 +481,9 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // if the ContextName follows the __GUID format which is set as the default value for ContextName if null for Composite Actions. 
-            if (String.IsNullOrEmpty(ContextName) || _generatedContextNamePattern.IsMatch(ContextName))
+            // After M271-ish ContextName will never be empty.
+            // Generated context names will always start with "__".
+            if (string.IsNullOrEmpty(ContextName) || ContextName.StartsWith("__"))
             {
                 reference = null;
                 return;

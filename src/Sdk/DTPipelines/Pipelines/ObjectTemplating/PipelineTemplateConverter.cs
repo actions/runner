@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.ComponentModel;
 using System.Linq;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.Expressions2.Sdk;
@@ -14,8 +14,66 @@ using Newtonsoft.Json.Linq;
 
 namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 {
-    internal static class PipelineTemplateConverter
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static class PipelineTemplateConverter
     {
+        public static List<Step> ConvertToSteps(
+            TemplateContext context,
+            TemplateToken steps)
+        {
+            var stepsSequence = steps.AssertSequence($"job {PipelineTemplateConstants.Steps}");
+
+            var result = new List<Step>();
+            var nameBuilder = new ReferenceNameBuilder();
+            foreach (var stepsItem in stepsSequence)
+            {
+                var step = ConvertToStep(context, stepsItem, nameBuilder);
+                if (step != null) // step = null means we are hitting error during step conversion, there should be an error in context.errors
+                {
+                    if (step.Enabled)
+                    {
+                        result.Add(step);
+                    }
+                }
+            }
+
+            // Generate context name if empty
+            foreach (ActionStep step in result)
+            {
+                if (!String.IsNullOrEmpty(step.ContextName))
+                {
+                    continue;
+                }
+
+                var name = default(string);
+                switch (step.Reference.Type)
+                {
+                    case ActionSourceType.ContainerRegistry:
+                        var containerReference = step.Reference as ContainerRegistryReference;
+                        name = containerReference.Image;
+                        break;
+                    case ActionSourceType.Repository:
+                        var repositoryReference = step.Reference as RepositoryPathReference;
+                        name = !String.IsNullOrEmpty(repositoryReference.Name) ? repositoryReference.Name : PipelineConstants.SelfAlias;
+                        break;
+                    case ActionSourceType.AgentPlugin:
+                        var pluginReference = step.Reference as PluginReference;
+                        name = pluginReference.Plugin;
+                        break;
+                }
+
+                if (String.IsNullOrEmpty(name))
+                {
+                    name = "run";
+                }
+
+                nameBuilder.AppendSegment($"__{name}");
+                step.ContextName = nameBuilder.Build();
+            }
+
+            return result;
+        }
+
         internal static Boolean ConvertToIfResult(
             TemplateContext context,
             TemplateToken ifResult)
@@ -29,6 +87,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var evaluationResult = EvaluationResult.CreateIntermediateResult(null, ifResult);
             return evaluationResult.IsTruthy;
         }
+
         internal static Boolean? ConvertToStepContinueOnError(
             TemplateContext context,
             TemplateToken token,
@@ -264,32 +323,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
-        //Note: originally was List<Step> but we need to change to List<ActionStep> to use the "Inputs" attribute
-        internal static List<ActionStep> ConvertToSteps(
-            TemplateContext context,
-            TemplateToken steps)
-        {
-            var stepsSequence = steps.AssertSequence($"job {PipelineTemplateConstants.Steps}");
-
-            var result = new List<ActionStep>();
-            foreach (var stepsItem in stepsSequence)
-            {
-                var step = ConvertToStep(context, stepsItem);
-                if (step != null) // step = null means we are hitting error during step conversion, there should be an error in context.errors
-                {
-                    if (step.Enabled)
-                    {
-                        result.Add(step);
-                    }
-                }
-            }
-
-            return result;
-        }
-
         private static ActionStep ConvertToStep(
             TemplateContext context,
-            TemplateToken stepsItem)
+            TemplateToken stepsItem,
+            ReferenceNameBuilder nameBuilder)
         {
             var step = stepsItem.AssertMapping($"{PipelineTemplateConstants.Steps} item");
             var continueOnError = default(ScalarToken);
@@ -299,7 +336,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             var ifToken = default(ScalarToken);
             var name = default(ScalarToken);
             var run = default(ScalarToken);
-            var scope = default(StringToken);
             var timeoutMinutes = default(ScalarToken);
             var uses = default(StringToken);
             var with = default(TemplateToken);
@@ -337,9 +373,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                     case PipelineTemplateConstants.Id:
                         id = stepProperty.Value.AssertString($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Id}");
-                        if (!NameValidation.IsValid(id.Value, true))
+                        if (!String.IsNullOrEmpty(id.Value))
                         {
-                            context.Error(id, $"Step id {id.Value} is invalid. Ids must start with a letter or '_' and contain only alphanumeric characters, '-', or '_'");
+                            if (!nameBuilder.TryAddKnownName(id.Value, out var error))
+                            {
+                                context.Error(id, error);
+                            }
                         }
                         break;
 
@@ -365,10 +404,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
                     case PipelineTemplateConstants.Shell:
                         shell = stepProperty.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Shell}");
-                        break;
-
-                    case PipelineTemplateConstants.Scope:
-                        scope = stepProperty.Value.AssertString($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Scope}");
                         break;
 
                     case PipelineTemplateConstants.Submodules:
@@ -400,14 +435,12 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
 
             // Fixup the if-condition
-            var isDefaultScope = String.IsNullOrEmpty(scope?.Value);
-            ifCondition = ConvertToIfCondition(context, ifToken, false, isDefaultScope);
+            ifCondition = ConvertToIfCondition(context, ifToken, false);
 
             if (run != null)
             {
                 var result = new ActionStep
                 {
-                    ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError,
                     DisplayNameToken = name,
@@ -439,7 +472,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 uses.AssertString($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Uses}");
                 var result = new ActionStep
                 {
-                    ScopeName = scope?.Value,
                     ContextName = id?.Value,
                     ContinueOnError = continueOnError,
                     DisplayNameToken = name,
@@ -503,8 +535,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private static String ConvertToIfCondition(
             TemplateContext context,
             TemplateToken token,
-            Boolean isJob,
-            Boolean isDefaultScope)
+            Boolean isJob)
         {
             String condition;
             if (token is null)
@@ -537,7 +568,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             }
             else
             {
-                namedValues = isDefaultScope ? s_stepNamedValues : s_stepInTemplateNamedValues;
+                namedValues = s_stepNamedValues;
                 functions = s_stepConditionFunctions;
             }
 
@@ -583,18 +614,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Strategy),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
-        };
-        private static readonly INamedValueInfo[] s_stepInTemplateNamedValues = new INamedValueInfo[]
-        {
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Strategy),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
-            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Inputs),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),

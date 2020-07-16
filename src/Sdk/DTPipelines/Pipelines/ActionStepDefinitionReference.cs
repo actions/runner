@@ -16,7 +16,10 @@ namespace GitHub.DistributedTask.Pipelines
         ContainerRegistry = 2,
 
         [DataMember]
-        Script = 3
+        Script = 3,
+
+        [DataMember]
+        AgentPlugin = 4,
     }
 
     [DataContract]
@@ -148,6 +151,38 @@ namespace GitHub.DistributedTask.Pipelines
         public override ActionStepDefinitionReference Clone()
         {
             return new ScriptReference(this);
+        }
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public class PluginReference : ActionStepDefinitionReference
+    {
+        [JsonConstructor]
+        public PluginReference()
+        {
+        }
+
+        private PluginReference(PluginReference referenceToClone)
+        {
+            this.Plugin = referenceToClone.Plugin;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public override ActionSourceType Type => ActionSourceType.AgentPlugin;
+
+        /// <summary>
+        /// Agent plugin name
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public string Plugin
+        {
+            get;
+            set;
+        }
+
+        public override ActionStepDefinitionReference Clone()
+        {
+            return new PluginReference(this);
         }
     }
 }
