@@ -201,6 +201,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var actionStep = step as IActionRunner;
 
                 // Set GITHUB_ACTION
+                // TODO: Fix this after SDK Changes. 
                 if (!String.IsNullOrEmpty(step.ExecutionContext.ScopeName))
                 {
                     step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ScopeName);
