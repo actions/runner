@@ -110,7 +110,7 @@ namespace GitHub.Runner.Worker.Handlers
             actionRunner2.Action = cleanOutputsStep;
             actionRunner2.Stage = ActionRunStage.Main;
             actionRunner2.Condition = "always()";
-            var cleanUpStep = ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, Environment, true);
+            var cleanUpStep = ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, Environment, true);
             compositeSteps.Add(cleanUpStep);
 
             // Then run the Composite StepsRunner
