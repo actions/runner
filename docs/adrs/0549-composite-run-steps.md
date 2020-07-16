@@ -10,7 +10,7 @@ Customers want to be able to compose actions from actions (ex: https://github.co
 
 An important step towards meeting this goal is to build in functionality for actions where users can simply execute any number of steps. 
 
-## Guiding Principles
+### Guiding Principles
 
 We don't want the workflow author to need to know how the internal workings of the action work. Users shouldn't know the internal workings of the composite action (for example, `default.shell` and `default.workingDir` should not be inherited from the workflow file to the action file). When deciding how to design certain parts of composite run steps, we want to think one logical step from the consumer.
 
@@ -21,7 +21,7 @@ A composite action is treated as **one** individual job step (aka encapsulation)
 
 **In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
-## Steps
+### Steps
 
 Example `workflow.yml`
 
@@ -63,7 +63,7 @@ echo hello world 4
 
 We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step sequentially. If any step fails and there are no `if` conditions defined, the whole composite action job fails. 
 
-## Inputs
+### Inputs
 
 Example `workflow.yml`:
 
@@ -96,7 +96,7 @@ hello Octocat
 
 Each input variable in the composite action is only viewable in its own scope.
 
-## Outputs
+### Outputs
 
 Example `workflow.yml`:
 
@@ -133,22 +133,22 @@ Each of the output variables from the composite action is viewable from the work
 
 Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `random-id`). The reason why we are doing this is because we don't want to require the workflow author to know the internal workings of the composite action.
 
-## Context
+### Context
 
 Similar to the workflow file, the composite action has access to the [same context objects](https://help.github.com/en/actions/reference/context-and-expression-syntax-for-github-actions#contexts) (ex: `github`, `env`, `strategy`). 
 
-## Environment
+### Environment
 
 In the Composite Action, you'll only be able to use `::set-env::` to set environment variables just like you could with other actions.
 
-## Secrets
+### Secrets
 
 **Note** : This feature will be focused on in a future ADR.
 
 We'll pass the secrets from the composite action's parents (ex: the workflow file) to the composite action. Secrets can be created in the composite action with the secrets context. In the actions yaml, we'll automatically mask the secret. 
 
 
-## If Condition
+### If Condition
 
 Example `workflow.yml`:
 
@@ -183,7 +183,7 @@ In the child action (in this example, this is the `action.yml`), it starts with 
 
 What if a step has `cancelled()`? We do the opposite of our approach above if `cancelled()` is used for any of our composite run steps. We will cancel any step that has this condition if the workflow is cancelled at all.
     
-## Timeout-minutes
+### Timeout-minutes
 
 Example `workflow.yml`:
 
@@ -221,7 +221,7 @@ The rationale behind this is that users can configure their steps with the `if` 
 [Usage limits still apply](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions?query=if%28%29#usage-limits)
 
 
-## Continue-on-error
+### Continue-on-error
 
 Example `workflow.yml`:
 
@@ -250,11 +250,11 @@ If any of the steps fail in the composite action and the `continue-on-error` is 
 
 For the composite action steps, it follows the same logic as above. In this example, `"Hello World 2"` will be outputted because the previous step has `continue-on-error` set to `true` although that previous step errored. 
 
-## Defaults
+### Defaults
 
 The composite action author will be required to set the `shell` and `workingDir` of the composite action. Moreover, the composite action author will be able to explicitly set the shell for each composite run step. The workflow author will not have the ability to change these attributes. 
 
-## Visualizing Composite Action in the GitHub Actions UI
+### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
 
 Here is a visual represenation of the [first example](#Steps)
@@ -269,5 +269,6 @@ Here is a visual represenation of the [first example](#Steps)
 ```
 
 
-## Conclusion
+## Consequences
+
 This ADR lays the framework for eventually supporting nested Composite Actions within Composite Actions. This ADR allows for users to run multiple run steps within a GitHub Composite Action with the support of inputs, outputs, environment, and context for use in any steps as well as the if, timeout-minutes, and the continue-on-error attributes for each Composite Action step. 
