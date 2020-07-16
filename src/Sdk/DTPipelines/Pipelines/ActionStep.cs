@@ -24,7 +24,6 @@ namespace GitHub.DistributedTask.Pipelines
             Environment = actionToClone.Environment?.Clone();
             Inputs = actionToClone.Inputs?.Clone();
             ContextName = actionToClone?.ContextName;
-            ScopeName = actionToClone?.ScopeName;
             DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
         }
 
@@ -40,9 +39,6 @@ namespace GitHub.DistributedTask.Pipelines
         // TODO: After TFS and legacy phases/steps/ect are removed, lets replace the DisplayName in the base class with this value and remove this additional prop
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken DisplayNameToken { get; set; }
-
-        [DataMember(EmitDefaultValue = false)]
-        public String ScopeName { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public String ContextName { get; set; }
