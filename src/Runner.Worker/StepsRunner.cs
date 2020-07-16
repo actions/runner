@@ -70,7 +70,8 @@ namespace GitHub.Runner.Worker
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
-                ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
+                ArgUtil.NotNull(step.ExecutionContext.Global, nameof(step.ExecutionContext.Global));
+                ArgUtil.NotNull(step.ExecutionContext.Global.Variables, nameof(step.ExecutionContext.Global.Variables));
 
                 // Start
                 step.ExecutionContext.Start();
@@ -82,7 +83,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
-                step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.StepsContext.GetScope(step.ExecutionContext.ScopeName);
+                step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
 
                 // Populate env context for each step
                 Trace.Info("Initialize Env context for step");
@@ -92,7 +93,8 @@ namespace GitHub.Runner.Worker
                 var envContext = new CaseSensitiveDictionaryContextData();
 #endif
 
-                foreach (var pair in step.ExecutionContext.EnvironmentVariables)
+                // Global env
+                foreach (var pair in step.ExecutionContext.Global.EnvironmentVariables)
                 {
                     envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
                 }

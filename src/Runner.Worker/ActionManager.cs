@@ -66,7 +66,7 @@ namespace GitHub.Runner.Worker
 
             // TODO: Deprecate the PREVIEW_ACTION_TOKEN
             // Log even if we aren't using it to ensure users know.
-            if (!string.IsNullOrEmpty(executionContext.Variables.Get("PREVIEW_ACTION_TOKEN")))
+            if (!string.IsNullOrEmpty(executionContext.Global.Variables.Get("PREVIEW_ACTION_TOKEN")))
             {
                 executionContext.Warning("The 'PREVIEW_ACTION_TOKEN' secret is deprecated. Please remove it from the repository's secrets");
             }
@@ -75,7 +75,7 @@ namespace GitHub.Runner.Worker
             IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
 
             // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
-            var newActionMetadata = executionContext.Variables.GetBoolean("DistributedTask.NewActionMetadata") ?? false;
+            var newActionMetadata = executionContext.Global.Variables.GetBoolean("DistributedTask.NewActionMetadata") ?? false;
 
             var repositoryActions = new List<Pipelines.ActionStep>();
 
@@ -589,7 +589,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Plan.ScopeIdentifier, executionContext.Plan.PlanType, executionContext.Plan.PlanId, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                    actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     break;
                 }
                 catch (Exception ex) when (attempt < 3)
@@ -947,7 +947,7 @@ namespace GitHub.Runner.Worker
             if (string.IsNullOrEmpty(authToken))
             {
                 // TODO: Deprecate the PREVIEW_ACTION_TOKEN
-                authToken = executionContext.Variables.Get("PREVIEW_ACTION_TOKEN");
+                authToken = executionContext.Global.Variables.Get("PREVIEW_ACTION_TOKEN");
             }
 
             if (!string.IsNullOrEmpty(authToken))

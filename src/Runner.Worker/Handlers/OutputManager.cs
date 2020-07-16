@@ -31,7 +31,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             _executionContext = executionContext;
             _commandManager = commandManager;
-            _container = container ?? executionContext.Container;
+            _container = container ?? executionContext.Global.Container;
 
             // Recursion failsafe (test override)
             var failsafeString = Environment.GetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE");
@@ -41,7 +41,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Determine the timeout
-            var timeoutStr = _executionContext.Variables.Get(_timeoutKey);
+            var timeoutStr = _executionContext.Global.Variables.Get(_timeoutKey);
             if (string.IsNullOrEmpty(timeoutStr) ||
                 !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                 _timeout <= TimeSpan.Zero)
