@@ -100,7 +100,11 @@ namespace GitHub.Runner.Worker.Handlers
                 // This is where we set the outputs.
                 // All steps have the same scope for their ExecutionContext/
                 // So we can use one of them so that we can get the right "outputs" attribute.
-                HandleOutput(compositeSteps?[0].ExecutionContext);
+                if (compositeSteps.Count > 0)
+                {
+                    // TODO: Find better solution. 
+                    HandleOutput(compositeSteps[0].ExecutionContext);
+                }
             }
             catch (Exception ex)
             {
@@ -296,6 +300,7 @@ namespace GitHub.Runner.Worker.Handlers
                 Trace.Error($"Caught exception from step: {ex}");
                 step.ExecutionContext.Error(ex);
                 step.ExecutionContext.Result = TaskResult.Failed;
+
             }
 
             // Merge execution context result with command result

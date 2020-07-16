@@ -1,3 +1,4 @@
+using System.Threading;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Common;
 
@@ -7,7 +8,7 @@ namespace GitHub.Runner.Common.Util
 
     public static class EncodingUtil
     {
-        public static async void SetEncoding(IHostContext hostContext, Tracing trace, System.Threading.CancellationToken cancellationToken)
+        public static async void SetEncoding(IHostContext hostContext, Tracing trace, CancellationToken cancellationToken)
         {
 #if OS_WINDOWS
             try
