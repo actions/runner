@@ -33,8 +33,6 @@ namespace GitHub.Runner.Worker.Handlers
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
 
-            var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
-
             // Resolve action steps
             var actionSteps = Data.Steps;
 
