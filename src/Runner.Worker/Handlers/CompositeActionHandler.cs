@@ -190,7 +190,7 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (IStep step in compositeSteps)
             {
                 // This is used for testing UI appearance.
-                // System.Threading.Thread.Sleep(5000);
+                // System.Threading.Thread.Sleep(60000);
 
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
@@ -290,24 +290,8 @@ namespace GitHub.Runner.Worker.Handlers
             // Set the timeout
             // TODO: Fix for Step Level Timeout Attributes for an individual Composite Run Step
             // For now, we are not going to support this for an individual composite run step
-            var timeoutMinutes = 0;
+
             var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-            try
-            {
-                timeoutMinutes = templateEvaluator.EvaluateStepTimeout(step.Timeout, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
-            }
-            catch (Exception ex)
-            {
-                Trace.Info("An error occurred when attempting to determine the step timeout.");
-                Trace.Error(ex);
-                step.ExecutionContext.Error("An error occurred when attempting to determine the step timeout.");
-                step.ExecutionContext.Error(ex);
-            }
-            if (timeoutMinutes > 0)
-            {
-                var timeout = TimeSpan.FromMinutes(timeoutMinutes);
-                step.ExecutionContext.SetTimeout(timeout);
-            }
 
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
