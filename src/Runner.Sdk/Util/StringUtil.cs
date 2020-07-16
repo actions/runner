@@ -30,7 +30,7 @@ namespace GitHub.Runner.Sdk
             //
             // For example, on an en-US box, this is required for loading the encoding for the
             // default console output code page '437'. Without loading the correct encoding for
-            // code page IBM437, some characters cannot be translated correctly, e.g. write 'Ã§'
+            // code page IBM437, some characters cannot be translated correctly, e.g. write 'ç'
             // from powershell.exe.
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 #endif
