@@ -311,7 +311,7 @@ namespace GitHub.Runner.Worker
             child.Initialize(HostContext);
             child.ScopeName = scopeName;
             // Temporary code to generate a context name. After M271-ish the server will never send an empty context name.
-            // Generated context names will always start with "__".
+            // Generated context start with "__".
             child.ContextName = !string.IsNullOrEmpty(contextName) ? contextName : $"__{Guid.NewGuid()}";
             child.Features = Features;
             child.Variables = Variables;
