@@ -72,9 +72,6 @@ namespace GitHub.Runner.Worker
 
         IExecutionContext FinalizeContext { get; set; }
 
-        // Only Composite Level ExecutionContext has CompositeSteps (public setter for handler)
-        List<IStep> CompositeSteps { get; set; }
-
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -174,9 +171,6 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has StepsWithPostRegistered
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
-
-        // Only Composite Level ExecutionContext has CompositeSteps (public setter for handler)
-        public List<IStep> CompositeSteps { get; set; }
 
         public bool EchoOnActionCommand { get; set; }
 

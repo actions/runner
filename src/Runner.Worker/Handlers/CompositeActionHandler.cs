@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker.Handlers
             int location = 0;
 
             // Initialize Composite Steps List of Steps
-            ExecutionContext.CompositeSteps = new List<IStep>();
+            var compositeSteps = new List<IStep>();
 
             foreach (Pipelines.ActionStep aStep in actionSteps)
             {
@@ -100,7 +100,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Add all steps to the Composite StepsRunner
                 // Follows similar logic to how JobRunner invokes the StepsRunner for job steps!
-                ExecutionContext.CompositeSteps.Add(step);
+                compositeSteps.Add(step);
 
                 location++;
             }
@@ -116,12 +116,12 @@ namespace GitHub.Runner.Worker.Handlers
             actionRunner2.Stage = ActionRunStage.Main;
             actionRunner2.Condition = "always()";
             var cleanUpStep = ExecutionContext.RegisterNestedStep(actionRunner2, inputsData, location, Environment, true);
-            ExecutionContext.CompositeSteps.Add(cleanUpStep);
+            compositeSteps.Add(cleanUpStep);
 
             // Then run the Composite StepsRunner
             try
             {
-                await RunAsync(ExecutionContext);
+                await RunAsync(compositeSteps);
             }
             catch (Exception ex)
             {
@@ -131,15 +131,13 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Result = TaskResult.Failed;
             }
         }
-        public async Task RunAsync(IExecutionContext actionContext)
+        public async Task RunAsync(List<IStep> compositeSteps)
         {
             // Another approach we can explore, is moving all this logic to the CompositeActionHandler if it's small enough. 
-
-            ArgUtil.NotNull(actionContext, nameof(actionContext));
-            ArgUtil.NotNull(actionContext.CompositeSteps, nameof(actionContext.CompositeSteps));
+            ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
 
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
-            foreach (IStep step in actionContext.CompositeSteps)
+            foreach (IStep step in compositeSteps)
             {
                 // This is used for testing UI appearance.
                 // System.Threading.Thread.Sleep(5000);
@@ -268,6 +266,8 @@ namespace GitHub.Runner.Worker.Handlers
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
 
             // Set the timeout
+            // TODO: Fix for Step Level Timeout Attributes for an individual Composite Run Step
+            // For now, we are not going to support this for an individual composite run step
             var timeoutMinutes = 0;
             var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
             try
