@@ -56,10 +56,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         var repositoryReference = step.Reference as RepositoryPathReference;
                         name = !String.IsNullOrEmpty(repositoryReference.Name) ? repositoryReference.Name : PipelineConstants.SelfAlias;
                         break;
-                    case ActionSourceType.AgentPlugin:
-                        var pluginReference = step.Reference as PluginReference;
-                        name = pluginReference.Plugin;
-                        break;
                 }
 
                 if (String.IsNullOrEmpty(name))
