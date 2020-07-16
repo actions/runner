@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Common;
 
@@ -8,7 +9,7 @@ namespace GitHub.Runner.Common.Util
 
     public static class EncodingUtil
     {
-        public static async void SetEncoding(IHostContext hostContext, Tracing trace, CancellationToken cancellationToken)
+        public static async Task SetEncoding(IHostContext hostContext, Tracing trace, CancellationToken cancellationToken)
         {
 #if OS_WINDOWS
             try
@@ -45,7 +46,7 @@ namespace GitHub.Runner.Common.Util
             }
 #endif
             // Dummy variable to prevent compiler error CS1998: "This async method lacks 'await' operators and will run synchronously..."
-            await System.Threading.Tasks.Task.CompletedTask;
+            await Task.CompletedTask;
         }
     }
 }
