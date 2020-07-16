@@ -103,7 +103,7 @@ namespace GitHub.Runner.Worker
                 if (step is IActionRunner actionStep)
                 {
                     // Set GITHUB_ACTION
-                    step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                    step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ContextName);
 
                     try
                     {
