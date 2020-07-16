@@ -153,36 +153,4 @@ namespace GitHub.DistributedTask.Pipelines
             return new ScriptReference(this);
         }
     }
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public class PluginReference : ActionStepDefinitionReference
-    {
-        [JsonConstructor]
-        public PluginReference()
-        {
-        }
-
-        private PluginReference(PluginReference referenceToClone)
-        {
-            this.Plugin = referenceToClone.Plugin;
-        }
-
-        [DataMember(EmitDefaultValue = false)]
-        public override ActionSourceType Type => ActionSourceType.AgentPlugin;
-
-        /// <summary>
-        /// Agent plugin name
-        /// </summary>
-        [DataMember(EmitDefaultValue = false)]
-        public string Plugin
-        {
-            get;
-            set;
-        }
-
-        public override ActionStepDefinitionReference Clone()
-        {
-            return new PluginReference(this);
-        }
-    }
 }
