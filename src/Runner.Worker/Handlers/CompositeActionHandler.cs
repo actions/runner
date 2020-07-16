@@ -29,6 +29,7 @@ namespace GitHub.Runner.Worker.Handlers
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
+            ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
 
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
@@ -91,18 +92,15 @@ namespace GitHub.Runner.Worker.Handlers
                 compositeSteps.Add(step);
             }
 
-            // All steps have the same initial ExecutionContext/
-            // We store one of these ExecutionContexts in this variable 
-            // so that we can process the outputs correctly.
-            var stepExecutionContext = compositeSteps?[0].ExecutionContext;
-
             try
             {
                 // This is where we run each step.
                 await RunStepsAsync(compositeSteps);
 
                 // This is where we set the outputs.
-                HandleOutput(stepExecutionContext);
+                // All steps have the same initial ExecutionContext/
+                // So we can use one of them so that we can get the right "outputs" attribute.
+                HandleOutput(compositeSteps?[0].ExecutionContext);
             }
             catch (Exception ex)
             {
@@ -122,6 +120,8 @@ namespace GitHub.Runner.Worker.Handlers
 
         private void HandleOutput(IExecutionContext stepExecutionContext)
         {
+            ArgUtil.NotNull(stepExecutionContext, nameof(stepExecutionContext));
+
             // Evaluate the mapped outputs value
             if (Data.Outputs != null)
             {
@@ -152,7 +152,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         private async Task RunStepsAsync(List<IStep> compositeSteps)
         {
-            // Another approach we can explore, is moving all this logic to the CompositeActionHandler if it's small enough. 
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
 
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
