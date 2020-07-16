@@ -152,8 +152,8 @@ namespace GitHub.Runner.Worker
                 var timeout = TimeSpan.FromMinutes(timeoutMinutes);
                 step.ExecutionContext.SetTimeout(timeout);
             }
-
-            IOUtil.CheckWindowsEncoding(HostContext.GetDirectory(WellKnownDirectory.Work), step.ExecutionContext.CancellationToken);
+            
+            IOUtil.CheckWindowsEncoding(HostContext.GetDirectory(WellKnownDirectory.Work), WhichUtil.Which("chcp", true, Trace), step.ExecutionContext.CancellationToken);
 
             try
             {
