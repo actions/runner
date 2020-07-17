@@ -112,13 +112,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
-        {
-            var executionContext = step.ExecutionContext;
-
-            executionContext.Complete(result, resultCode: resultCode);
-        }
-
         private void HandleOutput()
         {
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
@@ -249,7 +242,7 @@ namespace GitHub.Runner.Worker.Handlers
                     Trace.Info("Caught exception in Composite Steps Runner from expression for step.env");
                     // evaluateStepEnvFailed = true;
                     step.ExecutionContext.Error(ex);
-                    CompleteStep(step, TaskResult.Failed);
+                    step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
                 // We don't have to worry about the cancellation token stuff because that's handled by the composite action level (in the StepsRunner)
