@@ -107,9 +107,14 @@ namespace GitHub.Runner.Worker
                     {
                         step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
                     }
-                    else
+                    else if (string.IsNullOrEmpty(step.ExecutionContext.ScopeName))
                     {
                         step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ContextName);
+                    }
+                    else
+                    {
+                        // TODO: Move this into CompositeActionHandler after it's refactored to run it's own nested steps
+                        step.ExecutionContext.SetGitHubContext("action", $"{step.ExecutionContext.ScopeName}.{step.ExecutionContext.ContextName}");
                     }
 
                     try
