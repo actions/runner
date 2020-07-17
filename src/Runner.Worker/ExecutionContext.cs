@@ -303,6 +303,8 @@ namespace GitHub.Runner.Worker
             }
             step.ExecutionContext.ExpressionValues["env"] = envContext;
 
+            // step.ExecutionContext._cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
+
             return step;
         }
 

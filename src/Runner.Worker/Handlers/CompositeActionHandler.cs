@@ -172,6 +172,10 @@ namespace GitHub.Runner.Worker.Handlers
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
             {
+                System.Threading.Thread.Sleep(2000);
+
+                var stepCancellationToken = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(ExecutionContext.CancellationToken);
+                
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
                 step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.StepsContext.GetScope(step.ExecutionContext.ScopeName);
@@ -245,6 +249,12 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Result = TaskResult.Canceled;
                     break;
                 }
+                else if (stepCancellationToken.IsCancellationRequested)
+                {
+                    ExecutionContext.Error("The action has timed out.");
+                    ExecutionContext.Result = TaskResult.Failed;
+                    break;
+                }
 
                 await RunStepAsync(step);
 
@@ -286,7 +296,8 @@ namespace GitHub.Runner.Worker.Handlers
             }
             catch (OperationCanceledException ex)
             {
-                if (step.ExecutionContext.CancellationToken.IsCancellationRequested)
+                Trace.Info("COMPOSITE OUTPUT CANCELLING LOOP");
+                if (ExecutionContext.CancellationToken.IsCancellationRequested)
                 {
                     Trace.Error($"Caught timeout exception from step: {ex.Message}");
                     step.ExecutionContext.Error("The action has timed out.");
