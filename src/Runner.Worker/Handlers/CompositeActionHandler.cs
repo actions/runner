@@ -267,7 +267,6 @@ namespace GitHub.Runner.Worker.Handlers
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
 
-            // Set the timeout
             // TODO: Fix for Step Level Timeout Attributes for an individual Composite Run Step
             // For now, we are not going to support this for an individual composite run step
 
