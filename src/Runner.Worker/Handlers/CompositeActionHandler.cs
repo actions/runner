@@ -95,19 +95,13 @@ namespace GitHub.Runner.Worker.Handlers
                 // This is where we run each step.
                 await RunStepsAsync(compositeSteps, ExecutionContext);
 
-                // This is where we set the outputs.
-                // All steps have the same scope for their ExecutionContext/
-                // So we can use one of them so that we can get the right "outputs" attribute.
-                if (compositeSteps.Count > 0)
-                {
-                    // Get the pointer of the correct "steps" object and pass it to the ExecutionContext
-                    // This will always be the same for every step so we can pull this from thefirst step if it exists
-                    var stepExecutionContext = compositeSteps.Count > 0 ? compositeSteps[0].ExecutionContext : null;
-                    ExecutionContext.ExpressionValues["inputs"] = inputsData;
-                    ExecutionContext.ExpressionValues["steps"] = stepExecutionContext.StepsContext.GetScope(stepExecutionContext.ScopeName);
+                // Get the pointer of the correct "steps" object and pass it to the ExecutionContext so that we can process the outputs correctly
+                // This will always be the same for every step so we can pull this from the first step if it exists
+                var stepExecutionContext = compositeSteps.Count > 0 ? compositeSteps[0].ExecutionContext : null;
+                ExecutionContext.ExpressionValues["inputs"] = inputsData;
+                ExecutionContext.ExpressionValues["steps"] = stepExecutionContext.StepsContext.GetScope(stepExecutionContext.ScopeName);
 
-                    HandleOutput();
-                }
+                HandleOutput();
             }
             catch (Exception ex)
             {
