@@ -93,7 +93,7 @@ namespace GitHub.Runner.Worker.Handlers
             try
             {
                 // This is where we run each step.
-                await RunStepsAsync(compositeSteps, ExecutionContext);
+                await RunStepsAsync(compositeSteps);
 
                 // Get the pointer of the correct "steps" object and pass it to the ExecutionContext so that we can process the outputs correctly
                 // This will always be the same for every step so we can pull this from the first step if it exists
@@ -165,7 +165,7 @@ namespace GitHub.Runner.Worker.Handlers
             step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
         }
 
-        private async Task RunStepsAsync(List<IStep> compositeSteps, IExecutionContext executionContext)
+        private async Task RunStepsAsync(List<IStep> compositeSteps)
         {
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
 
@@ -238,7 +238,13 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
-                // We don't have to worry about the cancellation token stuff because that's handled by the composite action level (in the StepsRunner)
+                // Handle Cancellation
+                // We will break out of loop immediately and display the result
+                if (ExecutionContext.CancellationToken.IsCancellationRequested)
+                {
+                    ExecutionContext.Result = TaskResult.Canceled;
+                    break;
+                }
 
                 await RunStepAsync(step);
 
@@ -246,7 +252,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // We will break out of loop immediately and display the result
                 if (step.ExecutionContext.Result == TaskResult.Failed)
                 {
-                    executionContext.Result = step.ExecutionContext.Result;
+                    ExecutionContext.Result = step.ExecutionContext.Result;
                     break;
                 }
 
