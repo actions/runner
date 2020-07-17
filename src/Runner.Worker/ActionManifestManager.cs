@@ -30,8 +30,6 @@ namespace GitHub.Runner.Worker
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
-
-        void SetAllCompositeOutputs(IExecutionContext parentExecutionContext, DictionaryContextData actionOutputs);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -168,34 +166,6 @@ namespace GitHub.Runner.Worker
             }
 
             return actionDefinition;
-        }
-
-        public void SetAllCompositeOutputs(
-            IExecutionContext parentExecutionContext,
-            DictionaryContextData actionOutputs)
-        {
-            // Each pair is structured like this
-            // We ignore "description" for now
-            // {
-            //   "the-output-name": {
-            //     "description": "",
-            //     "value": "the value"
-            //   },
-            //   ...
-            // }
-            foreach (var pair in actionOutputs)
-            {
-                var outputsName = pair.Key;
-                var outputsAttributes = pair.Value as DictionaryContextData;
-                outputsAttributes.TryGetValue("value", out var val);
-                var outputsValue = val as StringContextData;
-
-                // Set output in the whole composite scope. 
-                if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
-                {
-                    parentExecutionContext.SetOutput(outputsName, outputsValue, out _);
-                }
-            }
         }
 
         public DictionaryContextData EvaluateCompositeOutputs(

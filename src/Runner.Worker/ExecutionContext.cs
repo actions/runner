@@ -70,8 +70,6 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
-        IExecutionContext FinalizeContext { get; set; }
-
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -107,7 +105,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, bool cleanUp = false);
+        IStep CreateCompositeStep(IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -173,8 +171,6 @@ namespace GitHub.Runner.Worker
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
-
-        public IExecutionContext FinalizeContext { get; set; }
 
         public TaskResult? Result
         {
@@ -276,12 +272,10 @@ namespace GitHub.Runner.Worker
         /// Helper function used in CompositeActionHandler::RunAsync to
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
-        public IStep RegisterNestedStep(
+        public IStep CreateCompositeStep(
             IActionRunner step,
             DictionaryContextData inputsData,
-            int location,
-            Dictionary<string, string> envData,
-            bool cleanUp = false)
+            Dictionary<string, string> envData)
         {
             // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
             // "__<GUID>"
@@ -297,12 +291,6 @@ namespace GitHub.Runner.Worker
 
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
 
-            // Set Parent Attribute for Clean Up Step
-            if (cleanUp)
-            {
-                step.ExecutionContext.FinalizeContext = this;
-            }
-
             // Add the composite action environment variables to each step.
 #if OS_WINDOWS
             var envContext = new DictionaryContextData();
@@ -314,8 +302,6 @@ namespace GitHub.Runner.Worker
                 envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
             }
             step.ExecutionContext.ExpressionValues["env"] = envContext;
-
-            Root.JobSteps.Insert(location, step);
 
             return step;
         }
