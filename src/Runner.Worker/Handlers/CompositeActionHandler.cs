@@ -87,8 +87,6 @@ namespace GitHub.Runner.Worker.Handlers
                 var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, Environment);
                 InitializeScope(step);
 
-                // Add all steps to the Composite StepsRunner
-                // Follows similar logic to how JobRunner invokes the StepsRunner for job steps!
                 compositeSteps.Add(step);
             }
 
@@ -102,8 +100,13 @@ namespace GitHub.Runner.Worker.Handlers
                 // So we can use one of them so that we can get the right "outputs" attribute.
                 if (compositeSteps.Count > 0)
                 {
-                    // TODO: Find better solution. 
-                    HandleOutput(compositeSteps[0].ExecutionContext);
+                    // Get the pointer of the correct "steps" object and pass it to the ExecutionContext
+                    // This will always be the same for every step so we can pull this from thefirst step if it exists
+                    var stepExecutionContext = compositeSteps.Count > 0 ? compositeSteps[0].ExecutionContext : null;
+                    ExecutionContext.ExpressionValues["inputs"] = inputsData;
+                    ExecutionContext.ExpressionValues["steps"] = stepExecutionContext.StepsContext.GetScope(stepExecutionContext.ScopeName);
+
+                    HandleOutput();
                 }
             }
             catch (Exception ex)
@@ -122,9 +125,9 @@ namespace GitHub.Runner.Worker.Handlers
             executionContext.Complete(result, resultCode: resultCode);
         }
 
-        private void HandleOutput(IExecutionContext stepExecutionContext)
+        private void HandleOutput()
         {
-            ArgUtil.NotNull(stepExecutionContext, nameof(stepExecutionContext));
+            ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
             // Evaluate the mapped outputs value
             if (Data.Outputs != null)
@@ -134,13 +137,13 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Format ExpressionValues to Dictionary<string, PipelineContextData>
                 var evaluateContext = new Dictionary<string, PipelineContextData>(StringComparer.OrdinalIgnoreCase);
-                foreach (var pair in stepExecutionContext.ExpressionValues)
+                foreach (var pair in ExecutionContext.ExpressionValues)
                 {
                     evaluateContext[pair.Key] = pair.Value;
                 }
 
                 // Get the evluated composite outputs' values mapped to the outputs named
-                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(stepExecutionContext, Data.Outputs, evaluateContext);
+                DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
 
                 // Set the outputs for the outputs object in the whole composite action
                 SetAllCompositeOutputs(ExecutionContext, actionOutputs);
@@ -190,7 +193,7 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (IStep step in compositeSteps)
             {
                 // This is used for testing UI appearance.
-                // System.Threading.Thread.Sleep(60000);
+                // System.Threading.Thread.Sleep(5000);
 
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
