@@ -103,7 +103,14 @@ namespace GitHub.Runner.Worker
                 if (step is IActionRunner actionStep)
                 {
                     // Set GITHUB_ACTION
-                    step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ContextName);
+                    if (step.ExecutionContext.Variables.GetBoolean("DistributedTask.UseContextNameForGITHUBACTION") ?? false)
+                    {
+                        step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                    }
+                    else
+                    {
+                        step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ContextName);
+                    }
 
                     try
                     {
