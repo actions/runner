@@ -105,7 +105,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
+        IStep CreateCompositeStep(IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -272,7 +272,7 @@ namespace GitHub.Runner.Worker
         /// Helper function used in CompositeActionHandler::RunAsync to
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
-        public IStep RegisterNestedStep(
+        public IStep CreateCompositeStep(
             IActionRunner step,
             DictionaryContextData inputsData,
             Dictionary<string, string> envData)

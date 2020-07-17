@@ -84,7 +84,7 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Stage = stage;
                 actionRunner.Condition = aStep.Condition;
 
-                var step = ExecutionContext.RegisterNestedStep(actionRunner, inputsData, Environment);
+                var step = ExecutionContext.CreateCompositeStep(actionRunner, inputsData, Environment);
                 InitializeScope(step);
 
                 compositeSteps.Add(step);
