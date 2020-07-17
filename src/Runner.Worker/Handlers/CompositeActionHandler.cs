@@ -133,7 +133,28 @@ namespace GitHub.Runner.Worker.Handlers
                 DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
 
                 // Set the outputs for the outputs object in the whole composite action
-                SetAllCompositeOutputs(ExecutionContext, actionOutputs);
+                // Each pair is structured like this
+                // We ignore "description" for now
+                // {
+                //   "the-output-name": {
+                //     "description": "",
+                //     "value": "the value"
+                //   },
+                //   ...
+                // }
+                foreach (var pair in actionOutputs)
+                {
+                    var outputsName = pair.Key;
+                    var outputsAttributes = pair.Value as DictionaryContextData;
+                    outputsAttributes.TryGetValue("value", out var val);
+                    var outputsValue = val as StringContextData;
+
+                    // Set output in the whole composite scope. 
+                    if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
+                    {
+                        ExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                    }
+                }
             }
         }
 
@@ -142,34 +163,6 @@ namespace GitHub.Runner.Worker.Handlers
             var stepsContext = step.ExecutionContext.StepsContext;
             var scopeName = step.ExecutionContext.ScopeName;
             step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
-        }
-
-        private void SetAllCompositeOutputs(
-            IExecutionContext parentExecutionContext,
-            DictionaryContextData actionOutputs)
-        {
-            // Each pair is structured like this
-            // We ignore "description" for now
-            // {
-            //   "the-output-name": {
-            //     "description": "",
-            //     "value": "the value"
-            //   },
-            //   ...
-            // }
-            foreach (var pair in actionOutputs)
-            {
-                var outputsName = pair.Key;
-                var outputsAttributes = pair.Value as DictionaryContextData;
-                outputsAttributes.TryGetValue("value", out var val);
-                var outputsValue = val as StringContextData;
-
-                // Set output in the whole composite scope. 
-                if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
-                {
-                    parentExecutionContext.SetOutput(outputsName, outputsValue, out _);
-                }
-            }
         }
 
         private async Task RunStepsAsync(List<IStep> compositeSteps, IExecutionContext executionContext)
