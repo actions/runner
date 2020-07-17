@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
@@ -5,8 +6,6 @@ using GitHub.Runner.Common;
 
 namespace GitHub.Runner.Common.Util
 {
-    using System;
-
     public static class EncodingUtil
     {
         public static async Task SetEncoding(IHostContext hostContext, Tracing trace, CancellationToken cancellationToken)
