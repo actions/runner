@@ -101,7 +101,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
                 ExecutionContext.ExpressionValues["steps"] = stepExecutionContext.StepsContext.GetScope(stepExecutionContext.ScopeName);
 
-                HandleOutput();
+                ProcessCompositeActionOutputs();
             }
             catch (Exception ex)
             {
@@ -112,7 +112,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private void HandleOutput()
+        private void ProcessCompositeActionOutputs()
         {
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
