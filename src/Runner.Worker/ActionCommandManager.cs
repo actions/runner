@@ -188,7 +188,7 @@ namespace GitHub.Runner.Worker
                 throw new Exception("Required field 'name' is missing in ##[set-env] command.");
             }
 
-            context.EnvironmentVariables[envName] = command.Data;
+            context.Global.EnvironmentVariables[envName] = command.Data;
             context.SetEnvContext(envName, command.Data);
             context.Debug($"{envName}='{command.Data}'");
         }
@@ -283,8 +283,8 @@ namespace GitHub.Runner.Worker
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             ArgUtil.NotNullOrEmpty(command.Data, "path");
-            context.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
-            context.PrependPath.Add(command.Data);
+            context.Global.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
+            context.Global.PrependPath.Add(command.Data);
         }
     }
 
