@@ -105,7 +105,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep CreateCompositeStep(IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
+        IStep CreateCompositeStep(string scopeName, IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -119,9 +119,6 @@ namespace GitHub.Runner.Worker
         private readonly object _matchersLock = new object();
 
         private event OnMatcherChanged _onMatcherChanged;
-
-        // Regex used for checking if ScopeName meets the condition that shows that its id is null.
-        private readonly static Regex _generatedContextNamePattern = new Regex("^__[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
         private IssueMatcherConfig[] _matchers;
 
@@ -273,23 +270,14 @@ namespace GitHub.Runner.Worker
         /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
         /// </summary>
         public IStep CreateCompositeStep(
+            string scopeName,
             IActionRunner step,
             DictionaryContextData inputsData,
             Dictionary<string, string> envData)
         {
-            // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
-            // "__<GUID>"
-            var safeContextName = !string.IsNullOrEmpty(ContextName) ? ContextName : $"__{Guid.NewGuid()}";
-
-            // Set Scope Name. Note, for our design, we consider each step in a composite action to have the same scope
-            // This makes it much simpler to handle their outputs at the end of the Composite Action
-            var childScopeName = !string.IsNullOrEmpty(ScopeName) ? $"{ScopeName}.{safeContextName}" : safeContextName;
-
-            var childContextName = !string.IsNullOrEmpty(step.Action.ContextName) ? step.Action.ContextName : $"__{Guid.NewGuid()}";
-
-            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), childScopeName, childContextName, logger: _logger);
-
+            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
+            step.ExecutionContext.ExpressionValues["steps"] = StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
             // Add the composite action environment variables to each step.
 #if OS_WINDOWS
@@ -420,6 +408,7 @@ namespace GitHub.Runner.Worker
 
             _logger.End();
 
+            // todo: Skip if generated context name. After M271-ish the server will never send an empty context name. Generated context names will start with "__"
             if (!string.IsNullOrEmpty(ContextName))
             {
                 StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
@@ -482,8 +471,8 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // if the ContextName follows the __GUID format which is set as the default value for ContextName if null for Composite Actions. 
-            if (String.IsNullOrEmpty(ContextName) || _generatedContextNamePattern.IsMatch(ContextName))
+            // todo: Skip if generated context name. After M271-ish the server will never send an empty context name. Generated context names will start with "__"
+            if (string.IsNullOrEmpty(ContextName))
             {
                 reference = null;
                 return;
@@ -923,6 +912,16 @@ namespace GitHub.Runner.Worker
     // Otherwise individual overloads would need to be implemented (depending on the unit test).
     public static class ExecutionContextExtension
     {
+        public static string GetFullyQualifiedContextName(this IExecutionContext context)
+        {
+            if (!string.IsNullOrEmpty(context.ScopeName))
+            {
+                return $"{context.ScopeName}.{context.ContextName}";
+            }
+
+            return context.ContextName;
+        }
+
         public static void Error(this IExecutionContext context, Exception ex)
         {
             context.Error(ex.Message);
