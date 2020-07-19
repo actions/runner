@@ -148,14 +148,14 @@ namespace GitHub.Runner.Worker.Handlers
         {
             // Validate args.
             Trace.Entering();
-            ArgUtil.NotNull(ExecutionContext.PrependPath, nameof(ExecutionContext.PrependPath));
-            if (ExecutionContext.PrependPath.Count == 0)
+            ArgUtil.NotNull(ExecutionContext.Global.PrependPath, nameof(ExecutionContext.Global.PrependPath));
+            if (ExecutionContext.Global.PrependPath.Count == 0)
             {
                 return;
             }
 
             // Prepend path.
-            string prepend = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
+            string prepend = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
             var containerStepHost = StepHost as ContainerStepHost;
             if (containerStepHost != null)
             {

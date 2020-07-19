@@ -100,12 +100,12 @@ namespace GitHub.Runner.Worker
             RunnerActionPluginExecutionContext pluginContext = new RunnerActionPluginExecutionContext
             {
                 Inputs = inputs,
-                Endpoints = context.Endpoints,
+                Endpoints = context.Global.Endpoints,
                 Context = context.ExpressionValues
             };
 
             // variables
-            foreach (var variable in context.Variables.AllVariables)
+            foreach (var variable in context.Global.Variables.AllVariables)
             {
                 pluginContext.Variables[variable.Name] = new VariableValue(variable.Value, variable.Secret);
             }

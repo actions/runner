@@ -99,7 +99,7 @@ namespace GitHub.Runner.Worker
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
-                if (jobContext.WriteDebug)
+                if (jobContext.Global.WriteDebug)
                 {
                     jobContext.SetRunnerContext("debug", "1");
                 }
@@ -209,7 +209,7 @@ namespace GitHub.Runner.Worker
             // Clean TEMP after finish process jobserverqueue, since there might be a pending fileupload still use the TEMP dir.
             _tempDirectoryManager?.CleanupTempDirectory();
 
-            if (!jobContext.Features.HasFlag(PlanFeatures.JobCompletedPlanEvent))
+            if (!jobContext.Global.Features.HasFlag(PlanFeatures.JobCompletedPlanEvent))
             {
                 Trace.Info($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
                 return result;
