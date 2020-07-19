@@ -47,20 +47,20 @@ namespace GitHub.Runner.Worker.Handlers
             // Initialize Composite Steps List of Steps
             var compositeSteps = new List<IStep>();
 
+            // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
+            // context name. Generated context names start with "__"
+            var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
+            if (string.IsNullOrEmpty(childScopeName))
+            {
+                childScopeName = $"__{Guid.NewGuid()}";
+            }
+
             foreach (Pipelines.ActionStep actionStep in actionSteps)
             {
                 var actionRunner = HostContext.CreateService<IActionRunner>();
                 actionRunner.Action = actionStep;
                 actionRunner.Stage = stage;
                 actionRunner.Condition = actionStep.Condition;
-
-                // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
-                // context name. Generated context names start with "__"
-                var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
-                if (string.IsNullOrEmpty(childScopeName))
-                {
-                    childScopeName = $"__{Guid.NewGuid()}";
-                }
 
                 var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
                 compositeSteps.Add(step);
