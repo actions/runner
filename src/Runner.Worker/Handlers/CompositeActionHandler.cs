@@ -47,46 +47,22 @@ namespace GitHub.Runner.Worker.Handlers
             // Initialize Composite Steps List of Steps
             var compositeSteps = new List<IStep>();
 
-            foreach (Pipelines.ActionStep aStep in actionSteps)
+            foreach (Pipelines.ActionStep actionStep in actionSteps)
             {
-                // Ex: 
-                // runs:
-                //      using: "composite"
-                //      steps:
-                //          - uses: example/test-composite@v2 (a)
-                //          - run echo hello world (b)
-                //          - run echo hello world 2 (c)
-                // 
-                // ethanchewy/test-composite/action.yaml
-                // runs:
-                //      using: "composite"
-                //      steps: 
-                //          - run echo hello world 3 (d)
-                //          - run echo hello world 4 (e)
-                // 
-                // Steps processed as follow:
-                // | a |
-                // | a | => | d |
-                // (Run step d)
-                // | a | 
-                // | a | => | e |
-                // (Run step e)
-                // | a | 
-                // (Run step a)
-                // | b | 
-                // (Run step b)
-                // | c |
-                // (Run step c)
-                // Done.
-
                 var actionRunner = HostContext.CreateService<IActionRunner>();
-                actionRunner.Action = aStep;
+                actionRunner.Action = actionStep;
                 actionRunner.Stage = stage;
-                actionRunner.Condition = aStep.Condition;
+                actionRunner.Condition = actionStep.Condition;
 
-                var step = ExecutionContext.CreateCompositeStep(actionRunner, inputsData, Environment);
-                InitializeScope(step);
+                // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
+                // context name. Generated context names start with "__"
+                var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
+                if (string.IsNullOrEmpty(childScopeName))
+                {
+                    childScopeName = $"__{Guid.NewGuid()}";
+                }
 
+                var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
                 compositeSteps.Add(step);
             }
 
@@ -96,10 +72,8 @@ namespace GitHub.Runner.Worker.Handlers
                 await RunStepsAsync(compositeSteps);
 
                 // Get the pointer of the correct "steps" object and pass it to the ExecutionContext so that we can process the outputs correctly
-                // This will always be the same for every step so we can pull this from the first step if it exists
-                var stepExecutionContext = compositeSteps.Count > 0 ? compositeSteps[0].ExecutionContext : null;
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
-                ExecutionContext.ExpressionValues["steps"] = stepExecutionContext.StepsContext.GetScope(stepExecutionContext.ScopeName);
+                ExecutionContext.ExpressionValues["steps"] = ExecutionContext.StepsContext.GetScope(ExecutionContext.GetFullyQualifiedContextName());
 
                 ProcessCompositeActionOutputs();
             }
@@ -158,13 +132,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private void InitializeScope(IStep step)
-        {
-            var stepsContext = step.ExecutionContext.StepsContext;
-            var scopeName = step.ExecutionContext.ScopeName;
-            step.ExecutionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
-        }
-
         private async Task RunStepsAsync(List<IStep> compositeSteps)
         {
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
@@ -209,15 +176,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var actionStep = step as IActionRunner;
 
                 // Set GITHUB_ACTION
-                // TODO: Fix this after SDK Changes. 
-                if (!String.IsNullOrEmpty(step.ExecutionContext.ScopeName))
-                {
-                    step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ScopeName);
-                }
-                else
-                {
-                    step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.ContextName);
-                }
+                step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.GetFullyQualifiedContextName());
 
                 try
                 {
