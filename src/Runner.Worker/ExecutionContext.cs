@@ -408,6 +408,7 @@ namespace GitHub.Runner.Worker
 
             _logger.End();
 
+            // todo: Skip if generated context name. After M271-ish the server will never send an empty context name. Generated context names will start with "__"
             if (!string.IsNullOrEmpty(ContextName))
             {
                 StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
@@ -470,6 +471,7 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
+            // todo: Skip if generated context name. After M271-ish the server will never send an empty context name. Generated context names will start with "__"
             if (string.IsNullOrEmpty(ContextName))
             {
                 reference = null;
