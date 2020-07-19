@@ -232,7 +232,7 @@ namespace GitHub.Runner.Worker.Handlers
 #if OS_WINDOWS
             // Normalize Windows line endings
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
-            var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
+            var encoding = ExecutionContext.Global.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
                 ? Console.InputEncoding
                 : new UTF8Encoding(false);
 #else
