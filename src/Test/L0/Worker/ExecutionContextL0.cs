@@ -357,20 +357,20 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act.
                 jobContext.InitializeJob(jobRequest, CancellationToken.None);
 
-                jobContext.StepsContext.SetConclusion(null, "step1", ActionResult.Success);
-                var conclusion1 = (jobContext.StepsContext.GetScope(null)["step1"] as DictionaryContextData)["conclusion"].ToString();
+                jobContext.Global.StepsContext.SetConclusion(null, "step1", ActionResult.Success);
+                var conclusion1 = (jobContext.Global.StepsContext.GetScope(null)["step1"] as DictionaryContextData)["conclusion"].ToString();
                 Assert.Equal(conclusion1, conclusion1.ToLowerInvariant());
 
-                jobContext.StepsContext.SetOutcome(null, "step2", ActionResult.Cancelled);
-                var outcome1 = (jobContext.StepsContext.GetScope(null)["step2"] as DictionaryContextData)["outcome"].ToString();
+                jobContext.Global.StepsContext.SetOutcome(null, "step2", ActionResult.Cancelled);
+                var outcome1 = (jobContext.Global.StepsContext.GetScope(null)["step2"] as DictionaryContextData)["outcome"].ToString();
                 Assert.Equal(outcome1, outcome1.ToLowerInvariant());
 
-                jobContext.StepsContext.SetConclusion(null, "step3", ActionResult.Failure);
-                var conclusion2 = (jobContext.StepsContext.GetScope(null)["step3"] as DictionaryContextData)["conclusion"].ToString();
+                jobContext.Global.StepsContext.SetConclusion(null, "step3", ActionResult.Failure);
+                var conclusion2 = (jobContext.Global.StepsContext.GetScope(null)["step3"] as DictionaryContextData)["conclusion"].ToString();
                 Assert.Equal(conclusion2, conclusion2.ToLowerInvariant());
 
-                jobContext.StepsContext.SetOutcome(null, "step4", ActionResult.Skipped);
-                var outcome2 = (jobContext.StepsContext.GetScope(null)["step4"] as DictionaryContextData)["outcome"].ToString();
+                jobContext.Global.StepsContext.SetOutcome(null, "step4", ActionResult.Skipped);
+                var outcome2 = (jobContext.Global.StepsContext.GetScope(null)["step4"] as DictionaryContextData)["outcome"].ToString();
                 Assert.Equal(outcome2, outcome2.ToLowerInvariant());
 
                 jobContext.JobContext.Status = ActionResult.Success;

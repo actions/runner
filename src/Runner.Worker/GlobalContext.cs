@@ -6,7 +6,7 @@ using GitHub.Runner.Worker.Container;
 
 namespace GitHub.Runner.Worker
 {
-    public sealed class GlobalExecutionContext
+    public sealed class GlobalContext
     {
         public ContainerInfo Container { get; set; }
         public List<ServiceEndpoint> Endpoints { get; set; }

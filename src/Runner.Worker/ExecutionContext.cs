@@ -44,7 +44,7 @@ namespace GitHub.Runner.Worker
         string ResultCode { get; set; }
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
-        GlobalExecutionContext Global { get; }
+        GlobalContext Global { get; }
 
         Dictionary<string, string> IntraActionState { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
@@ -137,7 +137,7 @@ namespace GitHub.Runner.Worker
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
         // Shared pointer across job-level execution context and step-level execution contexts
-        public GlobalExecutionContext Global { get; private set; }
+        public GlobalContext Global { get; private set; }
 
         // Only job level ExecutionContext has JobSteps
         public List<IStep> JobSteps { get; private set; }
@@ -256,7 +256,7 @@ namespace GitHub.Runner.Worker
         {
             step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-            step.ExecutionContext.ExpressionValues["steps"] = StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
+            step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
             // Add the composite action environment variables to each step.
 #if OS_WINDOWS
@@ -582,7 +582,7 @@ namespace GitHub.Runner.Worker
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
-            Global = new GlobalExecutionContext();
+            Global = new GlobalContext();
 
             // Plan
             Global.Plan = message.Plan;

@@ -73,7 +73,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Get the pointer of the correct "steps" object and pass it to the ExecutionContext so that we can process the outputs correctly
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
-                ExecutionContext.ExpressionValues["steps"] = ExecutionContext.StepsContext.GetScope(ExecutionContext.GetFullyQualifiedContextName());
+                ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(ExecutionContext.GetFullyQualifiedContextName());
 
                 ProcessCompositeActionOutputs();
             }
@@ -141,7 +141,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
-                step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.StepsContext.GetScope(step.ExecutionContext.ScopeName);
+                step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
 
                 // Populate env context for each step
                 Trace.Info("Initialize Env context for step");
@@ -152,7 +152,7 @@ namespace GitHub.Runner.Worker.Handlers
 #endif
 
                 // Global env
-                foreach (var pair in step.ExecutionContext.EnvironmentVariables)
+                foreach (var pair in ExecutionContext.Global.EnvironmentVariables)
                 {
                     envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
                 }
