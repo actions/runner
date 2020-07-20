@@ -274,10 +274,6 @@ namespace GitHub.Runner.Worker
             }
             step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-            // _cancellationTokenSource.CancelAfter(1);
-
-            // step.ExecutionContext._cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
-
             return step;
         }
 
