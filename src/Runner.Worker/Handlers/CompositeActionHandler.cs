@@ -266,7 +266,7 @@ namespace GitHub.Runner.Worker.Handlers
                 step.ExecutionContext.Result = Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
             }
 
-            Trace.Info($"Step result: {StringUtil.ConvertToJson(step.ExecutionContext.Result)}");
+            Trace.Info($"Step result: {step.ExecutionContext.Result}");
 
             // Complete the step context.
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");

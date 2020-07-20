@@ -359,7 +359,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Updated step result (continue on error)");
                 }
             }
-            Trace.Info($"Step result: {StringUtil.ConvertToJson(step.ExecutionContext.Result)}");
+            Trace.Info($"Step result: {step.ExecutionContext.Result}");
 
             // Complete the step context.
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
