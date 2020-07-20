@@ -206,6 +206,24 @@
                 "hashFiles(1,255)"
             ],
             "string": {}
+        },
+        "step-env": {
+            "context": [
+                "github",
+                "needs",
+                "strategy",
+                "matrix",
+                "secrets",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "mapping": {
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "string"
+            }
         }
     }
 }
