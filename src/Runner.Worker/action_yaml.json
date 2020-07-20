@@ -8,7 +8,8 @@
                     "description": "string",
                     "inputs": "inputs",
                     "runs": "runs",
-                    "outputs": "outputs"
+                    "outputs": "outputs",
+                    "defaults": "action-defaults"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -50,6 +51,24 @@
                 "plugin-runs",
                 "composite-runs"
             ]
+        },
+        "action-defaults": {
+            "mapping": {
+                "properties": {
+                    "run": "action-defaults-run"
+                }
+            }
+        },
+        "action-defaults-run": {
+            "mapping": {
+                "properties": {
+                    "shell": {
+                        "type": "non-empty-string",
+                        "required": true
+                    },
+                    "working-directory": "non-empty-string"
+                }
+            }
         },
         "container-runs": {
             "mapping": {
@@ -120,7 +139,22 @@
                 "hashFiles(1,255)"
             ],
             "sequence": {
-                "item-type": "any"
+                "item-type": "composite-step"
+            }
+        },
+        "composite-step": {
+            "mapping": {
+                "properties": {
+                    "name": "string-steps-context",
+                    "id": "non-empty-string",
+                    "run": {
+                        "type": "string-steps-context",
+                        "required": true
+                    },
+                    "env": "step-env",
+                    "working-directory": "string-steps-context",
+                    "shell": "string-steps-context"
+                }
             }
         },
         "container-runs-context": {
@@ -157,6 +191,21 @@
             "string": {
                 "require-non-empty": true
             }
+        },
+        "string-steps-context": {
+            "context": [
+                "github",
+                "needs",
+                "strategy",
+                "matrix",
+                "secrets",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "string": {}
         }
     }
 }
