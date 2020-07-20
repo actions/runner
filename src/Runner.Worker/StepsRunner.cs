@@ -101,6 +101,9 @@ namespace GitHub.Runner.Worker
 
                 step.ExecutionContext.ExpressionValues["env"] = envContext;
 
+                // Add Pointer to the Job' Execution Context to Step Execution Context
+                step.ExecutionContext.JobExecutionContext = jobContext;
+
                 bool evaluateStepEnvFailed = false;
                 if (step is IActionRunner actionStep)
                 {
@@ -294,7 +297,6 @@ namespace GitHub.Runner.Worker
             {
                 var timeout = TimeSpan.FromMinutes(timeoutMinutes);
                 step.ExecutionContext.SetTimeout(timeout);
-                step.ExecutionContext.EndTime = DateTime.UtcNow.AddMinutes(timeoutMinutes);
             }
 
             await EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);

@@ -137,9 +137,6 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
 
-            // Boolean to check if timeout-minutes is set for the whole Composite Action
-            var timeoutMinutesEnabled = ExecutionContext.EndTime != null;
-
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
             {
@@ -201,29 +198,11 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
-                // Handle Cancellation + Timeout
-                // We will break out of loop immediately and display the result
-                // This is a workaround since otherwise we would have to pass the JobContext's CancellationToken to the Handler
-                // which is messier 
-                if (ExecutionContext.CancellationToken.IsCancellationRequested)
-                {
-                    if (timeoutMinutesEnabled && DateTime.UtcNow > ExecutionContext.EndTime)
-                    {
-                        ExecutionContext.Error("The action has timed out.");
-                        ExecutionContext.Result = TaskResult.Failed;
-                    }
-                    else
-                    {
-                        ExecutionContext.Result = TaskResult.Canceled;
-                    }
-                    break;
-                }
-
                 await RunStepAsync(step);
 
-                // Directly after the step, check if the step has failed. 
+                // Directly after the step, check if the step has failed or cancelled
                 // If so, return that to the output
-                if (step.ExecutionContext.Result == TaskResult.Failed)
+                if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     ExecutionContext.Result = step.ExecutionContext.Result;
                     break;
@@ -257,11 +236,24 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 await step.RunAsync();
             }
+            catch (OperationCanceledException ex)
+            {
+                if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
+                    !ExecutionContext.JobExecutionContext.CancellationToken.IsCancellationRequested)
+                {
+                    Trace.Error($"Caught timeout exception from step: {ex.Message}");
+                    step.ExecutionContext.Error("The action has timed out.");
+                    step.ExecutionContext.Result = TaskResult.Failed;
+                }
+                else
+                {
+                    Trace.Error($"Caught cancellation exception from step: {ex}");
+                    step.ExecutionContext.Error(ex);
+                    step.ExecutionContext.Result = TaskResult.Canceled;
+                }
+            }
             catch (Exception ex)
             {
-                // We don't have to care about the thread being cancelled at all
-                // since the cancellation token for the whole composite action is not passed to it's steps
-
                 // Log the error and fail the step.
                 Trace.Error($"Caught exception from step: {ex}");
                 step.ExecutionContext.Error(ex);
