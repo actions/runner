@@ -302,15 +302,7 @@ namespace GitHub.Runner.Worker
             {
                 child.ExpressionFunctions.Add(item);
             }
-            if (cancellationTokenSource != null)
-            {
-                Trace.Info("Creating Linked Token Source");
-                child._cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token);
-            }
-            else
-            {
-                child._cancellationTokenSource = new CancellationTokenSource();
-            }
+            child._cancellationTokenSource = cancellationTokenSource != null ?  CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token) : new CancellationTokenSource();
             child._parentExecutionContext = this;
             child.EchoOnActionCommand = EchoOnActionCommand;
 
