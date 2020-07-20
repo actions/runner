@@ -136,13 +136,20 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
 
+            // The timeout-minutes set in StepsRunner.cs doesn't set the cancellation token for this thread
+            // So, we use this workaround to get the time left for this action. 
+            Trace.Info($"DateTime NowUTC: {DateTime.UtcNow}");
+            Trace.Info($"ExecutionContext NowUTC: {ExecutionContext.EndTime}");
+
+            var timeoutMinutesEnabled = ExecutionContext.EndTime != null;
+
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
             {
-                System.Threading.Thread.Sleep(2000);
+                System.Threading.Thread.Sleep(20000);
 
                 var stepCancellationToken = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(ExecutionContext.CancellationToken);
-                
+
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
                 step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
@@ -208,7 +215,7 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Result = TaskResult.Canceled;
                     break;
                 }
-                else if (stepCancellationToken.IsCancellationRequested)
+                else if (timeoutMinutesEnabled && DateTime.UtcNow > ExecutionContext.EndTime)
                 {
                     ExecutionContext.Error("The action has timed out.");
                     ExecutionContext.Result = TaskResult.Failed;
@@ -255,20 +262,9 @@ namespace GitHub.Runner.Worker.Handlers
             }
             catch (OperationCanceledException ex)
             {
-                Trace.Info("COMPOSITE OUTPUT CANCELLING LOOP");
-                if (ExecutionContext.CancellationToken.IsCancellationRequested)
-                {
-                    Trace.Error($"Caught timeout exception from step: {ex.Message}");
-                    step.ExecutionContext.Error("The action has timed out.");
-                    step.ExecutionContext.Result = TaskResult.Failed;
-                }
-                else
-                {
-                    // Log the exception and cancel the step.
-                    Trace.Error($"Caught cancellation exception from step: {ex}");
-                    step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Result = TaskResult.Canceled;
-                }
+                Trace.Error($"Caught cancellation exception from step: {ex}");
+                step.ExecutionContext.Error(ex);
+                step.ExecutionContext.Result = TaskResult.Canceled;
             }
             catch (Exception ex)
             {

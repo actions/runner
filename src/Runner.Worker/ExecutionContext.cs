@@ -60,6 +60,8 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
+        DateTime EndTime { get; set; }
+
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
@@ -149,6 +151,8 @@ namespace GitHub.Runner.Worker
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
+
+        public DateTime EndTime { get; set; }
 
         public TaskResult? Result
         {
@@ -269,6 +273,8 @@ namespace GitHub.Runner.Worker
                 envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
             }
             step.ExecutionContext.ExpressionValues["env"] = envContext;
+
+            // _cancellationTokenSource.CancelAfter(1);
 
             // step.ExecutionContext._cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token);
 
@@ -459,6 +465,11 @@ namespace GitHub.Runner.Worker
             {
                 _cancellationTokenSource.CancelAfter(timeout.Value);
             }
+        }
+
+        public void SetTimer(double time)
+        {
+
         }
 
         public void Progress(int percentage, string currentOperation = null)

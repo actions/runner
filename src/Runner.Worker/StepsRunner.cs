@@ -292,8 +292,10 @@ namespace GitHub.Runner.Worker
             }
             if (timeoutMinutes > 0)
             {
+                Trace.Info($"Timeout Minutes: {timeoutMinutes}");
                 var timeout = TimeSpan.FromMinutes(timeoutMinutes);
                 step.ExecutionContext.SetTimeout(timeout);
+                step.ExecutionContext.EndTime = DateTime.UtcNow.AddMinutes(timeoutMinutes);
             }
 
             await EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
