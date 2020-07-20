@@ -96,7 +96,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                        hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
                    });
 
-                _ec.Setup(x => x.EnvironmentVariables).Returns(new Dictionary<string, string>());
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
 
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[stop-commands]stopToken", null));
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
@@ -118,8 +118,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
-
-                _ec.SetupAllProperties();
 
                 Assert.False(_ec.Object.EchoOnActionCommand);
 
@@ -150,7 +148,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 TimelineReference timeline = new TimelineReference();
                 Guid jobId = Guid.NewGuid();
                 string jobName = "some job name";
-                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null);
                 jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
                 {
                     Alias = Pipelines.PipelineConstants.SelfAlias,
@@ -203,8 +201,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 hc.GetTrace().Info($"{tag} {line}");
                                 return 1;
                             });
-
-                _ec.SetupAllProperties();
 
                 // Echo commands below are considered "processed", but are invalid
                 // 1. Invalid echo value
@@ -287,6 +283,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Execution context
             _ec = new Mock<IExecutionContext>();
+            _ec.SetupAllProperties();
+            _ec.Setup(x => x.Global).Returns(new GlobalContext());
 
             // Command manager
             _commandManager = new ActionCommandManager();

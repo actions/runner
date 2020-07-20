@@ -86,9 +86,9 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug("Zipping diagnostic files.");
 
-            string buildNumber = executionContext.Variables.Build_Number ?? "UnknownBuildNumber";
+            string buildNumber = executionContext.Global.Variables.Build_Number ?? "UnknownBuildNumber";
             string buildName = $"Build {buildNumber}";
-            string phaseName = executionContext.Variables.System_PhaseDisplayName ?? "UnknownPhaseName";
+            string phaseName = executionContext.Global.Variables.System_PhaseDisplayName ?? "UnknownPhaseName";
 
             // zip the files
             string diagnosticsZipFileName = $"{buildName}-{phaseName}.zip";

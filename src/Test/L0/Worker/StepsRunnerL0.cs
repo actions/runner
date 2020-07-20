@@ -38,7 +38,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             };
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
-            _ec.Setup(x => x.Variables).Returns(_variables);
+            _ec.Setup(x => x.Global).Returns(new GlobalContext { WriteDebug = true });
+            _ec.Object.Global.Variables = _variables;
+            _ec.Object.Global.EnvironmentVariables = _env;
 
             _contexts = new DictionaryContextData();
             _jobContext = new JobContext();
@@ -50,7 +52,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.JobContext).Returns(_jobContext);
 
             _stepContext = new StepsContext();
-            _ec.Setup(x => x.StepsContext).Returns(_stepContext);
+            _ec.Object.Global.StepsContext = _stepContext;
 
             _ec.Setup(x => x.PostJobSteps).Returns(new Stack<IStep>());
 
@@ -599,13 +601,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Setup the step execution context.
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
-            stepContext.Setup(x => x.WriteDebug).Returns(true);
-            stepContext.Setup(x => x.Variables).Returns(_variables);
-            stepContext.Setup(x => x.EnvironmentVariables).Returns(_env);
+            stepContext.Setup(x => x.Global).Returns(() => _ec.Object.Global);
             stepContext.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             stepContext.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             stepContext.Setup(x => x.JobContext).Returns(_jobContext);
-            stepContext.Setup(x => x.StepsContext).Returns(_stepContext);
             stepContext.Setup(x => x.ContextName).Returns(step.Object.Action.ContextName);
             stepContext.Setup(x => x.Complete(It.IsAny<TaskResult?>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((TaskResult? r, string currentOperation, string resultCode) =>

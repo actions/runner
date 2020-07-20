@@ -136,12 +136,12 @@ namespace GitHub.Runner.Worker
             }
 
             // Setup container stephost for running inside the container.
-            if (ExecutionContext.Container != null)
+            if (ExecutionContext.Global.Container != null)
             {
                 // Make sure required container is already created.
-                ArgUtil.NotNullOrEmpty(ExecutionContext.Container.ContainerId, nameof(ExecutionContext.Container.ContainerId));
+                ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
                 var containerStepHost = HostContext.CreateService<IContainerStepHost>();
-                containerStepHost.Container = ExecutionContext.Container;
+                containerStepHost.Container = ExecutionContext.Global.Container;
                 stepHost = containerStepHost;
             }
 
@@ -231,7 +231,7 @@ namespace GitHub.Runner.Worker
                             handlerData,
                             inputs,
                             environment,
-                            ExecutionContext.Variables,
+                            ExecutionContext.Global.Variables,
                             actionDirectory: definition.Directory);
 
             // Print out action details
