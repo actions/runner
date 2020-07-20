@@ -467,11 +467,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void SetTimer(double time)
-        {
-
-        }
-
         public void Progress(int percentage, string currentOperation = null)
         {
             if (percentage > 100 || percentage < 0)

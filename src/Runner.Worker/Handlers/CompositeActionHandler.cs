@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -136,18 +137,12 @@ namespace GitHub.Runner.Worker.Handlers
         {
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
 
-            // The timeout-minutes set in StepsRunner.cs doesn't set the cancellation token for this thread
-            // So, we use this workaround to get the time left for this action. 
-            Trace.Info($"DateTime NowUTC: {DateTime.UtcNow}");
-            Trace.Info($"ExecutionContext NowUTC: {ExecutionContext.EndTime}");
-
+            // Boolean to check if timeout-minutes is set for the whole Composite Action
             var timeoutMinutesEnabled = ExecutionContext.EndTime != null;
 
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
             {
-                System.Threading.Thread.Sleep(20000);
-
                 var stepCancellationToken = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(ExecutionContext.CancellationToken);
 
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
@@ -208,26 +203,33 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
-                // Handle Cancellation
+                // Handle Cancellation + Timeout
                 // We will break out of loop immediately and display the result
+                // This is a workaround since otherwise we would have to pass the JobContext's CancellationToken to the Handler
+                // which is messier 
                 if (ExecutionContext.CancellationToken.IsCancellationRequested)
                 {
-                    ExecutionContext.Result = TaskResult.Canceled;
-                    break;
-                }
-                else if (timeoutMinutesEnabled && DateTime.UtcNow > ExecutionContext.EndTime)
-                {
-                    ExecutionContext.Error("The action has timed out.");
-                    ExecutionContext.Result = TaskResult.Failed;
+                    if (timeoutMinutesEnabled && DateTime.UtcNow > ExecutionContext.EndTime)
+                    {
+                        Trace.Info("Time out Composite");
+                        ExecutionContext.Error("The action has timed out.");
+                        ExecutionContext.Result = TaskResult.Failed;
+                    }
+                    else
+                    {
+                        Trace.Info("Cancel Composite");
+                        ExecutionContext.Result = TaskResult.Canceled;
+                    }
                     break;
                 }
 
                 await RunStepAsync(step);
 
-                // Handle Failed Step
-                // We will break out of loop immediately and display the result
-                if (step.ExecutionContext.Result == TaskResult.Failed)
+                // Directly after the step, check if the task has failed. 
+                // If so, return that to the output
+                if (ExecutionContext.Result == TaskResult.Failed)
                 {
+                    Trace.Info("Failure Composite Actions");
                     ExecutionContext.Result = step.ExecutionContext.Result;
                     break;
                 }
@@ -260,14 +262,11 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 await step.RunAsync();
             }
-            catch (OperationCanceledException ex)
-            {
-                Trace.Error($"Caught cancellation exception from step: {ex}");
-                step.ExecutionContext.Error(ex);
-                step.ExecutionContext.Result = TaskResult.Canceled;
-            }
             catch (Exception ex)
             {
+                // We don't have to care about the thread being cancelled at all
+                // since the cancellation token for the whole composite action is not passed to it's steps
+
                 // Log the error and fail the step.
                 Trace.Error($"Caught exception from step: {ex}");
                 step.ExecutionContext.Error(ex);
@@ -280,30 +279,7 @@ namespace GitHub.Runner.Worker.Handlers
                 step.ExecutionContext.Result = Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
             }
 
-            // Fixup the step result if ContinueOnError.
-            if (step.ExecutionContext.Result == TaskResult.Failed)
-            {
-                var continueOnError = false;
-                try
-                {
-                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Info("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    Trace.Error(ex);
-                    step.ExecutionContext.Error("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    step.ExecutionContext.Error(ex);
-                }
-
-                if (continueOnError)
-                {
-                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
-                    step.ExecutionContext.Result = TaskResult.Succeeded;
-                    Trace.Info($"Updated step result (continue on error)");
-                }
-            }
-            Trace.Info($"Step result: {step.ExecutionContext.Result}");
+            Trace.Info($"Step result: {StringUtil.ConvertToJson(step.ExecutionContext.Result)}");
 
             // Complete the step context.
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
