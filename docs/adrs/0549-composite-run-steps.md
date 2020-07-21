@@ -271,7 +271,7 @@ steps:
     shell: ${{ inputs.shell_1 }}
 ```
 
-Note, the workflow file and action file are treated as seperate entities. **So, the workflow `defaults` will never change the `shell` and `working-dir` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
+Note, the workflow file and action file are treated as separate entities. **So, the workflow `defaults` will never change the `shell` and `working-dir` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
 
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
