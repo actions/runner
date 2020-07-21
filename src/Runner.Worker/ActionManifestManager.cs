@@ -375,7 +375,7 @@ namespace GitHub.Runner.Worker
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
-            var steps = default(List<Pipelines.ActionStep>);
+            var steps = default(List<Pipelines.Step>);
 
             foreach (var run in runsMapping)
             {
@@ -488,7 +488,7 @@ namespace GitHub.Runner.Worker
                     {
                         return new CompositeActionExecutionData()
                         {
-                            Steps = steps,
+                            Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
                             Outputs = outputs
                         };
                     }

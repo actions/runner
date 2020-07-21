@@ -17,13 +17,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static class PipelineTemplateConverter
     {
-        public static List<ActionStep> ConvertToSteps(
+        public static List<Step> ConvertToSteps(
             TemplateContext context,
             TemplateToken steps)
         {
             var stepsSequence = steps.AssertSequence($"job {PipelineTemplateConstants.Steps}");
 
-            var result = new List<ActionStep>();
+            var result = new List<Step>();
             var nameBuilder = new ReferenceNameBuilder();
             foreach (var stepsItem in stepsSequence)
             {
