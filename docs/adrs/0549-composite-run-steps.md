@@ -250,10 +250,17 @@ If any of the steps fail in the composite action and the `continue-on-error` is 
 
 For the composite action steps, it follows the same logic as above. In this example, `"Hello World 2"` will be outputted because the previous step has `continue-on-error` set to `true` although that previous step errored. 
 
-### Defaults, Shell, and Working-dir
+### Defaults
 We will not support "defaults" in a composite action. 
 
-For each run step in a composite action, the action author can set the `shell` and `working-dir` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash => Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-dir` attributes at the step level for an action. For example,
+### Shell and Working-dir
+For each run step in a composite action, the action author can set the `shell` and `working-dir` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash =\> Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-dir` attributes at the step level for an action. 
+
+For example,
+
+`action.yml`
+
+
 ```yaml
 inputs:
   shell_1:
