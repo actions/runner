@@ -8,8 +8,7 @@
                     "description": "string",
                     "inputs": "inputs",
                     "runs": "runs",
-                    "outputs": "outputs",
-                    "defaults": "action-defaults"
+                    "outputs": "outputs"
                 },
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "any"
@@ -51,24 +50,6 @@
                 "plugin-runs",
                 "composite-runs"
             ]
-        },
-        "action-defaults": {
-            "mapping": {
-                "properties": {
-                    "run": "action-defaults-run"
-                }
-            }
-        },
-        "action-defaults-run": {
-            "mapping": {
-                "properties": {
-                    "shell": {
-                        "type": "non-empty-string",
-                        "required": true
-                    },
-                    "working-directory": "non-empty-string"
-                }
-            }
         },
         "container-runs": {
             "mapping": {
@@ -195,10 +176,8 @@
         "string-steps-context": {
             "context": [
                 "github",
-                "needs",
                 "strategy",
                 "matrix",
-                "secrets",
                 "steps",
                 "job",
                 "runner",
@@ -213,7 +192,6 @@
                 "needs",
                 "strategy",
                 "matrix",
-                "secrets",
                 "steps",
                 "job",
                 "runner",
