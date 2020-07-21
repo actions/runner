@@ -60,12 +60,10 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
-        bool IsComposite { get; }
-
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isComposite = false);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null);
 
         // logging
         long Write(string tag, string message);
@@ -128,7 +126,6 @@ namespace GitHub.Runner.Worker
         // only job level ExecutionContext will track throttling delay.
         private long _totalThrottlingDelayInMilliseconds = 0;
 
-
         public Guid Id => _record.Id;
         public string ScopeName { get; private set; }
         public string ContextName { get; private set; }
@@ -150,8 +147,6 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has StepsWithPostRegistered
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
-
-        public bool IsComposite { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
 
@@ -259,7 +254,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData inputsData,
             Dictionary<string, string> envData)
         {
-            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, isComposite: true);
+            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger);
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
             step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
@@ -278,7 +273,7 @@ namespace GitHub.Runner.Worker
             return step;
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isComposite = false)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null)
         {
             Trace.Entering();
 
@@ -324,8 +319,6 @@ namespace GitHub.Runner.Worker
                 child._logger = HostContext.CreateService<IPagingLogger>();
                 child._logger.Setup(_mainTimelineId, recordId);
             }
-
-            child.IsComposite = isComposite;
 
             return child;
         }

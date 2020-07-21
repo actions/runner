@@ -153,7 +153,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // TODO: figure out how defaults interact with template later
                 // for now, we won't check job.defaults if we are inside a template.
-                if (!ExecutionContext.IsComposite && string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("working-directory", out workingDirectory))
                     {
@@ -169,7 +169,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // TODO: figure out how defaults interact with template later
                 // for now, we won't check job.defaults if we are inside a template.
-                if (!ExecutionContext.IsComposite && string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("shell", out shell))
                     {
