@@ -254,7 +254,7 @@ For the composite action steps, it follows the same logic as above. In this exam
 We will not support "defaults" in a composite action. 
 
 ### Shell and Working-dir
-For each run step in a composite action, the action author can set the `shell` and `working-dir` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash =\> Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-dir` attributes at the step level for an action. 
+For each run step in a composite action, the action author can set the `shell` and `working-directory` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash =\> Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-directory` attributes at the step level for an action. 
 
 For example,
 
@@ -271,7 +271,7 @@ steps:
     shell: ${{ inputs.shell_1 }}
 ```
 
-Note, the workflow file and action file are treated as separate entities. **So, the workflow `defaults` will never change the `shell` and `working-dir` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
+Note, the workflow file and action file are treated as separate entities. **So, the workflow `defaults` will never change the `shell` and `working-directory` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
 
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
