@@ -250,9 +250,21 @@ If any of the steps fail in the composite action and the `continue-on-error` is 
 
 For the composite action steps, it follows the same logic as above. In this example, `"Hello World 2"` will be outputted because the previous step has `continue-on-error` set to `true` although that previous step errored. 
 
-### Defaults
+### Defaults, Shell, and Working-dir
+We will not support "defaults" in a composite action. 
 
-The composite action author will be required to set the `shell` and `workingDir` of the composite action. Moreover, the composite action author will be able to explicitly set the shell for each composite run step. The workflow author will not have the ability to change these attributes. 
+For each run step in a composite action, the action author can set the `shell` and `working-dir` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash => Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-dir` attributes at the step level for an action. For example,
+```yaml
+inputs:
+  shell_1:
+    description: 'Your name'
+    default: 'pwsh'
+steps:
+  - run: echo 1
+    shell: ${{ inputs.shell_1 }}
+```
+
+Note, the workflow file and action file are treated as seperate entities. **So, the workflow `defaults` will never change the `shell` and `working-dir` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
 
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
