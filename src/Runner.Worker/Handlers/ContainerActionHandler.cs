@@ -49,8 +49,9 @@ namespace GitHub.Runner.Worker.Handlers
                 // ensure docker file exist
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
-                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
 
+                ExecutionContext.Output($"##[group]Building docker image");
+                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
                 var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
                 var buildExitCode = await dockerManger.DockerBuild(
                     ExecutionContext,
@@ -58,6 +59,8 @@ namespace GitHub.Runner.Worker.Handlers
                     dockerFile,
                     Directory.GetParent(dockerFile).FullName,
                     imageName);
+                ExecutionContext.Output("##[endgroup]");
+
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
