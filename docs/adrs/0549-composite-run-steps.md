@@ -14,7 +14,7 @@ An important step towards meeting this goal is to build in functionality for act
 
 We don't want the workflow author to need to know how the internal workings of the action work. Users shouldn't know the internal workings of the composite action (for example, `default.shell` and `default.workingDir` should not be inherited from the workflow file to the action file). When deciding how to design certain parts of composite run steps, we want to think one logical step from the consumer.
 
-A composite action is treated as **one** individual job step (aka encapsulation).
+A composite action is treated as **one** individual job step (this is known as encapsulation).
 
 
 ## Decision
