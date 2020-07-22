@@ -253,7 +253,7 @@ For the composite action steps, it follows the same logic as above. In this exam
 ### Defaults
 We will not support "defaults" in a composite action. 
 
-### Shell and Working-dir
+### Shell and Working-directory
 For each run step in a composite action, the action author can set the `shell` and `working-directory` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash =\> Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-directory` attributes at the step level for an action. 
 
 For example,
