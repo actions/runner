@@ -91,7 +91,10 @@ namespace GitHub.Runner.Worker
 #endif
 
             // Check docker client/server version
+            executionContext.Output("##[group]Checking docker version");
             DockerVersion dockerVersion = await _dockerManger.DockerVersion(executionContext);
+            executionContext.Output("##[endgroup]");
+
             ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
             ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
 
@@ -111,7 +114,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Clean up containers left by previous runs
-            executionContext.Debug($"Delete stale containers from previous jobs");
+            executionContext.Output("##[group]Clean up resources from previous jobs");
             var staleContainers = await _dockerManger.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManger.DockerInstanceLabel}\"");
             foreach (var staleContainer in staleContainers)
             {
@@ -122,18 +125,20 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            executionContext.Debug($"Delete stale container networks from previous jobs");
             int networkPruneExitCode = await _dockerManger.DockerNetworkPrune(executionContext);
             if (networkPruneExitCode != 0)
             {
                 executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
             }
+            executionContext.Output("##[endgroup]");
 
             // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
             // All containers within a job join the same network
+            executionContext.Output("##[group]Create local container network");
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);
             executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
+            executionContext.Output("##[endgroup]");
 
             foreach (var container in containers)
             {
@@ -141,10 +146,12 @@ namespace GitHub.Runner.Worker
                 await StartContainerAsync(executionContext, container);
             }
 
+            executionContext.Output("##[group]Waiting for all services to be ready");
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
                 await ContainerHealthcheck(executionContext, container);
             }
+            executionContext.Output("##[endgroup]");
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
@@ -173,6 +180,10 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Container name: {container.ContainerName}");
             Trace.Info($"Container image: {container.ContainerImage}");
             Trace.Info($"Container options: {container.ContainerCreateOptions}");
+
+            var groupName = container.IsJobContainer ? "Starting job container" : $"Starting {container.ContainerNetworkAlias} service container";
+            executionContext.Output($"##[group]{groupName}");
+
             foreach (var port in container.UserPortMappings)
             {
                 Trace.Info($"User provided port: {port.Value}");
@@ -304,6 +315,7 @@ namespace GitHub.Runner.Worker
                 container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
             }
+            executionContext.Output("##[endgroup]");
         }
 
         private async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
