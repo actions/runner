@@ -52,7 +52,7 @@ namespace GitHub.Runner.Worker.Handlers
                     firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                writeDetails($"##[group]Run {firstLine}");
+                writeDetails(ExecutionContext.InsideComposite ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
             }
             else
             {
@@ -84,17 +84,17 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                    shellCommand = "pwsh";
-                    if (validateShellOnHost)
+                shellCommand = "pwsh";
+                if (validateShellOnHost)
+                {
+                    shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                    if (string.IsNullOrEmpty(shellCommandPath))
                     {
-                        shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
-                        if (string.IsNullOrEmpty(shellCommandPath))
-                        {
-                            shellCommand = "powershell";
-                            Trace.Info($"Defaulting to {shellCommand}");
-                            shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
-                        }
+                        shellCommand = "powershell";
+                        Trace.Info($"Defaulting to {shellCommand}");
+                        shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                     }
+                }
 #else
                 shellCommand = "sh";
                 if (validateShellOnHost)
