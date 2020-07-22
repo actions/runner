@@ -1,0 +1,48 @@
+apiVersion: batch.github.actions/v1
+kind: CronJob
+metadata:
+    name: cronjob-sample
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          hostNetwork: true
+          containers:
+          - name: k8srunner
+            image: huangtingluo/autoscale-runner:v0.0
+            imagePullPolicy: Always
+            env:
+              - name: GITHUB_PAT
+                value: 62c13e14e947958516c103a9584f66227697c447
+              - name: GITHUB_RUNNER_SCOPE
+                value: monalisa/main123
+          restartPolicy: Never
+        # spec:
+        #   containers:
+        #   - name: hello
+        #     image: busybox
+        #     args:
+        #     - /bin/sh
+        #     - -c
+        #     - date; echo Hello from the Kubernetes cluster
+        #   restartPolicy: Never
+  # jobTemplate:
+  #   spec:
+  #     template:
+  #       spec:
+  #         hostNetwork: true
+  #         containers:
+  #         - name: k8srunner
+  #           image: huangtingluo/autoscale-runner:v0.0
+  #           imagePullPolicy: Always
+  #           env:
+  #             - name: GITHUB_PAT
+  #               value: 62c13e14e947958516c103a9584f66227697c447
+  #             - name: GITHUB_RUNNER_SCOPE
+  #               value: monalisa/main123
+  #         restartPolicy: Never
+  #     backoffLimit: 1
+  #     completions: 0
+  #     parallelism: 3

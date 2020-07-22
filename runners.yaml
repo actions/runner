@@ -1,0 +1,17 @@
+apiVersion: actions.github.com/v1alpha1
+kind: AutoScaleRunner
+metadata:
+  name: auto-scale-runners
+spec:
+  minReplicas: 1
+  maxReplicas: 10
+  template:
+    spec:
+      organization: monalisa
+      group: default
+      repository: main123
+      gitHubAdminToken: 62c13e14e947958516c103a9584f66227697c447
+      imagePullPolicy: Always
+      env:
+        - name: K8S_HOST_IP
+          value: "192.168.120.1"

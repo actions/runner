@@ -1,0 +1,92 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-admin
+  namespace: default
+rules:
+- apiGroups: [ "" ]
+  resources: [ "pods", "pods/ephemeralcontainers", "pods/log", "pods/attach", "pods/exec"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default-pod-admin
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pod-admin
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: default
+
+---
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+    namespace: default
+    name: actions-runners
+spec:
+  template:
+    spec:
+      # hostNetwork: true
+      volumes:
+      - name: docker-storage
+        emptyDir: {}
+      - name: runner-working
+        emptyDir: {}
+      containers:
+      - name: docker-host
+        image: docker:18.05-dind
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: docker-storage
+          mountPath: /var/lib/docker
+        - mountPath: /actions-runner/_work
+          name: runner-working
+      - name: k8srunner
+        image: huangtingluo/autoscale-runner:v0.0
+        volumeMounts:
+          - mountPath: /actions-runner/_work
+            name: runner-working
+        imagePullPolicy: Always
+        env:
+          - name: GITHUB_PAT
+            value: 62c13e14e947958516c103a9584f66227697c447
+          - name: GITHUB_RUNNER_SCOPE
+            value: monalisa/main123
+          - name: K8S_HOST_IP
+            value: "192.168.120.1"
+          - name: DOCKER_HOST
+            value: tcp://localhost:2375
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: K8S_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: K8S_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: K8S_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: K8S_POD_SERVICE_ACCOUNT
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.serviceAccountName
+      restartPolicy: Never
+  backoffLimit: 1
+  completions: 20
+  parallelism: 3

@@ -477,6 +477,53 @@ namespace GitHub.Runner.Listener
                         var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
                         var accessToken = systemConnection?.Authorization?.Parameters["AccessToken"];
                         notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
+                        var jobStartNotification = Environment.GetEnvironmentVariable("_INTERNAL_JOBSTART_NOTIFICATION");
+                        if (!string.IsNullOrEmpty(jobStartNotification))
+                        {
+                            term.WriteLine($"{DateTime.UtcNow:u}: Publish JobStart to {jobStartNotification}");
+                            using (var jobStartInvoker = HostContext.CreateService<IProcessInvoker>())
+                            {
+                                jobStartInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                                {
+                                    if (!string.IsNullOrEmpty(stdout.Data))
+                                    {
+                                        Trace.Info($"JobStartNotification: {stdout.Data}");
+                                    }
+                                };
+
+                                jobStartInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                                {
+                                    if (!string.IsNullOrEmpty(stderr.Data))
+                                    {
+                                        if (!string.IsNullOrEmpty(stderr.Data))
+                                        {
+                                            Trace.Error($"JobStartNotification: {stderr.Data}");
+                                        }
+                                    }
+                                };
+
+                                try
+                                {
+                                    await jobStartInvoker.ExecuteAsync(
+                                        workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
+                                        fileName: WhichUtil.Which("bash"),
+                                        arguments: jobStartNotification,
+                                        environment: null,
+                                        requireExitCodeZero: true,
+                                        outputEncoding: null,
+                                        killProcessOnCancel: true,
+                                        redirectStandardIn: null,
+                                        inheritConsoleHandler: false,
+                                        keepStandardInOpen: false,
+                                        highPriorityProcess: true,
+                                        cancellationToken: new CancellationTokenSource(10000).Token);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Trace.Error($"Fail to publish JobStart notification: {ex}");
+                                }
+                            }
+                        }
 
                         HostContext.WritePerfCounter($"SentJobToWorker_{requestId.ToString()}");
 
@@ -613,6 +660,53 @@ namespace GitHub.Runner.Listener
                         {
                             // This should be the last thing to run so we don't notify external parties until actually finished
                             await notification.JobCompleted(message.JobId);
+                            var jobCompleteNotification = Environment.GetEnvironmentVariable("_INTERNAL_JOBCOMPLETE_NOTIFICATION");
+                            if (!string.IsNullOrEmpty(jobCompleteNotification))
+                            {
+                                term.WriteLine($"{DateTime.UtcNow:u}: Publish JobComplete to {jobCompleteNotification}");
+                                using (var jobCompleteInvoker = HostContext.CreateService<IProcessInvoker>())
+                                {
+                                    jobCompleteInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                                    {
+                                        if (!string.IsNullOrEmpty(stdout.Data))
+                                        {
+                                            Trace.Info($"jobCompleteNotification: {stdout.Data}");
+                                        }
+                                    };
+
+                                    jobCompleteInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                                    {
+                                        if (!string.IsNullOrEmpty(stderr.Data))
+                                        {
+                                            if (!string.IsNullOrEmpty(stderr.Data))
+                                            {
+                                                Trace.Error($"jobCompleteNotification: {stderr.Data}");
+                                            }
+                                        }
+                                    };
+
+                                    try
+                                    {
+                                        await jobCompleteInvoker.ExecuteAsync(
+                                            workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
+                                            fileName: WhichUtil.Which("bash"),
+                                            arguments: jobCompleteNotification,
+                                            environment: null,
+                                            requireExitCodeZero: true,
+                                            outputEncoding: null,
+                                            killProcessOnCancel: true,
+                                            redirectStandardIn: null,
+                                            inheritConsoleHandler: false,
+                                            keepStandardInOpen: false,
+                                            highPriorityProcess: true,
+                                            cancellationToken: new CancellationTokenSource(10000).Token);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Error($"Fail to publish JobComplete notification: {ex}");
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -645,7 +739,56 @@ namespace GitHub.Runner.Listener
                         // fire first renew succeed event.
                         firstJobRequestRenewed.TrySetResult(0);
                     }
+                    else
+                    {
+                        var jobRunningNotification = Environment.GetEnvironmentVariable("_INTERNAL_JOBRUNNING_NOTIFICATION");
+                        if (!string.IsNullOrEmpty(jobRunningNotification))
+                        {
+                            HostContext.GetService<ITerminal>().WriteLine($"{DateTime.UtcNow:u}: Publish JobRunning to {jobRunningNotification}");
+                            using (var jobRunningInvoker = HostContext.CreateService<IProcessInvoker>())
+                            {
+                                jobRunningInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                                {
+                                    if (!string.IsNullOrEmpty(stdout.Data))
+                                    {
+                                        Trace.Info($"JobRunningNotification: {stdout.Data}");
+                                    }
+                                };
 
+                                jobRunningInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                                {
+                                    if (!string.IsNullOrEmpty(stderr.Data))
+                                    {
+                                        if (!string.IsNullOrEmpty(stderr.Data))
+                                        {
+                                            Trace.Error($"JobRunningNotification: {stderr.Data}");
+                                        }
+                                    }
+                                };
+
+                                try
+                                {
+                                    await jobRunningInvoker.ExecuteAsync(
+                                        workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
+                                        fileName: WhichUtil.Which("bash"),
+                                        arguments: jobRunningNotification,
+                                        environment: null,
+                                        requireExitCodeZero: true,
+                                        outputEncoding: null,
+                                        killProcessOnCancel: true,
+                                        redirectStandardIn: null,
+                                        inheritConsoleHandler: false,
+                                        keepStandardInOpen: false,
+                                        highPriorityProcess: true,
+                                        cancellationToken: new CancellationTokenSource(10000).Token);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Trace.Error($"Fail to publish JobRunning notification: {ex}");
+                                }
+                            }
+                        }
+                    }
                     if (encounteringError > 0)
                     {
                         encounteringError = 0;

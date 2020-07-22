@@ -120,9 +120,9 @@ namespace GitHub.Runner.Common
                 public static class Flags
                 {
                     public static readonly string Commit = "commit";
+                    public static readonly string Ephemeral = "ephemeral";
                     public static readonly string Help = "help";
                     public static readonly string Replace = "replace";
-                    public static readonly string Once = "once";
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";

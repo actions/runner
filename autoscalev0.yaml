@@ -1,0 +1,10 @@
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: auto-scale-runners
+spec:
+  replicas: 1
+  maxRunnerLimit: 15
+  template:
+    spec:
+      repository: monalisa/main123

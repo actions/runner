@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: runner-pod
+  labels:
+    name: runner-pod
+spec:
+  containers:
+  - name: runner-pod
+    image: huangtingluo/autoscale-runner:v0.0
+    imagePullPolicy: Always
+    env:
+      - name: GITHUB_PAT
+        value: 62c13e14e947958516c103a9584f66227697c447
+      - name: GITHUB_RUNNER_SCOPE
+        value: monalisa/main123
+      - name: K8S_HOST_IP
+        value: "192.168.120.1"
+
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: runner-deployment
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: runners
+#   template:
+#     metadata:
+#       labels:
+#         app: runners
+#     spec:
+#       # hostNetwork: true
+#       # volumes:
+#       # - name: docker-storage
+#       #   emptyDir: {}
+#       # containers:
+#       # - name: docker-host
+#       #   image: docker:18.05-dind
+#       #   imagePullPolicy: Always
+#       #   securityContext:
+#       #     privileged: true
+#       #   volumeMounts:
+#       #   - name: docker-storage
+#       #     mountPath: /var/lib/docker
+
+#       # hostNetwork: true
+#       containers:
+#       - name: runner
+#         image: huangtingluo/autoscale-runner:v0.0
+#         imagePullPolicy: Always
+#         env:
+#           - name: GITHUB_PAT
+#             value: 62c13e14e947958516c103a9584f66227697c447
+#           - name: GITHUB_RUNNER_SCOPE
+#             value: monalisa/main123
+#           - name: K8S_HOST_IP
+#             value: "192.168.120.1"
+#         resources:
+#           limits:
+#             memory: "128Mi"
+#             cpu: "500m"

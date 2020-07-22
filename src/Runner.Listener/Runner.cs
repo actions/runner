@@ -193,7 +193,7 @@ namespace GitHub.Runner.Listener
                     HostContext.StartupType = startType;
 
                     // Run the runner interactively or as service
-                    return await RunAsync(settings, command.RunOnce);
+                    return await RunAsync(settings, settings.Ephemeral);
                 }
                 else
                 {
@@ -474,7 +474,7 @@ Config Options:
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
     _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
 #endif
-    _term.WriteLine($@"
+            _term.WriteLine($@"
 Examples:
  Configure a runner non-interactively:
   .{separator}config.{ext} --unattended --url <url> --token <token>
