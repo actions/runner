@@ -223,10 +223,10 @@ namespace GitHub.Runner.Worker.Handlers
         private async Task RunStepAsync(IStep step)
         {
             // Try to evaluate the display name
-            if (step is IActionRunner actionRunner && actionRunner.Stage == ActionRunStage.Main)
-            {
-                actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext);
-            }
+            // if (step is IActionRunner actionRunner && actionRunner.Stage == ActionRunStage.Main)
+            // {
+            //     actionRunner.TryEvaluateDisplayName(step.ExecutionContext.ExpressionValues, step.ExecutionContext);
+            // }
 
             // Start the step.
             Trace.Info("Starting the step.");
