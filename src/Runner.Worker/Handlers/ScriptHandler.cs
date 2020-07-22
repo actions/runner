@@ -24,55 +24,65 @@ namespace GitHub.Runner.Worker.Handlers
         public override void PrintActionDetails(ActionRunStage stage)
         {
             // We don't want to display the internal workings if composite (similar/equivalent information can be found in debug)
-            if (!ExecutionContext.InsideComposite)
+            void writeDetails(string message)
             {
-                if (stage == ActionRunStage.Post)
+                if (ExecutionContext.InsideComposite)
                 {
-                    throw new NotSupportedException("Script action should not have 'Post' job action.");
-                }
-
-                Inputs.TryGetValue("script", out string contents);
-                contents = contents ?? string.Empty;
-                if (Action.Type == Pipelines.ActionSourceType.Script)
-                {
-                    var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
-                    var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
-                    if (firstNewLine >= 0)
-                    {
-                        firstLine = firstLine.Substring(0, firstNewLine);
-                    }
-
-                    ExecutionContext.Output($"##[group]Run {firstLine}");
+                    ExecutionContext.Debug(message);
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
+                    ExecutionContext.Output(message);
+                }
+            }
+
+            if (stage == ActionRunStage.Post)
+            {
+                throw new NotSupportedException("Script action should not have 'Post' job action.");
+            }
+
+            Inputs.TryGetValue("script", out string contents);
+            contents = contents ?? string.Empty;
+            if (Action.Type == Pipelines.ActionSourceType.Script)
+            {
+                var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
+                var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
+                if (firstNewLine >= 0)
+                {
+                    firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
-                foreach (var line in multiLines)
-                {
-                    // Bright Cyan color
-                    ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
-                }
+                writeDetails($"##[group]Run {firstLine}");
+            }
+            else
+            {
+                throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
+            }
 
-                string argFormat;
-                string shellCommand;
-                string shellCommandPath = null;
-                bool validateShellOnHost = !(StepHost is ContainerStepHost);
-                string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
-                string shell = null;
-                if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
+            var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+            foreach (var line in multiLines)
+            {
+                // Bright Cyan color
+                writeDetails($"\x1b[36;1m{line}\x1b[0m");
+            }
+
+            string argFormat;
+            string shellCommand;
+            string shellCommandPath = null;
+            bool validateShellOnHost = !(StepHost is ContainerStepHost);
+            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
+            string shell = null;
+            if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
+            {
+                // TODO: figure out how defaults interact with template later
+                // for now, we won't check job.defaults if we are inside a template.
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
-                    // TODO: figure out how defaults interact with template later
-                    // for now, we won't check job.defaults if we are inside a template.
-                    if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
-                    {
-                        runDefaults.TryGetValue("shell", out shell);
-                    }
+                    runDefaults.TryGetValue("shell", out shell);
                 }
-                if (string.IsNullOrEmpty(shell))
-                {
+            }
+            if (string.IsNullOrEmpty(shell))
+            {
 #if OS_WINDOWS
                     shellCommand = "pwsh";
                     if (validateShellOnHost)
@@ -86,50 +96,49 @@ namespace GitHub.Runner.Worker.Handlers
                         }
                     }
 #else
-                    shellCommand = "sh";
-                    if (validateShellOnHost)
-                    {
-                        shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
-                    }
+                shellCommand = "sh";
+                if (validateShellOnHost)
+                {
+                    shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                }
 #endif
+                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+            }
+            else
+            {
+                var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
+                shellCommand = parsed.shellCommand;
+                if (validateShellOnHost)
+                {
+                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
+                }
+
+                argFormat = $"{parsed.shellArgs}".TrimStart();
+                if (string.IsNullOrEmpty(argFormat))
+                {
                     argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
                 }
-                else
-                {
-                    var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
-                    shellCommand = parsed.shellCommand;
-                    if (validateShellOnHost)
-                    {
-                        shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
-                    }
-
-                    argFormat = $"{parsed.shellArgs}".TrimStart();
-                    if (string.IsNullOrEmpty(argFormat))
-                    {
-                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(shellCommandPath))
-                {
-                    ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
-                }
-                else
-                {
-                    ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
-                }
-
-                if (this.Environment?.Count > 0)
-                {
-                    ExecutionContext.Output("env:");
-                    foreach (var env in this.Environment)
-                    {
-                        ExecutionContext.Output($"  {env.Key}: {env.Value}");
-                    }
-                }
-
-                ExecutionContext.Output("##[endgroup]");
             }
+
+            if (!string.IsNullOrEmpty(shellCommandPath))
+            {
+                writeDetails($"shell: {shellCommandPath} {argFormat}");
+            }
+            else
+            {
+                writeDetails($"shell: {shellCommand} {argFormat}");
+            }
+
+            if (this.Environment?.Count > 0)
+            {
+                writeDetails("env:");
+                foreach (var env in this.Environment)
+                {
+                    writeDetails($"  {env.Key}: {env.Value}");
+                }
+            }
+
+            writeDetails("##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)
