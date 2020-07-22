@@ -23,109 +23,113 @@ namespace GitHub.Runner.Worker.Handlers
 
         public override void PrintActionDetails(ActionRunStage stage)
         {
-            if (stage == ActionRunStage.Post)
+            // We don't want to display the internal workings if composite (similar/equivalent information can be found in debug)
+            if (!ExecutionContext.InsideComposite)
             {
-                throw new NotSupportedException("Script action should not have 'Post' job action.");
-            }
-
-            Inputs.TryGetValue("script", out string contents);
-            contents = contents ?? string.Empty;
-            if (Action.Type == Pipelines.ActionSourceType.Script)
-            {
-                var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
-                var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
-                if (firstNewLine >= 0)
+                if (stage == ActionRunStage.Post)
                 {
-                    firstLine = firstLine.Substring(0, firstNewLine);
+                    throw new NotSupportedException("Script action should not have 'Post' job action.");
                 }
 
-                ExecutionContext.Output($"##[group]Run {firstLine}");
-            }
-            else
-            {
-                throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
-            }
-
-            var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
-            foreach (var line in multiLines)
-            {
-                // Bright Cyan color
-                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
-            }
-
-            string argFormat;
-            string shellCommand;
-            string shellCommandPath = null;
-            bool validateShellOnHost = !(StepHost is ContainerStepHost);
-            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
-            string shell = null;
-            if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
-            {
-                // TODO: figure out how defaults interact with template later
-                // for now, we won't check job.defaults if we are inside a template.
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                Inputs.TryGetValue("script", out string contents);
+                contents = contents ?? string.Empty;
+                if (Action.Type == Pipelines.ActionSourceType.Script)
                 {
-                    runDefaults.TryGetValue("shell", out shell);
-                }
-            }
-            if (string.IsNullOrEmpty(shell))
-            {
-#if OS_WINDOWS
-                shellCommand = "pwsh";
-                if (validateShellOnHost)
-                {
-                    shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
-                    if (string.IsNullOrEmpty(shellCommandPath))
+                    var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
+                    var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
+                    if (firstNewLine >= 0)
                     {
-                        shellCommand = "powershell";
-                        Trace.Info($"Defaulting to {shellCommand}");
-                        shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                        firstLine = firstLine.Substring(0, firstNewLine);
+                    }
+
+                    ExecutionContext.Output($"##[group]Run {firstLine}");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
+                }
+
+                var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+                foreach (var line in multiLines)
+                {
+                    // Bright Cyan color
+                    ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
+                }
+
+                string argFormat;
+                string shellCommand;
+                string shellCommandPath = null;
+                bool validateShellOnHost = !(StepHost is ContainerStepHost);
+                string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
+                string shell = null;
+                if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
+                {
+                    // TODO: figure out how defaults interact with template later
+                    // for now, we won't check job.defaults if we are inside a template.
+                    if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                    {
+                        runDefaults.TryGetValue("shell", out shell);
                     }
                 }
+                if (string.IsNullOrEmpty(shell))
+                {
+#if OS_WINDOWS
+                    shellCommand = "pwsh";
+                    if (validateShellOnHost)
+                    {
+                        shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                        if (string.IsNullOrEmpty(shellCommandPath))
+                        {
+                            shellCommand = "powershell";
+                            Trace.Info($"Defaulting to {shellCommand}");
+                            shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                        }
+                    }
 #else
-                shellCommand = "sh";
-                if (validateShellOnHost)
-                {
-                    shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
-                }
+                    shellCommand = "sh";
+                    if (validateShellOnHost)
+                    {
+                        shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                    }
 #endif
-                argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
-            }
-            else
-            {
-                var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
-                shellCommand = parsed.shellCommand;
-                if (validateShellOnHost)
-                {
-                    shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
-                }
-
-                argFormat = $"{parsed.shellArgs}".TrimStart();
-                if (string.IsNullOrEmpty(argFormat))
-                {
                     argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
                 }
-            }
-
-            if (!string.IsNullOrEmpty(shellCommandPath))
-            {
-                ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
-            }
-            else
-            {
-                ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
-            }
-
-            if (this.Environment?.Count > 0)
-            {
-                ExecutionContext.Output("env:");
-                foreach (var env in this.Environment)
+                else
                 {
-                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
-                }
-            }
+                    var parsed = ScriptHandlerHelpers.ParseShellOptionString(shell);
+                    shellCommand = parsed.shellCommand;
+                    if (validateShellOnHost)
+                    {
+                        shellCommandPath = WhichUtil.Which(parsed.shellCommand, true, Trace, prependPath);
+                    }
 
-            ExecutionContext.Output("##[endgroup]");
+                    argFormat = $"{parsed.shellArgs}".TrimStart();
+                    if (string.IsNullOrEmpty(argFormat))
+                    {
+                        argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(shellCommandPath))
+                {
+                    ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
+                }
+                else
+                {
+                    ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
+                }
+
+                if (this.Environment?.Count > 0)
+                {
+                    ExecutionContext.Output("env:");
+                    foreach (var env in this.Environment)
+                    {
+                        ExecutionContext.Output($"  {env.Key}: {env.Value}");
+                    }
+                }
+
+                ExecutionContext.Output("##[endgroup]");
+            }
         }
 
         public async Task RunAsync(ActionRunStage stage)
