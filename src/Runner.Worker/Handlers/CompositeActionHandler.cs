@@ -239,7 +239,7 @@ namespace GitHub.Runner.Worker.Handlers
             catch (OperationCanceledException ex)
             {
                 if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
-                    !ExecutionContext.JobExecutionContext.CancellationToken.IsCancellationRequested)
+                    !ExecutionContext.Root.CancellationToken.IsCancellationRequested)
                 {
                     Trace.Error($"Caught timeout exception from step: {ex.Message}");
                     step.ExecutionContext.Error("The action has timed out.");

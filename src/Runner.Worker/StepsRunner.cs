@@ -101,9 +101,6 @@ namespace GitHub.Runner.Worker
 
                 step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-                // Add Pointer to the Job' Execution Context to Step Execution Context
-                step.ExecutionContext.JobExecutionContext = jobContext;
-
                 bool evaluateStepEnvFailed = false;
                 if (step is IActionRunner actionStep)
                 {

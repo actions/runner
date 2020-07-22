@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
-        IExecutionContext JobExecutionContext { get; set; }
+        ExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
@@ -152,8 +152,6 @@ namespace GitHub.Runner.Worker
 
         public bool EchoOnActionCommand { get; set; }
 
-        public IExecutionContext JobExecutionContext { get; set; }
-
         public TaskResult? Result
         {
             get
@@ -184,7 +182,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private ExecutionContext Root
+        public ExecutionContext Root
         {
             get
             {
