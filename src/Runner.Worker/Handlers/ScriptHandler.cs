@@ -138,7 +138,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            writeDetails("##[endgroup]");
+            writeDetails(ExecutionContext.InsideComposite ? "" : "##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)
