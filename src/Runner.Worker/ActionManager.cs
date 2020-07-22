@@ -468,7 +468,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(setupInfo, nameof(setupInfo));
             ArgUtil.NotNullOrEmpty(setupInfo.Container.Image, nameof(setupInfo.Container.Image));
 
-            executionContext.Output($"Pull down action image '{setupInfo.Container.Image}'");
+            executionContext.Output($"##[group]Pull down action image '{setupInfo.Container.Image}'");
 
             // Pull down docker image with retry up to 3 times
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
@@ -492,6 +492,7 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
+            executionContext.Output("##[endgroup");
 
             if (retryCount == 3 && pullExitCode != 0)
             {
@@ -511,7 +512,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(setupInfo, nameof(setupInfo));
             ArgUtil.NotNullOrEmpty(setupInfo.Container.Dockerfile, nameof(setupInfo.Container.Dockerfile));
 
-            executionContext.Output($"Build container for action use: '{setupInfo.Container.Dockerfile}'.");
+            executionContext.Output($"##[group]Build container for action use: '{setupInfo.Container.Dockerfile}'.");
 
             // Build docker image with retry up to 3 times
             var dockerManger = HostContext.GetService<IDockerCommandManager>();
@@ -541,6 +542,7 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
+            executionContext.Output("##[endgroup]");
 
             if (retryCount == 3 && buildExitCode != 0)
             {
