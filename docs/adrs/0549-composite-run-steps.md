@@ -176,7 +176,7 @@ See the paragraph below for a rudimentary approach (thank you to @cybojenix for 
 
 The `if` statement in the parent (in the example above, this is the `workflow.yml`) shows whether or not we should run the composite action. So, our composite action will run since the `if` condition for running the composite action is `always()`.
 
-**Note that the if condition on the parent does not propogate to the rest of its children though.**
+**Note that the if condition on the parent does not propagate to the rest of its children though.**
 
 In the child action (in this example, this is the `action.yml`), it starts with a clean slate (in other words, no imposing if conditions). Similar to the logic in the paragraph above, `echo "I will run, as my current scope is succeeding"` will run since the `if` condition checks if the previous steps **within this composite action** has not failed. `run: echo "I will not run, as my current scope is now failing"` will not run since the previous step resulted in an error and by default, the if expression is set to `success()` if the if condition is not set for a step.
 
