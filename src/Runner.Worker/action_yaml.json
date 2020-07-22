@@ -189,7 +189,6 @@
         "step-env": {
             "context": [
                 "github",
-                "needs",
                 "strategy",
                 "matrix",
                 "steps",
