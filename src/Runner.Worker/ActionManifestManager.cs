@@ -135,7 +135,7 @@ namespace GitHub.Runner.Worker
                 // Evaluate Runs Last
                 if (actionRunValueToken != null)
                 {
-                    actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionRunValueToken, actionOutputs);
+                    actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionRunValueToken, fileRelativePath, actionOutputs);
                 }
             }
             catch (Exception ex)
@@ -359,6 +359,7 @@ namespace GitHub.Runner.Worker
             IExecutionContext executionContext,
             TemplateContext templateContext,
             TemplateToken inputsToken,
+            String fileRelativePath,
             MappingToken outputs = null)
         {
             var runsMapping = inputsToken.AssertMapping("runs");
@@ -442,7 +443,7 @@ namespace GitHub.Runner.Worker
                 {
                     if (string.IsNullOrEmpty(imageToken?.Value))
                     {
-                        throw new ArgumentNullException($"Image is not provided.");
+                        throw new ArgumentNullException($"You are using a Container Action but an image is not provided in {fileRelativePath}.");
                     }
                     else
                     {
@@ -463,7 +464,7 @@ namespace GitHub.Runner.Worker
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
-                        throw new ArgumentNullException($"Entry javascript file is not provided.");
+                        throw new ArgumentNullException($"You are using a JavaScript Action but there is not an entry JavaScript file provided in {fileRelativePath}.");
                     }
                     else
                     {
@@ -481,8 +482,7 @@ namespace GitHub.Runner.Worker
                 {
                     if (steps == null)
                     {
-                        // TODO: Add a more helpful error message + including file name, etc. to show user that it's because of their yaml file
-                        throw new ArgumentNullException($"No steps provided.");
+                        throw new ArgumentNullException($"You are using a composite action but there are no steps provided in {fileRelativePath}.");
                     }
                     else
                     {

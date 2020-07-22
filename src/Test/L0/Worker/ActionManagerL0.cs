@@ -846,7 +846,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     var traceFile = Path.GetTempFileName();
                     File.Copy(_hc.TraceFileName, traceFile, true);
-                    Assert.Contains("Entry javascript file is not provided.", File.ReadAllText(traceFile));
+                    Assert.Contains("You are using a JavaScript Action but there is not an entry JavaScript file provided in", File.ReadAllText(traceFile));
                 }
             }
             finally
@@ -2466,7 +2466,7 @@ runs:
                 {
                     var traceFile = Path.GetTempFileName();
                     File.Copy(_hc.TraceFileName, traceFile, true);
-                    Assert.Contains("Entry javascript file is not provided.", File.ReadAllText(traceFile));
+                    Assert.Contains("You are using a JavaScript Action but there is not an entry JavaScript file provided in", File.ReadAllText(traceFile));
                 }
             }
             finally
