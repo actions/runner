@@ -256,7 +256,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData inputsData,
             Dictionary<string, string> envData)
         {
-            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, cancellationTokenSource: _cancellationTokenSource);
+            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
             step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
@@ -300,7 +300,7 @@ namespace GitHub.Runner.Worker
             {
                 child.ExpressionFunctions.Add(item);
             }
-            child._cancellationTokenSource = cancellationTokenSource != null ?  CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token) : new CancellationTokenSource();
+            child._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
             child._parentExecutionContext = this;
             child.EchoOnActionCommand = EchoOnActionCommand;
 
