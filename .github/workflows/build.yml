@@ -1,6 +1,7 @@
 name: Runner CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
     - main
