@@ -90,7 +90,7 @@ namespace GitHub.Runner.Common
                     public static readonly string Labels = "labels";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";
-                    public static readonly string Pool = "pool";
+                    public static readonly string RunnerGroup = "runnergroup";
                     public static readonly string StartupType = "startuptype";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";
