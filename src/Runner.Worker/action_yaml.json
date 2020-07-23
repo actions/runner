@@ -123,7 +123,13 @@
                 "item-type": "composite-step"
             }
         },
-        "composite-step": {
+        "steps-item": {
+            "one-of": [
+                "run-step",
+                "regular-step"
+            ]
+        },
+        "run-step": {
             "mapping": {
                 "properties": {
                     "name": "string-steps-context",
@@ -132,9 +138,23 @@
                         "type": "string-steps-context",
                         "required": true
                     },
-                    "env": "step-env",
+                    "uses": "env": "step-env",
                     "working-directory": "string-steps-context",
                     "shell": "string-steps-context"
+                }
+            }
+        },
+        "regular-step": {
+            "mapping": {
+                "properties": {
+                    "name": "string-steps-context",
+                    "id": "non-empty-string",
+                    "uses": {
+                        "type": "non-empty-string",
+                        "required": true
+                    },
+                    "with": "step-with",
+                    "env": "step-env"
                 }
             }
         },
