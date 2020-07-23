@@ -159,17 +159,34 @@ namespace GitHub.Runner.Listener.Configuration
 
             _term.WriteSection("Runner Registration");
 
-            //Get all the agent pools, and select the first private pool
+            // If we have more than one runner group available, allow the user to specify which one to be added into
+            string poolName = null;
+            TaskAgentPool agentPool = null;
             List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
-            TaskAgentPool agentPool = agentPools?.Where(x => x.IsHosted == false).FirstOrDefault();
+            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
 
-            if (agentPool == null)
+            if (agentPools?.Where(x => !x.IsHosted).Count() > 1)
             {
-                throw new TaskAgentPoolNotFoundException($"Could not find any private pool. Contact support.");
+                poolName = command.GetRunnerGroupName(defaultPool?.Name);
+                _term.WriteLine();
+                agentPool = agentPools.Where(x => string.Equals(poolName, x.Name, StringComparison.OrdinalIgnoreCase) && !x.IsHosted).FirstOrDefault();
             }
             else
             {
-                Trace.Info("Found a private pool with id {1} and name {2}", agentPool.Id, agentPool.Name);
+                agentPool = defaultPool;
+            }
+
+            if (agentPool == null && poolName == null)
+            {
+                throw new TaskAgentPoolNotFoundException($"Could not find any self-hosted runner groups. Contact support.");
+            }
+            else if (agentPool == null && poolName != null)
+            {
+                throw new TaskAgentPoolNotFoundException($"Could not find any self-hosted runner group named \"{poolName}\".");
+            }
+            else
+            {
+                Trace.Info("Found a self-hosted runner group with id {1} and name {2}", agentPool.Id, agentPool.Name);
                 runnerSettings.PoolId = agentPool.Id;
                 runnerSettings.PoolName = agentPool.Name;
             }
