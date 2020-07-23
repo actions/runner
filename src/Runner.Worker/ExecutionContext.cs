@@ -60,12 +60,14 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
+        bool InsideComposite { get; }
+
         ExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, CancellationTokenSource cancellationTokenSource = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null);
 
         // logging
         long Write(string tag, string message);
@@ -151,6 +153,8 @@ namespace GitHub.Runner.Worker
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
         public bool EchoOnActionCommand { get; set; }
+
+        public bool InsideComposite { get; private set; }
 
         public TaskResult? Result
         {
@@ -256,7 +260,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData inputsData,
             Dictionary<string, string> envData)
         {
-            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
+            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
             step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
@@ -275,7 +279,7 @@ namespace GitHub.Runner.Worker
             return step;
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, CancellationTokenSource cancellationTokenSource = null)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null)
         {
             Trace.Entering();
 
@@ -321,6 +325,8 @@ namespace GitHub.Runner.Worker
                 child._logger = HostContext.CreateService<IPagingLogger>();
                 child._logger.Setup(_mainTimelineId, recordId);
             }
+
+            child.InsideComposite = insideComposite;
 
             return child;
         }
