@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -197,19 +198,11 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
-                // Handle Cancellation
-                // We will break out of loop immediately and display the result
-                if (ExecutionContext.CancellationToken.IsCancellationRequested)
-                {
-                    ExecutionContext.Result = TaskResult.Canceled;
-                    break;
-                }
-
                 await RunStepAsync(step);
 
-                // Handle Failed Step
-                // We will break out of loop immediately and display the result
-                if (step.ExecutionContext.Result == TaskResult.Failed)
+                // Directly after the step, check if the step has failed or cancelled
+                // If so, return that to the output
+                if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     ExecutionContext.Result = step.ExecutionContext.Result;
                     break;
@@ -239,7 +232,8 @@ namespace GitHub.Runner.Worker.Handlers
             }
             catch (OperationCanceledException ex)
             {
-                if (step.ExecutionContext.CancellationToken.IsCancellationRequested)
+                if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
+                    !ExecutionContext.Root.CancellationToken.IsCancellationRequested)
                 {
                     Trace.Error($"Caught timeout exception from step: {ex.Message}");
                     step.ExecutionContext.Error("The action has timed out.");
@@ -247,7 +241,6 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 else
                 {
-                    // Log the exception and cancel the step.
                     Trace.Error($"Caught cancellation exception from step: {ex}");
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Result = TaskResult.Canceled;
@@ -267,29 +260,6 @@ namespace GitHub.Runner.Worker.Handlers
                 step.ExecutionContext.Result = Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
             }
 
-            // Fixup the step result if ContinueOnError.
-            if (step.ExecutionContext.Result == TaskResult.Failed)
-            {
-                var continueOnError = false;
-                try
-                {
-                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Info("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    Trace.Error(ex);
-                    step.ExecutionContext.Error("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    step.ExecutionContext.Error(ex);
-                }
-
-                if (continueOnError)
-                {
-                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
-                    step.ExecutionContext.Result = TaskResult.Succeeded;
-                    Trace.Info($"Updated step result (continue on error)");
-                }
-            }
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
 
             // Complete the step context.

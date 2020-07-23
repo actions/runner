@@ -14,7 +14,7 @@ An important step towards meeting this goal is to build in functionality for act
 
 We don't want the workflow author to need to know how the internal workings of the action work. Users shouldn't know the internal workings of the composite action (for example, `default.shell` and `default.workingDir` should not be inherited from the workflow file to the action file). When deciding how to design certain parts of composite run steps, we want to think one logical step from the consumer.
 
-A composite action is treated as **one** individual job step (aka encapsulation).
+A composite action is treated as **one** individual job step (this is known as encapsulation).
 
 
 ## Decision
@@ -176,7 +176,7 @@ See the paragraph below for a rudimentary approach (thank you to @cybojenix for 
 
 The `if` statement in the parent (in the example above, this is the `workflow.yml`) shows whether or not we should run the composite action. So, our composite action will run since the `if` condition for running the composite action is `always()`.
 
-**Note that the if condition on the parent does not propogate to the rest of its children though.**
+**Note that the if condition on the parent does not propagate to the rest of its children though.**
 
 In the child action (in this example, this is the `action.yml`), it starts with a clean slate (in other words, no imposing if conditions). Similar to the logic in the paragraph above, `echo "I will run, as my current scope is succeeding"` will run since the `if` condition checks if the previous steps **within this composite action** has not failed. `run: echo "I will not run, as my current scope is now failing"` will not run since the previous step resulted in an error and by default, the if expression is set to `success()` if the if condition is not set for a step.
 
@@ -251,8 +251,27 @@ If any of the steps fail in the composite action and the `continue-on-error` is 
 For the composite action steps, it follows the same logic as above. In this example, `"Hello World 2"` will be outputted because the previous step has `continue-on-error` set to `true` although that previous step errored. 
 
 ### Defaults
+We will not support "defaults" in a composite action. 
 
-The composite action author will be required to set the `shell` and `workingDir` of the composite action. Moreover, the composite action author will be able to explicitly set the shell for each composite run step. The workflow author will not have the ability to change these attributes. 
+### Shell and Working-directory
+For each run step in a composite action, the action author can set the `shell` and `working-directory` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash =\> Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-directory` attributes at the step level for an action. 
+
+For example,
+
+`action.yml`
+
+
+```yaml
+inputs:
+  shell_1:
+    description: 'Your name'
+    default: 'pwsh'
+steps:
+  - run: echo 1
+    shell: ${{ inputs.shell_1 }}
+```
+
+Note, the workflow file and action file are treated as separate entities. **So, the workflow `defaults` will never change the `shell` and `working-directory` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
 
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
