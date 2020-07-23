@@ -42,7 +42,7 @@ namespace GitHub.Runner.Listener
             Constants.Runner.CommandLine.Args.Labels,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
             Constants.Runner.CommandLine.Args.Name,
-            Constants.Runner.CommandLine.Args.Pool,
+            Constants.Runner.CommandLine.Args.RunnerGroup,
             Constants.Runner.CommandLine.Args.StartupType,
             Constants.Runner.CommandLine.Args.Token,
             Constants.Runner.CommandLine.Args.Url,
@@ -166,6 +166,15 @@ namespace GitHub.Runner.Listener
                 name: Constants.Runner.CommandLine.Args.Name,
                 description: "Enter the name of runner:",
                 defaultValue: Environment.MachineName ?? "myrunner",
+                validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetRunnerGroupName(string defaultPoolName = null)
+        {
+            return GetArgOrPrompt(
+                name: Constants.Runner.CommandLine.Args.RunnerGroup,
+                description: "Enter the name of the runner group to add this runner to:",
+                defaultValue: defaultPoolName ?? "default",
                 validator: Validators.NonEmptyValidator);
         }
 
