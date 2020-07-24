@@ -63,6 +63,40 @@ echo hello world 4
 
 We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step sequentially. If any step fails and there are no `if` conditions defined, the whole composite action job fails. 
 
+### Running Local Scripts
+
+Example 'workflow.yml':
+```yaml
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+    - uses: user/composite@v1
+```
+
+Example `user/composite/action.yml`:
+
+```yaml
+runs:
+  using: "composite"
+  steps: 
+    - run: chmod +x ${{env.GITHUB_ACTION_PATH}}/script.sh
+    - run: chmod +x ${{env.GITHUB_ACTION_PATH}}/test/script2.sh
+    - run: ${{env.GITHUB_ACTION_PATH}}/script.sh
+    - run: ${{env.GITHUB_ACTION_PATH}}/test/script2.sh
+```
+Where `user/composite` has the file structure:
+```
+.
++-- action.yml
++-- script.sh
++-- test
+|   +-- script2.sh
+```
+
+
+Users will be able to run scripts located in their action folder by first prepending the relative path and script name with `GITHUB_ACTION_PATH` which contains the path in which the composite action is downloaded to and where those "files" live.
+
 ### Inputs
 
 Example `workflow.yml`:
