@@ -135,6 +135,9 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.SetGitHubContext("event_path", workflowFile);
             }
 
+            var gitHubActionPath = ExecutionContext.GetGitHubContext("action_path");
+            Trace.Info($"githubactionpath: {gitHubActionPath}");
+
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Global.Container != null)
             {

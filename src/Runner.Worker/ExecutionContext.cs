@@ -98,7 +98,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep CreateCompositeStep(string scopeName, IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData, string actionDirectory);
+        IStep CreateCompositeStep(string scopeName, IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -258,8 +258,7 @@ namespace GitHub.Runner.Worker
             string scopeName,
             IActionRunner step,
             DictionaryContextData inputsData,
-            Dictionary<string, string> envData,
-            string actionDirectory)
+            Dictionary<string, string> envData)
         {
             step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
@@ -275,9 +274,6 @@ namespace GitHub.Runner.Worker
             {
                 envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
             }
-
-            // Add path to action directory as an environment variable. 
-            envContext["GITHUB_ACTION_PATH"] = new StringContextData(actionDirectory);
 
             step.ExecutionContext.ExpressionValues["env"] = envContext;
 
@@ -425,6 +421,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             var githubContext = ExpressionValues["github"] as GitHubContext;
             githubContext[name] = new StringContextData(value);
+            Trace.Info($"GitHub Context: {StringUtil.ConvertToJson(githubContext)}");
         }
 
         public string GetGitHubContext(string name)
