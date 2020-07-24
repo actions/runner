@@ -63,7 +63,7 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Stage = stage;
                 actionRunner.Condition = actionStep.Condition;
 
-                var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
+                var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment, ActionDirectory);
                 compositeSteps.Add(step);
             }
 
