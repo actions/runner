@@ -23,6 +23,19 @@ namespace GitHub.Runner.Worker.Handlers
 
         public override void PrintActionDetails(ActionRunStage stage)
         {
+            // We don't want to display the internal workings if composite (similar/equivalent information can be found in debug)
+            void writeDetails(string message)
+            {
+                if (ExecutionContext.InsideComposite)
+                {
+                    ExecutionContext.Debug(message);
+                }
+                else
+                {
+                    ExecutionContext.Output(message);
+                }
+            }
+
             if (stage == ActionRunStage.Post)
             {
                 throw new NotSupportedException("Script action should not have 'Post' job action.");
@@ -39,7 +52,7 @@ namespace GitHub.Runner.Worker.Handlers
                     firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                ExecutionContext.Output($"##[group]Run {firstLine}");
+                writeDetails(ExecutionContext.InsideComposite ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
             }
             else
             {
@@ -50,7 +63,7 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (var line in multiLines)
             {
                 // Bright Cyan color
-                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
+                writeDetails($"\x1b[36;1m{line}\x1b[0m");
             }
 
             string argFormat;
@@ -109,23 +122,23 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (!string.IsNullOrEmpty(shellCommandPath))
             {
-                ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
+                writeDetails($"shell: {shellCommandPath} {argFormat}");
             }
             else
             {
-                ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
+                writeDetails($"shell: {shellCommand} {argFormat}");
             }
 
             if (this.Environment?.Count > 0)
             {
-                ExecutionContext.Output("env:");
+                writeDetails("env:");
                 foreach (var env in this.Environment)
                 {
-                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
+                    writeDetails($"  {env.Key}: {env.Value}");
                 }
             }
 
-            ExecutionContext.Output("##[endgroup]");
+            writeDetails(ExecutionContext.InsideComposite ? "" : "##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)
