@@ -292,6 +292,30 @@ namespace GitHub.Runner.Worker
                     var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null, omitHeader: true);
                     templateContext.Errors.Check();
 
+                    // TODO: restrict to only be used for composite "uses" steps
+                    // Find better way to isolate only 
+                    // We could create a whitelist for just checkout?
+                    // (ex: "repo", "token", etc.)
+                    if (evaluateResult is BasicExpressionToken)
+                    {
+                        // Trace.Info($"Basic expr token: {evaluateResult}");
+
+                        // var stringVersion = evaluateResult.Value as String;
+
+                        // var githubTokenSplit = 
+
+                        // // Evaluate it
+                        // var evaluateResult = executionContext.GetGitHubContext("");
+
+                        var evaluateResult2 = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
+                        templateContext.Errors.Check();
+
+                        Trace.Info($"Test2 Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult2)}");
+                        var result2 = evaluateResult2.AssertString($"default value for input '{inputName}'").Value;
+
+                        return result2;
+                    }
+
                     Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
 
                     // String

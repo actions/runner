@@ -169,6 +169,18 @@ namespace GitHub.Runner.Worker
                 validInputs.Add("entryPoint");
                 validInputs.Add("args");
             }
+
+            Trace.Info($"Repo: {ExecutionContext.GetGitHubContext("repository")}");
+
+            // Since we don't pass the GitHub Context attributes to the composite action,
+            // We need to explitly set the default values of certain things we need like the 
+            // default repository 
+
+            if (ExecutionContext.GetGitHubContext("repository") == null)
+            {
+                ExecutionContext.SetGitHubContext("repository", definition.Directory);
+            }
+
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
@@ -179,7 +191,9 @@ namespace GitHub.Runner.Worker
                     validInputs.Add(key);
                     if (!inputs.ContainsKey(key))
                     {
+                        Trace.Info($"Definition Input Key: {key}");
                         inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
+                        Trace.Info($"Definition Input Value: {inputs[key]}");
                     }
                 }
             }
