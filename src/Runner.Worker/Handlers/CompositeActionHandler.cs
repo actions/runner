@@ -176,10 +176,6 @@ namespace GitHub.Runner.Worker.Handlers
 
                 var actionStep = step as IActionRunner;
 
-                // Set GITHUB_ACTION
-                // For composite + their nested steps, we want the all of them to have the same GITHUB_ACTION
-                step.ExecutionContext.SetGitHubContext("action", ExecutionContext.GetGitHubContext("action"));
-
                 try
                 {
                     // Evaluate and merge action's env block to env context
