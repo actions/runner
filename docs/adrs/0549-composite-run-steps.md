@@ -16,7 +16,6 @@ We don't want the workflow author to need to know how the internal workings of t
 
 A composite action is treated as **one** individual job step (this is known as encapsulation).
 
-
 ## Decision
 
 **In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
@@ -211,7 +210,7 @@ In the Composite Action, you'll only be able to use `::set-env::` to set environ
 
 ### Secrets
 
-**Note** : This feature will be focused on in a future ADR.
+**We will not support "Secrets" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 We'll pass the secrets from the composite action's parents (ex: the workflow file) to the composite action. Secrets can be created in the composite action with the secrets context. In the actions yaml, we'll automatically mask the secret. 
 
@@ -247,6 +246,8 @@ runs:
     - run: echo "I will not run, as my current scope is now failing"
       shell: bash
 ```
+
+**We will not support "if Condition" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 See the paragraph below for a rudimentary approach (thank you to @cybojenix for the idea, example, and explanation for this approach):
 
@@ -289,6 +290,8 @@ runs:
       shell: bash
 ```
 
+**We will not support "timeout-minutes" in a composite action for now. This functionality will be focused on in a future ADR.**
+
 A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
 
 If the time taken for any of the steps in combination or individually exceed the whole composite action `timeout-minutes` attribute, the whole job will fail (1). If an individual step exceeds its own `timeout-minutes` attribute but the total time that has been used including this step is below the overall composite action `timeout-minutes`, the individual step will fail but the rest of the steps will run based on their own `timeout-minutes` attribute (they will still abide by condition (1) though).
@@ -326,6 +329,8 @@ runs:
     - run: echo "Hello World 2" <----- This step will run
       shell: bash
 ```
+
+**We will not support "continue-on-error" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 If any of the steps fail in the composite action and the `continue-on-error` is set to `false` for the whole composite action step in the workflow file, then the steps below it will run. On the flip side, if `continue-on-error` is set to `true` for the whole composite action step in the workflow file, the next job step will run.
 
