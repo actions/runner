@@ -56,9 +56,6 @@ namespace GitHub.Runner.Worker.Handlers
                 childScopeName = $"__{Guid.NewGuid()}";
             }
 
-            // Set GITHUB_ACTION_PATH
-            ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
-
             foreach (Pipelines.ActionStep actionStep in actionSteps)
             {
                 var actionRunner = HostContext.CreateService<IActionRunner>();
@@ -66,7 +63,7 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Stage = stage;
                 actionRunner.Condition = actionStep.Condition;
 
-                var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
+                var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment, ActionDirectory);
                 compositeSteps.Add(step);
             }
 
