@@ -20,6 +20,28 @@ A composite action is treated as **one** individual job step (this is known as e
 
 **In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
+## Composite Run Steps Features
+This feature supports at the top action leve:
+- name
+- description
+- inputs
+- runs
+- outputs
+
+This feature supports at the run step level:
+- name
+- id
+- run
+- env
+- shell
+- working-directory
+
+This feature **does not support** at the run step level:
+- timeout-minutes
+- secrets
+- conditionals (needs, if, etc.)
+- continue-on-error
+
 ### Steps
 
 Example `workflow.yml`
