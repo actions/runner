@@ -134,7 +134,10 @@
                     },
                     "env": "step-env",
                     "working-directory": "string-steps-context",
-                    "shell": "string-steps-context"
+                    "shell": {
+                        "type": "non-empty-string",
+                        "required": true
+                    }
                 }
             }
         },
@@ -176,6 +179,7 @@
         "string-steps-context": {
             "context": [
                 "github",
+                "inputs",
                 "strategy",
                 "matrix",
                 "steps",
@@ -189,6 +193,7 @@
         "step-env": {
             "context": [
                 "github",
+                "inputs",
                 "strategy",
                 "matrix",
                 "steps",
