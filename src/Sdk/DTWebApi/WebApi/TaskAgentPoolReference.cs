@@ -29,6 +29,7 @@ namespace GitHub.DistributedTask.WebApi
             this.PoolType = referenceToBeCloned.PoolType;
             this.Size = referenceToBeCloned.Size;
             this.IsLegacy = referenceToBeCloned.IsLegacy;
+            this.IsInternal = referenceToBeCloned.IsInternal;
         }
 
         public TaskAgentPoolReference Clone()
@@ -62,6 +63,16 @@ namespace GitHub.DistributedTask.WebApi
         /// </summary>
         [DataMember]
         public Boolean IsHosted
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether or not this pool is internal and can't be modified by users
+        /// </summary>
+        [DataMember]
+        public bool IsInternal
         {
             get;
             set;
