@@ -265,11 +265,6 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     foreach (var env in runtimeContext.GetRuntimeEnvironmentVariables())
                     {
-                        if (runtimeContext is GitHubContext)
-                        {
-                            Trace.Info($"gh context key: {env.Key}");
-                            Trace.Info($"gh context Value: {env.Value}");
-                        }
                         Environment[env.Key] = env.Value;
                     }
                 }

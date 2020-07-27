@@ -274,7 +274,6 @@ namespace GitHub.Runner.Worker
             {
                 envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
             }
-
             step.ExecutionContext.ExpressionValues["env"] = envContext;
 
             return step;
@@ -421,7 +420,6 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(name, nameof(name));
             var githubContext = ExpressionValues["github"] as GitHubContext;
             githubContext[name] = new StringContextData(value);
-            Trace.Info($"GitHub Context: {StringUtil.ConvertToJson(githubContext)}");
         }
 
         public string GetGitHubContext(string name)

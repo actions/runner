@@ -57,7 +57,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Set GITHUB_ACTION_PATH
-            Trace.Info($"ActionDirectory: {ActionDirectory}");
             ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
 
             foreach (Pipelines.ActionStep actionStep in actionSteps)
@@ -68,9 +67,6 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Condition = actionStep.Condition;
 
                 var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
-
-                // step.ExecutionContext.ExpressionValues["github"] = ExecutionContext.ExpressionValues["github"] as GitHubContext;
-
                 compositeSteps.Add(step);
             }
 
