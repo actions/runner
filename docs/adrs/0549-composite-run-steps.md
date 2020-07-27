@@ -80,10 +80,10 @@ Example `user/composite/action.yml`:
 runs:
   using: "composite"
   steps: 
-    - run: chmod +x ${{env.GITHUB_ACTION_PATH}}/script.sh
-    - run: chmod +x ${{env.GITHUB_ACTION_PATH}}/test/script2.sh
-    - run: ${{env.GITHUB_ACTION_PATH}}/script.sh
-    - run: ${{env.GITHUB_ACTION_PATH}}/test/script2.sh
+    - run: chmod +x ${{ github.action_path }}/test/script2.sh
+    - run: chmod +x $GITHUB_ACTION_PATH/script.sh
+    - run: ${{ github.action_path }}/test/script2.sh
+    - run: $GITHUB_ACTION_PATH/script.sh
 ```
 Where `user/composite` has the file structure:
 ```
@@ -95,7 +95,7 @@ Where `user/composite` has the file structure:
 ```
 
 
-Users will be able to run scripts located in their action folder by first prepending the relative path and script name with `GITHUB_ACTION_PATH` which contains the path in which the composite action is downloaded to and where those "files" live.
+Users will be able to run scripts located in their action folder by first prepending the relative path and script name with `$GITHUB_ACTION_PATH` or `github.action_path` which contains the path in which the composite action is downloaded to and where those "files" live. Note, you'll have to use `chmod` before running each script if you do not git check in your script files into your github repo with the executable bit turned on.
 
 ### Inputs
 
