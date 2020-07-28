@@ -319,43 +319,56 @@ namespace GitHub.Runner.Worker
             string result = "";
             if (token != null)
             {
-                var templateContext = CreateTemplateContext(executionContext);
+                // Add GitHub Expression Values
+                var githubContext = executionContext.ExpressionValues["github"];
+                Trace.Info($"GitHub Context EvaluateDefaultInputInsideComposite: {StringUtil.ConvertToJson(githubContext)}");
+
+                var temp = new Dictionary<string, PipelineContextData>();
+                temp["github"] = githubContext;
+
+                var templateContext = CreateTemplateContext(executionContext, temp);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null, omitHeader: true);
+
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
+
+                    Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
                     templateContext.Errors.Check();
+
+                    // Can't evaluate the default github.respository, etc.
+
 
                     // TODO: restrict to only be used for composite "uses" steps
                     // Find better way to isolate only 
                     // We could create a whitelist for just checkout?
                     // (ex: "repo", "token", etc.)
-                    if (evaluateResult is BasicExpressionToken)
-                    {
+                    // if (evaluateResult is BasicExpressionToken)
+                    // {
                         
 
-                        // var evaluateResult2 = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
-                        // templateContext.Errors.Check();
+                    //     // var evaluateResult2 = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
+                    //     // templateContext.Errors.Check();
 
-                        // Trace.Info($"Test2 Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult2)}");
-                        // var result2 = evaluateResult2.AssertString($"default value for input '{inputName}'").Value;
+                    //     // Trace.Info($"Test2 Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult2)}");
+                    //     // var result2 = evaluateResult2.AssertString($"default value for input '{inputName}'").Value;
 
-                        // TODO 6/28 => Try just getting it from the getgithubcontext lmao.
+                    //     // TODO 6/28 => Try just getting it from the getgithubcontext lmao.
 
-                        // Trace.Info($"Basic expr token: {evaluateResult}");
+                    //     // Trace.Info($"Basic expr token: {evaluateResult}");
 
-                        var stringVersion = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
+                    //     var stringVersion = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
 
-                        // no we have to use the template evaluator since it's a
+                    //     // no we have to use the template evaluator since it's a
 
-                        // var githubTokenSplit = 
+                    //     // var githubTokenSplit = 
 
-                        // // Evaluate it
-                        // var evaluateResult = executionContext.GetGitHubContext("");
+                    //     // // Evaluate it
+                    //     // var evaluateResult = executionContext.GetGitHubContext("");
 
-                        return result2;
-                    }
+                    //     return result2;
+                    // }
 
-                    Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
+                    // Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
 
                     // String
                     result = evaluateResult.AssertString($"default value for input '{inputName}'").Value;

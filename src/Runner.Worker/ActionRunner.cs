@@ -194,11 +194,11 @@ namespace GitHub.Runner.Worker
                         Trace.Info($"Definition Input Key: {key}");
                         if (ExecutionContext.InsideComposite)
                         {
-                            inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
+                            inputs[key] = manifestManager.EvaluateDefaultInputInsideComposite(ExecutionContext, key, input.Value);
                         }
                         else
                         {
-                            inputs[key] = manifestManager.EvaluateDefaultInputInsideComposite(ExecutionContext, key, input.Value);
+                            inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
                         }
                         Trace.Info($"Definition Input Value: {inputs[key]}");
                     }
