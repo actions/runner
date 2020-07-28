@@ -180,7 +180,7 @@ namespace GitHub.Runner.Worker
             {
                 ExecutionContext.SetGitHubContext("repository", definition.Directory);
             }
-
+            
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
@@ -192,7 +192,14 @@ namespace GitHub.Runner.Worker
                     if (!inputs.ContainsKey(key))
                     {
                         Trace.Info($"Definition Input Key: {key}");
-                        inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
+                        if (ExecutionContext.InsideComposite)
+                        {
+                            inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
+                        }
+                        else
+                        {
+                            inputs[key] = manifestManager.EvaluateDefaultInputInsideComposite(ExecutionContext, key, input.Value);
+                        }
                         Trace.Info($"Definition Input Value: {inputs[key]}");
                     }
                 }

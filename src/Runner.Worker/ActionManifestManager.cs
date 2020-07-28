@@ -30,6 +30,8 @@ namespace GitHub.Runner.Worker
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
+
+        string EvaluateDefaultInputInsideComposite(IExecutionContext executionContext, string inputName, TemplateToken token);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -292,26 +294,63 @@ namespace GitHub.Runner.Worker
                     var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null, omitHeader: true);
                     templateContext.Errors.Check();
 
+                    Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
+
+                    // String
+                    result = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    Trace.Error(ex);
+                    templateContext.Errors.Add(ex);
+                }
+
+                templateContext.Errors.Check();
+            }
+
+            return result;
+        }
+
+        public string EvaluateDefaultInputInsideComposite(
+            IExecutionContext executionContext,
+            string inputName,
+            TemplateToken token)
+        {
+            string result = "";
+            if (token != null)
+            {
+                var templateContext = CreateTemplateContext(executionContext);
+                try
+                {
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null, omitHeader: true);
+                    templateContext.Errors.Check();
+
                     // TODO: restrict to only be used for composite "uses" steps
                     // Find better way to isolate only 
                     // We could create a whitelist for just checkout?
                     // (ex: "repo", "token", etc.)
                     if (evaluateResult is BasicExpressionToken)
                     {
+                        
+
+                        // var evaluateResult2 = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
+                        // templateContext.Errors.Check();
+
+                        // Trace.Info($"Test2 Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult2)}");
+                        // var result2 = evaluateResult2.AssertString($"default value for input '{inputName}'").Value;
+
+                        // TODO 6/28 => Try just getting it from the getgithubcontext lmao.
+
                         // Trace.Info($"Basic expr token: {evaluateResult}");
 
-                        // var stringVersion = evaluateResult.Value as String;
+                        var stringVersion = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
+
+                        // no we have to use the template evaluator since it's a
 
                         // var githubTokenSplit = 
 
                         // // Evaluate it
                         // var evaluateResult = executionContext.GetGitHubContext("");
-
-                        var evaluateResult2 = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
-                        templateContext.Errors.Check();
-
-                        Trace.Info($"Test2 Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult2)}");
-                        var result2 = evaluateResult2.AssertString($"default value for input '{inputName}'").Value;
 
                         return result2;
                     }
@@ -331,6 +370,7 @@ namespace GitHub.Runner.Worker
             }
 
             return result;
+
         }
 
         private TemplateContext CreateTemplateContext(
