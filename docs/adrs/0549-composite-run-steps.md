@@ -4,7 +4,7 @@
 
 **Status**: Accepted
 
-## Context
+### Context
 
 Customers want to be able to compose actions from actions (ex: https://github.com/actions/runner/issues/438)
 
@@ -16,12 +16,12 @@ We don't want the workflow author to need to know how the internal workings of t
 
 A composite action is treated as **one** individual job step (this is known as encapsulation).
 
-## Decision
+### Decision
 
 **In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
 
-## Composite Run Steps Features
-This feature supports at the top action leve:
+### Composite Run Steps Features
+This feature supports at the top action level:
 - name
 - description
 - inputs
@@ -373,6 +373,6 @@ Here is a visual represenation of the [first example](#Steps)
 ```
 
 
-## Consequences
+### Consequences
 
 This ADR lays the framework for eventually supporting nested Composite Actions within Composite Actions. This ADR allows for users to run multiple run steps within a GitHub Composite Action with the support of inputs, outputs, environment, and context for use in any steps as well as the if, timeout-minutes, and the continue-on-error attributes for each Composite Action step. 
