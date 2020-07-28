@@ -56,8 +56,13 @@ namespace GitHub.Runner.Worker.Handlers
                 childScopeName = $"__{Guid.NewGuid()}";
             }
 
-            // Add GITHUB_ACTION_PATH
-            ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
+            // Copy the github context so that we don't modify the original pointer
+            // We can't use PipelineContextData.Clone() since that creates a null pointer exception for copying a GitHubContext
+            var compositeGitHubContext = new GitHubContext();
+            foreach (var pair in githubContext)
+            {
+                compositeGitHubContext[pair.Key] = pair.Value;
+            }
 
             foreach (Pipelines.ActionStep actionStep in actionSteps)
             {
@@ -67,6 +72,11 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Condition = actionStep.Condition;
 
                 var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
+
+                // Set GITHUB_ACTION_PATH
+                step.ExecutionContext.ExpressionValues["github"] = compositeGitHubContext;
+                step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
+
                 compositeSteps.Add(step);
             }
 
@@ -88,9 +98,6 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
             }
-
-            // Remove GITHUB_ACTION_PATH
-            ExecutionContext.SetGitHubContext("action_path", "");
         }
 
         private void ProcessCompositeActionOutputs()
