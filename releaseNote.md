@@ -1,6 +1,7 @@
 ## Features
   - Resolve action download info from server (#508, #515, #550)
   - Print runner and machine name to log. (#539)
+  - Allow runner to register against non-default runner groups (#517)
 ## Bugs
   - Reduce input validation warnings (#506) 
   - Fix null ref exception in SecretMasker caused by `hashfiles` timeout. (#516)
