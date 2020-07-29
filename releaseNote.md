@@ -1,18 +1,15 @@
 ## Features
-  - Resolve action download info from server (#508, #515, #550)
-  - Print runner and machine name to log. (#539)
+  - Composite Actions Support for Multiple Run Steps (#549, #557, #564, #568, #569, #578, #591, #599, #605, #609, #610, #615, #624) 
+  - Prepare to switch GITHUB_ACTION to use ContextName instead of refname (#593)
+  - Fold logs for intermediate docker commands (#608)
+  - Add ability to register a runner to the non-default self-hosted runner group (#613)
+  
 ## Bugs
-  - Reduce input validation warnings (#506) 
-  - Fix null ref exception in SecretMasker caused by `hashfiles` timeout. (#516)
-  - Add libicu66 to `./installDependencies.sh` for Ubuntu 20.04 (#535)
-  - Fix DataContract with Token service (#532)
-  - Skip search $PATH on command with fully qualified path (#526)
-  - Restore SELinux context on service file when SELinux is enabled (#525)
+  - Double quotes around variable so CD works if path contains spaces (#602)
+  - Bump lodash in /src/Misc/expressionFunc/hashFiles (#603) 
+  - Fix poor performance of process spawned from svc daemon (#614)
 ## Misc
-  - Remove SPS/Token migration code. Remove GHES url manipulate code. (#513) 
-  - Add sub-step for developer flow for clarity (#523)
-  - Update Links and Language to Git + VSCode (#522)
-  - Update runner configuration exception message (#540)
+  - Move shared ExecutionContext properties under .Global (#594)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
