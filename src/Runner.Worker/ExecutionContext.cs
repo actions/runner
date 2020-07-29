@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker
         JobContext JobContext { get; }
 
         // Only job level ExecutionContext has JobSteps
-        List<IStep> JobSteps { get; }
+        Queue<IStep> JobSteps { get; }
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
@@ -144,7 +144,7 @@ namespace GitHub.Runner.Worker
         public GlobalContext Global { get; private set; }
 
         // Only job level ExecutionContext has JobSteps
-        public List<IStep> JobSteps { get; private set; }
+        public Queue<IStep> JobSteps { get; private set; }
 
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
@@ -663,7 +663,7 @@ namespace GitHub.Runner.Worker
             Global.PrependPath = new List<string>();
 
             // JobSteps for job ExecutionContext
-            JobSteps = new List<IStep>();
+            JobSteps = new Queue<IStep>();
 
             // PostJobSteps for job ExecutionContext
             PostJobSteps = new Stack<IStep>();
