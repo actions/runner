@@ -59,14 +59,13 @@ namespace GitHub.Runner.Worker
                     checkPostJobActions = true;
                     while (jobContext.PostJobSteps.TryPop(out var postStep))
                     {
-                        jobContext.JobSteps.Add(postStep);
+                        jobContext.JobSteps.Enqueue(postStep);
                     }
 
                     continue;
                 }
 
-                var step = jobContext.JobSteps[0];
-                jobContext.JobSteps.RemoveAt(0);
+                var step = jobContext.JobSteps.Dequeue();
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));

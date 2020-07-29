@@ -152,7 +152,7 @@ namespace GitHub.Runner.Worker
                 {
                     foreach (var step in jobSteps)
                     {
-                        jobContext.JobSteps.Add(step);
+                        jobContext.JobSteps.Enqueue(step);
                     }
 
                     await stepsRunner.RunAsync(jobContext);
