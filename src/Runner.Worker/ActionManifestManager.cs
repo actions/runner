@@ -105,12 +105,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "outputs":
-                            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                            {
-                                actionOutputs = actionPair.Value.AssertMapping("outputs");
-                                break;
-                            }
-                            Trace.Info($"Ignore action property outputs. Outputs for a whole action is not supported yet.");
+                            actionOutputs = actionPair.Value.AssertMapping("outputs");
                             break;
 
                         case "description":
@@ -423,14 +418,10 @@ namespace GitHub.Runner.Worker
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
                     case "steps":
-                        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                        {
-                            var stepsToken = run.Value.AssertSequence("steps");
-                            steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
-                            templateContext.Errors.Check();
-                            break;
-                        }
-                        throw new Exception("You aren't supposed to be using Composite Actions yet!");
+                        var stepsToken = run.Value.AssertSequence("steps");
+                        steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
+                        templateContext.Errors.Check();
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -478,7 +469,7 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase))
                 {
                     if (steps == null)
                     {
