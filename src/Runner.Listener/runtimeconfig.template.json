@@ -1,0 +1,6 @@
+{
+ "$schema": "https://gist.githubusercontent.com/natemcmaster/0bdee16450f8ec1823f2c11af880ceeb/raw/runtimeconfig.template.schema.json",
+ "configProperties": {
+  "System.Globalization.Invariant": true
+ }
+}
