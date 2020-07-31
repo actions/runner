@@ -123,6 +123,7 @@ namespace GitHub.Runner.Worker
                     if (actionStep.Action.Reference is Pipelines.RepositoryPathReference repositoryReference)
                     {
                         step.ExecutionContext.SetGitHubContext("action_repository", repositoryReference.Name);
+                        step.ExecutionContext.SetGitHubContext("action_ref", repositoryReference.Ref);
                     }
 
                     try

@@ -9,6 +9,7 @@ namespace GitHub.Runner.Worker
         private readonly HashSet<string> _contextEnvWhitelist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "action",
+            "action_ref",
             "action_repository",
             "actor",
             "api_url",
