@@ -58,6 +58,14 @@ namespace GitHub.Runner.Worker.Handlers
                 childScopeName = $"__{Guid.NewGuid()}";
             }
 
+            // Copy the github context so that we don't modify the original pointer
+            // We can't use PipelineContextData.Clone() since that creates a null pointer exception for copying a GitHubContext
+            var compositeGitHubContext = new GitHubContext();
+            foreach (var pair in githubContext)
+            {
+                compositeGitHubContext[pair.Key] = pair.Value;
+            }
+
             foreach (Pipelines.ActionStep actionStep in actionSteps)
             {
                 var actionRunner = HostContext.CreateService<IActionRunner>();
@@ -67,9 +75,9 @@ namespace GitHub.Runner.Worker.Handlers
 
                 var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
 
-                // TESTING: Blatantly pass github object so that we have access to it for checking out
-                // (Later, we can just do this for the checkout step!)
-                step.ExecutionContext.ExpressionValues["github"] = githubContext;
+                // Set GITHUB_ACTION_PATH
+                step.ExecutionContext.ExpressionValues["github"] = compositeGitHubContext;
+                step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
 
                 compositeSteps.Add(step);
             }
@@ -182,9 +190,6 @@ namespace GitHub.Runner.Worker.Handlers
                 step.ExecutionContext.ExpressionValues["env"] = envContext;
 
                 var actionStep = step as IActionRunner;
-
-                // Set GITHUB_ACTION
-                step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.GetFullyQualifiedContextName());
 
                 try
                 {

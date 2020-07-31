@@ -31,7 +31,7 @@ namespace GitHub.Runner.Worker
 
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
 
-        string EvaluateDefaultInputInsideComposite(IExecutionContext executionContext, string inputName, TemplateToken token);
+        // string EvaluateDefaultInputInsideComposite(IExecutionContext executionContext, string inputName, TemplateToken token);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -107,12 +107,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "outputs":
-                            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                            {
-                                actionOutputs = actionPair.Value.AssertMapping("outputs");
-                                break;
-                            }
-                            Trace.Info($"Ignore action property outputs. Outputs for a whole action is not supported yet.");
+                            actionOutputs = actionPair.Value.AssertMapping("outputs");
                             break;
 
                         case "description":
@@ -311,80 +306,82 @@ namespace GitHub.Runner.Worker
             return result;
         }
 
-        public string EvaluateDefaultInputInsideComposite(
-            IExecutionContext executionContext,
-            string inputName,
-            TemplateToken token)
-        {
-            string result = "";
-            if (token != null)
-            {
-                // Add GitHub Expression Values
-                var githubContext = executionContext.ExpressionValues["github"];
-                Trace.Info($"GitHub Context EvaluateDefaultInputInsideComposite: {StringUtil.ConvertToJson(githubContext)}");
+        // public string EvaluateDefaultInputInsideComposite(
+        //     IExecutionContext executionContext,
+        //     string inputName,
+        //     TemplateToken token)
+        // {
+        //     string result = "";
+        //     if (token != null)
+        //     {
+        //         // Add GitHub Expression Values
+        //         var githubContext = executionContext.ExpressionValues["github"];
+        //         Trace.Info($"GitHub Context EvaluateDefaultInputInsideComposite: {StringUtil.ConvertToJson(githubContext)}");
 
-                var temp = new Dictionary<string, PipelineContextData>();
-                temp["github"] = githubContext;
+        //         var temp = new Dictionary<string, PipelineContextData>();
+        //         temp["github"] = githubContext;
 
-                var templateContext = CreateTemplateContext(executionContext, temp);
-                try
-                {
+        //         // Trace.Info($"Token: {StringUtil.ConvertToJson(token)}");
 
-                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
+        //         var templateContext = CreateTemplateContext(executionContext, temp);
+        //         try
+        //         {
 
-                    Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
-                    templateContext.Errors.Check();
+        //             var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "uses-input", token, 0, null, omitHeader: true);
 
-                    // Can't evaluate the default github.respository, etc.
+        //             Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
+        //             templateContext.Errors.Check();
+
+        //             // Can't evaluate the default github.respository, etc.
 
 
-                    // TODO: restrict to only be used for composite "uses" steps
-                    // Find better way to isolate only 
-                    // We could create a whitelist for just checkout?
-                    // (ex: "repo", "token", etc.)
-                    // if (evaluateResult is BasicExpressionToken)
-                    // {
+        //             // TODO: restrict to only be used for composite "uses" steps
+        //             // Find better way to isolate only 
+        //             // We could create a whitelist for just checkout?
+        //             // (ex: "repo", "token", etc.)
+        //             // if (evaluateResult is BasicExpressionToken)
+        //             // {
                         
 
-                    //     // var evaluateResult2 = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
-                    //     // templateContext.Errors.Check();
+        //             //     // var evaluateResult2 = TemplateEvaluator.Evaluate(templateContext, "step-with", token, 0, null, omitHeader: true);
+        //             //     // templateContext.Errors.Check();
 
-                    //     // Trace.Info($"Test2 Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult2)}");
-                    //     // var result2 = evaluateResult2.AssertString($"default value for input '{inputName}'").Value;
+        //             //     // Trace.Info($"Test2 Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult2)}");
+        //             //     // var result2 = evaluateResult2.AssertString($"default value for input '{inputName}'").Value;
 
-                    //     // TODO 6/28 => Try just getting it from the getgithubcontext lmao.
+        //             //     // TODO 6/28 => Try just getting it from the getgithubcontext lmao.
 
-                    //     // Trace.Info($"Basic expr token: {evaluateResult}");
+        //             //     // Trace.Info($"Basic expr token: {evaluateResult}");
 
-                    //     var stringVersion = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
+        //             //     var stringVersion = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
 
-                    //     // no we have to use the template evaluator since it's a
+        //             //     // no we have to use the template evaluator since it's a
 
-                    //     // var githubTokenSplit = 
+        //             //     // var githubTokenSplit = 
 
-                    //     // // Evaluate it
-                    //     // var evaluateResult = executionContext.GetGitHubContext("");
+        //             //     // // Evaluate it
+        //             //     // var evaluateResult = executionContext.GetGitHubContext("");
 
-                    //     return result2;
-                    // }
+        //             //     return result2;
+        //             // }
 
-                    // Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
+        //             // Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
 
-                    // String
-                    result = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    Trace.Error(ex);
-                    templateContext.Errors.Add(ex);
-                }
+        //             // String
+        //             result = evaluateResult.AssertString($"default value for input '{inputName}'").Value;
+        //         }
+        //         catch (Exception ex) when (!(ex is TemplateValidationException))
+        //         {
+        //             Trace.Error(ex);
+        //             templateContext.Errors.Add(ex);
+        //         }
 
-                templateContext.Errors.Check();
-            }
+        //         templateContext.Errors.Check();
+        //     }
 
-            return result;
+        //     return result;
 
-        }
+        // }
 
         private TemplateContext CreateTemplateContext(
             IExecutionContext executionContext,
@@ -500,14 +497,10 @@ namespace GitHub.Runner.Worker
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
                     case "steps":
-                        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                        {
-                            var stepsToken = run.Value.AssertSequence("steps");
-                            steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
-                            templateContext.Errors.Check();
-                            break;
-                        }
-                        throw new Exception("You aren't supposed to be using Composite Actions yet!");
+                        var stepsToken = run.Value.AssertSequence("steps");
+                        steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
+                        templateContext.Errors.Check();
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -555,7 +548,7 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase))
                 {
                     if (steps == null)
                     {

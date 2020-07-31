@@ -462,13 +462,14 @@ Options:
  --commit   Prints the runner commit
 
 Config Options:
- --unattended     Disable interactive prompts for missing arguments. Defaults will be used for missing options
- --url string     Repository to add the runner to. Required if unattended
- --token string   Registration token. Required if unattended
- --name string    Name of the runner to configure (default {Environment.MachineName ?? "myrunner"})
- --labels string  Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
- --work string    Relative runner work directory (default {Constants.Path.WorkDirectory})
- --replace        Replace any existing runner with the same name (default false)");
+ --unattended           Disable interactive prompts for missing arguments. Defaults will be used for missing options
+ --url string           Repository to add the runner to. Required if unattended
+ --token string         Registration token. Required if unattended
+ --name string          Name of the runner to configure (default {Environment.MachineName ?? "myrunner"})
+ --runnergroup string   Name of the runner group to add this runner to (defaults to the default runner group)
+ --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
+ --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
+ --replace              Replace any existing runner with the same name (default false)");
 #if OS_WINDOWS
     _term.WriteLine($@" --runasservice   Run the runner as a service");
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");

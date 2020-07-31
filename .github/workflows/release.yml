@@ -1,6 +1,7 @@
 name: Runner CD
 
 on:
+  workflow_dispatch:
   push:
     paths:
     - releaseVersion
