@@ -5,11 +5,14 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 
@@ -35,7 +38,7 @@ namespace GitHub.Runner.Worker.Handlers
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
 
-            Trace.Info($"Github Context: {StringUtil.ConvertToJson(githubContext)}");
+            // Trace.Info($"Github Context: {StringUtil.ConvertToJson(githubContext)}");
 
             // Resolve action steps
             var actionSteps = Data.Steps;
@@ -46,6 +49,8 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 inputsData[i.Key] = new StringContextData(i.Value);
             }
+
+            Trace.Info($"Composite Actions Inputs {StringUtil.ConvertToJson(inputsData)}");
 
             // Initialize Composite Steps List of Steps
             var compositeSteps = new List<IStep>();
@@ -78,6 +83,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // Set GITHUB_ACTION_PATH
                 step.ExecutionContext.ExpressionValues["github"] = compositeGitHubContext;
                 step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
                 compositeSteps.Add(step);
             }

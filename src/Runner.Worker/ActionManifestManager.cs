@@ -284,6 +284,9 @@ namespace GitHub.Runner.Worker
             if (token != null)
             {
                 var templateContext = CreateTemplateContext(executionContext);
+                Trace.Info($"Template context GitHub: {StringUtil.ConvertToJson(templateContext.ExpressionValues["github"])}");
+
+                Trace.Info($"Template context keys: {StringUtil.ConvertToJson(templateContext.ExpressionValues.Keys)}");
                 try
                 {
                     var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null, omitHeader: true);

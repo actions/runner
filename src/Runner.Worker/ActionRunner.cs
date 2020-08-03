@@ -176,10 +176,17 @@ namespace GitHub.Runner.Worker
             // We need to explitly set the default values of certain things we need like the 
             // default repository 
 
-            if (ExecutionContext.GetGitHubContext("repository") == null)
-            {
-                ExecutionContext.SetGitHubContext("repository", definition.Directory);
-            }
+            // if (ExecutionContext.GetGitHubContext("repository") == null)
+            // {
+            //     ExecutionContext.SetGitHubContext("repository", definition.Directory);
+            // }
+
+            // var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
+
+            // foreach (var pair in githubContext)
+            // {
+            //     ExecutionContext.SetGitHubContext(pair.Key, pair.Value as StringContextData);
+            // }
             
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
