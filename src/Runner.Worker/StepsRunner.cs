@@ -104,16 +104,7 @@ namespace GitHub.Runner.Worker
                 if (step is IActionRunner actionStep)
                 {
                     // Set GITHUB_ACTION
-                    // Warning: Do not turn on FF DistributedTask.UseContextNameForGITHUBACTION until after M271-ish. After M271-ish
-                    // the server will never send an empty context name. Generated context names start with "__"
-                    if (step.ExecutionContext.Global.Variables.GetBoolean("DistributedTask.UseContextNameForGITHUBACTION") ?? false)
-                    {
-                        step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
-                    }
-                    else
-                    {
-                        step.ExecutionContext.SetGitHubContext("action", step.ExecutionContext.GetFullyQualifiedContextName());
-                    }
+                    step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
 
                     try
                     {
