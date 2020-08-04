@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker.Handlers
             var compositeGitHubContext = new GitHubContext();
             foreach (var pair in githubContext)
             {
-                compositeGitHubContext[pair.Key] = pair.Value;
+                compositeGitHubContext[pair.Key] = pair.Value.Clone();
             }
 
             foreach (Pipelines.ActionStep actionStep in actionSteps)
