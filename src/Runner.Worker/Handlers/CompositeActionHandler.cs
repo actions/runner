@@ -90,6 +90,8 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(ExecutionContext.GetFullyQualifiedContextName());
 
                 ProcessCompositeActionOutputs();
+
+                ClearScopes(compositeSteps);
             }
             catch (Exception ex)
             {
@@ -97,6 +99,26 @@ namespace GitHub.Runner.Worker.Handlers
                 Trace.Error($"Caught exception from composite steps {nameof(CompositeActionHandler)}: {ex}");
                 ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
+            }
+        }
+
+        private void ClearScopes(List<IStep> compositeSteps)
+        {
+            // Clear outputs in each copmosite steps to free up memory.
+            // TODO: when we have nested composite actions, we will want to go all the way to the inside (thus, why it's recursive for future proofing)
+            foreach (var step in compositeSteps)
+            {
+                // Uses some logic from StepsRunner::GetStep()
+                var scope = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
+                var stepDictionaryContextData = default(DictionaryContextData);
+                if (scope.TryGetValue(step.ExecutionContext.ContextName, out var stepValue))
+                {
+                    stepDictionaryContextData = stepValue.AssertDictionary("step");
+                }
+                if (stepDictionaryContextData != null)
+                {
+                    stepDictionaryContextData["outputs"] = new DictionaryContextData();
+                }
             }
         }
 
