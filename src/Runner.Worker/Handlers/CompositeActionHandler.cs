@@ -105,7 +105,7 @@ namespace GitHub.Runner.Worker.Handlers
         private void ClearScopes(List<IStep> compositeSteps)
         {
             // Clear outputs in each copmosite steps to free up memory.
-            // TODO: when we have nested composite actions, we will want to go all the way to the inside (thus, why it's recursive for future proofing)
+            // TODO: when we have nested composite actions, we will want to go all the way to the inside
             foreach (var step in compositeSteps)
             {
                 // Uses some logic from StepsRunner::GetStep()
