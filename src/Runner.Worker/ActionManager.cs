@@ -492,7 +492,7 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
-            executionContext.Output("##[endgroup");
+            executionContext.Output("##[endgroup]");
 
             if (retryCount == 3 && pullExitCode != 0)
             {
