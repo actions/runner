@@ -108,17 +108,7 @@ namespace GitHub.Runner.Worker.Handlers
             // TODO: when we have nested composite actions, we will want to go all the way to the inside
             foreach (var step in compositeSteps)
             {
-                // Uses some logic from StepsRunner::GetStep()
-                var scope = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
-                var stepDictionaryContextData = default(DictionaryContextData);
-                if (scope.TryGetValue(step.ExecutionContext.ContextName, out var stepValue))
-                {
-                    stepDictionaryContextData = stepValue.AssertDictionary("step");
-                }
-                if (stepDictionaryContextData != null)
-                {
-                    stepDictionaryContextData["outputs"] = new DictionaryContextData();
-                }
+                ExecutionContext.Global.StepsContext.ClearScope(step.ExecutionContext.ContextName, step.ExecutionContext.ScopeName);
             }
         }
 
