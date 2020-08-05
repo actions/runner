@@ -71,6 +71,9 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Stage = stage;
                 actionRunner.Condition = actionStep.Condition;
 
+                // Change Display Name to the workflow name defined so it doesn't change to "run"
+                actionRunner.DisplayName = Data.CompositeName;
+
                 var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
 
                 // Set GITHUB_ACTION_PATH
