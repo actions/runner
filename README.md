@@ -6,7 +6,7 @@
 
 [![Actions Status](https://github.com/actions/runner/workflows/Runner%20CI/badge.svg)](https://github.com/actions/runner/actions)
 
-The runner is the application that runs a job from a GitHub Actions workflow.  The runner can run on the [hosted machine pools](https://github.com/actions/virtual-environments) or run on [self-hosted environments](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/about-self-hosted-runners).
+The runner is the application that runs a job from a GitHub Actions workflow in the [hosted virtual environments](https://github.com/actions/virtual-environments). Alternatively, you can [self-host the runner](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/about-self-hosted-runners) in your own environment.
 
 ## Get Started
 
