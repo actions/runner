@@ -260,7 +260,7 @@ namespace GitHub.Runner.Worker
             DictionaryContextData inputsData,
             Dictionary<string, string> envData)
         {
-            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
+            step.ExecutionContext = Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
             step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
@@ -856,11 +856,7 @@ namespace GitHub.Runner.Worker
             var configuration = HostContext.GetService<IConfigurationStore>();
             _record.WorkerName = configuration.GetSettings().AgentName;
 
-            // If we are inside an action, we don't want the steps inside to update the displayname of the parent so we pass the same parent displayname.
-            if (string.IsNullOrEmpty(ScopeName))
-            {
-                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
-            }
+            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
         }
 
         private void JobServerQueueThrottling_EventReceived(object sender, ThrottlingEventArgs data)
