@@ -308,14 +308,20 @@ namespace GitHub.Runner.Worker
             child._parentExecutionContext = this;
             child.EchoOnActionCommand = EchoOnActionCommand;
 
-            if (recordOrder != null)
+            // If we are inside an action, we don't want the steps inside to update the timeline.
+            if (string.IsNullOrEmpty(scopeName))
             {
-                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);
+                Trace.Info($"Intialize Scope Name: {ScopeName}");
+                if (recordOrder != null)
+                {
+                    child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);
+                }
+                else
+                {
+                    child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
+                }
             }
-            else
-            {
-                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
-            }
+
             if (logger != null)
             {
                 child._logger = logger;

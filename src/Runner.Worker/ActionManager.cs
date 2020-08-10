@@ -1225,7 +1225,6 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
         public override bool HasPre => false;
         public override bool HasPost => false;
-        public string CompositeName { get; set; }
         public List<Pipelines.ActionStep> Steps { get; set; }
         public MappingToken Outputs { get; set; }
     }

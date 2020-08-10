@@ -71,9 +71,6 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Stage = stage;
                 actionRunner.Condition = actionStep.Condition;
 
-                // Change Display Name to the workflow name defined so it doesn't change to "run"
-                actionRunner.DisplayName = Data.CompositeName;
-
                 var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
 
                 // Set GITHUB_ACTION_PATH
@@ -156,6 +153,8 @@ namespace GitHub.Runner.Worker.Handlers
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
             {
+                System.Threading.Thread.Sleep(2000);
+
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
                 step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);

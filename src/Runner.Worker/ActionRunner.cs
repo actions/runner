@@ -223,13 +223,6 @@ namespace GitHub.Runner.Worker
                 environment[$"STATE_{state.Key}"] = state.Value ?? string.Empty;
             }
 
-            // Attach DisplayName set at Workflow Level for Composite Actions
-            if (handlerData.ExecutionType == ActionExecutionType.Composite)
-            {
-                var compositeData = handlerData as CompositeActionExecutionData;
-                compositeData.CompositeName = DisplayName;
-            }
-
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                             ExecutionContext,
