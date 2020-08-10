@@ -21,6 +21,8 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public ScriptActionExecutionData Data { get; set; }
 
+        public string DisplayName { get; set; }
+
         public override void PrintActionDetails(ActionRunStage stage)
         {
             // We don't want to display the internal workings if composite (similar/equivalent information can be found in debug)

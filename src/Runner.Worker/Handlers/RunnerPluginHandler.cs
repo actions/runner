@@ -16,6 +16,8 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public PluginActionExecutionData Data { get; set; }
 
+        public string DisplayName { get; set; }
+
         public async Task RunAsync(ActionRunStage stage)
         {
             // Validate args.

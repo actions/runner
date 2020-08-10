@@ -20,6 +20,7 @@ namespace GitHub.Runner.Worker.Handlers
         IStepHost StepHost { get; set; }
         Dictionary<string, string> Inputs { get; set; }
         string ActionDirectory { get; set; }
+        string DisplayName { get; set; }
         Task RunAsync(ActionRunStage stage);
         void PrintActionDetails(ActionRunStage stage);
     }

@@ -19,6 +19,8 @@ namespace GitHub.Runner.Worker.Handlers
     public sealed class NodeScriptActionHandler : Handler, INodeScriptActionHandler
     {
         public NodeJSActionExecutionData Data { get; set; }
+        
+        public string DisplayName { get; set; }
 
         public async Task RunAsync(ActionRunStage stage)
         {

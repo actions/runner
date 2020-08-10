@@ -261,6 +261,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> envData)
         {
             step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
+            
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
             step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
@@ -308,18 +309,13 @@ namespace GitHub.Runner.Worker
             child._parentExecutionContext = this;
             child.EchoOnActionCommand = EchoOnActionCommand;
 
-            // If we are inside an action, we don't want the steps inside to update the timeline.
-            if (string.IsNullOrEmpty(scopeName))
+            if (recordOrder != null)
             {
-                Trace.Info($"Intialize Scope Name: {ScopeName}");
-                if (recordOrder != null)
-                {
-                    child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);
-                }
-                else
-                {
-                    child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
-                }
+                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);
+            }
+            else
+            {
+                child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
             }
 
             if (logger != null)

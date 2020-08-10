@@ -24,6 +24,8 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public CompositeActionExecutionData Data { get; set; }
 
+        public string DisplayName { get; set; }
+
         public async Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
@@ -70,6 +72,9 @@ namespace GitHub.Runner.Worker.Handlers
                 actionRunner.Action = actionStep;
                 actionRunner.Stage = stage;
                 actionRunner.Condition = actionStep.Condition;
+
+                // If we are inside an action, we don't want the steps inside to update the displayname of the parent so we pass the same parent displayname..
+                actionRunner.DisplayName = DisplayName;
 
                 var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
 
@@ -153,6 +158,7 @@ namespace GitHub.Runner.Worker.Handlers
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
             {
+                System.Threading.Thread.Sleep(2000);
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
                 step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
