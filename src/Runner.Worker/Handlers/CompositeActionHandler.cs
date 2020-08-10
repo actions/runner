@@ -158,7 +158,6 @@ namespace GitHub.Runner.Worker.Handlers
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
             {
-                System.Threading.Thread.Sleep(2000);
                 Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
 
                 step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
