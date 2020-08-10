@@ -19,8 +19,6 @@ namespace GitHub.Runner.Worker.Handlers
     public sealed class NodeScriptActionHandler : Handler, INodeScriptActionHandler
     {
         public NodeJSActionExecutionData Data { get; set; }
-        
-        public string DisplayName { get; set; }
 
         public async Task RunAsync(ActionRunStage stage)
         {
@@ -48,7 +46,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Add Actions Runtime server info
-            var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            var systemConnection = ExecutionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             Environment["ACTIONS_RUNTIME_URL"] = systemConnection.Url.AbsoluteUri;
             Environment["ACTIONS_RUNTIME_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
             if (systemConnection.Data.TryGetValue("CacheServerUrl", out var cacheUrl) && !string.IsNullOrEmpty(cacheUrl))
@@ -115,7 +113,7 @@ namespace GitHub.Runner.Worker.Handlers
                                                 requireExitCodeZero: false,
                                                 outputEncoding: outputEncoding,
                                                 killProcessOnCancel: false,
-                                                inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
+                                                inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
                                                 cancellationToken: ExecutionContext.CancellationToken);
 
                 // Wait for either the node exit or force finish through ##vso command

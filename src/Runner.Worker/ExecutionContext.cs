@@ -307,6 +307,7 @@ namespace GitHub.Runner.Worker
             child._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
             child._parentExecutionContext = this;
             child.EchoOnActionCommand = EchoOnActionCommand;
+            
             if (recordOrder != null)
             {
                 child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);

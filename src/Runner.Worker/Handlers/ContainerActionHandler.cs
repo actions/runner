@@ -22,8 +22,6 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public ContainerActionExecutionData Data { get; set; }
 
-        public string DisplayName { get; set; }
-
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously (method has async logic on only certain platforms)
         public async Task RunAsync(ActionRunStage stage)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
@@ -51,9 +49,8 @@ namespace GitHub.Runner.Worker.Handlers
                 // ensure docker file exist
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
-
-                ExecutionContext.Output($"##[group]Building docker image");
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+
                 var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
                 var buildExitCode = await dockerManger.DockerBuild(
                     ExecutionContext,
@@ -61,8 +58,6 @@ namespace GitHub.Runner.Worker.Handlers
                     dockerFile,
                     Directory.GetParent(dockerFile).FullName,
                     imageName);
-                ExecutionContext.Output("##[endgroup]");
-
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
@@ -190,7 +185,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Add Actions Runtime server info
-            var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            var systemConnection = ExecutionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             Environment["ACTIONS_RUNTIME_URL"] = systemConnection.Url.AbsoluteUri;
             Environment["ACTIONS_RUNTIME_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
             if (systemConnection.Data.TryGetValue("CacheServerUrl", out var cacheUrl) && !string.IsNullOrEmpty(cacheUrl))

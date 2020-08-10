@@ -19,8 +19,7 @@ namespace GitHub.Runner.Worker.Handlers
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
-            string actionDirectory, 
-            string displayName);
+            string actionDirectory);
     }
 
     public sealed class HandlerFactory : RunnerService, IHandlerFactory
@@ -33,8 +32,7 @@ namespace GitHub.Runner.Worker.Handlers
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
-            string actionDirectory, 
-            string displayName)
+            string actionDirectory)
         {
             // Validate args.
             Trace.Entering();
@@ -70,8 +68,16 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else if (data.ExecutionType == ActionExecutionType.Composite)
             {
-                handler = HostContext.CreateService<ICompositeActionHandler>();
-                (handler as ICompositeActionHandler).Data = data as CompositeActionExecutionData;
+                if (executionContext.FinalizeContext == null)
+                {
+                    handler = HostContext.CreateService<ICompositeActionHandler>();
+                    (handler as ICompositeActionHandler).Data = data as CompositeActionExecutionData;
+                }
+                else
+                {
+                    handler = HostContext.CreateService<ICompositeActionOutputHandler>();
+                    (handler as ICompositeActionOutputHandler).Data = data as CompositeActionExecutionData;
+                }
             }
             else
             {
@@ -86,7 +92,6 @@ namespace GitHub.Runner.Worker.Handlers
             handler.StepHost = stepHost;
             handler.Inputs = inputs;
             handler.ActionDirectory = actionDirectory;
-            handler.DisplayName = displayName;
             return handler;
         }
     }
