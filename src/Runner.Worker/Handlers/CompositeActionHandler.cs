@@ -91,7 +91,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ProcessCompositeActionOutputs();
 
-                ClearScopes(compositeSteps);
+                ExecutionContext.Global.StepsContext.ClearScope(ExecutionContext.GetFullyQualifiedContextName());
             }
             catch (Exception ex)
             {
@@ -99,16 +99,6 @@ namespace GitHub.Runner.Worker.Handlers
                 Trace.Error($"Caught exception from composite steps {nameof(CompositeActionHandler)}: {ex}");
                 ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
-            }
-        }
-
-        private void ClearScopes(List<IStep> compositeSteps)
-        {
-            // Clear outputs in each copmosite steps to free up memory.
-            // TODO: when we have nested composite actions, we will want to go all the way to the inside
-            foreach (var step in compositeSteps)
-            {
-                ExecutionContext.Global.StepsContext.ClearScope(step.ExecutionContext.ContextName, step.ExecutionContext.ScopeName);
             }
         }
 

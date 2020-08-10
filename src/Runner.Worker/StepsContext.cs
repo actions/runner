@@ -15,13 +15,13 @@ namespace GitHub.Runner.Worker
         private static readonly Regex _propertyRegex = new Regex("^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
         private readonly DictionaryContextData _contextData = new DictionaryContextData();
 
-        public void ClearScope(string contextName, string scopeName)
+        public void ClearScope(string scopeName)
         {
             var scope = GetScope(scopeName);
-            if (scope.TryGetValue(contextName, out _))
+            if (_contextData.TryGetValue(scopeName, out _))
             {
-                scope[contextName] = new DictionaryContextData();
-            }
+                _contextData[scopeName] = new DictionaryContextData();
+            } 
         }
 
         public DictionaryContextData GetScope(string scopeName)
