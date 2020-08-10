@@ -308,7 +308,6 @@ namespace GitHub.Runner.Worker
             child._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
             child._parentExecutionContext = this;
             child.EchoOnActionCommand = EchoOnActionCommand;
-
             if (recordOrder != null)
             {
                 child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, recordOrder);
@@ -317,7 +316,6 @@ namespace GitHub.Runner.Worker
             {
                 child.InitializeTimelineRecord(_mainTimelineId, recordId, _record.Id, ExecutionContextType.Task, displayName, refName, ++_childTimelineRecordOrder);
             }
-
             if (logger != null)
             {
                 child._logger = logger;
@@ -858,7 +856,10 @@ namespace GitHub.Runner.Worker
             var configuration = HostContext.GetService<IConfigurationStore>();
             _record.WorkerName = configuration.GetSettings().AgentName;
 
-            _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            if (string.IsNullOrEmpty(ScopeName))
+            {
+                _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
+            }
         }
 
         private void JobServerQueueThrottling_EventReceived(object sender, ThrottlingEventArgs data)

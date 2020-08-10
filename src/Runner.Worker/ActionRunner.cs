@@ -232,8 +232,7 @@ namespace GitHub.Runner.Worker
                             inputs,
                             environment,
                             ExecutionContext.Global.Variables,
-                            actionDirectory: definition.Directory, 
-                            displayName: DisplayName);
+                            actionDirectory: definition.Directory);
 
             // Print out action details
             handler.PrintActionDetails(Stage);
