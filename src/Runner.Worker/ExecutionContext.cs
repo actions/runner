@@ -856,6 +856,7 @@ namespace GitHub.Runner.Worker
             var configuration = HostContext.GetService<IConfigurationStore>();
             _record.WorkerName = configuration.GetSettings().AgentName;
 
+            // If we are inside an action, we don't want the steps inside to update the displayname of the parent so we pass the same parent displayname.
             if (string.IsNullOrEmpty(ScopeName))
             {
                 _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
