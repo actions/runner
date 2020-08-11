@@ -71,6 +71,10 @@ namespace GitHub.Runner.Worker.Handlers
                 compositeGitHubContext[pair.Key] = pair.Value;
             }
 
+            // Download all data
+            var actionManager = HostContext.GetService<IActionManager>();
+            await actionManager.PrepareActionsAsync(ExecutionContext, actionSteps);
+
             foreach (Pipelines.ActionStep actionStep in actionSteps)
             {
                 var actionRunner = HostContext.CreateService<IActionRunner>();
@@ -157,6 +161,7 @@ namespace GitHub.Runner.Worker.Handlers
         private async Task RunStepsAsync(List<IStep> compositeSteps)
         {
             ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
+
 
             // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
             foreach (IStep step in compositeSteps)
