@@ -20,7 +20,7 @@ namespace GitHub.Runner.Worker
             if (_contextData.TryGetValue(scopeName, out _))
             {
                 _contextData[scopeName] = new DictionaryContextData();
-            }
+            } 
         }
 
         public DictionaryContextData GetScope(string scopeName)
