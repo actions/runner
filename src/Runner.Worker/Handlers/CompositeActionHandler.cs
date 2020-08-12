@@ -91,7 +91,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ProcessCompositeActionOutputs();
 
-                ExecutionContext.Global.StepsContext.ClearScope(ExecutionContext.GetFullyQualifiedContextName());
+                ExecutionContext.Global.StepsContext.ClearScope(childScopeName);
             }
             catch (Exception ex)
             {
@@ -137,12 +137,19 @@ namespace GitHub.Runner.Worker.Handlers
                     var outputsName = pair.Key;
                     var outputsAttributes = pair.Value as DictionaryContextData;
                     outputsAttributes.TryGetValue("value", out var val);
-                    var outputsValue = val as StringContextData;
 
-                    // Set output in the whole composite scope. 
-                    if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
+                    if (val != null)
                     {
-                        ExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                        var outputsValue = val as StringContextData;
+                        // Set output in the whole composite scope. 
+                        if (!String.IsNullOrEmpty(outputsValue))
+                        {
+                            ExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                        }
+                        else
+                        {
+                            ExecutionContext.SetOutput(outputsName, "", out _);
+                        }
                     }
                 }
             }
