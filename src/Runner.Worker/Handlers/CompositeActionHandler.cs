@@ -91,7 +91,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ProcessCompositeActionOutputs();
 
-                ExecutionContext.Global.StepsContext.ClearScope(ExecutionContext.GetFullyQualifiedContextName());
+                ExecutionContext.Global.StepsContext.ClearScope(childScopeName);
             }
             catch (Exception ex)
             {
