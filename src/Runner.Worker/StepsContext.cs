@@ -21,7 +21,7 @@ namespace GitHub.Runner.Worker
             {
                 _contextData[scopeName] = new DictionaryContextData();
             }
-        }
+        } 
 
         public DictionaryContextData GetScope(string scopeName)
         {
