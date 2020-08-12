@@ -17,7 +17,7 @@ namespace GitHub.Runner.Worker
 
         public void ClearScope(string scopeName)
         {
-            if (scopeName != null && _contextData.TryGetValue(scopeName, out _))
+            if (_contextData.TryGetValue(scopeName, out _))
             {
                 _contextData[scopeName] = new DictionaryContextData();
             }
