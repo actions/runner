@@ -89,10 +89,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
                 ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(ExecutionContext.GetFullyQualifiedContextName());
 
-                if (ExecutionContext.Result == TaskResult.Succeeded && ExecutionContext.Result == TaskResult.SucceededWithIssues)
-                {
-                    ProcessCompositeActionOutputs();
-                }
+                ProcessCompositeActionOutputs();
 
                 ExecutionContext.Global.StepsContext.ClearScope(ExecutionContext.GetFullyQualifiedContextName());
             }
@@ -137,15 +134,19 @@ namespace GitHub.Runner.Worker.Handlers
                 // }
                 foreach (var pair in actionOutputs)
                 {
+                    Trace.Info($"{StringUtil.ConvertToJson(pair)}");
                     var outputsName = pair.Key;
                     var outputsAttributes = pair.Value as DictionaryContextData;
                     outputsAttributes.TryGetValue("value", out var val);
-                    var outputsValue = val as StringContextData;
 
-                    // Set output in the whole composite scope. 
-                    if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
+                    if (val != null)
                     {
-                        ExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                        var outputsValue = val as StringContextData;
+                        // Set output in the whole composite scope. 
+                        if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
+                        {
+                            ExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                        }
                     }
                 }
             }
