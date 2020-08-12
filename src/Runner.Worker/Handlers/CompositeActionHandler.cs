@@ -89,7 +89,10 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
                 ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(ExecutionContext.GetFullyQualifiedContextName());
 
-                ProcessCompositeActionOutputs();
+                if (ExecutionContext.Result == TaskResult.Succeeded && ExecutionContext.Result == TaskResult.SucceededWithIssues)
+                {
+                    ProcessCompositeActionOutputs();
+                }
 
                 ExecutionContext.Global.StepsContext.ClearScope(ExecutionContext.GetFullyQualifiedContextName());
             }
