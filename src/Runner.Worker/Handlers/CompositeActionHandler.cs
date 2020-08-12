@@ -134,7 +134,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // }
                 foreach (var pair in actionOutputs)
                 {
-                    Trace.Info($"{StringUtil.ConvertToJson(pair)}");
                     var outputsName = pair.Key;
                     var outputsAttributes = pair.Value as DictionaryContextData;
                     outputsAttributes.TryGetValue("value", out var val);
