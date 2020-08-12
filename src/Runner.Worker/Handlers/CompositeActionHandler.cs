@@ -142,9 +142,13 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         var outputsValue = val as StringContextData;
                         // Set output in the whole composite scope. 
-                        if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
+                        if (!String.IsNullOrEmpty(outputsValue))
                         {
                             ExecutionContext.SetOutput(outputsName, outputsValue, out _);
+                        }
+                        else
+                        {
+                            ExecutionContext.SetOutput(outputsName, "", out _);
                         }
                     }
                 }
