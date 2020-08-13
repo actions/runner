@@ -207,7 +207,7 @@ runs:
   using: "composite"
   steps: 
     - id: random-number-generator
-      run: echo "::set-output name=random-number::$(echo $RANDOM)"
+      run: echo "::set-output name=random-id::$(echo $RANDOM)"
       shell: bash
 ```
 
