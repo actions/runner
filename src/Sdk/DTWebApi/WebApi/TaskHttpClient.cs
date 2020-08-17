@@ -50,7 +50,7 @@ namespace GitHub.DistributedTask.WebApi
             : base(baseUrl, pipeline, disposeHandler)
         {
         }
-
+        
         public Task AppendTimelineRecordFeedAsync(
             Guid scopeIdentifier,
             String planType,
@@ -88,6 +88,28 @@ namespace GitHub.DistributedTask.WebApi
                                                  timelineId,
                                                  recordId,
                                                  new TimelineRecordFeedLinesWrapper(stepId, lines),
+                                                 userState,
+                                                 cancellationToken);
+        }
+        
+        public Task AppendTimelineRecordFeedAsync(
+            Guid scopeIdentifier,
+            String planType,
+            Guid planId,
+            Guid timelineId,
+            Guid recordId,
+            Guid stepId,
+            IList<String> lines,
+            long startLine,
+            CancellationToken cancellationToken = default(CancellationToken),
+            Object userState = null)
+        {
+            return AppendTimelineRecordFeedAsync(scopeIdentifier,
+                                                 planType,
+                                                 planId,
+                                                 timelineId,
+                                                 recordId,
+                                                 new TimelineRecordFeedLinesWrapper(stepId, lines, startLine),
                                                  userState,
                                                  cancellationToken);
         }
