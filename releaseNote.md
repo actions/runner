@@ -1,15 +1,13 @@
 ## Features
-  - Composite Actions Support for Multiple Run Steps (#549, #557, #564, #568, #569, #578, #591, #599, #605, #609, #610, #615, #624) 
-  - Prepare to switch GITHUB_ACTION to use ContextName instead of refname (#593)
-  - Fold logs for intermediate docker commands (#608)
-  - Add ability to register a runner to the non-default self-hosted runner group (#613)
-  
+  - Continued improvements to Composite Actions code and documentation (#616, #625, #626, #641, #645, #657, #658)
+
 ## Bugs
-  - Double quotes around variable so CD works if path contains spaces (#602)
-  - Bump lodash in /src/Misc/expressionFunc/hashFiles (#603) 
-  - Fix poor performance of process spawned from svc daemon (#614)
+  - Fix feature flag check; omit context for generated context names (#638)
+  - Fix endgroup maker (#640)
+
 ## Misc
-  - Move shared ExecutionContext properties under .Global (#594)
+  - Adding help text for the new runnergroup feature (#626)
+  - Updating virtual environment terminology in readme.md (#651)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
