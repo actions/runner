@@ -18,7 +18,7 @@ namespace GitHub.Runner.Common
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
-        void QueueWebConsoleLine(Guid stepRecordId, string line, long lineNumber);
+        void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
     }
@@ -155,7 +155,7 @@ namespace GitHub.Runner.Common
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
 
-        public void QueueWebConsoleLine(Guid stepRecordId, string line, long lineNumber)
+        public void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber)
         {
             Trace.Verbose("Enqueue web console line queue: {0}", line);
             _webConsoleLineQueue.Enqueue(new ConsoleLineInfo(stepRecordId, line, lineNumber));
@@ -275,7 +275,6 @@ namespace GitHub.Runner.Common
                         {
                             Trace.Info($"Skip {batchedLines.Count - 2} batches web console lines for last run");
                             batchedLines = batchedLines.TakeLast(2).ToList();
-                            batchedLines[0].Insert(0, new TimelineRecordLogLine("...", 0));
                         }
 
                         int errorCount = 0;
@@ -284,7 +283,15 @@ namespace GitHub.Runner.Common
                             try
                             {
                                 // we will not requeue failed batch, since the web console lines are time sensitive.
-                                await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber, default(CancellationToken));
+                                if (batch[0].LineNumber.HasValue)
+                                {
+                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value, default(CancellationToken));
+                                }
+                                else 
+                                {
+                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), default(CancellationToken));
+                                }
+                                
                                 if (_firstConsoleOutputs)
                                 {
                                     HostContext.WritePerfCounter($"WorkerJobServerQueueAppendFirstConsoleOutput_{_planId.ToString()}");
@@ -653,7 +660,7 @@ namespace GitHub.Runner.Common
 
     internal class ConsoleLineInfo
     {
-        public ConsoleLineInfo(Guid recordId, string line, long lineNumber)
+        public ConsoleLineInfo(Guid recordId, string line, long? lineNumber)
         {
             this.StepRecordId = recordId;
             this.Line = line;
@@ -662,6 +669,6 @@ namespace GitHub.Runner.Common
 
         public Guid StepRecordId { get; set; }
         public string Line { get; set; }
-        public long LineNumber { get; set; }
+        public long? LineNumber { get; set; }
     }
 }
