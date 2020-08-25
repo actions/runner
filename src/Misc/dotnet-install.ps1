@@ -80,27 +80,27 @@
     Determines the SDK version from a user specified global.json file
     Note: global.json must have a value for 'SDK:Version'
 #>
-    [cmdletbinding()]
+[cmdletbinding()]
 param(
-    [string]$Channel="LTS",
-    [string]$Version="Latest",
-    [string]$JSonFile,
-    [string]$InstallDir="<auto>",
-    [string]$Architecture="<auto>",
-    [ValidateSet("dotnet", "aspnetcore", "windowsdesktop", IgnoreCase = $false)]
-    [string]$Runtime,
-    [Obsolete("This parameter may be removed in a future version of this script. The recommended alternative is '-Runtime dotnet'.")]
-    [switch]$SharedRuntime,
-    [switch]$DryRun,
-    [switch]$NoPath,
-    [string]$AzureFeed="https://dotnetcli.azureedge.net/dotnet",
-    [string]$UncachedFeed="https://dotnetcli.blob.core.windows.net/dotnet",
-    [string]$FeedCredential,
-    [string]$ProxyAddress,
-    [switch]$ProxyUseDefaultCredentials,
-    [string[]]$ProxyBypassList=@(),
-    [switch]$SkipNonVersionedFiles,
-    [switch]$NoCdn
+   [string]$Channel="LTS",
+   [string]$Version="Latest",
+   [string]$JSonFile,
+   [string]$InstallDir="<auto>",
+   [string]$Architecture="<auto>",
+   [ValidateSet("dotnet", "aspnetcore", "windowsdesktop", IgnoreCase = $false)]
+   [string]$Runtime,
+   [Obsolete("This parameter may be removed in a future version of this script. The recommended alternative is '-Runtime dotnet'.")]
+   [switch]$SharedRuntime,
+   [switch]$DryRun,
+   [switch]$NoPath,
+   [string]$AzureFeed="https://dotnetcli.azureedge.net/dotnet",
+   [string]$UncachedFeed="https://dotnetcli.blob.core.windows.net/dotnet",
+   [string]$FeedCredential,
+   [string]$ProxyAddress,
+   [switch]$ProxyUseDefaultCredentials,
+   [string[]]$ProxyBypassList=@(),
+   [switch]$SkipNonVersionedFiles,
+   [switch]$NoCdn
 )
 
 Set-StrictMode -Version Latest
@@ -179,7 +179,7 @@ function Get-Machine-Architecture() {
     # Possible values: amd64, x64, x86, arm64, arm
 
     if( $ENV:PROCESSOR_ARCHITEW6432 -ne $null )
-    {
+    {    
         return $ENV:PROCESSOR_ARCHITEW6432
     }
 
@@ -272,7 +272,7 @@ function GetHTTPResponse([Uri] $Uri)
             $HttpClient.Timeout = New-TimeSpan -Minutes 20
             $Response = $HttpClient.GetAsync("${Uri}${FeedCredential}").Result
             if (($Response -eq $null) -or (-not ($Response.IsSuccessStatusCode))) {
-                # The feed credential is potentially sensitive info. Do not log FeedCredential to console output.
+                 # The feed credential is potentially sensitive info. Do not log FeedCredential to console output.
                 $ErrorMsg = "Failed to download $Uri."
                 if ($Response -ne $null) {
                     $ErrorMsg += "  $Response"
@@ -281,10 +281,10 @@ function GetHTTPResponse([Uri] $Uri)
                 throw $ErrorMsg
             }
 
-            return $Response
+             return $Response
         }
         finally {
-            if ($HttpClient -ne $null) {
+             if ($HttpClient -ne $null) {
                 $HttpClient.Dispose()
             }
         }
@@ -604,10 +604,10 @@ if ($DryRun) {
     }
     $RepeatableCommand = ".\$ScriptName -Version `"$SpecificVersion`" -InstallDir `"$InstallRoot`" -Architecture `"$CLIArchitecture`""
     if ($Runtime -eq "dotnet") {
-        $RepeatableCommand+=" -Runtime `"dotnet`""
+       $RepeatableCommand+=" -Runtime `"dotnet`""
     }
     elseif ($Runtime -eq "aspnetcore") {
-        $RepeatableCommand+=" -Runtime `"aspnetcore`""
+       $RepeatableCommand+=" -Runtime `"aspnetcore`""
     }
     foreach ($key in $MyInvocation.BoundParameters.Keys) {
         if (-not (@("Architecture","Channel","DryRun","InstallDir","Runtime","SharedRuntime","Version") -contains $key)) {
