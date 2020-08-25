@@ -717,7 +717,8 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            _jobServerQueue.QueueWebConsoleLine(_record.Id, msg);
+            _jobServerQueue.QueueWebConsoleLine(_record.Id, msg, totalLines);
+            
             return totalLines;
         }
 
