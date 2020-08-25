@@ -717,14 +717,8 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            if (this.Global.Variables.GetBoolean("DistributedTask.SendLogLineNumber") ?? false)
-            {
-                _jobServerQueue.QueueWebConsoleLine(_record.Id, msg, totalLines);
-            }
-            else
-            {
-                _jobServerQueue.QueueWebConsoleLine(_record.Id, msg);
-            }
+            _jobServerQueue.QueueWebConsoleLine(_record.Id, msg, totalLines);
+            
             return totalLines;
         }
 
