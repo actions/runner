@@ -19,7 +19,7 @@ namespace GitHub.Runner.Worker
 
     public sealed class FileCommandManager : RunnerService, IFileCommandManager
     {
-        private const string _folderName = "runner_file_commands";
+        private const string _folderName = "_runner_file_commands";
         private List<IFileCommandExtension> _commandExtensions;
         private string _fileSuffix = String.Empty;
         private string _fileCommandDirectory;

@@ -147,7 +147,9 @@ namespace GitHub.Runner.Worker
 
             // Setup File Command Manager
             var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
-            fileCommandManager.InitializeFiles(ExecutionContext, ExecutionContext.Global.Container);
+            // Container Action Handler will handle the conversion for Container Actions
+            var container = handlerData.ExecutionType == ActionExecutionType.Container ? null : ExecutionContext.Global.Container;
+            fileCommandManager.InitializeFiles(ExecutionContext, container);
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
