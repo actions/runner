@@ -145,6 +145,12 @@ namespace GitHub.Runner.Worker
                 stepHost = containerStepHost;
             }
 
+            // Setup File Command Manager
+            var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
+            // Container Action Handler will handle the conversion for Container Actions
+            var container = handlerData.ExecutionType == ActionExecutionType.Container ? null : ExecutionContext.Global.Container;
+            fileCommandManager.InitializeFiles(ExecutionContext, container);
+
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
@@ -239,6 +245,8 @@ namespace GitHub.Runner.Worker
 
             // Run the task.
             await handler.RunAsync(Stage);
+            fileCommandManager.TryProcessFiles(ExecutionContext, ExecutionContext.Global.Container);
+
         }
 
         public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)
