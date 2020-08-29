@@ -177,6 +177,11 @@ namespace GitHub.Runner.Listener
                 validator: Validators.NonEmptyValidator);
         }
 
+        public string GetGitHubPersonalAccessToken()
+        {
+            return GetArg(name: Constants.Runner.CommandLine.Args.PAT);
+        }
+
         public string GetRunnerRegisterToken()
         {
             return GetArgOrPrompt(
