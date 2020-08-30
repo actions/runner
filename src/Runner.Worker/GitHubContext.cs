@@ -41,5 +41,17 @@ namespace GitHub.Runner.Worker
                 }
             }
         }
+
+        public GitHubContext ShallowCopy()
+        {
+            var copy = new GitHubContext();
+
+            foreach (var pair in this)
+            {
+                copy[pair.Key] = pair.Value;
+            }
+
+            return copy;
+        }
     }
 }
