@@ -38,7 +38,6 @@ namespace GitHub.Runner.Worker
 
             var extensionManager = hostContext.GetService<IExtensionManager>();
             _commandExtensions = extensionManager.GetExtensions<IFileCommandExtension>() ?? new List<IFileCommandExtension>();
-            
         }
 
         public void InitializeFiles(IExecutionContext context, ContainerInfo container)
@@ -131,10 +130,128 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            if (File.Exists(filePath))
+            try
             {
-                // TODO Process this file
+                var text = File.ReadAllText(filePath) ?? string.Empty;
+                var index = 0;
+                var line = ReadLine(text, ref index);
+                while (line != null)
+                {
+                    if (!string.IsNullOrEmpty(line))
+                    {
+                        var equalsIndex = line.IndexOf("=", StringComparison.Ordinal);
+                        var heredocIndex = line.IndexOf("<<", StringComparison.Ordinal);
+
+                        // Normal style NAME=VALUE
+                        if (equalsIndex >= 0 && (heredocIndex < 0 || equalsIndex < heredocIndex))
+                        {
+                            var split = line.Split(new[] { '=' }, 2, StringSplitOptions.None);
+                            if (string.IsNullOrEmpty(line))
+                            {
+                                throw new Exception($"Invalid environment variable format '{line}'. Environment variable name must not be empty");
+                            }
+                            SetEnvironmentVariable(context, split[0], split[1]);
+                        }
+                        // Heredoc style NAME<<EOF
+                        else if (heredocIndex >= 0 && (equalsIndex < 0 || heredocIndex < equalsIndex))
+                        {
+                            var split = line.Split(new[] { "<<" }, 2, StringSplitOptions.None);
+                            if (string.IsNullOrEmpty(split[0]) || string.IsNullOrEmpty(split[1]))
+                            {
+                                throw new Exception($"Invalid environment variable format '{line}'. Environment variable name must not be empty and delimiter must not be empty");
+                            }
+                            var name = split[0];
+                            var delimiter = split[1];
+                            var startIndex = index; // Start index of the value (inclusive)
+                            var endIndex = index;   // End index of the value (exclusive)
+                            var tempLine = ReadLine(text, ref index, out var newline);
+                            while (!string.Equals(tempLine, delimiter, StringComparison.Ordinal))
+                            {
+                                if (tempLine == null)
+                                {
+                                    throw new Exception($"Invalid environment variable value. Matching delimiter not found '{delimiter}'");
+                                }
+                                endIndex = index - newline.Length;
+                                tempLine = ReadLine(text, ref index, out newline);
+                            }
+
+                            var value = endIndex > startIndex ? text.Substring(startIndex, endIndex - startIndex) : string.Empty;
+                            SetEnvironmentVariable(context, name, value);
+                        }
+                        else
+                        {
+                            throw new Exception($"Invalid environment variable format '{line}'");
+                        }
+                    }
+
+                    line = ReadLine(text, ref index);
+                }
             }
+            catch (DirectoryNotFoundException)
+            {
+                context.Debug($"Environment variables file does not exist '{filePath}'");
+            }
+            catch (FileNotFoundException)
+            {
+                context.Debug($"Environment variables file does not exist '{filePath}'");
+            }
+            catch (Exception ex)
+            {
+                context.Error($"Failed to read environment variables file '{filePath}'");
+                context.Error(ex);
+            }
+        }
+
+        private static void SetEnvironmentVariable(
+            IExecutionContext context,
+            string name,
+            string value)
+        {
+            context.Global.EnvironmentVariables[name] = value;
+            context.SetEnvContext(name, value);
+            context.Debug($"{name}='{value}'");
+        }
+
+        private static string ReadLine(
+            string text,
+            ref int index)
+        {
+            return ReadLine(text, ref index, out _);
+        }
+
+        private static string ReadLine(
+            string text,
+            ref int index,
+            out string newline)
+        {
+            if (index >= text.Length)
+            {
+                newline = null;
+                return null;
+            }
+
+            var originalIndex = index;
+            var lfIndex = text.IndexOf("\n", index, StringComparison.Ordinal);
+            if (lfIndex < 0)
+            {
+                index = text.Length;
+                newline = null;
+                return text.Substring(originalIndex);
+            }
+
+#if OS_WINDOWS
+            var crLFIndex = text.IndexOf("\r\n", index, StringComparison.Ordinal);
+            if (crLFIndex >= 0 && crLFIndex < lfIndex)
+            {
+                index = crLFIndex + 2; // Skip over CRLF
+                newline = "\r\n";
+                return text.Substring(originalIndex, crLFIndex - originalIndex);
+            }
+#endif
+
+            index = lfIndex + 1; // Skip over LF
+            newline = "\n";
+            return text.Substring(originalIndex, lfIndex - originalIndex);
         }
     }
 }
