@@ -38,7 +38,6 @@ namespace GitHub.Runner.Worker
 
             var extensionManager = hostContext.GetService<IExtensionManager>();
             _commandExtensions = extensionManager.GetExtensions<IFileCommandExtension>() ?? new List<IFileCommandExtension>();
-            
         }
 
         public void InitializeFiles(IExecutionContext context, ContainerInfo container)
@@ -133,7 +132,7 @@ namespace GitHub.Runner.Worker
         {
             try
             {
-                var text = File.ReadAllText(filePath);
+                var text = File.ReadAllText(filePath) ?? string.Empty;
                 var index = 0;
                 var line = ReadLine(text, ref index);
                 while (line != null)
