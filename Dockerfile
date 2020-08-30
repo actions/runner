@@ -1,10 +1,14 @@
 FROM mcr.microsoft.com/dotnet/core/runtime-deps:3.1-buster-slim
 
+ENV RUNNER_CONFIG_URL=""
 ENV GITHUB_PAT=""
-ENV GITHUB_RUNNER_SCOPE=""
-ENV GITHUB_SERVER_URL=""
-ENV GITHUB_API_URL=""
-ENV K8S_HOST_IP=""
+ENV RUNNER_NAME=""
+ENV RUNNER_GROUP=""
+ENV RUNNER_LABELS=""
+# ENV GITHUB_RUNNER_SCOPE=""
+# ENV GITHUB_SERVER_URL=""
+# ENV GITHUB_API_URL=""
+# ENV K8S_HOST_IP=""
 
 RUN apt-get update --fix-missing \
     && apt-get install -y --no-install-recommends \
@@ -27,8 +31,6 @@ RUN curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add 
 RUN curl -fsSL https://get.docker.com -o get-docker.sh
 RUN sh get-docker.sh
 
-# Allow runner to run as root
-ENV RUNNER_ALLOW_RUNASROOT=1
 # Directory for runner to operate in
 RUN mkdir /actions-runner
 WORKDIR /actions-runner
@@ -44,5 +46,8 @@ RUN rm -f /actions-runner/download-runner.sh
 ENV _INTERNAL_JOBSTART_NOTIFICATION=/actions-runner/jobstart.sh
 ENV _INTERNAL_JOBRUNNING_NOTIFICATION=/actions-runner/jobrunning.sh
 ENV _INTERNAL_JOBCOMPLETE_NOTIFICATION=/actions-runner/jobcomplete.sh
+
+# Allow runner to run as root
+ENV RUNNER_ALLOW_RUNASROOT=1
 
 ENTRYPOINT ["./entrypoint.sh"] 
