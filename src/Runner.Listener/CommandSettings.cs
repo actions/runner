@@ -42,6 +42,7 @@ namespace GitHub.Runner.Listener
             Constants.Runner.CommandLine.Args.Labels,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
             Constants.Runner.CommandLine.Args.Name,
+            Constants.Runner.CommandLine.Args.PAT,
             Constants.Runner.CommandLine.Args.Pool,
             Constants.Runner.CommandLine.Args.StartupType,
             Constants.Runner.CommandLine.Args.Token,

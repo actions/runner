@@ -114,7 +114,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (!string.IsNullOrEmpty(githubPAT))
                     {
                         Trace.Info("Retriving runner register token using GitHub PAT.");
-                        var jitToken = await GetJITRunnerRegisterTokenAsync(inputUrl, githubPAT);
+                        var jitToken = await GetJITRunnerTokenAsync(inputUrl, githubPAT, "registration");
                         Trace.Info($"Retrived runner register token is good to {jitToken.ExpiresAt}.");
                         HostContext.SecretMasker.AddValue(jitToken.Token);
                         registerToken = jitToken.Token;
@@ -372,8 +372,22 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                     else
                     {
-                        var githubToken = command.GetRunnerDeletionToken();
-                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken, Constants.RunnerEvent.Remove);
+                        var githubPAT = command.GetGitHubPersonalAccessToken();
+                        var deletionToken = string.Empty;
+                        if (!string.IsNullOrEmpty(githubPAT))
+                        {
+                            Trace.Info("Retriving runner deletion token using GitHub PAT.");
+                            var jitToken = await GetJITRunnerTokenAsync(settings.GitHubUrl, githubPAT, "remove");
+                            Trace.Info($"Retrived runner deletion token is good to {jitToken.ExpiresAt}.");
+                            HostContext.SecretMasker.AddValue(jitToken.Token);
+                            deletionToken = jitToken.Token;
+                        }
+                        if (string.IsNullOrEmpty(deletionToken))
+                        {
+                            deletionToken = command.GetRunnerDeletionToken();
+                        }
+
+                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
                         creds = authResult.ToVssCredentials();
                         Trace.Info("cred retrieved via GitHub auth");
                     }
@@ -517,7 +531,7 @@ namespace GitHub.Runner.Listener.Configuration
                 string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase);
         }
 
-        private async Task<GitHubRunnerRegisterToken> GetJITRunnerRegisterTokenAsync(string githubUrl, string githubToken)
+        private async Task<GitHubRunnerRegisterToken> GetJITRunnerTokenAsync(string githubUrl, string githubToken, string tokenType)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
@@ -526,22 +540,28 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 if (IsHostedServer(gitHubUrlBuilder))
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runners/registration-token";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runners/{tokenType}-token";
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runners/registration-token";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runners/{tokenType}-token";
                 }
             }
             if (path.Length == 2)
             {
+                var repoScope = "repos/";
+                if (string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase))
+                {
+                    repoScope = "";
+                }
+
                 if (IsHostedServer(gitHubUrlBuilder))
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/repos/{path[0]}/{path[1]}/actions/runners/registration-token";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{repoScope}{path[0]}/{path[1]}/actions/runners/{tokenType}-token";
                 }
                 else
                 {
-                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/repos/{path[0]}/{path[1]}/actions/runners/registration-token";
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{repoScope}{path[0]}/{path[1]}/actions/runners/{tokenType}-token";
                 }
             }
             else
