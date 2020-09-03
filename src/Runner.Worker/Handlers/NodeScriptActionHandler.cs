@@ -82,6 +82,10 @@ namespace GitHub.Runner.Worker.Handlers
 
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
+            if (System.Environment.GetEnvironmentVariable("K8S_POD_NAME") != null)
+            {
+                file = Path.Combine(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "__externals_copy"), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
+            }
 
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.

@@ -12,3 +12,4 @@ spec:
   template:
     spec:
       setupDockerInDocker: true
+      imagePullPolicy: Always
