@@ -1,11 +1,12 @@
-﻿using GitHub.Runner.Worker.Container;
-using System;
-using System.Text;
-using System.IO;
+﻿using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Worker.Container;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 
 namespace GitHub.Runner.Worker
 {
@@ -13,7 +14,7 @@ namespace GitHub.Runner.Worker
     public interface IFileCommandManager : IRunnerService
     {
         void InitializeFiles(IExecutionContext context, ContainerInfo container);
-        void TryProcessFiles(IExecutionContext context, ContainerInfo container);
+        void ProcessFiles(IExecutionContext context, ContainerInfo container);
     
     }
 
@@ -46,13 +47,13 @@ namespace GitHub.Runner.Worker
             _fileSuffix = Guid.NewGuid().ToString();
             foreach (var fileCommand in _commandExtensions)
             {
-                var oldPath = Path.Combine(_fileCommandDirectory, fileCommand.FileName + oldSuffix);
+                var oldPath = Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + oldSuffix);
                 if (oldSuffix != String.Empty && File.Exists(oldPath))
                 {
                     TryDeleteFile(oldPath);
                 }
 
-                var newPath = Path.Combine(_fileCommandDirectory, fileCommand.FileName + _fileSuffix);
+                var newPath = Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix);
                 TryDeleteFile(newPath);
                 File.Create(newPath).Dispose();
 
@@ -61,11 +62,20 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public void TryProcessFiles(IExecutionContext context, ContainerInfo container)
+        public void ProcessFiles(IExecutionContext context, ContainerInfo container)
         {
             foreach (var fileCommand in _commandExtensions)
             {
-                fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FileName + _fileSuffix),container);
+                try 
+                {
+                    fileCommand.ProcessCommand(context, Path.Combine(_fileCommandDirectory, fileCommand.FilePrefix + _fileSuffix),container);
+                }
+                catch (Exception ex)
+                {
+                    context.Error($"Unable to process file command '{fileCommand.ContextName}' successfully.");
+                    context.Error(ex);
+                    context.CommandResult = TaskResult.Failed;
+                }
             }
         }
 
@@ -91,7 +101,7 @@ namespace GitHub.Runner.Worker
     public interface IFileCommandExtension : IExtension
     {
         string ContextName { get; }
-        string FileName { get; }
+        string FilePrefix { get; }
 
         void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container);
     }
@@ -99,7 +109,7 @@ namespace GitHub.Runner.Worker
     public sealed class AddPathFileCommand : RunnerService, IFileCommandExtension
     {
         public string ContextName => "path";
-        public string FileName => "add_path_";
+        public string FilePrefix => "add_path_";
 
         public Type ExtensionType => typeof(IFileCommandExtension);
 
@@ -124,7 +134,7 @@ namespace GitHub.Runner.Worker
     public sealed class SetEnvFileCommand : RunnerService, IFileCommandExtension
     {
         public string ContextName => "env";
-        public string FileName => "set_env_";
+        public string FilePrefix => "set_env_";
 
         public Type ExtensionType => typeof(IFileCommandExtension);
 
@@ -194,11 +204,6 @@ namespace GitHub.Runner.Worker
             catch (FileNotFoundException)
             {
                 context.Debug($"Environment variables file does not exist '{filePath}'");
-            }
-            catch (Exception ex)
-            {
-                context.Error($"Failed to read environment variables file '{filePath}'");
-                context.Error(ex);
             }
         }
 
