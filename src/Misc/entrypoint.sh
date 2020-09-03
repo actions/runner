@@ -9,12 +9,13 @@ function fatal() {
 
 [ -n "${GITHUB_PAT:-""}" ] || fatal "GITHUB_PAT variable must be set"
 [ -n "${RUNNER_CONFIG_URL:-""}" ] || fatal "RUNNER_CONFIG_URL variable must be set"
+[ -n "${RUNNER_NAME:-""}" ] || fatal "RUNNER_NAME variable must be set"
 
-if [ -n "${RUNNER_NAME}" ]; then
-    # Use container id to gen unique runner name if name not provide
-    CONTAINER_ID=$(cat /proc/self/cgroup | head -n 1 | tr '/' '\n' | tail -1 | cut -c1-12)
-    RUNNER_NAME="actions-runner-${CONTAINER_ID}"
-fi
+# if [ -n "${RUNNER_NAME}" ]; then
+#     # Use container id to gen unique runner name if name not provide
+#     CONTAINER_ID=$(cat /proc/self/cgroup | head -n 1 | tr '/' '\n' | tail -1 | cut -c1-12)
+#     RUNNER_NAME="actions-runner-${CONTAINER_ID}"
+# fi
 
 # if the scope has a slash, it's a repo runner
 # orgs_or_repos="orgs"

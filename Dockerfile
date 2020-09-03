@@ -40,6 +40,10 @@ COPY ./src/Misc/jobstart.sh /actions-runner/jobstart.sh
 COPY ./src/Misc/jobrunning.sh /actions-runner/jobrunning.sh
 COPY ./src/Misc/jobcomplete.sh /actions-runner/jobcomplete.sh
 
+
+# Allow runner to run as root
+ENV RUNNER_ALLOW_RUNASROOT=1
+
 RUN /actions-runner/download-runner.sh
 RUN rm -f /actions-runner/download-runner.sh
 

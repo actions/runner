@@ -4,7 +4,11 @@ metadata:
   name: auto-scale-runners
 spec:
   replicas: 1
-  maxRunnerLimit: 15
+  maxRunnerLimit: 5
   template:
     spec:
-      repository: monalisa/main123
+      configURL: https://github.com/bbq-beets/ting-test
+      githubTokenSecretKeyRef:
+        name: githubtoken
+        key: GITHUB_PAT
+

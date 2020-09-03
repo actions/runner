@@ -140,6 +140,11 @@ namespace GitHub.Runner.Worker
             executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
             executionContext.Output("##[endgroup]");
 
+            if (Environment.GetEnvironmentVariable("K8S_POD_NAME") != null)
+            {
+                IOUtil.CopyDirectory(HostContext.GetDirectory(WellKnownDirectory.Externals), Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "__externals_copy"), CancellationToken.None);
+            }
+
             foreach (var container in containers)
             {
                 container.ContainerNetwork = containerNetwork;
@@ -236,7 +241,14 @@ namespace GitHub.Runner.Worker
 #if OS_WINDOWS
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
 #else
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+                if (Environment.GetEnvironmentVariable("K8S_POD_NAME") != null)
+                {
+                    container.MountVolumes.Add(new MountVolume(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "__externals_copy"), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+                }
+                else
+                {
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+                }
 #endif
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
