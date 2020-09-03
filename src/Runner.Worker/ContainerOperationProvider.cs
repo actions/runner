@@ -198,12 +198,15 @@ namespace GitHub.Runner.Worker
                 }
             }
 
+            // Before pulling, generate client authentication if required
+            var configLocation = await ContainerRegistryLogin(executionContext, container);
+
             // Pull down docker image with retry up to 3 times
             int retryCount = 0;
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage);
+                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage, configLocation);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -219,6 +222,9 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
+
+            // Remove credentials after pulling
+            ContainerRegistryLogout(configLocation);
 
             if (retryCount == 3 && pullExitCode != 0)
             {
@@ -435,6 +441,51 @@ namespace GitHub.Runner.Worker
             else
             {
                 throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
+            }
+        }
+
+        private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
+        {
+            if (string.IsNullOrEmpty(container.RegistryAuthUsername) || string.IsNullOrEmpty(container.RegistryAuthUsername))
+            {
+                // No client config required
+                return "";
+            }
+            var configLocation = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), $".docker_{Guid.NewGuid()}");
+            try
+            {
+                var dirInfo = Directory.CreateDirectory(configLocation);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
+            }
+            var loginExitCode = await _dockerManger.DockerLogin(
+                executionContext,
+                configLocation,
+                container.RegistryServer,
+                container.RegistryAuthUsername,
+                container.RegistryAuthPassword);
+
+            if (loginExitCode != 0)
+            {
+                throw new InvalidOperationException($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
+            }
+            return configLocation;
+        }
+
+        private void ContainerRegistryLogout(string configLocation)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(configLocation) && Directory.Exists(configLocation))
+                {
+                    Directory.Delete(configLocation, recursive: true);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to remove directory containing Docker client credentials: {e.Message}");
             }
         }
     }

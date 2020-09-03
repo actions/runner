@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -16,7 +17,7 @@ namespace GitHub.Runner.Worker.Container
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
-        Task<int> DockerPull(IExecutionContext context, string image);
+        Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory = null);
         Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
         Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
@@ -31,6 +32,7 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs);
         Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options);
         Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId);
+        Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password);
     }
 
     public class DockerCommandManager : RunnerService, IDockerCommandManager
@@ -82,9 +84,13 @@ namespace GitHub.Runner.Worker.Container
             return new DockerVersion(serverVersion, clientVersion);
         }
 
-        public async Task<int> DockerPull(IExecutionContext context, string image)
+        public async Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
         {
-            return await ExecuteDockerCommandAsync(context, "pull", image, context.CancellationToken);
+            if (string.IsNullOrEmpty(configFileDirectory))
+            {
+                return await ExecuteDockerCommandAsync(context, $"pull", image, context.CancellationToken);
+            }
+            return await ExecuteDockerCommandAsync(context, $"--config {configFileDirectory} pull", image, context.CancellationToken);
         }
 
         public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
@@ -345,6 +351,31 @@ namespace GitHub.Runner.Worker.Container
             List<string> portMappingLines = await ExecuteDockerCommandAsync(context, "port", containerId);
             return DockerUtil.ParseDockerPort(portMappingLines);
         }
+
+        public async Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
+        {
+            string args = $"--config {configFileDirectory} login {registry} -u {username} --password-stdin";
+            context.Command($"{DockerPath} {args}");
+
+            var input = Channel.CreateBounded<string>(new BoundedChannelOptions(1) { SingleReader = true, SingleWriter = true });
+            input.Writer.TryWrite(password);
+
+            var processInvoker = HostContext.CreateService<IProcessInvoker>();
+
+            var task = processInvoker.ExecuteAsync(
+                workingDirectory: context.GetGitHubContext("workspace"),
+                fileName: DockerPath,
+                arguments: args,
+                environment: null,
+                requireExitCodeZero: false,
+                outputEncoding: null,
+                killProcessOnCancel: false,
+                redirectStandardIn: input,
+                cancellationToken: context.CancellationToken);
+
+            return await task;
+        }
+
 
         private Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
         {

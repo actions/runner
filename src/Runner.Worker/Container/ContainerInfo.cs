@@ -34,6 +34,9 @@ namespace GitHub.Runner.Worker.Container
             _environmentVariables = container.Environment;
             this.IsJobContainer = isJobContainer;
             this.ContainerNetworkAlias = networkAlias;
+            this.RegistryAuthUsername = container.Credentials?.Username;
+            this.RegistryAuthPassword = container.Credentials?.Password;
+            this.RegistryServer = ParseRegistryServer(this.ContainerImage);
 
 #if OS_WINDOWS
             _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
@@ -79,6 +82,9 @@ namespace GitHub.Runner.Worker.Container
         public string ContainerWorkDirectory { get; set; }
         public string ContainerCreateOptions { get; private set; }
         public string ContainerRuntimePath { get; set; }
+        public string RegistryServer { get; set; }
+        public string RegistryAuthUsername { get; set; }
+        public string RegistryAuthPassword { get; set; }
         public bool IsJobContainer { get; set; }
 
         public IDictionary<string, string> ContainerEnvironmentVariables
@@ -224,6 +230,16 @@ namespace GitHub.Runner.Worker.Container
         public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
         {
             _pathMappings.Insert(0, new PathMapping(hostCommonPath, containerCommonPath));
+        }
+
+        private string ParseRegistryServer(string image)
+        {
+            var imageSplit = image.Split('/');
+            if (imageSplit.Length > 0 && !string.IsNullOrEmpty(imageSplit[0]))
+            {
+                return imageSplit[0];
+            }
+            return "";
         }
 
         private void UpdateWebProxyEnv(RunnerWebProxy webProxy)
