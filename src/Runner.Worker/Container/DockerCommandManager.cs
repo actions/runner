@@ -17,7 +17,8 @@ namespace GitHub.Runner.Worker.Container
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
-        Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory = null);
+        Task<int> DockerPull(IExecutionContext context, string image);
+        Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory);
         Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
         Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
@@ -82,6 +83,11 @@ namespace GitHub.Runner.Worker.Container
             }
 
             return new DockerVersion(serverVersion, clientVersion);
+        }
+
+        public Task<int> DockerPull(IExecutionContext context, string image)
+        {
+            return DockerPull(context, image, null);
         }
 
         public async Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
