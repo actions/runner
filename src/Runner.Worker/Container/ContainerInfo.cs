@@ -36,7 +36,7 @@ namespace GitHub.Runner.Worker.Container
             this.ContainerNetworkAlias = networkAlias;
             this.RegistryAuthUsername = container.Credentials?.Username;
             this.RegistryAuthPassword = container.Credentials?.Password;
-            this.RegistryServer = ParseRegistryServer(this.ContainerImage);
+            this.RegistryServer = DockerUtil.ParseRegistryHostnameFromImageName(this.ContainerImage);
 
 #if OS_WINDOWS
             _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
@@ -230,16 +230,6 @@ namespace GitHub.Runner.Worker.Container
         public void AddPathTranslateMapping(string hostCommonPath, string containerCommonPath)
         {
             _pathMappings.Insert(0, new PathMapping(hostCommonPath, containerCommonPath));
-        }
-
-        private string ParseRegistryServer(string image)
-        {
-            var imageSplit = image.Split('/');
-            if (imageSplit.Length > 0 && !string.IsNullOrEmpty(imageSplit[0]))
-            {
-                return imageSplit[0];
-            }
-            return "";
         }
 
         private void UpdateWebProxyEnv(RunnerWebProxy webProxy)

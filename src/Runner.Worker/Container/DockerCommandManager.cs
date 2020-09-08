@@ -358,7 +358,7 @@ namespace GitHub.Runner.Worker.Container
             return DockerUtil.ParseDockerPort(portMappingLines);
         }
 
-        public async Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
+        public Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
         {
             string args = $"--config {configFileDirectory} login {registry} -u {username} --password-stdin";
             context.Command($"{DockerPath} {args}");
@@ -368,7 +368,7 @@ namespace GitHub.Runner.Worker.Container
 
             var processInvoker = HostContext.CreateService<IProcessInvoker>();
 
-            var task = processInvoker.ExecuteAsync(
+            return processInvoker.ExecuteAsync(
                 workingDirectory: context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
                 arguments: args,
@@ -378,10 +378,7 @@ namespace GitHub.Runner.Worker.Container
                 killProcessOnCancel: false,
                 redirectStandardIn: input,
                 cancellationToken: context.CancellationToken);
-
-            return await task;
         }
-
 
         private Task<int> ExecuteDockerCommandAsync(IExecutionContext context, string command, string options, CancellationToken cancellationToken = default(CancellationToken))
         {
