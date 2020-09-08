@@ -1,13 +1,13 @@
 ## Features
-  - Continued improvements to Composite Actions code and documentation (#616, #625, #626, #641, #645, #657, #658)
+  - Add in Log line numbers for streaming logs (#663)
+  - Read env file (#683)
+  - Add Runner File Commands (#684, #693)
 
 ## Bugs
-  - Fix feature flag check; omit context for generated context names (#638)
-  - Fix endgroup maker (#640)
+  - N/A
 
 ## Misc
-  - Adding help text for the new runnergroup feature (#626)
-  - Updating virtual environment terminology in readme.md (#651)
+  - N/A
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
