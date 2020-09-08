@@ -32,6 +32,8 @@ namespace GitHub.Runner.Common.Tests.Worker
         private TestHostContext _hc;
         private ActionRunner _actionRunner;
         private IActionManifestManager _actionManifestManager;
+        private Mock<IFileCommandManager> _fileCommandManager;
+
         private DictionaryContextData _context = new DictionaryContextData();
 
         [Fact]
@@ -362,6 +364,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _handlerFactory = new Mock<IHandlerFactory>();
             _defaultStepHost = new Mock<IDefaultStepHost>();
             _actionManifestManager = new ActionManifestManager();
+            _fileCommandManager = new Mock<IFileCommandManager>();
             _actionManifestManager.Initialize(_hc);
 
             var githubContext = new GitHubContext();
@@ -393,6 +396,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             _hc.SetSingleton<IActionManifestManager>(_actionManifestManager);
 
             _hc.EnqueueInstance<IDefaultStepHost>(_defaultStepHost.Object);
+
+            _hc.EnqueueInstance(_fileCommandManager.Object);
 
             // Instance to test.
             _actionRunner = new ActionRunner();

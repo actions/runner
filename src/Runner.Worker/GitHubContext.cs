@@ -6,18 +6,20 @@ namespace GitHub.Runner.Worker
 {
     public sealed class GitHubContext : DictionaryContextData, IEnvironmentContextData
     {
-        private readonly HashSet<string> _contextEnvWhitelist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        private readonly HashSet<string> _contextEnvAllowlist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "action",
             "action_path",
             "actor",
             "api_url",
             "base_ref",
+            "env",
             "event_name",
             "event_path",
             "graphql_url",
             "head_ref",
             "job",
+            "path",
             "ref",
             "repository",
             "repository_owner",
@@ -33,11 +35,23 @@ namespace GitHub.Runner.Worker
         {
             foreach (var data in this)
             {
-                if (_contextEnvWhitelist.Contains(data.Key) && data.Value is StringContextData value)
+                if (_contextEnvAllowlist.Contains(data.Key) && data.Value is StringContextData value)
                 {
                     yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", value);
                 }
             }
+        }
+
+        public GitHubContext ShallowCopy()
+        {
+            var copy = new GitHubContext();
+
+            foreach (var pair in this)
+            {
+                copy[pair.Key] = pair.Value;
+            }
+
+            return copy;
         }
     }
 }
