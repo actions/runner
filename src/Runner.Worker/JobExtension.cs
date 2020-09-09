@@ -76,7 +76,7 @@ namespace GitHub.Runner.Worker
                             context.Output($"Runner name: '{setting.AgentName}'");
                             if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
                             {
-                              context.Output($"Runner group name: '{runnerGroupName}'");
+                                context.Output($"Runner group name: '{runnerGroupName.Value}'");
                             }
                             context.Output($"Machine name: '{Environment.MachineName}'");
                         }
