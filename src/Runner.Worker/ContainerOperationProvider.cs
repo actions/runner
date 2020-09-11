@@ -198,12 +198,18 @@ namespace GitHub.Runner.Worker
                 }
             }
 
+            // TODO: Add at a later date. This currently no local package registry to test with
+            // UpdateRegistryAuthForGitHubToken(executionContext, container);
+
+            // Before pulling, generate client authentication if required
+            var configLocation = await ContainerRegistryLogin(executionContext, container);
+
             // Pull down docker image with retry up to 3 times
             int retryCount = 0;
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage);
+                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage, configLocation);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -219,6 +225,9 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
+
+            // Remove credentials after pulling
+            ContainerRegistryLogout(configLocation);
 
             if (retryCount == 3 && pullExitCode != 0)
             {
@@ -435,6 +444,84 @@ namespace GitHub.Runner.Worker
             else
             {
                 throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
+            }
+        }
+
+        private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
+        {
+            if (string.IsNullOrEmpty(container.RegistryAuthUsername) || string.IsNullOrEmpty(container.RegistryAuthPassword))
+            {
+                // No valid client config can be generated
+                return "";
+            }
+            var configLocation = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), $".docker_{Guid.NewGuid()}");
+            try
+            {
+                var dirInfo = Directory.CreateDirectory(configLocation);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
+            }
+            var loginExitCode = await _dockerManger.DockerLogin(
+                executionContext,
+                configLocation,
+                container.RegistryServer,
+                container.RegistryAuthUsername,
+                container.RegistryAuthPassword);
+
+            if (loginExitCode != 0)
+            {
+                throw new InvalidOperationException($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
+            }
+            return configLocation;
+        }
+
+        private void ContainerRegistryLogout(string configLocation)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(configLocation) && Directory.Exists(configLocation))
+                {
+                    Directory.Delete(configLocation, recursive: true);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to remove directory containing Docker client credentials: {e.Message}");
+            }
+        }
+
+        private void UpdateRegistryAuthForGitHubToken(IExecutionContext executionContext, ContainerInfo container)
+        {
+            var registryIsTokenCompatible = container.RegistryServer.Equals("docker.pkg.github.com", StringComparison.OrdinalIgnoreCase);
+            if (!registryIsTokenCompatible)
+            {
+                return;
+            }
+
+            var registryMatchesWorkflow = false;
+
+            // REGISTRY/OWNER/REPO/IMAGE[:TAG]
+            var imageParts = container.ContainerImage.Split('/');
+            if (imageParts.Length != 4)
+            {
+                executionContext.Warning($"Could not identify owner and repo for container image {container.ContainerImage}. Skipping automatic token auth");
+                return;
+            }
+            var owner = imageParts[1];
+            var repo = imageParts[2];
+            var nwo = $"{owner}/{repo}";
+            if (nwo.Equals(executionContext.GetGitHubContext("repository"), StringComparison.OrdinalIgnoreCase))
+            {
+                registryMatchesWorkflow = true;
+            }
+
+            var registryCredentialsNotSupplied = string.IsNullOrEmpty(container.RegistryAuthUsername) && string.IsNullOrEmpty(container.RegistryAuthPassword);
+            if (registryCredentialsNotSupplied && registryMatchesWorkflow)
+            {
+                container.RegistryAuthUsername = executionContext.GetGitHubContext("actor");
+                container.RegistryAuthPassword = executionContext.GetGitHubContext("token");
             }
         }
     }

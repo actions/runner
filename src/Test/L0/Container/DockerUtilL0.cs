@@ -126,5 +126,23 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
             Assert.NotNull(result5);
             Assert.Equal("/foo/bar:/baz", result5);
         }
+
+        [Theory]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        [InlineData("dockerhub/repo", "")]
+        [InlineData("localhost/doesnt_work", "")]
+        [InlineData("localhost:port/works", "localhost:port")]
+        [InlineData("host.tld/works", "host.tld")]
+        [InlineData("ghcr.io/owner/image", "ghcr.io")]
+        [InlineData("gcr.io/project/image", "gcr.io")]
+        [InlineData("myregistry.azurecr.io/namespace/image", "myregistry.azurecr.io")]
+        [InlineData("account.dkr.ecr.region.amazonaws.com/image", "account.dkr.ecr.region.amazonaws.com")]
+        [InlineData("docker.pkg.github.com/owner/repo/image", "docker.pkg.github.com")]
+        public void ParseRegistryHostnameFromImageName(string input, string expected)
+        {
+            var actual = DockerUtil.ParseRegistryHostnameFromImageName(input);
+            Assert.Equal(expected, actual);
+        }
     }
 }
