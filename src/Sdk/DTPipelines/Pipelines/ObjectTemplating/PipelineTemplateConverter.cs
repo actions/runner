@@ -209,6 +209,30 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return (Int32)numberToken.Value;
         }
 
+        internal static ContainerRegistryCredentials ConvertToContainerCredentials(TemplateToken token)
+        {
+            var credentials = token.AssertMapping(PipelineTemplateConstants.Credentials);
+            var result = new ContainerRegistryCredentials();
+            foreach (var credentialProperty in credentials)
+            {
+                var propertyName = credentialProperty.Key.AssertString($"{PipelineTemplateConstants.Credentials} key");
+                switch (propertyName.Value)
+                {
+                    case PipelineTemplateConstants.Username:
+                        result.Username = credentialProperty.Value.AssertString(PipelineTemplateConstants.Username).Value;
+                        break;
+                    case PipelineTemplateConstants.Password:
+                        result.Password = credentialProperty.Value.AssertString(PipelineTemplateConstants.Password).Value;
+                        break;
+                    default:
+                        propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Credentials} key {propertyName}");
+                        break;
+                }
+            }
+
+            return result;
+        }
+
         internal static JobContainer ConvertToJobContainer(
             TemplateContext context,
             TemplateToken value,
@@ -274,6 +298,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                                 volumeList.Add(volumeString);
                             }
                             result.Volumes = volumeList;
+                            break;
+                        case PipelineTemplateConstants.Credentials:
+                            result.Credentials = ConvertToContainerCredentials(containerPropertyPair.Value);
                             break;
                         default:
                             propertyName.AssertUnexpectedValue($"{PipelineTemplateConstants.Container} key");
