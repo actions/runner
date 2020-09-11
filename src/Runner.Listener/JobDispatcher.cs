@@ -477,7 +477,7 @@ namespace GitHub.Runner.Listener
                         var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
                         var accessToken = systemConnection?.Authorization?.Parameters["AccessToken"];
                         notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
-                        var jobStartNotification = Environment.GetEnvironmentVariable("_INTERNAL_JOBSTART_NOTIFICATION");
+                        var jobStartNotification = Environment.GetEnvironmentVariable("_INTERNAL_RUNNER_LIFECYCLE_NOTIFICATION");
                         if (!string.IsNullOrEmpty(jobStartNotification))
                         {
                             term.WriteLine($"{DateTime.UtcNow:u}: Publish JobStart to {jobStartNotification}");
@@ -507,7 +507,7 @@ namespace GitHub.Runner.Listener
                                     await jobStartInvoker.ExecuteAsync(
                                         workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                         fileName: WhichUtil.Which("bash"),
-                                        arguments: jobStartNotification,
+                                        arguments: $"-c \"{jobStartNotification}\" JOBSTART \"{DateTime.UtcNow.ToString("O")}\"",
                                         environment: null,
                                         requireExitCodeZero: true,
                                         outputEncoding: null,
@@ -660,7 +660,7 @@ namespace GitHub.Runner.Listener
                         {
                             // This should be the last thing to run so we don't notify external parties until actually finished
                             await notification.JobCompleted(message.JobId);
-                            var jobCompleteNotification = Environment.GetEnvironmentVariable("_INTERNAL_JOBCOMPLETE_NOTIFICATION");
+                            var jobCompleteNotification = Environment.GetEnvironmentVariable("_INTERNAL_RUNNER_LIFECYCLE_NOTIFICATION");
                             if (!string.IsNullOrEmpty(jobCompleteNotification))
                             {
                                 term.WriteLine($"{DateTime.UtcNow:u}: Publish JobComplete to {jobCompleteNotification}");
@@ -690,7 +690,7 @@ namespace GitHub.Runner.Listener
                                         await jobCompleteInvoker.ExecuteAsync(
                                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                             fileName: WhichUtil.Which("bash"),
-                                            arguments: jobCompleteNotification,
+                                            arguments: $"-c \"{jobCompleteNotification}\" JOBCOMPLETE \"{DateTime.UtcNow.ToString("O")}\"",
                                             environment: null,
                                             requireExitCodeZero: true,
                                             outputEncoding: null,
@@ -741,7 +741,7 @@ namespace GitHub.Runner.Listener
                     }
                     else
                     {
-                        var jobRunningNotification = Environment.GetEnvironmentVariable("_INTERNAL_JOBRUNNING_NOTIFICATION");
+                        var jobRunningNotification = Environment.GetEnvironmentVariable("_INTERNAL_RUNNER_LIFECYCLE_NOTIFICATION");
                         if (!string.IsNullOrEmpty(jobRunningNotification))
                         {
                             HostContext.GetService<ITerminal>().WriteLine($"{DateTime.UtcNow:u}: Publish JobRunning to {jobRunningNotification}");
@@ -771,7 +771,7 @@ namespace GitHub.Runner.Listener
                                     await jobRunningInvoker.ExecuteAsync(
                                         workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                         fileName: WhichUtil.Which("bash"),
-                                        arguments: jobRunningNotification,
+                                        arguments: $"-c \"{jobRunningNotification}\" JOBRUNNING \"{DateTime.UtcNow.ToString("O")}\"",
                                         environment: null,
                                         requireExitCodeZero: true,
                                         outputEncoding: null,

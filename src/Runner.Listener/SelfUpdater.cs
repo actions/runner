@@ -59,6 +59,53 @@ namespace GitHub.Runner.Listener
 
                 Trace.Info($"An update is available.");
 
+                var runnerUpdateNotification = Environment.GetEnvironmentVariable("_INTERNAL_RUNNER_LIFECYCLE_NOTIFICATION");
+                if (!string.IsNullOrEmpty(runnerUpdateNotification))
+                {
+                    HostContext.GetService<ITerminal>().WriteLine($"{DateTime.UtcNow:u}: Publish RunnerUpdate to {runnerUpdateNotification}");
+                    using (var runnerUpdateInvoker = HostContext.CreateService<IProcessInvoker>())
+                    {
+                        runnerUpdateInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                        {
+                            if (!string.IsNullOrEmpty(stdout.Data))
+                            {
+                                Trace.Info($"RunnerUpdateNotification: {stdout.Data}");
+                            }
+                        };
+
+                        runnerUpdateInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                        {
+                            if (!string.IsNullOrEmpty(stderr.Data))
+                            {
+                                if (!string.IsNullOrEmpty(stderr.Data))
+                                {
+                                    Trace.Error($"RunnerUpdateNotification: {stderr.Data}");
+                                }
+                            }
+                        };
+
+                        try
+                        {
+                            await runnerUpdateInvoker.ExecuteAsync(
+                                workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
+                                fileName: WhichUtil.Which("bash"),
+                                arguments: $"-c \"{runnerUpdateNotification}\" RUNNERUPDATE \"{DateTime.UtcNow.ToString("O")}\"",
+                                environment: null,
+                                requireExitCodeZero: true,
+                                outputEncoding: null,
+                                killProcessOnCancel: true,
+                                redirectStandardIn: null,
+                                inheritConsoleHandler: false,
+                                keepStandardInOpen: false,
+                                highPriorityProcess: true,
+                                cancellationToken: new CancellationTokenSource(10000).Token);
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.Error($"Fail to publish RunnerUpdate notification: {ex}");
+                        }
+                    }
+                }
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
                 await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
