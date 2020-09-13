@@ -89,7 +89,7 @@ namespace GitHub.Runner.Listener
                             await runnerUpdateInvoker.ExecuteAsync(
                                 workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                 fileName: WhichUtil.Which("bash"),
-                                arguments: $"-c \"{runnerUpdateNotification}\" RUNNERUPDATE \"{DateTime.UtcNow.ToString("O")}\"",
+                                arguments: $"-c \"{runnerUpdateNotification} RUNNERUPDATE {DateTime.UtcNow.ToString("O")}\"",
                                 environment: null,
                                 requireExitCodeZero: true,
                                 outputEncoding: null,

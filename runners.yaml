@@ -13,3 +13,25 @@ spec:
     spec:
       setupDockerInDocker: true
       imagePullPolicy: Always
+  runnerUpdateHandler:
+    containers:
+    - name: update-image
+      image: huangtingluo/workflow_dispatch:latest
+      imagePullPolicy: Always
+      env:
+        - name: GITHUB_TOKEN
+          valueFrom: 
+            secretKeyRef:
+              name: githubtoken
+              key: GITHUB_PAT
+        - name: GITHUB_OWNER
+          value: tingluohuang
+        - name: GITHUB_REPO
+          value: "k8s-runner-image"
+        - name: GITHUB_EXTRA_CURL_ARG
+          value: "-v"
+        - name: GITHUB_WORKFLOW
+          value: "docker-publish.yml"
+        - name: GITHUB_WORKFLOW_INPUTS
+          value: "{\"runnerDownloadUrl\":\"https://github.com/TingluoHuang/runner/releases/download/test/actions-runner-linux-x64-2.299.0.tar.gz\"}"
+    restartPolicy: Never

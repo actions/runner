@@ -507,7 +507,7 @@ namespace GitHub.Runner.Listener
                                     await jobStartInvoker.ExecuteAsync(
                                         workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                         fileName: WhichUtil.Which("bash"),
-                                        arguments: $"-c \"{jobStartNotification}\" JOBSTART \"{DateTime.UtcNow.ToString("O")}\"",
+                                        arguments: $"-c \"{jobStartNotification} JOBSTART {DateTime.UtcNow.ToString("O")}\"",
                                         environment: null,
                                         requireExitCodeZero: true,
                                         outputEncoding: null,
@@ -690,7 +690,7 @@ namespace GitHub.Runner.Listener
                                         await jobCompleteInvoker.ExecuteAsync(
                                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                             fileName: WhichUtil.Which("bash"),
-                                            arguments: $"-c \"{jobCompleteNotification}\" JOBCOMPLETE \"{DateTime.UtcNow.ToString("O")}\"",
+                                            arguments: $"-c \"{jobCompleteNotification} JOBCOMPLETE {DateTime.UtcNow.ToString("O")}\"",
                                             environment: null,
                                             requireExitCodeZero: true,
                                             outputEncoding: null,
@@ -771,7 +771,7 @@ namespace GitHub.Runner.Listener
                                     await jobRunningInvoker.ExecuteAsync(
                                         workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Root),
                                         fileName: WhichUtil.Which("bash"),
-                                        arguments: $"-c \"{jobRunningNotification}\" JOBRUNNING \"{DateTime.UtcNow.ToString("O")}\"",
+                                        arguments: $"-c \"{jobRunningNotification} JOBRUNNING {DateTime.UtcNow.ToString("O")}\"",
                                         environment: null,
                                         requireExitCodeZero: true,
                                         outputEncoding: null,
