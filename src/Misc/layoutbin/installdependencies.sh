@@ -49,18 +49,18 @@ then
         cat /etc/debian_version
         echo "------------------------------"
         
-        # prefer apt over apt-get        
-        command -v apt
+        # prefer apt-get over apt
+        command -v apt-get
         if [ $? -eq 0 ]
         then
-            apt_get=apt
+            apt_get=apt-get
         else
-            command -v apt-get
+            command -v apt
             if [ $? -eq 0 ]
             then
-                apt_get=apt-get
+                apt_get=apt
             else
-                echo "Can not find 'apt' or 'apt-get'"
+                echo "Can not find 'apt-get' or 'apt'"
                 print_errormessage
                 exit 1
             fi
