@@ -60,7 +60,7 @@ then
             then
                 apt_get=apt
             else
-                echo "Can not find 'apt-get' or 'apt'"
+                echo "Found neither 'apt-get' nor 'apt'"
                 print_errormessage
                 exit 1
             fi
