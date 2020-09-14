@@ -45,21 +45,5 @@ namespace GitHub.Runner.Worker.Container
             }
             return "";
         }
-
-        public static string ParseRegistryHostnameFromImageName(string name)
-        {
-            var nameSplit = name.Split('/');
-            // Single slash is implictly from Dockerhub, unless first part has .tld or :port
-            if (nameSplit.Length == 2 && (nameSplit[0].Contains(":") || nameSplit[0].Contains(".")))
-            {
-                return nameSplit[0];
-            }
-            // All other non Dockerhub registries
-            else if (nameSplit.Length > 2)
-            {
-                return nameSplit[0];
-            }
-            return "";
-        }
     }
 }

@@ -56,36 +56,5 @@ namespace GitHub.DistributedTask.Pipelines
             get;
             set;
         }
-
-        /// <summary>
-        /// Gets or sets the credentials used for pulling the container iamge.
-        /// </summary>
-        public ContainerRegistryCredentials Credentials
-        {
-            get;
-            set;
-        }
-    }
-
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public sealed class ContainerRegistryCredentials
-    {
-        /// <summary>
-        /// Gets or sets the user to authenticate to a registry with
-        /// </summary>
-        public String Username
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Gets or sets the password to authenticate to a registry with
-        /// </summary>
-        public String Password
-        {
-            get;
-            set;
-        }
     }
 }
