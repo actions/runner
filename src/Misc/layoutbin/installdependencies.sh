@@ -65,7 +65,7 @@ then
                 exit 1
             fi
         fi
-            
+
         $apt_get update && $apt_get install -y liblttng-ust0 libkrb5-3 zlib1g
         if [ $? -ne 0 ]
         then
@@ -74,8 +74,28 @@ then
             exit 1
         fi
 
+        apt_get_with_fallbacks() {
+            $apt_get install -y $1
+            fail=$?
+            if [ $fail -eq 0 ]
+            then
+                if [ "${1#"${1%?}"}" = '$' ]; then
+                    dpkg -l "${1%?}" > /dev/null 2> /dev/null
+                    fail=$?
+                fi
+            fi
+            if [ $fail -ne 0 ]
+            then
+                shift
+                if [ -n "$1" ]
+                then
+                    apt_get_with_fallbacks "$@"
+                fi
+            fi
+        }
+
         # libissl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
-        $apt_get install -y libssl1.1$ || $apt_get install -y libssl1.0.2$ || $apt_get install -y libssl1.0.0$
+        apt_get_with_fallbacks libssl1.1$ libssl1.0.2$ libssl1.0.0$
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
@@ -84,7 +104,7 @@ then
         fi
 
         # libicu version prefer: libicu66 -> libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
-        $apt_get install -y libicu66 || $apt_get install -y libicu63 || $apt_get install -y libicu60 || $apt_get install -y libicu57 || $apt_get install -y libicu55 || $apt_get install -y libicu52
+        apt_get_with_fallbacks libicu66 libicu63 libicu60 libicu57 libicu55 libicu52
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
