@@ -1,10 +1,8 @@
 ## Features
-  - Add in Log line numbers for streaming logs (#663)
-  - Read env file (#683)
-  - Add Runner File Commands (#684, #693)
+  - N/A
 
 ## Bugs
-  - N/A
+  - Fixed an issue where actions/checkout@v1 was not able to correctly set the working directory (#704)
 
 ## Misc
   - N/A
