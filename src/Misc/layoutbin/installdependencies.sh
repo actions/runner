@@ -53,65 +53,43 @@ then
         command -v apt
         if [ $? -eq 0 ]
         then
-            apt update && apt install -y liblttng-ust0 libkrb5-3 zlib1g
-            if [ $? -ne 0 ]
-            then
-                echo "'apt' failed with exit code '$?'"
-                print_errormessage
-                exit 1
-            fi
-
-            # libissl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
-            apt install -y libssl1.1$ || apt install -y libssl1.0.2$ || apt install -y libssl1.0.0$
-            if [ $? -ne 0 ]
-            then
-                echo "'apt' failed with exit code '$?'"
-                print_errormessage
-                exit 1
-            fi
-
-            # libicu version prefer: libicu66 -> libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
-            apt install -y libicu66 || apt install -y libicu63 || apt install -y libicu60 || apt install -y libicu57 || apt install -y libicu55 || apt install -y libicu52
-            if [ $? -ne 0 ]
-            then
-                echo "'apt' failed with exit code '$?'"
-                print_errormessage
-                exit 1
-            fi
+            apt_get=apt
         else
             command -v apt-get
             if [ $? -eq 0 ]
             then
-                apt-get update && apt-get install -y liblttng-ust0 libkrb5-3 zlib1g
-                if [ $? -ne 0 ]
-                then
-                    echo "'apt-get' failed with exit code '$?'"
-                    print_errormessage
-                    exit 1
-                fi
-                
-                # libissl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
-                apt-get install -y libssl1.1$ || apt-get install -y libssl1.0.2$ || apt install -y libssl1.0.0$
-                if [ $? -ne 0 ]
-                then
-                    echo "'apt-get' failed with exit code '$?'"
-                    print_errormessage
-                    exit 1
-                fi
-
-                # libicu version prefer: libicu66 -> libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
-                apt-get install -y libicu66 || apt-get install -y libicu63 || apt-get install -y libicu60 || apt install -y libicu57 || apt install -y libicu55 || apt install -y libicu52
-                if [ $? -ne 0 ]
-                then
-                    echo "'apt-get' failed with exit code '$?'"
-                    print_errormessage
-                    exit 1
-                fi
+                apt_get=apt-get
             else
                 echo "Can not find 'apt' or 'apt-get'"
                 print_errormessage
                 exit 1
             fi
+        fi
+            
+        $apt_get update && $apt_get install -y liblttng-ust0 libkrb5-3 zlib1g
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
+            print_errormessage
+            exit 1
+        fi
+
+        # libissl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
+        $apt_get install -y libssl1.1$ || $apt_get install -y libssl1.0.2$ || $apt_get install -y libssl1.0.0$
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
+            print_errormessage
+            exit 1
+        fi
+
+        # libicu version prefer: libicu66 -> libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
+        $apt_get install -y libicu66 || $apt_get install -y libicu63 || $apt_get install -y libicu60 || $apt_get install -y libicu57 || $apt_get install -y libicu55 || $apt_get install -y libicu52
+        if [ $? -ne 0 ]
+        then
+            echo "'$apt_get' failed with exit code '$?'"
+            print_errormessage
+            exit 1
         fi
     elif [ -e /etc/redhat-release ]
     then
