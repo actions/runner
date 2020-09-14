@@ -103,12 +103,6 @@ namespace GitHub.Runner.Worker
                 bool evaluateStepEnvFailed = false;
                 if (step is IActionRunner actionStep)
                 {
-                    // Shallow copy github context
-                    var gitHubContext = step.ExecutionContext.ExpressionValues["github"] as GitHubContext;
-                    ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
-                    gitHubContext = gitHubContext.ShallowCopy();
-                    step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
-
                     // Set GITHUB_ACTION
                     step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
 
