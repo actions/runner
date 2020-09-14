@@ -94,7 +94,7 @@ then
             fi
         }
 
-        # libissl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
+        # libssl version prefer: libssl1.1 -> libssl1.0.2 -> libssl1.0.0
         apt_get_with_fallbacks libssl1.1$ libssl1.0.2$ libssl1.0.0$
         if [ $? -ne 0 ]
         then
