@@ -1,8 +1,8 @@
 ## Features
-  - N/A
+  - Allow registry credentials for job/service containers (#694) 
 
 ## Bugs
-  - Fixed an issue where actions/checkout@v1 was not able to correctly set the working directory (#704)
+  - N/A
 
 ## Misc
   - N/A
