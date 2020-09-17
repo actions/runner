@@ -23,6 +23,7 @@ namespace GitHub.Runner.Worker
             "ref",
             "repository",
             "repository_owner",
+            "retention_days",
             "run_id",
             "run_number",
             "server_url",
