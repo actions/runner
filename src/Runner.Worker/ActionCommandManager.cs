@@ -183,23 +183,18 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
-
             var serverUrl = context.GetGitHubContext("server_url");
-            var isGHES = false;
+            var isNotGithub = false;
             if(!String.IsNullOrWhiteSpace(serverUrl) && serverUrl != "https://github.com")
             {
-                isGHES = true;
+                isNotGithub = true;
             }
             
             var allowUnsecureCommands = false;
-            if (!String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands)) 
-                && Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands).ToUpper() == "TRUE")
-            {
-                allowUnsecureCommands = true;
-            }
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
-            // TODO: Eventually remove isGHES and apply this to dotcom customers as well
-            if (isGHES && !allowUnsecureCommands)
+            // TODO: Eventually remove isNotGithub and apply this to dotcom customers as well
+            if (isNotGithub && !allowUnsecureCommands)
             {
                 throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
             }
@@ -315,21 +310,17 @@ namespace GitHub.Runner.Worker
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             var serverUrl = context.GetGitHubContext("server_url");
-            var isGHES = false;
+            var isNotGithub = false;
             if(!String.IsNullOrWhiteSpace(serverUrl) && serverUrl != "https://github.com")
             {
-                isGHES = true;
+                isNotGithub = true;
             }
             
             var allowUnsecureCommands = false;
-            if (!String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands)) 
-                && Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands).ToUpper() == "TRUE")
-            {
-                allowUnsecureCommands = true;
-            }
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
-            // TODO: Eventually remove isGHES and apply this to dotcom customers as well
-            if (isGHES && !allowUnsecureCommands)
+            // TODO: Eventually remove isNotGithub and apply this to dotcom customers as well
+            if (isNotGithub && !allowUnsecureCommands)
             {
                 throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
             }
