@@ -194,19 +194,16 @@ namespace GitHub.Runner.Worker
             var allowUnsecureCommands = false;
             if (!String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands)) 
                 && Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands).ToUpper() == "TRUE")
-                {
-                    allowUnsecureCommands = true;
-                }
-            // TODO REMOVE DEBUG
-            context.Output("Server URL" + context.GetGitHubContext("server_url"));
-            context.Output("is GHES" + isGHES.ToString());
-            context.Output("env" + allowUnsecureCommands.ToString());
+            {
+                allowUnsecureCommands = true;
+            }
 
+            // TODO: Eventually remove isGHES and apply this to dotcom customers as well
             if (isGHES && !allowUnsecureCommands)
             {
-                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageGHES, this.Command));
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
             }
-            else
+            else if(!allowUnsecureCommands)
             {
                 // Log Telemetry and let user know they shouldn't do this
                 var issue = new Issue() 
@@ -327,19 +324,16 @@ namespace GitHub.Runner.Worker
             var allowUnsecureCommands = false;
             if (!String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands)) 
                 && Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands).ToUpper() == "TRUE")
-                {
-                    allowUnsecureCommands = true;
-                }
-            // TODO REMOVE DEBUG
-            context.Output("Server URL" + context.GetGitHubContext("server_url"));
-            context.Output("is GHES" + isGHES.ToString());
-            context.Output("env" + allowUnsecureCommands.ToString());
+            {
+                allowUnsecureCommands = true;
+            }
 
+            // TODO: Eventually remove isGHES and apply this to dotcom customers as well
             if (isGHES && !allowUnsecureCommands)
             {
-                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageGHES, this.Command));
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
             }
-            else
+            else if(!allowUnsecureCommands)
             {
                 // Log Telemetry and let user know they shouldn't do this
                 var issue = new Issue() 
@@ -350,7 +344,7 @@ namespace GitHub.Runner.Worker
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
                 context.AddIssue(issue);
             }
-            
+
             ArgUtil.NotNullOrEmpty(command.Data, "path");
             context.Global.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
             context.Global.PrependPath.Add(command.Data);
