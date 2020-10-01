@@ -183,27 +183,28 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
-            var url = context.GetGitHubContext("server_url");
-            var isGHES = false;
 
-            if(!String.IsNullOrWhiteSpace(url) && url != "https://github.com")
+            var serverUrl = context.GetGitHubContext("server_url");
+            var isGHES = false;
+            if(!String.IsNullOrWhiteSpace(serverUrl) && serverUrl != "https://github.com")
             {
                 isGHES = true;
             }
             
             var allowUnsecureCommands = false;
-            if (!String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ACTIONS_ALLOW_UNSECURE_COMMANDS")) 
-                && Environment.GetEnvironmentVariable("ACTIONS_ALLOW_UNSECURE_COMMANDS").ToUpper() == "TRUE")
+            if (!String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands)) 
+                && Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands).ToUpper() == "TRUE")
                 {
                     allowUnsecureCommands = true;
                 }
+            // TODO REMOVE DEBUG
             context.Output("Server URL" + context.GetGitHubContext("server_url"));
             context.Output("is GHES" + isGHES.ToString());
             context.Output("env" + allowUnsecureCommands.ToString());
 
             if (isGHES && !allowUnsecureCommands)
             {
-                throw new Exception("The `set-env` command is disabled. Please upgrade to using Environment Files to set the env, or to disable secure command execution set `ACTIONS_ALLOW_UNSECURE_COMMANDS` to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/");
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageGHES, this.Command));
             }
             else
             {
@@ -211,7 +212,7 @@ namespace GitHub.Runner.Worker
                 var issue = new Issue() 
                 { 
                     Type = IssueType.Warning, 
-                    Message = "The `set-env` command is depreciated and will soon be disabled. Please upgrade to using Environment Files to set the env. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/"
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
                 };
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
                 context.AddIssue(issue);
@@ -316,6 +317,40 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            var serverUrl = context.GetGitHubContext("server_url");
+            var isGHES = false;
+            if(!String.IsNullOrWhiteSpace(serverUrl) && serverUrl != "https://github.com")
+            {
+                isGHES = true;
+            }
+            
+            var allowUnsecureCommands = false;
+            if (!String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands)) 
+                && Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands).ToUpper() == "TRUE")
+                {
+                    allowUnsecureCommands = true;
+                }
+            // TODO REMOVE DEBUG
+            context.Output("Server URL" + context.GetGitHubContext("server_url"));
+            context.Output("is GHES" + isGHES.ToString());
+            context.Output("env" + allowUnsecureCommands.ToString());
+
+            if (isGHES && !allowUnsecureCommands)
+            {
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageGHES, this.Command));
+            }
+            else
+            {
+                // Log Telemetry and let user know they shouldn't do this
+                var issue = new Issue() 
+                { 
+                    Type = IssueType.Warning, 
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
+                };
+                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
+                context.AddIssue(issue);
+            }
+            
             ArgUtil.NotNullOrEmpty(command.Data, "path");
             context.Global.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
             context.Global.PrependPath.Add(command.Data);
