@@ -140,6 +140,7 @@ namespace GitHub.Runner.Common
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
             public static readonly string WorkerCrash = "WORKER_CRASH";
+            public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
         }
 
         public static class RunnerEvent
