@@ -141,7 +141,7 @@ namespace GitHub.Runner.Common
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
             public static readonly string WorkerCrash = "WORKER_CRASH";
             public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
-            public static readonly string UnsupportedCommandMessage = "The `{0}` command is disabled. Please upgrade to using Environment Files to set the env, or to opt into unsecure command execution by setting `ACTIONS_ALLOW_UNSECURE_COMMANDS` to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
+            public static readonly string UnsupportedCommandMessage = "The `{0}` command is depreciated and will soon be disabled. Please upgrade to using Environment Files to set the env. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
             public static readonly string UnsupportedCommandMessageGHES = "The `{0}` command is disabled. Please upgrade to using Environment Files to set the env, or to opt into unsecure command execution by setting `ACTIONS_ALLOW_UNSECURE_COMMANDS` on the Runner to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
         }
 
