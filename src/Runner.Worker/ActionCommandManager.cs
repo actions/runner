@@ -183,22 +183,23 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
-            var serverUrl = context.GetGitHubContext("server_url");
-            var isNotGithub = false;
-            if(!String.IsNullOrWhiteSpace(serverUrl) && serverUrl != "https://github.com")
-            {
-                isNotGithub = true;
-            }
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
             
             var allowUnsecureCommands = false;
             bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
-            // TODO: Eventually remove isNotGithub and apply this to dotcom customers as well
-            if (isNotGithub && !allowUnsecureCommands)
+            if (!allowUnsecureCommands && context.Global.EnvironmentVariables.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            {
+                bool.TryParse(context.Global.EnvironmentVariables[Constants.Variables.Actions.AllowUnsupportedCommands], out allowUnsecureCommands);
+            }
+
+            // TODO: Eventually remove isHostedServer and apply this to dotcom customers as well
+            if (!isHostedServer && !allowUnsecureCommands)
             {
                 throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
             }
-            else if(!allowUnsecureCommands)
+            else if (!allowUnsecureCommands)
             {
                 // Log Telemetry and let user know they shouldn't do this
                 var issue = new Issue() 
@@ -309,22 +310,23 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
-            var serverUrl = context.GetGitHubContext("server_url");
-            var isNotGithub = false;
-            if(!String.IsNullOrWhiteSpace(serverUrl) && serverUrl != "https://github.com")
-            {
-                isNotGithub = true;
-            }
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
             
             var allowUnsecureCommands = false;
             bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
-            // TODO: Eventually remove isNotGithub and apply this to dotcom customers as well
-            if (isNotGithub && !allowUnsecureCommands)
+            if (!allowUnsecureCommands && context.Global.EnvironmentVariables.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            {
+                bool.TryParse(context.Global.EnvironmentVariables[Constants.Variables.Actions.AllowUnsupportedCommands], out allowUnsecureCommands);
+            }
+
+            // TODO: Eventually remove isHostedServer and apply this to dotcom customers as well
+            if (!isHostedServer && !allowUnsecureCommands)
             {
                 throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
             }
-            else if(!allowUnsecureCommands)
+            else if (!allowUnsecureCommands)
             {
                 // Log Telemetry and let user know they shouldn't do this
                 var issue = new Issue() 
