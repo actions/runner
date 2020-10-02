@@ -1,4 +1,5 @@
 ﻿using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
@@ -187,11 +188,16 @@ namespace GitHub.Runner.Worker
             var isHostedServer = configurationStore.GetSettings().IsHostedServer;
             
             var allowUnsecureCommands = false;
-            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
+            #if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+            #else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+            #endif
+            // Apply environment from env context, env context contains job level env and action's env block
 
-            if (!allowUnsecureCommands && context.Global.EnvironmentVariables.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
             {
-                bool.TryParse(context.Global.EnvironmentVariables[Constants.Variables.Actions.AllowUnsupportedCommands], out allowUnsecureCommands);
+                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
             }
 
             // TODO: Eventually remove isHostedServer and apply this to dotcom customers as well
@@ -314,11 +320,16 @@ namespace GitHub.Runner.Worker
             var isHostedServer = configurationStore.GetSettings().IsHostedServer;
             
             var allowUnsecureCommands = false;
-            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
+            #if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+            #else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+            #endif
+            // Apply environment from env context, env context contains job level env and action's env block
 
-            if (!allowUnsecureCommands && context.Global.EnvironmentVariables.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
             {
-                bool.TryParse(context.Global.EnvironmentVariables[Constants.Variables.Actions.AllowUnsupportedCommands], out allowUnsecureCommands);
+                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
             }
 
             // TODO: Eventually remove isHostedServer and apply this to dotcom customers as well
