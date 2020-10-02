@@ -188,13 +188,14 @@ namespace GitHub.Runner.Worker
             var isHostedServer = configurationStore.GetSettings().IsHostedServer;
             
             var allowUnsecureCommands = false;
-            #if OS_WINDOWS
-            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
-            #else
-            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
-            #endif
-            // Apply environment from env context, env context contains job level env and action's env block
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
+            // Apply environment from env context, env context contains job level env and action's env block
+#if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
             if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
             {
                 bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
@@ -216,7 +217,7 @@ namespace GitHub.Runner.Worker
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
                 context.AddIssue(issue);
             }
-            
+
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-env] command.");
@@ -320,13 +321,14 @@ namespace GitHub.Runner.Worker
             var isHostedServer = configurationStore.GetSettings().IsHostedServer;
             
             var allowUnsecureCommands = false;
-            #if OS_WINDOWS
-            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
-            #else
-            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
-            #endif
-            // Apply environment from env context, env context contains job level env and action's env block
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
+            // Apply environment from env context, env context contains job level env and action's env block
+#if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
             if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
             {
                 bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
