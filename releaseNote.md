@@ -1,5 +1,6 @@
 ## Features
-  - Allow registry credentials for job/service containers (#694) 
+  - Expose retention days in env for toolkit/artifacts package (#714)
+  - Notify on unsecure commands (#731)
 
 ## Bugs
   - N/A
