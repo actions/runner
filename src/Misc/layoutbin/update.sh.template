@@ -125,6 +125,14 @@ date "+[%F %T-%4N] Update succeed" >> "$logfile"
 date "+[%F %T-%4N] Rename $logfile to be $logfile.succeed" >> "$logfile" 2>&1
 mv -fv "$logfile" "$logfile.succeed" >> "$logfile" 2>&1
 
+# reinstall service if needed (update systemd/launchd template)
+if [[ -e "$rootfolder/.service" ]]
+then
+    "$rootfolder/svc.sh" uninstall
+    "$rootfolder/svc.sh" install
+    "$rootfolder/svc.sh" start
+fi
+
 # restart interactive runner if needed
 if [ $restartinteractiverunner -ne 0 ]
 then
