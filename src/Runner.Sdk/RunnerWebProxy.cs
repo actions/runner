@@ -74,8 +74,8 @@ namespace GitHub.Runner.Sdk
                 _httpProxyAddress = proxyHttpUri.AbsoluteUri;
 
                 // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
-                Environment.SetEnvironmentVariable("HTTP_PROXY", _httpProxyAddress);
-                Environment.SetEnvironmentVariable("http_proxy", _httpProxyAddress);
+                Environment.SetEnvironmentVariable("HTTP_PROXY", httpProxyAddress);
+                Environment.SetEnvironmentVariable("http_proxy", httpProxyAddress);
 
                 // the proxy url looks like http://[user:pass@]127.0.0.1:8888
                 var userInfo = Uri.UnescapeDataString(proxyHttpUri.UserInfo).Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
@@ -104,8 +104,8 @@ namespace GitHub.Runner.Sdk
                 _httpsProxyAddress = proxyHttpsUri.AbsoluteUri;
 
                 // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
-                Environment.SetEnvironmentVariable("HTTPS_PROXY", _httpsProxyAddress);
-                Environment.SetEnvironmentVariable("https_proxy", _httpsProxyAddress);
+                Environment.SetEnvironmentVariable("HTTPS_PROXY", httpsProxyAddress);
+                Environment.SetEnvironmentVariable("https_proxy", httpsProxyAddress);
 
                 // the proxy url looks like http://[user:pass@]127.0.0.1:8888
                 var userInfo = Uri.UnescapeDataString(proxyHttpsUri.UserInfo).Split(':', 2, StringSplitOptions.RemoveEmptyEntries);

@@ -145,6 +145,36 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WebProxyFromEnvironmentVariablesWithPort80()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("http_proxy", "http://127.0.0.1:80");
+                Environment.SetEnvironmentVariable("https_proxy", "http://user:pass@127.0.0.1:80");
+                Environment.SetEnvironmentVariable("no_proxy", "github.com, google.com,");
+                var proxy = new RunnerWebProxy();
+
+                Assert.Equal("http://127.0.0.1:80", Environment.GetEnvironmentVariable("http_proxy"));
+                Assert.Null(proxy.HttpProxyUsername);
+                Assert.Null(proxy.HttpProxyPassword);
+
+                Assert.Equal("http://user:pass@127.0.0.1:80", Environment.GetEnvironmentVariable("https_proxy"));
+                Assert.Equal("user", proxy.HttpsProxyUsername);
+                Assert.Equal("pass", proxy.HttpsProxyPassword);
+
+                Assert.Equal(2, proxy.NoProxyList.Count);
+                Assert.Equal("github.com", proxy.NoProxyList[0].Host);
+                Assert.Equal("google.com", proxy.NoProxyList[1].Host);
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
 #if !OS_WINDOWS
         [Fact]
         [Trait("Level", "L0")]
