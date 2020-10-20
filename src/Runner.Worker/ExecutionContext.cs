@@ -639,7 +639,7 @@ namespace GitHub.Runner.Worker
             ExpressionValues["runner"] = new RunnerContext();
             ExpressionValues["job"] = new JobContext();
 
-            Trace.Info($"YASH: Initialize GitHub context, has env? {ActionsEnvironment?.Name}");
+            Trace.Info($"Initialize GitHub context");
             var githubAccessToken = new StringContextData(Global.Variables.Get("system.github.token"));
             var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
             HostContext.SecretMasker.AddValue(base64EncodedToken);

@@ -417,7 +417,8 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    Trace.Info($"YASH: Initialize Env context for evaluating environment context({context.ActionsEnvironment?.Name}) jobcontext({jobContext.ActionsEnvironment?.Name}) {message.ActionsEnvironment?.Name}, URL: {message.ActionsEnvironment?.Url}??");
+                    Trace.Info("Initialize GitHub context");
+
                     // Evaluate environment data
                     if (jobContext.ActionsEnvironment?.Url != null)
                     {
