@@ -417,8 +417,6 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    Trace.Info("Initialize GitHub context");
-
                     // Evaluate environment data
                     if (jobContext.ActionsEnvironment?.Url != null)
                     {

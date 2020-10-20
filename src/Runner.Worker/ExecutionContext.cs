@@ -692,10 +692,10 @@ namespace GitHub.Runner.Worker
             _logger.Setup(_mainTimelineId, _record.Id);
 
             // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
-            EchoOnActionCommand = Global.Variables.Step_Debug ?? true;
+            EchoOnActionCommand = Global.Variables.Step_Debug ?? false;
 
             // Verbosity (from GitHub.Step_Debug).
-            Global.WriteDebug = Global.Variables.Step_Debug ?? true;
+            Global.WriteDebug = Global.Variables.Step_Debug ?? false;
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;

@@ -409,6 +409,12 @@ namespace GitHub.DistributedTask.Pipelines
             {
                 m_variables = null;
             }
+
+            // todo: remove after feature-flag DistributedTask.EvaluateContainerOnRunner is enabled everywhere
+            if (!string.IsNullOrEmpty(m_jobContainerResourceAlias))
+            {
+                JobContainer = new StringToken(null, null, null, m_jobContainerResourceAlias);
+            }
         }
 
         [DataMember(Name = "EnvironmentVariables", EmitDefaultValue = false)]
