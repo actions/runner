@@ -17,6 +17,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Credentials = "credentials";
         public const String Defaults = "defaults";
         public const String Env = "env";
+        public const String Environment = "environment";
         public const String Event = "event";
         public const String EventPattern = "github.event";
         public const String Exclude = "exclude";

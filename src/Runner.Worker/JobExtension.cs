@@ -417,6 +417,44 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    Trace.Info($"YASH: Initialize Env context for evaluating environment context({context.ActionsEnvironment?.Name}) jobcontext({jobContext.ActionsEnvironment?.Name}) {message.ActionsEnvironment?.Name}, URL: {message.ActionsEnvironment?.Url}??");
+                    // Evaluate environment data
+                    if (jobContext.ActionsEnvironment?.Url != null)
+                    {
+                        try
+                        {
+                            context.Output($"Evaluate and set environment url");
+
+                            // Populate env context for each step
+                            Trace.Info("Initialize Env context for evaluating environment url");
+#if OS_WINDOWS
+                            var envContext = new DictionaryContextData();
+#else
+                            var envContext = new CaseSensitiveDictionaryContextData();
+#endif
+                            context.ExpressionValues["env"] = envContext;
+                            foreach (var pair in context.Global.EnvironmentVariables)
+                            {
+                                envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                            }
+
+                            Trace.Info("Initialize steps context for evaluating environment url");
+                            context.ExpressionValues["steps"] = context.Global.StepsContext.GetScope(context.ScopeName);
+
+                            var templateEvaluator = context.ToPipelineTemplateEvaluator();
+                            var environmentUrlToken = templateEvaluator.EvaluateEnvironmentUrl(jobContext.ActionsEnvironment.Url, context.ExpressionValues, context.ExpressionFunctions);
+                            context.Output($"Evaluated environment url as: {environmentUrlToken.AssertString("environment.url")}");
+                            jobContext.ActionsEnvironment.Url = environmentUrlToken;
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Result = TaskResult.Failed;
+                            context.Error($"Failed to evaluate environment url");
+                            context.Error(ex);
+                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+                        }
+                    }
+
                     if (context.Global.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
                     {
                         Trace.Info("Support log upload starting.");
