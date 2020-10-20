@@ -442,7 +442,6 @@ namespace GitHub.Runner.Worker
 
                             var templateEvaluator = context.ToPipelineTemplateEvaluator();
                             var environmentUrlToken = templateEvaluator.EvaluateEnvironmentUrl(jobContext.ActionsEnvironment.Url, context.ExpressionValues, context.ExpressionFunctions);
-                            context.Output($"Evaluated environment url as: {environmentUrlToken.AssertString("environment.url")}");
                             jobContext.ActionsEnvironment.Url = environmentUrlToken;
                         }
                         catch (Exception ex)
