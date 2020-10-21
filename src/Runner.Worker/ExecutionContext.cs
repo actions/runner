@@ -48,6 +48,7 @@ namespace GitHub.Runner.Worker
 
         Dictionary<string, string> IntraActionState { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
+        ActionsEnvironmentReference ActionsEnvironment { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -137,6 +138,8 @@ namespace GitHub.Runner.Worker
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public Dictionary<string, string> IntraActionState { get; private set; }
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
+
+        public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -252,7 +255,7 @@ namespace GitHub.Runner.Worker
 
         /// <summary>
         /// Helper function used in CompositeActionHandler::RunAsync to
-        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
+        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location.
         /// </summary>
         public IStep CreateCompositeStep(
             string scopeName,
@@ -378,7 +381,7 @@ namespace GitHub.Runner.Worker
 
             if (Root != this)
             {
-                // only dispose TokenSource for step level ExecutionContext 
+                // only dispose TokenSource for step level ExecutionContext
                 _cancellationTokenSource?.Dispose();
             }
 
@@ -611,6 +614,9 @@ namespace GitHub.Runner.Worker
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
+            // Actions environment
+            ActionsEnvironment = message.ActionsEnvironment;
+
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();
 
@@ -718,7 +724,6 @@ namespace GitHub.Runner.Worker
             }
 
             _jobServerQueue.QueueWebConsoleLine(_record.Id, msg, totalLines);
-            
             return totalLines;
         }
 

@@ -41,7 +41,8 @@ namespace GitHub.DistributedTask.Pipelines
             IEnumerable<JobStep> steps,
             IList<String> fileTable,
             TemplateToken jobOutputs,
-            IList<TemplateToken> defaults)
+            IList<TemplateToken> defaults,
+            ActionsEnvironmentReference actionsEnvironment)
         {
             this.MessageType = JobRequestMessageTypes.PipelineAgentJobRequest;
             this.Plan = plan;
@@ -54,7 +55,7 @@ namespace GitHub.DistributedTask.Pipelines
             this.Resources = jobResources;
             this.Workspace = workspaceOptions;
             this.JobOutputs = jobOutputs;
-
+            this.ActionsEnvironment = actionsEnvironment;
             m_variables = new Dictionary<String, VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
             m_maskHints = new List<MaskHint>(maskHints);
             m_steps = new List<JobStep>(steps);
@@ -226,6 +227,13 @@ namespace GitHub.DistributedTask.Pipelines
                 }
                 return m_defaults;
             }
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public ActionsEnvironmentReference ActionsEnvironment
+        {
+            get;
+            set;
         }
 
         /// <summary>

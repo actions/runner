@@ -515,6 +515,20 @@
       "string": {}
     },
 
+    "string-runner-context-no-secrets": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
+    },
+
     "string-steps-context": {
       "context": [
         "github",
