@@ -290,7 +290,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 var context = CreateContext(contextData, expressionFunctions);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, TemplateConstants.StringRunnerContext, token, 0, null, omitHeader: true);
+                    token = TemplateEvaluator.Evaluate(context, TemplateConstants.StringStrategyContextNoSecrets, token, 0, null, omitHeader: true);
                     context.Errors.Check();
                     result = token.AssertString("environment.url");
                 }

@@ -53,6 +53,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
         internal const String StringDefinition = "string-definition";
         internal const String StringDefinitionProperties = "string-definition-properties";
         internal const String StringRunnerContext = "string-runner-context";
+        internal const String StringStrategyContextNoSecrets = "string-runner-context-no-secrets";
         internal const String Structure = "structure";
         internal const String TemplateSchema = "template-schema";
         internal const String True = "true";
