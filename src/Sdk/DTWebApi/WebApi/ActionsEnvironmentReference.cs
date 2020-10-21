@@ -14,10 +14,10 @@ namespace GitHub.DistributedTask.WebApi
             Name = name;
         }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public string Name { get; set; }
 
-        [DataMember]
+        [DataMember(EmitDefaultValue = false)]
         public TemplateToken Url { get; set; }
     }
 }

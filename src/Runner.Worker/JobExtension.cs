@@ -365,83 +365,87 @@ namespace GitHub.Runner.Worker
                     context.Start();
                     context.Debug("Starting: Complete job");
 
-                    var evaluateJobOutputs = message.JobOutputs != null && message.JobOutputs.Type != TokenType.Null;
-                    var evaluateEnvironmentData = jobContext.ActionsEnvironment?.Url != null;
-                    if (evaluateJobOutputs || evaluateEnvironmentData)
-                    {
+                    Trace.Info("Initialize Env context");
+
 #if OS_WINDOWS
-                                var envContext = new DictionaryContextData();
+                    var envContext = new DictionaryContextData();
 #else
-                        var envContext = new CaseSensitiveDictionaryContextData();
+                    var envContext = new CaseSensitiveDictionaryContextData();
 #endif
-                        context.ExpressionValues["env"] = envContext;
-                        foreach (var pair in context.Global.EnvironmentVariables)
-                        {
-                            envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-                        }
+                    context.ExpressionValues["env"] = envContext;
+                    foreach (var pair in context.Global.EnvironmentVariables)
+                    {
+                        envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                    }
 
-                        Trace.Info("Initialize steps context for evaluating environment url");
-                        context.ExpressionValues["steps"] = context.Global.StepsContext.GetScope(context.ScopeName);
+                    // Populate env context for each step
+                    Trace.Info("Initialize steps context");
+                    context.ExpressionValues["steps"] = context.Global.StepsContext.GetScope(context.ScopeName);
 
-                        var templateEvaluator = context.ToPipelineTemplateEvaluator();
-                        // Evaluate job outputs
-                        if (evaluateJobOutputs)
+                    var templateEvaluator = context.ToPipelineTemplateEvaluator();
+                    // Evaluate job outputs
+                    if (message.JobOutputs != null && message.JobOutputs.Type != TokenType.Null)
+                    {
+                        try
                         {
-                            try
+                            context.Output($"Evaluate and set job outputs");
+
+                            // Populate env context for each step
+                            Trace.Info("Initialize Env context for evaluating job outputs");
+
+                            var outputs = templateEvaluator.EvaluateJobOutput(message.JobOutputs, context.ExpressionValues, context.ExpressionFunctions);
+                            foreach (var output in outputs)
                             {
-                                context.Output($"Evaluate and set job outputs");
-
-                                // Populate env context for each step
-                                Trace.Info("Initialize Env context for evaluating job outputs");
-
-                                var outputs = templateEvaluator.EvaluateJobOutput(message.JobOutputs, context.ExpressionValues, context.ExpressionFunctions);
-                                foreach (var output in outputs)
+                                if (string.IsNullOrEmpty(output.Value))
                                 {
-                                    if (string.IsNullOrEmpty(output.Value))
-                                    {
-                                        context.Debug($"Skip output '{output.Key}' since it's empty");
-                                        continue;
-                                    }
-
-                                    if (!string.Equals(output.Value, HostContext.SecretMasker.MaskSecrets(output.Value)))
-                                    {
-                                        context.Warning($"Skip output '{output.Key}' since it may contain secret.");
-                                        continue;
-                                    }
-
-                                    context.Output($"Set output '{output.Key}'");
-                                    jobContext.JobOutputs[output.Key] = output.Value;
+                                    context.Debug($"Skip output '{output.Key}' since it's empty");
+                                    continue;
                                 }
-                            }
-                            catch (Exception ex)
-                            {
-                                context.Result = TaskResult.Failed;
-                                context.Error($"Fail to evaluate job outputs");
-                                context.Error(ex);
-                                jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+
+                                if (!string.Equals(output.Value, HostContext.SecretMasker.MaskSecrets(output.Value)))
+                                {
+                                    context.Warning($"Skip output '{output.Key}' since it may contain secret.");
+                                    continue;
+                                }
+
+                                context.Output($"Set output '{output.Key}'");
+                                jobContext.JobOutputs[output.Key] = output.Value;
                             }
                         }
-
-                        // Evaluate environment data
-                        if (evaluateEnvironmentData)
+                        catch (Exception ex)
                         {
-                            try
-                            {
-                                context.Output($"Evaluate and set environment url");
+                            context.Result = TaskResult.Failed;
+                            context.Error($"Fail to evaluate job outputs");
+                            context.Error(ex);
+                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+                        }
+                    }
 
-                                // Populate env context for each step
-                                Trace.Info("Initialize Env context for evaluating environment url");
-                                var environmentUrlToken = templateEvaluator.EvaluateEnvironmentUrl(jobContext.ActionsEnvironment.Url, context.ExpressionValues, context.ExpressionFunctions);
-                                context.Output($"Evaluated environment url: {environmentUrlToken.AssertString("environment.url")}");
+                    // Evaluate environment data
+                    if (jobContext.ActionsEnvironment?.Url != null && jobContext.ActionsEnvironment?.Url.Type != TokenType.Null)
+                    {
+                        try
+                        {
+                            context.Output($"Evaluate and set environment url");
+
+                            var environmentUrlToken = templateEvaluator.EvaluateEnvironmentUrl(jobContext.ActionsEnvironment.Url, context.ExpressionValues, context.ExpressionFunctions);
+                            var environmentUrl = environmentUrlToken.AssertString("environment.url");
+                            if (string.Equals(environmentUrl.Value, HostContext.SecretMasker.MaskSecrets(environmentUrl.Value)))
+                            {
+                                context.Warning($"Skip setting environment url as environment '{jobContext.ActionsEnvironment.Name}' may contain secret.");
+                            }
+                            else
+                            {
+                                context.Output($"Evaluated environment url: {environmentUrl}");
                                 jobContext.ActionsEnvironment.Url = environmentUrlToken;
                             }
-                            catch (Exception ex)
-                            {
-                                context.Result = TaskResult.Failed;
-                                context.Error($"Failed to evaluate environment url");
-                                context.Error(ex);
-                                jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
-                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Result = TaskResult.Failed;
+                            context.Error($"Failed to evaluate environment url");
+                            context.Error(ex);
+                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
                         }
                     }
 
