@@ -270,7 +270,7 @@ check_pre_reqs() {
         [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep zlib)" ] && say_warning "Unable to locate zlib. Probable prerequisite missing; install zlib."
         [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep ssl)" ] && say_warning "Unable to locate libssl. Probable prerequisite missing; install libssl."
         [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libicu)" ] && say_warning "Unable to locate libicu. Probable prerequisite missing; install libicu."
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep lttng)" ] && say_warning "Unable to locate liblttng. Probable prerequisite missing; install libcurl."
+        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep lttng)" ] && say_warning "Unable to locate liblttng. Probable prerequisite missing; install liblttng."
         [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libcurl)" ] && say_warning "Unable to locate libcurl. Probable prerequisite missing; install libcurl."
     fi
 
@@ -373,7 +373,7 @@ get_normalized_architecture_from_architecture() {
             ;;
     esac
 
-    say_err "Architecture \`$architecture\` not supported. If you think this is a bug, report it at https://github.com/dotnet/sdk/issues"
+    say_err "Architecture \`$architecture\` not supported. If you think this is a bug, report it at https://github.com/dotnet/install-scripts/issues"
     return 1
 }
 
@@ -545,22 +545,61 @@ construct_download_link() {
     local channel="$2"
     local normalized_architecture="$3"
     local specific_version="${4//[$'\t\r\n']}"
+    local specific_product_version="$(get_specific_product_version "$1" "$4")"
 
     local osname
     osname="$(get_current_os_name)" || return 1
 
     local download_link=null
     if [[ "$runtime" == "dotnet" ]]; then
-        download_link="$azure_feed/Runtime/$specific_version/dotnet-runtime-$specific_version-$osname-$normalized_architecture.tar.gz"
+        download_link="$azure_feed/Runtime/$specific_version/dotnet-runtime-$specific_product_version-$osname-$normalized_architecture.tar.gz"
     elif [[ "$runtime" == "aspnetcore" ]]; then
-        download_link="$azure_feed/aspnetcore/Runtime/$specific_version/aspnetcore-runtime-$specific_version-$osname-$normalized_architecture.tar.gz"
+        download_link="$azure_feed/aspnetcore/Runtime/$specific_version/aspnetcore-runtime-$specific_product_version-$osname-$normalized_architecture.tar.gz"
     elif [ -z "$runtime" ]; then
-        download_link="$azure_feed/Sdk/$specific_version/dotnet-sdk-$specific_version-$osname-$normalized_architecture.tar.gz"
+        download_link="$azure_feed/Sdk/$specific_version/dotnet-sdk-$specific_product_version-$osname-$normalized_architecture.tar.gz"
     else
         return 1
     fi
 
     echo "$download_link"
+    return 0
+}
+
+# args:
+# azure_feed - $1
+# specific_version - $2
+get_specific_product_version() {
+    # If we find a 'productVersion.txt' at the root of any folder, we'll use its contents 
+    # to resolve the version of what's in the folder, superseding the specified version.
+    eval $invocation
+
+    local azure_feed="$1"
+    local specific_version="${2//[$'\t\r\n']}"
+    local specific_product_version=$specific_version
+
+    local download_link=null
+    if [[ "$runtime" == "dotnet" ]]; then
+        download_link="$azure_feed/Runtime/$specific_version/productVersion.txt${feed_credential}"
+    elif [[ "$runtime" == "aspnetcore" ]]; then
+        download_link="$azure_feed/aspnetcore/Runtime/$specific_version/productVersion.txt${feed_credential}"
+    elif [ -z "$runtime" ]; then
+        download_link="$azure_feed/Sdk/$specific_version/productVersion.txt${feed_credential}"
+    else
+        return 1
+    fi
+
+    specific_product_version=$(curl -s --fail "$download_link")
+    if [ $? -ne 0 ]
+    then
+      specific_product_version=$(wget -qO- "$download_link")
+      if [ $? -ne 0 ]
+      then
+        specific_product_version=$specific_version
+      fi
+    fi
+    specific_product_version="${specific_product_version//[$'\t\r\n']}"
+
+    echo "$specific_product_version"
     return 0
 }
 
@@ -771,6 +810,7 @@ calculate_vars() {
     say_verbose "normalized_architecture=$normalized_architecture"
 
     specific_version="$(get_specific_version_from_version "$azure_feed" "$channel" "$normalized_architecture" "$version" "$json_file")"
+    specific_product_version="$(get_specific_product_version "$azure_feed" "$specific_version")"
     say_verbose "specific_version=$specific_version"
     if [ -z "$specific_version" ]; then
         say_err "Could not resolve version information."
@@ -869,12 +909,12 @@ install_dotnet() {
     fi
 
     #  Check if the standard SDK version is installed.
-    say_verbose "Checking installation: version = $specific_version"
-    if is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_version"; then
+    say_verbose "Checking installation: version = $specific_product_version"
+    if is_dotnet_package_installed "$install_root" "$asset_relative_path" "$specific_product_version"; then
         return 0
     fi
 
-    say_err "\`$asset_name\` with version = $specific_version failed to install with an unknown error."
+    say_err "\`$asset_name\` with version = $specific_product_version failed to install with an unknown error."
     return 1
 }
 
