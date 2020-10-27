@@ -125,8 +125,11 @@ date "+[%F %T-%4N] Update succeed" >> "$logfile"
 date "+[%F %T-%4N] Rename $logfile to be $logfile.succeed" >> "$logfile" 2>&1
 mv -fv "$logfile" "$logfile.succeed" >> "$logfile" 2>&1
 
-# reinstall service if needed (update systemd/launchd template)
-if [[ -e "$rootfolder/.service" ]]
+# reinstall service if needed, only on Darwin (update launchd template). It cannot be extended to Linux because systemd
+# requires sudo priviledges we cannot provide on update (non-interactive context). Reinstall is mandatory on macOS, to
+# avoid any issues between pre-update node.js interpreter and syspolicyd.
+# For more details, please check : https://github.com/actions/runner/issues/743#issuecomment-704971081
+if [[ -e "$rootfolder/.service" && "$(uname)" == "Darwin" ]]
 then
     "$rootfolder/svc.sh" uninstall
     "$rootfolder/svc.sh" install
