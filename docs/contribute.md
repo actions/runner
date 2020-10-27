@@ -14,7 +14,7 @@ Issues in this repository should be for the runner application.  Note that the V
 
 We ask that before significant effort is put into code changes, that we have agreement on taking the change before time is invested in code changes. 
 
-1. Create a feature request.  Once agreed we will take the enhancment
+1. Create a feature request.  Once agreed we will take the enhancement
 2. Create an ADR to agree on the details of the change.
 
 An ADR is an Architectural Decision Record.  This allows consensus on the direction forward and also serves as a record of the change and motivation.  [Read more here](adrs/README.md)
