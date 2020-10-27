@@ -1,0 +1,10 @@
+[*.cs]
+charset = utf-8
+insert_final_newline = true
+
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_open_brace = all
+
+csharp_space_after_keywords_in_control_flow_statements = true
