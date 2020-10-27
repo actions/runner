@@ -14,8 +14,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Clean= "clean";
         public const String Container = "container";
         public const String ContinueOnError = "continue-on-error";
+        public const String Credentials = "credentials";
         public const String Defaults = "defaults";
         public const String Env = "env";
+        public const String Environment = "environment";
         public const String Event = "event";
         public const String EventPattern = "github.event";
         public const String Exclude = "exclude";
@@ -45,6 +47,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Options = "options";
         public const String Outputs = "outputs";
         public const String OutputsPattern = "needs.*.outputs";
+        public const String Password = "password";
         public const String Path = "path";
         public const String Pool = "pool";
         public const String Ports = "ports";
@@ -68,6 +71,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Success = "success";
         public const String Template = "template";
         public const String TimeoutMinutes = "timeout-minutes";
+        public const String Username = "username";
         public const String Uses = "uses";
         public const String VmImage = "vmImage";
         public const String Volumes = "volumes";

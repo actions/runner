@@ -60,6 +60,7 @@ namespace GitHub.Runner.Common.Tests
             {
                 typeof(IActionCommandExtension),
                 typeof(IExecutionContext),
+                typeof(IFileCommandExtension),
                 typeof(IHandler),
                 typeof(IJobExtension),
                 typeof(IStep),

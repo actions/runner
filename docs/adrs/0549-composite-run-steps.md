@@ -16,10 +16,31 @@ We don't want the workflow author to need to know how the internal workings of t
 
 A composite action is treated as **one** individual job step (this is known as encapsulation).
 
-
 ## Decision
 
 **In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
+
+### Composite Run Steps Features
+This feature supports at the top action level:
+- name
+- description
+- inputs
+- runs
+- outputs
+
+This feature supports at the run step level:
+- name
+- id
+- run
+- env
+- shell
+- working-directory
+
+This feature **does not support** at the run step level:
+- timeout-minutes
+- secrets
+- conditionals (needs, if, etc.)
+- continue-on-error
 
 ### Steps
 
@@ -49,7 +70,9 @@ runs:
   using: "composite"
   steps:
     - run: pip install -r requirements.txt
+      shell: bash
     - run: npm install
+      shell: bash
 ```
 
 Example Output
@@ -62,6 +85,69 @@ echo hello world 4
 ```
 
 We add a token called "composite" which allows our Runner code to process composite actions. By invoking "using: composite", our Runner code then processes the "steps" attribute, converts this template code to a list of steps, and finally runs each run step sequentially. If any step fails and there are no `if` conditions defined, the whole composite action job fails. 
+
+### Defaults
+
+We will not support "defaults" in a composite action. 
+
+### Shell and Working-directory
+
+For each run step in a composite action, the action author can set the `shell` and `working-directory` attributes for that step. The shell attribute is **required** for each run step because the action author does not know what the workflow author is using for the operating system so we need to explicitly prevent unknown behavior by making sure that each run step has an explicit shell **set by the action author.** On the other hand, `working-directory` is optional. Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-directory` attributes at the step level for an action. 
+
+For example,
+
+`action.yml`
+
+
+```yaml
+inputs:
+  shell_1:
+    description: 'Your name'
+    default: 'pwsh'
+steps:
+  - run: echo 1
+    shell: ${{ inputs.shell_1 }}
+```
+
+Note, the workflow file and action file are treated as separate entities. **So, the workflow `defaults` will never change the `shell` and `working-directory` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
+
+### Running Local Scripts
+
+Example 'workflow.yml':
+```yaml
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+    - uses: user/composite@v1
+```
+
+Example `user/composite/action.yml`:
+
+```yaml
+runs:
+  using: "composite"
+  steps: 
+    - run: chmod +x ${{ github.action_path }}/test/script2.sh
+      shell: bash
+    - run: chmod +x $GITHUB_ACTION_PATH/script.sh
+      shell: bash
+    - run: ${{ github.action_path }}/test/script2.sh
+      shell: bash
+    - run: $GITHUB_ACTION_PATH/script.sh
+      shell: bash
+```
+Where `user/composite` has the file structure:
+```
+.
++-- action.yml
++-- script.sh
++-- test
+|   +-- script2.sh
+```
+
+
+Users will be able to run scripts located in their action folder by first prepending the relative path and script name with `$GITHUB_ACTION_PATH` or `github.action_path` which contains the path in which the composite action is downloaded to and where those "files" live. Note, you'll have to use `chmod` before running each script if you do not git check in your script files into your github repo with the executable bit turned on.
 
 ### Inputs
 
@@ -86,6 +172,7 @@ runs:
   using: "composite"
   steps: 
     - run: echo hello ${{ inputs.your_name }}
+      shell: bash
 ```
 
 Example Output:
@@ -106,6 +193,7 @@ steps:
   - id: foo
     uses: user/composite@v1
   - run: echo random-number ${{ steps.foo.outputs.random-number }} 
+    shell: bash
 ```
 
 Example `user/composite/action.yml`:
@@ -119,7 +207,8 @@ runs:
   using: "composite"
   steps: 
     - id: random-number-generator
-      run: echo "::set-output name=random-number::$(echo $RANDOM)"
+      run: echo "::set-output name=random-id::$(echo $RANDOM)"
+      shell: bash
 ```
 
 Example Output:
@@ -143,12 +232,16 @@ In the Composite Action, you'll only be able to use `::set-env::` to set environ
 
 ### Secrets
 
-**Note** : This feature will be focused on in a future ADR.
+**We will not support "Secrets" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 We'll pass the secrets from the composite action's parents (ex: the workflow file) to the composite action. Secrets can be created in the composite action with the secrets context. In the actions yaml, we'll automatically mask the secret. 
 
 
 ### If Condition
+
+** If and needs conditions will not be supported in the composite run steps feature. It will be supported later on in a new feature. **
+
+Old reasoning:
 
 Example `workflow.yml`:
 
@@ -166,11 +259,17 @@ runs:
   using: "composite"
   steps:
     - run: echo "just succeeding"
+      shell: bash
     - run: echo "I will run, as my current scope is succeeding"
+      shell: bash
       if: success()
     - run: exit 1
+      shell: bash
     - run: echo "I will not run, as my current scope is now failing"
+      shell: bash
 ```
+
+**We will not support "if Condition" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 See the paragraph below for a rudimentary approach (thank you to @cybojenix for the idea, example, and explanation for this approach):
 
@@ -203,12 +302,17 @@ runs:
     - id: foo1
       run: echo test 1
       timeout-minutes: 10
+      shell: bash
     - id: foo2
       run: echo test 2
+      shell: bash
     - id: foo3
       run: echo test 3
       timeout-minutes: 10
+      shell: bash
 ```
+
+**We will not support "timeout-minutes" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
 
@@ -243,35 +347,16 @@ runs:
   steps: 
     - run: exit 1
       continue-on-error: true
+      shell: bash
     - run: echo "Hello World 2" <----- This step will run
+      shell: bash
 ```
+
+**We will not support "continue-on-error" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 If any of the steps fail in the composite action and the `continue-on-error` is set to `false` for the whole composite action step in the workflow file, then the steps below it will run. On the flip side, if `continue-on-error` is set to `true` for the whole composite action step in the workflow file, the next job step will run.
 
 For the composite action steps, it follows the same logic as above. In this example, `"Hello World 2"` will be outputted because the previous step has `continue-on-error` set to `true` although that previous step errored. 
-
-### Defaults
-We will not support "defaults" in a composite action. 
-
-### Shell and Working-directory
-For each run step in a composite action, the action author can set the `shell` and `working-directory` attributes for that step. These attributes are optional for each run step - by default, the `shell` is set to whatever default value is associated with the runner os (ex: bash =\> Mac). Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-directory` attributes at the step level for an action. 
-
-For example,
-
-`action.yml`
-
-
-```yaml
-inputs:
-  shell_1:
-    description: 'Your name'
-    default: 'pwsh'
-steps:
-  - run: echo 1
-    shell: ${{ inputs.shell_1 }}
-```
-
-Note, the workflow file and action file are treated as separate entities. **So, the workflow `defaults` will never change the `shell` and `working-directory` value in the run steps in a composite action.** Note, `defaults` in a workflow only apply to run steps not "uses" steps (steps that use an action).
 
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 

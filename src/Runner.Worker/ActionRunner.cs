@@ -145,6 +145,10 @@ namespace GitHub.Runner.Worker
                 stepHost = containerStepHost;
             }
 
+            // Setup File Command Manager
+            var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
+            fileCommandManager.InitializeFiles(ExecutionContext, null);
+
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
@@ -238,7 +242,15 @@ namespace GitHub.Runner.Worker
             handler.PrintActionDetails(Stage);
 
             // Run the task.
-            await handler.RunAsync(Stage);
+            try 
+            {
+                await handler.RunAsync(Stage);
+            }
+            finally 
+            {
+                fileCommandManager.ProcessFiles(ExecutionContext, ExecutionContext.Global.Container);
+            }
+
         }
 
         public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)

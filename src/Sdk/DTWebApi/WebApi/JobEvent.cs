@@ -131,6 +131,17 @@ namespace GitHub.DistributedTask.WebApi
             this.Outputs = outputs;
         }
 
+        public JobCompletedEvent(
+            Int64 requestId,
+            Guid jobId,
+            TaskResult result,
+            Dictionary<String, VariableValue> outputs,
+            ActionsEnvironmentReference actionsEnvironment)
+            : this(requestId, jobId, result, outputs)
+        {
+            this.ActionsEnvironment = actionsEnvironment;
+        }
+
         [DataMember(EmitDefaultValue = false)]
         public Int64 RequestId
         {
@@ -147,6 +158,13 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public IDictionary<String, VariableValue> Outputs
+        {
+            get;
+            set;
+        }
+
+        [DataMember(EmitDefaultValue = false)]
+        public ActionsEnvironmentReference ActionsEnvironment
         {
             get;
             set;

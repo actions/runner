@@ -44,7 +44,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             _contexts = new DictionaryContextData();
             _jobContext = new JobContext();
-            _contexts["github"] = new DictionaryContextData();
+            _contexts["github"] = new GitHubContext();
             _contexts["runner"] = new DictionaryContextData();
             _contexts["job"] = _jobContext;
             _ec.Setup(x => x.ExpressionValues).Returns(_contexts);
@@ -602,7 +602,12 @@ namespace GitHub.Runner.Common.Tests.Worker
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
             stepContext.Setup(x => x.Global).Returns(() => _ec.Object.Global);
-            stepContext.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
+            var expressionValues = new DictionaryContextData();
+            foreach (var pair in _ec.Object.ExpressionValues)
+            {
+                expressionValues[pair.Key] = pair.Value;
+            }
+            stepContext.Setup(x => x.ExpressionValues).Returns(expressionValues);
             stepContext.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             stepContext.Setup(x => x.JobContext).Returns(_jobContext);
             stepContext.Setup(x => x.ContextName).Returns(step.Object.Action.ContextName);

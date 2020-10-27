@@ -20,6 +20,12 @@ namespace GitHub.DistributedTask.WebApi
             this.Count = lines.Count;
         }
 
+        public TimelineRecordFeedLinesWrapper(Guid stepId, IList<string> lines, Int64 startLine)
+            : this(stepId, lines)
+        {
+            this.StartLine = startLine;
+        }
+
         [DataMember(Order = 0)]
         public Int32 Count { get; private set; }
 
@@ -31,5 +37,8 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public Guid StepId { get; set; }
+
+        [DataMember (EmitDefaultValue = false)]
+        public Int64? StartLine { get; private set; }
     }
 }
