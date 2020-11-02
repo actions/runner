@@ -1,9 +1,8 @@
 ## Features
-  - Expose retention days in env for toolkit/artifacts package (#714)
-  - Notify on unsecure commands (#731)
+  - N/A
 
 ## Bugs
-  - N/A
+  - Raise error for set-env, block set node_options using `::set-env::` (#784)
 
 ## Misc
   - N/A
