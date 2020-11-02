@@ -76,5 +76,16 @@ namespace GitHub.Runner.Worker
 
             return copy;
         }
+
+        public bool IsPullRequest()
+        {
+            PipelineContextData data;
+            if (TryGetValue("event_name", out data))
+            {
+              var eventName = data as StringContextData;
+              return eventName == "pull_request";
+            }
+            return false;
+        }
     }
 }
