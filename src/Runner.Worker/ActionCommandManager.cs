@@ -232,7 +232,7 @@ namespace GitHub.Runner.Worker
                     var issue = new Issue()
                     {
                         Type = IssueType.Error,
-                        Message = "Can't update NODE_OPTIONS environment variable using ::set-env:: command."
+                        Message = $"Can't update {blocked} environment variable using ::set-env:: command."
                     };
                     issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
                     context.AddIssue(issue);
