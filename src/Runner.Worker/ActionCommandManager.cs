@@ -186,7 +186,7 @@ namespace GitHub.Runner.Worker
         {
             var configurationStore = HostContext.GetService<IConfigurationStore>();
             var isHostedServer = configurationStore.GetSettings().IsHostedServer;
-            
+
             var allowUnsecureCommands = false;
             bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
@@ -209,9 +209,9 @@ namespace GitHub.Runner.Worker
             else if (!allowUnsecureCommands)
             {
                 // Log Telemetry and let user know they shouldn't do this
-                var issue = new Issue() 
-                { 
-                    Type = IssueType.Warning, 
+                var issue = new Issue()
+                {
+                    Type = IssueType.Error,
                     Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
                 };
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
@@ -223,6 +223,24 @@ namespace GitHub.Runner.Worker
                 throw new Exception("Required field 'name' is missing in ##[set-env] command.");
             }
 
+
+            foreach (var blocked in _setEnvBlockList)
+            {
+                if (string.Equals(blocked, envName, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Log Telemetry and let user know they shouldn't do this
+                    var issue = new Issue()
+                    {
+                        Type = IssueType.Error,
+                        Message = $"Can't update {blocked} environment variable using ::set-env:: command."
+                    };
+                    issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
+                    context.AddIssue(issue);
+
+                    return;
+                }
+            }
+
             context.Global.EnvironmentVariables[envName] = command.Data;
             context.SetEnvContext(envName, command.Data);
             context.Debug($"{envName}='{command.Data}'");
@@ -232,6 +250,11 @@ namespace GitHub.Runner.Worker
         {
             public const String Name = "name";
         }
+
+        private string[] _setEnvBlockList = 
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class SetOutputCommandExtension : RunnerService, IActionCommandExtension
@@ -319,7 +342,7 @@ namespace GitHub.Runner.Worker
         {
             var configurationStore = HostContext.GetService<IConfigurationStore>();
             var isHostedServer = configurationStore.GetSettings().IsHostedServer;
-            
+
             var allowUnsecureCommands = false;
             bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
@@ -342,9 +365,9 @@ namespace GitHub.Runner.Worker
             else if (!allowUnsecureCommands)
             {
                 // Log Telemetry and let user know they shouldn't do this
-                var issue = new Issue() 
-                { 
-                    Type = IssueType.Warning, 
+                var issue = new Issue()
+                {
+                    Type = IssueType.Error,
                     Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
                 };
                 issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
