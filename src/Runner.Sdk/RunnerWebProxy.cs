@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -71,11 +71,11 @@ namespace GitHub.Runner.Sdk
 
             if (!string.IsNullOrEmpty(httpProxyAddress) && Uri.TryCreate(httpProxyAddress, UriKind.Absolute, out var proxyHttpUri))
             {
-                _httpProxyAddress = proxyHttpUri.AbsoluteUri;
+                _httpProxyAddress = proxyHttpUri.OriginalString;
 
                 // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
-                Environment.SetEnvironmentVariable("HTTP_PROXY", httpProxyAddress);
-                Environment.SetEnvironmentVariable("http_proxy", httpProxyAddress);
+                Environment.SetEnvironmentVariable("HTTP_PROXY", _httpProxyAddress);
+                Environment.SetEnvironmentVariable("http_proxy", _httpProxyAddress);
 
                 // the proxy url looks like http://[user:pass@]127.0.0.1:8888
                 var userInfo = Uri.UnescapeDataString(proxyHttpUri.UserInfo).Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
@@ -101,11 +101,11 @@ namespace GitHub.Runner.Sdk
 
             if (!string.IsNullOrEmpty(httpsProxyAddress) && Uri.TryCreate(httpsProxyAddress, UriKind.Absolute, out var proxyHttpsUri))
             {
-                _httpsProxyAddress = proxyHttpsUri.AbsoluteUri;
+                _httpsProxyAddress = proxyHttpsUri.OriginalString;
 
                 // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
-                Environment.SetEnvironmentVariable("HTTPS_PROXY", httpsProxyAddress);
-                Environment.SetEnvironmentVariable("https_proxy", httpsProxyAddress);
+                Environment.SetEnvironmentVariable("HTTPS_PROXY", _httpsProxyAddress);
+                Environment.SetEnvironmentVariable("https_proxy", _httpsProxyAddress);
 
                 // the proxy url looks like http://[user:pass@]127.0.0.1:8888
                 var userInfo = Uri.UnescapeDataString(proxyHttpsUri.UserInfo).Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
