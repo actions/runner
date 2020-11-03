@@ -1,4 +1,4 @@
-﻿using GitHub.Runner.Common.Util;
+using GitHub.Runner.Common.Util;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -127,11 +127,11 @@ namespace GitHub.Runner.Common.Tests
                 Environment.SetEnvironmentVariable("no_proxy", "github.com, google.com,");
                 var proxy = new RunnerWebProxy();
 
-                Assert.Equal("http://127.0.0.1:8888/", proxy.HttpProxyAddress);
+                Assert.Equal("http://127.0.0.1:8888", proxy.HttpProxyAddress);
                 Assert.Null(proxy.HttpProxyUsername);
                 Assert.Null(proxy.HttpProxyPassword);
 
-                Assert.Equal("http://user:pass@127.0.0.1:9999/", proxy.HttpsProxyAddress);
+                Assert.Equal("http://user:pass@127.0.0.1:9999", proxy.HttpsProxyAddress);
                 Assert.Equal("user", proxy.HttpsProxyUsername);
                 Assert.Equal("pass", proxy.HttpsProxyPassword);
 
@@ -161,11 +161,11 @@ namespace GitHub.Runner.Common.Tests
                 Environment.SetEnvironmentVariable("NO_PROXY", "github.com, google.com,");
                 var proxy = new RunnerWebProxy();
 
-                Assert.Equal("http://127.0.0.1:7777/", proxy.HttpProxyAddress);
+                Assert.Equal("http://127.0.0.1:7777", proxy.HttpProxyAddress);
                 Assert.Null(proxy.HttpProxyUsername);
                 Assert.Null(proxy.HttpProxyPassword);
 
-                Assert.Equal("http://user:pass@127.0.0.1:8888/", proxy.HttpsProxyAddress);
+                Assert.Equal("http://user:pass@127.0.0.1:8888", proxy.HttpsProxyAddress);
                 Assert.Equal("user", proxy.HttpsProxyUsername);
                 Assert.Equal("pass", proxy.HttpsProxyPassword);
 
@@ -218,19 +218,19 @@ namespace GitHub.Runner.Common.Tests
                 Environment.SetEnvironmentVariable("no_proxy", "github.com, google.com,");
                 var proxy = new RunnerWebProxy();
 
-                Assert.Equal("http://user1@127.0.0.1:8888/", proxy.HttpProxyAddress);
+                Assert.Equal("http://user1@127.0.0.1:8888", proxy.HttpProxyAddress);
                 Assert.Equal("user1", proxy.HttpProxyUsername);
                 Assert.Null(proxy.HttpProxyPassword);
 
-                var cred = proxy.Credentials.GetCredential(new Uri("http://user1@127.0.0.1:8888/"), "Basic");
+                var cred = proxy.Credentials.GetCredential(new Uri("http://user1@127.0.0.1:8888"), "Basic");
                 Assert.Equal("user1", cred.UserName);
                 Assert.Equal(string.Empty, cred.Password);
 
-                Assert.Equal("http://user2:pass@127.0.0.1:9999/", proxy.HttpsProxyAddress);
+                Assert.Equal("http://user2:pass@127.0.0.1:9999", proxy.HttpsProxyAddress);
                 Assert.Equal("user2", proxy.HttpsProxyUsername);
                 Assert.Equal("pass", proxy.HttpsProxyPassword);
 
-                cred = proxy.Credentials.GetCredential(new Uri("http://user2:pass@127.0.0.1:9999/"), "Basic");
+                cred = proxy.Credentials.GetCredential(new Uri("http://user2:pass@127.0.0.1:9999"), "Basic");
                 Assert.Equal("user2", cred.UserName);
                 Assert.Equal("pass", cred.Password);
 
@@ -256,19 +256,19 @@ namespace GitHub.Runner.Common.Tests
                 Environment.SetEnvironmentVariable("no_proxy", "github.com, google.com,");
                 var proxy = new RunnerWebProxy();
 
-                Assert.Equal("http://user1:pass1%40@127.0.0.1:8888/", proxy.HttpProxyAddress);
+                Assert.Equal("http://user1:pass1%40@127.0.0.1:8888", proxy.HttpProxyAddress);
                 Assert.Equal("user1", proxy.HttpProxyUsername);
                 Assert.Equal("pass1@", proxy.HttpProxyPassword);
 
-                var cred = proxy.Credentials.GetCredential(new Uri("http://user1:pass1%40@127.0.0.1:8888/"), "Basic");
+                var cred = proxy.Credentials.GetCredential(new Uri("http://user1:pass1%40@127.0.0.1:8888"), "Basic");
                 Assert.Equal("user1", cred.UserName);
                 Assert.Equal("pass1@", cred.Password);
 
-                Assert.Equal("http://user2:pass2%40@127.0.0.1:9999/", proxy.HttpsProxyAddress);
+                Assert.Equal("http://user2:pass2%40@127.0.0.1:9999", proxy.HttpsProxyAddress);
                 Assert.Equal("user2", proxy.HttpsProxyUsername);
                 Assert.Equal("pass2@", proxy.HttpsProxyPassword);
 
-                cred = proxy.Credentials.GetCredential(new Uri("http://user2:pass2%40@127.0.0.1:9999/"), "Basic");
+                cred = proxy.Credentials.GetCredential(new Uri("http://user2:pass2%40@127.0.0.1:9999"), "Basic");
                 Assert.Equal("user2", cred.UserName);
                 Assert.Equal("pass2@", cred.Password);
 
@@ -398,6 +398,36 @@ namespace GitHub.Runner.Common.Tests
 
                 Assert.Equal("http://user2:pass2%40@127.0.0.1:9999/", proxy.GetProxy(new Uri("https://something.com")).AbsoluteUri);
                 Assert.Equal("http://user2:pass2%40@127.0.0.1:9999/", proxy.GetProxy(new Uri("https://www.something2.com")).AbsoluteUri);
+            }
+            finally
+            {
+                CleanProxyEnv();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void WebProxyFromEnvironmentVariablesWithPort80()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("http_proxy", "http://127.0.0.1:80");
+                Environment.SetEnvironmentVariable("https_proxy", "http://user:pass@127.0.0.1:80");
+                Environment.SetEnvironmentVariable("no_proxy", "github.com, google.com,");
+                var proxy = new RunnerWebProxy();
+
+                Assert.Equal("http://127.0.0.1:80", Environment.GetEnvironmentVariable("http_proxy"));
+                Assert.Null(proxy.HttpProxyUsername);
+                Assert.Null(proxy.HttpProxyPassword);
+
+                Assert.Equal("http://user:pass@127.0.0.1:80", Environment.GetEnvironmentVariable("https_proxy"));
+                Assert.Equal("user", proxy.HttpsProxyUsername);
+                Assert.Equal("pass", proxy.HttpsProxyPassword);
+
+                Assert.Equal(2, proxy.NoProxyList.Count);
+                Assert.Equal("github.com", proxy.NoProxyList[0].Host);
+                Assert.Equal("google.com", proxy.NoProxyList[1].Host);
             }
             finally
             {
