@@ -10,6 +10,8 @@ namespace GitHub.Runner.Worker
         {
             "action",
             "action_path",
+            "action_ref",
+            "action_repository",
             "actor",
             "api_url",
             "base_ref",
