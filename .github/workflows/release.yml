@@ -53,7 +53,7 @@ jobs:
       osx-x64-sha: ${{ steps.sha.outputs.osx-x64-sha256 }}
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-arm64, osx-x64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -75,6 +75,10 @@ jobs:
           os: windows-latest
           devScript: ./dev
 
+        - runtime: win-arm64
+          os: windows-latest
+          devScript: ./dev
+
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v1
@@ -90,7 +94,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'win-arm64'
 
     # Create runner package tar.gz/zip
     - name: Package Release
@@ -174,6 +178,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (win-arm64)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_name: actions-runner-win-arm64-${{ steps.releaseNote.outputs.version }}.zip
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-x64)
