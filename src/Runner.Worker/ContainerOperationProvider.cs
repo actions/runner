@@ -91,7 +91,10 @@ namespace GitHub.Runner.Worker
 #endif
 
             // Check docker client/server version
+            executionContext.Output("##[group]Checking docker version");
             DockerVersion dockerVersion = await _dockerManger.DockerVersion(executionContext);
+            executionContext.Output("##[endgroup]");
+
             ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
             ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
 
@@ -111,7 +114,7 @@ namespace GitHub.Runner.Worker
             }
 
             // Clean up containers left by previous runs
-            executionContext.Debug($"Delete stale containers from previous jobs");
+            executionContext.Output("##[group]Clean up resources from previous jobs");
             var staleContainers = await _dockerManger.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManger.DockerInstanceLabel}\"");
             foreach (var staleContainer in staleContainers)
             {
@@ -122,18 +125,20 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            executionContext.Debug($"Delete stale container networks from previous jobs");
             int networkPruneExitCode = await _dockerManger.DockerNetworkPrune(executionContext);
             if (networkPruneExitCode != 0)
             {
                 executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
             }
+            executionContext.Output("##[endgroup]");
 
             // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
             // All containers within a job join the same network
+            executionContext.Output("##[group]Create local container network");
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
             await CreateContainerNetworkAsync(executionContext, containerNetwork);
             executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
+            executionContext.Output("##[endgroup]");
 
             foreach (var container in containers)
             {
@@ -141,10 +146,12 @@ namespace GitHub.Runner.Worker
                 await StartContainerAsync(executionContext, container);
             }
 
+            executionContext.Output("##[group]Waiting for all services to be ready");
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
                 await ContainerHealthcheck(executionContext, container);
             }
+            executionContext.Output("##[endgroup]");
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
@@ -173,6 +180,10 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Container name: {container.ContainerName}");
             Trace.Info($"Container image: {container.ContainerImage}");
             Trace.Info($"Container options: {container.ContainerCreateOptions}");
+
+            var groupName = container.IsJobContainer ? "Starting job container" : $"Starting {container.ContainerNetworkAlias} service container";
+            executionContext.Output($"##[group]{groupName}");
+
             foreach (var port in container.UserPortMappings)
             {
                 Trace.Info($"User provided port: {port.Value}");
@@ -187,12 +198,18 @@ namespace GitHub.Runner.Worker
                 }
             }
 
+            // TODO: Add at a later date. This currently no local package registry to test with
+            // UpdateRegistryAuthForGitHubToken(executionContext, container);
+
+            // Before pulling, generate client authentication if required
+            var configLocation = await ContainerRegistryLogin(executionContext, container);
+
             // Pull down docker image with retry up to 3 times
             int retryCount = 0;
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage);
+                pullExitCode = await _dockerManger.DockerPull(executionContext, container.ContainerImage, configLocation);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -208,6 +225,9 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
+
+            // Remove credentials after pulling
+            ContainerRegistryLogout(configLocation);
 
             if (retryCount == 3 && pullExitCode != 0)
             {
@@ -304,6 +324,7 @@ namespace GitHub.Runner.Worker
                 container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
             }
+            executionContext.Output("##[endgroup]");
         }
 
         private async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
@@ -423,6 +444,84 @@ namespace GitHub.Runner.Worker
             else
             {
                 throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
+            }
+        }
+
+        private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
+        {
+            if (string.IsNullOrEmpty(container.RegistryAuthUsername) || string.IsNullOrEmpty(container.RegistryAuthPassword))
+            {
+                // No valid client config can be generated
+                return "";
+            }
+            var configLocation = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), $".docker_{Guid.NewGuid()}");
+            try
+            {
+                var dirInfo = Directory.CreateDirectory(configLocation);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
+            }
+            var loginExitCode = await _dockerManger.DockerLogin(
+                executionContext,
+                configLocation,
+                container.RegistryServer,
+                container.RegistryAuthUsername,
+                container.RegistryAuthPassword);
+
+            if (loginExitCode != 0)
+            {
+                throw new InvalidOperationException($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
+            }
+            return configLocation;
+        }
+
+        private void ContainerRegistryLogout(string configLocation)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(configLocation) && Directory.Exists(configLocation))
+                {
+                    Directory.Delete(configLocation, recursive: true);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to remove directory containing Docker client credentials: {e.Message}");
+            }
+        }
+
+        private void UpdateRegistryAuthForGitHubToken(IExecutionContext executionContext, ContainerInfo container)
+        {
+            var registryIsTokenCompatible = container.RegistryServer.Equals("docker.pkg.github.com", StringComparison.OrdinalIgnoreCase);
+            if (!registryIsTokenCompatible)
+            {
+                return;
+            }
+
+            var registryMatchesWorkflow = false;
+
+            // REGISTRY/OWNER/REPO/IMAGE[:TAG]
+            var imageParts = container.ContainerImage.Split('/');
+            if (imageParts.Length != 4)
+            {
+                executionContext.Warning($"Could not identify owner and repo for container image {container.ContainerImage}. Skipping automatic token auth");
+                return;
+            }
+            var owner = imageParts[1];
+            var repo = imageParts[2];
+            var nwo = $"{owner}/{repo}";
+            if (nwo.Equals(executionContext.GetGitHubContext("repository"), StringComparison.OrdinalIgnoreCase))
+            {
+                registryMatchesWorkflow = true;
+            }
+
+            var registryCredentialsNotSupplied = string.IsNullOrEmpty(container.RegistryAuthUsername) && string.IsNullOrEmpty(container.RegistryAuthPassword);
+            if (registryCredentialsNotSupplied && registryMatchesWorkflow)
+            {
+                container.RegistryAuthUsername = executionContext.GetGitHubContext("actor");
+                container.RegistryAuthPassword = executionContext.GetGitHubContext("token");
             }
         }
     }

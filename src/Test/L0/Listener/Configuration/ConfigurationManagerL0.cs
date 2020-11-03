@@ -39,10 +39,12 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
         private string _expectedToken = "expectedToken";
         private string _expectedServerUrl = "https://codedev.ms";
         private string _expectedAgentName = "expectedAgentName";
-        private string _expectedPoolName = "poolName";
+        private string _defaultRunnerGroupName = "defaultRunnerGroup";
+        private string _secondRunnerGroupName = "secondRunnerGroup";
         private string _expectedAuthType = "pat";
         private string _expectedWorkFolder = "_work";
-        private int _expectedPoolId = 1;
+        private int _defaultRunnerGroupId = 1;
+        private int _secondRunnerGroupId = 2;
         private RSACryptoServiceProvider rsa = null;
         private RunnerSettings _configMgrAgentSettings = new RunnerSettings();
 
@@ -97,7 +99,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _serviceControlManager.Setup(x => x.GenerateScripts(It.IsAny<RunnerSettings>()));
 #endif
 
-            var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_expectedPoolName) { Id = _expectedPoolId } };
+            var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_defaultRunnerGroupName) { Id = _defaultRunnerGroupId, IsInternal = true }, new TaskAgentPool(_secondRunnerGroupName) { Id = _secondRunnerGroupId } };
             _runnerServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.IsAny<TaskAgentPoolType>())).Returns(Task.FromResult(expectedPools));
 
             var expectedAgents = new List<TaskAgent>();
@@ -155,7 +157,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "configure",                
                        "--url", _expectedServerUrl,
                        "--name", _expectedAgentName,
-                       "--pool", _expectedPoolName,
+                       "--runnergroup", _secondRunnerGroupName,
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,
                        "--token", _expectedToken,
@@ -175,7 +177,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 Assert.NotNull(s);
                 Assert.True(s.ServerUrl.Equals(_expectedServerUrl));
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
-                Assert.True(s.PoolId.Equals(_expectedPoolId));
+                Assert.True(s.PoolId.Equals(_secondRunnerGroupId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
 
                 // validate GetAgentPoolsAsync gets called twice with automation pool type

@@ -1,4 +1,5 @@
 ﻿using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
@@ -183,12 +184,64 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
+
+            var allowUnsecureCommands = false;
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
+
+            // Apply environment from env context, env context contains job level env and action's env block
+#if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
+            if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            {
+                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
+            }
+
+            // TODO: Eventually remove isHostedServer and apply this to dotcom customers as well
+            if (!isHostedServer && !allowUnsecureCommands)
+            {
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
+            }
+            else if (!allowUnsecureCommands)
+            {
+                // Log Telemetry and let user know they shouldn't do this
+                var issue = new Issue()
+                {
+                    Type = IssueType.Error,
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
+                };
+                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
+                context.AddIssue(issue);
+            }
+
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-env] command.");
             }
 
-            context.EnvironmentVariables[envName] = command.Data;
+
+            foreach (var blocked in _setEnvBlockList)
+            {
+                if (string.Equals(blocked, envName, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Log Telemetry and let user know they shouldn't do this
+                    var issue = new Issue()
+                    {
+                        Type = IssueType.Error,
+                        Message = $"Can't update {blocked} environment variable using ::set-env:: command."
+                    };
+                    issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
+                    context.AddIssue(issue);
+
+                    return;
+                }
+            }
+
+            context.Global.EnvironmentVariables[envName] = command.Data;
             context.SetEnvContext(envName, command.Data);
             context.Debug($"{envName}='{command.Data}'");
         }
@@ -197,6 +250,11 @@ namespace GitHub.Runner.Worker
         {
             public const String Name = "name";
         }
+
+        private string[] _setEnvBlockList = 
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class SetOutputCommandExtension : RunnerService, IActionCommandExtension
@@ -282,9 +340,43 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
+
+            var allowUnsecureCommands = false;
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
+
+            // Apply environment from env context, env context contains job level env and action's env block
+#if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
+            if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            {
+                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
+            }
+
+            // TODO: Eventually remove isHostedServer and apply this to dotcom customers as well
+            if (!isHostedServer && !allowUnsecureCommands)
+            {
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
+            }
+            else if (!allowUnsecureCommands)
+            {
+                // Log Telemetry and let user know they shouldn't do this
+                var issue = new Issue()
+                {
+                    Type = IssueType.Error,
+                    Message = String.Format(Constants.Runner.UnsupportedCommandMessage, this.Command)
+                };
+                issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.UnsupportedCommand;
+                context.AddIssue(issue);
+            }
+
             ArgUtil.NotNullOrEmpty(command.Data, "path");
-            context.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
-            context.PrependPath.Add(command.Data);
+            context.Global.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
+            context.Global.PrependPath.Add(command.Data);
         }
     }
 

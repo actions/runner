@@ -56,6 +56,10 @@ namespace GitHub.Runner.Common
                     Add<T>(extensions, "GitHub.Runner.Worker.EndGroupCommandExtension, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.EchoCommandExtension, Runner.Worker");
                     break;
+                case "GitHub.Runner.Worker.IFileCommandExtension":
+                    Add<T>(extensions, "GitHub.Runner.Worker.AddPathFileCommand, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.SetEnvFileCommand, Runner.Worker");
+                    break;
                 default:
                     // This should never happen.
                     throw new NotSupportedException($"Unexpected extension type: '{typeof(T).FullName}'");

@@ -38,11 +38,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             };
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
-            _ec.Setup(x => x.Variables).Returns(_variables);
+            _ec.Setup(x => x.Global).Returns(new GlobalContext { WriteDebug = true });
+            _ec.Object.Global.Variables = _variables;
+            _ec.Object.Global.EnvironmentVariables = _env;
 
             _contexts = new DictionaryContextData();
             _jobContext = new JobContext();
-            _contexts["github"] = new DictionaryContextData();
+            _contexts["github"] = new GitHubContext();
             _contexts["runner"] = new DictionaryContextData();
             _contexts["job"] = _jobContext;
             _ec.Setup(x => x.ExpressionValues).Returns(_contexts);
@@ -50,7 +52,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Setup(x => x.JobContext).Returns(_jobContext);
 
             _stepContext = new StepsContext();
-            _ec.Setup(x => x.StepsContext).Returns(_stepContext);
+            _ec.Object.Global.StepsContext = _stepContext;
 
             _ec.Setup(x => x.PostJobSteps).Returns(new Stack<IStep>());
 
@@ -80,7 +82,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -115,7 +117,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -154,7 +156,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -208,7 +210,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -287,7 +289,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Steps.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -330,7 +332,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Step.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Step.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -361,7 +363,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -391,7 +393,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _ec.Object.Result = null;
 
-                    _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(variableSet.Select(x => x.Object).ToList()));
+                    _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(variableSet.Select(x => x.Object).ToList()));
 
                     // Act.
                     await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -417,7 +419,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -455,7 +457,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -493,7 +495,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -524,7 +526,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -560,7 +562,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.Result = null;
 
-                _ec.Setup(x => x.JobSteps).Returns(new List<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
+                _ec.Setup(x => x.JobSteps).Returns(new Queue<IStep>(new[] { step1.Object, step2.Object, step3.Object }));
 
                 // Act.
                 await _stepsRunner.RunAsync(jobContext: _ec.Object);
@@ -599,13 +601,15 @@ namespace GitHub.Runner.Common.Tests.Worker
             // Setup the step execution context.
             var stepContext = new Mock<IExecutionContext>();
             stepContext.SetupAllProperties();
-            stepContext.Setup(x => x.WriteDebug).Returns(true);
-            stepContext.Setup(x => x.Variables).Returns(_variables);
-            stepContext.Setup(x => x.EnvironmentVariables).Returns(_env);
-            stepContext.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
+            stepContext.Setup(x => x.Global).Returns(() => _ec.Object.Global);
+            var expressionValues = new DictionaryContextData();
+            foreach (var pair in _ec.Object.ExpressionValues)
+            {
+                expressionValues[pair.Key] = pair.Value;
+            }
+            stepContext.Setup(x => x.ExpressionValues).Returns(expressionValues);
             stepContext.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
             stepContext.Setup(x => x.JobContext).Returns(_jobContext);
-            stepContext.Setup(x => x.StepsContext).Returns(_stepContext);
             stepContext.Setup(x => x.ContextName).Returns(step.Object.Action.ContextName);
             stepContext.Setup(x => x.Complete(It.IsAny<TaskResult?>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Callback((TaskResult? r, string currentOperation, string resultCode) =>

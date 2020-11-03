@@ -90,7 +90,7 @@ namespace GitHub.Runner.Common
                     public static readonly string Labels = "labels";
                     public static readonly string MonitorSocketAddress = "monitorsocketaddress";
                     public static readonly string Name = "name";
-                    public static readonly string Pool = "pool";
+                    public static readonly string RunnerGroup = "runnergroup";
                     public static readonly string StartupType = "startuptype";
                     public static readonly string Url = "url";
                     public static readonly string UserName = "username";
@@ -140,6 +140,9 @@ namespace GitHub.Runner.Common
 
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
             public static readonly string WorkerCrash = "WORKER_CRASH";
+            public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
+            public static readonly string UnsupportedCommandMessage = "The `{0}` command is deprecated and will be disabled soon. Please upgrade to using Environment Files. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
+            public static readonly string UnsupportedCommandMessageDisabled = "The `{0}` command is disabled. Please upgrade to using Environment Files or opt into unsecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_COMMANDS` environment variable to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
         }
 
         public static class RunnerEvent
@@ -198,6 +201,7 @@ namespace GitHub.Runner.Common
                 //
                 // Keep alphabetical
                 //
+                public static readonly string AllowUnsupportedCommands = "ACTIONS_ALLOW_UNSECURE_COMMANDS";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }

@@ -44,41 +44,33 @@ namespace GitHub.Runner.Worker
         string ResultCode { get; set; }
         TaskResult? CommandResult { get; set; }
         CancellationToken CancellationToken { get; }
-        List<ServiceEndpoint> Endpoints { get; }
-        TaskOrchestrationPlanReference Plan { get; }
+        GlobalContext Global { get; }
 
-        PlanFeatures Features { get; }
-        Variables Variables { get; }
         Dictionary<string, string> IntraActionState { get; }
-        IDictionary<String, IDictionary<String, String>> JobDefaults { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
-        IDictionary<String, String> EnvironmentVariables { get; }
-        IList<String> FileTable { get; }
-        StepsContext StepsContext { get; }
+        ActionsEnvironmentReference ActionsEnvironment { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
-        List<string> PrependPath { get; }
-        ContainerInfo Container { get; set; }
-        List<ContainerInfo> ServiceContainers { get; }
         JobContext JobContext { get; }
 
         // Only job level ExecutionContext has JobSteps
-        List<IStep> JobSteps { get; }
+        Queue<IStep> JobSteps { get; }
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
 
         bool EchoOnActionCommand { get; set; }
 
-        IExecutionContext FinalizeContext { get; set; }
+        bool InsideComposite { get; }
+
+        ExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null);
 
         // logging
-        bool WriteDebug { get; }
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
 
@@ -107,7 +99,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep RegisterNestedStep(IActionRunner step, DictionaryContextData inputsData, int location, Dictionary<string, string> envData, bool cleanUp = false);
+        IStep CreateCompositeStep(string scopeName, IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -121,9 +113,6 @@ namespace GitHub.Runner.Worker
         private readonly object _matchersLock = new object();
 
         private event OnMatcherChanged _onMatcherChanged;
-
-        // Regex used for checking if ScopeName meets the condition that shows that its id is null.
-        private readonly static Regex _generatedContextNamePattern = new Regex("^__[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$", RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
         private IssueMatcherConfig[] _matchers;
 
@@ -147,24 +136,18 @@ namespace GitHub.Runner.Worker
         public string ContextName { get; private set; }
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
-        public List<ServiceEndpoint> Endpoints { get; private set; }
-        public TaskOrchestrationPlanReference Plan { get; private set; }
-        public Variables Variables { get; private set; }
         public Dictionary<string, string> IntraActionState { get; private set; }
-        public IDictionary<String, IDictionary<String, String>> JobDefaults { get; private set; }
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
-        public IDictionary<String, String> EnvironmentVariables { get; private set; }
-        public IList<String> FileTable { get; private set; }
-        public StepsContext StepsContext { get; private set; }
+
+        public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
-        public bool WriteDebug { get; private set; }
-        public List<string> PrependPath { get; private set; }
-        public ContainerInfo Container { get; set; }
-        public List<ContainerInfo> ServiceContainers { get; private set; }
+
+        // Shared pointer across job-level execution context and step-level execution contexts
+        public GlobalContext Global { get; private set; }
 
         // Only job level ExecutionContext has JobSteps
-        public List<IStep> JobSteps { get; private set; }
+        public Queue<IStep> JobSteps { get; private set; }
 
         // Only job level ExecutionContext has PostJobSteps
         public Stack<IStep> PostJobSteps { get; private set; }
@@ -174,7 +157,7 @@ namespace GitHub.Runner.Worker
 
         public bool EchoOnActionCommand { get; set; }
 
-        public IExecutionContext FinalizeContext { get; set; }
+        public bool InsideComposite { get; private set; }
 
         public TaskResult? Result
         {
@@ -206,9 +189,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public PlanFeatures Features { get; private set; }
-
-        private ExecutionContext Root
+        public ExecutionContext Root
         {
             get
             {
@@ -274,34 +255,17 @@ namespace GitHub.Runner.Worker
 
         /// <summary>
         /// Helper function used in CompositeActionHandler::RunAsync to
-        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location. 
+        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location.
         /// </summary>
-        public IStep RegisterNestedStep(
+        public IStep CreateCompositeStep(
+            string scopeName,
             IActionRunner step,
             DictionaryContextData inputsData,
-            int location,
-            Dictionary<string, string> envData,
-            bool cleanUp = false)
+            Dictionary<string, string> envData)
         {
-            // If the context name is empty and the scope name is empty, we would generate a unique scope name for this child in the following format:
-            // "__<GUID>"
-            var safeContextName = !string.IsNullOrEmpty(ContextName) ? ContextName : $"__{Guid.NewGuid()}";
-
-            // Set Scope Name. Note, for our design, we consider each step in a composite action to have the same scope
-            // This makes it much simpler to handle their outputs at the end of the Composite Action
-            var childScopeName = !string.IsNullOrEmpty(ScopeName) ? $"{ScopeName}.{safeContextName}" : safeContextName;
-
-            var childContextName = !string.IsNullOrEmpty(step.Action.ContextName) ? step.Action.ContextName : $"__{Guid.NewGuid()}";
-
-            step.ExecutionContext = Root.CreateChild(_record.Id, step.DisplayName, _record.Id.ToString("N"), childScopeName, childContextName, logger: _logger);
-
+            step.ExecutionContext = Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
             step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-
-            // Set Parent Attribute for Clean Up Step
-            if (cleanUp)
-            {
-                step.ExecutionContext.FinalizeContext = this;
-            }
+            step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
             // Add the composite action environment variables to each step.
 #if OS_WINDOWS
@@ -315,23 +279,18 @@ namespace GitHub.Runner.Worker
             }
             step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-            Root.JobSteps.Insert(location, step);
-
             return step;
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null)
         {
             Trace.Entering();
 
             var child = new ExecutionContext();
             child.Initialize(HostContext);
+            child.Global = Global;
             child.ScopeName = scopeName;
             child.ContextName = contextName;
-            child.Features = Features;
-            child.Variables = Variables;
-            child.Endpoints = Endpoints;
-            child.Plan = Plan;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -340,10 +299,6 @@ namespace GitHub.Runner.Worker
             {
                 child.IntraActionState = intraActionState;
             }
-            child.EnvironmentVariables = EnvironmentVariables;
-            child.JobDefaults = JobDefaults;
-            child.FileTable = FileTable;
-            child.StepsContext = StepsContext;
             foreach (var pair in ExpressionValues)
             {
                 child.ExpressionValues[pair.Key] = pair.Value;
@@ -352,12 +307,8 @@ namespace GitHub.Runner.Worker
             {
                 child.ExpressionFunctions.Add(item);
             }
-            child._cancellationTokenSource = new CancellationTokenSource();
-            child.WriteDebug = WriteDebug;
+            child._cancellationTokenSource = cancellationTokenSource ?? new CancellationTokenSource();
             child._parentExecutionContext = this;
-            child.PrependPath = PrependPath;
-            child.Container = Container;
-            child.ServiceContainers = ServiceContainers;
             child.EchoOnActionCommand = EchoOnActionCommand;
 
             if (recordOrder != null)
@@ -377,6 +328,8 @@ namespace GitHub.Runner.Worker
                 child._logger = HostContext.CreateService<IPagingLogger>();
                 child._logger.Setup(_mainTimelineId, recordId);
             }
+
+            child.InsideComposite = insideComposite;
 
             return child;
         }
@@ -428,16 +381,17 @@ namespace GitHub.Runner.Worker
 
             if (Root != this)
             {
-                // only dispose TokenSource for step level ExecutionContext 
+                // only dispose TokenSource for step level ExecutionContext
                 _cancellationTokenSource?.Dispose();
             }
 
             _logger.End();
 
-            if (!string.IsNullOrEmpty(ContextName))
+            // Skip if generated context name. Generated context names start with "__". After M271-ish the server will never send an empty context name.
+            if (!string.IsNullOrEmpty(ContextName) && !ContextName.StartsWith("__", StringComparison.Ordinal))
             {
-                StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
-                StepsContext.SetConclusion(ScopeName, ContextName, (Result ?? TaskResult.Succeeded).ToActionResult());
+                Global.StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
+                Global.StepsContext.SetConclusion(ScopeName, ContextName, (Result ?? TaskResult.Succeeded).ToActionResult());
             }
 
             return Result.Value;
@@ -496,8 +450,8 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // if the ContextName follows the __GUID format which is set as the default value for ContextName if null for Composite Actions. 
-            if (String.IsNullOrEmpty(ContextName) || _generatedContextNamePattern.IsMatch(ContextName))
+            // Skip if generated context name. Generated context names start with "__". After M271-ish the server will never send an empty context name.
+            if (string.IsNullOrEmpty(ContextName) || ContextName.StartsWith("__", StringComparison.Ordinal))
             {
                 reference = null;
                 return;
@@ -505,7 +459,7 @@ namespace GitHub.Runner.Worker
 
             // todo: restrict multiline?
 
-            StepsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
+            Global.StepsContext.SetOutput(ScopeName, ContextName, name, value, out reference);
         }
 
         public void SetTimeout(TimeSpan? timeout)
@@ -639,33 +593,38 @@ namespace GitHub.Runner.Worker
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
 
+            Global = new GlobalContext();
+
             // Plan
-            Plan = message.Plan;
-            Features = PlanUtil.GetFeatures(message.Plan);
+            Global.Plan = message.Plan;
+            Global.Features = PlanUtil.GetFeatures(message.Plan);
 
             // Endpoints
-            Endpoints = message.Resources.Endpoints;
+            Global.Endpoints = message.Resources.Endpoints;
 
             // Variables
-            Variables = new Variables(HostContext, message.Variables);
+            Global.Variables = new Variables(HostContext, message.Variables);
 
             // Environment variables shared across all actions
-            EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
+            Global.EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
             // Job defaults shared across all actions
-            JobDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+            Global.JobDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
+            // Actions environment
+            ActionsEnvironment = message.ActionsEnvironment;
+
             // Service container info
-            ServiceContainers = new List<ContainerInfo>();
+            Global.ServiceContainers = new List<ContainerInfo>();
 
             // Steps context (StepsRunner manages adding the scoped steps context)
-            StepsContext = new StepsContext();
+            Global.StepsContext = new StepsContext();
 
             // File table
-            FileTable = new List<String>(message.FileTable ?? new string[0]);
+            Global.FileTable = new List<String>(message.FileTable ?? new string[0]);
 
             // Expression values
             if (message.ContextData?.Count > 0)
@@ -676,15 +635,15 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            ExpressionValues["secrets"] = Variables.ToSecretsContext();
+            ExpressionValues["secrets"] = Global.Variables.ToSecretsContext();
             ExpressionValues["runner"] = new RunnerContext();
             ExpressionValues["job"] = new JobContext();
 
             Trace.Info("Initialize GitHub context");
-            var githubAccessToken = new StringContextData(Variables.Get("system.github.token"));
+            var githubAccessToken = new StringContextData(Global.Variables.Get("system.github.token"));
             var base64EncodedToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{githubAccessToken}"));
             HostContext.SecretMasker.AddValue(base64EncodedToken);
-            var githubJob = Variables.Get("system.github.job");
+            var githubJob = Global.Variables.Get("system.github.job");
             var githubContext = new GitHubContext();
             githubContext["token"] = githubAccessToken;
             if (!string.IsNullOrEmpty(githubJob))
@@ -707,10 +666,10 @@ namespace GitHub.Runner.Worker
 #endif
 
             // Prepend Path
-            PrependPath = new List<string>();
+            Global.PrependPath = new List<string>();
 
             // JobSteps for job ExecutionContext
-            JobSteps = new List<IStep>();
+            JobSteps = new Queue<IStep>();
 
             // PostJobSteps for job ExecutionContext
             PostJobSteps = new Stack<IStep>();
@@ -733,10 +692,10 @@ namespace GitHub.Runner.Worker
             _logger.Setup(_mainTimelineId, _record.Id);
 
             // Initialize 'echo on action command success' property, default to false, unless Step_Debug is set
-            EchoOnActionCommand = Variables.Step_Debug ?? false;
+            EchoOnActionCommand = Global.Variables.Step_Debug ?? false;
 
             // Verbosity (from GitHub.Step_Debug).
-            WriteDebug = Variables.Step_Debug ?? false;
+            Global.WriteDebug = Global.Variables.Step_Debug ?? false;
 
             // Hook up JobServerQueueThrottling event, we will log warning on server tarpit.
             _jobServerQueue.JobServerQueueThrottling += JobServerQueueThrottling_EventReceived;
@@ -764,7 +723,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            _jobServerQueue.QueueWebConsoleLine(_record.Id, msg);
+            _jobServerQueue.QueueWebConsoleLine(_record.Id, msg, totalLines);
             return totalLines;
         }
 
@@ -937,6 +896,16 @@ namespace GitHub.Runner.Worker
     // Otherwise individual overloads would need to be implemented (depending on the unit test).
     public static class ExecutionContextExtension
     {
+        public static string GetFullyQualifiedContextName(this IExecutionContext context)
+        {
+            if (!string.IsNullOrEmpty(context.ScopeName))
+            {
+                return $"{context.ScopeName}.{context.ContextName}";
+            }
+
+            return context.ContextName;
+        }
+
         public static void Error(this IExecutionContext context, Exception ex)
         {
             context.Error(ex.Message);
@@ -975,7 +944,7 @@ namespace GitHub.Runner.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Debug(this IExecutionContext context, string message)
         {
-            if (context.WriteDebug)
+            if (context.Global.WriteDebug)
             {
                 var multilines = message?.Replace("\r\n", "\n")?.Split("\n");
                 if (multilines != null)
@@ -1000,7 +969,7 @@ namespace GitHub.Runner.Worker
                 traceWriter = context.ToTemplateTraceWriter();
             }
             var schema = PipelineTemplateSchemaFactory.GetSchema();
-            return new PipelineTemplateEvaluator(traceWriter, schema, context.FileTable);
+            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable);
         }
 
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)

@@ -34,7 +34,7 @@ A way out for rare cases where scoping is a problem.
 
 `##[remove-matcher]owner`
 
-For the this to be usable, the `owner` needs to be discoverable. Therefore, debug print the owner on registration.
+For this to be usable, the `owner` needs to be discoverable. Therefore, debug print the owner on registration.
 
 ### Single line matcher
 
@@ -184,7 +184,7 @@ Solving this problem means:
   - Use the `github.workspace` (where the repo is cloned on disk)
 - Match against a repository to determine the relative path within the repo
 
-This is a place where we diverge from VSCode. VSCode task configuration are specific to the local workspace (workspace root is known or can be specified). We're solving a more generic problem, so we need more information - specifically the `fromPath` property - in order to accurately root the path.
+This is a place where we diverge from VSCode. VSCode task configurations are specific to the local workspace (workspace root is known or can be specified). We're solving a more generic problem, so we need more information - specifically the `fromPath` property - in order to accurately root the path.
 
 In order to avoid creating inaccurate hyperlinks on the error issues, the agent will verify the file exists and is in the main repository. Otherwise omit the file property from the error issue and debug trace what happened.
 
@@ -203,7 +203,7 @@ Problem matchers are unable to interpret severity strings other than `warning` a
 
 However some tools indicate error/warning in different ways. For example `flake8` uses codes like `E100`, `W200`, and `F300` (error, warning, fatal, respectively).
 
-Therefore, allow a property `severity`, sibling to `owner`, which identifies the default severity for the problem matcher. This allows two problem matchers are registered - one for warnings and one for errors.
+Therefore, allow a property `severity`, sibling to `owner`, which identifies the default severity for the problem matcher. This allows two problem matchers to be registered - one for warnings and one for errors.
 
 For example, given the following `flake8` output:
 

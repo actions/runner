@@ -955,12 +955,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             _variables = new Variables(hostContext, new Dictionary<string, DTWebApi.VariableValue>());
 
             _executionContext = new Mock<IExecutionContext>();
-            _executionContext.Setup(x => x.WriteDebug)
-                .Returns(true);
-            _executionContext.Setup(x => x.Variables)
-                .Returns(_variables);
-            _executionContext.Setup(x => x.Container)
-                .Returns(jobContainer);
+            _executionContext.Setup(x => x.Global)
+                .Returns(new GlobalContext
+                {
+                    Container = jobContainer,
+                    Variables = _variables,
+                    WriteDebug = true,
+                });
             _executionContext.Setup(x => x.GetMatchers())
                 .Returns(matchers?.Matchers ?? new List<IssueMatcherConfig>());
             _executionContext.Setup(x => x.Add(It.IsAny<OnMatcherChanged>()))

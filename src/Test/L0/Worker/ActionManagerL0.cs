@@ -133,7 +133,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Reference = new Pipelines.RepositoryPathReference()
                         {
                             Name = ActionName,
-                            Ref = "master",
+                            Ref = "main",
                             RepositoryType = "GitHub"
                         }
                     }
@@ -141,7 +141,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Return a valid action from GHES via mock
                 const string ApiUrl = "https://ghes.example.com/api/v3";
-                string expectedArchiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "master");
+                string expectedArchiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "main");
                 string archiveFile = await CreateRepoArchive();
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
@@ -159,10 +159,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master.completed");
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main.completed");
                 Assert.True(File.Exists(watermarkFile));
 
-                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master", "action.yml");
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main", "action.yml");
                 Assert.True(File.Exists(actionYamlFile));
                 _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
             }
@@ -191,7 +191,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Reference = new Pipelines.RepositoryPathReference()
                         {
                             Name = ActionName,
-                            Ref = "master",
+                            Ref = "main",
                             RepositoryType = "GitHub"
                         }
                     }
@@ -199,8 +199,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Return a valid action from GHES via mock
                 const string ApiUrl = "https://ghes.example.com/api/v3";
-                string builtInArchiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "master");
-                string dotcomArchiveLink = GetLinkToActionArchive("https://api.github.com", ActionName, "master");
+                string builtInArchiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "main");
+                string dotcomArchiveLink = GetLinkToActionArchive("https://api.github.com", ActionName, "main");
                 string archiveFile = await CreateRepoArchive();
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
@@ -220,10 +220,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master.completed");
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main.completed");
                 Assert.True(File.Exists(watermarkFile));
 
-                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master", "action.yml");
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main", "action.yml");
                 Assert.True(File.Exists(actionYamlFile));
                 _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
             }
@@ -252,7 +252,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Reference = new Pipelines.RepositoryPathReference()
                         {
                             Name = ActionName,
-                            Ref = "master",
+                            Ref = "main",
                             RepositoryType = "GitHub"
                         }
                     }
@@ -260,7 +260,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 // Return a valid action from GHES via mock
                 const string ApiUrl = "https://ghes.example.com/api/v3";
-                string archiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "master");
+                string archiveLink = GetLinkToActionArchive(ApiUrl, ActionName, "main");
                 string archiveFile = await CreateRepoArchive();
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
@@ -280,10 +280,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Assert
                 await Assert.ThrowsAsync<ActionNotFoundException>(action);
 
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master.completed");
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main.completed");
                 Assert.False(File.Exists(watermarkFile));
 
-                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "master", "action.yml");
+                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main", "action.yml");
                 Assert.False(File.Exists(actionYamlFile));
             }
             finally
@@ -846,7 +846,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     var traceFile = Path.GetTempFileName();
                     File.Copy(_hc.TraceFileName, traceFile, true);
-                    Assert.Contains("Entry javascript file is not provided.", File.ReadAllText(traceFile));
+                    Assert.Contains("You are using a JavaScript Action but there is not an entry JavaScript file provided in", File.ReadAllText(traceFile));
                 }
             }
             finally
@@ -1278,7 +1278,7 @@ runs:
 ";
                 Pipelines.ActionStep instance;
                 string directory;
-                directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
+                directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "main");
                 string file = Path.Combine(directory, Constants.Path.ActionManifestYamlFile);
                 Directory.CreateDirectory(Path.GetDirectoryName(file));
                 File.WriteAllText(file, Content);
@@ -1288,7 +1288,7 @@ runs:
                     Reference = new Pipelines.RepositoryPathReference()
                     {
                         Name = "GitHub/actions",
-                        Ref = "master",
+                        Ref = "main",
                         RepositoryType = Pipelines.RepositoryTypes.GitHub
                     }
                 };
@@ -2466,7 +2466,7 @@ runs:
                 {
                     var traceFile = Path.GetTempFileName();
                     File.Copy(_hc.TraceFileName, traceFile, true);
-                    Assert.Contains("Entry javascript file is not provided.", File.ReadAllText(traceFile));
+                    Assert.Contains("You are using a JavaScript Action but there is not an entry JavaScript file provided in", File.ReadAllText(traceFile));
                 }
             }
             finally
@@ -2898,7 +2898,7 @@ runs:
 ";
                 Pipelines.ActionStep instance;
                 string directory;
-                directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
+                directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "main");
                 string file = Path.Combine(directory, Constants.Path.ActionManifestYamlFile);
                 Directory.CreateDirectory(Path.GetDirectoryName(file));
                 File.WriteAllText(file, Content);
@@ -2908,7 +2908,7 @@ runs:
                     Reference = new Pipelines.RepositoryPathReference()
                     {
                         Name = "GitHub/actions",
-                        Ref = "master",
+                        Ref = "main",
                         RepositoryType = Pipelines.RepositoryTypes.GitHub
                     }
                 };
@@ -3453,7 +3453,7 @@ runs:
 
         private void CreateAction(string yamlContent, out Pipelines.ActionStep instance, out string directory)
         {
-            directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "master");
+            directory = Path.Combine(_workFolder, Constants.Path.ActionsDirectory, "GitHub/actions".Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), "main");
             string file = Path.Combine(directory, Constants.Path.ActionManifestYmlFile);
             Directory.CreateDirectory(Path.GetDirectoryName(file));
             File.WriteAllText(file, yamlContent);
@@ -3463,7 +3463,7 @@ runs:
                 Reference = new Pipelines.RepositoryPathReference()
                 {
                     Name = "GitHub/actions",
-                    Ref = "master",
+                    Ref = "main",
                     RepositoryType = Pipelines.RepositoryTypes.GitHub
                 }
             };
@@ -3481,7 +3481,7 @@ runs:
                 Reference = new Pipelines.RepositoryPathReference()
                 {
                     Name = "GitHub/actions",
-                    Ref = "master",
+                    Ref = "main",
                     RepositoryType = Pipelines.PipelineConstants.SelfAlias
                 }
             };
@@ -3575,17 +3575,18 @@ runs:
             _workFolder = _hc.GetDirectory(WellKnownDirectory.Work);
 
             _ec = new Mock<IExecutionContext>();
+            _ec.Setup(x => x.Global).Returns(new GlobalContext());
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
             var variables = new Dictionary<string, VariableValue>();
             if (newActionMetadata)
             {
                 variables["DistributedTask.NewActionMetadata"] = "true";
             }
-            _ec.Setup(x => x.Variables).Returns(new Variables(_hc, variables));
+            _ec.Object.Global.Variables = new Variables(_hc, variables);
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
-            _ec.Setup(x => x.FileTable).Returns(new List<String>());
-            _ec.Setup(x => x.Plan).Returns(new TaskOrchestrationPlanReference());
+            _ec.Object.Global.FileTable = new List<String>();
+            _ec.Object.Global.Plan = new TaskOrchestrationPlanReference();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"[{tag}]{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
             _ec.Setup(x => x.GetGitHubContext("workspace")).Returns(Path.Combine(_workFolder, "actions", "actions"));

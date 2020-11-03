@@ -1,13 +1,14 @@
 name: Runner CD
 
 on:
+  workflow_dispatch:
   push:
     paths:
     - releaseVersion
   
 jobs:
   check:
-    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/master'
+    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2

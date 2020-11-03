@@ -30,8 +30,6 @@ namespace GitHub.Runner.Worker
         Dictionary<string, string> EvaluateContainerEnvironment(IExecutionContext executionContext, MappingToken token, IDictionary<string, PipelineContextData> extraExpressionValues);
 
         string EvaluateDefaultInput(IExecutionContext executionContext, string inputName, TemplateToken token);
-
-        void SetAllCompositeOutputs(IExecutionContext parentExecutionContext, DictionaryContextData actionOutputs);
     }
 
     public sealed class ActionManifestManager : RunnerService, IActionManifestManager
@@ -57,7 +55,7 @@ namespace GitHub.Runner.Worker
 
         public ActionDefinitionData Load(IExecutionContext executionContext, string manifestFile)
         {
-            var templateContext = CreateContext(executionContext);
+            var templateContext = CreateTemplateContext(executionContext);
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
 
             // Clean up file name real quick
@@ -79,9 +77,9 @@ namespace GitHub.Runner.Worker
 
                 // Add this file to the FileTable in executionContext if it hasn't been added already
                 // we use > since fileID is 1 indexed
-                if (fileId > executionContext.FileTable.Count)
+                if (fileId > executionContext.Global.FileTable.Count)
                 {
-                    executionContext.FileTable.Add(fileRelativePath);
+                    executionContext.Global.FileTable.Add(fileRelativePath);
                 }
 
                 // Read the file
@@ -107,12 +105,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "outputs":
-                            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                            {
-                                actionOutputs = actionPair.Value.AssertMapping("outputs");
-                                break;
-                            }
-                            Trace.Info($"Ignore action property outputs. Outputs for a whole action is not supported yet.");
+                            actionOutputs = actionPair.Value.AssertMapping("outputs");
                             break;
 
                         case "description":
@@ -120,7 +113,7 @@ namespace GitHub.Runner.Worker
                             break;
 
                         case "inputs":
-                            ConvertInputs(templateContext, actionPair.Value, actionDefinition);
+                            ConvertInputs(actionPair.Value, actionDefinition);
                             break;
 
                         case "runs":
@@ -137,7 +130,7 @@ namespace GitHub.Runner.Worker
                 // Evaluate Runs Last
                 if (actionRunValueToken != null)
                 {
-                    actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionRunValueToken, actionOutputs);
+                    actionDefinition.Execution = ConvertRuns(executionContext, templateContext, actionRunValueToken, fileRelativePath, actionOutputs);
                 }
             }
             catch (Exception ex)
@@ -170,34 +163,6 @@ namespace GitHub.Runner.Worker
             return actionDefinition;
         }
 
-        public void SetAllCompositeOutputs(
-            IExecutionContext parentExecutionContext,
-            DictionaryContextData actionOutputs)
-        {
-            // Each pair is structured like this
-            // We ignore "description" for now
-            // {
-            //   "the-output-name": {
-            //     "description": "",
-            //     "value": "the value"
-            //   },
-            //   ...
-            // }
-            foreach (var pair in actionOutputs)
-            {
-                var outputsName = pair.Key;
-                var outputsAttributes = pair.Value as DictionaryContextData;
-                outputsAttributes.TryGetValue("value", out var val);
-                var outputsValue = val as StringContextData;
-
-                // Set output in the whole composite scope. 
-                if (!String.IsNullOrEmpty(outputsName) && !String.IsNullOrEmpty(outputsValue))
-                {
-                    parentExecutionContext.SetOutput(outputsName, outputsValue, out _);
-                }
-            }
-        }
-
         public DictionaryContextData EvaluateCompositeOutputs(
             IExecutionContext executionContext,
             TemplateToken token,
@@ -207,19 +172,19 @@ namespace GitHub.Runner.Worker
 
             if (token != null)
             {
-                var context = CreateContext(executionContext, extraExpressionValues);
+                var templateContext = CreateTemplateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    token = TemplateEvaluator.Evaluate(context, "outputs", token, 0, null, omitHeader: true);
-                    context.Errors.Check();
+                    token = TemplateEvaluator.Evaluate(templateContext, "outputs", token, 0, null, omitHeader: true);
+                    templateContext.Errors.Check();
                     result = token.ToContextData().AssertDictionary("composite outputs");
                 }
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
-                    context.Errors.Add(ex);
+                    templateContext.Errors.Add(ex);
                 }
 
-                context.Errors.Check();
+                templateContext.Errors.Check();
             }
 
             return result ?? new DictionaryContextData();
@@ -234,11 +199,11 @@ namespace GitHub.Runner.Worker
 
             if (token != null)
             {
-                var context = CreateContext(executionContext, extraExpressionValues);
+                var templateContext = CreateTemplateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-args", token, 0, null, omitHeader: true);
-                    context.Errors.Check();
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "container-runs-args", token, 0, null, omitHeader: true);
+                    templateContext.Errors.Check();
 
                     Trace.Info($"Arguments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
 
@@ -255,10 +220,10 @@ namespace GitHub.Runner.Worker
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
                     Trace.Error(ex);
-                    context.Errors.Add(ex);
+                    templateContext.Errors.Add(ex);
                 }
 
-                context.Errors.Check();
+                templateContext.Errors.Check();
             }
 
             return result;
@@ -273,11 +238,11 @@ namespace GitHub.Runner.Worker
 
             if (token != null)
             {
-                var context = CreateContext(executionContext, extraExpressionValues);
+                var templateContext = CreateTemplateContext(executionContext, extraExpressionValues);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "container-runs-env", token, 0, null, omitHeader: true);
-                    context.Errors.Check();
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "container-runs-env", token, 0, null, omitHeader: true);
+                    templateContext.Errors.Check();
 
                     Trace.Info($"Environments evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
 
@@ -299,10 +264,10 @@ namespace GitHub.Runner.Worker
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
                     Trace.Error(ex);
-                    context.Errors.Add(ex);
+                    templateContext.Errors.Add(ex);
                 }
 
-                context.Errors.Check();
+                templateContext.Errors.Check();
             }
 
             return result;
@@ -316,11 +281,11 @@ namespace GitHub.Runner.Worker
             string result = "";
             if (token != null)
             {
-                var context = CreateContext(executionContext);
+                var templateContext = CreateTemplateContext(executionContext);
                 try
                 {
-                    var evaluateResult = TemplateEvaluator.Evaluate(context, "input-default-context", token, 0, null, omitHeader: true);
-                    context.Errors.Check();
+                    var evaluateResult = TemplateEvaluator.Evaluate(templateContext, "input-default-context", token, 0, null, omitHeader: true);
+                    templateContext.Errors.Check();
 
                     Trace.Info($"Input '{inputName}': default value evaluate result: {StringUtil.ConvertToJson(evaluateResult)}");
 
@@ -330,16 +295,16 @@ namespace GitHub.Runner.Worker
                 catch (Exception ex) when (!(ex is TemplateValidationException))
                 {
                     Trace.Error(ex);
-                    context.Errors.Add(ex);
+                    templateContext.Errors.Add(ex);
                 }
 
-                context.Errors.Check();
+                templateContext.Errors.Check();
             }
 
             return result;
         }
 
-        private TemplateContext CreateContext(
+        private TemplateContext CreateTemplateContext(
             IExecutionContext executionContext,
             IDictionary<string, PipelineContextData> extraExpressionValues = null)
         {
@@ -377,9 +342,9 @@ namespace GitHub.Runner.Worker
             }
 
             // Add the file table from the Execution Context
-            for (var i = 0; i < executionContext.FileTable.Count; i++)
+            for (var i = 0; i < executionContext.Global.FileTable.Count; i++)
             {
-                result.GetFileId(executionContext.FileTable[i]);
+                result.GetFileId(executionContext.Global.FileTable[i]);
             }
 
             return result;
@@ -387,8 +352,9 @@ namespace GitHub.Runner.Worker
 
         private ActionExecutionData ConvertRuns(
             IExecutionContext executionContext,
-            TemplateContext context,
+            TemplateContext templateContext,
             TemplateToken inputsToken,
+            String fileRelativePath,
             MappingToken outputs = null)
         {
             var runsMapping = inputsToken.AssertMapping("runs");
@@ -405,7 +371,7 @@ namespace GitHub.Runner.Worker
             var postToken = default(StringToken);
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
-            var stepsLoaded = default(List<Pipelines.ActionStep>);
+            var steps = default(List<Pipelines.Step>);
 
             foreach (var run in runsMapping)
             {
@@ -452,14 +418,10 @@ namespace GitHub.Runner.Worker
                         preIfToken = run.Value.AssertString("pre-if");
                         break;
                     case "steps":
-                        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
-                        {
-                            var steps = run.Value.AssertSequence("steps");
-                            var evaluator = executionContext.ToPipelineTemplateEvaluator();
-                            stepsLoaded = evaluator.LoadCompositeSteps(steps);
-                            break;
-                        }
-                        throw new Exception("You aren't supposed to be using Composite Actions yet!");
+                        var stepsToken = run.Value.AssertSequence("steps");
+                        steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
+                        templateContext.Errors.Check();
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -472,7 +434,7 @@ namespace GitHub.Runner.Worker
                 {
                     if (string.IsNullOrEmpty(imageToken?.Value))
                     {
-                        throw new ArgumentNullException($"Image is not provided.");
+                        throw new ArgumentNullException($"You are using a Container Action but an image is not provided in {fileRelativePath}.");
                     }
                     else
                     {
@@ -493,7 +455,7 @@ namespace GitHub.Runner.Worker
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
-                        throw new ArgumentNullException($"Entry javascript file is not provided.");
+                        throw new ArgumentNullException($"You are using a JavaScript Action but there is not an entry JavaScript file provided in {fileRelativePath}.");
                     }
                     else
                     {
@@ -507,18 +469,17 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TESTING_COMPOSITE_ACTIONS_ALPHA")))
+                else if (string.Equals(usingToken.Value, "composite", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (stepsLoaded == null)
+                    if (steps == null)
                     {
-                        // TODO: Add a more helpful error message + including file name, etc. to show user that it's because of their yaml file
-                        throw new ArgumentNullException($"No steps provided.");
+                        throw new ArgumentNullException($"You are using a composite action but there are no steps provided in {fileRelativePath}.");
                     }
                     else
                     {
                         return new CompositeActionExecutionData()
                         {
-                            Steps = stepsLoaded,
+                            Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
                             Outputs = outputs
                         };
                     }
@@ -540,7 +501,6 @@ namespace GitHub.Runner.Worker
         }
 
         private void ConvertInputs(
-            TemplateContext context,
             TemplateToken inputsToken,
             ActionDefinitionData actionDefinition)
         {

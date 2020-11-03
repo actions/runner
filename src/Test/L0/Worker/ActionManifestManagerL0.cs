@@ -717,7 +717,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _ec.Object.ExpressionValues["github"] = new DictionaryContextData
                 {
-                    { "ref", new StringContextData("refs/heads/master") },
+                    { "ref", new StringContextData("refs/heads/main") },
                 };
                 _ec.Object.ExpressionValues["strategy"] = new DictionaryContextData();
                 _ec.Object.ExpressionValues["matrix"] = new DictionaryContextData();
@@ -737,7 +737,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 result = actionManifest.EvaluateDefaultInput(_ec.Object, "testInput", new BasicExpressionToken(null, null, null, "github.ref"));
 
                 //Assert
-                Assert.Equal("refs/heads/master", result);
+                Assert.Equal("refs/heads/main", result);
             }
             finally
             {
@@ -754,12 +754,16 @@ namespace GitHub.Runner.Common.Tests.Worker
             _hc = new TestHostContext(this, name);
 
             _ec = new Mock<IExecutionContext>();
-            _ec.Setup(x => x.WriteDebug).Returns(true);
+            _ec.Setup(x => x.Global)
+                .Returns(new GlobalContext
+                {
+                    FileTable = new List<String>(),
+                    Variables = new Variables(_hc, new Dictionary<string, VariableValue>()),
+                    WriteDebug = true,
+                });
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
-            _ec.Setup(x => x.Variables).Returns(new Variables(_hc, new Dictionary<string, VariableValue>()));
             _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData());
             _ec.Setup(x => x.ExpressionFunctions).Returns(new List<IFunctionInfo>());
-            _ec.Setup(x => x.FileTable).Returns(new List<String>());
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { _hc.GetTrace().Info($"{tag}{message}"); });
             _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>())).Callback((Issue issue, string message) => { _hc.GetTrace().Info($"[{issue.Type}]{issue.Message ?? message}"); });
         }

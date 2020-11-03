@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -74,6 +74,10 @@ namespace GitHub.Runner.Worker
                         {
                             // print out HostName for self-hosted runner
                             context.Output($"Runner name: '{setting.AgentName}'");
+                            if (message.Variables.TryGetValue("system.runnerGroupName", out VariableValue runnerGroupName))
+                            {
+                                context.Output($"Runner group name: '{runnerGroupName.Value}'");
+                            }
                             context.Output($"Machine name: '{Environment.MachineName}'");
                         }
                     }
@@ -162,7 +166,7 @@ namespace GitHub.Runner.Worker
                         var environmentVariables = templateEvaluator.EvaluateStepEnvironment(token, jobContext.ExpressionValues, jobContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var pair in environmentVariables)
                         {
-                            context.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
+                            context.Global.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
                             context.SetEnvContext(pair.Key, pair.Value ?? string.Empty);
                         }
                     }
@@ -172,7 +176,7 @@ namespace GitHub.Runner.Worker
                     var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (container != null)
                     {
-                        jobContext.Container = new Container.ContainerInfo(HostContext, container);
+                        jobContext.Global.Container = new Container.ContainerInfo(HostContext, container);
                     }
 
                     // Evaluate the job service containers
@@ -184,7 +188,7 @@ namespace GitHub.Runner.Worker
                         {
                             var networkAlias = pair.Key;
                             var serviceContainer = pair.Value;
-                            jobContext.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias));
+                            jobContext.Global.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias));
                         }
                     }
 
@@ -195,14 +199,14 @@ namespace GitHub.Runner.Worker
                         var defaults = token.AssertMapping("defaults");
                         if (defaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
                         {
-                            context.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            context.Global.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                             var defaultsRun = defaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
                             var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                             foreach (var pair in jobDefaults)
                             {
                                 if (!string.IsNullOrEmpty(pair.Value))
                                 {
-                                    context.JobDefaults["run"][pair.Key] = pair.Value;
+                                    context.Global.JobDefaults["run"][pair.Key] = pair.Value;
                                 }
                             }
                         }
@@ -216,15 +220,15 @@ namespace GitHub.Runner.Worker
                     preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
 
                     // Add start-container steps, record and stop-container steps
-                    if (jobContext.Container != null || jobContext.ServiceContainers.Count > 0)
+                    if (jobContext.Global.Container != null || jobContext.Global.ServiceContainers.Count > 0)
                     {
                         var containerProvider = HostContext.GetService<IContainerOperationProvider>();
                         var containers = new List<Container.ContainerInfo>();
-                        if (jobContext.Container != null)
+                        if (jobContext.Global.Container != null)
                         {
-                            containers.Add(jobContext.Container);
+                            containers.Add(jobContext.Global.Container);
                         }
-                        containers.AddRange(jobContext.ServiceContainers);
+                        containers.AddRange(jobContext.Global.ServiceContainers);
 
                         preJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
                                                                           condition: $"{PipelineTemplateConstants.Success}()",
@@ -296,7 +300,7 @@ namespace GitHub.Runner.Worker
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, actionStep.Action.ScopeName, actionStep.Action.ContextName, intraActionState);
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, null, actionStep.Action.ContextName, intraActionState);
                         }
                     }
 
@@ -305,7 +309,7 @@ namespace GitHub.Runner.Worker
                     steps.AddRange(jobSteps);
 
                     // Prepare for orphan process cleanup
-                    _processCleanup = jobContext.Variables.GetBoolean("process.clean") ?? true;
+                    _processCleanup = jobContext.Global.Variables.GetBoolean("process.clean") ?? true;
                     if (_processCleanup)
                     {
                         // Set the RUNNER_TRACKING_ID env variable.
@@ -361,6 +365,24 @@ namespace GitHub.Runner.Worker
                     context.Start();
                     context.Debug("Starting: Complete job");
 
+                    Trace.Info("Initialize Env context");
+
+#if OS_WINDOWS
+                    var envContext = new DictionaryContextData();
+#else
+                    var envContext = new CaseSensitiveDictionaryContextData();
+#endif
+                    context.ExpressionValues["env"] = envContext;
+                    foreach (var pair in context.Global.EnvironmentVariables)
+                    {
+                        envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                    }
+
+                    // Populate env context for each step
+                    Trace.Info("Initialize steps context");
+                    context.ExpressionValues["steps"] = context.Global.StepsContext.GetScope(context.ScopeName);
+
+                    var templateEvaluator = context.ToPipelineTemplateEvaluator();
                     // Evaluate job outputs
                     if (message.JobOutputs != null && message.JobOutputs.Type != TokenType.Null)
                     {
@@ -370,21 +392,7 @@ namespace GitHub.Runner.Worker
 
                             // Populate env context for each step
                             Trace.Info("Initialize Env context for evaluating job outputs");
-#if OS_WINDOWS
-                            var envContext = new DictionaryContextData();
-#else
-                            var envContext = new CaseSensitiveDictionaryContextData();
-#endif
-                            context.ExpressionValues["env"] = envContext;
-                            foreach (var pair in context.EnvironmentVariables)
-                            {
-                                envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-                            }
 
-                            Trace.Info("Initialize steps context for evaluating job outputs");
-                            context.ExpressionValues["steps"] = context.StepsContext.GetScope(context.ScopeName);
-
-                            var templateEvaluator = context.ToPipelineTemplateEvaluator();
                             var outputs = templateEvaluator.EvaluateJobOutput(message.JobOutputs, context.ExpressionValues, context.ExpressionFunctions);
                             foreach (var output in outputs)
                             {
@@ -413,7 +421,35 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    if (context.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
+                    // Evaluate environment data
+                    if (jobContext.ActionsEnvironment?.Url != null && jobContext.ActionsEnvironment?.Url.Type != TokenType.Null)
+                    {
+                        try
+                        {
+                            context.Output($"Evaluate and set environment url");
+
+                            var environmentUrlToken = templateEvaluator.EvaluateEnvironmentUrl(jobContext.ActionsEnvironment.Url, context.ExpressionValues, context.ExpressionFunctions);
+                            var environmentUrl = environmentUrlToken.AssertString("environment.url");
+                            if (!string.Equals(environmentUrl.Value, HostContext.SecretMasker.MaskSecrets(environmentUrl.Value)))
+                            {
+                                context.Warning($"Skip setting environment url as environment '{jobContext.ActionsEnvironment.Name}' may contain secret.");
+                            }
+                            else
+                            {
+                                context.Output($"Evaluated environment url: {environmentUrl}");
+                                jobContext.ActionsEnvironment.Url = environmentUrlToken;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            context.Result = TaskResult.Failed;
+                            context.Error($"Failed to evaluate environment url");
+                            context.Error(ex);
+                            jobContext.Result = TaskResultUtil.MergeTaskResults(jobContext.Result, TaskResult.Failed);
+                        }
+                    }
+
+                    if (context.Global.Variables.GetBoolean(Constants.Variables.Actions.RunnerDebug) ?? false)
                     {
                         Trace.Info("Support log upload starting.");
                         context.Output("Uploading runner diagnostic logs");

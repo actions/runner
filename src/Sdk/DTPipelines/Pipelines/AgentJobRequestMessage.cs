@@ -39,10 +39,10 @@ namespace GitHub.DistributedTask.Pipelines
             DictionaryContextData contextData,
             WorkspaceOptions workspaceOptions,
             IEnumerable<JobStep> steps,
-            IEnumerable<ContextScope> scopes,
             IList<String> fileTable,
             TemplateToken jobOutputs,
-            IList<TemplateToken> defaults)
+            IList<TemplateToken> defaults,
+            ActionsEnvironmentReference actionsEnvironment)
         {
             this.MessageType = JobRequestMessageTypes.PipelineAgentJobRequest;
             this.Plan = plan;
@@ -55,15 +55,10 @@ namespace GitHub.DistributedTask.Pipelines
             this.Resources = jobResources;
             this.Workspace = workspaceOptions;
             this.JobOutputs = jobOutputs;
-
+            this.ActionsEnvironment = actionsEnvironment;
             m_variables = new Dictionary<String, VariableValue>(variables, StringComparer.OrdinalIgnoreCase);
             m_maskHints = new List<MaskHint>(maskHints);
             m_steps = new List<JobStep>(steps);
-
-            if (scopes != null)
-            {
-                m_scopes = new List<ContextScope>(scopes);
-            }
 
             if (environmentVariables?.Count > 0)
             {
@@ -234,6 +229,13 @@ namespace GitHub.DistributedTask.Pipelines
             }
         }
 
+        [DataMember(EmitDefaultValue = false)]
+        public ActionsEnvironmentReference ActionsEnvironment
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Gets the collection of variables associated with the current context.
         /// </summary>
@@ -258,18 +260,6 @@ namespace GitHub.DistributedTask.Pipelines
                     m_steps = new List<JobStep>();
                 }
                 return m_steps;
-            }
-        }
-
-        public IList<ContextScope> Scopes
-        {
-            get
-            {
-                if (m_scopes == null)
-                {
-                    m_scopes = new List<ContextScope>();
-                }
-                return m_scopes;
             }
         }
 
@@ -415,11 +405,6 @@ namespace GitHub.DistributedTask.Pipelines
                 m_maskHints = new List<MaskHint>(this.m_maskHints.Distinct());
             }
 
-            if (m_scopes?.Count == 0)
-            {
-                m_scopes = null;
-            }
-
             if (m_variables?.Count == 0)
             {
                 m_variables = null;
@@ -446,9 +431,6 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(Name = "Steps", EmitDefaultValue = false)]
         private List<JobStep> m_steps;
-
-        [DataMember(Name = "Scopes", EmitDefaultValue = false)]
-        private List<ContextScope> m_scopes;
 
         [DataMember(Name = "Variables", EmitDefaultValue = false)]
         private IDictionary<String, VariableValue> m_variables;

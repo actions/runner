@@ -51,60 +51,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Int32 MaxResultSize { get; set; } = 10 * 1024 * 1024; // 10 mb
 
-        public DictionaryContextData EvaluateStepScopeInputs(
-            TemplateToken token,
-            DictionaryContextData contextData,
-            IList<IFunctionInfo> expressionFunctions)
-        {
-            var result = default(DictionaryContextData);
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData, expressionFunctions);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsScopeInputs, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("steps scope inputs");
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return result ?? new DictionaryContextData();
-        }
-
-        public DictionaryContextData EvaluateStepScopeOutputs(
-            TemplateToken token,
-            DictionaryContextData contextData,
-            IList<IFunctionInfo> expressionFunctions)
-        {
-            var result = default(DictionaryContextData);
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData, expressionFunctions);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsScopeOutputs, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("steps scope outputs");
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return result ?? new DictionaryContextData();
-        }
-
         public Boolean EvaluateStepContinueOnError(
             TemplateToken token,
             DictionaryContextData contextData,
@@ -158,31 +104,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             return result;
         }
-
-        public List<ActionStep> LoadCompositeSteps(
-            TemplateToken token)
-        {
-            var result = default(List<ActionStep>);
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(null, null, setMissingContext: false);
-                // TODO: we might want to to have a bool to prevent it from filling in with missing context w/ dummy variables
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsInTemplate, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = PipelineTemplateConverter.ConvertToSteps(context, token);
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-            return result;
-        }
-
 
         public Dictionary<String, String> EvaluateStepEnvironment(
             TemplateToken token,
@@ -358,6 +279,33 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             return result;
         }
 
+        public TemplateToken EvaluateEnvironmentUrl(
+            TemplateToken token,
+            DictionaryContextData contextData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            var result = default(TemplateToken);
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(contextData, expressionFunctions);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, TemplateConstants.StringRunnerContextNoSecrets, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = token.AssertString("environment.url");
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
+
+
         public Dictionary<String, String> EvaluateJobDefaultsRun(
             TemplateToken token,
             DictionaryContextData contextData,
@@ -425,8 +373,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private TemplateContext CreateContext(
             DictionaryContextData contextData,
             IList<IFunctionInfo> expressionFunctions,
-            IEnumerable<KeyValuePair<String, Object>> expressionState = null,
-            bool setMissingContext = true)
+            IEnumerable<KeyValuePair<String, Object>> expressionState = null)
         {
             var result = new TemplateContext
             {
@@ -475,21 +422,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             //   - Evaluating early when all referenced contexts are available, even though all allowed
             //     contexts may not yet be available. For example, evaluating step display name can often
             //     be performed early.
-            if (setMissingContext)
+            foreach (var name in s_expressionValueNames)
             {
-                foreach (var name in s_expressionValueNames)
+                if (!result.ExpressionValues.ContainsKey(name))
                 {
-                    if (!result.ExpressionValues.ContainsKey(name))
-                    {
-                        result.ExpressionValues[name] = null;
-                    }
+                    result.ExpressionValues[name] = null;
                 }
-                foreach (var name in s_expressionFunctionNames)
+            }
+            foreach (var name in s_expressionFunctionNames)
+            {
+                if (!functionNames.Contains(name))
                 {
-                    if (!functionNames.Contains(name))
-                    {
-                        result.ExpressionFunctions.Add(new FunctionInfo<NoOperation>(name, 0, Int32.MaxValue));
-                    }
+                    result.ExpressionFunctions.Add(new FunctionInfo<NoOperation>(name, 0, Int32.MaxValue));
                 }
             }
 
