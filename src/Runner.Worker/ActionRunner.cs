@@ -135,6 +135,13 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.SetGitHubContext("event_path", workflowFile);
             }
 
+            // Set GITHUB_ACTION_REPOSITORY if this Action is from a repository
+            if (Action.Reference is Pipelines.RepositoryPathReference repoPathReferenceAction)
+            {
+                ExecutionContext.SetGitHubContext("action_repository", repoPathReferenceAction.Name);
+                ExecutionContext.SetGitHubContext("action_ref", repoPathReferenceAction.Ref);
+            }
+
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Container != null)
             {

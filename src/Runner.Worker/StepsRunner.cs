@@ -119,12 +119,6 @@ namespace GitHub.Runner.Worker
                 {
                     // Set GITHUB_ACTION
                     step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
-                    // Set GITHUB_ACTION_REPOSITORY if this Action is from a repository
-                    if (actionStep.Action.Reference is Pipelines.RepositoryPathReference repositoryReference)
-                    {
-                        step.ExecutionContext.SetGitHubContext("action_repository", repositoryReference.Name);
-                        step.ExecutionContext.SetGitHubContext("action_ref", repositoryReference.Ref);
-                    }
 
                     try
                     {
