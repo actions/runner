@@ -1,12 +1,11 @@
 ## Features
-  - Expose retention days in env for toolkit/artifacts package (#714)
-  - Notify on unsecure commands (#731)
+  - Support environment URL parsing (#762, #778)
 
 ## Bugs
-  - N/A
+  - Fixes #759 doesn't change proxy environment variables (#760)
 
 ## Misc
-  - N/A
+  - Add .editorconfig (#768)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
