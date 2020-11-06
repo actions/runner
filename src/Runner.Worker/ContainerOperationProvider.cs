@@ -202,9 +202,9 @@ namespace GitHub.Runner.Worker
             {
 
                 // See if the container already exists locally
-                await _dockerManager.DockerInspect(executionContext, container.ContainerImage, "")
+                await _dockerManger.DockerInspect(executionContext, container.ContainerImage, "");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
 
 	            // TODO: Add at a later date. This currently no local package registry to test with
