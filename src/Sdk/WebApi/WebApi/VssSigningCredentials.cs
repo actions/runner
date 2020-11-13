@@ -95,39 +95,12 @@ namespace GitHub.Services.WebApi
         public abstract Boolean VerifySignature(Byte[] input, Byte[] signature);
 
         /// <summary>
-        /// Creates a new <c>VssSigningCredentials</c> instance using the specified <paramref name="certificate"/> instance
-        /// as the signing key.
-        /// </summary>
-        /// <param name="certificate">The certificate which contains the key used for signing and verification</param>
-        /// <returns>A new <c>VssSigningCredentials</c> instance which uses the specified certificate for signing</returns>
-        public static VssSigningCredentials Create(X509Certificate2 certificate)
-        {
-            ArgumentUtility.CheckForNull(certificate, nameof(certificate));
-
-            if (certificate.HasPrivateKey)
-            {
-                var rsa = certificate.GetRSAPrivateKey();
-                if (rsa == null)
-                {
-                    throw new SignatureAlgorithmUnsupportedException(certificate.SignatureAlgorithm.FriendlyName);
-                }
-
-                if (rsa.KeySize < c_minKeySize)
-                {
-                    throw new InvalidCredentialsException(JwtResources.SigningTokenKeyTooSmall());
-                }
-            }
-
-            return new X509Certificate2SigningToken(certificate);
-        }
-
-        /// <summary>
         /// Creates a new <c>VssSigningCredentials</c> instance using the specified <paramref name="factory"/> 
         /// callback function to retrieve the signing key.
         /// </summary>
         /// <param name="factory">The factory which creates <c>RSA</c> keys used for signing and verification</param>
         /// <returns>A new <c>VssSigningCredentials</c> instance which uses the specified provider for signing</returns>
-        public static VssSigningCredentials Create(Func<RSA> factory)
+        public static VssSigningCredentials Create(Func<RSA> factory, bool requireFipsCryptography)
         {
             ArgumentUtility.CheckForNull(factory, nameof(factory));
 
@@ -143,7 +116,11 @@ namespace GitHub.Services.WebApi
                     throw new InvalidCredentialsException(JwtResources.SigningTokenKeyTooSmall());
                 }
 
-                return new RSASigningToken(factory, rsa.KeySize);
+                if (requireFipsCryptography)
+                {
+                    return new RSASigningToken(factory, rsa.KeySize, RSASignaturePadding.Pss);
+                }
+                return new RSASigningToken(factory, rsa.KeySize, RSASignaturePadding.Pkcs1);
             }
         }
 
@@ -244,70 +221,14 @@ namespace GitHub.Services.WebApi
             private Boolean? m_hasPrivateKey;
         }
 
-        private class X509Certificate2SigningToken : AsymmetricKeySigningToken, IJsonWebTokenHeaderProvider
-        {
-            public X509Certificate2SigningToken(X509Certificate2 certificate)
-            {
-                m_certificate = certificate;
-            }
-
-            public override Int32 KeySize
-            {
-                get
-                {
-                    return m_certificate.GetRSAPublicKey().KeySize;
-                }
-            }
-
-            public override DateTime ValidFrom
-            {
-                get
-                {
-                    return m_certificate.NotBefore;
-                }
-            }
-
-            public override DateTime ValidTo
-            {
-                get
-                {
-                    return m_certificate.NotAfter;
-                }
-            }
-
-            public override Boolean VerifySignature(
-                Byte[] input,
-                Byte[] signature)
-            {
-                var rsa = m_certificate.GetRSAPublicKey();
-                return rsa.VerifyData(input, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            }
-
-            protected override Byte[] GetSignature(Byte[] input)
-            {
-                var rsa = m_certificate.GetRSAPrivateKey();
-                return rsa.SignData(input, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-            }
-
-            protected override Boolean HasPrivateKey()
-            {
-                return m_certificate.HasPrivateKey;
-            }
-
-            void IJsonWebTokenHeaderProvider.SetHeaders(IDictionary<String, Object> headers)
-            {
-                headers[JsonWebTokenHeaderParameters.X509CertificateThumbprint] = m_certificate.GetCertHash().ToBase64StringNoPadding();
-            }
-
-            private readonly X509Certificate2 m_certificate;
-        }
-
         private class RSASigningToken : AsymmetricKeySigningToken
         {
             public RSASigningToken(
                 Func<RSA> factory,
-                Int32 keySize)
+                Int32 keySize,
+                RSASignaturePadding signaturePadding)
             {
+                m_signaturePadding = signaturePadding;
                 m_keySize = keySize;
                 m_factory = factory;
             }
@@ -324,7 +245,7 @@ namespace GitHub.Services.WebApi
             {
                 using (var rsa = m_factory())
                 {
-                    return rsa.SignData(input, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                    return rsa.SignData(input, HashAlgorithmName.SHA256, m_signaturePadding);
                 }
             }
 
@@ -335,7 +256,7 @@ namespace GitHub.Services.WebApi
                     // As unfortunate as this is, there is no way to tell from an RSA implementation, based on querying
                     // properties alone, if it supports signature operations or has a private key. This is a one-time
                     // hit for the signing credentials implementation, so it shouldn't be a huge deal.
-                    GetSignature(new Byte[1] { 1 });    
+                    GetSignature(new Byte[1] { 1 });
                     return true;
                 }
                 catch (CryptographicException)
@@ -350,12 +271,13 @@ namespace GitHub.Services.WebApi
             {
                 using (var rsa = m_factory())
                 {
-                    return rsa.VerifyData(input, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                    return rsa.VerifyData(input, signature, HashAlgorithmName.SHA256, m_signaturePadding);
                 }
             }
 
             private readonly Int32 m_keySize;
             private readonly Func<RSA> m_factory;
+            private readonly RSASignaturePadding m_signaturePadding;
         }
 
         #endregion

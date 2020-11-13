@@ -14,14 +14,14 @@ namespace GitHub.Runner.Listener.Configuration
         private string _keyFile;
         private IHostContext _context;
 
-        public RSACryptoServiceProvider CreateKey()
+        public RSA CreateKey()
         {
-            RSACryptoServiceProvider rsa = null;
+            RSA rsa = null;
             if (!File.Exists(_keyFile))
             {
                 Trace.Info("Creating new RSA key using 2048-bit key length");
 
-                rsa = new RSACryptoServiceProvider(2048);
+                rsa = RSA.Create(2048);
 
                 // Now write the parameters to disk
                 IOUtil.SaveObject(new RSAParametersSerializable(rsa.ExportParameters(true)), _keyFile);
@@ -54,7 +54,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 Trace.Info("Found existing RSA key parameters file {0}", _keyFile);
 
-                rsa = new RSACryptoServiceProvider();
+                rsa = RSA.Create();
                 rsa.ImportParameters(IOUtil.LoadObject<RSAParametersSerializable>(_keyFile).RSAParameters);
             }
 
@@ -70,7 +70,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
         }
 
-        public RSACryptoServiceProvider GetKey()
+        public RSA GetKey()
         {
             if (!File.Exists(_keyFile))
             {
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info("Loading RSA key parameters from file {0}", _keyFile);
 
             var parameters = IOUtil.LoadObject<RSAParametersSerializable>(_keyFile).RSAParameters;
-            var rsa = new RSACryptoServiceProvider();
+            var rsa = RSA.Create();
             rsa.ImportParameters(parameters);
             return rsa;
         }

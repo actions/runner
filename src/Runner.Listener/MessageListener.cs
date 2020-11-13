@@ -319,7 +319,8 @@ namespace GitHub.Runner.Listener
                 var keyManager = HostContext.GetService<IRSAKeyManager>();
                 using (var rsa = keyManager.GetKey())
                 {
-                    return aes.CreateDecryptor(rsa.Decrypt(_session.EncryptionKey.Value, RSAEncryptionPadding.OaepSHA1), message.IV);
+                    var padding = _settings.RequireFipsCryptography ? RSAEncryptionPadding.OaepSHA256 : RSAEncryptionPadding.OaepSHA1;
+                    return aes.CreateDecryptor(rsa.Decrypt(_session.EncryptionKey.Value, padding), message.IV);
                 }
             }
             else

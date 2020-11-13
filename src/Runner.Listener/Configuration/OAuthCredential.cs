@@ -36,7 +36,8 @@ namespace GitHub.Runner.Listener.Configuration
             // We expect the key to be in the machine store at this point. Configuration should have set all of
             // this up correctly so we can use the key to generate access tokens.
             var keyManager = context.GetService<IRSAKeyManager>();
-            var signingCredentials = VssSigningCredentials.Create(() => keyManager.GetKey());
+            var settings = context.GetService<IConfigurationStore>().GetSettings(); // make sure to save settings before calling this
+            var signingCredentials = VssSigningCredentials.Create(() => keyManager.GetKey(), settings.RequireFipsCryptography);
             var clientCredential = new VssOAuthJwtBearerClientCredential(clientId, authorizationUrl, signingCredentials);
             var agentCredential = new VssOAuthCredential(new Uri(oauthEndpointUrl, UriKind.Absolute), VssOAuthGrant.ClientCredentials, clientCredential);
 
