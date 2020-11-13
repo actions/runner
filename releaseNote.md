@@ -5,7 +5,8 @@
   - N/A
 
 ## Misc
-  - Add deprecation date to add-path and set-env runner commands (#796)
+  - Disabled add-path and set-env runner commands (#779)
+  - Updated dotnet install scripts (#779)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
