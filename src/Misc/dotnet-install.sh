@@ -241,42 +241,6 @@ check_min_reqs() {
     return 0
 }
 
-check_pre_reqs() {
-    eval $invocation
-
-    if [ "${DOTNET_INSTALL_SKIP_PREREQS:-}" = "1" ]; then
-        return 0
-    fi
-
-    if [ "$(uname)" = "Linux" ]; then
-        if is_musl_based_distro; then
-            if ! command -v scanelf > /dev/null; then
-                say_warning "scanelf not found, please install pax-utils package."
-                return 0
-            fi
-            LDCONFIG_COMMAND="scanelf --ldpath -BF '%f'"
-            [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libintl)" ] && say_warning "Unable to locate libintl. Probable prerequisite missing; install libintl (or gettext)."
-        else
-            if [ ! -x "$(command -v ldconfig)" ]; then
-                say_verbose "ldconfig is not in PATH, trying /sbin/ldconfig."
-                LDCONFIG_COMMAND="/sbin/ldconfig"
-            else
-                LDCONFIG_COMMAND="ldconfig"
-            fi
-            local librarypath=${LD_LIBRARY_PATH:-}
-            LDCONFIG_COMMAND="$LDCONFIG_COMMAND -NXv ${librarypath//:/ }"
-        fi
-
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep zlib)" ] && say_warning "Unable to locate zlib. Probable prerequisite missing; install zlib."
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep ssl)" ] && say_warning "Unable to locate libssl. Probable prerequisite missing; install libssl."
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libicu)" ] && say_warning "Unable to locate libicu. Probable prerequisite missing; install libicu."
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep lttng)" ] && say_warning "Unable to locate liblttng. Probable prerequisite missing; install liblttng."
-        [ -z "$($LDCONFIG_COMMAND 2>/dev/null | grep libcurl)" ] && say_warning "Unable to locate libcurl. Probable prerequisite missing; install libcurl."
-    fi
-
-    return 0
-}
-
 # args:
 # input - $1
 to_lowercase() {
@@ -468,7 +432,6 @@ parse_jsonfile_for_version() {
     sdk_list=$(echo $sdk_section | awk -F"[{}]" '{print $2}')
     sdk_list=${sdk_list//[\" ]/}
     sdk_list=${sdk_list//,/$'\n'}
-    sdk_list="$(echo -e "${sdk_list}" | tr -d '[[:space:]]')"
 
     local version_info=""
     while read -r line; do
@@ -588,14 +551,20 @@ get_specific_product_version() {
         return 1
     fi
 
-    specific_product_version=$(curl -s --fail "$download_link")
-    if [ $? -ne 0 ]
+    if machine_has "curl"
     then
-      specific_product_version=$(wget -qO- "$download_link")
-      if [ $? -ne 0 ]
-      then
-        specific_product_version=$specific_version
-      fi
+        specific_product_version=$(curl -s --fail "$download_link")
+        if [ $? -ne 0 ]
+        then
+            specific_product_version=$specific_version
+        fi
+    elif machine_has "wget"
+    then
+        specific_product_version=$(wget -qO- "$download_link")
+        if [ $? -ne 0 ]
+        then
+            specific_product_version=$specific_version
+        fi
     fi
     specific_product_version="${specific_product_version//[$'\t\r\n']}"
 
@@ -1098,6 +1067,11 @@ if [ "$no_cdn" = true ]; then
     azure_feed="$uncached_feed"
 fi
 
+say "Note that the intended use of this script is for Continuous Integration (CI) scenarios, where:"
+say "- The SDK needs to be installed without user interaction and without admin rights."
+say "- The SDK installation doesn't need to persist across multiple CI runs."
+say "To set up a development environment or to run apps, use installers rather than this script. Visit https://dotnet.microsoft.com/download to get the installer.\n"
+
 check_min_reqs
 calculate_vars
 script_name=$(basename "$0")
@@ -1119,7 +1093,6 @@ if [ "$dry_run" = true ]; then
     exit 0
 fi
 
-check_pre_reqs
 install_dotnet
 
 bin_path="$(get_absolute_path "$(combine_paths "$install_root" "$bin_folder_relative_path")")"
@@ -1130,4 +1103,6 @@ else
     say "Binaries of dotnet can be found in $bin_path"
 fi
 
+say "Note that the script does not resolve dependencies during installation."
+say "To check the list of dependencies, go to https://docs.microsoft.com/dotnet/core/install, select your operating system and check the \"Dependencies\" section."
 say "Installation finished successfully."
