@@ -19,7 +19,7 @@ async function run(): Promise<void> {
 
   console.log(`Match Pattern: ${matchPatterns}`)
   let hasMatch = false
-  const githubWorkspace = process.cwd()
+  const githubWorkspace = process.env.GITHUB_WORKSPACE
   const result = crypto.createHash('sha256')
   let count = 0
   const globber = await glob.create(matchPatterns, {followSymbolicLinks})
