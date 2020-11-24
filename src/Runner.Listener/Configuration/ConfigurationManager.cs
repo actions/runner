@@ -276,19 +276,6 @@ namespace GitHub.Runner.Listener.Configuration
                 throw new NotSupportedException("Message queue listen OAuth token.");
             }
 
-            _term.WriteSection("Runner settings");
-
-            // We will Combine() what's stored with root.  Defaults to string a relative path
-            runnerSettings.WorkFolder = command.GetWork();
-
-            runnerSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
-
-            _store.SaveSettings(runnerSettings);
-
-            _term.WriteLine();
-            _term.WriteSuccessMessage("Settings Saved.");
-            _term.WriteLine();
-
             // Testing agent connection, detect any potential connection issue, like local clock skew that cause OAuth token expired.
             var credMgr = HostContext.GetService<ICredentialManager>();
             VssCredentials credential = credMgr.LoadCredentials();
@@ -309,6 +296,19 @@ namespace GitHub.Runner.Listener.Configuration
                 Trace.Error(ex);
                 throw new Exception("The local machine's clock may be out of sync with the server time by more than five minutes. Please sync your clock with your domain or internet time and try again.");
             }
+
+            _term.WriteSection("Runner settings");
+
+            // We will Combine() what's stored with root.  Defaults to string a relative path
+            runnerSettings.WorkFolder = command.GetWork();
+
+            runnerSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
+
+            _store.SaveSettings(runnerSettings);
+
+            _term.WriteLine();
+            _term.WriteSuccessMessage("Settings Saved.");
+            _term.WriteLine();
 
 #if OS_WINDOWS
             // config windows service
