@@ -263,6 +263,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
                         { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
+                        { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", false).ToString() }
                     },
                 };
 
@@ -274,10 +275,6 @@ namespace GitHub.Runner.Listener.Configuration
 
                 throw new NotSupportedException("Message queue listen OAuth token.");
             }
-
-            // Configure to use fips-compliant encryption schemes for communication if required by server
-            var requireFipsCryptography = agent.Properties.GetValueOrDefault("RequireFipsCryptography") as bool?;
-            runnerSettings.RequireFipsCryptography = requireFipsCryptography ?? false;
 
             _term.WriteSection("Runner settings");
 

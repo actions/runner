@@ -45,9 +45,6 @@ namespace GitHub.Runner.Common
         [DataMember(EmitDefaultValue = false)]
         public string MonitorSocketAddress { get; set; }
 
-        [DataMember(EmitDefaultValue = false)]
-        public bool? _requireFipsCryptography { get; set; }
-
         [IgnoreDataMember]
         public bool IsHostedServer
         {
@@ -60,21 +57,6 @@ namespace GitHub.Runner.Common
             set
             {
                 _isHostedServer = value;
-            }
-        }
-
-        // This should be temporary. Used for compatibility while both are supported
-        [IgnoreDataMember]
-        public bool RequireFipsCryptography
-        {
-            get
-            {
-                return _requireFipsCryptography ?? false;
-            }
-
-            set
-            {
-                _requireFipsCryptography = value;
             }
         }
 

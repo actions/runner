@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi.Jwt;
 
@@ -75,7 +74,6 @@ namespace GitHub.Services.WebApi
             {
                 throw new InvalidOperationException();
             }
-
             return GetSignature(input);
         }
 
@@ -85,14 +83,6 @@ namespace GitHub.Services.WebApi
         /// <param name="input">The data which should be signed</param>
         /// <returns>A blob of data representing the signature of the input data</returns>
         protected abstract Byte[] GetSignature(Byte[] input);
-
-        /// <summary>
-        /// Verifies the signature of the input data, returning true if the signature is valid.
-        /// </summary>
-        /// <param name="input">The data which should be signed</param>
-        /// <param name="signature">The signature which should be verified</param>
-        /// <returns>True if the provided signature matches the current signing token; otherwise, false</returns>
-        public abstract Boolean VerifySignature(Byte[] input, Byte[] signature);
 
         /// <summary>
         /// Creates a new <c>VssSigningCredentials</c> instance using the specified <paramref name="factory"/> 
@@ -124,75 +114,10 @@ namespace GitHub.Services.WebApi
             }
         }
 
-        /// <summary>
-        /// Creates a new <c>VssSigningCredentials</c> instance using the specified <paramref name="key"/> as the signing 
-        /// key. The returned signing token performs symmetric key signing and verification.
-        /// </summary>
-        /// <param name="rsa">The key used for signing and verification</param>
-        /// <returns>A new <c>VssSigningCredentials</c> instance which uses the specified key for signing</returns>
-        public static VssSigningCredentials Create(Byte[] key)
-        {
-            ArgumentUtility.CheckForNull(key, nameof(key));
-
-            // Probably should have validation here, but there was none previously
-            return new SymmetricKeySigningToken(key);
-        }
-
         private const Int32 c_minKeySize = 2048;
         private readonly DateTime m_effectiveDate;
 
 #region Concrete Implementations
-
-        private class SymmetricKeySigningToken : VssSigningCredentials
-        {
-            public SymmetricKeySigningToken(Byte[] key)
-            {
-                m_key = new Byte[key.Length];
-                Buffer.BlockCopy(key, 0, m_key, 0, m_key.Length);
-            }
-
-            public override Boolean CanSignData
-            {
-                get
-                {
-                    return true;
-                }
-            }
-
-            public override Int32 KeySize
-            {
-                get
-                {
-                    return m_key.Length * 8;
-                }
-            }
-
-            public override JWTAlgorithm SignatureAlgorithm
-            {
-                get
-                {
-                    return JWTAlgorithm.HS256;
-                }
-            }
-
-            protected override Byte[] GetSignature(Byte[] input)
-            {
-                using (var hash = new HMACSHA256(m_key))
-                {
-                    return hash.ComputeHash(input);
-                }
-            }
-
-            public override Boolean VerifySignature(
-                Byte[] input,
-                Byte[] signature)
-            {
-                var computedSignature = SignData(input);
-                return SecureCompare.TimeInvariantEquals(computedSignature, signature);
-            }
-
-            private readonly Byte[] m_key;
-        }
 
         private abstract class AsymmetricKeySigningToken : VssSigningCredentials
         {
@@ -262,16 +187,6 @@ namespace GitHub.Services.WebApi
                 catch (CryptographicException)
                 {
                     return false;
-                }
-            }
-
-            public override Boolean VerifySignature(
-                Byte[] input,
-                Byte[] signature)
-            {
-                using (var rsa = m_factory())
-                {
-                    return rsa.VerifyData(input, signature, HashAlgorithmName.SHA256, m_signaturePadding);
                 }
             }
 
