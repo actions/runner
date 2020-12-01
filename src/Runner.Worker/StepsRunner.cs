@@ -92,6 +92,26 @@ namespace GitHub.Runner.Worker
                 var envContext = new CaseSensitiveDictionaryContextData();
 #endif
 
+                // If the HostContext needs to run through a proxy, the action needs too
+                if (!string.IsNullOrEmpty(HostContext.WebProxy.HttpProxyAddress))
+                {
+                    Trace.Info($"Setting envContext HTTP_PROXY to '{HostContext.WebProxy.HttpProxyAddress}' for all HTTP requests.");
+                    envContext["HTTP_PROXY"] = new StringContextData(HostContext.WebProxy.HttpProxyAddress);
+                    envContext["http_proxy"] = new StringContextData(HostContext.WebProxy.HttpProxyAddress);
+                }
+                if (!string.IsNullOrEmpty(HostContext.WebProxy.HttpsProxyAddress))
+                {
+                    Trace.Info($"Setting envContext HTTPS_PROXY to '{HostContext.WebProxy.HttpsProxyAddress}' for all HTTPS requests.");
+                    envContext["HTTPS_PROXY"] = new StringContextData(HostContext.WebProxy.HttpsProxyAddress);
+                    envContext["https_proxy"] = new StringContextData(HostContext.WebProxy.HttpsProxyAddress);
+                }
+                if (!String.IsNullOrEmpty(HostContext.WebProxy.NoProxyString))
+                {
+                    Trace.Info($"Setting envContext NO_PROXY to '{HostContext.WebProxy.NoProxyString}' for all requests.");
+                    envContext["NO_PROXY"] = new StringContextData(HostContext.WebProxy.NoProxyString);
+                    envContext["no_proxy"] = new StringContextData(HostContext.WebProxy.NoProxyString);
+                }
+
                 // Global env
                 foreach (var pair in step.ExecutionContext.Global.EnvironmentVariables)
                 {
