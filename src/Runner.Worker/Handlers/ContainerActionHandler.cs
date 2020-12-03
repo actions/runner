@@ -70,7 +70,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // run container
-            var container = new ContainerInfo()
+            var container = new ContainerInfo(HostContext)
             {
                 ContainerImage = Data.Image,
                 ContainerName = ExecutionContext.Id.ToString("N"),
