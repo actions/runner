@@ -65,5 +65,15 @@ namespace GitHub.DistributedTask.WebApi
             get;
             set;
         }
+
+        /// <summary>
+        /// Gets or sets whether to use FIPS compliant encryption scheme for job message key
+        /// </summary>
+        [DataMember]
+        public bool UseFipsEncryption
+        {
+            get;
+            set;
+        }
     }
 }

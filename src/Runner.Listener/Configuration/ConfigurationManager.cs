@@ -263,6 +263,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
                         { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
+                        { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", false).ToString() }
                     },
                 };
 
