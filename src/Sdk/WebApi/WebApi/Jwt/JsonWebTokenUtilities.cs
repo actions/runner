@@ -130,55 +130,6 @@ namespace GitHub.Services.WebApi.Jwt
             return credentials.SignatureAlgorithm;
         }
 
-        public static ClaimsPrincipal ValidateToken(this JsonWebToken token, JsonWebTokenValidationParameters parameters)
-        {
-            ArgumentUtility.CheckForNull(token, nameof(token));
-            ArgumentUtility.CheckForNull(parameters, nameof(parameters));
-
-            ClaimsIdentity actorIdentity = ValidateActor(token, parameters);
-            ValidateLifetime(token, parameters);
-            ValidateAudience(token, parameters);
-            ValidateSignature(token, parameters);
-            ValidateIssuer(token, parameters);
-
-            ClaimsIdentity identity = new ClaimsIdentity("Federation", parameters.IdentityNameClaimType, ClaimTypes.Role);
-
-            if (actorIdentity != null)
-            {
-                identity.Actor = actorIdentity;
-            }
-
-            IEnumerable<Claim> claims = token.ExtractClaims();
-
-            foreach (Claim claim in claims)
-            {
-                identity.AddClaim(new Claim(claim.Type, claim.Value, claim.ValueType, token.Issuer));
-            }
-
-            return new ClaimsPrincipal(identity);
-        }
-
-        private static ClaimsIdentity ValidateActor(JsonWebToken token, JsonWebTokenValidationParameters parameters)
-        {
-            ArgumentUtility.CheckForNull(token, nameof(token));
-            ArgumentUtility.CheckForNull(parameters, nameof(parameters));
-
-            if (!parameters.ValidateActor)
-            {
-                return null;
-            }
-
-            //this recursive call with check the parameters
-            ClaimsPrincipal principal = token.Actor.ValidateToken(parameters.ActorValidationParameters);
-
-            if (!(principal?.Identity is ClaimsIdentity))
-            {
-                throw new ActorValidationException();
-            }
-
-            return (ClaimsIdentity)principal.Identity;
-        }
-
         private static void ValidateLifetime(JsonWebToken token, JsonWebTokenValidationParameters parameters)
         {
             ArgumentUtility.CheckForNull(token, nameof(token));
@@ -239,59 +190,6 @@ namespace GitHub.Services.WebApi.Jwt
             }
 
             throw new InvalidAudienceException(); //validation exception;            
-        }
-
-        private static void ValidateSignature(JsonWebToken token, JsonWebTokenValidationParameters parameters)
-        {
-            ArgumentUtility.CheckForNull(token, nameof(token));
-            ArgumentUtility.CheckForNull(parameters, nameof(parameters));
-
-            if (!parameters.ValidateSignature)
-            {
-                return;
-            }
-
-            string encodedData = token.EncodedToken;
-
-            string[] parts = encodedData.Split('.');
-
-            if (parts.Length != 3)
-            {
-                throw new InvalidTokenException(JwtResources.EncodedTokenDataMalformed()); //validation exception
-            }
-
-            if (string.IsNullOrEmpty(parts[2]))
-            {
-                throw new InvalidTokenException(JwtResources.SignatureNotFound()); //validation exception
-            }
-
-            if (token.Algorithm == JWTAlgorithm.None)
-            {
-                throw new InvalidTokenException(JwtResources.InvalidSignatureAlgorithm()); //validation exception
-            }
-
-            ArgumentUtility.CheckForNull(parameters.SigningCredentials, nameof(parameters.SigningCredentials));
-
-            //ArgumentUtility.CheckEnumerableForNullOrEmpty(parameters.SigningToken.SecurityKeys, nameof(parameters.SigningToken.SecurityKeys));
-
-            byte[] sourceInput = Encoding.UTF8.GetBytes(string.Format("{0}.{1}", parts[0], parts[1]));
-
-            byte[] sourceSignature = parts[2].FromBase64StringNoPadding();
-
-
-            try
-            {
-                if (parameters.SigningCredentials.VerifySignature(sourceInput, sourceSignature))
-                {
-                    return;
-                }
-            }
-            catch (Exception)
-            {
-                //swallow exceptions here, we'll throw if nothing works...
-            }
-
-            throw new SignatureValidationException(); //valiation exception
         }
 
         private static void ValidateIssuer(JsonWebToken token, JsonWebTokenValidationParameters parameters)
