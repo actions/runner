@@ -919,6 +919,12 @@ namespace GitHub.Runner.Worker
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void InfrastructureError(this IExecutionContext context, string message)
+        {
+            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true});
+        }
+
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Warning(this IExecutionContext context, string message)
         {
             context.AddIssue(new Issue() { Type = IssueType.Warning, Message = message });

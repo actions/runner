@@ -594,15 +594,22 @@ namespace GitHub.Runner.Worker
                     actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     break;
                 }
-                catch (Exception ex) when (attempt < 3)
+                catch (Exception ex)
                 {
-                    executionContext.Output($"Failed to resolve action download info. Error: {ex.Message}");
-                    executionContext.Debug(ex.ToString());
-                    if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))
+                    if (attempt < 3)
                     {
-                        var backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
-                        executionContext.Output($"Retrying in {backoff.TotalSeconds} seconds");
-                        await Task.Delay(backoff);
+                        executionContext.Output($"Failed to resolve action download info. Error: {ex.Message}");
+                        executionContext.Debug(ex.ToString());
+                        if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))
+                        {
+                            var backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30));
+                            executionContext.Output($"Retrying in {backoff.TotalSeconds} seconds");
+                            await Task.Delay(backoff);
+                        }
+                    }
+                    else
+                    {
+                        throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
                     }
                 }
             }
