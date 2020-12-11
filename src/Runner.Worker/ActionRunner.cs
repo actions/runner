@@ -142,6 +142,11 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.SetGitHubContext("action_repository", repoPathReferenceAction.Name);
                 ExecutionContext.SetGitHubContext("action_ref", repoPathReferenceAction.Ref);
             }
+            else
+            {
+                ExecutionContext.SetGitHubContext("action_repository", null);
+                ExecutionContext.SetGitHubContext("action_ref", null);
+            }
 
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Global.Container != null)
@@ -250,11 +255,11 @@ namespace GitHub.Runner.Worker
             handler.PrintActionDetails(Stage);
 
             // Run the task.
-            try 
+            try
             {
                 await handler.RunAsync(Stage);
             }
-            finally 
+            finally
             {
                 fileCommandManager.ProcessFiles(ExecutionContext, ExecutionContext.Global.Container);
             }
