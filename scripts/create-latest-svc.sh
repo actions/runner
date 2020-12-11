@@ -12,12 +12,13 @@ set -e
 #
 # Usage:
 #     export RUNNER_CFG_PAT=<yourPAT>
-#     ./create-latest-svc scope [ghe_domain] [name] [user]
+#     ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
 #
 #      scope       required  repo (:owner/:repo) or org (:organization)
 #      ghe_domain  optional  the fully qualified domain name of your GitHub Enterprise Server deployment
 #      name        optional  defaults to hostname
 #      user        optional  user svc will run as. defaults to current
+#      labels      optional  list of labels (split by comma) applied on the runner
 #
 # Notes:
 # PATS over envvars are more secure
@@ -30,6 +31,7 @@ runner_scope=${1}
 ghe_hostname=${2}
 runner_name=${3:-$(hostname)}
 svc_user=${4:-$USER}
+labels=${5}
 
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
@@ -130,8 +132,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name"
-sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name
+echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name --labels $labels"
+sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name --labels $labels
 
 #---------------------------------------
 # Configuring as a service
