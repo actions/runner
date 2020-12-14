@@ -1,12 +1,13 @@
 ## Features
-  - N/A
+  - Add labels in the script that register runner (#844)
+  - Add proxy support for container actions (#840)
 
 ## Bugs
-  - N/A
+  - Unset GTIHUB_ACTION_REPOSITORY and GITHUB_ACTION_REF for non-repo based actions #804
 
 ## Misc
-  - Disabled add-path and set-env runner commands (#779)
-  - Updated dotnet install scripts (#779)
+  - Crypto cleanup and enable usage of FIPS compliant crypto when required (#806)
+  - Count actions resolve failures as infra failures (#851)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
