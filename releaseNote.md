@@ -4,6 +4,7 @@
 
 ## Bugs
   - Unset GTIHUB_ACTION_REPOSITORY and GITHUB_ACTION_REF for non-repo based actions #804
+ -  fix compat issue in timeline record state. #861 
 
 ## Misc
   - Crypto cleanup and enable usage of FIPS compliant crypto when required (#806)
