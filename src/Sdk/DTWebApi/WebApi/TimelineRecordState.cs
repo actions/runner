@@ -13,5 +13,8 @@ namespace GitHub.DistributedTask.WebApi
 
         [EnumMember]
         Completed,
+
+        [EnumMember]
+        Delayed,
     }
 }
