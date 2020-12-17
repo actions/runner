@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Text;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace GitHub.DistributedTask.Expressions2.Sdk.Functions
 {
