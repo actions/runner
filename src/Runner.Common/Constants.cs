@@ -99,9 +99,11 @@ namespace GitHub.Runner.Common
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Token = "token";
+                    public static readonly string PAT = "pat";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
                     public static string[] Secrets => new[]
                     {
+                        PAT,
                         Token,
                         WindowsLogonPassword,
                     };

@@ -42,6 +42,7 @@ namespace GitHub.Runner.Listener
             Constants.Runner.CommandLine.Args.Labels,
             Constants.Runner.CommandLine.Args.MonitorSocketAddress,
             Constants.Runner.CommandLine.Args.Name,
+            Constants.Runner.CommandLine.Args.PAT,
             Constants.Runner.CommandLine.Args.RunnerGroup,
             Constants.Runner.CommandLine.Args.StartupType,
             Constants.Runner.CommandLine.Args.Token,
@@ -185,6 +186,11 @@ namespace GitHub.Runner.Listener
                 description: "What is your pool admin oauth access token?",
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
+        }
+
+        public string GetGitHubPersonalAccessToken()
+        {
+            return GetArg(name: Constants.Runner.CommandLine.Args.PAT);
         }
 
         public string GetRunnerRegisterToken()

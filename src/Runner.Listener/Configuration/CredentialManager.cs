@@ -72,6 +72,16 @@ namespace GitHub.Runner.Listener.Configuration
     }
 
     [DataContract]
+    public sealed class GitHubRunnerRegisterToken
+    {
+        [DataMember(Name = "token")]
+        public string Token { get; set; }
+
+        [DataMember(Name = "expires_at")]
+        public string ExpiresAt { get; set; }
+    }
+
+    [DataContract]
     public sealed class GitHubAuthResult
     {
         [DataMember(Name = "url")]
