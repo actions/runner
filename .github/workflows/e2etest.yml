@@ -329,7 +329,7 @@ jobs:
             echo "Failed: $error" >&2
             exit 1
         }
-        grep -R "Job runner-basics completed with result: Succeeded" ./win_x64_logs || failed "Windows Runner fail to run the job, please check logs"
-        grep -R "Job runner-basics completed with result: Succeeded" ./linux_x64_logs || failed "Linux Runner fail to run the job, please check logs"
-        grep -R "Job runner-basics completed with result: Succeeded" ./osx_x64_logs || failed "macOS Runner fail to run the job, please check logs"
-        grep -R "Job runner-basics completed with result: Succeeded" ./linux_arm64_logs || failed "Linux ARM64 Runner fail to run the job, please check logs"
+        grep -R "completed with result: Succeeded" ./win_x64_logs || failed "Windows Runner fail to run the job, please check logs"
+        grep -R "completed with result: Succeeded" ./linux_x64_logs || failed "Linux Runner fail to run the job, please check logs"
+        grep -R "completed with result: Succeeded" ./osx_x64_logs || failed "macOS Runner fail to run the job, please check logs"
+        grep -R "completed with result: Succeeded" ./linux_arm64_logs || failed "Linux ARM64 Runner fail to run the job, please check logs"
