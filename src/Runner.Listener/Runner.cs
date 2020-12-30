@@ -1,6 +1,5 @@
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener.Configuration;
-using GitHub.Runner.Common.Util;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +10,8 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Linq;
+using GitHub.Runner.Listener.Check;
 
 namespace GitHub.Runner.Listener
 {
@@ -69,6 +70,50 @@ namespace GitHub.Runner.Listener
                 if (command.Commit)
                 {
                     _term.WriteLine(BuildConstants.Source.CommitHash);
+                    return Constants.Runner.ReturnCode.Success;
+                }
+
+                if (command.Check)
+                {
+                    var url = command.GetUrl();
+                    var pat = command.GetGitHubPersonalAccessToken(required: true);
+                    var checkExtensions = HostContext.GetService<IExtensionManager>().GetExtensions<ICheckExtension>();
+                    var sortedChecks = checkExtensions.OrderBy(x => x.Order);
+                    foreach (var check in sortedChecks)
+                    {
+                        _term.WriteLine($"**********************************************************************************************************************");
+                        _term.WriteLine($"**  Check:               {check.CheckName}");
+                        _term.WriteLine($"**  Description:         {check.CheckDescription}");
+                        _term.WriteLine($"**********************************************************************************************************************");
+                        var result = await check.RunCheck(url, pat);
+                        if (!result)
+                        {
+                            _term.WriteLine($"**                                                                                                                  **");
+                            _term.WriteLine($"**                                            F A I L                                                               **");
+                            _term.WriteLine($"**                                                                                                                  **");
+                            _term.WriteLine($"**********************************************************************************************************************");
+                            _term.WriteLine($"** Log: {check.CheckLog}");
+                            _term.WriteLine($"** Help Doc: {check.HelpLink}");
+                            _term.WriteLine($"**********************************************************************************************************************");
+                        }
+                        else
+                        {
+                            _term.WriteLine($"**                                                                                                                  **");
+                            _term.WriteLine($"**                                            P A S S                                                               **");
+                            _term.WriteLine($"**                                                                                                                  **");
+                            _term.WriteLine($"**********************************************************************************************************************");
+                            _term.WriteLine($"** Log: {check.CheckLog}");
+                            _term.WriteLine($"**********************************************************************************************************************");
+                        }
+
+                        _term.WriteLine();
+                        _term.WriteLine();
+                    }
+
+                    // 2. runner access to ghes/gh (dns->ping->pwsh->curl->openssl)
+                    // 3. runner access to ghes/token/pipelines (dns->ping->pwsh->curl->openssl)
+                    // 4. git access to ghes/gh 
+                    // 5. node access to ghes/gh (runner + $PATH)
                     return Constants.Runner.ReturnCode.Success;
                 }
 
@@ -475,7 +520,7 @@ Config Options:
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
     _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
 #endif
-    _term.WriteLine($@"
+            _term.WriteLine($@"
 Examples:
  Configure a runner non-interactively:
   .{separator}config.{ext} --unattended --url <url> --token <token>

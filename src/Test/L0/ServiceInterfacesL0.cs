@@ -59,6 +59,7 @@ namespace GitHub.Runner.Common.Tests
             var whitelist = new[]
             {
                 typeof(IActionCommandExtension),
+                typeof(ICheckExtension),
                 typeof(IExecutionContext),
                 typeof(IFileCommandExtension),
                 typeof(IHandler),
