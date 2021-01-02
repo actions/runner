@@ -622,7 +622,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runner-registration";
+                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}:{gitHubUrlBuilder.Port}/api/v3/actions/runner-registration";
             }
 
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
