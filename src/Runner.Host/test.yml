@@ -1,0 +1,58 @@
+
+name: CI
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# defaults:
+  # run:
+  #   shell: pwsh
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    if: 'false'
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+
+      # Runs a single command using the runners shell
+      - name: Run a one-line script
+        if: 'true'
+        run: echo Hello, world!
+
+      # Runs a set of commands using the runners shell
+      - name: Run a multi-line script
+        if: 'true'
+        run: |
+          echo Add other actions to build,
+          echo test, and deploy your project.
+          echo ${{ github.repository }}
+          echo ${{ github.token }}
+
+      - name: Checkoutv3
+        uses: actions/checkout@v2
+        with:
+          repository: ChristopherHX/PKHeX.Mobile
+          # token: 2e5e4490c093e1675c4977e08e0c5cb5beb9e5de
+      - name: Checkoutv3
+        uses: actions/checkout@v2
+        env:
+          GITHUB_SERVER_URL: http://ubuntu:3042/
+        with:
+          token: 2e5e4490c093e1675c4977e08e0c5cb5beb9e5de
+          repository: Christopher/test2
+          path: test2
+      - run: ls test2
+      
