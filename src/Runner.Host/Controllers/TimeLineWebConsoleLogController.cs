@@ -17,14 +17,6 @@ namespace Runner.Host.Controllers
 
         private readonly ILogger<TimeLineWebConsoleLogController> _logger;
 
-        private List<TaskAgentPool> pool = new List<TaskAgentPool> {
-            new TaskAgentPool("Agents") {
-                Id = 1,
-                IsHosted = false,
-                IsInternal = true
-            }
-        };
-
         public TimeLineWebConsoleLogController(ILogger<TimeLineWebConsoleLogController> logger)
         {
             _logger = logger;
