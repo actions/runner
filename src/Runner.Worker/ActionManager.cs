@@ -594,14 +594,8 @@ namespace GitHub.Runner.Worker
                     actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     break;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is canceled.
                 {
-                    // Action download was canceled, due to fail fast strategy. There is no point in retrying anymore as the run is canceled.
-                    if (ex.Message != null && string.Equals(ex.Message, "A task was canceled.", StringComparison.OrdinalIgnoreCase))
-                    {
-                        throw;
-                    }
-
                     if (attempt < 3)
                     {
                         executionContext.Output($"Failed to resolve action download info. Error: {ex.Message}");
