@@ -596,6 +596,12 @@ namespace GitHub.Runner.Worker
                 }
                 catch (Exception ex)
                 {
+                    // Action download was canceled, due to fail fast strategy. There is no point in retrying anymore as the run is canceled.
+                    if (ex.Message != null && string.Equals(ex.Message, "A task was canceled.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw;
+                    }
+
                     if (attempt < 3)
                     {
                         executionContext.Output($"Failed to resolve action download info. Error: {ex.Message}");
@@ -609,7 +615,18 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
-                        throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
+                        // Some possible cases are:
+                        // * Repo is rate limited
+                        // * Repo or tag doesn't exist, or isn't public
+                        if (ex is WebApi.UnresolvableActionDownloadInfoException)
+                        {
+                            throw;
+                        }
+                        else
+                        {
+                            // This exception will be traced as an infrastructure failure
+                            throw new WebApi.FailedToResolveActionDownloadInfoException("Failed to resolve action download info.", ex);
+                        }
                     }
                 }
             }
