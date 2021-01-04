@@ -17,6 +17,8 @@ using GitHub.DistributedTask.Logging;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Runtime.Serialization;
 
 namespace Runner.Host.Controllers
 {
@@ -27,7 +29,7 @@ namespace Runner.Host.Controllers
 
         private readonly ILogger<MessageController> _logger;
 
-        Dictionary<Guid, object> dict = new Dictionary<Guid, object>();
+        static Dictionary<Guid, object> dict = new Dictionary<Guid, object>();
 
         public MessageController(ILogger<MessageController> logger)
         {
@@ -39,7 +41,7 @@ namespace Runner.Host.Controllers
         {
         }
 
-        private string ConvertYaml(string fileRelativePath) {
+        private string ConvertYaml(string fileRelativePath, string content = null) {
             var templateContext = new TemplateContext(){
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, 500),
@@ -61,7 +63,7 @@ namespace Runner.Host.Controllers
             var fileId = templateContext.GetFileId(fileRelativePath);
 
             // Read the file
-            var fileContent = System.IO.File.ReadAllText(fileRelativePath);
+            var fileContent = content ?? System.IO.File.ReadAllText(fileRelativePath);
             using (var stringReader = new StringReader(fileContent))
             {
                 var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
@@ -87,9 +89,9 @@ namespace Runner.Host.Controllers
                     {
                         var jn = job.Key.AssertString($"action.yml property key");
 
-                        switch (jn.Value)
-                        {
-                            case "build":
+                        // switch (jn.Value)
+                        // {
+                        //     case "build":
                             // var eval = new PipelineTemplateEvaluator(new EmptyTraceWriter(), templateContext.Schema, templateContext.GetFileTable().ToList());
                             //GitHub.DistributedTask.Expressions2.Sdk.ExpressionUtility.
                             var run = job.Value.AssertMapping("jobs");
@@ -256,12 +258,13 @@ namespace Runner.Host.Controllers
                             var githubctx = new DictionaryContextData();
                             contextData.Add("github", githubctx);
                             githubctx.Add("repository", new StringContextData("ChristopherHX/test"));
+                            githubctx.Add("server_url", new StringContextData("http://ubuntu:3042/"));
                             // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
                             contextData.Add("needs", new DictionaryContextData());
                             contextData.Add("matrix", null);
                             contextData.Add("strategy", new DictionaryContextData());
                             return JsonConvert.SerializeObject(new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference(){PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner(){Id = 0, Name = "Community" }, Version = 12}, new GitHub.DistributedTask.WebApi.TimelineReference(){Id = Guid.NewGuid(), Location = new Uri("https://localhost:5001/timeline/unused"), ChangeId = 1}, Guid.NewGuid(), "Display name", "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test")));
-                        }
+                        // }
                     }
                     break;
                     case "defaults":
@@ -275,15 +278,16 @@ namespace Runner.Host.Controllers
             return null;
         }
 
-        private static bool sent = false;
+        // private static bool sent = false;
 
         [HttpGet("{poolId}")]
-        public TaskAgentMessage GetMessage(int poolId, Guid sessionId)
+        public async Task<TaskAgentMessage> GetMessage(int poolId, Guid sessionId)
         {
-            if(!sent /* || !dict.TryGetValue(sessionId, out _) */) {
-                string res = ConvertYaml("C:/Users/Christopher/runner/src/Runner.Host/test.yml");
+            if(!dict.TryGetValue(sessionId, out _)) {
+                string res = await  System.IO.File.ReadAllTextAsync("C:/Users/Christopher/Documents/Webserver/build/WebserverConsole/Debug/job.json"); res = ConvertYaml("C:/Users/Christopher/runner/src/Runner.Host/test.yml");
+                System.IO.File.WriteAllText("C:/Users/Christopher/Documents/Webserver/build/WebserverConsole/Debug/job.json", res);
                 dict.Add(sessionId, res);
-                sent = true;
+                // sent = true;
                 return new TaskAgentMessage() {
                     Body = res,
                     MessageId = 2,
@@ -307,6 +311,37 @@ namespace Runner.Host.Controllers
                 RefreshAgent(poolId, agentId);
             } else if (agentId == -1) {
                 SendMessage(poolId, requestId, message);
+            }
+        }
+
+        public class Repo {
+            [DataMember]
+            public string full_name {get; set;}
+        }
+
+        public class GiteaHook
+        {
+            [DataMember]
+            public Repo repository {get; set;}
+            
+        }
+
+        [HttpPost]
+        public async void OnWebhook([FromBody] /* Dictionary<string, string> dict */GiteaHook hook)
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("accept", "application/json");
+            client.DefaultRequestHeaders.Add("Authorization", "token 7a2bf20dced683aea59189278a33691f67d5af55");
+            var res = await client.GetAsync(string.Format("http://ubuntu:3500/api/v1/repos/{0}/contents/.github%2Fworkflows", hook.repository.full_name));
+            // var content = await res.Content.ReadAsAsync<List<Dictionary<string, string>>>();
+            var content = await res.Content.ReadAsStringAsync();
+            foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(content))
+            {
+                var fileUrl = new UriBuilder(item.download_url.ToString());
+                fileUrl.Host = "ubuntu";
+                var fileRes = await client.GetAsync(fileUrl.Uri);
+                var filecontent = await fileRes.Content.ReadAsStringAsync();
+                string jobRequest = ConvertYaml(item.path.ToString(), filecontent);
             }
         }
     }
