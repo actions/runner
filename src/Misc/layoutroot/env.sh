@@ -6,6 +6,7 @@ varCheckList=(
     'ANT_HOME' 
     'M2_HOME' 
     'ANDROID_HOME' 
+    'ANDROID_SDK_ROOT'
     'GRADLE_HOME' 
     'NVM_BIN' 
     'NVM_PATH'
