@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -41,6 +42,8 @@ namespace GitHub.Runner.Worker
         private readonly HashSet<string> _existingProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private bool _processCleanup;
         private string _processLookupId = $"github_{Guid.NewGuid()}";
+        private CancellationTokenSource _diskSpaceCheckToken = new CancellationTokenSource();
+        private Task _diskSpaceCheckTask = null;
 
         // Download all required actions.
         // Make sure all condition inputs are valid.
@@ -325,6 +328,12 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    jobContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.DiskSpaceWarning, out var enableWarning);
+                    if (StringUtil.ConvertToBoolean(enableWarning, defaultValue: true))
+                    {
+                        _diskSpaceCheckTask = CheckDiskSpaceAsync(context, _diskSpaceCheckToken.Token);
+                    }
+
                     return steps;
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
@@ -335,7 +344,7 @@ namespace GitHub.Runner.Worker
                     context.Result = TaskResult.Canceled;
                     throw;
                 }
-                catch (FailedToResolveActionDownloadInfoException ex) 
+                catch (FailedToResolveActionDownloadInfoException ex)
                 {
                     // Log the error and fail the JobExtension Initialization.
                     Trace.Error($"Caught exception from JobExtenion Initialization: {ex}");
@@ -529,6 +538,11 @@ namespace GitHub.Runner.Worker
                             }
                         }
                     }
+
+                    if (_diskSpaceCheckTask != null)
+                    {
+                        _diskSpaceCheckToken.Cancel();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -540,6 +554,39 @@ namespace GitHub.Runner.Worker
                 {
                     context.Debug("Finishing: Complete job");
                     context.Complete();
+                }
+            }
+        }
+
+        private async Task CheckDiskSpaceAsync(IExecutionContext context, CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                // Add warning when disk is lower than system.runner.lowdiskspacethreshold from service (default to 100 MB on service side)
+                var lowDiskSpaceThreshold = context.Global.Variables.GetInt(WellKnownDistributedTaskVariables.RunnerLowDiskspaceThreshold);
+                if (lowDiskSpaceThreshold == null)
+                {
+                    Trace.Info($"Low diskspace warning is not enabled.");
+                    return;
+                }
+                var workDirRoot = Directory.GetDirectoryRoot(HostContext.GetDirectory(WellKnownDirectory.Work));
+                var driveInfo = new DriveInfo(workDirRoot);
+                var freeSpaceInMB = driveInfo.AvailableFreeSpace / 1024 / 1024;
+                if (freeSpaceInMB < lowDiskSpaceThreshold)
+                {
+                    var issue = new Issue() { Type = IssueType.Warning, Message = $"You are running out of disk space. The runner will stop working when the machine runs out of disk space. Free space left: {freeSpaceInMB} MB" };
+                    issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.LowDiskSpace;
+                    context.AddIssue(issue);
+                    return;
+                }
+
+                try
+                {
+                    await Task.Delay(10 * 1000, token);
+                }
+                catch (TaskCanceledException)
+                {
+                    // ignore
                 }
             }
         }
