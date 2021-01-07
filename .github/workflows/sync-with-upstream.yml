@@ -1,0 +1,104 @@
+---
+name: Keep in sync with actions/runner
+on:  # yamllint disable-line rule:truthy
+  schedule:
+    - cron:  '0 9 * * *'
+  push:
+    branches: [ main ]
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-20.04
+    env:
+      PAT: ${{ secrets.GH_PAT }}
+    strategy:
+      matrix:
+        branch:
+          - main
+          - pr-security-options
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ matrix.branch }}
+      - name: Rebase ${{ matrix.branch }}
+        env:
+          UPSTREAM_REPO: https://github.com/actions/runner.git
+          SOURCE_BRANCH: main  # Always pull/rebase on to main
+          DESTINATION_BRANCH: ${{ matrix.branch }}
+        run: |
+          set -exu -o pipefail
+
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${PAT}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git remote add upstream "$UPSTREAM_REPO"
+          git fetch --tags -f upstream "${SOURCE_BRANCH}"
+          git remote -v
+
+          git rebase "upstream/${SOURCE_BRANCH}"
+          git push --force origin "${DESTINATION_BRANCH}"
+
+          git remote rm upstream
+          git remote -v
+      - name: Push tags
+        if: matrix.branch == 'main'
+        run: git push --tags --force origin
+
+  sync-custom-release-branch:
+    needs: [sync-upstream]
+    runs-on: ubuntu-20.04
+    env:
+      PAT: ${{ secrets.GH_PAT }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Rebase releases/pr-security-options
+        env:
+          pr_branch: pr-security-options
+          target_branch: releases/pr-security-options
+        run: |
+          set -exu -o pipefail
+
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${PAT}@github.com/${GITHUB_REPOSITORY}.git"
+
+          latest_tag="$(git tag -l 'v*' | grep -v -- -airflow | sort -Vr | head -1)"
+          echo "Latest release tag is $latest_tag"
+          suffix=1
+
+          # See if we need to udpate, or reset
+          if git show "origin/${target_branch}":src/runnerversion | grep -q "^${latest_tag#v}-airflow"; then
+            git checkout -b "${target_branch}" "origin/${target_branch}"
+            git show -p --color=always
+            git log --decorate --graph --oneline -30 --color=always "origin/${target_branch}" "$latest_tag"
+
+            # See if there are changes in the PR branch we need to pull in, and
+            # if so "re-create" the branch, but tag it as a new version
+            if ! git cherry "origin/${pr_branch}" HEAD^ "$latest_tag" | grep -q '^+'; then
+              echo "Nothing to update"
+              exit 0
+            fi
+            # Something changed! Bump the airflow<n> suffix
+            suffix="$(cat src/runnerversion)"
+            suffix="${suffix##*-airflow}"
+            suffix=$((suffix + 1))
+          fi
+
+          # Checkout and reset branch
+          git checkout -B "${target_branch}" "origin/${pr_branch}"
+          # Keep only changes from PR
+          git rebase --onto "$latest_tag" origin/main
+
+          custom_ver="${latest_tag#v}-airflow${suffix}"
+          # Custominze build version
+          echo "$custom_ver" > src/runnerversion
+          cp src/runnerversion releaseVersion
+          git commit src/runnerversion releaseVersion -m "Release as ${latest_tag#v}-airflow${suffix}"
+          git show -p --color=always
+          git log --decorate --graph --oneline --all -30 --color=always
+          git push --force origin "${target_branch}"
