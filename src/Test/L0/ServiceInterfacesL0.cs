@@ -1,4 +1,5 @@
 ﻿using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Check;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
@@ -21,7 +22,8 @@ namespace GitHub.Runner.Common.Tests
             // Otherwise, the interface needs to whitelisted.
             var whitelist = new[]
             {
-                typeof(ICredentialProvider)
+                typeof(ICredentialProvider),
+                typeof(ICheckExtension),
             };
             Validate(
                 assembly: typeof(IMessageListener).GetTypeInfo().Assembly,
@@ -59,7 +61,6 @@ namespace GitHub.Runner.Common.Tests
             var whitelist = new[]
             {
                 typeof(IActionCommandExtension),
-                typeof(ICheckExtension),
                 typeof(IExecutionContext),
                 typeof(IFileCommandExtension),
                 typeof(IHandler),
@@ -86,7 +87,8 @@ namespace GitHub.Runner.Common.Tests
                     continue;
                 }
 
-                if (interfaceTypeInfo.FullName.Contains("IConverter")){
+                if (interfaceTypeInfo.FullName.Contains("IConverter"))
+                {
                     continue;
                 }
 
