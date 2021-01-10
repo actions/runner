@@ -13,7 +13,7 @@ namespace GitHub.Runner.Listener.Check
     {
         private string _logFile = null;
 
-        public int Order => 10;
+        public int Order => 1;
 
         public string CheckName => "Internet Connection";
 
@@ -21,7 +21,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckLog => _logFile;
 
-        public string HelpLink => "https://github.com/actions/runner/docs/checks/internet.md";
+        public string HelpLink => "https://github.com/actions/runner/blob/main/docs/checks/internet.md";
 
         public Type ExtensionType => typeof(ICheckExtension);
 
@@ -34,14 +34,15 @@ namespace GitHub.Runner.Listener.Check
         // check runner access to api.github.com
         public async Task<bool> RunCheck(string url, string pat)
         {
-            var result = true;
+            await File.AppendAllLinesAsync(_logFile, HostContext.WarnLog());
             await File.AppendAllLinesAsync(_logFile, HostContext.CheckProxy());
 
             var checkTasks = new List<Task<CheckResult>>();
             checkTasks.Add(CheckUtil.CheckDns("https://api.github.com"));
             checkTasks.Add(CheckUtil.CheckPing("https://api.github.com"));
-            checkTasks.Add(HostContext.CheckHttpsRequests("https://api.github.com", "X-GitHub-Request-Id"));
+            checkTasks.Add(HostContext.CheckHttpsRequests("https://api.github.com", expectedHeader: "X-GitHub-Request-Id"));
 
+            var result = true;
             while (checkTasks.Count > 0)
             {
                 var finishedCheckTask = await Task.WhenAny<CheckResult>(checkTasks);

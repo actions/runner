@@ -14,87 +14,10 @@ namespace GitHub.Runner.Listener.Check
 {
     public sealed class NodeJsCheck : RunnerService, ICheckExtension
     {
-        private const string _nodejsTestScript = @"
-const https = require('https')
-const http = require('http')
-const hostname = '<HOSTNAME>'
-const port = '<PORT>'
-const path = '<PATH>'
-const pat = '<PAT>'
-const proxyHost = '<PROXYHOST>'
-const proxyPort = '<PROXYPORT>'
-const proxyUsername = '<PROXYUSERNAME>'
-const proxyPassword = '<PROXYPASSWORD>'
-
-if (proxyHost === '') {
-    const options = {
-        hostname: hostname,
-        port: port,
-        path: path,
-        method: 'GET',
-        headers: {
-            'User-Agent': 'GitHubActionsRunnerCheck/1.0',
-            'Authorization': `token ${pat}`,
-        }
-    }
-    const req = https.request(options, res => {
-        console.log(`statusCode: ${res.statusCode}`)
-        console.log(`headers: ${JSON.stringify(res.headers)}`)
-
-        res.on('data', d => {
-            process.stdout.write(d)
-        })
-    })
-    req.on('error', error => {
-        console.error(error)
-    })
-    req.end()
-}
-else {
-    const proxyAuth = 'Basic ' + Buffer.from(proxyUsername + ':' + proxyPassword).toString('base64')
-    const options = {
-        hostname: proxyHost,
-        port: proxyPort,
-        method: 'CONNECT',
-        path: `${hostname}:${port}`
-    }
-
-    if (proxyUsername != '' || proxyPassword != '') {
-        options.headers = {
-            'Proxy-Authorization': proxyAuth,
-        }
-    }
-    http.request(options).on('connect', (res, socket) => {
-        if (res.statusCode != 200) {
-            throw new Error(`Proxy returns code: ${res.statusCode}`)
-        }
-        https.get({
-            host: hostname,
-            port: port,
-            socket: socket,
-            agent: false,
-            path: path,
-            headers: {
-                'User-Agent': 'GitHubActionsRunnerCheck/1.0',
-                'Authorization': `token ${pat}`,
-            }
-        }, (res) => {
-            console.log(`statusCode: ${res.statusCode}`)
-            console.log(`headers: ${JSON.stringify(res.headers)}`)
-
-            res.on('data', d => {
-                process.stdout.write(d)
-            })
-        })
-    }).on('error', (err) => {
-        console.error('error', err)
-    }).end()
-}
-";
 
         private string _logFile = null;
 
-        public int Order => 50;
+        public int Order => 4;
 
         public string CheckName => "Node.js Certificate/Proxy Validation";
 
@@ -102,7 +25,7 @@ else {
 
         public string CheckLog => _logFile;
 
-        public string HelpLink => "https://github.com/actions/runner/docs/checks/nodejs.md";
+        public string HelpLink => "https://github.com/actions/runner/blob/main/docs/checks/nodejs.md";
 
         public Type ExtensionType => typeof(ICheckExtension);
 
@@ -115,6 +38,7 @@ else {
         // node access to ghes/gh
         public async Task<bool> RunCheck(string url, string pat)
         {
+            await File.AppendAllLinesAsync(_logFile, HostContext.WarnLog());
             await File.AppendAllLinesAsync(_logFile, HostContext.CheckProxy());
 
             // Request to github.com or ghes server
@@ -165,50 +89,40 @@ else {
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
 
                 // Request to github.com or ghes server
-                Uri requestUrl = null;
-                var urlBuilder = new UriBuilder(url);
-                if (UrlUtil.IsHostedServer(urlBuilder))
+                Uri requestUrl = new Uri(url);
+                var env = new Dictionary<string, string>()
                 {
-                    urlBuilder.Host = $"api.{urlBuilder.Host}";
-                }
-                else
-                {
-                    urlBuilder.Path = "api/v3";
-                }
-                requestUrl = urlBuilder.Uri;
-
-                var tempScript = _nodejsTestScript.Replace("<HOSTNAME>", requestUrl.Host)
-                                                  .Replace("<PORT>", requestUrl.IsDefaultPort ? (requestUrl.Scheme.ToLowerInvariant() == "https" ? "443" : "80") : requestUrl.Port.ToString())
-                                                  .Replace("<PATH>", requestUrl.AbsolutePath)
-                                                  .Replace("<PAT>", pat);
+                    { "HOSTNAME", requestUrl.Host },
+                    { "PORT", requestUrl.IsDefaultPort ? (requestUrl.Scheme.ToLowerInvariant() == "https" ? "443" : "80") : requestUrl.Port.ToString() },
+                    { "PATH", requestUrl.AbsolutePath },
+                    { "PAT", pat }
+                };
 
                 var proxy = HostContext.WebProxy.GetProxy(requestUrl);
                 if (proxy != null)
                 {
-                    tempScript = tempScript.Replace("<PROXYHOST>", proxy.Host)
-                                           .Replace("<PROXYPORT>", proxy.IsDefaultPort ? (proxy.Scheme.ToLowerInvariant() == "https" ? "443" : "80") : proxy.Port.ToString());
+                    env["PROXYHOST"] = proxy.Host;
+                    env["PROXYPORT"] = proxy.IsDefaultPort ? (proxy.Scheme.ToLowerInvariant() == "https" ? "443" : "80") : proxy.Port.ToString();
                     if (HostContext.WebProxy.Credentials is NetworkCredential proxyCred)
                     {
-                        tempScript = tempScript.Replace("<PROXYUSERNAME>", proxyCred.UserName)
-                                               .Replace("<PROXYPASSWORD>", proxyCred.Password);
+                        env["PROXYUSERNAME"] = proxyCred.UserName;
+                        env["PROXYPASSWORD"] = proxyCred.Password;
                     }
                     else
                     {
-                        tempScript = tempScript.Replace("<PROXYUSERNAME>", "")
-                                               .Replace("<PROXYPASSWORD>", "");
+                        env["PROXYUSERNAME"] = "";
+                        env["PROXYPASSWORD"] = "";
                     }
                 }
                 else
                 {
-                    tempScript = tempScript.Replace("<PROXYHOST>", "")
-                                           .Replace("<PROXYPORT>", "")
-                                           .Replace("<PROXYUSERNAME>", "")
-                                           .Replace("<PROXYPASSWORD>", "");
+                    env["PROXYHOST"] = "";
+                    env["PROXYPORT"] = "";
+                    env["PROXYUSERNAME"] = "";
+                    env["PROXYPASSWORD"] = "";
                 }
 
-                var tempJsFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Diag), StringUtil.Format("{0}_{1:yyyyMMdd-HHmmss}-utc.js", nameof(NodeJsCheck), DateTime.UtcNow));
-                await File.WriteAllTextAsync(tempJsFile, tempScript);
-                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Generate temp node.js script: '{tempJsFile}'");
+                var makeWebRequestScript = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "makeWebRequest.js");
 
                 using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                 {
@@ -229,9 +143,8 @@ else {
                     });
 
                     var node12 = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
-                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node12} \"{tempJsFile}\"' ");
-
-                    var env = new Dictionary<string, string>();
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node12} \"{makeWebRequestScript}\"' ");
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} {StringUtil.ConvertToJson(env)}");
                     if (extraCA)
                     {
                         env["NODE_EXTRA_CA_CERTS"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "download_ca_cert.pem");
@@ -239,7 +152,7 @@ else {
                     await processInvoker.ExecuteAsync(
                         HostContext.GetDirectory(WellKnownDirectory.Root),
                         node12,
-                        $"\"{tempJsFile}\"",
+                        $"\"{makeWebRequestScript}\"",
                         env,
                         true,
                         CancellationToken.None);
@@ -250,14 +163,18 @@ else {
             catch (Exception ex)
             {
                 result.Pass = false;
-                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Make https request to {url} using node.js failed with error: {ex}");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Make https request to {url} using node.js failed with error: {ex}");
                 if (result.Logs.Any(x => x.Contains("UNABLE_TO_VERIFY_LEAF_SIGNATURE") ||
                                          x.Contains("UNABLE_TO_GET_ISSUER_CERT_LOCALLY") ||
                                          x.Contains("SELF_SIGNED_CERT_IN_CHAIN")))
                 {
-                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Https request failed due to SSL cert issue.");
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Https request failed due to SSL cert issue.");
                     result.SslError = true;
                 }
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
             }
 
             return result;

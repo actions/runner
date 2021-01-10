@@ -17,7 +17,7 @@ namespace GitHub.Runner.Listener.Check
         private string _logFile = null;
         private string _gitPath = null;
 
-        public int Order => 40;
+        public int Order => 3;
 
         public string CheckName => "Git Certificate/Proxy Validation";
 
@@ -25,7 +25,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckLog => _logFile;
 
-        public string HelpLink => "https://github.com/actions/runner/docs/checks/git.md";
+        public string HelpLink => "https://github.com/actions/runner/blob/main/docs/checks/git.md";
 
         public Type ExtensionType => typeof(ICheckExtension);
 
@@ -39,7 +39,14 @@ namespace GitHub.Runner.Listener.Check
         // git access to ghes/gh 
         public async Task<bool> RunCheck(string url, string pat)
         {
+            await File.AppendAllLinesAsync(_logFile, HostContext.WarnLog());
             await File.AppendAllLinesAsync(_logFile, HostContext.CheckProxy());
+
+            if (string.IsNullOrEmpty(_gitPath))
+            {
+                await File.AppendAllLinesAsync(_logFile, new[] { $"{DateTime.UtcNow.ToString("O")} Can't verify git with GitHub or GitHub Enterprise Server since git is not installed." });
+                return false;
+            }
 
             var checkGit = await CheckGit(url, pat);
             var result = checkGit.Pass;
@@ -48,6 +55,7 @@ namespace GitHub.Runner.Listener.Check
             // try fix SSL error by providing extra CA certificate.
             if (checkGit.SslError)
             {
+                await File.AppendAllLinesAsync(_logFile, new[] { $"{DateTime.UtcNow.ToString("O")} Try fix SSL error by providing extra CA certificate." });
                 var downloadCert = await HostContext.DownloadExtraCA(url, pat);
                 await File.AppendAllLinesAsync(_logFile, downloadCert.Logs);
 
@@ -142,12 +150,17 @@ namespace GitHub.Runner.Listener.Check
             catch (Exception ex)
             {
                 result.Pass = false;
-                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} git ls-remote failed with error: {ex}");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     git ls-remote failed with error: {ex}");
                 if (result.Logs.Any(x => x.Contains("SSL Certificate problem")))
                 {
-                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} git ls-remote failed due to SSL cert issue.");
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     git ls-remote failed due to SSL cert issue.");
                     result.SslError = true;
                 }
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+
             }
 
             return result;

@@ -11,7 +11,7 @@ namespace GitHub.Runner.Listener.Check
     {
         private string _logFile = null;
 
-        public int Order => 20;
+        public int Order => 2;
 
         public string CheckName => "GitHub Actions Connection";
 
@@ -19,7 +19,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckLog => _logFile;
 
-        public string HelpLink => "https://github.com/actions/runner/docs/checks/actions.md";
+        public string HelpLink => "https://github.com/actions/runner/blob/main/docs/checks/actions.md";
 
         public Type ExtensionType => typeof(ICheckExtension);
 
@@ -32,7 +32,7 @@ namespace GitHub.Runner.Listener.Check
         // runner access to actions service
         public async Task<bool> RunCheck(string url, string pat)
         {
-            var result = true;
+            await File.AppendAllLinesAsync(_logFile, HostContext.WarnLog());
             await File.AppendAllLinesAsync(_logFile, HostContext.CheckProxy());
 
             var checkTasks = new List<Task<CheckResult>>();
@@ -58,18 +58,22 @@ namespace GitHub.Runner.Listener.Check
                 actionsPipelinesServiceUrl = urlBuilder.Uri.AbsoluteUri;
             }
 
+            // check github api
             checkTasks.Add(CheckUtil.CheckDns(githubApiUrl));
             checkTasks.Add(CheckUtil.CheckPing(githubApiUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(githubApiUrl, "X-GitHub-Request-Id"));
+            checkTasks.Add(HostContext.CheckHttpsRequests(githubApiUrl, expectedHeader: "X-GitHub-Request-Id"));
 
+            // check actions token service
             checkTasks.Add(CheckUtil.CheckDns(actionsTokenServiceUrl));
             checkTasks.Add(CheckUtil.CheckPing(actionsTokenServiceUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(actionsTokenServiceUrl, "x-vss-e2eid"));
+            checkTasks.Add(HostContext.CheckHttpsRequests(actionsTokenServiceUrl, expectedHeader: "x-vss-e2eid"));
 
+            // check actions pipelines service
             checkTasks.Add(CheckUtil.CheckDns(actionsPipelinesServiceUrl));
             checkTasks.Add(CheckUtil.CheckPing(actionsPipelinesServiceUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(actionsPipelinesServiceUrl, "x-vss-e2eid"));
+            checkTasks.Add(HostContext.CheckHttpsRequests(actionsPipelinesServiceUrl, expectedHeader: "x-vss-e2eid"));
 
+            var result = true;
             while (checkTasks.Count > 0)
             {
                 var finishedCheckTask = await Task.WhenAny<CheckResult>(checkTasks);

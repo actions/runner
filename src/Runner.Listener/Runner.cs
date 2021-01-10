@@ -110,10 +110,6 @@ namespace GitHub.Runner.Listener
                         _term.WriteLine();
                     }
 
-                    // 2. runner access to ghes/gh (dns->ping->pwsh->curl->openssl)
-                    // 3. runner access to ghes/token/pipelines (dns->ping->pwsh->curl->openssl)
-                    // 4. git access to ghes/gh 
-                    // 5. node access to ghes/gh (runner + $PATH)
                     return Constants.Runner.ReturnCode.Success;
                 }
 
@@ -520,7 +516,7 @@ Config Options:
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
     _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
 #endif
-            _term.WriteLine($@"
+    _term.WriteLine($@"
 Examples:
  Configure a runner non-interactively:
   .{separator}config.{ext} --unattended --url <url> --token <token>
