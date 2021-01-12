@@ -209,6 +209,11 @@ namespace Runner.Host.Controllers
                     maxBytes: 10 * 1024 * 1024),
                 TraceWriter = new EmptyTraceWriter()
             };
+            templateContext.State[nameof(IExecutionContext)] = new ExecutionContext();
+            templateContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
+            templateContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
+            templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
+            templateContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
             foreach (var func in ExpressionConstants.WellKnownFunctions.Values)
             {
                 templateContext.ExpressionFunctions.Add(func);
@@ -227,8 +232,6 @@ namespace Runner.Host.Controllers
                 var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
                 token = TemplateReader.Read(templateContext, "workflow-root", yamlObjectReader, fileId, out _);
             }
-            Console.WriteLine("Hello World!");
-            Console.WriteLine(JsonConvert.SerializeObject(token));
 
             List<TemplateToken> workflowDefaults = new List<TemplateToken>();
             List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
@@ -269,11 +272,7 @@ namespace Runner.Host.Controllers
                             {
                                 templateContext.ExpressionValues[pair.Key] = pair.Value;
                             }
-                            templateContext.State[nameof(IExecutionContext)] = new ExecutionContext();
-                            templateContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
-                            templateContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
-                            templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
-                            templateContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
+
                             var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, condition, 0, fileId, true);
                             bool _res = PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
                             if(!_res) {
@@ -401,7 +400,7 @@ namespace Runner.Host.Controllers
                 var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, runsOn, 0, null, true);
                 runsOn = eval;
             }
-            
+
             var res = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault();
             var seq = res.Value.AssertSequence("seq");
             // // foreach(var s in seq) {
