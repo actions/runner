@@ -20,7 +20,7 @@ namespace Runner.Host.Controllers
 
         private readonly ILogger<LogfilesController> _logger;
         
-        Dictionary<int, TaskLog> logs = new Dictionary<int, TaskLog>();
+        static Dictionary<int, (TaskLog, string)> logs = new Dictionary<int, (TaskLog, string)>();
 
         public LogfilesController(ILogger<LogfilesController> logger)
         {
@@ -31,20 +31,23 @@ namespace Runner.Host.Controllers
         public TaskLog CreateLog(Guid scopeIdentifier, string hubName, Guid planId, [FromBody] TaskLog log)
         {
             log.Id = logs.Keys.LastOrDefault() + 1;
-            logs.Add(log.Id, log);
+            logs.Add(log.Id, (log, ""));
             return log;
         }
-        
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{logId}")]
         public async Task AppendLogContent(Guid scopeIdentifier, string hubName, Guid planId, int logId/* , [FromBody] string body */)
         {
-            string scontent = "";
             using (StreamReader reader = new StreamReader(Request.Body, Encoding.UTF8))
             {  
-                scontent = await reader.ReadToEndAsync();
+                logs[logId] = (logs[logId].Item1, logs[logId].Item2 +  await reader.ReadToEndAsync());
             }
-            Console.Out.WriteLine(scontent);
+        }
+
+        [HttpGet("{logId}")]
+        public string GetLog(int logId)
+        {
+            return logs[logId].Item2;
         }
     }
 }

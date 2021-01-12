@@ -26,11 +26,18 @@ namespace Runner.Host.Controllers
         public void OnEvent(Guid scopeIdentifier, string hubName, Guid planId, [FromBody] JobEvent jevent)
         {
             if (jevent is JobCompletedEvent ev) {
-                Console.Out.WriteLine("Job finished");
+                MessageController.queueLock.WaitOne();
+                try {
+                    MessageController.dict.Remove(MessageController.jobIdToSessionId[ev.JobId]);
+                    MessageController.jobIdToSessionId.Remove(ev.JobId);
+                    Console.Out.WriteLine("Job finished");
+                } finally {
+                    MessageController.queueLock.ReleaseMutex();
+                }
             } else if (jevent is JobAssignedEvent a) {
                 Console.Out.WriteLine("Job assigned");
             } else if(jevent is JobStartedEvent s) {
-
+                
             }
         }
     }
