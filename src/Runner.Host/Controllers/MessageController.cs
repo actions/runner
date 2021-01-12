@@ -177,15 +177,7 @@ namespace Runner.Host.Controllers
                                             foreach (var item in map)
                                             {
                                                 TemplateToken val;
-                                                if (dict.TryGetValue(item.Key, out val))
-                                                {
-                                                    if (val != item.Value)
-                                                    {
-                                                        return false;
-                                                    }
-                                                }
-                                                else
-                                                {
+                                                if (!dict.TryGetValue(item.Key, out val) || !TemplateTokenEqual(item.Value, val)) {
                                                     return false;
                                                 }
                                             }
@@ -204,14 +196,10 @@ namespace Runner.Host.Controllers
                                             foreach (var item in map)
                                             {
                                                 TemplateToken val;
-                                                if (dict.TryGetValue(item.Key, out val))
-                                                {
-                                                    if (val != item.Value)
-                                                    {
+                                                if (dict.TryGetValue(item.Key, out val) && !TemplateTokenEqual(item.Value, val)) {
                                                         return;
                                                     }
                                                 }
-                                            }
                                             matched = true;
                                             // Add missing keys
                                             foreach (var item in map)
@@ -230,23 +218,7 @@ namespace Runner.Host.Controllers
                                     var matrixContext = new DictionaryContextData();
                                     foreach (var mk in item)
                                     {
-                                        PipelineContextData data = null;
-                                        switch (mk.Value.Type)
-                                        {
-                                            case TokenType.Boolean:
-                                                data = new BooleanContextData(mk.Value.AssertBoolean("bool").Value);
-                                                break;
-                                            case TokenType.Number:
-                                                data = new NumberContextData(mk.Value.AssertNumber("number").Value);
-                                                break;
-                                            case TokenType.String:
-                                                data = new StringContextData(mk.Value.AssertString("string").Value);
-                                                break;
-                                            case TokenType.Null:
-                                                break;
-                                            default:
-                                                throw new Exception("Invalid matrix content");
-                                        }
+                                        PipelineContextData data = mk.Value.ToContextData();
                                         matrixContext.Add(mk.Key, data);
                                     }
                                     contextData["matrix"] = matrixContext;
