@@ -112,6 +112,24 @@ namespace Runner.Host.Controllers
                             contextData.Add("needs", new DictionaryContextData());
                             contextData.Add("strategy", new DictionaryContextData());
 
+                            var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
+                            var condition = new BasicExpressionToken(null, null, null, PipelineTemplateConverter.ConvertToIfCondition(templateContext, ifexpr, true));
+
+                            foreach (var pair in contextData)
+                            {
+                                templateContext.ExpressionValues[pair.Key] = pair.Value;
+                            }
+                            templateContext.State[nameof(IExecutionContext)] = new ExecutionContext();
+                            templateContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
+                            templateContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
+                            templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
+                            templateContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
+                            var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, condition, 0, fileId, true);
+                            bool _res = PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
+                            if(!_res) {
+                                continue;
+                            }
+                            
                             var strategy = (from r in run where r.Key.AssertString("strategy").Value == "strategy" select r).FirstOrDefault().Value?.AssertMapping("strategy");
                             if (strategy != null)
                             {
@@ -255,17 +273,16 @@ namespace Runner.Host.Controllers
 
         private static void queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, StringToken jn, MappingToken run, DictionaryContextData contextData)
         {
-            var _token = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value?.AssertString("if")?.Value;
-            if (_token != null)
+            var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
+            if (runsOn != null) {
+                foreach (var pair in contextData)
             {
-                // string cond = PipelineTemplateConverter.ConvertToIfCondition(templateContext, _token, true);
-                var node = new ExpressionParser().CreateTree(_token, new ExpressionTraceWriter(new EmptyTraceWriter()), new List<INamedValueInfo>(), ExpressionConstants.WellKnownFunctions.Values.ToList());
-                var noderes = node.Evaluate(null, new SecretMasker(), null, new EvaluationOptions());
+                    templateContext.ExpressionValues[pair.Key] = pair.Value;
             }
-            // var condition = new BasicExpressionToken(null, null, null, "false");
-            // var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, condition, 0, fileId, true);
-            // bool _res = PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
-            // // bool _if = eval.EvaluateStepIf((from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value, new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData(), ExpressionConstants.WellKnownFunctions.Values.ToList(), new List<KeyValuePair<string, object>>());
+                var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, runsOn, 0, null, true);
+                runsOn = eval;
+            }
+            
             var res = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault();
             var seq = res.Value.AssertSequence("seq");
             // // foreach(var s in seq) {
