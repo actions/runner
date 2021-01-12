@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -141,7 +141,7 @@ namespace Runner.Host.Controllers
                                                 foreach (var n in val)
                                                 {
                                                     var ndict = new Dictionary<string, TemplateToken>(mel);
-                                                    ndict.Add(key, val);
+                                                    ndict.Add(key, n);
                                                     next.Add(ndict);
                                                 }
                                             }
@@ -231,17 +231,15 @@ namespace Runner.Host.Controllers
                                         }
                                         matrixContext.Add(mk.Key, data);
                                     }
-                                    contextData.Add("matrix", matrixContext);
+                                    contextData["matrix"] = matrixContext;
                                     queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData);
                                 }
                             }
                             else
                             {
                                 contextData.Add("matrix", null);
-                            }
-
                             queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData);
-                            // }
+                            }
                         }
                         break;
                     case "defaults":
