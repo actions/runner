@@ -28,7 +28,7 @@ namespace Runner.Host.Controllers
         public TaskAgent Post(int poolId, [FromBody] TaskAgent agent) {
             pool.Add(agent);
             agent.Authorization = new TaskAgentAuthorization() {
-                AuthorizationUrl = new Uri("https://localhost:5001/test/auth/v1/"),
+                AuthorizationUrl = new Uri("http://ubuntu.fritz.box/test/auth/v1/"),
                 ClientId = Guid.NewGuid(),
                 PublicKey = new TaskAgentPublicKey()
             };

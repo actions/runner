@@ -555,7 +555,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         /// When empty, default to "success()".
         /// When a status function is not referenced, format as "success() &amp;&amp; &lt;CONDITION&gt;".
         /// </summary>
-        private static String ConvertToIfCondition(
+        public static String ConvertToIfCondition(
             TemplateContext context,
             TemplateToken token,
             Boolean isJob)

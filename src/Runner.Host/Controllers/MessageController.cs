@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -24,6 +24,8 @@ using System.Collections.Concurrent;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Http;
+using System.Diagnostics.CodeAnalysis;
+using GitHub.DistributedTask.Expressions2.Sdk;
 
 namespace Runner.Host.Controllers
 {
@@ -48,7 +50,156 @@ namespace Runner.Host.Controllers
 
         public static Dictionary<Guid, Guid> jobIdToSessionId = new Dictionary<Guid, Guid>();
 
-        private AgentJobRequestMessage ConvertYaml(string fileRelativePath, string content = null) {
+        class Equality : IEqualityComparer<TemplateToken>
+        {
+            public bool Equals(TemplateToken x, TemplateToken y)
+            {
+                return TemplateTokenEqual(x, y);
+            }
+
+            public int GetHashCode([DisallowNull] TemplateToken obj)
+            {
+                throw new NotImplementedException();
+            }
+        }
+        private static bool TemplateTokenEqual(TemplateToken token, TemplateToken other) {
+            if (token.Type != other.Type) {
+                return false;
+            } else {
+                switch(token.Type) {
+                    case TokenType.Mapping:
+                    var mapping = token as MappingToken;
+                    var othermapping = other as MappingToken;
+                    if(mapping.Count != othermapping.Count) {
+                        return false;
+                    }
+                    Dictionary<string, TemplateToken> dictionary = new Dictionary<string, TemplateToken>();
+                    if (mapping.Count > 0)
+                    {
+                        foreach (var pair in mapping)
+                        {
+                            var keyLiteral = pair.Key.AssertString("dictionary context data key");
+                            var key = keyLiteral.Value;
+                            var value = pair.Value;
+                            dictionary.Add(key, value);
+                        }
+                        foreach (var pair in othermapping)
+                        {
+                            var keyLiteral = pair.Key.AssertString("dictionary context data key");
+                            var key = keyLiteral.Value;
+                            var value = pair.Value;
+                            TemplateToken otherv;
+                            if(dictionary.TryGetValue(key, out otherv)) {
+                                Equals(value, otherv);
+                            } else {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+
+                case TokenType.Sequence:
+                    var sequence = token as SequenceToken;
+                    var otherseq = other as SequenceToken;
+                    if(sequence.Count != otherseq.Count) {
+                        return false;
+                    }
+                    
+                    return sequence.SequenceEqual(otherseq, new Equality());
+
+                case TokenType.Null:
+                    return true;
+
+                case TokenType.Boolean:
+                    return (token as BooleanToken).Value == (other as BooleanToken).Value;
+
+                case TokenType.Number:
+                    return (token as NumberToken).Value == (other as NumberToken).Value;
+
+                case TokenType.String:
+                    return (token as StringToken).Value == (other as StringToken).Value;
+
+                default:
+                    throw new NotSupportedException($"Unexpected {nameof(TemplateToken)} type '{token.Type}'");
+                }
+            }
+        }
+
+        public sealed class AlwaysFunction : Function
+        {
+            protected override Object EvaluateCore(EvaluationContext context, out ResultMemory resultMemory)
+            {
+                resultMemory = null;
+                return true;
+            }
+        }
+
+        enum Stat {
+            Success,
+            Failure,
+            Cancelled
+        }
+
+        interface IJobCtx {
+            Stat? Status {get;}
+        }
+
+        interface IExecutionContext {
+            IJobCtx JobContext {get; }
+        }
+
+        public sealed class SuccessFunction : Function
+        {
+            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
+            {
+                resultMemory = null;
+                var templateContext = evaluationContext.State as TemplateContext;
+                // ArgUtil.NotNull(templateContext, nameof(templateContext));
+                var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
+                // ArgUtil.NotNull(executionContext, nameof(executionContext));
+                Stat jobStatus = executionContext.JobContext.Status ?? Stat.Success;
+                return jobStatus == Stat.Success;
+            }
+        }
+
+        public sealed class FailureFunction : Function
+        {
+            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
+            {
+                resultMemory = null;
+                var templateContext = evaluationContext.State as TemplateContext;
+                // ArgUtil.NotNull(templateContext, nameof(templateContext));
+                var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
+                // ArgUtil.NotNull(executionContext, nameof(executionContext));
+                Stat jobStatus = executionContext.JobContext.Status ?? Stat.Success;
+                return jobStatus == Stat.Failure;
+            }
+        }
+        public sealed class CancelledFunction : Function
+        {
+            protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
+            {
+                resultMemory = null;
+                var templateContext = evaluationContext.State as TemplateContext;
+                // ArgUtil.NotNull(templateContext, nameof(templateContext));
+                var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
+                // ArgUtil.NotNull(executionContext, nameof(executionContext));
+                Stat jobStatus = executionContext.JobContext.Status ?? Stat.Success;
+                return jobStatus == Stat.Cancelled;
+            }
+        }
+
+        class JobCtx : IJobCtx
+        {
+            public Stat? Status => null;
+        }
+
+        class ExecutionContext : IExecutionContext
+        {
+            public IJobCtx JobContext => new JobCtx();
+        }
+
+        public static AgentJobRequestMessage ConvertYaml(string fileRelativePath, string content = null, string repository = null) {
             var templateContext = new TemplateContext(){
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, 500),
@@ -81,7 +232,6 @@ namespace Runner.Host.Controllers
 
             List<TemplateToken> workflowDefaults = new List<TemplateToken>();
             List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
-            // AgentJobRequestMessage requestMessage = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference(), new GitHub.DistributedTask.WebApi.TimelineReference(), Guid.NewGuid(), "name", "name", null, null, null, null, null, null, null, new WorkspaceOptions(), null, templateContext.GetFileTable().ToList(), null, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
 
             var actionMapping = token.AssertMapping("root");
             foreach (var actionPair in actionMapping)
@@ -95,18 +245,18 @@ namespace Runner.Host.Controllers
                     foreach (var job in jobs)
                         {
                             var jn = job.Key.AssertString($"action.yml property key");
-
-                            // switch (jn.Value)
-                            // {
-                            //     case "build":
-                            // var eval = new PipelineTemplateEvaluator(new EmptyTraceWriter(), templateContext.Schema, templateContext.GetFileTable().ToList());
-                            //GitHub.DistributedTask.Expressions2.Sdk.ExpressionUtility.
                             var run = job.Value.AssertMapping("jobs");
+
+                            var needs = (from r in run where r.Key.AssertString("needs").Value == "needs" select r).FirstOrDefault().Value?.AssertSequence("needs");
+                            List<string> neededJobs = new List<string>();
+                            if (needs != null) {
+                                neededJobs.AddRange(from need in needs select need.AssertString("list of strings").Value);
+                            }
 
                             var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
                             var githubctx = new DictionaryContextData();
                             contextData.Add("github", githubctx);
-                            githubctx.Add("repository", new StringContextData("ChristopherHX/test"));
+                            githubctx.Add("repository", new StringContextData(repository ?? "ChristopherHX/test"));
                             githubctx.Add("server_url", new StringContextData("http://ubuntu:3042/"));
                             // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
                             contextData.Add("needs", new DictionaryContextData());
@@ -134,12 +284,9 @@ namespace Runner.Host.Controllers
                             if (strategy != null)
                             {
                                 var matrix = (from r in strategy where r.Key.AssertString("matrix").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping("matrix");
-                                // var include = new List<Dictionary<string, TemplateToken>>();
-                                // var exclude = new List<Dictionary<string, TemplateToken>>();
                                 SequenceToken include = null;
                                 SequenceToken exclude = null;
                                 var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
-
                                 foreach (var item in matrix)
                                 {
                                     var key = item.Key.AssertString("Key").Value;
@@ -197,9 +344,9 @@ namespace Runner.Host.Controllers
                                             {
                                                 TemplateToken val;
                                                 if (dict.TryGetValue(item.Key, out val) && !TemplateTokenEqual(item.Value, val)) {
-                                                        return;
-                                                    }
+                                                    return;
                                                 }
+                                            }
                                             matched = true;
                                             // Add missing keys
                                             foreach (var item in map)
@@ -228,7 +375,7 @@ namespace Runner.Host.Controllers
                             else
                             {
                                 contextData.Add("matrix", null);
-                            queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData);
+                                queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData);
                             }
                         }
                         break;
@@ -248,9 +395,9 @@ namespace Runner.Host.Controllers
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
             if (runsOn != null) {
                 foreach (var pair in contextData)
-            {
+                {
                     templateContext.ExpressionValues[pair.Key] = pair.Value;
-            }
+                }
                 var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, runsOn, 0, null, true);
                 runsOn = eval;
             }
@@ -311,7 +458,7 @@ namespace Runner.Host.Controllers
             });
             var stoken = tokenHandler.WriteToken(token);
             auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
-            resources.Endpoints.Add(new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri("https://localhost:5001") });
+            resources.Endpoints.Add(new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri("http://ubuntu.fritz.box") });
             var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>();
             variables.Add("system.github.token", new VariableValue("48c0ad6b5e5311ba38e8cce918e2602f16240087", true));
             variables.Add("github_token", new VariableValue("48c0ad6b5e5311ba38e8cce918e2602f16240087", true));
@@ -319,7 +466,7 @@ namespace Runner.Host.Controllers
 
             queueLock.WaitOne();
             try {
-                jobqueue.Enqueue(new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = Guid.NewGuid(), Location = new Uri("https://localhost:5001/timeline/unused"), ChangeId = 1 }, Guid.NewGuid(), jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test")));
+                jobqueue.Enqueue(new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = Guid.NewGuid(), Location = new Uri("http://ubuntu.fritz.box/timeline/unused"), ChangeId = 1 }, Guid.NewGuid(), jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test")));
             } finally {
                 queueLock.ReleaseMutex();
             }

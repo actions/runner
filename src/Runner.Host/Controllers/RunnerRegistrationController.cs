@@ -27,7 +27,7 @@ namespace Runner.Host.Controllers
         public string Get([FromBody] Dictionary<string, string> dict)
         {
             return StringUtil.ConvertToJson(new Dictionary<string, string> {
-                { "url", "https://localhost:5001"},
+                { "url", "http://ubuntu.fritz.box"},
                 { "token_schema", "OAuthAccessToken"},
                 { "token", "njuadbueegfgrgrsgd"}
             });
