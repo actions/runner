@@ -463,7 +463,8 @@ namespace Runner.Host.Controllers
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
-                using (var writer = new StreamWriter(stream))
+                var writer = new StreamWriter(stream);
+                try
                 {
                     writer.NewLine = "\n";
                     ConcurrentQueue<KeyValuePair<string,Job>> queue = new ConcurrentQueue<KeyValuePair<string, Job>>();
@@ -478,7 +479,7 @@ namespace Runner.Host.Controllers
                     };
                     var ping = Task.Run(async () => {
                         try {
-                            while(true) {
+                            while(!requestAborted.IsCancellationRequested) {
                                 KeyValuePair<string, Job> p;
                                 if(queue.TryDequeue(out p)) {
                                     await writer.WriteLineAsync("event: job");
@@ -493,15 +494,15 @@ namespace Runner.Host.Controllers
                                     await Task.Delay(5000);
                                 }
                             }
-                        } catch (TaskCanceledException) {
+                        } catch (OperationCanceledException) {
 
                         }
-                    });
+                    }, requestAborted);
                     jobevent += handler;
-                    var canceled = Task.Run(() => wait.WaitOne());
-                    await Task.WhenAny(canceled, ping);
-                    
+                    await ping;
                     jobevent -= handler;
+                } finally {
+                    await writer.DisposeAsync();
                 }
             }, "text/event-stream");
         }

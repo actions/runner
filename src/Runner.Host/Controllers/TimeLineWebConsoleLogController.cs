@@ -84,7 +84,8 @@ namespace Runner.Host.Controllers
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
-                using (var writer = new StreamWriter(stream))
+                var writer = new StreamWriter(stream);
+                try
                 {
                     writer.NewLine = "\n";
                     await writer.WriteLineAsync("event: ping");
@@ -99,9 +100,11 @@ namespace Runner.Host.Controllers
                         }
                     };
                     logfeed += handler;
-                    await new Task(() => wait.WaitOne());
+                    await Task.Run(() => wait.WaitOne());
                     
                     logfeed -= handler;
+                } finally {
+                    await writer.DisposeAsync();
                 }
             }, "text/event-stream");
         }
