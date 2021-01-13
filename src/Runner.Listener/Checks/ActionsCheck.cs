@@ -61,17 +61,17 @@ namespace GitHub.Runner.Listener.Check
             // check github api
             checkTasks.Add(CheckUtil.CheckDns(githubApiUrl));
             checkTasks.Add(CheckUtil.CheckPing(githubApiUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(githubApiUrl, expectedHeader: "X-GitHub-Request-Id"));
+            checkTasks.Add(HostContext.CheckHttpsRequests(githubApiUrl, pat, expectedHeader: "X-GitHub-Request-Id"));
 
             // check actions token service
             checkTasks.Add(CheckUtil.CheckDns(actionsTokenServiceUrl));
             checkTasks.Add(CheckUtil.CheckPing(actionsTokenServiceUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(actionsTokenServiceUrl, expectedHeader: "x-vss-e2eid"));
+            checkTasks.Add(HostContext.CheckHttpsRequests(actionsTokenServiceUrl, pat, expectedHeader: "x-vss-e2eid"));
 
             // check actions pipelines service
             checkTasks.Add(CheckUtil.CheckDns(actionsPipelinesServiceUrl));
             checkTasks.Add(CheckUtil.CheckPing(actionsPipelinesServiceUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(actionsPipelinesServiceUrl, expectedHeader: "x-vss-e2eid"));
+            checkTasks.Add(HostContext.CheckHttpsRequests(actionsPipelinesServiceUrl, pat, expectedHeader: "x-vss-e2eid"));
 
             var result = true;
             while (checkTasks.Count > 0)

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
@@ -116,7 +117,7 @@ namespace GitHub.Runner.Listener.Check
             return result;
         }
 
-        public static async Task<CheckResult> CheckHttpsRequests(this IHostContext hostContext, string url, string expectedHeader)
+        public static async Task<CheckResult> CheckHttpsRequests(this IHostContext hostContext, string url, string pat, string expectedHeader)
         {
             var result = new CheckResult();
             try
@@ -131,6 +132,11 @@ namespace GitHub.Runner.Listener.Check
                 using (var httpClient = new HttpClient(httpClientHandler))
                 {
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(hostContext.UserAgents);
+                    if (!string.IsNullOrEmpty(pat))
+                    {
+                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", pat);
+                    }
+
                     var response = await httpClient.GetAsync(url);
 
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http status code: {response.StatusCode}");

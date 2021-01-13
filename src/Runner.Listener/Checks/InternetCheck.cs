@@ -38,7 +38,9 @@ namespace GitHub.Runner.Listener.Check
             var checkTasks = new List<Task<CheckResult>>();
             checkTasks.Add(CheckUtil.CheckDns("https://api.github.com"));
             checkTasks.Add(CheckUtil.CheckPing("https://api.github.com"));
-            checkTasks.Add(HostContext.CheckHttpsRequests("https://api.github.com", expectedHeader: "X-GitHub-Request-Id"));
+
+            // We don't need to pass a PAT since it might be a token for GHES.
+            checkTasks.Add(HostContext.CheckHttpsRequests("https://api.github.com", pat: null, expectedHeader: "X-GitHub-Request-Id"));
 
             var result = true;
             while (checkTasks.Count > 0)
