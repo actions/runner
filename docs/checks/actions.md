@@ -30,9 +30,9 @@ Make sure runner have access to actions service for GitHub.com or GitHub Enterpr
 
 ## How to fix the issue?
 
-### 1. Check common issue caused by proxy
+### 1. Check the common network issue
   
-  > Please check the [proxy doc](./proxy.md)
+  > Please check the [network doc](./network.md)
 
 ### 2. SSL certificate related issue
 

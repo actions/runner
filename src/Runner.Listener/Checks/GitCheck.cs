@@ -19,7 +19,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckName => "Git Certificate/Proxy Validation";
 
-        public string CheckDescription => "Make sure the git cli can access to the GitHub Enterprise Server.";
+        public string CheckDescription => "Make sure the git cli can access to GitHub.com or the GitHub Enterprise Server.";
 
         public string CheckLog => _logFile;
 
@@ -42,7 +42,7 @@ namespace GitHub.Runner.Listener.Check
 
             if (string.IsNullOrEmpty(_gitPath))
             {
-                await File.AppendAllLinesAsync(_logFile, new[] { $"{DateTime.UtcNow.ToString("O")} Can't verify git with GitHub or GitHub Enterprise Server since git is not installed." });
+                await File.AppendAllLinesAsync(_logFile, new[] { $"{DateTime.UtcNow.ToString("O")} Can't verify git with GitHub.com or GitHub Enterprise Server since git is not installed." });
                 return false;
             }
 

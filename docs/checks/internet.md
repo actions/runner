@@ -17,12 +17,10 @@ Even the runner is configured to GitHub Enterprise Server, the runner can still 
 
 ## How to fix the issue?
 
-- Check common issue caused by [proxy](./proxy.md)
-- Use `nslookup` to check `api.github.com`
-- Use `ping` to check `api.github.com`
-- Use `curl -v` to check `https://api.github.com`
-- Use `Invoke-WebRequest` from `pwsh` to check `https://api.github.com`
+### 1. Check the common network issue
+  
+  > Please check the [network doc](./network.md)
 
-Contact network administrator if everything points to the network.  
+## Still not working?
 
 Contact GitHub customer service or log an issue at https://github.com/actions/runner if you think it's a runner issue.

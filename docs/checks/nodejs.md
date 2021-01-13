@@ -2,7 +2,7 @@
 
 ## What is this check for?
 
-Make sure the built-in node.js have access to `GitHub.com` or GitHub Enterprise Server.
+Make sure the built-in node.js have access to GitHub.com or GitHub Enterprise Server.
 
 The runner carries it's own copy of node.js executable under `<runner_root>/externals/node12/`.
 
@@ -16,9 +16,9 @@ All javascript base Actions will get executed by the built-in `node` at `<runner
 
 ## How to fix the issue?
 
-### 1. Check common issue caused by proxy
+### 1. Check the common network issue
   
-  > Please check the [proxy doc](./proxy.md)
+  > Please check the [network doc](./network.md)
 
 ### 2. SSL certificate related issue
 

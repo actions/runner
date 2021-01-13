@@ -2,7 +2,7 @@
 
 ## What is this check for?
 
-Make sure `git` can access `GitHub.com` or your GitHub Enterprise Server.
+Make sure `git` can access GitHub.com or your GitHub Enterprise Server.
 
 
 ## What is checked?
@@ -20,9 +20,9 @@ The test also set environment variable `GIT_TRACE=1` and `GIT_CURL_VERBOSE=1` be
 
 ## How to fix the issue?
 
-### 1. Check common issue caused by proxy
+### 1. Check the common network issue
   
-  > Please check the [proxy doc](./proxy.md)
+    > Please check the [network doc](./network.md)
 
 ### 2. SSL certificate related issue
 

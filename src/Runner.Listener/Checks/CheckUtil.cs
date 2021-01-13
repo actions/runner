@@ -16,14 +16,13 @@ namespace GitHub.Runner.Listener.Check
 {
     public static class CheckUtil
     {
-
         public static List<string> WarnLog(this IHostContext hostContext)
         {
             var logs = new List<string>();
             logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
             logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
             logs.Add($"{DateTime.UtcNow.ToString("O")} ****     !!! WARNING !!! ");
-            logs.Add($"{DateTime.UtcNow.ToString("O")} ****     DO NOT share the log in public place! The trace may contains secrets in plain text. ");
+            logs.Add($"{DateTime.UtcNow.ToString("O")} ****     DO NOT share the log in public place! The log may contains secrets in plain text. ");
             logs.Add($"{DateTime.UtcNow.ToString("O")} ****     !!! WARNING !!! ");
             logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
             logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
@@ -228,7 +227,6 @@ namespace GitHub.Runner.Listener.Check
                     env["PROXYPASSWORD"] = "";
                 }
 
-                var downloadCertScript = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "downloadCert");
                 using (var processInvoker = hostContext.CreateService<IProcessInvoker>())
                 {
                     processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
@@ -247,6 +245,7 @@ namespace GitHub.Runner.Listener.Check
                         }
                     });
 
+                    var downloadCertScript = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "downloadCert");
                     var node12 = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node12} \"{downloadCertScript}\"' ");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} {StringUtil.ConvertToJson(env)}");
@@ -275,6 +274,7 @@ namespace GitHub.Runner.Listener.Check
         }
     }
 
+    // EventSource listener for dotnet debug trace for HTTP and SSL
     public sealed class HttpEventSourceListener : EventListener
     {
         private readonly List<string> _logs;

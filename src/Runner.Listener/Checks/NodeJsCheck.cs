@@ -12,14 +12,13 @@ namespace GitHub.Runner.Listener.Check
 {
     public sealed class NodeJsCheck : RunnerService, ICheckExtension
     {
-
         private string _logFile = null;
 
         public int Order => 4;
 
         public string CheckName => "Node.js Certificate/Proxy Validation";
 
-        public string CheckDescription => "Make sure the node.js have access to the GitHub Enterprise Server.";
+        public string CheckDescription => "Make sure the node.js have access to GitHub.com or the GitHub Enterprise Server.";
 
         public string CheckLog => _logFile;
 
@@ -63,7 +62,7 @@ namespace GitHub.Runner.Listener.Check
 
                 if (downloadCert.Pass)
                 {
-                    var recheckNode = await CheckNodeJs(urlBuilder.Uri.AbsoluteUri, pat, true);
+                    var recheckNode = await CheckNodeJs(urlBuilder.Uri.AbsoluteUri, pat, extraCA: true);
                     await File.AppendAllLinesAsync(_logFile, recheckNode.Logs);
                     if (recheckNode.Pass)
                     {
@@ -120,7 +119,10 @@ namespace GitHub.Runner.Listener.Check
                     env["PROXYPASSWORD"] = "";
                 }
 
-                var makeWebRequestScript = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "makeWebRequest.js");
+                if (extraCA)
+                {
+                    env["NODE_EXTRA_CA_CERTS"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "download_ca_cert.pem");
+                }
 
                 using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                 {
@@ -140,13 +142,10 @@ namespace GitHub.Runner.Listener.Check
                         }
                     });
 
+                    var makeWebRequestScript = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "makeWebRequest.js");
                     var node12 = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node12} \"{makeWebRequestScript}\"' ");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} {StringUtil.ConvertToJson(env)}");
-                    if (extraCA)
-                    {
-                        env["NODE_EXTRA_CA_CERTS"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "download_ca_cert.pem");
-                    }
                     await processInvoker.ExecuteAsync(
                         HostContext.GetDirectory(WellKnownDirectory.Root),
                         node12,
