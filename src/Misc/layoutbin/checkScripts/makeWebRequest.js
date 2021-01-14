@@ -1,13 +1,13 @@
 const https = require('https')
 const http = require('http')
-const hostname = process.env['HOSTNAME']
-const port = process.env['PORT']
-const path = process.env['PATH']
-const pat = process.env['PAT']
-const proxyHost = process.env['PROXYHOST']
-const proxyPort = process.env['PROXYPORT']
-const proxyUsername = process.env['PROXYUSERNAME']
-const proxyPassword = process.env['PROXYPASSWORD']
+const hostname = process.env['HOSTNAME'] || ''
+const port = process.env['PORT'] || ''
+const path = process.env['PATH'] || ''
+const pat = process.env['PAT'] || ''
+const proxyHost = process.env['PROXYHOST'] || ''
+const proxyPort = process.env['PROXYPORT'] || ''
+const proxyUsername = process.env['PROXYUSERNAME'] || ''
+const proxyPassword = process.env['PROXYPASSWORD'] || ''
 
 if (proxyHost === '') {
     const options = {

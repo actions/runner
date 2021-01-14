@@ -3,16 +3,16 @@
 
 ## What is this check for?
 
-Make sure runner have access to actions service for GitHub.com or GitHub Enterprise Server
+Make sure the runner has access to actions service for GitHub.com or GitHub Enterprise Server
 
 - For GitHub.com
-  - The runner needs to access to https://api.github.com for downloading actions.
-  - The runner needs to access to https://vstoken.actions.githubusercontent.com/_apis/.../ for requesting an access token.
-  - The runner needs to access to https://pipelines.actions.githubusercontent.com/_apis/.../ for receiving workflow jobs.
+  - The runner needs to access https://api.github.com for downloading actions.
+  - The runner needs to access https://vstoken.actions.githubusercontent.com/_apis/.../ for requesting an access token.
+  - The runner needs to access https://pipelines.actions.githubusercontent.com/_apis/.../ for receiving workflow jobs.
 - For GitHub Enterprise Server
-  - The runner needs to access to https://myGHES.com/api/v3 for downloading actions.
-  - The runner needs to access to https://myGHES.com/_services/vstoken/_apis/.../ for requesting an access token.
-  - The runner needs to access to https://myGHES.com/_services/pipelines/_apis/.../ for receiving workflow jobs.
+  - The runner needs to access https://myGHES.com/api/v3 for downloading actions.
+  - The runner needs to access https://myGHES.com/_services/vstoken/_apis/.../ for requesting an access token.
+  - The runner needs to access https://myGHES.com/_services/pipelines/_apis/.../ for receiving workflow jobs.
 
 ## What is checked?
 

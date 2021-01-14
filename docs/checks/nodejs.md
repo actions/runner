@@ -2,7 +2,7 @@
 
 ## What is this check for?
 
-Make sure the built-in node.js have access to GitHub.com or GitHub Enterprise Server.
+Make sure the built-in node.js has access to GitHub.com or GitHub Enterprise Server.
 
 The runner carries it's own copy of node.js executable under `<runner_root>/externals/node12/`.
 

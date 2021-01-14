@@ -14,7 +14,7 @@ As long as your certificate is generated properly, most of the issues should be 
 
 ### Download SSL certificate chain 
 
-Depends on how your SSL server certificate get configured, you might need to download the whole certificate chain from a machine that has trusted the SSL certificate's CA.
+Depends on how your SSL server certificate gets configured, you might need to download the whole certificate chain from a machine that has trusted the SSL certificate's CA.
 
 - Approach 1: Download certificate chain using a browser (Chrome, Firefox, IT), you can google for more example, [here is what I found](https://medium.com/@menakajain/export-download-ssl-certificate-from-server-site-url-bcfc41ea46a2)
 
@@ -26,15 +26,15 @@ Depends on how your SSL server certificate get configured, you might need to dow
 
 The actions runner is a dotnet core application which will follow how dotnet load SSL CA certificates on each OS.
 
-You can get full detail documentation at [here](https://docs.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography#x509store)
+You can get full details documentation at [here](https://docs.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography#x509store)
 
 In short: 
 - Windows: Load from Windows certificate store.
 - Linux: Load from OpenSSL CA cert bundle.
 - macOS: Load from macOS KeyChain.
 
-In order to let runner to trust your CA certificate, you will need to:
-1. Save your SSL certificate chain which include the root CA and all intermediate CAs into a `.pem` file.
+To let the runner trusts your CA certificate, you will need to:
+1. Save your SSL certificate chain which includes the root CA and all intermediate CAs into a `.pem` file.
 2. Use `OpenSSL` to convert `.pem` file to a proper format for different OS, here is some [doc with sample commands](https://www.sslshopper.com/ssl-converter.html)
 3. Trust CA on different OS:
     - Windows: https://docs.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate
@@ -45,9 +45,10 @@ In order to let runner to trust your CA certificate, you will need to:
       3. Google search: "trust ca certificate on [linux distribution]"
       4. If all approaches failed, set environment variable `SSL_CERT_FILE` to the CA bundle `.pem` file we get. 
     > To verity cert gets installed properly on Linux, you can try use `curl -v https://sitewithsslissue.com` and `pwsh -Command \"Invoke-WebRequest -Uri https://sitewithsslissue.com\"`
+
 ### Trust CA certificate for Git CLI
 
-Git use different CA bundle file depends on your operation system.
+Git uses various CA bundle file depends on your operation system.
 - Git packaged the CA bundle file within the Git installation on Windows 
 - Git use OpenSSL certificate CA bundle file on Linux and macOS
 
@@ -72,17 +73,17 @@ You should see something like:
 ```
 This tells me `/etc/ssl/cert.pem` is where it read trusted CA certificates.
 
-In order to let Git to trust your CA certificate, you will need to:
-1. Save your SSL certificate chain which include the root CA and all intermediate CAs into a `.pem` file.
+To let Git trusts your CA certificate, you will need to:
+1. Save your SSL certificate chain which includes the root CA and all intermediate CAs into a `.pem` file.
 2. Set `http.sslCAInfo` Git config or `GIT_SSL_CAINFO` environment variable to the full path of the `.pem` file [Git Doc](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslCAInfo)
 > I would recommend using `http.sslCAInfo` since it can be scope to certain hosts that need the extra trusted CA.  
 > Ex: `git config --global http.https://myghes.com/.sslCAInfo /extra/ca/cert.pem`  
-> This will make Git to use the `/extra/ca/cert.pem` only when communicate with `https://myghes.com` and keep using the default CA bundle with others.
+> This will make Git use the `/extra/ca/cert.pem` only when communicates with `https://myghes.com` and keep using the default CA bundle with others.
 
 ### Trust CA certificate for Node.js
 
 Node.js has compiled a snapshot of the Mozilla CA store that is fixed at each version of Node.js' release time.
 
-In order to let Node.js to trust your CA certificate, you will need to:
-1. Save your SSL certificate chain which include the root CA and all intermediate CAs into a `.pem` file.
+To let Node.js trusts your CA certificate, you will need to:
+1. Save your SSL certificate chain which includes the root CA and all intermediate CAs into a `.pem` file.
 2. Set environment variable `NODE_EXTRA_CA_CERTS` which point to the file. ex: `export NODE_EXTRA_CA_CERTS=/full/path/to/cacert.pem` or `set NODE_EXTRA_CA_CERTS=C:\full\path\to\cacert.pem`

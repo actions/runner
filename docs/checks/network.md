@@ -1,16 +1,16 @@
 ## Common Network Related Issues
 
-### Some lessons we learned in the past around things that can cause the runner to not working properly
+### Common things that can cause the runner to not working properly
 
-- Bug in the Dotnet framework that cause actions runner can't make Http request in a certain network environment.
+- Bug in the runner or the dotnet framework that causes actions runner can't make Http request in a certain network environment.
 
 - Proxy/Firewall block certain HTTP method, like it block all POST and PUT calls which the runner will use to upload logs.
 
 - Proxy/Firewall only allows requests with certain user-agent to pass through and the actions runner user-agent is not in the allow list.
 
-- Proxy try to decrypt and exam HTTPS traffic for security purpose but cause the actions-runner fail to finish SSL handshake due to the leak of trusting proxy's CA.
+- Proxy try to decrypt and exam HTTPS traffic for security purpose but cause the actions-runner to fail to finish SSL handshake due to the lack of trusting proxy's CA.
 
-- Firewall rules that block action runner from access certain hosts, ex: `*.github.com`, `*.actions.githubusercontent.com`, etc.
+- Firewall rules that block action runner from accessing certain hosts, ex: `*.github.com`, `*.actions.githubusercontent.com`, etc.
 
 
 ### Identify and solve these problems
