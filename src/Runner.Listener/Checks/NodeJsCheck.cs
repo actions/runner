@@ -100,10 +100,11 @@ namespace GitHub.Runner.Listener.Check
                 {
                     env["PROXYHOST"] = proxy.Host;
                     env["PROXYPORT"] = proxy.IsDefaultPort ? (proxy.Scheme.ToLowerInvariant() == "https" ? "443" : "80") : proxy.Port.ToString();
-                    if (HostContext.WebProxy.Credentials is NetworkCredential proxyCred)
+                    if (HostContext.WebProxy.HttpProxyUsername != null ||
+                        HostContext.WebProxy.HttpsProxyUsername != null)
                     {
-                        env["PROXYUSERNAME"] = proxyCred.UserName;
-                        env["PROXYPASSWORD"] = proxyCred.Password;
+                        env["PROXYUSERNAME"] = HostContext.WebProxy.HttpProxyUsername ?? HostContext.WebProxy.HttpsProxyUsername;
+                        env["PROXYPASSWORD"] = HostContext.WebProxy.HttpProxyPassword ?? HostContext.WebProxy.HttpsProxyPassword;
                     }
                     else
                     {

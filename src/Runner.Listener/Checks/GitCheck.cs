@@ -91,9 +91,13 @@ namespace GitHub.Runner.Listener.Check
                 if (proxy != null)
                 {
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Runner is behind http proxy '{proxy.AbsoluteUri}'");
-                    if (HostContext.WebProxy.Credentials is NetworkCredential proxyCred)
+                    if (HostContext.WebProxy.HttpProxyUsername != null ||
+                        HostContext.WebProxy.HttpsProxyUsername != null)
                     {
-                        var proxyUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(proxy, proxyCred.UserName, proxyCred.Password);
+                        var proxyUrlWithCred = UrlUtil.GetCredentialEmbeddedUrl(
+                            proxy,
+                            HostContext.WebProxy.HttpProxyUsername ?? HostContext.WebProxy.HttpsProxyUsername,
+                            HostContext.WebProxy.HttpProxyPassword ?? HostContext.WebProxy.HttpsProxyPassword);
                         gitProxy = $"-c http.proxy={proxyUrlWithCred}";
                     }
                     else
