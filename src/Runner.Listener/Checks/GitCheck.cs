@@ -151,7 +151,7 @@ namespace GitHub.Runner.Listener.Check
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     git ls-remote failed with error: {ex}");
-                if (result.Logs.Any(x => x.Contains("SSL Certificate problem")))
+                if (result.Logs.Any(x => x.Contains("SSL Certificate problem", StringComparison.OrdinalIgnoreCase)))
                 {
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     git ls-remote failed due to SSL cert issue.");
                     result.SslError = true;
