@@ -1,14 +1,17 @@
 ## Features
-  - Add labels in the script that register runner (#844)
-  - Add proxy support for container actions (#840)
+  - Support config runner via GitHub PAT. (#874)
+  - Update runner to .NET 5 (#799)
+  - Add new ANDROID_SDK_ROOT environment variable (#892)
+  - Add warning when running out of disk. (#873)
+  - Always use FIPS Cryptography (#896)
+  - Add `--check` to run a serials network test against GitHub or GHES. (#900)
 
 ## Bugs
-  - Unset GTIHUB_ACTION_REPOSITORY and GITHUB_ACTION_REF for non-repo based actions #804
- -  fix compat issue in timeline record state. #861 
+  - Ignore certain scenarios so they are not counted as infra failures (#889)
 
 ## Misc
-  - Crypto cleanup and enable usage of FIPS compliant crypto when required (#806)
-  - Count actions resolve failures as infra failures (#851)
+  - Add runner e2e test workflow (#885)
+  - Add on: pull_request trigger to CodeQL workflow (#907)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
