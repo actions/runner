@@ -4,6 +4,13 @@ namespace GitHub.Runner.Sdk
 {
     public static class UrlUtil
     {
+        public static bool IsHostedServer(UriBuilder gitHubUrl)
+        {
+            return string.Equals(gitHubUrl.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(gitHubUrl.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static Uri GetCredentialEmbeddedUrl(Uri baseUrl, string username, string password)
         {
             ArgUtil.NotNull(baseUrl, nameof(baseUrl));
