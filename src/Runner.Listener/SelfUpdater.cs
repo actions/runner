@@ -129,6 +129,9 @@ namespace GitHub.Runner.Listener
                 }
             }
 
+            Trace.Info($"Target package download URL: {_targetPackage.DownloadUrl}");
+            Trace.Info($"Target package token: {_targetPackage.Token}");
+
             Trace.Info($"Version '{_targetPackage.Version}' of '{_targetPackage.Type}' package available in server.");
             PackageVersion serverVersion = new PackageVersion(_targetPackage.Version);
             Trace.Info($"Current running runner version is {BuildConstants.RunnerPackage.Version}");
