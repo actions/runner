@@ -60,6 +60,16 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         /// <summary>
+        /// Auth token to download the package
+        /// </summary>
+        [DataMember]
+        public String Token
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// MD5 hash as a base64 string
         /// </summary>
         [DataMember(EmitDefaultValue = false)]
