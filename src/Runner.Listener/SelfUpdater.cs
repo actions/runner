@@ -214,8 +214,11 @@ namespace GitHub.Runner.Listener
                             {
                                 if (!string.IsNullOrEmpty(_targetPackage.Token))
                                 {
-                                    httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_targetPackage.Token}");
+                                    Trace.Info($"Adding authorization {_targetPackage.DownloadUrl}");
+                                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _targetPackage.Token);
                                 }
+
+                                Trace.Info($"Downloading {_targetPackage.DownloadUrl}");
 
                                 using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                                 using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
