@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,8 +16,8 @@ using Newtonsoft.Json;
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class TimeLineWebConsoleLogController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class TimeLineWebConsoleLogController : VssControllerBase
     {
 
         private readonly ILogger<TimeLineWebConsoleLogController> _logger;
@@ -81,6 +82,32 @@ namespace Runner.Host.Controllers
         [HttpGet]
         public IActionResult Message([FromQuery] Guid timelineId)
         {
+            // var requestAborted = HttpContext.RequestAborted;
+            // return new PushStreamResult(async stream => {
+            //     var wait = requestAborted.WaitHandle;
+            //     var writer = new StreamWriter(stream);
+            //     try
+            //     {
+            //         writer.NewLine = "\n";
+            //         await writer.WriteLineAsync("event: ping");
+            //         await writer.WriteLineAsync("data: {}");
+            //         await writer.WriteLineAsync();
+            //         LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
+            //             if (timelineId == timelineId2 || timelineId == Guid.Empty) {
+            //                 await writer.WriteLineAsync("event: log");
+            //                 await writer.WriteLineAsync(string.Format("data: {0}", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record })));
+            //                 await writer.WriteLineAsync();
+            //                 await writer.FlushAsync();
+            //             }
+            //         };
+            //         logfeed += handler;
+            //         await Task.Run(() => wait.WaitOne());
+                    
+            //         logfeed -= handler;
+            //     } finally {
+            //         await writer.DisposeAsync();
+            //     }
+            // }, "text/event-stream");
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
@@ -88,20 +115,35 @@ namespace Runner.Host.Controllers
                 try
                 {
                     writer.NewLine = "\n";
-                    await writer.WriteLineAsync("event: ping");
-                    await writer.WriteLineAsync("data: {}");
-                    await writer.WriteLineAsync();
-                    LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
+                    ConcurrentQueue<KeyValuePair<string,string>> queue = new ConcurrentQueue<KeyValuePair<string, string>>();
+                    LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
                         if (timelineId == timelineId2 || timelineId == Guid.Empty) {
-                            await writer.WriteLineAsync("event: log");
-                            await writer.WriteLineAsync(string.Format("data: {0}", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record })));
-                            await writer.WriteLineAsync();
-                            await writer.FlushAsync();
+                            queue.Enqueue(new KeyValuePair<string, string>(timelineId2.ToString(), JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record })));
                         }
                     };
+                    var ping = Task.Run(async () => {
+                        try {
+                            while(!requestAborted.IsCancellationRequested) {
+                                KeyValuePair<string, string> p;
+                                if(queue.TryDequeue(out p)) {
+                                    await writer.WriteLineAsync("event: log");
+                                    await writer.WriteLineAsync(string.Format("data: {0}", p.Value));
+                                    await writer.WriteLineAsync();
+                                    await writer.FlushAsync();
+                                } else {
+                                    await writer.WriteLineAsync("event: ping");
+                                    await writer.WriteLineAsync("data: {}");
+                                    await writer.WriteLineAsync();
+                                    await writer.FlushAsync();
+                                    await Task.Delay(1000);
+                                }
+                            }
+                        } catch (OperationCanceledException) {
+
+                        }
+                    }, requestAborted);
                     logfeed += handler;
-                    await Task.Run(() => wait.WaitOne());
-                    
+                    await ping;
                     logfeed -= handler;
                 } finally {
                     await writer.DisposeAsync();
@@ -110,8 +152,9 @@ namespace Runner.Host.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/{recordId}")]
-        public void AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId, [FromBody] TimelineRecordFeedLinesWrapper record)
+        public async Task<IActionResult> AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId)
         {
+            var record = await FromBody<TimelineRecordFeedLinesWrapper>();
             (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>) timeline;
             if(TimelineController.dict.ContainsKey(timelineId)) {
                 timeline = TimelineController.dict[timelineId];
@@ -124,6 +167,7 @@ namespace Runner.Host.Controllers
                 timeline.Item2.Add(record.StepId, record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)).ToList());
             }
             logfeed?.Invoke(this, timelineId, recordId, record);
+            return Ok();
         }
 
         

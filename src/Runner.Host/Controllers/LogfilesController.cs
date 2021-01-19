@@ -14,8 +14,8 @@ using Microsoft.Extensions.Logging;
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class LogfilesController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class LogfilesController : VssControllerBase
     {
 
         private readonly ILogger<LogfilesController> _logger;
@@ -28,15 +28,16 @@ namespace Runner.Host.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
-        public TaskLog CreateLog(Guid scopeIdentifier, string hubName, Guid planId, [FromBody] TaskLog log)
+        public async Task<IActionResult> CreateLog(Guid scopeIdentifier, string hubName, Guid planId)
         {
+            var log = await FromBody<TaskLog>();
             log.Id = logs.Keys.LastOrDefault() + 1;
             logs.Add(log.Id, (log, ""));
-            return log;
+            return await Ok(log);
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{logId}")]
-        public async Task AppendLogContent(Guid scopeIdentifier, string hubName, Guid planId, int logId/* , [FromBody] string body */)
+        public async Task AppendLogContent(Guid scopeIdentifier, string hubName, Guid planId, int logId)
         {
             using (StreamReader reader = new StreamReader(Request.Body, Encoding.UTF8))
             {  

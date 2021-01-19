@@ -26,29 +26,38 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Http;
 using System.Diagnostics.CodeAnalysis;
 using GitHub.DistributedTask.Expressions2.Sdk;
+using Microsoft.Extensions.Caching.Memory;
+using System.Text;
+using Runner.Host.Models;
 
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class MessageController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class MessageController : VssControllerBase
     {
 
         private readonly ILogger<MessageController> _logger;
 
-        public static Dictionary<Guid, object> dict = new Dictionary<Guid, object>();
+        private IMemoryCache _cache;
 
-        public MessageController(ILogger<MessageController> logger)
+        public MessageController(ILogger<MessageController> logger, IMemoryCache memoryCache)
         {
             _logger = logger;
+            _cache = memoryCache;
         }
 
         [HttpDelete("{poolId}/{messageId}")]
-        public void DeleteMessage(int poolId, long messageId, Guid sessionId)
+        public IActionResult DeleteMessage(int poolId, long messageId, Guid sessionId)
         {
-        }
+            Session session;
+            if(_cache.TryGetValue(sessionId, out session) && session.TaskAgentSession.SessionId == sessionId) {
+                return Ok();
 
-        public static Dictionary<Guid, Guid> jobIdToSessionId = new Dictionary<Guid, Guid>();
+            } else {
+                return NotFound();
+            }
+        }
 
         class Equality : IEqualityComparer<TemplateToken>
         {
@@ -191,15 +200,49 @@ namespace Runner.Host.Controllers
 
         class JobCtx : IJobCtx
         {
-            public Stat? Status => null;
+            public Stat? Status { get; set;}
         }
 
         class ExecutionContext : IExecutionContext
         {
-            public IJobCtx JobContext => new JobCtx();
+            public IJobCtx JobContext { get; set; }
         }
 
-        public static AgentJobRequestMessage ConvertYaml(string fileRelativePath, string content = null, string repository = null) {
+        class JobItem {
+            public string name {get;set;}
+            public string[] Needs {get;set;}
+            public AgentJobRequestMessage message {get;set;}
+
+            public FinishJobController.JobCompleted OnJobEvaluatable { get;set;}
+
+            public Guid Id { get; set;}
+            public Guid TimelineId { get; set;}
+
+            // public List<Task<IEnumerable<AgentJobRequestMessage>>> enum
+        }
+
+        class Box {
+            public FinishJobController.JobCompleted Completed {get;set;}
+        }
+
+        [DataContract]
+        private enum NeedsTaskResult
+        {
+            [EnumMember]
+            Success = 0,
+
+            [EnumMember]
+            Failure = 2,
+
+            [EnumMember]
+            Cancelled = 3,
+
+            [EnumMember]
+            Skipped = 4,
+        }
+        private void ConvertYaml(string fileRelativePath, string content = null, string repository = null, string apiUrl = null, string giteaUrl = null) {
+            List<JobItem> jobgroup = new List<JobItem>();
+            List<JobItem> dependentjobgroup = new List<JobItem>();
             var templateContext = new TemplateContext(){
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, 500),
@@ -209,7 +252,9 @@ namespace Runner.Host.Controllers
                     maxBytes: 10 * 1024 * 1024),
                 TraceWriter = new EmptyTraceWriter()
             };
-            templateContext.State[nameof(IExecutionContext)] = new ExecutionContext();
+            ExecutionContext exctx = new ExecutionContext();
+            exctx.JobContext = new JobCtx() {};
+            templateContext.State[nameof(IExecutionContext)] = exctx;
             templateContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
             templateContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
             templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
@@ -235,8 +280,17 @@ namespace Runner.Host.Controllers
 
             List<TemplateToken> workflowDefaults = new List<TemplateToken>();
             List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
-
+            if(token == null) {
+                return;
+            }
             var actionMapping = token.AssertMapping("root");
+
+
+            Action<JobCompletedEvent> jobCompleted = e => {
+                foreach (var item in dependentjobgroup.ToArray()) {
+                    item.OnJobEvaluatable(e);
+                }
+            };
             foreach (var actionPair in actionMapping)
             {
                 var propertyName = actionPair.Key.AssertString($"action.yml property key");
@@ -245,43 +299,117 @@ namespace Runner.Host.Controllers
                 {
                     case "jobs":
                     var jobs = actionPair.Value.AssertMapping("jobs");
-                    foreach (var job in jobs)
-                        {
-                            var jn = job.Key.AssertString($"action.yml property key");
-                            var run = job.Value.AssertMapping("jobs");
+                    foreach (var job in jobs) {
+                        var ctx = new JobCtx() { Status = null };
+                        exctx.JobContext = ctx;
+                        var jn = job.Key.AssertString($"action.yml property key");
+                        var jobitem = new JobItem() { name = jn.Value };
+                        dependentjobgroup.Add(jobitem);
+                        var run = job.Value.AssertMapping("jobs");
 
-                            var needs = (from r in run where r.Key.AssertString("needs").Value == "needs" select r).FirstOrDefault().Value?.AssertSequence("needs");
-                            List<string> neededJobs = new List<string>();
-                            if (needs != null) {
-                                neededJobs.AddRange(from need in needs select need.AssertString("list of strings").Value);
+                        var needs = (from r in run where r.Key.AssertString("needs").Value == "needs" select r).FirstOrDefault().Value;
+                        List<string> neededJobs = new List<string>();
+                        if (needs != null) {
+                            if(needs is SequenceToken sq) {
+                                neededJobs.AddRange(from need in sq select need.AssertString("list of strings").Value);
+                            } else {
+                                neededJobs.Add(needs.AssertString("needs is invalid").Value);
+                            }
+                        }
+                        Dictionary<Guid, JobItem> guids = new Dictionary<Guid, JobItem>();
+                        Box b = new Box();
+                        var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
+                        var githubctx = new DictionaryContextData();
+                        contextData.Add("github", githubctx);
+                        githubctx.Add("repository", new StringContextData(repository ?? "ChristopherHX/test"));
+                        githubctx.Add("server_url", new StringContextData(giteaUrl ?? "http://ubuntu:3042/"));
+                        githubctx.Add("api_url", new StringContextData($"{giteaUrl ?? "http://ubuntu:3042"}/api/v1"));
+                        
+                        // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
+                        var needsctx = new DictionaryContextData();
+                        contextData.Add("needs", needsctx);
+                        contextData.Add("strategy", new DictionaryContextData());
+
+                        TaskCompletionSource<IEnumerable<AgentJobRequestMessage>> tcs1 = new TaskCompletionSource<IEnumerable<AgentJobRequestMessage>>();
+                        FinishJobController.JobCompleted handler = e => {
+                            if(neededJobs.Count > 0) {
+                                neededJobs.RemoveAll(name => {
+                                    bool ret = false;
+                                    foreach(var njb in from j in jobgroup where j.name == name select j) {
+                                        ret = true;
+                                        guids[njb.Id] = njb;
+                                    }
+                                    return ret;
+                                });
+                            }
+                            JobItem job;
+                            if(e != null && guids.TryGetValue(e.JobId, out job) && job != null) {
+                                NeedsTaskResult? oldstatus = null;
+                                PipelineContextData oldjobctx;
+                                if(needsctx.TryGetValue(job.name, out oldjobctx) && oldjobctx is DictionaryContextData _ctx && _ctx.ContainsKey("result") && _ctx["result"] is StringContextData res) {
+                                    oldstatus = Enum.Parse<NeedsTaskResult>(res, true);
+                                }
+                                DictionaryContextData jobctx = new DictionaryContextData();
+                                needsctx[job.name] = jobctx;
+                                var outputsctx = new DictionaryContextData();
+                                jobctx["outputs"] = outputsctx;
+                                foreach (var item in e.Outputs) {
+                                    outputsctx.Add(item.Key, new StringContextData(item.Value.Value));
+                                }
+                                NeedsTaskResult result = NeedsTaskResult.Failure;
+                                switch(e.Result) {
+                                    case TaskResult.Failed:
+                                    case TaskResult.Abandoned:
+                                        result = NeedsTaskResult.Failure;
+                                        break;
+                                    case TaskResult.Canceled:
+                                        result = NeedsTaskResult.Cancelled;
+                                        break;
+                                    case TaskResult.Succeeded:
+                                    case TaskResult.SucceededWithIssues:
+                                        result = NeedsTaskResult.Success;
+                                        break;
+                                    case TaskResult.Skipped:
+                                        result = NeedsTaskResult.Skipped;
+                                        break;
+                                }
+                                jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
+                                if(e.Result != TaskResult.Succeeded && e.Result != TaskResult.SucceededWithIssues) {
+                                    ctx.Status = Stat.Failure;
+                                }
+                                guids.Remove(job.Id);
+                                if(guids.Count == 0 && neededJobs.Count == 0) {
+                                    FinishJobController.OnJobCompleted -= b.Completed;
+                                }
+                            }
+                            if(guids.Count > 0 || neededJobs.Count > 0) {
+                                return;
+                            }
+                            dependentjobgroup.Remove(jobitem);
+                            if(!dependentjobgroup.Any()) {
+                                jobgroup.Clear();
                             }
 
-                            var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
-                            var githubctx = new DictionaryContextData();
-                            contextData.Add("github", githubctx);
-                            githubctx.Add("repository", new StringContextData(repository ?? "ChristopherHX/test"));
-                            githubctx.Add("server_url", new StringContextData("http://ubuntu:3042/"));
-                            // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
-                            contextData.Add("needs", new DictionaryContextData());
-                            contextData.Add("strategy", new DictionaryContextData());
-
+                            exctx.JobContext = ctx;
                             var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
                             var condition = new BasicExpressionToken(null, null, null, PipelineTemplateConverter.ConvertToIfCondition(templateContext, ifexpr, true));
-
-                            foreach (var pair in contextData)
-                            {
+                            templateContext.ExpressionValues.Clear();
+                            foreach (var pair in contextData) {
                                 templateContext.ExpressionValues[pair.Key] = pair.Value;
                             }
 
                             var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, condition, 0, fileId, true);
                             bool _res = PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
                             if(!_res) {
-                                continue;
+                                jobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped });
+                                return;
                             }
                             
-                            var strategy = (from r in run where r.Key.AssertString("strategy").Value == "strategy" select r).FirstOrDefault().Value?.AssertMapping("strategy");
-                            if (strategy != null)
+                            var rawstrategy = (from r in run where r.Key.AssertString("strategy").Value == "strategy" select r).FirstOrDefault().Value;
+                            
+                            if (rawstrategy != null)
                             {
+                                var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping("strategy");
                                 var matrix = (from r in strategy where r.Key.AssertString("matrix").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping("matrix");
                                 SequenceToken include = null;
                                 SequenceToken exclude = null;
@@ -368,16 +496,38 @@ namespace Runner.Host.Controllers
                                         matrixContext.Add(mk.Key, data);
                                     }
                                     contextData["matrix"] = matrixContext;
-                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData);
+                                    var next = new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), TimelineId = Guid.NewGuid() };
+                                    if(dependentjobgroup.Any()) {
+                                        jobgroup.Add(next);
+                                    }
+                                    
+                                    var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, next.Id, next.TimelineId, apiUrl);
+                                    jobqueue.Enqueue(rep);
+                                    
+                                    // yield return rep;
                                 }
                             }
                             else
                             {
+                                jobitem.Id = Guid.NewGuid();
+                                jobitem.TimelineId = Guid.NewGuid();
+                                if(dependentjobgroup.Any()) {
+                                    jobgroup.Add(jobitem);
+                                }
                                 contextData.Add("matrix", null);
-                                queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData);
+                                var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
+
+                                jobqueue.Enqueue(rep);
+                                // yield return rep;
                             }
+                        };
+                        jobitem.OnJobEvaluatable = handler;
+                        if(neededJobs.Count > 0) {
+                            b.Completed = handler;
+                            FinishJobController.OnJobCompleted += handler;
                         }
-                        break;
+                    }
+                    break;
                     case "defaults":
                     workflowDefaults.Add(actionPair.Value);
                     break;
@@ -386,10 +536,10 @@ namespace Runner.Host.Controllers
                     break;
                 }
             }
-            return null;
+            jobCompleted(null);
         }
 
-        private static void queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, StringToken jn, MappingToken run, DictionaryContextData contextData)
+        private AgentJobRequestMessage queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, StringToken jn, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string apiUrl)
         {
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
             if (runsOn != null) {
@@ -397,7 +547,7 @@ namespace Runner.Host.Controllers
                 {
                     templateContext.ExpressionValues[pair.Key] = pair.Value;
                 }
-                var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, runsOn, 0, null, true);
+                var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
                 runsOn = eval;
             }
 
@@ -412,7 +562,7 @@ namespace Runner.Host.Controllers
             foreach (var step in steps)
             {
                 step.Id = Guid.NewGuid();
-                Console.WriteLine(JsonConvert.SerializeObject(step));
+
             }
 
             // Merge environment
@@ -457,18 +607,13 @@ namespace Runner.Host.Controllers
             });
             var stoken = tokenHandler.WriteToken(token);
             auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
-            resources.Endpoints.Add(new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri("http://ubuntu.fritz.box") });
+            resources.Endpoints.Add(new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl ?? "http://192.168.178.20:5000") });
             var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>();
             variables.Add("system.github.token", new VariableValue("48c0ad6b5e5311ba38e8cce918e2602f16240087", true));
             variables.Add("github_token", new VariableValue("48c0ad6b5e5311ba38e8cce918e2602f16240087", true));
             variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
 
-            queueLock.WaitOne();
-            try {
-                jobqueue.Enqueue(new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = Guid.NewGuid(), Location = new Uri("http://ubuntu.fritz.box/timeline/unused"), ChangeId = 1 }, Guid.NewGuid(), jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test")));
-            } finally {
-                queueLock.ReleaseMutex();
-            }
+            return new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
         }
 
         public class Job {
@@ -478,37 +623,55 @@ namespace Runner.Host.Controllers
             public long RequestId { get; set; }
             [DataMember]
             public Guid TimeLineId { get; set; }
+            public Guid SessionId { get; set; }
         }
         static ConcurrentDictionary<Guid, Job> jobs = new ConcurrentDictionary<Guid, Job>();
 
-        private static Queue<AgentJobRequestMessage> jobqueue = new Queue<AgentJobRequestMessage>();
+        private static ConcurrentQueue<AgentJobRequestMessage> jobqueue = new ConcurrentQueue<AgentJobRequestMessage>();
         private static int id = 0;
-        public static Mutex queueLock = new Mutex();
+
+        // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
+        //     using (var aes = Aes.Create())
+        //     using (var decryptor = aes.CreateDecryptor(key, iv))
+        //     using (var body = new MemoryStream(message))
+        //     using (var cryptoStream = new CryptoStream(body, decryptor, CryptoStreamMode.Read))
+        //     using (var bodyReader = new StreamReader(cryptoStream, Encoding.UTF8))
+        //     {
+        //        return bodyReader.ReadToEnd();
+        //     }
+        // }
         [HttpGet("{poolId}")]
-        public Task<TaskAgentMessage> GetMessage(int poolId, Guid sessionId)
+        public async Task<IActionResult> GetMessage(int poolId, Guid sessionId)
         {
-            return Task.Factory.StartNew(() => {
-                queueLock.WaitOne(5000);
-                try {
-                    AgentJobRequestMessage res;
-                    if(!dict.TryGetValue(sessionId, out _) && jobqueue.TryDequeue(out res)) {
-                        dict.Add(sessionId, res);
-                        jobIdToSessionId.Add(res.JobId, sessionId);
-                        res.RequestId = ++id;
-                        jobevent?.Invoke(this, "ChristopherHX/test" , jobs.AddOrUpdate(res.JobId, new Job() { JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => job));
-                        
-                        return new TaskAgentMessage() {
-                            Body = JsonConvert.SerializeObject(res),
-                            MessageId = ++id,
-                            MessageType = "PipelineAgentJobRequest",
-                        };
-                    }
-                } finally {
-                    queueLock.ReleaseMutex();
-                }
-                Task.Delay(10000).Wait();
+            Session session;
+            if(!_cache.TryGetValue(sessionId, out session)) {
                 return null;
-            });
+            }
+            for (int i = 0; i < 10; i++)
+            {
+                AgentJobRequestMessage res;
+                if(session.Job == null && jobqueue.TryDequeue(out res)) {
+                    res.RequestId = id;
+                    session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => job);
+                    _cache.Set("Job_" + res.RequestId, session.Job);
+                    jobevent?.Invoke(this, "ChristopherHX/test" , session.Job);
+                    session.Key.GenerateIV();
+                    using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                    using (var body = new MemoryStream())
+                    using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                        using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
+                            bodyWriter.Write(JsonConvert.SerializeObject(res));
+                        return await Ok(new TaskAgentMessage() {
+                            Body = Convert.ToBase64String(body.ToArray()),
+                            MessageId = id++,
+                            MessageType = "PipelineAgentJobRequest",
+                            IV = session.Key.IV
+                        });
+                    }
+                }
+                await Task.Delay(5000);
+            }
+            return NoContent();
         }
 
         private void RefreshAgent(int poolId, int agentId = -1)
@@ -539,28 +702,43 @@ namespace Runner.Host.Controllers
             [DataMember]
             public Repo repository {get; set;}
             
+            public string Ref {get;set;}
+            public string After {get;set;}
         }
 
+        class UnknownItem {
+            public string download_url {get;set;}
+            public string path {get;set;}
+        }
         [HttpPost]
-        public async void OnWebhook([FromBody] /* Dictionary<string, string> dict */GiteaHook hook)
+        public async void OnWebhook()
         {
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("accept", "application/json");
-            client.DefaultRequestHeaders.Add("Authorization", "token 7a2bf20dced683aea59189278a33691f67d5af55");
-            
-            var res = await client.GetAsync($"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}/api/v1/repos/{hook.repository.full_name}/contents/.github%2Fworkflows");
-            // var content = await res.Content.ReadAsAsync<List<Dictionary<string, string>>>();
-            if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                var content = await res.Content.ReadAsStringAsync();
-                foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(content))
-                {
-                    var fileUrl = new UriBuilder(item.download_url.ToString());
-                    // fileUrl.Host = "ubuntu";
-                    var fileRes = await client.GetAsync(fileUrl.Uri);
-                    var filecontent = await fileRes.Content.ReadAsStringAsync();
-                    var req = ConvertYaml(item.path.ToString(), filecontent);
-                    // jobqueue.Enqueue(req);
+            var hook = await FromBody<GiteaHook>();
+            try {
+                var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("accept", "application/json");
+                client.DefaultRequestHeaders.Add("Authorization", "token 7a2bf20dced683aea59189278a33691f67d5af55");
+                var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host";
+                var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
+                //?ref=" + hook.Ref
+                var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/contents/.github%2Fworkflows?ref={hook.After}");
+                if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                    var content = await res.Content.ReadAsStringAsync();
+                    foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
+                    {
+                        try {
+                            var fileRes = await client.GetAsync(item.download_url);
+                            var filecontent = await fileRes.Content.ReadAsStringAsync();
+                            ConvertYaml(item.path, filecontent, hook.repository.full_name, apiUrl, giteaUrl);
+                        } catch (Exception ex) {
+                            await Console.Error.WriteLineAsync(ex.Message);
+                            await Console.Error.WriteLineAsync(ex.StackTrace);
+                        }
+                    }
                 }
+            } catch (Exception ex) {
+                await Console.Error.WriteLineAsync(ex.Message);
+                await Console.Error.WriteLineAsync(ex.StackTrace);
             }
         }
 

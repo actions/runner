@@ -6,34 +6,45 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Runner.Host.Models;
 
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class AgentPoolsController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class AgentPoolsController : VssControllerBase
     {
 
         private readonly ILogger<AgentPoolsController> _logger;
+        private IMemoryCache _cache;
 
-        private List<TaskAgentPool> pool = new List<TaskAgentPool> {
-            new TaskAgentPool("Agents") {
-                Id = 1,
-                IsHosted = false,
-                IsInternal = true
-            }
-        };
+        private List<Pool> pools;
 
-        public AgentPoolsController(ILogger<AgentPoolsController> logger)
+        public AgentPoolsController(ILogger<AgentPoolsController> logger, IMemoryCache cache)
         {
             _logger = logger;
+            _cache = cache;
+            if(!_cache.TryGetValue(Pool.CachePools, out pools)) {
+                pools = new List<Pool> {
+                    new Pool() { 
+                        TaskAgentPool = new TaskAgentPool("Agents") {
+                            Id = 1,
+                            IsHosted = false,
+                            IsInternal = true
+                        }
+                    }
+                };
+                _cache.Set(Pool.CachePrefix + 1, pools[0]);
+                _cache.Set(Pool.CachePools, pools);
+            }
         }
 
         [HttpGet]
-        public VssJsonCollectionWrapper<List<TaskAgentPool>> Get(string poolName = "", string properties = "", string poolType = "")
+        public Task<FileStreamResult> Get(string poolName = "", string properties = "", string poolType = "")
         {
-            return new VssJsonCollectionWrapper<List<TaskAgentPool>> (pool);
+            return Ok(new VssJsonCollectionWrapper<List<TaskAgentPool>> ((from pool in pools select pool.TaskAgentPool).ToList()));
         }
     }
 }

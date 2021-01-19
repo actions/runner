@@ -6,39 +6,59 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Runner.Host.Models;
 
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class FinishJobController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class FinishJobController : VssControllerBase
     {
 
         private readonly ILogger<FinishJobController> _logger;
+        private IMemoryCache _cache;
 
-        public FinishJobController(ILogger<FinishJobController> logger)
+        public FinishJobController(ILogger<FinishJobController> logger, IMemoryCache memoryCache)
         {
             _logger = logger;
+            _cache = memoryCache;
         }
 
+        public delegate void JobCompleted(JobCompletedEvent jobCompletedEvent);
+        public delegate void JobAssigned(JobAssignedEvent jobAssignedEvent);
+        public delegate void JobStarted(JobStartedEvent jobStartedEvent);
+
+        public static event JobCompleted OnJobCompleted;
+        public static event JobAssigned OnJobAssigned;
+        public static event JobStarted OnJobStarted;
+
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
-        public void OnEvent(Guid scopeIdentifier, string hubName, Guid planId, [FromBody] JobEvent jevent)
+        public async Task<IActionResult> OnEvent(Guid scopeIdentifier, string hubName, Guid planId)
         {
+            var jevent = await FromBody<JobEvent>();
             if (jevent is JobCompletedEvent ev) {
-                MessageController.queueLock.WaitOne();
-                try {
-                    MessageController.dict.Remove(MessageController.jobIdToSessionId[ev.JobId]);
-                    MessageController.jobIdToSessionId.Remove(ev.JobId);
-                    Console.Out.WriteLine("Job finished");
-                } finally {
-                    MessageController.queueLock.ReleaseMutex();
+                OnJobCompleted?.Invoke(ev);
+                MessageController.Job job;
+                if(_cache.TryGetValue("Job_" + ev.RequestId, out job)) {
+                    Session session;
+                    if(_cache.TryGetValue(job.SessionId, out session)) {
+                        session.Job = null;
+                    }
                 }
+                Console.Out.WriteLine("Job finished");
+                return Ok();
             } else if (jevent is JobAssignedEvent a) {
+                OnJobAssigned?.Invoke(a);
                 Console.Out.WriteLine("Job assigned");
+                return Ok();
             } else if(jevent is JobStartedEvent s) {
-                
+                OnJobStarted?.Invoke(s);
+                Console.Out.WriteLine("Job started");
+                return Ok();
             }
+            return NotFound();
         }
     }
 }

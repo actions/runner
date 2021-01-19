@@ -6,20 +6,23 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class AgentRequestController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class AgentRequestController : VssControllerBase
     {
-
         private readonly ILogger<AgentRequestController> _logger;
 
-        public AgentRequestController(ILogger<AgentRequestController> logger)
+        private IMemoryCache _cache;
+
+        public AgentRequestController(ILogger<AgentRequestController> logger, IMemoryCache cache)
         {
             _logger = logger;
+            _cache = cache;
         }
 
         [HttpDelete("{poolId}/{requestId}")]
@@ -34,12 +37,11 @@ namespace Runner.Host.Controllers
         }
 
         [HttpPatch("{poolId}/{requestId}")]
-        public TaskAgentJobRequest UpdateAgentRequest(int poolId, long requestId, [FromBody] TaskAgentJobRequest patch)
+        public async Task<IActionResult> UpdateAgentRequest(int poolId, long requestId)
         {
-            // var old = GetAgentRequest(poolId, requestId);
-            // patch.ApplyTo(old);
+            var patch = await FromBody<TaskAgentJobRequest>();
             patch.LockedUntil = DateTime.UtcNow.AddDays(1);
-            return patch;
+            return await Ok(patch);
         }
     }
 }

@@ -13,8 +13,8 @@ using Runner.Host.Models;
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class TimelineController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class TimelineController : VssControllerBase
     {
         // private readonly InMemoryDB _context;
         private readonly ILogger<TimelineController> _logger;
@@ -163,14 +163,15 @@ namespace Runner.Host.Controllers
         }
 
         [HttpPatch("{scopeIdentifier}/{hubName}/{planId}/{timelineId}")]
-        public VssJsonCollectionWrapper<List<TimelineRecord>> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, [FromBody] VssJsonCollectionWrapper<List<TimelineRecord>> patch)
+        public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId)
         {
+            var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
             var compare = new TimelineRecord();
             if(!dict.TryAdd(timelineId, (patch.Value, new Dictionary<Guid, List<TimelineRecordLogLine>>()))) {
                 dict[timelineId].Item1.AddRange(patch.Value);
                 dict[timelineId] = (MergeTimelineRecords(dict[timelineId].Item1), dict[timelineId].Item2);
             }
-            return patch;
+            return await Ok(patch);
         //     if(patch.Count > 0) {
         //         var a = patch.Value.ToArray();
         //         foreach (var item in a)

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Runner.Host.Controllers;
 
 namespace Runner.Host
 {
@@ -19,6 +20,7 @@ namespace Runner.Host
     {
         public static void Main(string[] args)
         {
+            // MessageController.ConvertYaml("C:/Users/Christopher/runner/src/Runner.Host/test.yml");
             CreateHostBuilder(args).Build().Run();
         }
 

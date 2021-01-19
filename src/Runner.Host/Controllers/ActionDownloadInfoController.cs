@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("_apis/v1/[controller]")]
-    public class ActionDownloadInfoController : ControllerBase
+    [Route("runner/host/_apis/v1/[controller]")]
+    public class ActionDownloadInfoController : VssControllerBase
     {
 
         private readonly ILogger<ActionDownloadInfoController> _logger;
@@ -23,11 +23,15 @@ namespace Runner.Host.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
-        public ActionDownloadInfoCollection Get(Guid scopeIdentifier, string hubName, Guid planId, [FromBody] ActionReferenceList reflist)
+        public async Task<IActionResult> Get(Guid scopeIdentifier, string hubName, Guid planId)
         {
-            return new ActionDownloadInfoCollection() {Actions = new Dictionary<string, ActionDownloadInfo>{
-                { "actions/checkout@v2", new ActionDownloadInfo() {NameWithOwner = "actions/checkout", Ref = "v2", TarballUrl = "https://api.github.com/repos/actions/checkout/tarball/v2", ZipballUrl = "https://api.github.com/repos/actions/checkout/zipball/v2" } }
-            }};
+            ActionReferenceList reflist = await FromBody<ActionReferenceList>();
+            var actions = new Dictionary<string, ActionDownloadInfo>();
+            foreach (var item in reflist.Actions) {
+                // actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"https://api.github.com/repos/{item.NameWithOwner}/tarball/{item.Ref}", ZipballUrl = $"https://api.github.com/repos/{item.NameWithOwner}/zipball/{item.Ref}"};
+                actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"http://ubuntu:3042/{item.NameWithOwner}/archive/{item.Ref}.tar.gz", ZipballUrl = $"http://ubuntu:3042/{item.NameWithOwner}/archive/{item.Ref}.zip"};
+            }
+            return await Ok(new ActionDownloadInfoCollection() {Actions = actions });
         }
 
         

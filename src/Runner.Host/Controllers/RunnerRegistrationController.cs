@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
@@ -8,12 +9,14 @@ using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
+using Runner.Host.Models;
 
 namespace Runner.Host.Controllers
 {
     [ApiController]
     [Route("/api/v3/actions/runner-registration")]
-    public class RunnerRegistrationController : ControllerBase
+    public class RunnerRegistrationController : VssControllerBase
     {
 
         private readonly ILogger<RunnerRegistrationController> _logger;
@@ -23,13 +26,29 @@ namespace Runner.Host.Controllers
             _logger = logger;
         }
 
-        [HttpPost]
-        public string Get([FromBody] Dictionary<string, string> dict)
+        class AddRemoveRunner
         {
-            return StringUtil.ConvertToJson(new Dictionary<string, string> {
-                { "url", "http://ubuntu.fritz.box"},
-                { "token_schema", "OAuthAccessToken"},
-                { "token", "njuadbueegfgrgrsgd"}
+            [DataMember(Name = "url")]
+            public string Url {get;set;}
+
+            [DataMember(Name = "runner_event")]
+            public string RunnerEvent {get;set;}
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Get()
+        {
+            StringValues auth;
+            if(!Request.Headers.TryGetValue("Authorization", out auth) || auth.FirstOrDefault()?.StartsWith("RemoteAuth ") != true) {
+                return NotFound();
+            }
+            var payload = await FromBody<AddRemoveRunner>();
+            // Request.Headers.HeaderAuthorization = RemoteAuth AKWETFL3YIUV34LTWCZ5M4275R3HQ
+            // HeaderUserAgent = GitHubActionsRunner-
+            return await Ok(new Runner.Host.Models.GitHubAuthResult() {
+                TenantUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host",
+                Token = "njuadbueegfgrgrsgd",
+                TokenSchema = "OAuthAccessToken"
             });
         }
     }

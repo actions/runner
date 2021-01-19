@@ -80,7 +80,8 @@ namespace Runner.Host
                 // });
 
             });
-            services.AddDbContext<InMemoryDB>(options => options.UseInMemoryDatabase("db"));
+            // services.AddDbContext<InMemoryDB>(options => options.UseInMemoryDatabase("db"));
+            services.AddDbContext<SqLiteDb>();
             // services.AddAuthentication(x =>
             // {
             //     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -110,6 +111,7 @@ namespace Runner.Host
                                     //                     "http://localhost:3000","http://desktop-3svg86b.fritz.box:3000");
                                 });
             });
+            services.AddMemoryCache();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
