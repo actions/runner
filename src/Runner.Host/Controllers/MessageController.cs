@@ -240,7 +240,7 @@ namespace Runner.Host.Controllers
             [EnumMember]
             Skipped = 4,
         }
-        private void ConvertYaml(string fileRelativePath, string content = null, string repository = null, string apiUrl = null, string giteaUrl = null) {
+        private void ConvertYaml(string fileRelativePath, string content = null, string repository = null, string apiUrl = null, string giteaUrl = null, string sha = null) {
             List<JobItem> jobgroup = new List<JobItem>();
             List<JobItem> dependentjobgroup = new List<JobItem>();
             var templateContext = new TemplateContext(){
@@ -325,7 +325,8 @@ namespace Runner.Host.Controllers
                         githubctx.Add("server_url", new StringContextData(giteaUrl ?? "http://ubuntu:3042/"));
                         githubctx.Add("api_url", new StringContextData($"{giteaUrl ?? "http://ubuntu:3042"}/api/v1"));
                         githubctx.Add("workflow", new StringContextData((from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath));
-                        
+                        githubctx.Add("sha", new StringContextData(sha));
+
                         // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
                         var needsctx = new DictionaryContextData();
                         contextData.Add("needs", needsctx);
@@ -730,7 +731,7 @@ namespace Runner.Host.Controllers
                         try {
                             var fileRes = await client.GetAsync(item.download_url);
                             var filecontent = await fileRes.Content.ReadAsStringAsync();
-                            ConvertYaml(item.path, filecontent, hook.repository.full_name, apiUrl, giteaUrl);
+                            ConvertYaml(item.path, filecontent, hook.repository.full_name, apiUrl, giteaUrl, hook.After);
                         } catch (Exception ex) {
                             await Console.Error.WriteLineAsync(ex.Message);
                             await Console.Error.WriteLineAsync(ex.StackTrace);
