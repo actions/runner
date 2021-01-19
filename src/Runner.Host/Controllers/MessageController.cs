@@ -324,6 +324,7 @@ namespace Runner.Host.Controllers
                         githubctx.Add("repository", new StringContextData(repository ?? "ChristopherHX/test"));
                         githubctx.Add("server_url", new StringContextData(giteaUrl ?? "http://ubuntu:3042/"));
                         githubctx.Add("api_url", new StringContextData($"{giteaUrl ?? "http://ubuntu:3042"}/api/v1"));
+                        githubctx.Add("workflow", new StringContextData((from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath));
                         
                         // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
                         var needsctx = new DictionaryContextData();
