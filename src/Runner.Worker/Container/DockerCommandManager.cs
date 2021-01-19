@@ -197,7 +197,8 @@ namespace GitHub.Runner.Worker.Container
 
             dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
             dockerOptions.Add($"--rm");
-
+            dockerOptions.Add($"-t");
+            
             foreach (var env in container.ContainerEnvironmentVariables)
             {
                 // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
