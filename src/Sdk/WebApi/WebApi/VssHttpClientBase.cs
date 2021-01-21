@@ -833,7 +833,7 @@ namespace GitHub.Services.WebApi
             {
                 if (userState != null)
                 {
-                    message.Options.Set(new HttpRequestOptionsKey<object>(UserStatePropertyName), userState);
+                    message.Properties[UserStatePropertyName] = userState;
                 }
                 
                 if (!message.Headers.Contains(Common.Internal.HttpHeaders.VssE2EID))
@@ -842,11 +842,11 @@ namespace GitHub.Services.WebApi
                 }
                 VssHttpEventSource.Log.HttpRequestStart(traceActivity, message);
                 message.Trace();
-                message.Options.Set(new HttpRequestOptionsKey<VssTraceActivity>(VssTraceActivity.PropertyName), traceActivity);
+                message.Properties[VssTraceActivity.PropertyName] = traceActivity;
 
                 // Send the completion option to the inner handler stack so we know when it's safe to buffer
                 // and when we should avoid buffering.
-                message.Options.Set(new HttpRequestOptionsKey<HttpCompletionOption>(VssHttpRequestSettings.HttpCompletionOptionPropertyName), completionOption);
+                message.Properties[VssHttpRequestSettings.HttpCompletionOptionPropertyName] = completionOption;
 
                 //ConfigureAwait(false) enables the continuation to be run outside
                 //any captured SyncronizationContext (such as ASP.NET's) which keeps things
