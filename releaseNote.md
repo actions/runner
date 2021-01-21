@@ -1,17 +1,11 @@
 ## Features
-  - Support config runner via GitHub PAT. (#874)
-  - Update runner to .NET 5 (#799)
-  - Add new ANDROID_SDK_ROOT environment variable (#892)
-  - Add warning when running out of disk. (#873)
-  - Always use FIPS Cryptography (#896)
-  - Add `--check` to run a serials network test against GitHub or GHES. (#900)
 
 ## Bugs
-  - Ignore certain scenarios so they are not counted as infra failures (#889)
+  - Downgrade runner to .NET 3 to address an issue with broken pipes in Ubuntu (#928)
+  - Fixed an issue where FIPS Cryptography broke back-compat scenarios (#928)
 
 ## Misc
-  - Add runner e2e test workflow (#885)
-  - Add on: pull_request trigger to CodeQL workflow (#907)
+  - Updated dotnet install scripts (#928)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
