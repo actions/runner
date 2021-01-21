@@ -15,16 +15,16 @@ x64
   - openSUSE 15+
   - SUSE Enterprise Linux (SLES) 12 SP2+
 
-## Install .Net Core 5 Linux Dependencies
+## Install .Net Core 3.x Linux Dependencies
 
-The `./config.sh` will check .Net Core 5 dependencies during runner configuration.  
+The `./config.sh` will check .Net Core 3.x dependencies during runner configuration.  
 You might see something like this which indicate a dependency's missing.
 ```bash
 ./config.sh
     libunwind.so.8 => not found
     libunwind-x86_64.so.8 => not found
-Dependencies is missing for Dotnet 5
-Execute ./bin/installdependencies.sh to install any missing Dotnet 5 dependencies.
+Dependencies is missing for Dotnet Core 3.0
+Execute ./bin/installdependencies.sh to install any missing Dotnet Core 3.0 dependencies.
 ```
 You can easily correct the problem by executing `./bin/installdependencies.sh`.  
 The `installdependencies.sh` script should install all required dependencies on all supported Linux versions   

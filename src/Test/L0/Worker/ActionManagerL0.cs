@@ -146,7 +146,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
                 mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(expectedArchiveLink)), ItExpr.IsAny<CancellationToken>())
-                    .ReturnsAsync(() => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
 
                 var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
                 mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
@@ -205,9 +205,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
                 mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(builtInArchiveLink)), ItExpr.IsAny<CancellationToken>())
-                    .ReturnsAsync(() => new HttpResponseMessage(HttpStatusCode.NotFound));
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
                 mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(dotcomArchiveLink)), ItExpr.IsAny<CancellationToken>())
-                    .ReturnsAsync(() => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
 
                 var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
                 mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
@@ -265,7 +265,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 using var stream = File.OpenRead(archiveFile);
                 var mockClientHandler = new Mock<HttpClientHandler>();
                 mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
-                    .ReturnsAsync(() => new HttpResponseMessage(HttpStatusCode.NotFound));
+                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NotFound));
 
                 var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
                 mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
