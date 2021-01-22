@@ -182,7 +182,7 @@ namespace GitHub.Runner.Worker.Handlers
             dockerCommandArgs.Add($"exec");
 
             // [OPTIONS]
-            dockerCommandArgs.Add($"-i");
+            dockerCommandArgs.Add($"-it");
             dockerCommandArgs.Add($"--workdir {workingDirectory}");
             foreach (var env in environment)
             {
