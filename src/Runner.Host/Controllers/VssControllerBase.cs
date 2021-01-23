@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -79,6 +80,15 @@ namespace Runner.Host.Controllers
             //     return default(T);
             // }
         }
+
+        protected async Task<KeyValuePair<T, JObject>> FromBody2<T>() {
+            using(var reader = new StreamReader(Request.Body)) {
+                string text = await reader.ReadToEndAsync();
+                var obj = JObject.Parse(text);
+                return new KeyValuePair<T, JObject>(JsonConvert.DeserializeObject<T>(text), obj);
+            }
+        }
+
         protected async Task<FileStreamResult> Ok<T>(T obj) {
             return new FileStreamResult(await new ObjectContent<T>(obj, new VssJsonMediaTypeFormatter()).ReadAsStreamAsync(), "application/json");
         }

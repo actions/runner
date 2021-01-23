@@ -29,6 +29,7 @@ using GitHub.DistributedTask.Expressions2.Sdk;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text;
 using Runner.Host.Models;
+using Newtonsoft.Json.Linq;
 
 namespace Runner.Host.Controllers
 {
@@ -240,7 +241,7 @@ namespace Runner.Host.Controllers
             [EnumMember]
             Skipped = 4,
         }
-        private void ConvertYaml(string fileRelativePath, string content = null, string repository = null, string apiUrl = null, string giteaUrl = null, string sha = null) {
+        private void ConvertYaml(string fileRelativePath, string content = null, string repository = null, string apiUrl = null, string giteaUrl = null, GiteaHook hook = null, JObject payloadObject = null) {
             List<JobItem> jobgroup = new List<JobItem>();
             List<JobItem> dependentjobgroup = new List<JobItem>();
             var templateContext = new TemplateContext(){
@@ -291,6 +292,83 @@ namespace Runner.Host.Controllers
                     item.OnJobEvaluatable(e);
                 }
             };
+            TemplateToken tk = (from r in actionMapping where r.Key.AssertString("on").Value == "on" select r).FirstOrDefault().Value;
+            switch(tk.Type) {
+                case TokenType.String:
+                    if(tk.AssertString("str").Value != "push") {
+                        // Skip, not a push event
+                        return;
+                    }
+                    break;
+                case TokenType.Sequence:
+                    if((from r in tk.AssertSequence("seq") where r.AssertString("push").Value == "push" select r).FirstOrDefault() != null) {
+                        // Skip, not a push event
+                        return;
+                    }
+                    break;
+                case TokenType.Mapping:
+                    var push = (from r in tk.AssertMapping("seq") where r.Key.AssertString("push").Value == "push" select r).FirstOrDefault().Value?.AssertMapping("map");
+                    if(push == null) {
+                        // Skip, not a push event
+                        return;
+                    }
+                    var branches = (from r in push where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                    var branchesIgnore = (from r in push where r.Key.AssertString("branches-ignore").Value == "branches-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                    var tags = (from r in push where r.Key.AssertString("tags").Value == "tags" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                    var tagsIgnore = (from r in push where r.Key.AssertString("tags-ignore").Value == "tags-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                    var heads = "refs/heads/";
+                    var rtags = "refs/tags/";
+                    if(hook.Ref.StartsWith(heads)) {
+                        var branch = hook.Ref.Substring(heads.Length);
+                        if(branchesIgnore != null) {
+                            foreach (var item in branchesIgnore)
+                            {
+                                if(Minimatch.Minimatcher.Check(branch, item.AssertString("pattern").Value)) {
+                                    // Ignore
+                                    return;
+                                }
+                            }
+                        } else if(branches != null) {
+                            bool matched = false;
+                            foreach (var item in branches)
+                            {
+                                if(Minimatch.Minimatcher.Check(branch, item.AssertString("pattern").Value)) {
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                            if(!matched) {
+                                // Ignore
+                                return;
+                            }
+                        }
+                    } else if(hook.Ref.StartsWith(rtags)) {
+                        var tag = hook.Ref.Substring(rtags.Length);
+                        if(tagsIgnore != null) {
+                            foreach (var item in tagsIgnore)
+                            {
+                                if(Minimatch.Minimatcher.Check(tag, item.AssertString("pattern").Value)) {
+                                    // Ignore
+                                    return;
+                                }
+                            }
+                        } else if(tags != null) {
+                            bool matched = false;
+                            foreach (var item in tags)
+                            {
+                                if(Minimatch.Minimatcher.Check(tag, item.AssertString("pattern").Value)) {
+                                    matched = true;
+                                    break;
+                                }
+                            }
+                            if(!matched) {
+                                // Ignore
+                                return;
+                            }
+                        }
+                    }
+                    break;
+            }
             foreach (var actionPair in actionMapping)
             {
                 var propertyName = actionPair.Key.AssertString($"action.yml property key");
@@ -325,12 +403,29 @@ namespace Runner.Host.Controllers
                         githubctx.Add("server_url", new StringContextData(giteaUrl ?? "http://ubuntu:3042/"));
                         githubctx.Add("api_url", new StringContextData($"{giteaUrl ?? "http://ubuntu:3042"}/api/v1"));
                         githubctx.Add("workflow", new StringContextData((from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath));
-                        githubctx.Add("sha", new StringContextData(sha));
-
+                        githubctx.Add("sha", new StringContextData(hook.After));
+                        githubctx.Add("repository", new StringContextData(hook.repository.full_name));
+                        githubctx.Add("repository_owner", new StringContextData(hook.repository.Owner.username));
+                        githubctx.Add("ref", new StringContextData(hook.Ref));
+                        githubctx.Add("job", new StringContextData(jn.Value));
+                        // githubctx.Add("head_ref", new StringContextData("")); only for PR
+                        // base_ref
+                        // event_path is filled by event
+                        githubctx.Add("event", payloadObject.ToPipelineContextData());
+                        githubctx.Add("event_name", new StringContextData("push"));
+                        githubctx.Add("actor", new StringContextData(hook.sender.login));
+                        long runid = _cache.GetOrCreate(hook.repository.full_name, e => new Int64());
+                        _cache.Set(hook.repository.full_name, runid + 1);
+                        githubctx.Add("run_id", new NumberContextData(runid));
+                        var runnumberkey = $"{hook.repository.full_name}:/{fileRelativePath}";
+                        long runnumber = _cache.GetOrCreate(runnumberkey, e => new Int64());
+                        _cache.Set(runnumberkey, runnumber + 1);
+                        githubctx.Add("run_number", new NumberContextData(runnumber));
                         // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
                         var needsctx = new DictionaryContextData();
                         contextData.Add("needs", needsctx);
-                        contextData.Add("strategy", new DictionaryContextData());
+                        var strategyctx = new DictionaryContextData();
+                        contextData.Add("strategy", strategyctx);
 
                         TaskCompletionSource<IEnumerable<AgentJobRequestMessage>> tcs1 = new TaskCompletionSource<IEnumerable<AgentJobRequestMessage>>();
                         FinishJobController.JobCompleted handler = e => {
@@ -412,105 +507,131 @@ namespace Runner.Host.Controllers
                             if (rawstrategy != null)
                             {
                                 var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping("strategy");
+                                strategyctx.Add("fail-fast", new BooleanContextData((from r in strategy where r.Key.AssertString("fail-fast").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean("fail-fast")?.Value ?? true));
+                                var max_parallel = (from r in strategy where r.Key.AssertString("max-parallel").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber("max-parallel")?.Value;
+                                strategyctx.Add("max-parallel", max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : null);
                                 var matrix = (from r in strategy where r.Key.AssertString("matrix").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping("matrix");
-                                SequenceToken include = null;
-                                SequenceToken exclude = null;
-                                var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
-                                foreach (var item in matrix)
-                                {
-                                    var key = item.Key.AssertString("Key").Value;
-                                    switch (key)
+                                if(matrix != null) {
+                                    SequenceToken include = null;
+                                    SequenceToken exclude = null;
+                                    var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
+                                    foreach (var item in matrix)
                                     {
-                                        case "include":
-                                            include = item.Value?.AssertSequence("include");
-                                            break;
-                                        case "exclude":
-                                            exclude = item.Value?.AssertSequence("exclude");
-                                            break;
-                                        default:
-                                            var val = item.Value.AssertSequence("seq");
-                                            var next = new List<Dictionary<string, TemplateToken>>();
-                                            foreach (var mel in flatmatrix)
-                                            {
-                                                foreach (var n in val)
+                                        var key = item.Key.AssertString("Key").Value;
+                                        switch (key)
+                                        {
+                                            case "include":
+                                                include = item.Value?.AssertSequence("include");
+                                                break;
+                                            case "exclude":
+                                                exclude = item.Value?.AssertSequence("exclude");
+                                                break;
+                                            default:
+                                                var val = item.Value.AssertSequence("seq");
+                                                var next = new List<Dictionary<string, TemplateToken>>();
+                                                foreach (var mel in flatmatrix)
                                                 {
-                                                    var ndict = new Dictionary<string, TemplateToken>(mel);
-                                                    ndict.Add(key, n);
-                                                    next.Add(ndict);
+                                                    foreach (var n in val)
+                                                    {
+                                                        var ndict = new Dictionary<string, TemplateToken>(mel);
+                                                        ndict.Add(key, n);
+                                                        next.Add(ndict);
+                                                    }
                                                 }
-                                            }
-                                            flatmatrix = next;
-                                            break;
-                                    }
-                                }
-                                if (exclude != null)
-                                {
-                                    foreach (var item in exclude)
-                                    {
-                                        var map = item.AssertMapping("exclude item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
-                                        flatmatrix.RemoveAll(dict =>
-                                        {
-                                            foreach (var item in map)
-                                            {
-                                                TemplateToken val;
-                                                if (!dict.TryGetValue(item.Key, out val) || !TemplateTokenEqual(item.Value, val)) {
-                                                    return false;
-                                                }
-                                            }
-                                            return true;
-                                        });
-                                    }
-                                }
-                                if (include != null)
-                                {
-                                    foreach (var item in include)
-                                    {
-                                        var map = item.AssertMapping("include item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
-                                        bool matched = false;
-                                        flatmatrix.ForEach(dict =>
-                                        {
-                                            foreach (var item in map)
-                                            {
-                                                TemplateToken val;
-                                                if (dict.TryGetValue(item.Key, out val) && !TemplateTokenEqual(item.Value, val)) {
-                                                    return;
-                                                }
-                                            }
-                                            matched = true;
-                                            // Add missing keys
-                                            foreach (var item in map)
-                                            {
-                                                dict.TryAdd(item.Key, item.Value);
-                                            }
-                                        });
-                                        if (!matched)
-                                        {
-                                            flatmatrix.Add(map);
+                                                flatmatrix = next;
+                                                break;
                                         }
                                     }
-                                }
-                                foreach (var item in flatmatrix)
-                                {
-                                    var matrixContext = new DictionaryContextData();
-                                    foreach (var mk in item)
+                                    if (exclude != null)
                                     {
-                                        PipelineContextData data = mk.Value.ToContextData();
-                                        matrixContext.Add(mk.Key, data);
+                                        foreach (var item in exclude)
+                                        {
+                                            var map = item.AssertMapping("exclude item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
+                                            flatmatrix.RemoveAll(dict =>
+                                            {
+                                                foreach (var item in map)
+                                                {
+                                                    TemplateToken val;
+                                                    if (!dict.TryGetValue(item.Key, out val) || !TemplateTokenEqual(item.Value, val)) {
+                                                        return false;
+                                                    }
+                                                }
+                                                return true;
+                                            });
+                                        }
                                     }
-                                    contextData["matrix"] = matrixContext;
-                                    var next = new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), TimelineId = Guid.NewGuid() };
+                                    if (include != null)
+                                    {
+                                        foreach (var item in include)
+                                        {
+                                            var map = item.AssertMapping("include item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
+                                            bool matched = false;
+                                            flatmatrix.ForEach(dict =>
+                                            {
+                                                foreach (var item in map)
+                                                {
+                                                    TemplateToken val;
+                                                    if (dict.TryGetValue(item.Key, out val) && !TemplateTokenEqual(item.Value, val)) {
+                                                        return;
+                                                    }
+                                                }
+                                                matched = true;
+                                                // Add missing keys
+                                                foreach (var item in map)
+                                                {
+                                                    dict.TryAdd(item.Key, item.Value);
+                                                }
+                                            });
+                                            if (!matched)
+                                            {
+                                                flatmatrix.Add(map);
+                                            }
+                                        }
+                                    }
+                                    strategyctx.Add("job-total", new NumberContextData(flatmatrix.Count));
+                                    int i = 0;
+                                    foreach (var item in flatmatrix)
+                                    {
+                                        strategyctx["job-index"] = new NumberContextData(i++);
+                                        var matrixContext = new DictionaryContextData();
+                                        foreach (var mk in item)
+                                        {
+                                            PipelineContextData data = mk.Value.ToContextData();
+                                            matrixContext.Add(mk.Key, data);
+                                        }
+                                        contextData["matrix"] = matrixContext;
+                                        var next = new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), TimelineId = Guid.NewGuid() };
+                                        if(dependentjobgroup.Any()) {
+                                            jobgroup.Add(next);
+                                        }
+                                        
+                                        var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, next.Id, next.TimelineId, apiUrl);
+                                        jobqueue.Enqueue(rep);
+                                        
+                                        // yield return rep;
+                                    }
+                                }
+                                else {
+                                    strategyctx.Add("job-index", new NumberContextData(0));
+                                    strategyctx.Add("job-total", new NumberContextData(1));
+                                    jobitem.Id = Guid.NewGuid();
+                                    jobitem.TimelineId = Guid.NewGuid();
                                     if(dependentjobgroup.Any()) {
-                                        jobgroup.Add(next);
+                                        jobgroup.Add(jobitem);
                                     }
-                                    
-                                    var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, next.Id, next.TimelineId, apiUrl);
+                                    contextData.Add("matrix", null);
+                                    var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
+
                                     jobqueue.Enqueue(rep);
-                                    
                                     // yield return rep;
                                 }
+
                             }
                             else
                             {
+                                strategyctx.Add("fail-fast", new BooleanContextData(true));
+                                strategyctx.Add("job-index", new NumberContextData(0));
+                                strategyctx.Add("job-total", new NumberContextData(1));
                                 jobitem.Id = Guid.NewGuid();
                                 jobitem.TimelineId = Guid.NewGuid();
                                 if(dependentjobgroup.Any()) {
@@ -693,10 +814,20 @@ namespace Runner.Host.Controllers
             }
         }
 
+        public class GitUser {
+            public int Id {get;set;}
+            [DataMember]
+            public string username {get; set;}
+            public string login {get; set;}
+        }
+
+
         public class Repo {
             [DataMember]
             public string full_name {get; set;}
             public Uri html_url {get; set;}
+
+            public GitUser Owner {get;set;}
         }
 
         public class GiteaHook
@@ -706,6 +837,16 @@ namespace Runner.Host.Controllers
             
             public string Ref {get;set;}
             public string After {get;set;}
+
+            public GitUser sender {get;set;}
+        }
+
+        public class Issue {
+            public string id {get;set;}
+
+            public IEnumerable<string> added {get;set;}
+            public IEnumerable<string> removed {get;set;}
+            public IEnumerable<string> modified {get;set;}
         }
 
         class UnknownItem {
@@ -715,7 +856,8 @@ namespace Runner.Host.Controllers
         [HttpPost]
         public async void OnWebhook()
         {
-            var hook = await FromBody<GiteaHook>();
+            var obj = await FromBody2<GiteaHook>();
+            var hook = obj.Key;
             try {
                 var client = new HttpClient();
                 client.DefaultRequestHeaders.Add("accept", "application/json");
@@ -724,6 +866,36 @@ namespace Runner.Host.Controllers
                 var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
                 //?ref=" + hook.Ref
                 var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/contents/.github%2Fworkflows?ref={hook.After}");
+                // {
+                //     "type": "gitea",
+                //     "config": {
+                //     "content_type": "json",
+                //     "url": "http://ubuntu.fritz.box/runner/host/_apis/v1/Message"
+                //     },
+                //     "events": [
+                //     "create",
+                //     "delete",
+                //     "fork",
+                //     "push",
+                //     "issues",
+                //     "issue_assign",
+                //     "issue_label",
+                //     "issue_milestone",
+                //     "issue_comment",
+                //     "pull_request",
+                //     "pull_request_assign",
+                //     "pull_request_label",
+                //     "pull_request_milestone",
+                //     "pull_request_comment",
+                //     "pull_request_review_approved",
+                //     "pull_request_review_rejected",
+                //     "pull_request_review_comment",
+                //     "pull_request_sync",
+                //     "repository",
+                //     "release"
+                //     ],
+                //     "active": true
+                // }
                 if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                     var content = await res.Content.ReadAsStringAsync();
                     foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
@@ -731,7 +903,7 @@ namespace Runner.Host.Controllers
                         try {
                             var fileRes = await client.GetAsync(item.download_url);
                             var filecontent = await fileRes.Content.ReadAsStringAsync();
-                            ConvertYaml(item.path, filecontent, hook.repository.full_name, apiUrl, giteaUrl, hook.After);
+                            ConvertYaml(item.path, filecontent, hook.repository.full_name, apiUrl, giteaUrl, hook, obj.Value);
                         } catch (Exception ex) {
                             await Console.Error.WriteLineAsync(ex.Message);
                             await Console.Error.WriteLineAsync(ex.StackTrace);
