@@ -110,7 +110,7 @@ namespace GitHub.Runner.Listener
             // old server won't send target version as part of update message.
             if (string.IsNullOrEmpty(targetVersion))
             {
-                var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, token);
+                var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, true, token);
                 if (packages == null || packages.Count == 0)
                 {
                     Trace.Info($"There is no package for {_packageType} and {_platform}.");
@@ -121,7 +121,7 @@ namespace GitHub.Runner.Listener
             }
             else
             {
-                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, token);
+                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
                 if (_targetPackage == null)
                 {
                     Trace.Info($"There is no package for {_packageType} and {_platform} with version {targetVersion}.");
@@ -211,12 +211,22 @@ namespace GitHub.Runner.Listener
 
                             //open zip stream in async mode
                             using (HttpClient httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
-                            using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
-                            using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
                             {
-                                //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
-                                await result.CopyToAsync(fs, 81920, downloadCts.Token);
-                                await fs.FlushAsync(downloadCts.Token);
+                                if (!string.IsNullOrEmpty(_targetPackage.Token))
+                                {
+                                    Trace.Info($"Adding authorization token ({_targetPackage.Token.Length} chars)");
+                                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _targetPackage.Token);
+                                }
+
+                                Trace.Info($"Downloading {_targetPackage.DownloadUrl}");
+
+                                using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                                using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
+                                {
+                                    //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
+                                    await result.CopyToAsync(fs, 81920, downloadCts.Token);
+                                    await fs.FlushAsync(downloadCts.Token);
+                                }
                             }
 
                             Trace.Info($"Download runner: finished download");
