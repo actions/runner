@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -857,6 +858,10 @@ namespace GitHub.Runner.Worker
             if (parentTimelineRecordId != null && parentTimelineRecordId.Value != Guid.Empty)
             {
                 _record.ParentId = parentTimelineRecordId;
+            }
+            else if (parentTimelineRecordId == null)
+            {
+                _record.AgentPlatform = VarUtil.OS;
             }
 
             var configuration = HostContext.GetService<IConfigurationStore>();
