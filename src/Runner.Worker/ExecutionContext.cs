@@ -858,6 +858,10 @@ namespace GitHub.Runner.Worker
             {
                 _record.ParentId = parentTimelineRecordId;
             }
+            else if (parentTimelineRecordId == null)
+            {
+                _record.AgentPlatform = VarUtil.OS;
+            }
 
             var configuration = HostContext.GetService<IConfigurationStore>();
             _record.WorkerName = configuration.GetSettings().AgentName;
