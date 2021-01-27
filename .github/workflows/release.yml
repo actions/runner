@@ -35,6 +35,7 @@ jobs:
               repo: '${{ github.event.repository.name }}',
               tag: 'v' + runnerVersion
             })
+            core.setFailed('Release with same tag already created: ' + release.data.html_url)
           } catch (e) {
             // We are good to create the release if release with same tag doesn't exists
             if (e.status != 404) {
@@ -110,7 +111,11 @@ jobs:
     - run: brew install coreutils #needed for shasum util
       if: ${{ matrix.os == 'macOS-latest' }}
       name: Install Dependencies for SHA Calculation (osx)
-    - run: echo "::set-output name=${{matrix.runtime}}-sha256::$(sha256sum "$(ls)" | awk '{ print $1 }')"
+    - run: |
+        file=$(ls)
+        sha=$(sha256sum $file | awk '{ print $1 }')
+        echo "Computed sha256: $sha for $file"
+        echo "::set-output name=${{matrix.runtime}}-sha256::$sha"
       shell: bash
       id: sha
       name: Compute SHA256
@@ -140,15 +145,15 @@ jobs:
           const fs = require('fs');
           const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
           var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
-          releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, ${{needs.build.win-x64-sha}})
-          releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, ${{needs.build.osx-x64-sha}})
-          releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, ${{needs.build.linux-x64-sha}})
-          releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, ${{needs.build.linux-arm-sha}})
-          releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, ${{needs.build.linux-arm64-sha}})
+          releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, '${{needs.build.outputs.win-x64-sha}}')
+          releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, '${{needs.build.outputs.osx-x64-sha}}')
+          releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, '${{needs.build.outputs.linux-x64-sha}}')
+          releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, '${{needs.build.outputs.linux-arm-sha}}')
+          releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
           console.log(releaseNote)
           core.setOutput('version', runnerVersion);
           core.setOutput('note', releaseNote);
-        
+    - run: echo "${{ toJSON(needs) }}"    
     # Create GitHub release
     - uses: actions/create-release@master
       id: createRelease
