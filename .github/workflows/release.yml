@@ -110,9 +110,11 @@ jobs:
     # compute shas and set as job outputs to use in release notes
     - run: brew install coreutils #needed for shasum util
       if: ${{ matrix.os == 'macOS-latest' }}
-    - run: echo "::set-output name=${{matrix.runtime}}-sha256::$(sha256sum "$(ls _package)" | awk '{ print $1 }')"
+      name: Install Dependencies for SHA Calculation (osx)
+    - run: echo "::set-output name=${{matrix.runtime}}-sha256::$(sha256sum "_package/$(ls _package)" | awk '{ print $1 }')"
       shell: bash
       id: sha
+      name: Compute SHA256
   release:
     needs: build
     runs-on: ubuntu-latest
