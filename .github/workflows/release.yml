@@ -152,8 +152,7 @@ jobs:
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
           console.log(releaseNote)
           core.setOutput('version', runnerVersion);
-          core.setOutput('note', releaseNote);
-    - run: echo "${{ toJSON(needs) }}"    
+          core.setOutput('note', releaseNote);  
     # Create GitHub release
     - uses: actions/create-release@master
       id: createRelease
