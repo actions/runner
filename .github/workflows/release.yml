@@ -45,6 +45,12 @@ jobs:
   
   build:
     needs: check
+    outputs:
+      linux-x64-sha: ${{ steps.sha.outputs.linux-x64-sha256 }}
+      linux-arm64-sha: ${{ steps.sha.outputs.linux-arm64-sha256 }}
+      linux-arm-sha: ${{ steps.sha.outputs.linux-arm-sha256 }}
+      win-x64-sha: ${{ steps.sha.outputs.win-x64-sha256 }}
+      osx-x64-sha: ${{ steps.sha.outputs.osx-x64-sha256 }}
     strategy:
       matrix:
         runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
@@ -101,7 +107,12 @@ jobs:
       with:
         name: runner-packages
         path: _package
-
+    # compute shas and set as job outputs to use in release notes
+    - run: brew install coreutils #needed for shasum util
+      if: ${{ matrix.os == 'macOS-latest' }}
+    - run: echo "::set-output name=${{matrix.runtime}}-sha256::$(sha256sum "$(ls _package)" | awk '{ print $1 }')"
+      shell: bash
+      id: sha
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -126,7 +137,12 @@ jobs:
           const core = require('@actions/core')
           const fs = require('fs');
           const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
-          const releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
+          var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
+          releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, ${{needs.build.win-x64-sha}})
+          releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, ${{needs.build.osx-x64-sha}})
+          releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, ${{needs.build.linux-x64-sha}})
+          releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, ${{needs.build.linux-arm-sha}})
+          releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, ${{needs.build.linux-arm64-sha}})
           console.log(releaseNote)
           core.setOutput('version', runnerVersion);
           core.setOutput('note', releaseNote);
