@@ -39,6 +39,7 @@ namespace GitHub.Runner.Listener.Check
             string githubApiUrl = null;
             string actionsTokenServiceUrl = null;
             string actionsPipelinesServiceUrl = null;
+            string actionsPipelinesServicePostUrl = null;
             var urlBuilder = new UriBuilder(url);
             if (UrlUtil.IsHostedServer(urlBuilder))
             {
@@ -47,6 +48,7 @@ namespace GitHub.Runner.Listener.Check
                 githubApiUrl = urlBuilder.Uri.AbsoluteUri;
                 actionsTokenServiceUrl = "https://vstoken.actions.githubusercontent.com/_apis/health";
                 actionsPipelinesServiceUrl = "https://pipelines.actions.githubusercontent.com/_apis/health";
+                actionsPipelinesServicePostUrl = "https://pipelines.actions.githubusercontent.com/_apis/distributedtask/pools/1/agents";
             }
             else
             {
@@ -56,22 +58,27 @@ namespace GitHub.Runner.Listener.Check
                 actionsTokenServiceUrl = urlBuilder.Uri.AbsoluteUri;
                 urlBuilder.Path = "_services/pipelines/_apis/health";
                 actionsPipelinesServiceUrl = urlBuilder.Uri.AbsoluteUri;
+                urlBuilder.Path = "_services/pipelines/_apis/distributedtask/pools/1/agents";
+                actionsPipelinesServicePostUrl = urlBuilder.Uri.AbsoluteUri;
             }
 
             // check github api
             checkTasks.Add(CheckUtil.CheckDns(githubApiUrl));
             checkTasks.Add(CheckUtil.CheckPing(githubApiUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(githubApiUrl, pat, expectedHeader: "X-GitHub-Request-Id"));
+            checkTasks.Add(HostContext.CheckHttpsGetRequests(githubApiUrl, pat, expectedHeader: "X-GitHub-Request-Id"));
 
             // check actions token service
             checkTasks.Add(CheckUtil.CheckDns(actionsTokenServiceUrl));
             checkTasks.Add(CheckUtil.CheckPing(actionsTokenServiceUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(actionsTokenServiceUrl, pat, expectedHeader: "x-vss-e2eid"));
+            checkTasks.Add(HostContext.CheckHttpsGetRequests(actionsTokenServiceUrl, pat, expectedHeader: "x-vss-e2eid"));
 
             // check actions pipelines service
             checkTasks.Add(CheckUtil.CheckDns(actionsPipelinesServiceUrl));
             checkTasks.Add(CheckUtil.CheckPing(actionsPipelinesServiceUrl));
-            checkTasks.Add(HostContext.CheckHttpsRequests(actionsPipelinesServiceUrl, pat, expectedHeader: "x-vss-e2eid"));
+            checkTasks.Add(HostContext.CheckHttpsGetRequests(actionsPipelinesServiceUrl, pat, expectedHeader: "x-vss-e2eid"));
+
+            // check HTTP POST to actions pipelines service
+            checkTasks.Add(HostContext.CheckHttpsPostRequests(actionsPipelinesServicePostUrl, pat, expectedHeader: "x-vss-e2eid"));
 
             var result = true;
             while (checkTasks.Count > 0)

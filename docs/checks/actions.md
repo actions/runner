@@ -27,6 +27,7 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
 - DNS lookup for pipelines.actions.githubusercontent.com using dotnet
 - Ping pipelines.actions.githubusercontent.com using dotnet
 - Make HTTP GET to https://pipelines.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/pipelines/_apis/health using dotnet, check response headers contains `x-vss-e2eid` 
+- Make HTTP POST to https://pipelines.actions.githubusercontent.com/_apis/distributedtask/pools/1/agents or https://myGHES.com/_services/pipelines/_apis/distributedtask/pools/1/agents using dotnet, check response headers contains `x-vss-e2eid` 
 
 ## How to fix the issue?
 
