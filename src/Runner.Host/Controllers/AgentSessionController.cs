@@ -42,12 +42,9 @@ namespace Runner.Host.Controllers
             session.SessionId = Guid.NewGuid();
             session.UseFipsEncryption = true;
             var aes = Aes.Create();
-            Agent agent = Agent.GetAgent(_cache, poolId, session.Agent.Id);
+            Agent agent = Agent.GetAgent(_cache, _context, poolId, session.Agent.Id);
             if(agent == null) {
-                var aref = _context.Agents.Find(session.Agent.Id);
-                agent = new Agent();
-                agent.TaskAgent = new TaskAgent(session.Agent);
-                agent.PublicKey = RSA.Create(new RSAParameters() { Exponent = aref.Exponent, Modulus = aref.Modulus });
+                return NotFound();
             }
             Session _session = _cache.Set(session.SessionId, new Session() {
                 TaskAgentSession = session,

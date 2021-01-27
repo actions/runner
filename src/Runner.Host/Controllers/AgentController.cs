@@ -38,26 +38,23 @@ namespace Runner.Host.Controllers
             TaskAgent agent = await FromBody<TaskAgent>();
             agent.Authorization.AuthorizationUrl = new Uri($"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.RemoteIpAddress.ToString() + "]") : HttpContext.Connection.RemoteIpAddress.ToString())}:{Request.Host.Port ?? HttpContext.Connection.RemotePort}/test/auth/v1/");
             agent.Authorization.ClientId = Guid.NewGuid();
-            var __agent = new AgentReference() { Exponent = agent.Authorization.PublicKey.Exponent, Modulus = agent.Authorization.PublicKey.Modulus };
-            _context.Agents.Add(__agent);
-            await _context.SaveChangesAsync();
-            agent.Id = (int)__agent.Id;
-            Agent _agent = Agent.CreateAgent(_cache, poolId, agent, agent.Id);
-            _agent.PublicKey = RSA.Create(new RSAParameters(){Exponent = agent.Authorization.PublicKey.Exponent, Modulus = agent.Authorization.PublicKey.Modulus });
+            Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
+            await _context.SaveChangesAsync(HttpContext.RequestAborted);
+            _agent.AddToCache(_cache);
             return await Ok(agent);
         }
 
         [HttpGet("{poolId}/{agentId}")]
-        public TaskAgent Get(int poolId, long agentId)
+        public TaskAgent Get(int poolId, int agentId)
         {
-            return Agent.GetAgent(_cache, poolId, agentId).TaskAgent;
+            return Agent.GetAgent(_cache, _context, poolId, agentId).TaskAgent;
         }
 
         [HttpGet("{poolId}")]
         public VssJsonCollectionWrapper<List<TaskAgent>> Get(int poolId)
         {
             return new VssJsonCollectionWrapper<List<TaskAgent>> (
-                (from agent in Pool.GetPoolById(_cache, poolId)?.Agents ?? new List<Agent>() where agent != null select agent.TaskAgent).ToList()
+                (from agent in Pool.GetPoolById(_cache, _context, poolId)?.Agents ?? new List<Agent>() where agent != null select agent.TaskAgent).ToList()
             );
         }
     }

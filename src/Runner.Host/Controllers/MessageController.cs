@@ -399,7 +399,6 @@ namespace Runner.Host.Controllers
                         var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
                         var githubctx = new DictionaryContextData();
                         contextData.Add("github", githubctx);
-                        githubctx.Add("repository", new StringContextData(repository ?? "ChristopherHX/test"));
                         githubctx.Add("server_url", new StringContextData(giteaUrl ?? "http://ubuntu:3042/"));
                         githubctx.Add("api_url", new StringContextData($"{giteaUrl ?? "http://ubuntu:3042"}/api/v1"));
                         githubctx.Add("workflow", new StringContextData((from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath));
@@ -416,11 +415,11 @@ namespace Runner.Host.Controllers
                         githubctx.Add("actor", new StringContextData(hook.sender.login));
                         long runid = _cache.GetOrCreate(hook.repository.full_name, e => new Int64());
                         _cache.Set(hook.repository.full_name, runid + 1);
-                        githubctx.Add("run_id", new NumberContextData(runid));
+                        githubctx.Add("run_id", new StringContextData(runid.ToString()));
                         var runnumberkey = $"{hook.repository.full_name}:/{fileRelativePath}";
                         long runnumber = _cache.GetOrCreate(runnumberkey, e => new Int64());
                         _cache.Set(runnumberkey, runnumber + 1);
-                        githubctx.Add("run_number", new NumberContextData(runnumber));
+                        githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
                         // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
                         var needsctx = new DictionaryContextData();
                         contextData.Add("needs", needsctx);
@@ -605,8 +604,7 @@ namespace Runner.Host.Controllers
                                             jobgroup.Add(next);
                                         }
                                         
-                                        var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, next.Id, next.TimelineId, apiUrl);
-                                        jobqueue.Enqueue(rep);
+                                        queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, next.Id, next.TimelineId, apiUrl);
                                         
                                         // yield return rep;
                                     }
@@ -620,9 +618,8 @@ namespace Runner.Host.Controllers
                                         jobgroup.Add(jobitem);
                                     }
                                     contextData.Add("matrix", null);
-                                    var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
+                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
 
-                                    jobqueue.Enqueue(rep);
                                     // yield return rep;
                                 }
 
@@ -638,9 +635,8 @@ namespace Runner.Host.Controllers
                                     jobgroup.Add(jobitem);
                                 }
                                 contextData.Add("matrix", null);
-                                var rep = queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
+                                queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
 
-                                jobqueue.Enqueue(rep);
                                 // yield return rep;
                             }
                         };
@@ -662,9 +658,10 @@ namespace Runner.Host.Controllers
             jobCompleted(null);
         }
 
-        private AgentJobRequestMessage queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, StringToken jn, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string apiUrl)
+        private void queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, StringToken jn, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string apiUrl)
         {
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
+            HashSet<string> runsOnMap = new HashSet<string>();
             if (runsOn != null) {
                 foreach (var pair in contextData)
                 {
@@ -672,6 +669,14 @@ namespace Runner.Host.Controllers
                 }
                 var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
                 runsOn = eval;
+
+                if(runsOn is SequenceToken seq2) {
+                    foreach(var t in seq2) {
+                        runsOnMap.Add(t.AssertString("runs-on member must be a str").Value);
+                    }
+                } else {
+                    runsOnMap.Add(runsOn.AssertString("runs-on must be a str or array of string").Value);
+                }
             }
 
             var res = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault();
@@ -735,8 +740,9 @@ namespace Runner.Host.Controllers
             variables.Add("system.github.token", new VariableValue("48c0ad6b5e5311ba38e8cce918e2602f16240087", true));
             variables.Add("github_token", new VariableValue("48c0ad6b5e5311ba38e8cce918e2602f16240087", true));
             variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
-
-            return new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
+            var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
+            ConcurrentQueue<AgentJobRequestMessage> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<AgentJobRequestMessage>());
+            queue.Enqueue(req);
         }
 
         public class Job {
@@ -750,7 +756,7 @@ namespace Runner.Host.Controllers
         }
         static ConcurrentDictionary<Guid, Job> jobs = new ConcurrentDictionary<Guid, Job>();
 
-        private static ConcurrentQueue<AgentJobRequestMessage> jobqueue = new ConcurrentQueue<AgentJobRequestMessage>();
+        private static ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>> jobqueue = new ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>>();
         private static int id = 0;
 
         // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
@@ -772,24 +778,28 @@ namespace Runner.Host.Controllers
             }
             for (int i = 0; i < 10; i++)
             {
-                AgentJobRequestMessage res;
-                if(session.Job == null && jobqueue.TryDequeue(out res)) {
-                    res.RequestId = id;
-                    session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => job);
-                    _cache.Set("Job_" + res.RequestId, session.Job);
-                    jobevent?.Invoke(this, "ChristopherHX/test" , session.Job);
-                    session.Key.GenerateIV();
-                    using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
-                    using (var body = new MemoryStream())
-                    using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                        using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
-                            bodyWriter.Write(JsonConvert.SerializeObject(res));
-                        return await Ok(new TaskAgentMessage() {
-                            Body = Convert.ToBase64String(body.ToArray()),
-                            MessageId = id++,
-                            MessageType = "PipelineAgentJobRequest",
-                            IV = session.Key.IV
-                        });
+                if(session.Job == null) {
+                    AgentJobRequestMessage res;
+                    foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name))) {
+                        if(queue.Value.TryDequeue(out res)) {
+                            res.RequestId = id;
+                            session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => job);
+                            _cache.Set("Job_" + res.RequestId, session.Job);
+                            jobevent?.Invoke(this, "ChristopherHX/test" , session.Job);
+                            session.Key.GenerateIV();
+                            using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                            using (var body = new MemoryStream())
+                            using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                                using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
+                                    bodyWriter.Write(JsonConvert.SerializeObject(res));
+                                return await Ok(new TaskAgentMessage() {
+                                    Body = Convert.ToBase64String(body.ToArray()),
+                                    MessageId = id++,
+                                    MessageType = "PipelineAgentJobRequest",
+                                    IV = session.Key.IV
+                                });
+                            }
+                        }
                     }
                 }
                 await Task.Delay(5000);

@@ -6,6 +6,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Runner.Host.Models;
@@ -22,11 +23,14 @@ namespace Runner.Host.Controllers
 
         private List<Pool> pools;
 
-        public AgentPoolsController(ILogger<AgentPoolsController> logger, IMemoryCache cache)
+        private SqLiteDb db;
+
+        public AgentPoolsController(ILogger<AgentPoolsController> logger, IMemoryCache cache, SqLiteDb db)
         {
+            this.db = db;
             _logger = logger;
             _cache = cache;
-            if(!_cache.TryGetValue(Pool.CachePools, out pools)) {
+            if(!db.Pools.Any() && !_cache.TryGetValue(Pool.CachePools, out pools)) {
                 pools = new List<Pool> {
                     new Pool() { 
                         TaskAgentPool = new TaskAgentPool("Agents") {
@@ -44,7 +48,7 @@ namespace Runner.Host.Controllers
         [HttpGet]
         public Task<FileStreamResult> Get(string poolName = "", string properties = "", string poolType = "")
         {
-            return Ok(new VssJsonCollectionWrapper<List<TaskAgentPool>> ((from pool in pools select pool.TaskAgentPool).ToList()));
+            return Ok(new VssJsonCollectionWrapper<List<TaskAgentPool>> ((from pool in pools ?? db.Pools.Include(a => a.TaskAgentPool).AsEnumerable() select pool.TaskAgentPool).ToList()));
         }
     }
 }
