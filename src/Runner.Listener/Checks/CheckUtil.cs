@@ -124,7 +124,7 @@ namespace GitHub.Runner.Listener.Check
             {
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
-                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Send HTTPS Request to {url} ");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Send HTTPS Request (GET) to {url} ");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 using (var _ = new HttpEventSourceListener(result.Logs))
@@ -159,7 +159,7 @@ namespace GitHub.Runner.Listener.Check
                         {
                             result.Pass = false;
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
-                            result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'GET' to {url} succeed but doesn't have expected HTTP Header.");
+                            result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'GET' to {url} succeed but doesn't have expected HTTP response Header '{expectedHeader}'.");
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
@@ -196,7 +196,7 @@ namespace GitHub.Runner.Listener.Check
             {
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
-                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Send HTTPS POST Request to {url} ");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Send HTTPS Request (POST) to {url} ");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 using (var _ = new HttpEventSourceListener(result.Logs))
@@ -230,7 +230,7 @@ namespace GitHub.Runner.Listener.Check
                     {
                         result.Pass = false;
                         result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
-                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'POST' to {url} doesn't have expected HTTP Header.");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'POST' to {url} doesn't have expected HTTP response Header '{expectedHeader}'.");
                         result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                         result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
                         result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
