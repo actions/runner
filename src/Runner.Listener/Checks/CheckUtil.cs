@@ -117,14 +117,14 @@ namespace GitHub.Runner.Listener.Check
             return result;
         }
 
-        public static async Task<CheckResult> CheckHttpsRequests(this IHostContext hostContext, string url, string pat, string expectedHeader)
+        public static async Task<CheckResult> CheckHttpsGetRequests(this IHostContext hostContext, string url, string pat, string expectedHeader)
         {
             var result = new CheckResult();
             try
             {
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
-                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Send HTTPS Request to {url} ");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Send HTTPS Request (GET) to {url} ");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 using (var _ = new HttpEventSourceListener(result.Logs))
@@ -159,7 +159,7 @@ namespace GitHub.Runner.Listener.Check
                         {
                             result.Pass = false;
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
-                            result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'GET' to {url} succeed but doesn't have expected HTTP Header.");
+                            result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'GET' to {url} succeed but doesn't have expected HTTP response Header '{expectedHeader}'.");
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
                             result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
@@ -182,6 +182,67 @@ namespace GitHub.Runner.Listener.Check
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Https request 'GET' to {url} failed with error: {ex}");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+            }
+
+            return result;
+        }
+
+        public static async Task<CheckResult> CheckHttpsPostRequests(this IHostContext hostContext, string url, string pat, string expectedHeader)
+        {
+            var result = new CheckResult();
+            try
+            {
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Send HTTPS Request (POST) to {url} ");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                using (var _ = new HttpEventSourceListener(result.Logs))
+                using (var httpClientHandler = hostContext.CreateHttpClientHandler())
+                using (var httpClient = new HttpClient(httpClientHandler))
+                {
+                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(hostContext.UserAgents);
+                    if (!string.IsNullOrEmpty(pat))
+                    {
+                        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("token", pat);
+                    }
+
+                    // Send empty JSON '{}' to service
+                    var response = await httpClient.PostAsJsonAsync<Dictionary<string, string>>(url, new Dictionary<string, string>());
+
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http status code: {response.StatusCode}");
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http response headers: {response.Headers}");
+
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http response body: {responseContent}");
+                    if (response.Headers.Contains(expectedHeader))
+                    {
+                        result.Pass = true;
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'POST' to {url} has expected HTTP response header");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
+                    }
+                    else
+                    {
+                        result.Pass = false;
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Http request 'POST' to {url} doesn't have expected HTTP response Header '{expectedHeader}'.");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
+                        result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Pass = false;
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
+                result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****     Https request 'POST' to {url} failed with error: {ex}");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ****                                                                                                       ****");
                 result.Logs.Add($"{DateTime.UtcNow.ToString("O")} ***************************************************************************************************************");
             }
@@ -289,18 +350,23 @@ namespace GitHub.Runner.Listener.Check
         private readonly Dictionary<string, HashSet<string>> _ignoredEvent = new Dictionary<string, HashSet<string>>
         {
             {
-                "Private.InternalDiagnostics.System.Net.Http",
+                "Microsoft-System-Net-Http",
                 new HashSet<string>
                 {
                     "Info",
-                    "Associate"
+                    "Associate",
+                    "Enter",
+                    "Exit"
                 }
             },
             {
-                "Private.InternalDiagnostics.System.Net.Security",
+                "Microsoft-System-Net-Security",
                 new HashSet<string>
                 {
+                    "Enter",
+                    "Exit",
                     "Info",
+                    "DumpBuffer",
                     "SslStreamCtor",
                     "SecureChannelCtor",
                     "NoDelegateNoClientCert",
@@ -324,8 +390,8 @@ namespace GitHub.Runner.Listener.Check
         {
             base.OnEventSourceCreated(eventSource);
 
-            if (eventSource.Name == "Private.InternalDiagnostics.System.Net.Http" ||
-                eventSource.Name == "Private.InternalDiagnostics.System.Net.Security")
+            if (eventSource.Name == "Microsoft-System-Net-Http" ||
+                eventSource.Name == "Microsoft-System-Net-Security")
             {
                 EnableEvents(eventSource, EventLevel.Verbose, EventKeywords.All);
             }
