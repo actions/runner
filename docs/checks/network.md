@@ -10,6 +10,8 @@
 
 - Proxy try to decrypt and exam HTTPS traffic for security purpose but cause the actions-runner to fail to finish SSL handshake due to the lack of trusting proxy's CA.
 
+- Proxy try to modify the HTTPS request (like add or change some http headers) and causes the request become incompatible with the Actions Service (ASP.NetCore), Ex: [Nginx](https://github.com/dotnet/aspnetcore/issues/17081)
+
 - Firewall rules that block action runner from accessing certain hosts, ex: `*.github.com`, `*.actions.githubusercontent.com`, etc.
 
 
@@ -21,6 +23,7 @@ Use a 3rd party tool to make the same requests as the runner did would be a good
 
 - Use `nslookup` to check DNS
 - Use `ping` to check Ping
+- Use `traceroute`, `tracepath`, or `tracert` to check the network route between the runner and the Actions service 
 - Use `curl -v` to check the network stack, good for verifying default certificate/proxy settings.
 - Use `Invoke-WebRequest` from `pwsh` (`PowerShell Core`) to check the dotnet network stack, good for verifying bugs in the dotnet framework.
 
