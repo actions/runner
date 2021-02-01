@@ -16,11 +16,11 @@ if (supported.indexOf(process.platform) == -1) {
 var stopping = false;
 var listener = null;
 
-var runService = function() {
+var runService = function () {
     var listenerExePath = path.join(__dirname, '../bin/Runner.Listener');
     var interactive = process.argv[2] === "interactive";
 
-    if(!stopping) {
+    if (!stopping) {
         try {
             if (interactive) {
                 console.log('Starting Runner listener interactively');
@@ -30,14 +30,18 @@ var runService = function() {
                 listener = childProcess.spawn(listenerExePath, ['run', '--startuptype', 'service'], { env: process.env });
             }
 
-            console.log('Started listener process');
-        
+            console.log(`Started listener process, pid: ${listener.pid}`);
+
             listener.stdout.on('data', (data) => {
                 process.stdout.write(data.toString('utf8'));
             });
 
             listener.stderr.on('data', (data) => {
                 process.stdout.write(data.toString('utf8'));
+            });
+
+            listener.on("error", (err) => {
+                console.log(`Runner listener fail to start with error ${err.message}`);
             });
 
             listener.on('close', (code) => {
@@ -56,13 +60,13 @@ var runService = function() {
                 } else {
                     console.log('Runner listener exit with undefined return code, re-launch runner in 5 seconds.');
                 }
-                
-                if(!stopping) {
+
+                if (!stopping) {
                     setTimeout(runService, 5000);
                 }
             });
 
-        } catch(ex) {
+        } catch (ex) {
             console.log(ex);
         }
     }
@@ -71,7 +75,7 @@ var runService = function() {
 runService();
 console.log('Started running service');
 
-var gracefulShutdown = function(code) {
+var gracefulShutdown = function (code) {
     console.log('Shutting down runner listener');
     stopping = true;
     if (listener) {
