@@ -16,6 +16,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker
 {
@@ -120,6 +121,18 @@ namespace GitHub.Runner.Worker
                             context.Output($"Fail to load and print machine setup info: {ex.Message}");
                             Trace.Error(ex);
                         }
+                    }
+
+                    var tokenPermissions = jobContext.Global.Variables.Get("system.github.token.permissions") ?? "";
+                    if (!string.IsNullOrEmpty(tokenPermissions))
+                    {
+                        context.Output($"##[group]GITHUB_TOKEN Permissions");
+                        var permissions = JsonConvert.DeserializeObject<Dictionary<string, string>>(tokenPermissions);
+                        foreach(KeyValuePair<string, string> entry in permissions)
+                        {
+                            context.Output($"{entry.Key}: {entry.Value}");
+                        }
+                        context.Output("##[endgroup]");
                     }
 
                     var repoFullName = context.GetGitHubContext("repository");
