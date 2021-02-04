@@ -16,7 +16,6 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Newtonsoft.Json;
 
 namespace GitHub.Runner.Worker
 {
@@ -129,7 +128,7 @@ namespace GitHub.Runner.Worker
                         if (!string.IsNullOrEmpty(tokenPermissions))
                         {
                             context.Output($"##[group]GITHUB_TOKEN Permissions");
-                            var permissions = JsonConvert.DeserializeObject<Dictionary<string, string>>(tokenPermissions);
+                            var permissions = StringUtil.ConvertFromJson<Dictionary<string, string>>(tokenPermissions);
                             foreach(KeyValuePair<string, string> entry in permissions)
                             {
                                 context.Output($"{entry.Key}: {entry.Value}");
