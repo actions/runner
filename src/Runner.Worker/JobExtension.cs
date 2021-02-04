@@ -123,16 +123,24 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    var tokenPermissions = jobContext.Global.Variables.Get("system.github.token.permissions") ?? "";
-                    if (!string.IsNullOrEmpty(tokenPermissions))
+                    try 
                     {
-                        context.Output($"##[group]GITHUB_TOKEN Permissions");
-                        var permissions = JsonConvert.DeserializeObject<Dictionary<string, string>>(tokenPermissions);
-                        foreach(KeyValuePair<string, string> entry in permissions)
+                        var tokenPermissions = jobContext.Global.Variables.Get("system.github.token.permissions") ?? "";
+                        if (!string.IsNullOrEmpty(tokenPermissions))
                         {
-                            context.Output($"{entry.Key}: {entry.Value}");
+                            context.Output($"##[group]GITHUB_TOKEN Permissions");
+                            var permissions = JsonConvert.DeserializeObject<Dictionary<string, string>>(tokenPermissions);
+                            foreach(KeyValuePair<string, string> entry in permissions)
+                            {
+                                context.Output($"{entry.Key}: {entry.Value}");
+                            }
+                            context.Output("##[endgroup]");
                         }
-                        context.Output("##[endgroup]");
+                    } 
+                    catch (Exception ex)
+                    {
+                        context.Output($"Fail to parse and display GITHUB_TOKEN permissions list: {ex.Message}");
+                        Trace.Error(ex);
                     }
 
                     var repoFullName = context.GetGitHubContext("repository");
