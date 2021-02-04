@@ -237,7 +237,7 @@ namespace GitHub.Runner.Listener
                                         if (hash != _targetPackage.HashValue)
                                         {
                                             // Hash did not match, we can't recover from this, just throw
-                                            throw new OperationCanceledException($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
+                                            throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
                                         }
                                         Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
                                     }
