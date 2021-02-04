@@ -498,7 +498,7 @@ namespace GitHub.Runner.Listener
         {
             using (SHA256 hash = SHA256.Create())
             {
-                    // Compute hash as a byte array
+                // Compute hash as a byte array
                 var computedHashBytes = hash.ComputeHash(stream);
                 
                 // Convert byte array to string
