@@ -6,8 +6,10 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 using GitHub.Services.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -220,12 +222,25 @@ namespace GitHub.Runner.Listener
 
                                 Trace.Info($"Downloading {_targetPackage.DownloadUrl}");
 
-                                using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                                using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096, useAsync: true))
                                 using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
                                 {
                                     //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
                                     await result.CopyToAsync(fs, 81920, downloadCts.Token);
                                     await fs.FlushAsync(downloadCts.Token);
+
+                                    // Validate Hash Matches if it is provided
+                                    if (!String.IsNullOrEmpty(_targetPackage.HashValue))
+                                    {
+                                        fs.Seek(0, SeekOrigin.Begin);
+                                        var hash = GetSHA256(fs);
+                                        if (hash != _targetPackage.HashValue)
+                                        {
+                                            // Hash did not match, we can't recover from this, just throw
+                                            throw new OperationCanceledException($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
+                                        }
+                                        Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
+                                    }
                                 }
                             }
 
@@ -476,6 +491,23 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Error(ex);
                 Trace.Info($"Catch exception during report update state, ignore this error and continue auto-update.");
+            }
+        }
+
+        private static string GetSHA256(FileStream stream)
+        {
+            using (SHA256 hash = SHA256.Create())
+            {
+                    // Compute hash as a byte array
+                var computedHashBytes = hash.ComputeHash(stream);
+                
+                // Convert byte array to string
+                var sBuilder = new StringBuilder();
+                for (int i = 0; i < computedHashBytes.Length; i++)
+                {
+                    sBuilder.Append(computedHashBytes[i].ToString("x2"));
+                }
+                return sBuilder.ToString();
             }
         }
     }
