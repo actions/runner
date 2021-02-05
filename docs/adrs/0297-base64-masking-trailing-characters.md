@@ -15,7 +15,7 @@ This gives us good coverage across the board for secrets and secrets with a pref
 
 However, we don't have great coverage for cases where the secret has a string appended to it before it is base64 encoded (i.e.: `base64($pass\n))`). 
 
-Most notably we've seen this as a result of user error where a user accidentially appends a newline or space character before encoding their secret in base64.
+Most notably we've seen this as a result of user error where a user accidentally appends a newline or space character before encoding their secret in base64.
 
 ## Decision
 
@@ -45,4 +45,4 @@ This will result in us only revealing length or bit information when a prefix or
 
 - In the case where a secret has a prefix or suffix added before base64 encoding, we may now reveal up to 20 bits of information and the length of the original string modulo 3, rather then the original 16 bits and no length information
 - Secrets with a suffix appended before encoding will now be masked across the board. Previously it was only masked if it was a multiple of 3 characters
-- Performance will suffer in a neglible way
+- Performance will suffer in a negligible way
