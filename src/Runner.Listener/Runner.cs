@@ -512,7 +512,7 @@ Config Options:
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
- --pat                  GitHub personal access token used for checking network connectivity when execute `.{separator}run.{ext} --check`");
+ --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`");
 #if OS_WINDOWS
     _term.WriteLine($@" --runasservice   Run the runner as a service");
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
