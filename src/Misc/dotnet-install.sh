@@ -303,7 +303,7 @@ get_machine_architecture() {
             echo "arm"
             return 0
             ;;
-        aarch64|arm64)
+        aarch64)
             echo "arm64"
             return 0
             ;;
@@ -744,31 +744,13 @@ download() {
     fi
 
     local failed=false
-    local attempts=0
-    while [ $attempts -lt 3 ]; do
-        attempts=$((attempts+1))
-        failed=false
-        if machine_has "curl"; then
-            downloadcurl "$remote_path" "$out_path" || failed=true
-        elif machine_has "wget"; then
-            downloadwget "$remote_path" "$out_path" || failed=true
-        else
-            unset http_code
-            download_error_msg="Missing dependency: neither curl nor wget was found."
-            break
-        fi
-
-        if [ "$failed" = false ] || [ $attempts -ge 3 ] || { [ ! -z $http_code ] && [ $http_code = "404" ]; }; then
-            break
-        fi
-
-        say "Download attempt #$attempts has failed: $http_code $download_error_msg"
-        say "Attempt #$((attempts+1)) will start in $((attempts*10)) seconds."
-        sleep $((attempts*20))
-    done
-
-
-
+    if machine_has "curl"; then
+        downloadcurl "$remote_path" "$out_path" || failed=true
+    elif machine_has "wget"; then
+        downloadwget "$remote_path" "$out_path" || failed=true
+    else
+        failed=true
+    fi
     if [ "$failed" = true ]; then
         say_verbose "Download failed: $remote_path"
         return 1
@@ -779,8 +761,6 @@ download() {
 # Updates global variables $http_code and $download_error_msg
 downloadcurl() {
     eval $invocation
-    unset http_code
-    unset download_error_msg
     local remote_path="$1"
     local out_path="${2:-}"
     # Append feed_credential as late as possible before calling curl to avoid logging feed_credential
@@ -809,8 +789,6 @@ downloadcurl() {
 # Updates global variables $http_code and $download_error_msg
 downloadwget() {
     eval $invocation
-    unset http_code
-    unset download_error_msg
     local remote_path="$1"
     local out_path="${2:-}"
     # Append feed_credential as late as possible before calling wget to avoid logging feed_credential
@@ -904,6 +882,7 @@ install_dotnet() {
     say "Downloading primary link $download_link"
 
     # The download function will set variables $http_code and $download_error_msg in case of failure.
+    http_code=""; download_error_msg=""
     download "$download_link" "$zip_path" 2>&1 || download_failed=true
     primary_path_http_code="$http_code"; primary_path_download_error_msg="$download_error_msg"
 
@@ -927,6 +906,7 @@ install_dotnet() {
             say "Downloading legacy link $download_link"
 
             # The download function will set variables $http_code and $download_error_msg in case of failure.
+            http_code=""; download_error_msg=""
             download "$download_link" "$zip_path" 2>&1 || download_failed=true
             legacy_path_http_code="$http_code";  legacy_path_download_error_msg="$download_error_msg"
 
