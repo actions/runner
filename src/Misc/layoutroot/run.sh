@@ -34,14 +34,14 @@ else
             if [ ! -x "$(command -v ping)" ]; then
                 COUNT="0"
                 while [[ $COUNT != 5000 ]]; do
-                    echo "SLEEP" >nul
+                    echo "SLEEP" > /dev/null
                     COUNT=$[$COUNT+1]
                 done
             else
-                ping -n 5 127.0.0.1 >nul
+                ping -c 5 127.0.0.1 > /dev/null
             fi
         else
-            sleep 5 >nul
+            sleep 5
         fi
     else
         exit $returnCode
