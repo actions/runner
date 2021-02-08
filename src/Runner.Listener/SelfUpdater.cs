@@ -228,7 +228,6 @@ namespace GitHub.Runner.Listener
                                     //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
                                     await result.CopyToAsync(fs, 81920, downloadCts.Token);
                                     await fs.FlushAsync(downloadCts.Token);
-
                                 }
                             }
 
@@ -252,7 +251,6 @@ namespace GitHub.Runner.Listener
                         }
                     }
                 }
-                
 
                 if (!downloadSucceeded)
                 {
