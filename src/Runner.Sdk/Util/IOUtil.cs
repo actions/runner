@@ -64,23 +64,6 @@ namespace GitHub.Runner.Sdk
             }
         }
 
-        public static string GetHash(FileStream stream)
-        {
-            using (SHA256 hash = SHA256.Create())
-            {
-                // Compute hash as a byte array
-                var computedHashBytes = hash.ComputeHash(stream);
-                
-                // Convert byte array to string
-                var sBuilder = new StringBuilder();
-                for (int i = 0; i < computedHashBytes.Length; i++)
-                {
-                    sBuilder.Append(computedHashBytes[i].ToString("x2"));
-                }
-                return sBuilder.ToString();
-            }
-        }
-
         public static void Delete(string path, CancellationToken cancellationToken)
         {
             DeleteDirectory(path, cancellationToken);

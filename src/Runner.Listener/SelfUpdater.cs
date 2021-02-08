@@ -1,5 +1,4 @@
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -8,7 +7,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 using GitHub.Services.WebApi;
+using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -261,13 +262,17 @@ namespace GitHub.Runner.Listener
                 {
                     if (!String.IsNullOrEmpty(_targetPackage.HashValue))
                     {
-                        var hash = IOUtil.GetHash(stream);
-                        if (hash != _targetPackage.HashValue)
+                        using (SHA256 sha256 = SHA256.Create())
                         {
-                            // Hash did not match, we can't recover from this, just throw
-                            throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
+                            byte[] srcHashBytes = await sha256.ComputeHashAsync(stream);
+                            var hash = PrimitiveExtensions.ConvertToHexString(srcHashBytes);
+                            if (hash != _targetPackage.HashValue)
+                            {
+                                // Hash did not match, we can't recover from this, just throw
+                                throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
+                            }
+                            Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
                         }
-                        Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
                     }
                 }
                 if (archiveFile.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
