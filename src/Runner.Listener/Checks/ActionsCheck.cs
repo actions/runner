@@ -15,7 +15,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckName => "GitHub Actions Connection";
 
-        public string CheckDescription => "Make sure the actions runner have access to the GitHub Actions Service.";
+        public string CheckDescription => "Check if the Actions runner has access to the GitHub Actions service.";
 
         public string CheckLog => _logFile;
 

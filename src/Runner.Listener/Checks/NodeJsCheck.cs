@@ -18,7 +18,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckName => "Node.js Certificate/Proxy Validation";
 
-        public string CheckDescription => "Make sure the node.js have access to GitHub.com or the GitHub Enterprise Server.";
+        public string CheckDescription => "Check if Node.js has access to GitHub.com or GitHub Enterprise Server.";
 
         public string CheckLog => _logFile;
 
