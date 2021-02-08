@@ -229,18 +229,6 @@ namespace GitHub.Runner.Listener
                                     await result.CopyToAsync(fs, 81920, downloadCts.Token);
                                     await fs.FlushAsync(downloadCts.Token);
 
-                                    // Validate Hash Matches if it is provided
-                                    if (!String.IsNullOrEmpty(_targetPackage.HashValue))
-                                    {
-                                        fs.Seek(0, SeekOrigin.Begin);
-                                        var hash = GetSHA256(fs);
-                                        if (hash != _targetPackage.HashValue)
-                                        {
-                                            // Hash did not match, we can't recover from this, just throw
-                                            throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
-                                        }
-                                        Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
-                                    }
                                 }
                             }
 
@@ -264,6 +252,7 @@ namespace GitHub.Runner.Listener
                         }
                     }
                 }
+                
 
                 if (!downloadSucceeded)
                 {
@@ -271,6 +260,20 @@ namespace GitHub.Runner.Listener
                 }
 
                 // If we got this far, we know that we've successfully downloaded the runner package
+                // Validate Hash Matches if it is provided
+                using (FileStream stream = File.OpenRead(archiveFile))
+                {
+                    if (!String.IsNullOrEmpty(_targetPackage.HashValue))
+                    {
+                        var hash = IOUtil.GetHash(stream);
+                        if (hash != _targetPackage.HashValue)
+                        {
+                            // Hash did not match, we can't recover from this, just throw
+                            throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
+                        }
+                        Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
+                    }
+                }
                 if (archiveFile.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 {
                     ZipFile.ExtractToDirectory(archiveFile, latestRunnerDirectory);
@@ -491,23 +494,6 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Error(ex);
                 Trace.Info($"Catch exception during report update state, ignore this error and continue auto-update.");
-            }
-        }
-
-        private static string GetSHA256(FileStream stream)
-        {
-            using (SHA256 hash = SHA256.Create())
-            {
-                // Compute hash as a byte array
-                var computedHashBytes = hash.ComputeHash(stream);
-                
-                // Convert byte array to string
-                var sBuilder = new StringBuilder();
-                for (int i = 0; i < computedHashBytes.Length; i++)
-                {
-                    sBuilder.Append(computedHashBytes[i].ToString("x2"));
-                }
-                return sBuilder.ToString();
             }
         }
     }
