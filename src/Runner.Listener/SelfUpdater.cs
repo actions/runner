@@ -1,4 +1,5 @@
 using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common.Util;
 using System;
 using System.Diagnostics;
 using System.IO;
