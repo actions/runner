@@ -222,7 +222,7 @@ namespace GitHub.Runner.Listener
 
                                 Trace.Info($"Downloading {_targetPackage.DownloadUrl}");
 
-                                using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096, useAsync: true))
+                                using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                                 using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
                                 {
                                     //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
