@@ -19,7 +19,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckName => "Git Certificate/Proxy Validation";
 
-        public string CheckDescription => "Make sure the git cli can access to GitHub.com or the GitHub Enterprise Server.";
+        public string CheckDescription => "Check if the Git CLI can access GitHub.com or GitHub Enterprise Server.";
 
         public string CheckLog => _logFile;
 

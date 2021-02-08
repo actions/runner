@@ -15,7 +15,7 @@ namespace GitHub.Runner.Listener.Check
 
         public string CheckName => "Internet Connection";
 
-        public string CheckDescription => "Make sure the actions runner have access to public internet.";
+        public string CheckDescription => "Check if the Actions runner has internet access.";
 
         public string CheckLog => _logFile;
 
