@@ -1,16 +1,11 @@
 ## Features
-  - Verify the Runner Hash during auto-upgrade before installing the new runner version (#967)
-  - Support download of runners from authenticated endpoints (#920)
-  - Enabled tty output in Docker Actions (#916)
-  - Added '--check' command to verify runner connectivity (#949)
+
 
 ## Bugs
-  - Fix usage of /dev/null and ping in run.sh (#968)
+  - Fixed an issue where docker containers failed to initialize (#977)
 
 ## Misc
-  - Updated the copy for various runner messages (#972)
-  - Added the runner's OS to telemetry (#939)
-  - Various other telemetry improvements (#935)
+
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
