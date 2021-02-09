@@ -8,7 +8,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 using GitHub.Services.WebApi;
+using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -256,6 +258,24 @@ namespace GitHub.Runner.Listener
                 }
 
                 // If we got this far, we know that we've successfully downloaded the runner package
+                // Validate Hash Matches if it is provided
+                using (FileStream stream = File.OpenRead(archiveFile))
+                {
+                    if (!String.IsNullOrEmpty(_targetPackage.HashValue))
+                    {
+                        using (SHA256 sha256 = SHA256.Create())
+                        {
+                            byte[] srcHashBytes = await sha256.ComputeHashAsync(stream);
+                            var hash = PrimitiveExtensions.ConvertToHexString(srcHashBytes);
+                            if (hash != _targetPackage.HashValue)
+                            {
+                                // Hash did not match, we can't recover from this, just throw
+                                throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
+                            }
+                            Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
+                        }
+                    }
+                }
                 if (archiveFile.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 {
                     ZipFile.ExtractToDirectory(archiveFile, latestRunnerDirectory);
