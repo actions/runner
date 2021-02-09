@@ -2,7 +2,7 @@
 
 
 ## Bugs
-  - Fixed an issue where docker containers failed to initialize ()
+  - Fixed an issue where docker containers failed to initialize (#977)
 
 ## Misc
 
