@@ -22,7 +22,7 @@ The test also set environment variable `GIT_TRACE=1` and `GIT_CURL_VERBOSE=1` be
 
 ### 1. Check the common network issue
   
-    > Please check the [network doc](./network.md)
+  > Please check the [network doc](./network.md)
 
 ### 2. SSL certificate related issue
 
