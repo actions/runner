@@ -13,7 +13,7 @@ if ([string]::IsNullOrEmpty($RID)) {
     $RID = Get-CurrentOSRuntimeIdentifier
 }
 
-Write-Heading "Create layout ..."
+Write-Heading "Create layout"
 Copy-Item -Path "$SRC_DIR/Misc/layoutroot/*" -Destination $LAYOUT_DIR -Recurse -Force
 Copy-Item -Path "$SRC_DIR/Misc/layoutbin/*" -Destination "$LAYOUT_DIR/bin" -Recurse -Force
 if ($IsWindows) { Remove-Item @("$LAYOUT_DIR/*.sh", "$LAYOUT_DIR/bin/RunnerService.js") }
