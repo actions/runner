@@ -18,56 +18,60 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        rid: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
         include:
-        - runtime: linux-x64
+        - rid: linux-x64
           os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: linux-arm64
+        - rid: linux-arm64
           os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: linux-arm
+        - rid: linux-arm
           os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: osx-x64
+        - rid: osx-x64
           os: macOS-latest
-          devScript: ./dev.sh
-
-        - runtime: win-x64
+        - rid: win-x64
           os: windows-latest
-          devScript: ./dev
-
+        
+        
+        
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
-    # Build runner layout
-    - name: Build & Layout Release
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+      if: matrix.os == 'windows-latest'
+
+    
+    - name: Build 
       run: |
-        ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
-      working-directory: src
+        ./tools/StartBuild.ps1 ${{ matrix.rid }}
+      shell: pwsh
+
+    - name: Layout
+      run: |
+        ./tools/StartLayout.ps1 ${{ matrix.rid }}
+      shell: pwsh 
 
     # Run tests
     - name: L0
       run: |
-        ${{ matrix.devScript }} test
-      working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+        ./tools/StartTest.ps1 ${{ matrix.rid }}
+      shell: pwsh
+      if: matrix.rid != 'linux-arm64' && matrix.rid != 'linux-arm'
 
     # Create runner package tar.gz/zip
-    - name: Package Release
+    - name: Package
       if: github.event_name != 'pull_request'
       run: |
-        ${{ matrix.devScript }} package Release
-      working-directory: src
+        ./tools/StartPackage.ps1 ${{ matrix.rid }}
+      shell: pwsh 
 
     # Upload runner package tar.gz/zip as artifact
     - name: Publish Artifact
       if: github.event_name != 'pull_request'
       uses: actions/upload-artifact@v1
       with:
-        name: runner-package-${{ matrix.runtime }}
+        name: runner-package-${{ matrix.rid }}
         path: _package

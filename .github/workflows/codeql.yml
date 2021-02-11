@@ -29,8 +29,9 @@ jobs:
 
     - name: Manual build
       run : | 
-        ./dev.sh layout Release linux-x64
-      working-directory: src
+        ./tools/StartBuild.ps1 linux-x64 Release
+        ./tools/StartLayout.ps1 linux-x64 Release
+      shell: pwsh
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1

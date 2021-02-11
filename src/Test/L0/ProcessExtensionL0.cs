@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -27,11 +27,12 @@ namespace GitHub.Runner.Common.Tests
                 try
                 {
 #if OS_WINDOWS
-                    string node = Path.Combine(TestUtil.GetSrcPath(), @"..\_layout\externals\node12\bin\node");
+                    string node = Path.Combine(TestUtil.GetWorkSpacePath(), @"_layout\externals\node12\node.exe");
 #else
-                    string node = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/externals/node12/bin/node");
+                    string node = Path.Combine(TestUtil.GetWorkSpacePath(), @"_layout/externals/node12/bin/node");
                     hc.EnqueueInstance<IProcessInvoker>(new ProcessInvokerWrapper());
 #endif
+                    Debug.WriteLine($"node is located in {node}");
                     var startInfo = new ProcessStartInfo(node, "-e \"setTimeout(function(){{}}, 15 * 1000);\"");
                     startInfo.Environment[envName] = envValue;
                     sleep = Process.Start(startInfo);
