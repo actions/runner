@@ -1,11 +1,11 @@
 ## Features
 
+
 ## Bugs
-  - Downgrade runner to .NET 3 to address an issue with broken pipes in Ubuntu (#928)
-  - Fixed an issue where FIPS Cryptography broke back-compat scenarios (#928)
+  - Fixed an issue where docker containers failed to initialize (#977)
 
 ## Misc
-  - Updated dotnet install scripts (#928)
+
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

@@ -501,6 +501,7 @@ Options:
  --help     Prints the help for each command
  --version  Prints the runner version
  --commit   Prints the runner commit
+ --check    Check the runner's network connectivity with GitHub server
 
 Config Options:
  --unattended           Disable interactive prompts for missing arguments. Defaults will be used for missing options
@@ -510,7 +511,8 @@ Config Options:
  --runnergroup string   Name of the runner group to add this runner to (defaults to the default runner group)
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
- --replace              Replace any existing runner with the same name (default false)");
+ --replace              Replace any existing runner with the same name (default false)
+ --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`");
 #if OS_WINDOWS
     _term.WriteLine($@" --runasservice   Run the runner as a service");
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
@@ -518,6 +520,8 @@ Config Options:
 #endif
     _term.WriteLine($@"
 Examples:
+ Check GitHub server network connectivity:
+  .{separator}run.{ext} --check --url <url> --pat <pat>
  Configure a runner non-interactively:
   .{separator}config.{ext} --unattended --url <url> --token <token>
  Configure a runner non-interactively, replacing any existing runner with the same name:
