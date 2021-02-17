@@ -198,8 +198,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            // TODO: Add at a later date. This currently no local package registry to test with
-            // UpdateRegistryAuthForGitHubToken(executionContext, container);
+            UpdateRegistryAuthForGitHubToken(executionContext, container);
 
             // Before pulling, generate client authentication if required
             var configLocation = await ContainerRegistryLogin(executionContext, container);
@@ -494,31 +493,14 @@ namespace GitHub.Runner.Worker
 
         private void UpdateRegistryAuthForGitHubToken(IExecutionContext executionContext, ContainerInfo container)
         {
-            var registryIsTokenCompatible = container.RegistryServer.Equals("docker.pkg.github.com", StringComparison.OrdinalIgnoreCase);
+            var registryIsTokenCompatible = container.RegistryServer.Equals("ghcr.io", StringComparison.OrdinalIgnoreCase);
             if (!registryIsTokenCompatible)
             {
                 return;
             }
 
-            var registryMatchesWorkflow = false;
-
-            // REGISTRY/OWNER/REPO/IMAGE[:TAG]
-            var imageParts = container.ContainerImage.Split('/');
-            if (imageParts.Length != 4)
-            {
-                executionContext.Warning($"Could not identify owner and repo for container image {container.ContainerImage}. Skipping automatic token auth");
-                return;
-            }
-            var owner = imageParts[1];
-            var repo = imageParts[2];
-            var nwo = $"{owner}/{repo}";
-            if (nwo.Equals(executionContext.GetGitHubContext("repository"), StringComparison.OrdinalIgnoreCase))
-            {
-                registryMatchesWorkflow = true;
-            }
-
             var registryCredentialsNotSupplied = string.IsNullOrEmpty(container.RegistryAuthUsername) && string.IsNullOrEmpty(container.RegistryAuthPassword);
-            if (registryCredentialsNotSupplied && registryMatchesWorkflow)
+            if (registryCredentialsNotSupplied)
             {
                 container.RegistryAuthUsername = executionContext.GetGitHubContext("actor");
                 container.RegistryAuthPassword = executionContext.GetGitHubContext("token");
