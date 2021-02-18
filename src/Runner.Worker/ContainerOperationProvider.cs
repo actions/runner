@@ -493,7 +493,7 @@ namespace GitHub.Runner.Worker
 
         private void UpdateRegistryAuthForGitHubToken(IExecutionContext executionContext, ContainerInfo container)
         {
-            var registryIsTokenCompatible = container.RegistryServer.Equals("ghcr.io", StringComparison.OrdinalIgnoreCase);
+            var registryIsTokenCompatible = container.RegistryServer.Equals("ghcr.io", StringComparison.OrdinalIgnoreCase) || container.RegistryServer.Equals("containers.pkg.github.com", StringComparison.OrdinalIgnoreCase);
             if (!registryIsTokenCompatible)
             {
                 return;
