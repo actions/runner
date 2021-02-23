@@ -361,11 +361,8 @@ namespace GitHub.Runner.Listener
 
                 // Removing the file instead of just trying to overwrite it works around permissions issues on linux.
                 // https://github.com/actions/runner/issues/981
-                if (File.Exists(destination)) {
-                    Trace.Info($"Removing existing {destination}");
-                    File.Delete(destination);
-                }
                 Trace.Info($"Copy {file.FullName} to {destination}");
+                IOUtil.DeleteFile(destination);
                 file.CopyTo(destination, true);
             }
         }
