@@ -225,7 +225,7 @@ namespace GitHub.Runner.Listener
                                 using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
                                 using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
                                 {
-                                    //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
+                                    //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
                                     await result.CopyToAsync(fs, 81920, downloadCts.Token);
                                     await fs.FlushAsync(downloadCts.Token);
                                 }
@@ -357,8 +357,13 @@ namespace GitHub.Runner.Listener
             Trace.Info($"Copy any remaining .sh/.cmd files into runner root.");
             foreach (FileInfo file in new DirectoryInfo(latestRunnerDirectory).GetFiles() ?? new FileInfo[0])
             {
-                // Copy and replace the file.
-                file.CopyTo(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name), true);
+                string destination = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name);
+
+                // Removing the file instead of just trying to overwrite it works around permissions issues on linux.
+                // https://github.com/actions/runner/issues/981
+                Trace.Info($"Copy {file.FullName} to {destination}");
+                IOUtil.DeleteFile(destination);
+                file.CopyTo(destination, true);
             }
         }
 
