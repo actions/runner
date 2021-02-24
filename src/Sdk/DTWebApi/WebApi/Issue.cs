@@ -17,6 +17,7 @@ namespace GitHub.DistributedTask.WebApi
             this.Type = issueToBeCloned.Type;
             this.Category = issueToBeCloned.Category;
             this.Message = issueToBeCloned.Message;
+            this.IsInfrastructureIssue = issueToBeCloned.IsInfrastructureIssue;
 
             if (issueToBeCloned.m_data != null)
             {
@@ -43,6 +44,13 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(Order = 3)]
         public String Message
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Order = 4)]
+        public bool? IsInfrastructureIssue
         {
             get;
             set;

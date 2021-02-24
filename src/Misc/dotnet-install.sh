@@ -40,7 +40,7 @@ if [ -t 1 ] && command -v tput > /dev/null; then
 fi
 
 say_warning() {
-    printf "%b\n" "${yellow:-}dotnet_install: Warning: $1${normal:-}"
+    printf "%b\n" "${yellow:-}dotnet_install: Warning: $1${normal:-}" >&3
 }
 
 say_err() {
@@ -183,6 +183,9 @@ get_current_os_name() {
         elif is_musl_based_distro; then
             echo "linux-musl"
             return 0
+        elif [ "$linux_platform_name" = "linux-musl" ]; then
+            echo "linux-musl"
+            return 0
         else
             echo "linux"
             return 0
@@ -296,7 +299,7 @@ get_machine_architecture() {
     if command -v uname > /dev/null; then
         CPUName=$(uname -m)
         case $CPUName in
-        armv7l)
+        armv*l)
             echo "arm"
             return 0
             ;;
@@ -341,6 +344,30 @@ get_normalized_architecture_from_architecture() {
     return 1
 }
 
+# args:
+# user_defined_os - $1
+get_normalized_os() {
+    eval $invocation
+
+    local osname="$(to_lowercase "$1")"
+    if [ ! -z "$osname" ]; then
+        case "$osname" in
+            osx | freebsd | rhel.6 | linux-musl | linux)
+                echo "$osname"
+                return 0
+                ;;
+            *)
+                say_err "'$user_defined_os' is not a supported value for --os option, supported values are: osx, linux, linux-musl, freebsd, rhel.6. If you think this is a bug, report it at https://github.com/dotnet/install-scripts/issues."
+                return 1
+                ;;
+        esac
+    else
+        osname="$(get_current_os_name)" || return 1
+    fi
+    echo "$osname"
+    return 0
+}
+
 # The version text returned from the feeds is a 1-line or 2-line string:
 # For the SDK and the dotnet runtime (2 lines):
 # Line 1: # commit_hash
@@ -382,14 +409,12 @@ is_dotnet_package_installed() {
 # azure_feed - $1
 # channel - $2
 # normalized_architecture - $3
-# coherent - $4
 get_latest_version_info() {
     eval $invocation
 
     local azure_feed="$1"
     local channel="$2"
     local normalized_architecture="$3"
-    local coherent="$4"
 
     local version_file_url=null
     if [[ "$runtime" == "dotnet" ]]; then
@@ -397,11 +422,7 @@ get_latest_version_info() {
     elif [[ "$runtime" == "aspnetcore" ]]; then
         version_file_url="$uncached_feed/aspnetcore/Runtime/$channel/latest.version"
     elif [ -z "$runtime" ]; then
-        if [ "$coherent" = true ]; then
-            version_file_url="$uncached_feed/Sdk/$channel/latest.coherent.version"
-        else
-            version_file_url="$uncached_feed/Sdk/$channel/latest.version"
-        fi
+         version_file_url="$uncached_feed/Sdk/$channel/latest.version"
     else
         say_err "Invalid value for \$runtime"
         return 1
@@ -468,26 +489,16 @@ get_specific_version_from_version() {
     local json_file="$5"
 
     if [ -z "$json_file" ]; then
-        case "$version" in
-            latest)
-                local version_info
-                version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" false)" || return 1
-                say_verbose "get_specific_version_from_version: version_info=$version_info"
-                echo "$version_info" | get_version_from_version_info
-                return 0
-                ;;
-            coherent)
-                local version_info
-                version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" true)" || return 1
-                say_verbose "get_specific_version_from_version: version_info=$version_info"
-                echo "$version_info" | get_version_from_version_info
-                return 0
-                ;;
-            *)
-                echo "$version"
-                return 0
-                ;;
-        esac
+        if [[ "$version" == "latest" ]]; then 
+            local version_info
+            version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" false)" || return 1
+            say_verbose "get_specific_version_from_version: version_info=$version_info"
+            echo "$version_info" | get_version_from_version_info
+            return 0
+        else
+            echo "$version"
+            return 0
+        fi
     else
         local version_info
         version_info="$(parse_jsonfile_for_version "$json_file")" || return 1
@@ -501,6 +512,7 @@ get_specific_version_from_version() {
 # channel - $2
 # normalized_architecture - $3
 # specific_version - $4
+# normalized_os - $5
 construct_download_link() {
     eval $invocation
 
@@ -509,10 +521,8 @@ construct_download_link() {
     local normalized_architecture="$3"
     local specific_version="${4//[$'\t\r\n']}"
     local specific_product_version="$(get_specific_product_version "$1" "$4")"
-
-    local osname
-    osname="$(get_current_os_name)" || return 1
-
+    local osname="$5"
+    
     local download_link=null
     if [[ "$runtime" == "dotnet" ]]; then
         download_link="$azure_feed/Runtime/$specific_version/dotnet-runtime-$specific_product_version-$osname-$normalized_architecture.tar.gz"
@@ -692,11 +702,31 @@ extract_dotnet_package() {
     find "$temp_out_path" -type f | grep -Ev "$folders_with_version_regex" | copy_files_or_dirs_from_list "$temp_out_path" "$out_path" "$override_non_versioned_files"
 
     rm -rf "$temp_out_path"
+    rm -f "$zip_path" && say_verbose "Temporary zip file $zip_path was removed"
 
     if [ "$failed" = true ]; then
         say_err "Extraction failed"
         return 1
     fi
+    return 0
+}
+
+get_http_header_curl() {
+    eval $invocation
+    local remote_path="$1"
+    remote_path_with_credential="${remote_path}${feed_credential}"
+    curl_options="-I -sSL --retry 5 --retry-delay 2 --connect-timeout 15 "
+    curl $curl_options "$remote_path_with_credential" || return 1
+    return 0
+}
+
+get_http_header_wget() {
+    eval $invocation
+    local remote_path="$1"
+    remote_path_with_credential="${remote_path}${feed_credential}"
+    wget_options="-q -S --spider --tries 5 --waitretry 2 --connect-timeout 15 "
+    wget $wget_options "$remote_path_with_credential" 2>&1 || return 1
+    return 0
 }
 
 # args:
@@ -728,44 +758,56 @@ download() {
     return 0
 }
 
+# Updates global variables $http_code and $download_error_msg
 downloadcurl() {
     eval $invocation
     local remote_path="$1"
     local out_path="${2:-}"
-
     # Append feed_credential as late as possible before calling curl to avoid logging feed_credential
-    remote_path="${remote_path}${feed_credential}"
-
+    local remote_path_with_credential="${remote_path}${feed_credential}"
     local curl_options="--retry 20 --retry-delay 2 --connect-timeout 15 -sSL -f --create-dirs "
     local failed=false
     if [ -z "$out_path" ]; then
-        curl $curl_options "$remote_path" || failed=true
+        curl $curl_options "$remote_path_with_credential" || failed=true
     else
-        curl $curl_options -o "$out_path" "$remote_path" || failed=true
+        curl $curl_options -o "$out_path" "$remote_path_with_credential" || failed=true
     fi
     if [ "$failed" = true ]; then
-        say_verbose "Curl download failed"
+        local response=$(get_http_header_curl $remote_path_with_credential)
+        http_code=$( echo "$response" | awk '/^HTTP/{print $2}' | tail -1 )
+        download_error_msg="Unable to download $remote_path."
+        if  [[ $http_code != 2* ]]; then
+            download_error_msg+=" Returned HTTP status code: $http_code."
+        fi
+        say_verbose "$download_error_msg"
         return 1
     fi
     return 0
 }
 
+
+# Updates global variables $http_code and $download_error_msg
 downloadwget() {
     eval $invocation
     local remote_path="$1"
     local out_path="${2:-}"
-
     # Append feed_credential as late as possible before calling wget to avoid logging feed_credential
-    remote_path="${remote_path}${feed_credential}"
+    local remote_path_with_credential="${remote_path}${feed_credential}"
     local wget_options="--tries 20 --waitretry 2 --connect-timeout 15 "
     local failed=false
     if [ -z "$out_path" ]; then
-        wget -q $wget_options -O - "$remote_path" || failed=true
+        wget -q $wget_options -O - "$remote_path_with_credential" || failed=true
     else
-        wget $wget_options -O "$out_path" "$remote_path" || failed=true
+        wget $wget_options -O "$out_path" "$remote_path_with_credential" || failed=true
     fi
     if [ "$failed" = true ]; then
-        say_verbose "Wget download failed"
+        local response=$(get_http_header_wget $remote_path_with_credential)
+        http_code=$( echo "$response" | awk '/^  HTTP/{print $2}' | tail -1 )
+        download_error_msg="Unable to download $remote_path."
+        if  [[ $http_code != 2* ]]; then
+            download_error_msg+=" Returned HTTP status code: $http_code."
+        fi
+        say_verbose "$download_error_msg"
         return 1
     fi
     return 0
@@ -778,6 +820,9 @@ calculate_vars() {
     normalized_architecture="$(get_normalized_architecture_from_architecture "$architecture")"
     say_verbose "normalized_architecture=$normalized_architecture"
 
+    normalized_os="$(get_normalized_os "$user_defined_os")"
+    say_verbose "normalized_os=$normalized_os"
+
     specific_version="$(get_specific_version_from_version "$azure_feed" "$channel" "$normalized_architecture" "$version" "$json_file")"
     specific_product_version="$(get_specific_product_version "$azure_feed" "$specific_version")"
     say_verbose "specific_version=$specific_version"
@@ -786,7 +831,7 @@ calculate_vars() {
         return 1
     fi
 
-    download_link="$(construct_download_link "$azure_feed" "$channel" "$normalized_architecture" "$specific_version")"
+    download_link="$(construct_download_link "$azure_feed" "$channel" "$normalized_architecture" "$specific_version" "$normalized_os")"
     say_verbose "Constructed primary named payload URL: $download_link"
 
     legacy_download_link="$(construct_legacy_download_link "$azure_feed" "$channel" "$normalized_architecture" "$specific_version")" || valid_legacy_download_link=false
@@ -831,38 +876,76 @@ install_dotnet() {
     zip_path="$(mktemp "$temporary_file_template")"
     say_verbose "Zip path: $zip_path"
 
-    say "Downloading link: $download_link"
 
     # Failures are normal in the non-legacy case for ultimately legacy downloads.
     # Do not output to stderr, since output to stderr is considered an error.
+    say "Downloading primary link $download_link"
+
+    # The download function will set variables $http_code and $download_error_msg in case of failure.
+    http_code=""; download_error_msg=""
     download "$download_link" "$zip_path" 2>&1 || download_failed=true
+    primary_path_http_code="$http_code"; primary_path_download_error_msg="$download_error_msg"
 
     #  if the download fails, download the legacy_download_link
     if [ "$download_failed" = true ]; then
-        say "Cannot download: $download_link"
-
+        case $primary_path_http_code in
+        404)
+            say "The resource at $download_link is not available."
+            ;;
+        *)
+            say "$primary_path_download_error_msg"
+            ;;
+        esac
+        rm -f "$zip_path" 2>&1 && say_verbose "Temporary zip file $zip_path was removed"
         if [ "$valid_legacy_download_link" = true ]; then
             download_failed=false
             download_link="$legacy_download_link"
             zip_path="$(mktemp "$temporary_file_template")"
             say_verbose "Legacy zip path: $zip_path"
-            say "Downloading legacy link: $download_link"
+
+            say "Downloading legacy link $download_link"
+
+            # The download function will set variables $http_code and $download_error_msg in case of failure.
+            http_code=""; download_error_msg=""
             download "$download_link" "$zip_path" 2>&1 || download_failed=true
+            legacy_path_http_code="$http_code";  legacy_path_download_error_msg="$download_error_msg"
 
             if [ "$download_failed" = true ]; then
-                say "Cannot download: $download_link"
+                case $legacy_path_http_code in
+                404)
+                    say "The resource at $download_link is not available."
+                    ;;
+                *)
+                    say "$legacy_path_download_error_msg"
+                    ;;
+                esac
+                rm -f "$zip_path" 2>&1 && say_verbose "Temporary zip file $zip_path was removed"
             fi
         fi
     fi
 
     if [ "$download_failed" = true ]; then
-        say_err "Could not find/download: \`$asset_name\` with version = $specific_version"
-        say_err "Refer to: https://aka.ms/dotnet-os-lifecycle for information on .NET Core support"
+        if [[ "$primary_path_http_code" = "404" && ( "$valid_legacy_download_link" = false || "$legacy_path_http_code" = "404") ]]; then
+            say_err "Could not find \`$asset_name\` with version = $specific_version"
+            say_err "Refer to: https://aka.ms/dotnet-os-lifecycle for information on .NET Core support"
+        else
+            say_err "Could not download: \`$asset_name\` with version = $specific_version"
+            # 404-NotFound is an expected response if it goes from only one of the links, do not show that error.
+            # If primary path is available (not 404-NotFound) then show the primary error else show the legacy error.
+            if [ "$primary_path_http_code" != "404" ]; then
+                say_err "$primary_path_download_error_msg"
+                return 1
+            fi
+            if [[ "$valid_legacy_download_link" = true  && "$legacy_path_http_code" != "404" ]]; then
+                say_err "$legacy_path_download_error_msg"
+                return 1
+            fi
+        fi
         return 1
     fi
 
     say "Extracting zip from $download_link"
-    extract_dotnet_package "$zip_path" "$install_root"
+    extract_dotnet_package "$zip_path" "$install_root" || return 1
 
     #  Check if the SDK version is installed; if not, fail the installation.
     # if the version contains "RTM" or "servicing"; check if a 'release-type' SDK version is installed.
@@ -883,6 +966,8 @@ install_dotnet() {
         return 0
     fi
 
+    # Version verification failed. More likely something is wrong either with the downloaded content or with the verification algorithm.
+    say_err "Failed to verify the version of installed \`$asset_name\`.\nInstallation source: $download_link.\nInstallation location: $install_root.\nReport the bug at https://github.com/dotnet/install-scripts/issues."
     say_err "\`$asset_name\` with version = $specific_product_version failed to install with an unknown error."
     return 1
 }
@@ -909,6 +994,7 @@ runtime=""
 runtime_id=""
 override_non_versioned_files=true
 non_dynamic_parameters=""
+user_defined_os=""
 
 while [ $# -ne 0 ]
 do
@@ -929,6 +1015,10 @@ do
         --arch|--architecture|-[Aa]rch|-[Aa]rchitecture)
             shift
             architecture="$1"
+            ;;
+        --os|-[Oo][SS])
+            shift
+            user_defined_os="$1"
             ;;
         --shared-runtime|-[Ss]hared[Rr]untime)
             say_warning "The --shared-runtime flag is obsolete and may be removed in a future version of this script. The recommended usage is to specify '--runtime dotnet'."
@@ -981,6 +1071,7 @@ do
             shift
             runtime_id="$1"
             non_dynamic_parameters+=" $name "\""$1"\"""
+            say_warning "Use of --runtime-id is obsolete and should be limited to the versions below 2.1. To override architecture, use --architecture option instead. To override OS, use --os option instead."
             ;;
         --jsonfile|-[Jj][Ss]on[Ff]ile)
             shift
@@ -1013,8 +1104,6 @@ do
             echo "      -Version"
             echo "          Possible values:"
             echo "          - latest - most latest build on specific channel"
-            echo "          - coherent - most latest coherent build on specific channel"
-            echo "              coherent applies only to SDK downloads"
             echo "          - 3-part version in a format A.B.C - represents specific version of build"
             echo "              examples: 2.0.0-preview2-006120; 1.1.0"
             echo "  -i,--install-dir <DIR>             Install under specified location (see Install Location below)"
@@ -1022,6 +1111,11 @@ do
             echo "  --architecture <ARCHITECTURE>      Architecture of dotnet binaries to be installed, Defaults to \`$architecture\`."
             echo "      --arch,-Architecture,-Arch"
             echo "          Possible values: x64, arm, and arm64"
+            echo "  --os <system>                    Specifies operating system to be used when selecting the installer."
+            echo "          Overrides the OS determination approach used by the script. Supported values: osx, linux, linux-musl, freebsd, rhel.6."  
+            echo "          In case any other value is provided, the platform will be determined by the script based on machine configuration."       
+            echo "          Not supported for legacy links. Use --runtime-id to specify platform for legacy links."
+            echo "          Refer to: https://aka.ms/dotnet-os-lifecycle for more information."                 
             echo "  --runtime <RUNTIME>                Installs a shared runtime only, without the SDK."
             echo "      -Runtime"
             echo "          Possible values:"
@@ -1038,14 +1132,15 @@ do
             echo "  --no-cdn,-NoCdn                    Disable downloading from the Azure CDN, and use the uncached feed directly."
             echo "  --jsonfile <JSONFILE>              Determines the SDK version from a user specified global.json file."
             echo "                                     Note: global.json must have a value for 'SDK:Version'"
-            echo "  --runtime-id                       Installs the .NET Tools for the given platform (use linux-x64 for portable linux)."
-            echo "      -RuntimeId"
             echo "  -?,--?,-h,--help,-Help             Shows this help message"
             echo ""
             echo "Obsolete parameters:"
             echo "  --shared-runtime                   The recommended alternative is '--runtime dotnet'."
             echo "                                     This parameter is obsolete and may be removed in a future version of this script."
             echo "                                     Installs just the shared runtime bits, not the entire SDK."
+            echo "  --runtime-id                       Installs the .NET Tools for the given platform (use linux-x64 for portable linux)."
+            echo "      -RuntimeId"                    The parameter is obsolete and may be removed in a future version of this script. Should be used only for versions below 2.1.
+            echo "                                     For primary links to override OS or/and architecture, use --os and --architecture option instead." 
             echo ""
             echo "Install Location:"
             echo "  Location is chosen in following order:"
@@ -1082,7 +1177,7 @@ if [ "$dry_run" = true ]; then
     if [ "$valid_legacy_download_link" = true ]; then
         say "Legacy named payload URL: $legacy_download_link"
     fi
-    repeatable_command="./$script_name --version "\""$specific_version"\"" --install-dir "\""$install_root"\"" --architecture "\""$normalized_architecture"\"""
+    repeatable_command="./$script_name --version "\""$specific_version"\"" --install-dir "\""$install_root"\"" --architecture "\""$normalized_architecture"\"" --os "\""$normalized_os"\""" 
     if [[ "$runtime" == "dotnet" ]]; then
         repeatable_command+=" --runtime "\""dotnet"\"""
     elif [[ "$runtime" == "aspnetcore" ]]; then

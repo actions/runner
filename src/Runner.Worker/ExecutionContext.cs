@@ -858,6 +858,10 @@ namespace GitHub.Runner.Worker
             {
                 _record.ParentId = parentTimelineRecordId;
             }
+            else if (parentTimelineRecordId == null)
+            {
+                _record.AgentPlatform = VarUtil.OS;
+            }
 
             var configuration = HostContext.GetService<IConfigurationStore>();
             _record.WorkerName = configuration.GetSettings().AgentName;
@@ -916,6 +920,12 @@ namespace GitHub.Runner.Worker
         public static void Error(this IExecutionContext context, string message)
         {
             context.AddIssue(new Issue() { Type = IssueType.Error, Message = message });
+        }
+
+        // Do not add a format string overload. See comment on ExecutionContext.Write().
+        public static void InfrastructureError(this IExecutionContext context, string message)
+        {
+            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true});
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().

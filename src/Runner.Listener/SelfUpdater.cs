@@ -8,7 +8,9 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
 using GitHub.Services.WebApi;
+using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -110,7 +112,7 @@ namespace GitHub.Runner.Listener
             // old server won't send target version as part of update message.
             if (string.IsNullOrEmpty(targetVersion))
             {
-                var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, token);
+                var packages = await _runnerServer.GetPackagesAsync(_packageType, _platform, 1, true, token);
                 if (packages == null || packages.Count == 0)
                 {
                     Trace.Info($"There is no package for {_packageType} and {_platform}.");
@@ -121,7 +123,7 @@ namespace GitHub.Runner.Listener
             }
             else
             {
-                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, token);
+                _targetPackage = await _runnerServer.GetPackageAsync(_packageType, _platform, targetVersion, true, token);
                 if (_targetPackage == null)
                 {
                     Trace.Info($"There is no package for {_packageType} and {_platform} with version {targetVersion}.");
@@ -211,12 +213,22 @@ namespace GitHub.Runner.Listener
 
                             //open zip stream in async mode
                             using (HttpClient httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
-                            using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
-                            using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
                             {
-                                //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k). 
-                                await result.CopyToAsync(fs, 81920, downloadCts.Token);
-                                await fs.FlushAsync(downloadCts.Token);
+                                if (!string.IsNullOrEmpty(_targetPackage.Token))
+                                {
+                                    Trace.Info($"Adding authorization token ({_targetPackage.Token.Length} chars)");
+                                    httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _targetPackage.Token);
+                                }
+
+                                Trace.Info($"Downloading {_targetPackage.DownloadUrl}");
+
+                                using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                                using (Stream result = await httpClient.GetStreamAsync(_targetPackage.DownloadUrl))
+                                {
+                                    //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
+                                    await result.CopyToAsync(fs, 81920, downloadCts.Token);
+                                    await fs.FlushAsync(downloadCts.Token);
+                                }
                             }
 
                             Trace.Info($"Download runner: finished download");
@@ -246,6 +258,24 @@ namespace GitHub.Runner.Listener
                 }
 
                 // If we got this far, we know that we've successfully downloaded the runner package
+                // Validate Hash Matches if it is provided
+                using (FileStream stream = File.OpenRead(archiveFile))
+                {
+                    if (!String.IsNullOrEmpty(_targetPackage.HashValue))
+                    {
+                        using (SHA256 sha256 = SHA256.Create())
+                        {
+                            byte[] srcHashBytes = await sha256.ComputeHashAsync(stream);
+                            var hash = PrimitiveExtensions.ConvertToHexString(srcHashBytes);
+                            if (hash != _targetPackage.HashValue)
+                            {
+                                // Hash did not match, we can't recover from this, just throw
+                                throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {_targetPackage.HashValue} for {_targetPackage.Filename}");
+                            }
+                            Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {_targetPackage.HashValue}");
+                        }
+                    }
+                }
                 if (archiveFile.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                 {
                     ZipFile.ExtractToDirectory(archiveFile, latestRunnerDirectory);
@@ -327,8 +357,13 @@ namespace GitHub.Runner.Listener
             Trace.Info($"Copy any remaining .sh/.cmd files into runner root.");
             foreach (FileInfo file in new DirectoryInfo(latestRunnerDirectory).GetFiles() ?? new FileInfo[0])
             {
-                // Copy and replace the file.
-                file.CopyTo(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name), true);
+                string destination = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name);
+
+                // Removing the file instead of just trying to overwrite it works around permissions issues on linux.
+                // https://github.com/actions/runner/issues/981
+                Trace.Info($"Copy {file.FullName} to {destination}");
+                IOUtil.DeleteFile(destination);
+                file.CopyTo(destination, true);
             }
         }
 
