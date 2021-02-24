@@ -21,6 +21,11 @@ namespace GitHub.Runner.Worker.Container
         {
         }
 
+        public ContainerInfo(IHostContext hostContext)
+        {
+            UpdateWebProxyEnv(hostContext.WebProxy);
+        }
+
         public ContainerInfo(IHostContext hostContext, Pipelines.JobContainer container, bool isJobContainer = true, string networkAlias = null)
         {
             this.ContainerName = container.Alias;

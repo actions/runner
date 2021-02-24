@@ -2458,4 +2458,42 @@ namespace GitHub.DistributedTask.WebApi
         {
         }
     }
+
+    [Serializable]
+    public class UnresolvableActionDownloadInfoException : DistributedTaskException
+    {
+        public UnresolvableActionDownloadInfoException(String message)
+            : base(message)
+        {
+        }
+
+        public UnresolvableActionDownloadInfoException(String message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        protected UnresolvableActionDownloadInfoException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+    }
+
+    [Serializable]
+    public sealed class FailedToResolveActionDownloadInfoException : DistributedTaskException
+    {
+        public FailedToResolveActionDownloadInfoException(String message)
+            : base(message)
+        {
+        }
+
+        public FailedToResolveActionDownloadInfoException(String message, Exception innerException)
+            : base(message, innerException)
+        {
+        }
+
+        private FailedToResolveActionDownloadInfoException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+        }
+    }
 }

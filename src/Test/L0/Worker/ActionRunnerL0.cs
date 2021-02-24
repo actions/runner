@@ -333,6 +333,66 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec.Verify(x => x.AddIssue(It.Is<Issue>(s => s.Message.Contains("Unexpected input(s) 'invalid1', 'invalid2'")), It.IsAny<string>()), Times.Once);
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void SetGitHubContextActionRepoRef()
+        {
+            //Arrange
+            Setup();
+            var actionId = Guid.NewGuid();
+            var actionInputs = new MappingToken(null, null, null);
+            actionInputs.Add(new StringToken(null, null, null, "input1"), new StringToken(null, null, null, "test1"));
+            actionInputs.Add(new StringToken(null, null, null, "input2"), new StringToken(null, null, null, "test2"));
+            var action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.RepositoryPathReference()
+                {
+                    Name = "actions/test",
+                    Ref = "master"
+                },
+                Inputs = actionInputs
+            };
+
+            _actionRunner.Action = action;
+
+            Dictionary<string, string> finialInputs = new Dictionary<string, string>();
+            _handlerFactory.Setup(x => x.Create(It.IsAny<IExecutionContext>(), It.IsAny<ActionStepDefinitionReference>(), It.IsAny<IStepHost>(), It.IsAny<ActionExecutionData>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<Variables>(), It.IsAny<string>()))
+                           .Callback((IExecutionContext executionContext, Pipelines.ActionStepDefinitionReference actionReference, IStepHost stepHost, ActionExecutionData data, Dictionary<string, string> inputs, Dictionary<string, string> environment, Variables runtimeVariables, string taskDirectory) =>
+                           {
+                               finialInputs = inputs;
+                           })
+                           .Returns(new Mock<IHandler>().Object);
+
+            //Act
+            await _actionRunner.RunAsync();
+
+            //Assert
+            _ec.Verify(x => x.SetGitHubContext("action_repository", "actions/test"), Times.Once);
+            _ec.Verify(x => x.SetGitHubContext("action_ref", "master"), Times.Once);
+
+            action = new Pipelines.ActionStep()
+            {
+                Name = "action",
+                Id = actionId,
+                Reference = new Pipelines.ScriptReference(),
+                Inputs = actionInputs
+            };
+            _actionRunner.Action = action;
+
+            _hc.EnqueueInstance<IDefaultStepHost>(_defaultStepHost.Object);
+            _hc.EnqueueInstance(_fileCommandManager.Object);
+
+            //Act
+            await _actionRunner.RunAsync();
+
+            //Assert
+            _ec.Verify(x => x.SetGitHubContext("action_repository", null), Times.Once);
+            _ec.Verify(x => x.SetGitHubContext("action_ref", null), Times.Once);
+        }
+
         private void Setup([CallerMemberName] string name = "")
         {
             _ecTokenSource?.Dispose();

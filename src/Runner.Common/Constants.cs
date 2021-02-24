@@ -99,9 +99,11 @@ namespace GitHub.Runner.Common
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Token = "token";
+                    public static readonly string PAT = "pat";
                     public static readonly string WindowsLogonPassword = "windowslogonpassword";
                     public static string[] Secrets => new[]
                     {
+                        PAT,
                         Token,
                         WindowsLogonPassword,
                     };
@@ -119,6 +121,7 @@ namespace GitHub.Runner.Common
                 //validFlags array as well present in the CommandSettings.cs
                 public static class Flags
                 {
+                    public static readonly string Check = "check";
                     public static readonly string Commit = "commit";
                     public static readonly string Help = "help";
                     public static readonly string Replace = "replace";
@@ -138,8 +141,14 @@ namespace GitHub.Runner.Common
                 public const int RunOnceRunnerUpdating = 4;
             }
 
+            public static class Features
+            {
+                public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
+            }
+
             public static readonly string InternalTelemetryIssueDataKey = "_internal_telemetry";
             public static readonly string WorkerCrash = "WORKER_CRASH";
+            public static readonly string LowDiskSpace = "LOW_DISK_SPACE";
             public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
             public static readonly string UnsupportedCommandMessageDisabled = "The `{0}` command is disabled. Please upgrade to using Environment Files or opt into unsecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_COMMANDS` environment variable to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
         }

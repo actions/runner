@@ -85,5 +85,19 @@ namespace GitHub.Services.Common
             var bytes = FromBase64StringNoPadding(base64String);
             return BitConverter.ToString(bytes).Replace("-", String.Empty);
         }
+
+        /// <summary>
+        /// Converts byte array into a hex string
+        /// </summary>
+        public static String ConvertToHexString(byte[] bytes)
+        {
+            // Convert byte array to string
+            var sBuilder = new StringBuilder();
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                sBuilder.Append(bytes[i].ToString("x2"));
+            }
+            return sBuilder.ToString();
+        }
     }
 }
