@@ -37,6 +37,12 @@ namespace GitHub.DistributedTask.Logging
             return Base64StringEscapeShift(value, 2);
         }
 
+        // Used when we pass environment variables to docker to escape " with \"
+        public static String CommandLineArgumentEscape(String value)
+        {
+            return value.Replace("\"", "\\\"");
+        }
+
         public static String ExpressionStringEscape(String value)
         {
             return Expressions2.Sdk.ExpressionUtility.StringEscape(value);
