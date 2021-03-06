@@ -22,6 +22,7 @@ namespace GitHub.DistributedTask.Pipelines
             this.Reference = actionToClone.Reference?.Clone();
 
             Environment = actionToClone.Environment?.Clone();
+            Retries = actionToClone.Retries;
             Inputs = actionToClone.Inputs?.Clone();
             ContextName = actionToClone?.ContextName;
             DisplayNameToken = actionToClone.DisplayNameToken?.Clone();
@@ -45,6 +46,9 @@ namespace GitHub.DistributedTask.Pipelines
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken Environment { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public Int32 Retries { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public TemplateToken Inputs { get; set; }

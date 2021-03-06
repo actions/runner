@@ -64,6 +64,8 @@ namespace GitHub.Runner.Worker
 
         public Pipelines.ActionStep Action { get; set; }
 
+        public Int32 Retries => Action?.Retries ?? 0;
+
         public TemplateToken Timeout => Action?.TimeoutInMinutes;
 
         public async Task RunAsync()

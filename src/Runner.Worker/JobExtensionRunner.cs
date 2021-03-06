@@ -26,6 +26,7 @@ namespace GitHub.Runner.Worker
         public TemplateToken ContinueOnError => new BooleanToken(null, null, null, false);
         public string DisplayName { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
+        public Int32 Retries => 0;
         public TemplateToken Timeout => new NumberToken(null, null, null, 0);
         public object Data => _data;
 
