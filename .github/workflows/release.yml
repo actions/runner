@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-    - releaseVersion
+    - version.json
   
 jobs:
   check:
@@ -12,8 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
-    # Make sure ./releaseVersion match ./src/runnerversion 
     # Query GitHub release ensure version is not used 
     - name: Check version
       uses: actions/github-script@0.3.0
@@ -22,18 +23,12 @@ jobs:
         script: |
           const core = require('@actions/core')
           const fs = require('fs');
-          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
-          const releaseVersion = fs.readFileSync('${{ github.workspace }}/releaseVersion', 'utf8').replace(/\n$/g, '')
-          if (runnerVersion != releaseVersion) {
-            console.log('Request Release Version: ' + releaseVersion + '\nCurrent Runner Version: ' + runnerVersion)
-            core.setFailed('Version mismatch! Make sure ./releaseVersion match ./src/runnerVersion')
-            return
-          }
+          const releaseVersion = JSON.parse(fs.readFileSync('${{ github.workspace }}/version.json', 'utf8').replace(/\n$/g, '')).version;
           try {
             const release = await github.repos.getReleaseByTag({
               owner: '${{ github.event.repository.owner.name }}',
               repo: '${{ github.event.repository.name }}',
-              tag: 'v' + runnerVersion
+              tag: 'v' + releaseVersion
             })
             core.setFailed('Release with same tag already created: ' + release.data.html_url)
           } catch (e) {
@@ -53,51 +48,52 @@ jobs:
       osx-x64-sha: ${{ steps.sha.outputs.osx-x64-sha256 }}
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        rid: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
         include:
-        - runtime: linux-x64
+        - rid: linux-x64
           os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: linux-arm64
+        - rid: linux-arm64
           os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: linux-arm
+        - rid: linux-arm
           os: ubuntu-latest
-          devScript: ./dev.sh
-
-        - runtime: osx-x64
+        - rid: osx-x64
           os: macOS-latest
-          devScript: ./dev.sh
-
-        - runtime: win-x64
+        - rid: win-x64
           os: windows-latest
-          devScript: ./dev
 
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
-    # Build runner layout
-    - name: Build & Layout Release
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+      if: matrix.os == 'windows-latest'
+
+    - name: Build 
       run: |
-        ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
-      working-directory: src
+        ./tools/StartBuild.ps1 ${{ matrix.rid }}
+      shell: pwsh
+
+    - name: Layout
+      run: |
+        ./tools/StartLayout.ps1 ${{ matrix.rid }}
+      shell: pwsh 
 
     # Run tests
     - name: L0
       run: |
-        ${{ matrix.devScript }} test
-      working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+        ./tools/StartTest.ps1 ${{ matrix.rid }}
+      shell: pwsh
+      if: matrix.rid != 'linux-arm64' && matrix.rid != 'linux-arm'
 
     # Create runner package tar.gz/zip
-    - name: Package Release
+    - name: Package
       if: github.event_name != 'pull_request'
       run: |
-        ${{ matrix.devScript }} package Release ${{ matrix.runtime }}
-      working-directory: src
+        ./tools/StartPackage.ps1 ${{ matrix.rid }}
+      shell: pwsh 
 
     # Upload runner package tar.gz/zip as artifact.
     # Since each package name is unique, so we don't need to put ${{matrix}} info into artifact name
@@ -107,16 +103,13 @@ jobs:
       with:
         name: runner-packages
         path: _package
-    # compute shas and set as job outputs to use in release notes
-    - run: brew install coreutils #needed for shasum util
-      if: ${{ matrix.os == 'macOS-latest' }}
-      name: Install Dependencies for SHA Calculation (osx)
+    
     - run: |
-        file=$(ls)
-        sha=$(sha256sum $file | awk '{ print $1 }')
-        echo "Computed sha256: $sha for $file"
+        $file = Get-ChildItem
+        $sha = (Get-ChildItem|Get-FileHash -Algorithm SHA256).Hash.ToString()
+        Write-Host "Computed sha256: $sha for $file"
         echo "::set-output name=${{matrix.runtime}}-sha256::$sha"
-      shell: bash
+      shell: pwsh
       id: sha
       name: Compute SHA256
       working-directory: _package
@@ -143,15 +136,15 @@ jobs:
         script: |
           const core = require('@actions/core')
           const fs = require('fs');
-          const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
-          var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
+          const releaseVersion = JSON.parse(fs.readFileSync('${{ github.workspace }}/version.json', 'utf8').replace(/\n$/g, '')).version;
+          var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, releaseVersion)
           releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, '${{needs.build.outputs.win-x64-sha}}')
           releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, '${{needs.build.outputs.osx-x64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, '${{needs.build.outputs.linux-x64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, '${{needs.build.outputs.linux-arm-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
           console.log(releaseNote)
-          core.setOutput('version', runnerVersion);
+          core.setOutput('version', releaseVersion);
           core.setOutput('note', releaseNote);  
     # Create GitHub release
     - uses: actions/create-release@master

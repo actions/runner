@@ -1,4 +1,6 @@
-﻿using System.IO;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using Xunit;
 using GitHub.Runner.Sdk;
 using System.Runtime.CompilerServices;
@@ -33,6 +35,16 @@ namespace GitHub.Runner.Common.Tests
             ArgUtil.Directory(srcDir, nameof(srcDir));
             Assert.Equal(Src, Path.GetFileName(srcDir));
             return srcDir;
+        }
+
+        public static string GetWorkSpacePath()
+        {
+            var dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            while (Directory.GetFiles(dir,"version.json").Length == 0)
+            {
+                dir = Path.GetDirectoryName(dir);
+            }
+            return dir;
         }
 
         public static string GetTestDataPath()
