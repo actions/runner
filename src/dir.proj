@@ -25,7 +25,7 @@
             <BuildConstants Include="}"/>
         </ItemGroup>
 
-        <WriteLinesToFile File="Runner.Sdk/BuildConstants.cs" Lines="@(BuildConstants)" Overwrite="true" Encoding="Unicode"/>
+        <WriteLinesToFile File="Runner.Sdk/BuildConstants.cs" Lines="@(BuildConstants)" Overwrite="true" />
     </Target>
 
     <ItemGroup>
