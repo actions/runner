@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -591,7 +591,7 @@ namespace Runner.Host.Controllers
                                     int i = 0;
                                     foreach (var item in flatmatrix)
                                     {
-                                        strategyctx["job-index"] = new NumberContextData(i++);
+                                        strategyctx["job-index"] = new NumberContextData((double)(i++));
                                         var matrixContext = new DictionaryContextData();
                                         foreach (var mk in item)
                                         {
