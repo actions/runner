@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Runner.Host.Controllers
@@ -14,12 +16,16 @@ namespace Runner.Host.Controllers
     [Route("runner/host/_apis/v1/[controller]")]
     public class ActionDownloadInfoController : VssControllerBase
     {
-
-        private readonly ILogger<ActionDownloadInfoController> _logger;
-
-        public ActionDownloadInfoController(ILogger<ActionDownloadInfoController> logger)
+        private List<ActionDownloadUrls> downloadUrls;
+        private class ActionDownloadUrls
         {
-            _logger = logger;
+            public string TarbalUrl { get; set; }
+            public string ZipbalUrl { get; set; }
+        }
+
+        public ActionDownloadInfoController(IConfiguration configuration)
+        {
+            downloadUrls = configuration.GetSection("Runner.Host:ActionDownloadUrls").Get<List<ActionDownloadUrls>>();
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
@@ -28,12 +34,16 @@ namespace Runner.Host.Controllers
             ActionReferenceList reflist = await FromBody<ActionReferenceList>();
             var actions = new Dictionary<string, ActionDownloadInfo>();
             foreach (var item in reflist.Actions) {
-                // actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"https://api.github.com/repos/{item.NameWithOwner}/tarball/{item.Ref}", ZipballUrl = $"https://api.github.com/repos/{item.NameWithOwner}/zipball/{item.Ref}"};
-                actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"http://ubuntu:3042/{item.NameWithOwner}/archive/{item.Ref}.tar.gz", ZipballUrl = $"http://ubuntu:3042/{item.NameWithOwner}/archive/{item.Ref}.zip"};
+                foreach(var downloadUrl in downloadUrls) {
+                    var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = String.Format(downloadUrl.TarbalUrl, item.NameWithOwner, item.Ref), ZipballUrl = String.Format(downloadUrl.ZipbalUrl, item.NameWithOwner, item.Ref) };
+                    var client = new HttpClient();
+                    if((await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.TarballUrl))).IsSuccessStatusCode && (await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.ZipballUrl))).IsSuccessStatusCode) {
+                        actions[$"{item.NameWithOwner}@{item.Ref}"] = downloadinfo;
+                        break;
+                    }
+                }
             }
             return await Ok(new ActionDownloadInfoCollection() {Actions = actions });
-        }
-
-        
+        }        
     }
 }
