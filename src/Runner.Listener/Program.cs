@@ -16,7 +16,7 @@ namespace GitHub.Runner.Listener
         public static int Main(string[] args)
         {
             // Add environment variables from .env file
-            LoadAndSetEnv();
+            EnvironmentParser.LoadAndSetEnvironment();
 
             using (HostContext context = new HostContext("Runner"))
             {
@@ -27,9 +27,9 @@ namespace GitHub.Runner.Listener
         // Return code definition: (this will be used by service host to determine whether it will re-launch Runner.Listener)
         // 0: Runner exit
         // 1: Terminate failure
-        // 2: Retriable failure
+        // 2: Retryable failure
         // 3: Exit for self update
-        private async static Task<int> MainAsync(IHostContext context, string[] args)
+        private static async Task<int> MainAsync(IHostContext context, string[] args)
         {
             Tracing trace = context.GetTrace(nameof(GitHub.Runner.Listener));
             trace.Info($"Runner is built for {Constants.Runner.Platform} ({Constants.Runner.PlatformArchitecture}) - {BuildConstants.RunnerPackage.PackageName}.");
@@ -124,35 +124,6 @@ namespace GitHub.Runner.Listener
                 terminal.WriteError($"An error occurred: {e.Message}");
                 trace.Error(e);
                 return Constants.Runner.ReturnCode.RetryableError;
-            }
-        }
-
-        private static void LoadAndSetEnv()
-        {
-            var binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            var rootDir = new DirectoryInfo(binDir).Parent.FullName;
-            string envFile = Path.Combine(rootDir, ".env");
-            if (File.Exists(envFile))
-            {
-                var envContents = File.ReadAllLines(envFile);
-                foreach (var env in envContents)
-                {
-                    if (!string.IsNullOrEmpty(env))
-                    {
-                        var separatorIndex = env.IndexOf('=');
-                        if (separatorIndex > 0)
-                        {
-                            string envKey = env.Substring(0, separatorIndex);
-                            string envValue = null;
-                            if (env.Length > separatorIndex + 1)
-                            {
-                                envValue = env.Substring(separatorIndex + 1);
-                            }
-
-                            Environment.SetEnvironmentVariable(envKey, envValue);
-                        }
-                    }
-                }
             }
         }
     }
