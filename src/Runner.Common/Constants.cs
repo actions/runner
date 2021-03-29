@@ -50,6 +50,17 @@ namespace GitHub.Runner.Common
             Windows
         }
 
+        public static System.Runtime.InteropServices.OSPlatform ToInteropPlatform(this OSPlatform platform)
+        {
+            return platform switch
+            {
+                OSPlatform.Linux => System.Runtime.InteropServices.OSPlatform.Linux,
+                OSPlatform.OSX => System.Runtime.InteropServices.OSPlatform.OSX,
+                OSPlatform.Windows => System.Runtime.InteropServices.OSPlatform.Windows,
+                _ => System.Runtime.InteropServices.OSPlatform.FreeBSD // not supported
+            };
+        }
+
         public enum Architecture
         {
             X86,
