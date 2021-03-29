@@ -107,8 +107,6 @@ namespace Runner.Host
                                     builder.AllowAnyOrigin();
                                     builder.AllowAnyHeader();
                                     builder.AllowAnyMethod();
-                                    // builder.WithOrigins("http://*.fritz.box.com",
-                                    //                     "http://localhost:3000","http://desktop-3svg86b.fritz.box:3000");
                                 });
             });
             services.AddMemoryCache();
