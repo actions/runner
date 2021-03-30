@@ -43,12 +43,19 @@ namespace Runner.Server.Controllers
         private string GitApiServerUrl;
         private IMemoryCache _cache;
         private string GITHUB_TOKEN;
+        private List<Secret> secrets;
+
+        private class Secret {
+            public string Name {get;set;}
+            public string Value {get;set;}
+        }
 
         public MessageController(IConfiguration configuration, IMemoryCache memoryCache)
         {
-            GitServerUrl = configuration.GetSection("Runner.Server").GetValue<String>("GitServerUrl");
-            GitApiServerUrl = configuration.GetSection("Runner.Server").GetValue<String>("GitApiServerUrl");
-            GITHUB_TOKEN = configuration.GetSection("Runner.Server").GetValue<String>("GITHUB_TOKEN");
+            GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
+            GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
+            GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
+            secrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();
             _cache = memoryCache;
         }
 
@@ -769,6 +776,9 @@ namespace Runner.Server.Controllers
             variables.Add("system.github.token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("github_token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
+            foreach (var secret in secrets) {
+                variables.Add(secret.Name, new VariableValue(secret.Value, true));
+            }
             var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
             ConcurrentQueue<AgentJobRequestMessage> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<AgentJobRequestMessage>());
             queue.Enqueue(req);
