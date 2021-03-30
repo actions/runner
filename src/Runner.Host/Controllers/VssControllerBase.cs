@@ -89,8 +89,8 @@ namespace Runner.Host.Controllers
             }
         }
 
-        protected async Task<FileStreamResult> Ok<T>(T obj) {
-            return new FileStreamResult(await new ObjectContent<T>(obj, new VssJsonMediaTypeFormatter()).ReadAsStreamAsync(), "application/json");
+        protected async Task<FileStreamResult> Ok<T>(T obj, bool bypassSafeArrayWrapping  = false) {
+            return new FileStreamResult(await new ObjectContent<T>(obj, new VssJsonMediaTypeFormatter(bypassSafeArrayWrapping)).ReadAsStreamAsync(), "application/json");
         }
     }
 }

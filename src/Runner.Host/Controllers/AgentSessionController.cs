@@ -18,7 +18,7 @@ namespace Runner.Host.Controllers
 {
     // [Authorize]
     [ApiController]
-    [Route("runner/host/_apis/v1/[controller]")]
+    [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class AgentSessionController : VssControllerBase
     {
 

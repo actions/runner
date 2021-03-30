@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("runner/host/_apis/v1/[controller]")]
+    [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class LogfilesController : VssControllerBase
     {
 

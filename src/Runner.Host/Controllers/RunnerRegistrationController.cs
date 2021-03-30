@@ -46,7 +46,7 @@ namespace Runner.Host.Controllers
             // Request.Headers.HeaderAuthorization = RemoteAuth AKWETFL3YIUV34LTWCZ5M4275R3HQ
             // HeaderUserAgent = GitHubActionsRunner-
             return await Ok(new Runner.Host.Models.GitHubAuthResult() {
-                TenantUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host",
+                TenantUrl = payload.Url,
                 Token = "njuadbueegfgrgrsgd",
                 TokenSchema = "OAuthAccessToken"
             });

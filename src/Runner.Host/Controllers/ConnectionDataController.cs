@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace Runner.Host.Controllers
 {
     [ApiController]
-    [Route("runner/host/_apis/[controller]")]
+    [Route("{owner}/{repo}/_apis/[controller]")]
     public class ConnectionDataController : VssControllerBase
     {
 

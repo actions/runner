@@ -1,0 +1,12 @@
+name: "Sample Workflow"
+on: [push, pull_request]
+
+jobs:
+  sample:
+    runs-on: self-hosted
+    steps:
+    - run: echo 'Hello world'
+    - run: echo '${{toJson(job)}}'
+    - run: echo '${{toJson(github)}}'
+    - run: echo '${{toJson(needs)}}'
+    - run: echo '${{toJson(secrets)}}'
