@@ -9,9 +9,12 @@ This fork adds two executables to this Project, `Runner.Server` as a runner back
 ## Building
 
 ```
-cd src/Runner.Client
+cd src/
+dotnet msbuild .\dir.proj -t:GenerateConstant
+cd Runner.Client
 dotnet build
 ```
+
 This builds both `Runner.Client` and `Runner.Server`.
 
 ## Usage
