@@ -1,4 +1,6 @@
-# Update
-`npm run build`
+# A simple webpage for github actions
 
-copy
+## Build + Deploy
+```
+npm run build
+```

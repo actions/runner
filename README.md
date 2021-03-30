@@ -1,3 +1,65 @@
+# GitHub Actions Runner + Server
+
+This fork adds two executables to this Project, `Runner.Server` as a runner backend like github and `Runner.Client` to schedule workflows via commandline from a local `workflow.yml` and a local webhook `payload.json`.
+
+<p align="center">
+  <img src="src/Runner.Server/webpage1.png">
+</p>
+
+## Building
+
+```
+cd src/Runner.Client
+dotnet build
+```
+This builds both `Runner.Client` and `Runner.Server`.
+
+## Usage
+
+Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN propery in `src\Runner.Server\appsettings.json` and `src\Runner.Server\appsettings.Development.json`.
+
+[Download an official Runner](https://github.com/actions/runner/releases/latest).
+
+Start the `Runner.Server`, will have to use the default port http(s) port, or register runners will fail.
+```
+cd src/Runner.Server
+dotnet run
+```
+
+Open a 2nd Terminal
+Setup the official runner, you can type anything for registration and removal token authentication isn't implemented yet.
+```
+.\config.cmd --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
+```
+
+Run the official runner
+
+```
+.\run.cmd
+```
+
+Open a 3rd Terminal
+Schedule one or more job's
+```
+cd src/Runner.Client
+dotnet run -- --workflow workflow.yml --event push --payload payload.json
+```
+
+Open http://localhost to see the progress.
+
+## Notes
+This contains a reimplementations of some parts of the github server which aren't open source (yet?). 
+
+- matrix parsing
+- job parsing
+- `on` parsing incl. filter
+- api server of the open source client
+- context creation
+- scheduling
+
+## Something not working?
+Please open an issue at this fork, to get it fixed.
+
 <p align="center">
   <img src="docs/res/github-graph.png">
 </p>
