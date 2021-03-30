@@ -21,7 +21,7 @@ namespace Runner.Client
                     description: "Workflow to run"),
                 new Option<string>(
                     "--server",
-                    getDefaultValue: () => "http://localhost:5000",
+                    getDefaultValue: () => "http://localhost",
                     description: "Runner.Server address"),
                 new Option<string>(
                     "--payload",
@@ -75,3 +75,7 @@ namespace Runner.Client
         }
     }
 }
+
+// Console.WriteLine("Try starting Runner.Server, Please wait...");
+//                     var proc = Process.StartProcess("Runner.Server", $"--server {server}");
+//                     proc.EnableRaisingEvents = true;
