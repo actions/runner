@@ -136,13 +136,15 @@ namespace Runner.Server
             // app.UseAuthentication();
             // app.UseAuthorization();
             
-            // app.UseStaticFiles(new StaticFileOptions(new Microsoft.AspNetCore.StaticFiles.Infrastructure.SharedOptions(){RequestPath = new Microsoft.AspNetCore.Http.PathString("/test"), FileProvider = new PhysicalFileProvider("C:/Users/Christopher/runner")}){ServeUnknownFileTypes = true});
-
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
             });
 
+            DefaultFilesOptions options = new DefaultFilesOptions();
+            options.DefaultFileNames.Clear();
+            options.DefaultFileNames.Add("index.html");
+            app.UseDefaultFiles(options);
             app.UseStaticFiles();
         }
     }
