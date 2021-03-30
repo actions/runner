@@ -26,7 +26,7 @@ export const MasterContainer: React.FC<MasterProps> = (props) => {
         (async () => {
             setJobs({ items: (JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[]).sort((a, b) => b.RequestId - a.RequestId).map((x : IJob) : Item => { return { id:  x.RequestId, title: x.JobId, description: x.TimeLineId }})});
         })();
-        var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/event");
+        var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/event?filter=**");
         source.addEventListener("job", ev => {
             var je = JSON.parse((ev as MessageEvent).data) as IJobEvent;
             var x = je.job;
