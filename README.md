@@ -20,7 +20,7 @@ Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN propery
 
 [Download an official Runner](https://github.com/actions/runner/releases/latest).
 
-Start the `Runner.Server`, will have to use the default port http(s) port, or register runners will fail.
+Start the `Runner.Server`, will have to use the default http(s) port, or register runners will fail.
 ```
 cd src/Runner.Server
 dotnet run
