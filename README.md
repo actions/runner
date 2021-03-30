@@ -27,6 +27,7 @@ dotnet run
 ```
 
 Open a 2nd Terminal
+
 Setup the official runner, you can type anything for registration and removal token authentication isn't implemented yet.
 ```
 .\config.cmd --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
@@ -39,6 +40,7 @@ Run the official runner
 ```
 
 Open a 3rd Terminal
+
 Schedule one or more job's
 ```
 cd src/Runner.Client
