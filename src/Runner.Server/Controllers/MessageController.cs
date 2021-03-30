@@ -1016,9 +1016,9 @@ namespace Runner.Server.Controllers
         private static event JobEvent jobevent;
 
         [HttpGet("event")]
-        public IActionResult Message(string owner, string repo)
+        public IActionResult Message(string owner, string repo, [FromQuery] string filter)
         {
-            repo = owner + "/" + repo;
+            var mfilter = new Minimatch.Minimatcher(filter ?? (owner + "/" + repo));
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
@@ -1028,8 +1028,8 @@ namespace Runner.Server.Controllers
                     writer.NewLine = "\n";
                     ConcurrentQueue<KeyValuePair<string,Job>> queue = new ConcurrentQueue<KeyValuePair<string, Job>>();
                     JobEvent handler = (sender, crepo, job) => {
-                        if (crepo == repo) {
-                            queue.Enqueue(new KeyValuePair<string, Job>(repo, job));
+                        if (mfilter.IsMatch(crepo)) {
+                            queue.Enqueue(new KeyValuePair<string, Job>(crepo, job));
                         }
                     };
                     var ping = Task.Run(async () => {
