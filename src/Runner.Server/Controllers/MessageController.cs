@@ -245,6 +245,35 @@ namespace Runner.Server.Controllers
             [EnumMember]
             Skipped = 4,
         }
+
+        private class TraceWriter : GitHub.DistributedTask.ObjectTemplating.ITraceWriter, GitHub.DistributedTask.Expressions2.ITraceWriter
+        {
+            public void Error(string format, params object[] args)
+            {
+                Console.Error.WriteLine(format, args);
+            }
+
+            public void Info(string format, params object[] args)
+            {
+                Console.Out.WriteLine(format, args);
+            }
+
+            public void Info(string message)
+            {
+                Console.Out.WriteLine(message);
+            }
+
+            public void Verbose(string format, params object[] args)
+            {
+                Console.Out.WriteLine(format, args);
+            }
+
+            public void Verbose(string message)
+            {
+                Console.Out.WriteLine(message);
+            }
+        }
+
         private void ConvertYaml(string fileRelativePath, string content = null, string repository = null, string apiUrl = null, string giteaUrl = null, GiteaHook hook = null, JObject payloadObject = null, string e = "push") {
             List<JobItem> jobgroup = new List<JobItem>();
             List<JobItem> dependentjobgroup = new List<JobItem>();
@@ -255,7 +284,7 @@ namespace Runner.Server.Controllers
                     maxDepth: 100,
                     maxEvents: 1000000,
                     maxBytes: 10 * 1024 * 1024),
-                TraceWriter = new EmptyTraceWriter()
+                TraceWriter = new TraceWriter()
             };
             ExecutionContext exctx = new ExecutionContext();
             exctx.JobContext = new JobCtx() {};
@@ -285,11 +314,17 @@ namespace Runner.Server.Controllers
 
             List<TemplateToken> workflowDefaults = new List<TemplateToken>();
             List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
+
+            try {
+                templateContext.Errors.Check();
+            } catch(Exception exc) {
+                Console.Error.WriteLine("Failed to process file: '" + fileRelativePath + "', with exception: " + exc.ToString());
+                return;
+            }
             if(token == null) {
                 return;
             }
             var actionMapping = token.AssertMapping("root");
-
 
             Action<JobCompletedEvent> jobCompleted = e => {
                 foreach (var item in dependentjobgroup.ToArray()) {
@@ -300,13 +335,13 @@ namespace Runner.Server.Controllers
             switch(tk.Type) {
                 case TokenType.String:
                     if(tk.AssertString("str").Value != e) {
-                        // Skip, not a push event
+                        // Skip, not the right event
                         return;
                     }
                     break;
                 case TokenType.Sequence:
                     if((from r in tk.AssertSequence("seq") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
-                        // Skip, not a push event
+                        // Skip, not the right event
                         return;
                     }
                     break;
@@ -317,6 +352,7 @@ namespace Runner.Server.Controllers
                         // Skip, not the right event
                         return;
                     }
+                    // Offical github action server ignores the filter on non push / pull_request events
                     var branches = (from r in push where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq");
                     var branchesIgnore = (from r in push where r.Key.AssertString("branches-ignore").Value == "branches-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
                     var tags = (from r in push where r.Key.AssertString("tags").Value == "tags" select r).FirstOrDefault().Value?.AssertSequence("seq");
@@ -407,27 +443,27 @@ namespace Runner.Server.Controllers
                         githubctx.Add("server_url", new StringContextData(GitServerUrl));
                         githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
                         githubctx.Add("workflow", new StringContextData((from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath));
-                       if(hook != null){
-                        githubctx.Add("sha", new StringContextData(hook.After));
-                        githubctx.Add("repository", new StringContextData(hook.repository.full_name));
-                        githubctx.Add("repository_owner", new StringContextData(hook.repository.Owner.username));
-                        githubctx.Add("ref", new StringContextData(hook.Ref));
-                        githubctx.Add("job", new StringContextData(jn.Value));
-                        // githubctx.Add("head_ref", new StringContextData("")); only for PR
-                        // base_ref
-                        // event_path is filled by event
-                        githubctx.Add("event", payloadObject.ToPipelineContextData());
-                        githubctx.Add("event_name", new StringContextData(e));
-                        githubctx.Add("actor", new StringContextData(hook.sender.login));
-                        long runid = _cache.GetOrCreate(hook.repository.full_name, e => new Int64());
-                        _cache.Set(hook.repository.full_name, runid + 1);
-                        githubctx.Add("run_id", new StringContextData(runid.ToString()));
-                        var runnumberkey = $"{hook.repository.full_name}:/{fileRelativePath}";
-                        long runnumber = _cache.GetOrCreate(runnumberkey, e => new Int64());
-                        _cache.Set(runnumberkey, runnumber + 1);
-                        githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                    }
-                        // githubctx.Add("token", new StringContextData("48c0ad6b5e5311ba38e8cce918e2602f16240087"));
+                        if(hook != null){
+                            githubctx.Add("sha", new StringContextData(hook.After));
+                            githubctx.Add("repository", new StringContextData(hook.repository.full_name));
+                            githubctx.Add("repository_owner", new StringContextData(hook.repository.Owner.username));
+                            githubctx.Add("ref", new StringContextData(hook.Ref));
+                            githubctx.Add("job", new StringContextData(jn.Value));
+                            githubctx.Add("head_ref", new StringContextData(hook.head?.Ref ?? ""));// only for PR
+                            githubctx.Add("base_ref", new StringContextData(hook.Base?.Ref ?? ""));// only for PR
+                            // base_ref
+                            // event_path is filled by event
+                            githubctx.Add("event", payloadObject.ToPipelineContextData());
+                            githubctx.Add("event_name", new StringContextData(e));
+                            githubctx.Add("actor", new StringContextData(hook.sender.login));
+                            long runid = _cache.GetOrCreate(hook.repository.full_name, e => new Int64());
+                            _cache.Set(hook.repository.full_name, runid + 1);
+                            githubctx.Add("run_id", new StringContextData(runid.ToString()));
+                            var runnumberkey = $"{hook.repository.full_name}:/{fileRelativePath}";
+                            long runnumber = _cache.GetOrCreate(runnumberkey, e => new Int64());
+                            _cache.Set(runnumberkey, runnumber + 1);
+                            githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                        }
                         var needsctx = new DictionaryContextData();
                         contextData.Add("needs", needsctx);
                         var strategyctx = new DictionaryContextData();
@@ -838,6 +874,10 @@ namespace Runner.Server.Controllers
             public GitUser Owner {get;set;}
         }
 
+        public class GitCommit {
+            public string Ref {get;set;}
+        }
+
         public class GiteaHook
         {
             [DataMember]
@@ -847,6 +887,8 @@ namespace Runner.Server.Controllers
             public string After {get;set;}
 
             public GitUser sender {get;set;}
+            public GitCommit head {get;set;}
+            public GitCommit Base {get;set;}
         }
 
         public class Issue {
