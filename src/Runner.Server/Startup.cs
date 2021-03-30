@@ -143,6 +143,7 @@ namespace Runner.Server
                 endpoints.MapControllers();
             });
 
+            app.UseStaticFiles();
         }
     }
 }
