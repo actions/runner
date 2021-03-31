@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -799,7 +799,23 @@ namespace Runner.Server.Controllers
         }
         static ConcurrentDictionary<Guid, Job> jobs = new ConcurrentDictionary<Guid, Job>();
 
-        private static ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>> jobqueue = new ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>>();
+
+        private class EqualityComparer : IEqualityComparer<HashSet<string>> {
+            public bool Equals(HashSet<string> a, HashSet<string> b) {
+                return a.SetEquals(b);
+            }
+            public int GetHashCode(HashSet<string> p) {
+                var l = p.ToList();
+                l.Sort();
+                StringBuilder b = new StringBuilder();
+                foreach (var item in l) {
+                    b.AppendJoin('|', item);
+                }
+                return b.ToString().GetHashCode();
+            }
+        }
+
+        private static ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>> jobqueue = new ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>>(new EqualityComparer());
         private static int id = 0;
 
         // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
