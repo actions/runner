@@ -41,7 +41,7 @@ Windows:
 
 Linux or macOS:
 ```
-./config --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
+./config.sh --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
 ```
 
 Run the official runner
@@ -53,7 +53,7 @@ Windows:
 
 Linux or macOS:
 ```
-./run
+./run.sh
 ```
 
 Open a 3rd Terminal
