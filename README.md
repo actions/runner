@@ -10,7 +10,7 @@ This fork adds two executables to this Project, `Runner.Server` as a runner back
 
 ```
 cd src/
-dotnet msbuild .\dir.proj -t:GenerateConstant
+dotnet msbuild ./dir.proj -t:GenerateConstant
 cd Runner.Client
 dotnet build
 ```
@@ -24,6 +24,7 @@ Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN propert
 [Download an official Runner](https://github.com/actions/runner/releases/latest).
 
 Start the `Runner.Server`, will have to use the default http(s) port, or register runners will fail.
+Linux won't allow port 80 by default and the server will crash. Using port 5000 prevents offical unmodified runners to connect to the server, because the runner drops the port of the repository during configure.
 ```
 cd src/Runner.Server
 dotnet run
@@ -32,14 +33,27 @@ dotnet run
 Open a 2nd Terminal
 
 Setup the official runner, you can type anything for registration and removal token authentication isn't implemented yet.
+
+Windows:
 ```
 .\config.cmd --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
 ```
 
+Linux or macOS:
+```
+./config --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
+```
+
 Run the official runner
 
+Windows:
 ```
 .\run.cmd
+```
+
+Linux or macOS:
+```
+./run
 ```
 
 Open a 3rd Terminal
