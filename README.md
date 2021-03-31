@@ -19,7 +19,7 @@ This builds both `Runner.Client` and `Runner.Server`.
 
 ## Usage
 
-Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN propery in `src\Runner.Server\appsettings.json` and `src\Runner.Server\appsettings.Development.json`.
+Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN property in `src\Runner.Server\appsettings.json` and `src\Runner.Server\appsettings.Development.json`.
 
 [Download an official Runner](https://github.com/actions/runner/releases/latest).
 
@@ -61,6 +61,13 @@ This contains a reimplementations of some parts of the github server which aren'
 - api server of the open source client
 - context creation
 - scheduling
+- job inputs / outputs, based on documentation
+
+The following things will behave as expected
+
+- expression evaluation
+- step evaluation on the runner
+- container actions
 
 ## Something not working?
 Please open an issue at this fork, to get it fixed.
