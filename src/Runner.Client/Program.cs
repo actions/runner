@@ -35,14 +35,14 @@ namespace Runner.Client
             rootCommand.Description = "Send events to your runner";
 
             // Note that the parameters of the handler method are matched according to the names of the options
-            rootCommand.Handler = CommandHandler.Create<string, string, string, string>(async (workflow, server, payload, e) =>
+            rootCommand.Handler = CommandHandler.Create<string, string, string, string>(async (workflow, server, payload, Event) =>
             {
                 if(workflow == null || payload == null) {
                     Console.WriteLine("Missing `--workflow` or `--payload` option, type `--help` for help");
                     return -1;
                 }
                 var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("X-GitHub-Event", e ?? "push");
+                client.DefaultRequestHeaders.Add("X-GitHub-Event", Event);
                 var b = new UriBuilder(server);
                 var query = new QueryBuilder();
                 b.Path = "runner/host/_apis/v1/Message";
