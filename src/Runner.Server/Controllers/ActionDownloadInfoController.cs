@@ -36,11 +36,12 @@ namespace Runner.Server.Controllers
             foreach (var item in reflist.Actions) {
                 foreach(var downloadUrl in downloadUrls) {
                     var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = String.Format(downloadUrl.TarbalUrl, item.NameWithOwner, item.Ref), ZipballUrl = String.Format(downloadUrl.ZipbalUrl, item.NameWithOwner, item.Ref) };
-                    var client = new HttpClient();
-                    if((await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.TarballUrl))).IsSuccessStatusCode && (await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.ZipballUrl))).IsSuccessStatusCode) {
+                    // TODO: How to check on github if url is valid?, maybe use GITHUB_TOKEN?
+                    // var client = new HttpClient();
+                    // if((await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.TarballUrl))).IsSuccessStatusCode && (await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.ZipballUrl))).IsSuccessStatusCode) {
                         actions[$"{item.NameWithOwner}@{item.Ref}"] = downloadinfo;
                         break;
-                    }
+                    // }
                 }
             }
             return await Ok(new ActionDownloadInfoCollection() {Actions = actions });
