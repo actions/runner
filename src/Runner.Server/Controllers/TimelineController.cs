@@ -24,8 +24,12 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{timelineId}")]
-        public IEnumerable<TimelineRecord> GetTimelineRecords(Guid timelineId) {
-            return dict[timelineId].Item1;
+        public IActionResult GetTimelineRecords(Guid timelineId) {
+            (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>) val;
+            if(!dict.TryGetValue(timelineId, out val)) {
+                return NotFound();
+            }
+            return ((ControllerBase)this).Ok(val.Item1);
         }
 
         private List<TimelineRecord> MergeTimelineRecords(List<TimelineRecord> timelineRecords)
