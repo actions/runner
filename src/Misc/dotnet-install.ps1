@@ -340,9 +340,8 @@ function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel) {
     elseif ($Runtime -eq "aspnetcore") {
         $VersionFileUrl = "$UncachedFeed/aspnetcore/Runtime/$Channel/latest.version"
     }
-    # Currently, the WindowsDesktop runtime is manufactured with the .Net core runtime
     elseif ($Runtime -eq "windowsdesktop") {
-        $VersionFileUrl = "$UncachedFeed/Runtime/$Channel/latest.version"
+        $VersionFileUrl = "$UncachedFeed/WindowsDesktop/$Channel/latest.version"
     }
     elseif (-not $Runtime) {
         $VersionFileUrl = "$UncachedFeed/Sdk/$Channel/latest.version"
@@ -438,7 +437,16 @@ function Get-Download-Link([string]$AzureFeed, [string]$SpecificVersion, [string
         $PayloadURL = "$AzureFeed/aspnetcore/Runtime/$SpecificVersion/aspnetcore-runtime-$SpecificProductVersion-win-$CLIArchitecture.zip"
     }
     elseif ($Runtime -eq "windowsdesktop") {
+        # The windows desktop runtime is part of the core runtime layout prior to 5.0
         $PayloadURL = "$AzureFeed/Runtime/$SpecificVersion/windowsdesktop-runtime-$SpecificProductVersion-win-$CLIArchitecture.zip"
+        if ($SpecificVersion -match '^(\d+)\.(.*)$')
+        {
+            $majorVersion = [int]$Matches[1]
+            if ($majorVersion -ge 5)
+            {
+                $PayloadURL = "$AzureFeed/WindowsDesktop/$SpecificVersion/windowsdesktop-runtime-$SpecificProductVersion-win-$CLIArchitecture.zip"
+            }
+        }
     }
     elseif (-not $Runtime) {
         $PayloadURL = "$AzureFeed/Sdk/$SpecificVersion/dotnet-sdk-$SpecificProductVersion-win-$CLIArchitecture.zip"
@@ -480,7 +488,16 @@ function Get-Product-Version([string]$AzureFeed, [string]$SpecificVersion) {
         $ProductVersionTxtURL = "$AzureFeed/aspnetcore/Runtime/$SpecificVersion/productVersion.txt"
     }
     elseif ($Runtime -eq "windowsdesktop") {
+        # The windows desktop runtime is part of the core runtime layout prior to 5.0
         $ProductVersionTxtURL = "$AzureFeed/Runtime/$SpecificVersion/productVersion.txt"
+        if ($SpecificVersion -match '^(\d+)\.(.*)')
+        {
+            $majorVersion = [int]$Matches[1]
+            if ($majorVersion -ge 5)
+            {
+                $ProductVersionTxtURL = "$AzureFeed/WindowsDesktop/$SpecificVersion/productVersion.txt"
+            }
+        }
     }
     elseif (-not $Runtime) {
         $ProductVersionTxtURL = "$AzureFeed/Sdk/$SpecificVersion/productVersion.txt"
@@ -885,10 +902,10 @@ Say "Note that the script does not resolve dependencies during installation."
 Say "To check the list of dependencies, go to https://docs.microsoft.com/dotnet/core/install/windows#dependencies"
 Say "Installation finished"
 # SIG # Begin signature block
-# MIIjkgYJKoZIhvcNAQcCoIIjgzCCI38CAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIIjjwYJKoZIhvcNAQcCoIIjgDCCI3wCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCD2c707qnCLOLIC
-# n6Mu5Gr4+Xp68foyZlGlTycnycc5l6CCDYEwggX/MIID56ADAgECAhMzAAABh3IX
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCNsnhcJvx/hXmM
+# w8KjuvvIMDBFonhg9XJFc1QwfTyH4aCCDYEwggX/MIID56ADAgECAhMzAAABh3IX
 # chVZQMcJAAAAAAGHMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNVBAYTAlVTMRMwEQYD
 # VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
 # b3NvZnQgQ29ycG9yYXRpb24xKDAmBgNVBAMTH01pY3Jvc29mdCBDb2RlIFNpZ25p
@@ -960,29 +977,29 @@ Say "Installation finished"
 # xw4o7t5lL+yX9qFcltgA1qFGvVnzl6UJS0gQmYAf0AApxbGbpT9Fdx41xtKiop96
 # eiL6SJUfq/tHI4D1nvi/a7dLl+LrdXga7Oo3mXkYS//WsyNodeav+vyL6wuA6mk7
 # r/ww7QRMjt/fdW1jkT3RnVZOT7+AVyKheBEyIXrvQQqxP/uozKRdwaGIm1dxVk5I
-# RcBCyZt2WwqASGv9eZ/BvW1taslScxMNelDNMYIVZzCCFWMCAQEwgZUwfjELMAkG
+# RcBCyZt2WwqASGv9eZ/BvW1taslScxMNelDNMYIVZDCCFWACAQEwgZUwfjELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEoMCYGA1UEAxMfTWljcm9z
 # b2Z0IENvZGUgU2lnbmluZyBQQ0EgMjAxMQITMwAAAYdyF3IVWUDHCQAAAAABhzAN
 # BglghkgBZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgor
-# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgE/MRhWyu
-# Zg+EA2WKcxYC31nHVCTE6guHppZppc70RtkwQgYKKwYBBAGCNwIBDDE0MDKgFIAS
+# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgpT/bxWwe
+# aW0EinKMWCAzDXUjwXkIHldYzR6lw4/1Pc0wQgYKKwYBBAGCNwIBDDE0MDKgFIAS
 # AE0AaQBjAHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTAN
-# BgkqhkiG9w0BAQEFAASCAQBvcYCjRDXUYEIz9j2j0r4GFI2Y3g/CoNxDDBaeQ+gV
-# khO0fK0oLh18RbV271Mg6SF7X7+mXB5MnL68voVQDqHnsCYrIAuMF/AEpv9YuDDp
-# ZRJuqN7Vwg3HM02l/FyATBIMgf/V79aYzJL3jjtt9bRIyxk6aPU4XcwMeA4usnUQ
-# rMhIiQz07DgfSrcQWe4AvGFAIvqTAKE4P944EZWWVnWI/10rvatEAefqJZX3XljW
-# sK/6NY/0MyAyiILOuXbvVS0YFbHaR2qd1jUXbrY79fS+H4Ts6qnbufOkHQvmcDxs
-# 801wKLHumMdPTtMVzfVMCwPvrHP0wtzsFlmCcKjBbGpvoYIS8TCCEu0GCisGAQQB
-# gjcDAwExghLdMIIS2QYJKoZIhvcNAQcCoIISyjCCEsYCAQMxDzANBglghkgBZQME
+# BgkqhkiG9w0BAQEFAASCAQCHd7sSQVq0YDg8QDx6/kLWn3s6jtvvIDCCgsO9spHM
+# quPd4FPbG67DCsKDClekQs52qrtRO3Zo+JMnCw4j3bS+gZHzeJr2shbftOrpsFoD
+# l7OPcUmtrqul9dkQCOp8t0MP3ls0n96/YyNy6lz4BAlTdkdDx957uAxalKaCIBzb
+# R9QyppOKIfNFvwD4EI5KI6tpmSy/uH8SrRg7ZExAYZl6J6R18WkL7KHn649lPoAQ
+# ujwrIXH10xOJops45ILGzKWQcHmCzLJGYapL4VHUuK+73nT+9ZROGHdk/PyvIcdw
+# iERa+C06v305t3DA+CuHFy1tvyw7IFF6RVbLZPwxrJjToYIS7jCCEuoGCisGAQQB
+# gjcDAwExghLaMIIS1gYJKoZIhvcNAQcCoIISxzCCEsMCAQMxDzANBglghkgBZQME
 # AgEFADCCAVUGCyqGSIb3DQEJEAEEoIIBRASCAUAwggE8AgEBBgorBgEEAYRZCgMB
-# MDEwDQYJYIZIAWUDBAIBBQAEINdeoXtuzW+Dihw6n+VdG+91si0f6TvWhJXaPtvW
-# oF4cAgZfu+i3IT8YEzIwMjAxMjE3MDYzMDM2LjU0M1owBIACAfSggdSkgdEwgc4x
+# MDEwDQYJYIZIAWUDBAIBBQAEIOCaTmvM1AP0WaEVqzKaaCu/R+bTlR4kCrM/ZXsb
+# /eNOAgZgGeLsMwsYEzIwMjEwMjAzMjExNzQ5LjU5MVowBIACAfSggdSkgdEwgc4x
 # CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRt
 # b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xKTAnBgNVBAsTIE1p
 # Y3Jvc29mdCBPcGVyYXRpb25zIFB1ZXJ0byBSaWNvMSYwJAYDVQQLEx1UaGFsZXMg
 # VFNTIEVTTjo4OTdBLUUzNTYtMTcwMTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgU2VydmljZaCCDkQwggT1MIID3aADAgECAhMzAAABLCKvRZd1+RvuAAAA
+# U3RhbXAgU2VydmljZaCCDkEwggT1MIID3aADAgECAhMzAAABLCKvRZd1+RvuAAAA
 # AAEsMA0GCSqGSIb3DQEBCwUAMHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
 # aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
 # cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
@@ -1043,7 +1060,7 @@ Say "Installation finished"
 # cs0d9LiFAR6A+xuJKlQ5slvayA1VmXqHczsI5pgt6o3gMy4SKfXAL1QnIffIrE7a
 # KLixqduWsqdCosnPGUFN4Ib5KpqjEWYw07t0MkvfY3v1mYovG8chr1m1rtxEPJdQ
 # cdeh0sVV42neV8HR3jDA/czmTfsNv11P6Z0eGTgvvM9YBS7vDaBQNdrvCScc1bN+
-# NR4Iuto229Nfj950iEkSoYIC0jCCAjsCAQEwgfyhgdSkgdEwgc4xCzAJBgNVBAYT
+# NR4Iuto229Nfj950iEkSoYICzzCCAjgCAQEwgfyhgdSkgdEwgc4xCzAJBgNVBAYT
 # AlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYD
 # VQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xKTAnBgNVBAsTIE1pY3Jvc29mdCBP
 # cGVyYXRpb25zIFB1ZXJ0byBSaWNvMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo4
@@ -1052,27 +1069,27 @@ Say "Installation finished"
 # fjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
 # UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQD
 # Ex1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG9w0BAQUFAAIF
-# AOOFYaowIhgPMjAyMDEyMTcwODQ4NDJaGA8yMDIwMTIxODA4NDg0MlowdzA9Bgor
-# BgEEAYRZCgQBMS8wLTAKAgUA44VhqgIBADAKAgEAAgIoWgIB/zAHAgEAAgISJTAK
-# AgUA44azKgIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMCoAowCAIB
-# AAIDB6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAB53NDoDDF4vqFWY
-# fwUnSvAy3z0CtqSFeA9RzDKGklPRwVkya5DtmVBDTZUbVQ2ST9hvRAVxhktfyVBZ
-# ewapGJsvwMhg7nnEqBOumt6TvueIZpbs+p5z//3+iFYGkT3YFQI0Gd2JkvgBxfs5
-# +GptO6JKtiyA+zkKijxqXZvMqMxBMYIDDTCCAwkCAQEwgZMwfDELMAkGA1UEBhMC
-# VVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNV
-# BAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRp
-# bWUtU3RhbXAgUENBIDIwMTACEzMAAAEsIq9Fl3X5G+4AAAAAASwwDQYJYIZIAWUD
-# BAIBBQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkqhkiG9w0B
-# CQQxIgQg3wEUtEvxwCp3aAFB2vGXOOqg/AXHyXZh9P9J+0uArDMwgfoGCyqGSIb3
-# DQEJEAIvMYHqMIHnMIHkMIG9BCBbn/0uFFh42hTM5XOoKdXevBaiSxmYK9Ilcn9n
-# u5ZH4TCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9u
-# MRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRp
-# b24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAAB
-# LCKvRZd1+RvuAAAAAAEsMCIEINBRtGID6jvA2ptfwIuPyG7qPcLRYb9YrJ8aKfVg
-# TulFMA0GCSqGSIb3DQEBCwUABIIBACQQpFGWW6JmH5MTKwhaE/8+gyzI2bT8XJnA
-# t8k7PHFvEGA7whgp9eNgW+wWJm1gnsmswjx2l7FW4DLg9lghM8FK77JRCg7CJfse
-# dSbnTv81/4VhSXOAO0jMP2dALP7DF59vQmlDh50u8/Wu61ActMOt6cArkoUhBRXO
-# LnqOQCOEEku5Xy2ES9g9eUfLUvTvlWo6HiAq+cJnNV08QRBOnGWRxdwy8YJ5vwNW
-# Pwx0ZG3rTvMtGzOaW6Ve5O36H2ynoEdzCmpakeDaF2sZ86/LNERKyIXiykV/Uig1
-# SZh2VLY/Yni9SCVHbYgvTOCh5ZZE5eOi6BwLf0T4xl5alHUx+AA=
+# AOPFChkwIhgPMjAyMTAyMDMxNTQwMDlaGA8yMDIxMDIwNDE1NDAwOVowdDA6Bgor
+# BgEEAYRZCgQBMSwwKjAKAgUA48UKGQIBADAHAgEAAgIXmDAHAgEAAgIRyTAKAgUA
+# 48ZbmQIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMCoAowCAIBAAID
+# B6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAHeeznL2n6HWCjHH94Fl
+# hcdW6TEXzq4XNgp1Gx1W9F8gJ4x+SwoV7elJZkwgGffcpHomLvIY/VSuzsl1NgtJ
+# TWM2UxoqSv58BBOrl4eGhH6kkg8Ucy2tdeK5T8cHa8pMkq2j9pFd2mRG/6VMk0dl
+# Xz7Uy3Z6bZqkcABMyAfuAaGbMYIDDTCCAwkCAQEwgZMwfDELMAkGA1UEBhMCVVMx
+# EzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoT
+# FU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUt
+# U3RhbXAgUENBIDIwMTACEzMAAAEsIq9Fl3X5G+4AAAAAASwwDQYJYIZIAWUDBAIB
+# BQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkqhkiG9w0BCQQx
+# IgQg/QYv7yp+354WTjWUIsXWndTEzXjaYjqwYjcBxCJKjdUwgfoGCyqGSIb3DQEJ
+# EAIvMYHqMIHnMIHkMIG9BCBbn/0uFFh42hTM5XOoKdXevBaiSxmYK9Ilcn9nu5ZH
+# 4TCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAw
+# DgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24x
+# JjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABLCKv
+# RZd1+RvuAAAAAAEsMCIEIIfIM3YbzHswb/Kj/qq1l1cHA6QBl+gEXYanUNJomrpT
+# MA0GCSqGSIb3DQEBCwUABIIBAAwdcXssUZGO7ho5+NHLjIxLtQk543aKGo+lrRMY
+# Q9abE1h/AaaNJl0iGxX4IihNWyfovSfYL3L4eODUBAu68tWSxeceRfWNsb/ZZfUi
+# v89hpLssI/Gf1BEgNMA4zCuIGQiC8okusVumEpAhhvCEbSiTTTtBdolTnU/CAKui
+# oxaU3R9XkKh1F4oAM26+dJ1J2BLQXPs5afNvvedDsZWNQUPK1sFF3JRfzxiTrwBW
+# EJRyflev9gyDoqCHzippgb+6+eti1WTkcA9Q49GIT11S6LOAVqkSC9N7Nqf8ksh8
+# ARdwT8jigpsm+mj7lrVU9upDkhVYhKeO8oiZq95Q53Zkteo=
 # SIG # End signature block

@@ -303,7 +303,7 @@ get_machine_architecture() {
             echo "arm"
             return 0
             ;;
-        aarch64)
+        aarch64|arm64)
             echo "arm64"
             return 0
             ;;
@@ -489,7 +489,7 @@ get_specific_version_from_version() {
     local json_file="$5"
 
     if [ -z "$json_file" ]; then
-        if [[ "$version" == "latest" ]]; then 
+        if [[ "$version" == "latest" ]]; then
             local version_info
             version_info="$(get_latest_version_info "$azure_feed" "$channel" "$normalized_architecture" false)" || return 1
             say_verbose "get_specific_version_from_version: version_info=$version_info"
@@ -522,7 +522,7 @@ construct_download_link() {
     local specific_version="${4//[$'\t\r\n']}"
     local specific_product_version="$(get_specific_product_version "$1" "$4")"
     local osname="$5"
-    
+
     local download_link=null
     if [[ "$runtime" == "dotnet" ]]; then
         download_link="$azure_feed/Runtime/$specific_version/dotnet-runtime-$specific_product_version-$osname-$normalized_architecture.tar.gz"
@@ -542,7 +542,7 @@ construct_download_link() {
 # azure_feed - $1
 # specific_version - $2
 get_specific_product_version() {
-    # If we find a 'productVersion.txt' at the root of any folder, we'll use its contents 
+    # If we find a 'productVersion.txt' at the root of any folder, we'll use its contents
     # to resolve the version of what's in the folder, superseding the specified version.
     eval $invocation
 
@@ -744,13 +744,30 @@ download() {
     fi
 
     local failed=false
-    if machine_has "curl"; then
-        downloadcurl "$remote_path" "$out_path" || failed=true
-    elif machine_has "wget"; then
-        downloadwget "$remote_path" "$out_path" || failed=true
-    else
-        failed=true
-    fi
+    local attempts=0
+    while [ $attempts -lt 3 ]; do
+        attempts=$((attempts+1))
+        failed=false
+        if machine_has "curl"; then
+            downloadcurl "$remote_path" "$out_path" || failed=true
+        elif machine_has "wget"; then
+            downloadwget "$remote_path" "$out_path" || failed=true
+        else
+            say_err "Missing dependency: neither curl nor wget was found."
+            exit 1
+        fi
+
+        if [ "$failed" = false ] || [ $attempts -ge 3 ] || { [ ! -z $http_code ] && [ $http_code = "404" ]; }; then
+            break
+        fi
+
+        say "Download attempt #$attempts has failed: $http_code $download_error_msg"
+        say "Attempt #$((attempts+1)) will start in $((attempts*10)) seconds."
+        sleep $((attempts*20))
+    done
+
+
+
     if [ "$failed" = true ]; then
         say_verbose "Download failed: $remote_path"
         return 1
@@ -761,6 +778,8 @@ download() {
 # Updates global variables $http_code and $download_error_msg
 downloadcurl() {
     eval $invocation
+    unset http_code
+    unset download_error_msg
     local remote_path="$1"
     local out_path="${2:-}"
     # Append feed_credential as late as possible before calling curl to avoid logging feed_credential
@@ -789,6 +808,8 @@ downloadcurl() {
 # Updates global variables $http_code and $download_error_msg
 downloadwget() {
     eval $invocation
+    unset http_code
+    unset download_error_msg
     local remote_path="$1"
     local out_path="${2:-}"
     # Append feed_credential as late as possible before calling wget to avoid logging feed_credential
@@ -882,12 +903,11 @@ install_dotnet() {
     say "Downloading primary link $download_link"
 
     # The download function will set variables $http_code and $download_error_msg in case of failure.
-    http_code=""; download_error_msg=""
     download "$download_link" "$zip_path" 2>&1 || download_failed=true
-    primary_path_http_code="$http_code"; primary_path_download_error_msg="$download_error_msg"
 
     #  if the download fails, download the legacy_download_link
     if [ "$download_failed" = true ]; then
+        primary_path_http_code="$http_code"; primary_path_download_error_msg="$download_error_msg"
         case $primary_path_http_code in
         404)
             say "The resource at $download_link is not available."
@@ -906,11 +926,10 @@ install_dotnet() {
             say "Downloading legacy link $download_link"
 
             # The download function will set variables $http_code and $download_error_msg in case of failure.
-            http_code=""; download_error_msg=""
             download "$download_link" "$zip_path" 2>&1 || download_failed=true
-            legacy_path_http_code="$http_code";  legacy_path_download_error_msg="$download_error_msg"
 
             if [ "$download_failed" = true ]; then
+                legacy_path_http_code="$http_code";  legacy_path_download_error_msg="$download_error_msg"
                 case $legacy_path_http_code in
                 404)
                     say "The resource at $download_link is not available."
@@ -1112,10 +1131,10 @@ do
             echo "      --arch,-Architecture,-Arch"
             echo "          Possible values: x64, arm, and arm64"
             echo "  --os <system>                    Specifies operating system to be used when selecting the installer."
-            echo "          Overrides the OS determination approach used by the script. Supported values: osx, linux, linux-musl, freebsd, rhel.6."  
-            echo "          In case any other value is provided, the platform will be determined by the script based on machine configuration."       
+            echo "          Overrides the OS determination approach used by the script. Supported values: osx, linux, linux-musl, freebsd, rhel.6."
+            echo "          In case any other value is provided, the platform will be determined by the script based on machine configuration."
             echo "          Not supported for legacy links. Use --runtime-id to specify platform for legacy links."
-            echo "          Refer to: https://aka.ms/dotnet-os-lifecycle for more information."                 
+            echo "          Refer to: https://aka.ms/dotnet-os-lifecycle for more information."
             echo "  --runtime <RUNTIME>                Installs a shared runtime only, without the SDK."
             echo "      -Runtime"
             echo "          Possible values:"
@@ -1140,7 +1159,7 @@ do
             echo "                                     Installs just the shared runtime bits, not the entire SDK."
             echo "  --runtime-id                       Installs the .NET Tools for the given platform (use linux-x64 for portable linux)."
             echo "      -RuntimeId"                    The parameter is obsolete and may be removed in a future version of this script. Should be used only for versions below 2.1.
-            echo "                                     For primary links to override OS or/and architecture, use --os and --architecture option instead." 
+            echo "                                     For primary links to override OS or/and architecture, use --os and --architecture option instead."
             echo ""
             echo "Install Location:"
             echo "  Location is chosen in following order:"
@@ -1177,7 +1196,7 @@ if [ "$dry_run" = true ]; then
     if [ "$valid_legacy_download_link" = true ]; then
         say "Legacy named payload URL: $legacy_download_link"
     fi
-    repeatable_command="./$script_name --version "\""$specific_version"\"" --install-dir "\""$install_root"\"" --architecture "\""$normalized_architecture"\"" --os "\""$normalized_os"\""" 
+    repeatable_command="./$script_name --version "\""$specific_version"\"" --install-dir "\""$install_root"\"" --architecture "\""$normalized_architecture"\"" --os "\""$normalized_os"\"""
     if [[ "$runtime" == "dotnet" ]]; then
         repeatable_command+=" --runtime "\""dotnet"\"""
     elif [[ "$runtime" == "aspnetcore" ]]; then
