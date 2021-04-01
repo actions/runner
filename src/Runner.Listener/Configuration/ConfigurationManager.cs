@@ -117,7 +117,7 @@ namespace GitHub.Runner.Listener.Configuration
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
+                    runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || UrlUtil.IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
 
                     // Warn if the Actions server url and GHES server url has different Host
                     if (!runnerSettings.IsHostedServer)
@@ -509,13 +509,6 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private bool IsHostedServer(UriBuilder gitHubUrl)
-        {
-            return string.Equals(gitHubUrl.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(gitHubUrl.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase);
-        }
-
         private async Task<string> GetRunnerTokenAsync(CommandSettings command, string githubUrl, string tokenType)
         {
             var githubPAT = command.GetGitHubPersonalAccessToken();
@@ -552,7 +545,7 @@ namespace GitHub.Runner.Listener.Configuration
             if (path.Length == 1)
             {
                 // org runner
-                if (IsHostedServer(gitHubUrlBuilder))
+                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                 {
                     githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runners/{tokenType}-token";
                 }
@@ -570,7 +563,7 @@ namespace GitHub.Runner.Listener.Configuration
                     repoScope = "";
                 }
 
-                if (IsHostedServer(gitHubUrlBuilder))
+                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
                 {
                     githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{repoScope}{path[0]}/{path[1]}/actions/runners/{tokenType}-token";
                 }
@@ -616,7 +609,7 @@ namespace GitHub.Runner.Listener.Configuration
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            if (IsHostedServer(gitHubUrlBuilder))
+            if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
             {
                 githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
             }
