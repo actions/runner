@@ -16,16 +16,8 @@ namespace Runner.Server.Controllers
     [ApiController]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class LogfilesController : VssControllerBase
-    {
-
-        private readonly ILogger<LogfilesController> _logger;
-        
+    {        
         static Dictionary<int, (TaskLog, string)> logs = new Dictionary<int, (TaskLog, string)>();
-
-        public LogfilesController(ILogger<LogfilesController> logger)
-        {
-            _logger = logger;
-        }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
         public async Task<IActionResult> CreateLog(Guid scopeIdentifier, string hubName, Guid planId)

@@ -13,13 +13,6 @@ namespace Runner.Server.Controllers
     public class ConnectionDataController : VssControllerBase
     {
 
-        private readonly ILogger<ConnectionDataController> _logger;
-
-        public ConnectionDataController(ILogger<ConnectionDataController> logger)
-        {
-            _logger = logger;
-        }
-
         [HttpGet]
         public Task<FileStreamResult> Get()
         {

@@ -16,13 +16,10 @@ namespace Runner.Server.Controllers
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class FinishJobController : VssControllerBase
     {
-
-        private readonly ILogger<FinishJobController> _logger;
         private IMemoryCache _cache;
 
-        public FinishJobController(ILogger<FinishJobController> logger, IMemoryCache memoryCache)
+        public FinishJobController(IMemoryCache memoryCache)
         {
-            _logger = logger;
             _cache = memoryCache;
         }
 
