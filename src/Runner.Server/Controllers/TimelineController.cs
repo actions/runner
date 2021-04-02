@@ -105,10 +105,10 @@ namespace Runner.Server.Controllers
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
             var compare = new TimelineRecord();
-            if(!dict.TryAdd(timelineId, (patch.Value, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()))) {
-                dict[timelineId].Item1.AddRange(patch.Value);
-                dict[timelineId] = (MergeTimelineRecords(dict[timelineId].Item1), dict[timelineId].Item2);
-            }
+            dict.AddOrUpdate(timelineId, id => (patch.Value, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()), (id, old) => {
+                old.Item1.AddRange(patch.Value);
+                return (MergeTimelineRecords(old.Item1), old.Item2);
+            });
             return await Ok(patch);
         }
     }
