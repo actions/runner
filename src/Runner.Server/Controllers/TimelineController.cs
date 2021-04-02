@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,7 +17,7 @@ namespace Runner.Server.Controllers
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class TimelineController : VssControllerBase
     {
-        public static Dictionary<Guid, (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>)> dict = new Dictionary<Guid, (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>)>();
+        public static ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)> dict = new ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)>();
 
         public TimelineController()
         {
@@ -25,7 +26,7 @@ namespace Runner.Server.Controllers
 
         [HttpGet("{timelineId}")]
         public IActionResult GetTimelineRecords(Guid timelineId) {
-            (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>) val;
+            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
             if(!dict.TryGetValue(timelineId, out val)) {
                 return NotFound();
             }
@@ -104,7 +105,7 @@ namespace Runner.Server.Controllers
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
             var compare = new TimelineRecord();
-            if(!dict.TryAdd(timelineId, (patch.Value, new Dictionary<Guid, List<TimelineRecordLogLine>>()))) {
+            if(!dict.TryAdd(timelineId, (patch.Value, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()))) {
                 dict[timelineId].Item1.AddRange(patch.Value);
                 dict[timelineId] = (MergeTimelineRecords(dict[timelineId].Item1), dict[timelineId].Item2);
             }
