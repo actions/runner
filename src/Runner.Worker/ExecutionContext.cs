@@ -979,7 +979,10 @@ namespace GitHub.Runner.Worker
                 traceWriter = context.ToTemplateTraceWriter();
             }
             var schema = PipelineTemplateSchemaFactory.GetSchema();
-            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable);
+            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
+            {
+                MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
+            };
         }
 
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)
