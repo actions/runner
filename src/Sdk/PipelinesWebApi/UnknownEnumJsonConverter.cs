@@ -2,6 +2,7 @@
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 namespace GitHub.Actions.Pipelines.WebApi
 {
@@ -9,7 +10,7 @@ namespace GitHub.Actions.Pipelines.WebApi
     {
         public UnknownEnumJsonConverter()
         {
-            this.CamelCaseText = true;
+            this.NamingStrategy = new CamelCaseNamingStrategy();
         }
 
         public override bool CanConvert(Type objectType)
