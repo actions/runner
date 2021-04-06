@@ -119,6 +119,8 @@ function layout ()
 
     #change execution flag to allow running with sudo
     if [[ ("$CURRENT_PLATFORM" == "linux") || ("$CURRENT_PLATFORM" == "darwin") ]]; then
+        chmod +x "${LAYOUT_DIR}/bin/Runner.Client"
+        chmod +x "${LAYOUT_DIR}/bin/Runner.Server"
         chmod +x "${LAYOUT_DIR}/bin/Runner.Listener"
         chmod +x "${LAYOUT_DIR}/bin/Runner.Worker"
         chmod +x "${LAYOUT_DIR}/bin/Runner.PluginHost"

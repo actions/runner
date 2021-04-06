@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
+    <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64</RuntimeIdentifiers>
     <NoWarn>NU1701;NU1603;CS4014</NoWarn>
   </PropertyGroup>
 
@@ -13,6 +14,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Runner.Server\Runner.Server.csproj" />
+    <ProjectReference Include="..\Runner.Listener\Runner.Listener.csproj" />
+    <ProjectReference Include="..\Runner.Worker\Runner.Worker.csproj" />
   </ItemGroup>
 
 </Project>

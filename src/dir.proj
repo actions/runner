@@ -36,6 +36,8 @@
         <ProjectFiles Include="Runner.PluginHost/Runner.PluginHost.csproj" />
         <ProjectFiles Include="Runner.Sdk/Runner.Sdk.csproj" />
         <ProjectFiles Include="Runner.Plugins/Runner.Plugins.csproj" />
+        <ProjectFiles Include="Runner.Client/Runner.Client.csproj" />
+        <ProjectFiles Include="Runner.Server/Runner.Server.csproj" />
     </ItemGroup>
 
     <Target Name="Build" DependsOnTargets="GenerateConstant">
