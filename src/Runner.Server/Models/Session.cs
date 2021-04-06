@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Timers;
 using GitHub.DistributedTask.WebApi;
 using Runner.Server.Controllers;
 
@@ -14,5 +15,7 @@ namespace Runner.Server.Models
 
         public Aes Key {get;set;}
         public MessageController.Job Job { get; set; }
+
+        public Timer Timer {get; set;}
     }
 }

@@ -3,15 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Services.Location;
-using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace Runner.Server.Controllers
 {
@@ -30,7 +28,7 @@ namespace Runner.Server.Controllers
         [HttpGet("{timelineId}/{recordId}")]
         public IEnumerable<TimelineRecordLogLine> GetLogLines(Guid timelineId, Guid recordId)
         {
-            (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>) rec; 
+            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) rec; 
             if(TimelineController.dict.TryGetValue(timelineId, out rec)) {
                 List<TimelineRecordLogLine> value;
                 if(rec.Item2.TryGetValue(recordId, out value)) {
@@ -41,9 +39,9 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{timelineId}")]
-        public Dictionary<Guid, List<TimelineRecordLogLine>> GetLogLines(Guid timelineId)
+        public ConcurrentDictionary<Guid, List<TimelineRecordLogLine>> GetLogLines(Guid timelineId)
         {
-            (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>) rec; 
+            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) rec; 
             if(TimelineController.dict.TryGetValue(timelineId, out rec)) {
                 return rec.Item2;
             }
@@ -79,35 +77,17 @@ namespace Runner.Server.Controllers
         //     TimelineRecordFeedLinesWrapper record;
         // }
 
+        public class LowercaseContractResolver : DefaultContractResolver
+        {
+            protected override string ResolvePropertyName(string propertyName)
+            {
+                return propertyName.ToLower();
+            }
+        }
+
         [HttpGet]
         public IActionResult Message([FromQuery] Guid timelineId)
         {
-            // var requestAborted = HttpContext.RequestAborted;
-            // return new PushStreamResult(async stream => {
-            //     var wait = requestAborted.WaitHandle;
-            //     var writer = new StreamWriter(stream);
-            //     try
-            //     {
-            //         writer.NewLine = "\n";
-            //         await writer.WriteLineAsync("event: ping");
-            //         await writer.WriteLineAsync("data: {}");
-            //         await writer.WriteLineAsync();
-            //         LogFeedEvent handler = async (sender, timelineId2, recordId, record) => {
-            //             if (timelineId == timelineId2 || timelineId == Guid.Empty) {
-            //                 await writer.WriteLineAsync("event: log");
-            //                 await writer.WriteLineAsync(string.Format("data: {0}", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record })));
-            //                 await writer.WriteLineAsync();
-            //                 await writer.FlushAsync();
-            //             }
-            //         };
-            //         logfeed += handler;
-            //         await Task.Run(() => wait.WaitOne());
-                    
-            //         logfeed -= handler;
-            //     } finally {
-            //         await writer.DisposeAsync();
-            //     }
-            // }, "text/event-stream");
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
                 var wait = requestAborted.WaitHandle;
@@ -121,6 +101,12 @@ namespace Runner.Server.Controllers
                             queue.Enqueue(new KeyValuePair<string, string>(timelineId2.ToString(), JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record })));
                         }
                     };
+                    ConcurrentQueue<KeyValuePair<string,string>> queue2 = new ConcurrentQueue<KeyValuePair<string, string>>();
+                    TimelineController.TimeLineUpdateDelegate handler2 = (timelineId2, timeline) => {
+                        if(timelineId2 == timelineId) {
+                            queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId, timeline }, new JsonSerializerSettings { ContractResolver = new LowercaseContractResolver() })));
+                        }
+                    };
                     var ping = Task.Run(async () => {
                         try {
                             while(!requestAborted.IsCancellationRequested) {
@@ -128,6 +114,11 @@ namespace Runner.Server.Controllers
                                 if(queue.TryDequeue(out p)) {
                                     await writer.WriteLineAsync("event: log");
                                     await writer.WriteLineAsync(string.Format("data: {0}", p.Value));
+                                    await writer.WriteLineAsync();
+                                    await writer.FlushAsync();
+                                } else if(queue2.TryDequeue(out p)) {
+                                    await writer.WriteLineAsync($"event: {p.Key}");
+                                    await writer.WriteLineAsync($"data: {p.Value}");
                                     await writer.WriteLineAsync();
                                     await writer.FlushAsync();
                                 } else {
@@ -143,8 +134,10 @@ namespace Runner.Server.Controllers
                         }
                     }, requestAborted);
                     logfeed += handler;
+                    TimelineController.TimeLineUpdate += handler2;
                     await ping;
                     logfeed -= handler;
+                    TimelineController.TimeLineUpdate -= handler2;
                 } finally {
                     await writer.DisposeAsync();
                 }
@@ -155,16 +148,16 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId)
         {
             var record = await FromBody<TimelineRecordFeedLinesWrapper>();
-            (List<TimelineRecord>, Dictionary<Guid, List<TimelineRecordLogLine>>) timeline;
+            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) timeline;
             if(TimelineController.dict.ContainsKey(timelineId)) {
                 timeline = TimelineController.dict[timelineId];
             } else {
-                timeline = (new List<TimelineRecord>(), new Dictionary<Guid, List<TimelineRecordLogLine>>());
+                timeline = (new List<TimelineRecord>(), new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>());
             }
             if(timeline.Item2.ContainsKey(record.StepId)) {
                 timeline.Item2[record.StepId].AddRange(record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)));
             } else {
-                timeline.Item2.Add(record.StepId, record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)).ToList());
+                timeline.Item2.TryAdd(record.StepId, record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)).ToList());
             }
             logfeed?.Invoke(this, timelineId, recordId, record);
             return Ok();

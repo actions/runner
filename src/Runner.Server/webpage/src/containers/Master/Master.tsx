@@ -10,7 +10,11 @@ export interface MasterProps extends Items {
 interface IJob {
     JobId: string,
     RequestId: number,
-    TimeLineId: string
+    TimeLineId: string,
+    name: string,
+    repo: string
+    workflowname: string
+    runid : number
 }
 interface IJobEvent {
     repo: string,
@@ -24,14 +28,14 @@ export const MasterContainer: React.FC<MasterProps> = (props) => {
     useEffect(() => {
         var apiUrl = ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message";
         (async () => {
-            setJobs({ items: (JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[]).sort((a, b) => b.RequestId - a.RequestId).map((x : IJob) : Item => { return { id:  x.RequestId, title: x.JobId, description: x.TimeLineId }})});
+            setJobs({ items: (JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[]).sort((a, b) => b.RequestId - a.RequestId).map((x : IJob) : Item => { return { id:  x.RequestId, title: x.name, description: x.workflowname + " - " +  x.repo + " - " + x.RequestId }})});
         })();
         var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/event?filter=**");
         source.addEventListener("job", ev => {
             var je = JSON.parse((ev as MessageEvent).data) as IJobEvent;
             var x = je.job;
             setJobs((jobs) => {
-                return { items: [{ id:  x.RequestId, title: x.JobId, description: x.TimeLineId }, ...jobs.items] };
+                return { items: [{ id:  x.RequestId, title: x.name, description: x.workflowname + " - " + x.repo + " - " + x.RequestId }, ...jobs.items] };
             });
         });
     }, [owner, repo])

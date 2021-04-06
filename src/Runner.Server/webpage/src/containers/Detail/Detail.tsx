@@ -25,23 +25,24 @@ interface ITimeLine {
     log: ILog | null,
     order: Number,
     name: string
+    busy: boolean
 }
 
-interface IJobEvent {
-    repo: string,
-    job: IJob 
-}
+// interface IJobEvent {
+//     repo: string,
+//     job: IJob 
+// }
 
 interface ILogline {
     line : string,
-    lineNumber: Number
+    lineNumber: number
 }
 
 interface IRecord {
     Value: string[],
     StepId: string,
-    StartLine: Number
-    Count: Number
+    StartLine: number
+    Count: number
 }
 
 interface ILoglineEvent {
@@ -49,15 +50,126 @@ interface ILoglineEvent {
     record: IRecord
 }
 
+interface ITimeLineEvent {
+    timeline: ITimeLine[],
+    timelineId: string
+}
+
+
+// Artifacts
+
+export interface ArtifactResponse {
+    containerId: string
+    size: number
+    signedContent: string
+    fileContainerResourceUrl: string
+    type: string
+    name: string
+    url: string
+
+    files: ContainerEntry[] | null
+  }
+  
+  export interface CreateArtifactParameters {
+    Type: string
+    Name: string
+    RetentionDays?: number
+  }
+  
+  export interface PatchArtifactSize {
+    Size: number
+  }
+  
+  export interface PatchArtifactSizeSuccessResponse {
+    containerId: number
+    size: number
+    signedContent: string
+    type: string
+    name: string
+    url: string
+    uploadUrl: string
+  }
+  
+  export interface UploadResults {
+    uploadSize: number
+    totalSize: number
+    failedItems: string[]
+  }
+  
+  export interface ListArtifactsResponse {
+    count: number
+    value: ArtifactResponse[]
+  }
+  
+  export interface QueryArtifactResponse {
+    count: number
+    value: ContainerEntry[]
+  }
+  
+  export interface ContainerEntry {
+    containerId: number
+    scopeIdentifier: string
+    path: string
+    itemType: string
+    status: string
+    fileLength?: number
+    fileEncoding?: number
+    fileType?: number
+    dateCreated: string
+    dateLastModified: string
+    createdBy: string
+    lastModifiedBy: string
+    itemLocation: string
+    contentLocation: string
+    fileId?: number
+    contentId: string
+  }
+
+/**
+ * Gets a list of all artifacts that are in a specific container
+ */
+async function listArtifacts(runid : number): Promise<ListArtifactsResponse> {
+const artifactUrl = ghHostApiUrl + "/runner/host/_apis/pipelines/workflows/" + runid + "/artifacts"
+
+const response = await fetch(artifactUrl);
+const body: string = await response.text()
+return JSON.parse(body)
+}
+
+/**
+   * Fetches a set of container items that describe the contents of an artifact
+   * @param artifactName the name of the artifact
+   * @param containerUrl the artifact container URL for the run
+   */
+ async function getContainerItems(
+    artifactName: string,
+    containerUrl: string
+  ): Promise<QueryArtifactResponse> {
+    // the itemPath search parameter controls which containers will be returned
+    const resourceUrl = new URL(containerUrl)
+    resourceUrl.searchParams.append('itemPath', artifactName)
+
+    const response = await fetch(resourceUrl.toString());
+    const body: string = await response.text()
+    return JSON.parse(body)
+  }
+
+// End Artifacts
+
+
 export const DetailContainer : React.FC<DetailProps> = (props) => {
     const [ jobs, setJobs ] = useState<IJob[] | null>([]);
     const [ timeline, setTimeline ] = useState<ITimeLine[]>([]);
+    const [ artifacts, setArtifacts ] = useState<ArtifactResponse[]>([]);
     const [ title, setTitle] = useState<string>("Loading...");
     const { id } = useParams();
     const { owner, repo } = useParams();
+    const [ errors, setErrors] = useState<string[]>([]);
+
 
     useEffect(() => {
         (async () => {
+            setArtifacts(_ => []);
             if(id === undefined) {
                 return;
             }
@@ -67,29 +179,60 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                 njobs = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message", { })).json())
                 setJobs(njobs);
             }
-            const item = getJobById(njobs || jobs, id).item
+            var query = getJobById(njobs || jobs, id);
+            if(query.job.errors !== null && query.job.errors.length > 0) {
+                setErrors(query.job.errors);
+            } else {
+                setErrors([]);
+            }
+            const item = query.item;
             const timelineId = item ? item.description : null;
             if(timelineId != null) {
-                var newTimeline = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Timeline/" + timelineId, { })).json() as ITimeLine[];
-                if(newTimeline != null && newTimeline.length > 1) {
-                    setTitle(newTimeline.shift().name);
-                    var convert = new Convert({
-                        newline: true
-                    });
-                    for (const tl of newTimeline) {
-                        if (tl.log !== null && tl.log.id !== -1) {
-                            const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + tl.log.id, { })).text();
-                            tl.log.content = convert.toHtml(log);
-                        } else {
-                            try {
-                                tl.log = { id:-1, location: null, content: (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + timelineId + "/" + tl.id, { })).json() as ILogline[]).reduce((prev: string, c : ILogline) => prev + "<br/>" + convert.toHtml(c.line), "")};
-                            } catch {
+                var timeline = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Timeline/" + timelineId, { });
+                if(timeline.status === 200) {
+                    var newTimeline = await timeline.json() as ITimeLine[];
+                    if(newTimeline != null && newTimeline.length > 1) {
+                        setTitle(newTimeline.shift().name);
+                        setTimeline(newTimeline);
+                        // var convert = new Convert({
+                        //     newline: true,
+                        //     escapeXML: true
+                        // });
+                        // var proms = [];
+                        // for (const tl of newTimeline) {
+                        //     proms.push((async () => {
+                        //         if (tl.log !== null && tl.log.id !== -1) {
+                        //             const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + tl.log.id, { })).text();
+                        //             tl.log.content = convert.toHtml(log);
+                        //         } else {
+                        //             try {
+                        //                 tl.log = { id:-1, location: null, content: (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + timelineId + "/" + tl.id, { })).json() as ILogline[]).reduce((prev: string, c : ILogline) => prev + "<br/>" + convert.toHtml(c.line), "")};
+                        //             } catch {
 
-                            }
+                        //             }
+                        //         }
+                        //     })());
+                        // }
+                        // await Promise.all(proms)
+                    }
+                    setTimeline(newTimeline);
+                } else {
+                    setTitle((query.job.errors !== null && query.job.errors.length > 0) ? "Failed to run" : "Wait for workflow to run...");
+                    setTimeline(e => []);
+                }
+            }
+            if(query.job.runid !== -1) {
+                var artifacts = await listArtifacts(query.job.runid);
+                if(artifacts.value !== undefined) {
+                    for (let i = 0; i < artifacts.count; i++) {
+                        const element = artifacts.value[i];
+                        var items = await getContainerItems(element.name, element.fileContainerResourceUrl)
+                        if(items !== undefined) {
+                            element.files = items.value 
                         }
                     }
+                    setArtifacts(_ => artifacts.value);
                 }
-                setTimeline(newTimeline);
             }
         })();
     }, [id, jobs, owner, repo])
@@ -97,31 +240,69 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
         if(id !== undefined && id !== null && id.length > 0) {
             var item = getJobById(jobs, id).item;
             if(item !== null) {
-                var source = new EventSource( + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
+                var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
+                var missed : ILoglineEvent[] = [];
+                var callback = function(timeline, e:ILoglineEvent) {
+                    var s = timeline.find(t => t.id === e.record.StepId);
+                    var convert = new Convert({
+                        newline: true,
+                        escapeXML: true
+                    });
+                    if(s != null) {
+                        if(s.log == null) {
+                            s.log = { id:-1, location: null, content: ""};
+                            if(e.record.StartLine > 1) {
+                                (async () => {
+                                    console.log("Downloading previous log lines of this step...");
+                                    var lines = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item.description + "/" + e.record.StepId, { });
+                                    if(lines.status === 200) {
+                                        var missingLines = await lines.json() as ILogline[];
+                                        missingLines.length = e.record.StartLine - 1;
+                                        s.log.content = missingLines.reduce((prev: string, c : ILogline) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c.line), "") + s.log.content;
+                                    } else {
+                                        console.log("No logs to download..., currently fixes itself");
+                                    }
+                                })();
+                            }
+                        }
+                        if (s.log.id === -1) {
+                            s.log.content = e.record.Value.reduce((prev: string, c : string) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c), s.log.content);
+                        }
+                        return true;
+                    }
+                    return false;
+                }
                 source.addEventListener ("log", (ev : MessageEvent) => {
                     console.log("new logline " + ev.data);
                     var e = JSON.parse(ev.data) as ILoglineEvent;
                     setTimeline(timeline => {
-                        var s = timeline.find(t => t.id === e.record.StepId);
-                        var convert = new Convert({
-                            newline: true,
-                            escapeXML: true
-                        });
-                        if(s != null) {
-                            if(s.log == null) {
-                                s.log = { id:-1, location: null, content: ""};
-                            }
-                            if (s.log.id === -1) {
-                                s.log.content = e.record.Value.reduce((prev: string, c : string) => prev + "<br/>" + convert.toHtml(c), s.log.content);
-                            }
-                        } else {
-                            (async () => {
-                                
-                            })();
+                        if(callback(timeline, e)) {
+                            return [...timeline];
                         }
-                        return [...timeline];
+                        missed.push(e);
+                        return timeline;
                     });
-                    
+                });
+                source.addEventListener ("timeline", (ev : MessageEvent) => {
+                    var e = JSON.parse(ev.data) as ITimeLineEvent;
+                    setTitle(e.timeline.shift().name);
+                    setTimeline(oldtimeline => {
+                        e.timeline.splice(0, oldtimeline.length)
+                        if(e.timeline.length === 0) {
+                            // Todo Merge Timelines here
+                            return oldtimeline;
+                        }
+                        var timeline = [...oldtimeline, ...e.timeline]
+                        for (; missed.length > 0;) {
+                            if(callback(timeline, missed[0])) {
+                                missed.shift();
+                            } else {
+                                break;
+                            }
+                        }
+                        return timeline;
+                    });
+                    // console.log(ev.data)
                 });
                 return () => {
                     source.close();
@@ -135,10 +316,52 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
         <section className={styles.component}>
         <Header title={title} />
         <main className={styles.main}>
-            <div className={styles.text} style={{width: '100%'}}> 
+            <div className={styles.text} style={{width: '100%'}}>
+                {errors.map(e => <div>Error: {e}</div>)}
+                {artifacts.map((container: ArtifactResponse) => <div><div>{container.name}</div>{(() => {
+                    if(container.files !== undefined) {
+                        return container.files.map(file => <div><a href={file.contentLocation}>{file.path}</a></div>);
+                    }
+                    return <div/>;
+                })()}</div>)}
                 {timeline.map((item: ITimeLine) =>
-                    <Collapsible key={id + item.id} className={styles.Collapsible} openedClassName={styles.Collapsible} triggerClassName={styles.Collapsible__trigger} triggerOpenedClassName={styles.Collapsible__trigger + " " + styles["is-open"]} contentOuterClassName={styles.Collapsible__contentOuter} contentInnerClassName={styles.Collapsible__contentInner} trigger={item.name}>
-                        <div style={{ textAlign: 'left', whiteSpace: 'nowrap', maxHeight: '100%', overflow: 'auto' }} dangerouslySetInnerHTML={{ __html: item.log != null ? item.log.content : "Nothing here" }}></div>
+                    <Collapsible key={id + item.id} className={styles.Collapsible} openedClassName={styles.Collapsible} triggerClassName={styles.Collapsible__trigger} triggerOpenedClassName={styles.Collapsible__trigger + " " + styles["is-open"]} contentOuterClassName={styles.Collapsible__contentOuter} contentInnerClassName={styles.Collapsible__contentInner} trigger={item.name} onOpening={() => {
+                        if(!item.busy && (item.log == null || (item.log.id !== -1 && (!item.log.content || item.log.content.length === 0)))) {
+                            item.busy = true;
+                            (async() => {
+                                try {
+                                    var convert = new Convert({
+                                        newline: true,
+                                        escapeXML: true
+                                    });
+                                    if(item.log == null) {
+                                        console.log("Downloading previous log lines of this step...");
+                                        const item2 = getJobById(jobs, id).item;
+                                        var logs = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item2.description + "/" + item.id, { });
+                                        if(logs.status === 200) {
+                                            var missingLines = await logs.json() as ILogline[];
+                                            item.log = { id: -1, location: null, content: missingLines.reduce((prev: string, c : ILogline) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c.line), "") };
+                                        } else {
+                                            console.log("No logs to download...");
+                                        }
+                                    } else {
+                                        const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + item.log.id, { })).text();
+                                        var lines = log.split('\n');
+                                        var offset = '2021-04-02T15:50:14.6619714Z '.length;
+                                        lines[0] = convert.toHtml(lines[0].substring(offset));
+                                        item.log.content = lines.reduce((prev, currentValue) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(currentValue.substring(offset)));
+                                    }
+                                } finally {
+                                    item.busy = false;
+                                    // that.forceUpdate();
+                                    setTimeline((t) => {
+                                        return [...t];
+                                    });
+                                }
+                            })();
+                        }
+                    }}>
+                        <div style={{ textAlign: 'left', whiteSpace: 'nowrap', maxHeight: '100%', overflow: 'auto', fontFamily: "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" }} dangerouslySetInnerHTML={{ __html: item.log != null ? item.log.content : "Nothing here" }}></div>
                     </Collapsible>
                 )}
             </div>

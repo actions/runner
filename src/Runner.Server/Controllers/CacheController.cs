@@ -13,7 +13,7 @@ using Microsoft.AspNetCore.Hosting;
 namespace Runner.Server.Controllers {
 
     [ApiController]
-    [Route("runner/host_apis/artifactcache")]
+    [Route("{owner}/{repo}/_apis/artifactcache")]
     public class CacheController : VssControllerBase{
         
         private string _targetFilePath;
@@ -65,13 +65,13 @@ namespace Runner.Server.Controllers {
             var a = keys.Split(',');
             string val;
             if(cache.TryGetValue(a[0], out val)) {
-                return await Ok(new ArtifactCacheEntry{ cacheKey = a[0], scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host_apis/artifactcache/get/{val}" });
+                return await Ok(new ArtifactCacheEntry{ cacheKey = a[0], scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/artifactcache/get/{val}" });
             } else {
                 var b = cache.ToArray();
                 foreach (var item in a) {
                     var res = (from c in b where item.StartsWith(c.Key) select c).FirstOrDefault();
                     if(res.Value != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = res.Key, scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host_apis/artifactcache/get/{res.Value}" });
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = res.Key, scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/artifactcache/get/{res.Value}" });
                     }
                 }
             }

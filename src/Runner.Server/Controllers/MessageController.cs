@@ -322,13 +322,15 @@ namespace Runner.Server.Controllers
             List<TemplateToken> workflowDefaults = new List<TemplateToken>();
             List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
 
-            try {
-                templateContext.Errors.Check();
-            } catch(Exception exc) {
-                Console.Error.WriteLine("Failed to process file: '" + fileRelativePath + "', with exception: " + exc.ToString());
-                return;
-            }
-            if(token == null) {
+            if(token == null || templateContext.Errors.Count > 0) {
+                List<string> errors = new List<string>();
+                foreach(var error in templateContext.Errors) {
+                    errors.Add(error.Message);
+                }
+                var RequestId = Interlocked.Increment(ref reqId);
+                var jid = Guid.NewGuid();
+                var job = jobs.AddOrUpdate(jid, new Job() { errors = errors, message = null, repo = hook?.repository.full_name ?? "Unknown", name = fileRelativePath, workflowname = fileRelativePath, runid = -1, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
+                jobevent?.Invoke(this, job.repo, job);
                 return;
             }
             var actionMapping = token.AssertMapping("root");
@@ -417,6 +419,8 @@ namespace Runner.Server.Controllers
                     }
                     break;
             }
+
+            var jobnamebuilder = new ReferenceNameBuilder();
             foreach (var actionPair in actionMapping)
             {
                 var propertyName = actionPair.Key.AssertString($"action.yml property key");
@@ -425,13 +429,30 @@ namespace Runner.Server.Controllers
                 {
                     case "jobs":
                     var jobs = actionPair.Value.AssertMapping("jobs");
+                    List<string> errors = new List<string>();
+                    foreach (var job in jobs) {
+                        var jn = job.Key.AssertString($"action.yml property key");
+                        var jnerror = "";
+                        // Validate Jobname
+                        if(!jobnamebuilder.TryAddKnownName(jn.Value, out jnerror)) {
+                            errors.Add(jnerror);
+                        }
+                    }
+                    if(errors.Count > 0) {
+                        var RequestId = Interlocked.Increment(ref reqId);
+                        var jid = Guid.NewGuid();
+                        var _job = MessageController.jobs.AddOrUpdate(jid, new Job() { errors = errors, message = null, repo = hook?.repository.full_name ?? "Unknown", name = fileRelativePath, workflowname = fileRelativePath, runid = -1, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
+                        jobevent?.Invoke(this, _job.repo, _job);
+                        return;
+                    }
                     foreach (var job in jobs) {
                         var ctx = new JobCtx() { Status = null };
                         exctx.JobContext = ctx;
                         var jn = job.Key.AssertString($"action.yml property key");
-                        var jobitem = new JobItem() { name = jn.Value };
-                        dependentjobgroup.Add(jobitem);
+                        var jobname = jn.Value;
                         var run = job.Value.AssertMapping("jobs");
+                        var jobitem = new JobItem() { name = jobname };
+                        dependentjobgroup.Add(jobitem);
 
                         var needs = (from r in run where r.Key.AssertString("needs").Value == "needs" select r).FirstOrDefault().Value;
                         List<string> neededJobs = new List<string>();
@@ -449,21 +470,22 @@ namespace Runner.Server.Controllers
                         contextData.Add("github", githubctx);
                         githubctx.Add("server_url", new StringContextData(GitServerUrl));
                         githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
-                        githubctx.Add("workflow", new StringContextData((from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath));
+                        var workflowname = (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
+                        githubctx.Add("workflow", new StringContextData(workflowname));
+                        long runid = 0;
                         if(hook != null){
                             githubctx.Add("sha", new StringContextData(hook.After));
                             githubctx.Add("repository", new StringContextData(hook.repository.full_name));
-                            githubctx.Add("repository_owner", new StringContextData(hook.repository.Owner.username));
+                            githubctx.Add("repository_owner", new StringContextData(hook.repository.Owner.login));
                             githubctx.Add("ref", new StringContextData(hook.Ref));
-                            githubctx.Add("job", new StringContextData(jn.Value));
-                            githubctx.Add("head_ref", new StringContextData(hook.head?.Ref ?? ""));// only for PR
-                            githubctx.Add("base_ref", new StringContextData(hook.Base?.Ref ?? ""));// only for PR
-                            // base_ref
+                            githubctx.Add("job", new StringContextData(jobname));
+                            githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
+                            githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
                             // event_path is filled by event
                             githubctx.Add("event", payloadObject.ToPipelineContextData());
                             githubctx.Add("event_name", new StringContextData(e));
                             githubctx.Add("actor", new StringContextData(hook.sender.login));
-                            long runid = _cache.GetOrCreate(hook.repository.full_name, e => new Int64());
+                            runid = _cache.GetOrCreate(hook.repository.full_name, e => new Int64());
                             _cache.Set(hook.repository.full_name, runid + 1);
                             githubctx.Add("run_id", new StringContextData(runid.ToString()));
                             var runnumberkey = $"{hook.repository.full_name}:/{fileRelativePath}";
@@ -476,7 +498,6 @@ namespace Runner.Server.Controllers
                         var strategyctx = new DictionaryContextData();
                         contextData.Add("strategy", strategyctx);
 
-                        TaskCompletionSource<IEnumerable<AgentJobRequestMessage>> tcs1 = new TaskCompletionSource<IEnumerable<AgentJobRequestMessage>>();
                         FinishJobController.JobCompleted handler = e => {
                             if(neededJobs.Count > 0) {
                                 neededJobs.RemoveAll(name => {
@@ -637,42 +658,60 @@ namespace Runner.Server.Controllers
                                             }
                                         }
                                     }
-                                    strategyctx.Add("job-total", new NumberContextData(flatmatrix.Count));
-                                    int i = 0;
-                                    foreach (var item in flatmatrix)
-                                    {
-                                        strategyctx["job-index"] = new NumberContextData((double)(i++));
-                                        var matrixContext = new DictionaryContextData();
-                                        foreach (var mk in item)
+                                    if(flatmatrix.Count > 0) {
+                                        strategyctx.Add("job-total", new NumberContextData(flatmatrix.Count));
+                                        int i = 0;
+                                        foreach (var item in flatmatrix)
                                         {
-                                            PipelineContextData data = mk.Value.ToContextData();
-                                            matrixContext.Add(mk.Key, data);
+                                            int c = i++;
+                                            strategyctx["job-index"] = new NumberContextData((double)(c));
+                                            var matrixContext = new DictionaryContextData();
+                                            var displayname = new StringBuilder(jobname);
+                                            displayname.Append( " (");
+                                            int z = 0;
+                                            foreach (var mk in item)
+                                            {
+                                                if(z++ > 0) {
+                                                    displayname.Append(", ");
+                                                }
+                                                displayname.Append(mk.Value.ToString());
+                                                PipelineContextData data = mk.Value.ToContextData();
+                                                matrixContext.Add(mk.Key, data);
+                                            }
+                                            displayname.Append( ")");
+                                            contextData["matrix"] = matrixContext;
+                                            var next = new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), TimelineId = Guid.NewGuid() };
+                                            if(dependentjobgroup.Any()) {
+                                                jobgroup.Add(next);
+                                            }
+                                            templateContext.ExpressionValues.Clear();
+                                            foreach (var pair in contextData) {
+                                                templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                            }
+                                            var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname.ToString();
+                                            
+                                            queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData, next.Id, next.TimelineId, apiUrl, hook?.repository.full_name ?? "Unknown", $"{jobname}_{c}", workflowname, runid);
+                                            
+                                            // yield return rep;
                                         }
-                                        contextData["matrix"] = matrixContext;
-                                        var next = new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), TimelineId = Guid.NewGuid() };
-                                        if(dependentjobgroup.Any()) {
-                                            jobgroup.Add(next);
-                                        }
-                                        
-                                        queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, next.Id, next.TimelineId, apiUrl);
-                                        
-                                        // yield return rep;
+                                        return;
                                     }
                                 }
-                                else {
-                                    strategyctx.Add("job-index", new NumberContextData(0));
-                                    strategyctx.Add("job-total", new NumberContextData(1));
-                                    jobitem.Id = Guid.NewGuid();
-                                    jobitem.TimelineId = Guid.NewGuid();
-                                    if(dependentjobgroup.Any()) {
-                                        jobgroup.Add(jobitem);
-                                    }
-                                    contextData.Add("matrix", null);
-                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
-
-                                    // yield return rep;
+                                // Match Github, and create a pseudo job
+                                strategyctx.Add("job-index", new NumberContextData(0));
+                                strategyctx.Add("job-total", new NumberContextData(1));
+                                jobitem.Id = Guid.NewGuid();
+                                jobitem.TimelineId = Guid.NewGuid();
+                                if(dependentjobgroup.Any()) {
+                                    jobgroup.Add(jobitem);
                                 }
-
+                                contextData.Add("matrix", null);
+                                templateContext.ExpressionValues.Clear();
+                                foreach (var pair in contextData) {
+                                    templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                }
+                                var jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobname;
+                                queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid);
                             }
                             else
                             {
@@ -685,9 +724,12 @@ namespace Runner.Server.Controllers
                                     jobgroup.Add(jobitem);
                                 }
                                 contextData.Add("matrix", null);
-                                queueJob(templateContext, workflowDefaults, workflowEnvironment, jn, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl);
-
-                                // yield return rep;
+                                templateContext.ExpressionValues.Clear();
+                                foreach (var pair in contextData) {
+                                    templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                }
+                                var jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobname;
+                                queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData, jobitem.Id, jobitem.TimelineId, apiUrl, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid);
                             }
                         };
                         jobitem.OnJobEvaluatable = handler;
@@ -708,7 +750,8 @@ namespace Runner.Server.Controllers
             jobCompleted(null);
         }
 
-        private void queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, StringToken jn, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string apiUrl)
+        private static int reqId = 0;
+        private void queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string apiUrl, string repo, string name, string workflowname, long runid)
         {
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
             HashSet<string> runsOnMap = new HashSet<string>();
@@ -729,6 +772,42 @@ namespace Runner.Server.Controllers
                 }
             }
 
+            var sessionsfreeze = sessions.ToArray();
+            var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name) select s.Key).FirstOrDefault();
+            if(x == null) {
+                List<string> errors = new List<string>();
+                StringBuilder b = new StringBuilder();
+                int i = 0;
+                foreach(var e in runsOnMap) {
+                    if(i++ != 0) {
+                        b.Append(", ");
+                    }
+                    b.Append(e);
+                }
+                StringBuilder b2 = new StringBuilder();
+                i = 0;
+                foreach(var s in sessionsfreeze) {
+                    if(i++ != 0) {
+                        b2.Append(", ");
+                    }
+                    b2.Append($"Name: `{s.Value.TaskAgentSession.Agent.Name}` OSDescription: `{s.Value.TaskAgentSession.Agent.OSDescription}` Labels [");
+                    int j = 0;
+                    foreach(var l in s.Value.Agent.TaskAgent.Labels) {
+                        if(j++ != 0) {
+                            b2.Append(", ");
+                        }
+                        b2.Append(l.Name);
+                    }
+                    b2.Append("]");
+                }
+                errors.Add($"No runner is registered for the requested runs-on labels: [{b.ToString()}], please register and run a self-hosted runner with at least these labels. Available runner: {(i == 0 ? "No Runner available!" : b2.ToString())}");
+
+                var RequestId = Interlocked.Increment(ref reqId);
+                var jid = jobId;
+                var _job = jobs.AddOrUpdate(jid, new Job() { errors = errors, message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = RequestId }, (id, job) => job);
+                jobevent?.Invoke(this, _job.repo, _job);
+                return;
+            }
             var res = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault();
             var seq = res.Value.AssertSequence("seq");
 
@@ -781,9 +860,12 @@ namespace Runner.Server.Controllers
             foreach (var secret in secrets) {
                 variables.Add(secret.Name, new VariableValue(secret.Value, true));
             }
-            var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, jn.Value, "name", jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
-            ConcurrentQueue<AgentJobRequestMessage> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<AgentJobRequestMessage>());
-            queue.Enqueue(req);
+            var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, displayname, name, jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
+            req.RequestId = Interlocked.Increment(ref reqId);
+            ConcurrentQueue<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<Job>());
+            var job = jobs.AddOrUpdate(req.JobId, new Job() { message = req, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = req.JobId, RequestId = req.RequestId, TimeLineId = req.Timeline.Id }, (id, job) => job);
+            queue.Enqueue(job);
+            jobevent?.Invoke(this, job.repo, job);
         }
 
         public class Job {
@@ -798,6 +880,13 @@ namespace Runner.Server.Controllers
             public Guid TimeLineId { get; set; }
             [JsonProperty("SessionId")]
             public Guid SessionId { get; set; }
+            [JsonIgnore]
+            public AgentJobRequestMessage message {get;set;}
+            public string repo { get; set; }
+            public string name { get; set; }
+            public string workflowname { get; set; }
+            public long runid { get; set; }
+            public List<string> errors;
         }
         static ConcurrentDictionary<Guid, Job> jobs = new ConcurrentDictionary<Guid, Job>();
 
@@ -817,7 +906,7 @@ namespace Runner.Server.Controllers
             }
         }
 
-        private static ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>> jobqueue = new ConcurrentDictionary<HashSet<string>, ConcurrentQueue<AgentJobRequestMessage>>(new EqualityComparer());
+        private static ConcurrentDictionary<HashSet<string>, ConcurrentQueue<Job>> jobqueue = new ConcurrentDictionary<HashSet<string>, ConcurrentQueue<Job>>(new EqualityComparer());
         private static int id = 0;
 
         // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
@@ -830,6 +919,9 @@ namespace Runner.Server.Controllers
         //        return bodyReader.ReadToEnd();
         //     }
         // }
+
+        private static ConcurrentDictionary<Session, Session> sessions = new ConcurrentDictionary<Session, Session>();
+
         [HttpGet("{poolId}")]
         public async Task<IActionResult> GetMessage(int poolId, Guid sessionId)
         {
@@ -838,16 +930,36 @@ namespace Runner.Server.Controllers
                 this.HttpContext.Response.StatusCode = 403;
                 return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This server have been restarted"), true, new Version(2, 0)));
             }
+            sessions.AddOrUpdate(session, s => {
+                if(s.Timer == null) {
+                    s.Timer = new System.Timers.Timer();
+                }
+                s.Timer.AutoReset = false;
+                s.Timer.Interval = 60000;
+                s.Timer.Elapsed += (a,b) => {
+                    Session s2;
+                    sessions.TryRemove(session, out s2);
+                };
+                s.Timer.Start();
+                return s;
+            } , (s, v) => {
+                s.Timer.Stop();
+                s.Timer.Start();
+                return v;
+            });
             for (int i = 0; i < 10; i++)
             {
                 if(session.Job == null) {
-                    AgentJobRequestMessage res;
+                    Job req;
                     foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name))) {
-                        if(queue.Value.TryDequeue(out res)) {
-                            res.RequestId = id;
-                            session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => job);
+                        if(queue.Value.TryDequeue(out req)) {
+                            var res = req.message;
+                            
+                            session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => {
+                                job.SessionId = sessionId;
+                                return job;
+                            });
                             _cache.Set("Job_" + res.RequestId, session.Job);
-                            jobevent?.Invoke(this, (res.ContextData["github"] as DictionaryContextData)?["repository"].AssertString("repository string") ?? "dummy/Test", session.Job);
                             session.Key.GenerateIV();
                             using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
                             using (var body = new MemoryStream())
@@ -906,6 +1018,11 @@ namespace Runner.Server.Controllers
             public string Ref {get;set;}
         }
 
+        public class GitPullRequest {
+            public GitCommit head {get;set;}
+            public GitCommit Base {get;set;}
+        }
+
         public class GiteaHook
         {
             [DataMember]
@@ -915,8 +1032,7 @@ namespace Runner.Server.Controllers
             public string After {get;set;}
 
             public GitUser sender {get;set;}
-            public GitCommit head {get;set;}
-            public GitCommit Base {get;set;}
+            public GitPullRequest pull_request {get;set;}
         }
 
         public class Issue {
@@ -942,14 +1058,14 @@ namespace Runner.Server.Controllers
             }
             var hook = obj.Key;
             if(workflow != null && workflow.Length > 0) {
-                var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host";
+                var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/";
                 ConvertYaml("workflow.yml", workflow, hook.repository.full_name, apiUrl, GitServerUrl, hook, obj.Value, e);
             } else {
                 try {
                     var client = new HttpClient();
                     client.DefaultRequestHeaders.Add("accept", "application/json");
                     client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                    var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host";
+                    var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/";
                     var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
                     var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/contents/.github%2Fworkflows?ref={hook.After}");
                     // {

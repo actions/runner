@@ -32,6 +32,9 @@ namespace Runner.Server.Controllers
             }
             return ((ControllerBase)this).Ok(val.Item1);
         }
+        
+        public delegate void TimeLineUpdateDelegate(Guid timelineId, List<TimelineRecord> update);
+        public static event TimeLineUpdateDelegate TimeLineUpdate;
 
         private List<TimelineRecord> MergeTimelineRecords(List<TimelineRecord> timelineRecords)
         {
@@ -105,10 +108,11 @@ namespace Runner.Server.Controllers
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
             var compare = new TimelineRecord();
-            dict.AddOrUpdate(timelineId, id => (patch.Value, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()), (id, old) => {
+            var res = dict.AddOrUpdate(timelineId, id => (patch.Value, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()), (id, old) => {
                 old.Item1.AddRange(patch.Value);
                 return (MergeTimelineRecords(old.Item1), old.Item2);
             });
+            TimeLineUpdate?.Invoke(timelineId, res.Item1);
             return await Ok(patch);
         }
     }

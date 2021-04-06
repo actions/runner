@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 namespace Runner.Server.Controllers {
 
     [ApiController]
-    [Route("runner/host_apis/pipelines/workflows/{run}/artifacts")]
+    [Route("{owner}/{repo}/_apis/pipelines/workflows/{run}/artifacts")]
     public class ArtifactController : VssControllerBase{
 
         private string _targetFilePath;
@@ -55,26 +55,25 @@ namespace Runner.Server.Controllers {
             var req = await FromBody<CreateContainerRequest>();
             var c = _cache.GetOrCreate("artifact_run_" + run, e => new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>());
             c.AddOrUpdate(req.Name, s => new ConcurrentDictionary<string, string>(), (a,b) => {
-                foreach (var item in b) {
-                    System.IO.File.Delete(System.IO.Path.Combine(_targetFilePath, item.Value));
-                }
-                return new ConcurrentDictionary<string, string>();
+                return b;
             });
-            return await Ok(new ArtifactResponse { name = req.Name, fileContainerResourceUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host_apis/pipelines/workflows/{run}/artifacts/container/{req.Name}" } );
+            return await Ok(new ArtifactResponse { name = req.Name, fileContainerResourceUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{req.Name}" } );
         }
 
         [HttpPatch]
         public async Task<FileStreamResult> PatchContainer(int run, [FromQuery] string artifactName) {
             var req = await FromBody<CreateContainerRequest>();
             // This sends the size of the artifact container
-            return await Ok(new ArtifactResponse { name = artifactName, fileContainerResourceUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host_apis/pipelines/workflows/{run}/artifacts/container/{artifactName}" } );
+            return await Ok(new ArtifactResponse { name = artifactName, fileContainerResourceUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{artifactName}" } );
         }
 
         [HttpGet]
-        public async Task<FileStreamResult> GetContainer(int run) {
+        public async Task<IActionResult> GetContainer(int run) {
             var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, string>>>("artifact_run_" + run);
-
-            return await Ok(from e in c select new ArtifactResponse{ name = e.Key, fileContainerResourceUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host_apis/pipelines/workflows/{run}/artifacts/container/{e.Key}" } );
+            if(c == null) {
+                return NotFound();
+            }
+            return await Ok(from e in c select new ArtifactResponse{ name = e.Key, fileContainerResourceUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{e.Key}" } );
         }
 
         [HttpPut("container/{containername}")]
@@ -106,13 +105,18 @@ namespace Runner.Server.Controllers {
             }
             var ret = new List<DownloadInfo>();
             foreach (var item in val) {
-                ret.Add(new DownloadInfo { path = item.Key, itemType = "file", fileLength = 1 /* TODO do we need the real filesize? this works for now */, contentLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host_apis/pipelines/workflows/{run}/artifacts/artifact/{containername}/{item.Value}"});
+                var builder = new Microsoft.AspNetCore.Http.Extensions.QueryBuilder();
+                builder.Add("filename", Path.GetFileName(item.Key));
+                ret.Add(new DownloadInfo { path = item.Key, itemType = "file", fileLength = 1 /* TODO do we need the real filesize? this works for now */, contentLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{containername}/{item.Value}{builder.ToString()}"});
             }
             return await Ok(ret);
         }
 
         [HttpGet("artifact/{containername}/{file}")]
-        public FileStreamResult GetFileFromContainer(int run, string containername, string file) {
+        public FileStreamResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename) {
+            if(filename?.Length > 0) {
+                Response.Headers.Add("Content-Disposition", $"attachment; filename={filename}");
+            }
             return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, file)), "application/octet-stream");
         }
 
