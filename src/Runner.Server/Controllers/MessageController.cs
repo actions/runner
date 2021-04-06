@@ -319,8 +319,8 @@ namespace Runner.Server.Controllers
                 token = TemplateReader.Read(templateContext, "workflow-root", yamlObjectReader, fileId, out _);
             }
 
-            List<TemplateToken> workflowDefaults = new List<TemplateToken>();
-            List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
+            TemplateToken workflowDefaults = null;
+            TemplateToken workflowEnvironment = null;
 
             if(token == null || templateContext.Errors.Count > 0) {
                 List<string> errors = new List<string>();
@@ -740,10 +740,10 @@ namespace Runner.Server.Controllers
                     }
                     break;
                     case "defaults":
-                    workflowDefaults.Add(actionPair.Value);
+                    workflowDefaults = actionPair.Value;
                     break;
                     case "env":
-                    workflowEnvironment.AddRange(actionPair.Value.AssertSequence("env is a seq"));
+                    workflowEnvironment = actionPair.Value;
                     break;
                 }
             }
@@ -751,7 +751,7 @@ namespace Runner.Server.Controllers
         }
 
         private static int reqId = 0;
-        private void queueJob(TemplateContext templateContext, List<TemplateToken> workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string apiUrl, string repo, string name, string workflowname, long runid)
+        private void queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, TemplateToken workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string apiUrl, string repo, string name, string workflowname, long runid)
         {
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
             HashSet<string> runsOnMap = new HashSet<string>();
@@ -817,15 +817,16 @@ namespace Runner.Server.Controllers
             {
                 step.Id = Guid.NewGuid();
             }
-
-            // Merge environment
-            var environmentToken = (from r in run where r.Key.AssertString("env").Value == "env" select r).FirstOrDefault().Value?.AssertSequence("env is a seq");
+            
+            var environmentToken = (from r in run where r.Key.AssertString("env").Value == "env" select r).FirstOrDefault().Value;
 
             List<TemplateToken> environment = new List<TemplateToken>();
-            environment.AddRange(workflowEnvironment);
+            if(workflowEnvironment != null) {
+                environment.Add(workflowEnvironment);
+            }
             if (environmentToken != null)
             {
-                environment.AddRange(environmentToken);
+                environment.Add(environmentToken);
             }
 
             // Jobcontainer
@@ -860,7 +861,19 @@ namespace Runner.Server.Controllers
             foreach (var secret in secrets) {
                 variables.Add(secret.Name, new VariableValue(secret.Value, true));
             }
-            var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, displayname, name, jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, workflowDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
+
+            var defaultToken = (from r in run where r.Key.AssertString("defaults").Value == "defaults" select r).FirstOrDefault().Value;
+
+            List<TemplateToken> jobDefaults = new List<TemplateToken>();
+            if(workflowDefaults != null) {
+                jobDefaults.Add(workflowDefaults);
+            }
+            if (defaultToken != null)
+            {
+                jobDefaults.Add(defaultToken);
+            }
+            
+            var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, displayname, name, jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, jobDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
             req.RequestId = Interlocked.Increment(ref reqId);
             ConcurrentQueue<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<Job>());
             var job = jobs.AddOrUpdate(req.JobId, new Job() { message = req, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = req.JobId, RequestId = req.RequestId, TimeLineId = req.Timeline.Id }, (id, job) => job);
