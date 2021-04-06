@@ -611,11 +611,14 @@ namespace GitHub.Runner.Listener.Configuration
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
             if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
             {
-                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
+                gitHubUrlBuilder.Host = "api." + gitHubUrlBuilder.Host;
+                gitHubUrlBuilder.Path = "/actions/runner-registration";
+                githubApiUrl = gitHubUrlBuilder.ToString();
             }
             else
             {
-                githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}:{gitHubUrlBuilder.Port}/api/v3/actions/runner-registration";
+                gitHubUrlBuilder.Path = "/api/v3/actions/runner-registration";
+                githubApiUrl = gitHubUrlBuilder.ToString();
             }
 
             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
