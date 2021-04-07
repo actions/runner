@@ -1,8 +1,14 @@
 ## Features
+Run you github actions workflows locally or use it together with gitea.
+Start `Runner.Server`(`.exe`) in the bin folder, you may need allow the executable to bind port 80.
+Configure the self-hosted runner to connect to http://localhost/runner/server with any registration token.
+Use `Runner.Client`(`.exe`) to schedule a workflow file with a webhook payload.
+Open http://localhost in you webbrowser to see your job.
 
+Please read https://github.com/ChristopherHX/runner.server#readme for more information.
 
 ## Bugs
-  - Fixed an issue where docker containers failed to initialize (#977)
+I guess it has a lot of undiscovered bugs
 
 ## Misc
 
