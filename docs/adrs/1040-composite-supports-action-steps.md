@@ -33,11 +33,12 @@ TODO: Move these details into a tracking issue instead
   - Fix issue with `hashFiles` within a composite action
     - https://github.com/actions/runner/issues/991
   - Support container-actions and actions with pre-step and post-step
-    - Investigate how to deal with pre-steps. Today, nested steps are created just-in-time. However, pre-steps are generally executed before regular steps. Container actions implicitly have a pre-step to pull or build the image
+    - Composite actions is intended double as a re-use mechanism. So pre/post support is critical, and should execute in the normal order.
+    - Investigate how to deal with pre-steps. Today, nested steps are created just-in-time. However, pre-steps are generally executed before regular steps. Also, container actions implicitly have a pre-step to pull or build the image
     - Investigate whether we copy the continue-on-error setting to the pre/post steps
     - Investigate CompositeActionHandler.cs especially wrt clearing the output scopes
     - Investigate whether we need additional validation to restrict contexts available to pre-step condition and post-step condition
   - Testing
     - Support all types of action manifests: Node.js, Dockerfile, `docker://`, composite, no manifest only Dockerfile
     - Support all types of action references: `docker://`, `./`, owner/repo@ref
-    - Support for actions with pre-step and post-step
+    - Support for actions with pre-step and post-step. For pre/post, also test intra-action-state
