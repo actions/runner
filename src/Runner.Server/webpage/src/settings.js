@@ -1,1 +1,1 @@
-export const ghHostApiUrl = "http://localhost"
+export const ghHostApiUrl = ""

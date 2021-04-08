@@ -8,9 +8,9 @@ import { useParams } from 'react-router-dom';
 export interface MasterProps extends Items {
 }
 interface IJob {
-    JobId: string,
-    RequestId: number,
-    TimeLineId: string,
+    jobId: string,
+    requestId: number,
+    timeLineId: string,
     name: string,
     repo: string
     workflowname: string
@@ -28,14 +28,14 @@ export const MasterContainer: React.FC<MasterProps> = (props) => {
     useEffect(() => {
         var apiUrl = ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message";
         (async () => {
-            setJobs({ items: (JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[]).sort((a, b) => b.RequestId - a.RequestId).map((x : IJob) : Item => { return { id:  x.RequestId, title: x.name, description: x.workflowname + " - " +  x.repo + " - " + x.RequestId }})});
+            setJobs({ items: (JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[]).sort((a, b) => b.requestId - a.requestId).map((x : IJob) : Item => { return { id:  x.requestId, title: x.name, description: x.workflowname + " - " +  x.repo + " - " + x.requestId }})});
         })();
         var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/event?filter=**");
         source.addEventListener("job", ev => {
             var je = JSON.parse((ev as MessageEvent).data) as IJobEvent;
             var x = je.job;
             setJobs((jobs) => {
-                return { items: [{ id:  x.RequestId, title: x.name, description: x.workflowname + " - " + x.repo + " - " + x.RequestId }, ...jobs.items] };
+                return { items: [{ id:  x.requestId, title: x.name, description: x.workflowname + " - " + x.repo + " - " + x.requestId }, ...jobs.items] };
             });
         });
     }, [owner, repo])

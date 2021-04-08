@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 
 namespace Runner.Server.Controllers
@@ -98,13 +99,13 @@ namespace Runner.Server.Controllers
                     ConcurrentQueue<KeyValuePair<string,string>> queue = new ConcurrentQueue<KeyValuePair<string, string>>();
                     LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
                         if (timelineId == timelineId2 || timelineId == Guid.Empty) {
-                            queue.Enqueue(new KeyValuePair<string, string>(timelineId2.ToString(), JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record })));
+                            queue.Enqueue(new KeyValuePair<string, string>(timelineId2.ToString(), JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     ConcurrentQueue<KeyValuePair<string,string>> queue2 = new ConcurrentQueue<KeyValuePair<string, string>>();
                     TimelineController.TimeLineUpdateDelegate handler2 = (timelineId2, timeline) => {
                         if(timelineId2 == timelineId) {
-                            queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId, timeline }, new JsonSerializerSettings { ContractResolver = new LowercaseContractResolver() })));
+                            queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     var ping = Task.Run(async () => {

@@ -1,17 +1,49 @@
 ﻿using System;
-
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
 using System.Net.Http;
 using System.Text;
-using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using Microsoft.AspNetCore.Http.Extensions;
+using Newtonsoft.Json;
 
 namespace Runner.Client
 {
     class Program
     {
+
+        private class HookResponse {
+            public string repo {get;set;}
+            public long run_id {get;set;}
+            public bool skipped {get;set;}
+        }
+
+        public class Job {
+            public Guid JobId { get; set; }
+            public long RequestId { get; set; }
+            public Guid TimeLineId { get; set; }
+            public Guid SessionId { get; set; }
+
+            public string repo { get; set; }
+            public string name { get; set; }
+            public string workflowname { get; set; }
+            public long runid { get; set; }
+            public List<string> errors {get;set;}
+        }
+
+        private class TimeLineEvent {
+            public string timelineId {get;set;}
+            public List<TimelineRecord> timeline {get;set;}
+        }
+
+        private class WebConsoleEvent {
+            public string timelineId {get;set;}
+            public Guid recordId {get;set;}
+            public TimelineRecordFeedLinesWrapper record {get;set;}
+        }
+
         static int Main(string[] args)
         {
             var rootCommand = new RootCommand
@@ -61,7 +93,126 @@ namespace Runner.Client
                     return 1;
                 }
                 try {
-                    await client.PostAsync(b.Uri.ToString(), new StringContent(payloadContent));
+                    var resp = await client.PostAsync(b.Uri.ToString(), new StringContent(payloadContent));
+                    var s = await resp.Content.ReadAsStringAsync();
+                    var hr = JsonConvert.DeserializeObject<HookResponse>(s);
+                    var b2 = new UriBuilder(b.ToString());
+                    query = new QueryBuilder();
+                    query.Add("repo", hr.repo);
+                    query.Add("runid", hr.run_id.ToString());
+                    b2.Query = query.ToString();
+                    b2.Path = "runner/host/_apis/v1/Message";
+                    var sr = await client.GetStringAsync(b2.ToString());
+                    List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
+                    foreach(Job j in jobs) {
+                        if(j.errors?.Count > 0) {
+                            foreach (var error in j.errors) {
+                                Console.Error.WriteLine($"Error: {error}");
+                            }
+                            continue;
+                        }
+                        var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?timelineId={j.TimeLineId.ToString()}");
+                        Guid recordId = Guid.Empty;
+                        List<TimelineRecord> timelineRecords = null;
+                        List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
+                        using(TextReader reader = new StreamReader(eventstream)) {
+                            while(true) {
+                                var line = await reader.ReadLineAsync();
+                                if(line == null) {
+                                    break;
+                                }
+                                var data = await reader.ReadLineAsync();
+                                data = data.Substring("data: ".Length);
+                                await reader.ReadLineAsync();
+                                if(line == "event: log") {
+                                    var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
+                                    if(pending.Count > 0) {
+                                        pending.Add(e);
+                                        continue;
+                                    }
+                                    if(recordId != e.record.StepId) {
+                                        if(timelineRecords == null) {
+                                            var content = await client.GetStringAsync(server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
+                                            timelineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
+                                        }
+                                        if(recordId != Guid.Empty && timelineRecords != null) {
+                                            var record = timelineRecords.Find(r => r.Id == recordId);
+                                            if(record == null || !record.Result.HasValue) {
+                                                pending.Add(e);
+                                                continue;
+                                            }
+                                            // if(!record.Result.HasValue) {
+                                            //     var content = await client.GetStringAsync(server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
+                                            //     timelineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
+                                            //     record = timelineRecords.Find(r => r.Id == recordId);
+                                            // }
+                                            Console.WriteLine($"{record.Result.Value.ToString()}: {record.Name}");
+                                            // switch(record.Result.Value) {
+                                            //     case TaskResult.Succeeded:
+                                            //     break;
+                                            // }
+                                        }
+                                        recordId = e.record.StepId;
+                                        if(recordId != Guid.Empty && timelineRecords != null) {
+                                            var record = timelineRecords.Find(r => r.Id == recordId);
+                                            Console.WriteLine($"Running: {record.Name}");
+                                        }
+                                    }
+                                    foreach (var webconsoleline in e.record.Value) {
+                                        if(webconsoleline.StartsWith("##[section]")) {
+                                            Console.WriteLine("******************************************************************************");
+                                            Console.WriteLine(webconsoleline.Substring("##[section]".Length));
+                                            Console.WriteLine("******************************************************************************");
+                                        } else {
+                                            Console.WriteLine(webconsoleline);
+                                        }
+                                    }
+                                }
+                                if(line == "event: timeline") {
+                                    var e = JsonConvert.DeserializeObject<TimeLineEvent>(data);
+                                    timelineRecords = e.timeline;
+                                    while(pending.Count > 0) {
+                                        var e2 = pending[0];
+                                        if(recordId != e2.record.StepId) {
+                                            if(recordId != Guid.Empty && timelineRecords != null) {
+                                                var record = timelineRecords.Find(r => r.Id == recordId);
+                                                if(record == null || !record.Result.HasValue) {
+                                                    break;
+                                                }
+                                                Console.WriteLine($"{record.Result.Value.ToString()}: {record.Name}");
+                                            }
+                                            recordId = e2.record.StepId;
+                                            if(recordId != Guid.Empty && timelineRecords != null) {
+                                                var record = timelineRecords.Find(r => r.Id == recordId);
+                                                Console.WriteLine($"Running: {record.Name}");
+                                            }
+                                        }
+                                        foreach (var webconsoleline in e2.record.Value) {
+                                            if(webconsoleline.StartsWith("##[section]")) {
+                                                Console.WriteLine("******************************************************************************");
+                                                Console.WriteLine(webconsoleline.Substring("##[section]".Length));
+                                                Console.WriteLine("******************************************************************************");
+                                            } else {
+                                                Console.WriteLine(webconsoleline);
+                                            }
+                                        }
+                                        pending.RemoveAt(0);
+                                    }
+                                    if(e.timeline[0].State == TimelineRecordState.Completed) {
+                                        if(recordId != Guid.Empty && timelineRecords != null) {
+                                        var record = timelineRecords.Find(r => r.Id == recordId);
+                                            if(record == null || !record.Result.HasValue) {
+                                                break;
+                                            }
+                                            Console.WriteLine($"{record.Result.Value.ToString()}: {record.Name}");
+                                        }
+                                        return 0;
+                                    }
+                                }
+                            }
+                        }
+                        // Console.WriteLine(j.TimeLineId);
+                    }
                 } catch {
                     Console.WriteLine($"Failed to connect to Server {server}, make shure the server is running on that address or port");
                     return 1;

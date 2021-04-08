@@ -175,7 +175,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
             }
             var njobs : IJob[] | null;
             var _id = Number.parseInt(id);
-            if(jobs.length === 0 || jobs.find(x => x.RequestId === _id) == null) {
+            if(jobs.length === 0 || jobs.find(x => x.requestId === _id) == null) {
                 njobs = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message", { })).json())
                 setJobs(njobs);
             }

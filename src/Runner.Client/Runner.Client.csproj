@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Sdk\Sdk.csproj" />
     <ProjectReference Include="..\Runner.Server\Runner.Server.csproj" />
     <ProjectReference Include="..\Runner.Listener\Runner.Listener.csproj" />
     <ProjectReference Include="..\Runner.Worker\Runner.Worker.csproj" />

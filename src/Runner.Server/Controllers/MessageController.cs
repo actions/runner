@@ -33,6 +33,8 @@ using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using System.Text.RegularExpressions;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 namespace Runner.Server.Controllers
 {
@@ -315,7 +317,19 @@ namespace Runner.Server.Controllers
             });
         }
 
-        private void ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push") {
+        private class HookResponse {
+            public string repo;
+            public long run_id;
+            public bool skipped;
+        }
+
+        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push") {
+            string repository_name = hook?.repository?.full_name ?? "Unknown";
+            var runid = _cache.GetOrCreate(repository_name, e => new Int64());
+            _cache.Set(repository_name, runid + 1);
+            var runnumberkey = $"{repository_name}:/{fileRelativePath}";
+            long runnumber = _cache.GetOrCreate(runnumberkey, e => new Int64());
+            _cache.Set(runnumberkey, runnumber + 1);
             try {
                 List<JobItem> jobgroup = new List<JobItem>();
                 List<JobItem> dependentjobgroup = new List<JobItem>();
@@ -402,19 +416,22 @@ namespace Runner.Server.Controllers
                     case TokenType.String:
                         if(tk.AssertString("str").Value != e) {
                             // Skip, not the right event
-                            return;
+                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         break;
                     case TokenType.Sequence:
                         if((from r in tk.AssertSequence("seq") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
                             // Skip, not the right event
-                            return;
+                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         break;
                     case TokenType.Mapping:
                         var e2 = (from r in tk.AssertMapping("seq") where r.Key.AssertString(e).Value == e select r).FirstOrDefault();
                         if(e == "schedule") {
                             var crons = e2.Value?.AssertSequence("cron");
+                            if(crons == null) {
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
                             var cm = (from cron in crons select cron.AssertMapping("cron")).ToArray();
                             if(cm.Length == 0 || !cm.All(c => c.Count == 1 && c.First().Key.AssertString("cron key").Value == "cron")) {
                                 throw new Exception("Only cron is supported!");
@@ -438,7 +455,7 @@ namespace Runner.Server.Controllers
                             var push = e2.Value?.AssertMapping("map");
                             if(push == null) {
                                 // Skip, not the right event
-                                return;
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
                             List<string> allowed = new List<string>();
                             allowed.Add("types");
@@ -486,7 +503,7 @@ namespace Runner.Server.Controllers
                             
                             if(types != null && hook?.Action != null) {
                                 if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
-                                    return;
+                                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                 }
                             }
 
@@ -507,29 +524,29 @@ namespace Runner.Server.Controllers
                                     var branch = Ref2.Substring(heads.Length);
 
                                     if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
-                                        return;
+                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
                                     if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
-                                        return;
+                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
                                 } else if(Ref2.StartsWith(rtags) == true) {
                                     var tag = Ref2.Substring(rtags.Length);
 
                                     if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
-                                        return;
+                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
                                     if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
-                                        return;
+                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
                                 }
                             }
                             if(hook.Commits != null) {
                                 var changedFiles = hook.Commits.SelectMany(commit => commit.Added.Concat(commit.Removed).Concat(commit.Modified));
                                 if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
-                                    return;
+                                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                 }
                                 if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
-                                    return;
+                                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                 }
                             }
                         }
@@ -555,11 +572,15 @@ namespace Runner.Server.Controllers
                             }
                         }
                         if(errors.Count > 0) {
-                            var RequestId = Interlocked.Increment(ref reqId);
-                            var jid = Guid.NewGuid();
-                            var _job = MessageController.jobs.AddOrUpdate(jid, new Job() { errors = errors, message = null, repo = hook?.repository.full_name ?? "Unknown", name = fileRelativePath, workflowname = fileRelativePath, runid = -1, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
-                            jobevent?.Invoke(this, _job.repo, _job);
-                            return;
+                            var b = new StringBuilder();
+                            int i = 0;
+                            foreach (var error in errors) {
+                                if(i++ != 0) {
+                                    b.Append(". ");
+                                }
+                                b.Append(error);
+                            }
+                            throw new Exception(b.ToString());
                         }
                         foreach (var job in jobs) {
                             var ctx = new JobCtx() { Status = null };
@@ -588,10 +609,9 @@ namespace Runner.Server.Controllers
                             githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
                             var workflowname = (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                             githubctx.Add("workflow", new StringContextData(workflowname));
-                            long runid = 0;
+                            githubctx.Add("repository", new StringContextData(repository_name));
                             if(hook != null){
                                 githubctx.Add("sha", new StringContextData(Sha));
-                                githubctx.Add("repository", new StringContextData(hook.repository.full_name));
                                 githubctx.Add("repository_owner", new StringContextData(hook.repository.Owner.login));
                                 githubctx.Add("ref", new StringContextData(Ref));
                                 githubctx.Add("job", new StringContextData(jobname));
@@ -601,12 +621,7 @@ namespace Runner.Server.Controllers
                                 githubctx.Add("event", payloadObject.ToPipelineContextData());
                                 githubctx.Add("event_name", new StringContextData(e));
                                 githubctx.Add("actor", new StringContextData(hook.sender.login));
-                                runid = _cache.GetOrCreate(hook.repository.full_name, e => new Int64());
-                                _cache.Set(hook.repository.full_name, runid + 1);
                                 githubctx.Add("run_id", new StringContextData(runid.ToString()));
-                                var runnumberkey = $"{hook.repository.full_name}:/{fileRelativePath}";
-                                long runnumber = _cache.GetOrCreate(runnumberkey, e => new Int64());
-                                _cache.Set(runnumberkey, runnumber + 1);
                                 githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
                             }
                             var needsctx = new DictionaryContextData();
@@ -868,9 +883,10 @@ namespace Runner.Server.Controllers
                 List<string> _errors = new List<string>{ex.Message};
                 var RequestId = Interlocked.Increment(ref reqId);
                 var jid = Guid.NewGuid();
-                var job = jobs.AddOrUpdate(jid, new Job() { errors = _errors, message = null, repo = hook?.repository.full_name ?? "Unknown", name = fileRelativePath, workflowname = fileRelativePath, runid = -1, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
+                var job = jobs.AddOrUpdate(jid, new Job() { errors = _errors, message = null, repo = hook?.repository.full_name ?? "Unknown", name = fileRelativePath, workflowname = fileRelativePath, runid = runid, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
                 jobevent?.Invoke(this, job.repo, job);
             }
+            return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
         }
 
         private static int reqId = 0;
@@ -1013,18 +1029,11 @@ namespace Runner.Server.Controllers
         public delegate AgentJobRequestMessage MessageFactory(string apiUrl);
 
         public class Job {
-            [DataMember]
-            [JsonProperty("JobId")]
             public Guid JobId { get; set; }
-            [DataMember]
-            [JsonProperty("RequestId")]
             public long RequestId { get; set; }
-            [DataMember]
-            [JsonProperty("TimeLineId")]
             public Guid TimeLineId { get; set; }
-            [JsonProperty("SessionId")]
             public Guid SessionId { get; set; }
-            [JsonIgnore]
+            [IgnoreDataMember]
             public MessageFactory message;
 
             public string repo { get; set; }
@@ -1223,7 +1232,8 @@ namespace Runner.Server.Controllers
             }
             var hook = obj.Key;
             if(workflow != null && workflow.Length > 0) {
-                ConvertYaml("workflow.yml", workflow, hook.repository.full_name, GitServerUrl, hook, obj.Value, e);
+                var resp = ConvertYaml("workflow.yml", workflow, hook.repository.full_name, GitServerUrl, hook, obj.Value, e);
+                return await Ok(resp);
             } else {
                 try {
                     var client = new HttpClient();
@@ -1284,10 +1294,10 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet]
-        public string GetJobs([FromQuery] string repo) {
-            return JsonConvert.SerializeObject(jobs.Values);
-            // return Ok<IEnumerable<Job>>(jobs.Values, true);
-            //return /* repo != null && repo.Length > 0 ? (from j in jobs.Values where TimelineController.dict[j.TimeLineId].Item1[0] == repo) : */ jobs.Values;
+        public Task<FileStreamResult> GetJobs([FromQuery] string repo, [FromQuery] long? runid) {
+            // return JsonConvert.SerializeObject(jobs.Values);
+            return Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid == null || j.runid == runid) select j, true);
+            // return /* repo != null && repo.Length > 0 ? (from j in jobs.Values where TimelineController.dict[j.TimeLineId].Item1[0] == repo) : */ jobs.Values;
         }
 
         public class PushStreamResult: IActionResult
@@ -1335,7 +1345,7 @@ namespace Runner.Server.Controllers
                                 KeyValuePair<string, Job> p;
                                 if(queue.TryDequeue(out p)) {
                                     await writer.WriteLineAsync("event: job");
-                                    await writer.WriteLineAsync(string.Format("data: {0}", JsonConvert.SerializeObject(new { repo = p.Key, job = p.Value })));
+                                    await writer.WriteLineAsync(string.Format("data: {0}", JsonConvert.SerializeObject(new { repo = p.Key, job = p.Value }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                                     await writer.WriteLineAsync();
                                     await writer.FlushAsync();
                                 } else {
