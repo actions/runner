@@ -55,7 +55,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} test
       working-directory: src
-      if: false && matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
 
     # Create runner package tar.gz/zip
     - name: Package Release
