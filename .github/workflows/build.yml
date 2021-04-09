@@ -80,8 +80,9 @@ jobs:
     
     - name: Test
       shell: bash
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
       run: |
-        pushd _package/bin
+        pushd _layout/bin
         sudo ./Runner.Server${{ matrix.exeSuffix }} &
         serverpid=$!
         # Test run job without a runner
