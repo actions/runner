@@ -33,7 +33,7 @@
     </ItemGroup>
 
     <Target Name="Build" DependsOnTargets="GenerateConstant">
-        <MSBuild Targets="Restore" Projects="@(ProjectFiles)" StopOnFirstFailure="true" />
+        <MSBuild Targets="Restore" Projects="@(ProjectFiles)" StopOnFirstFailure="true" Properties="RuntimeIdentifier=$(PackageRuntime)" />
         <MSBuild Targets="Publish" Projects="@(ProjectFiles)" BuildInParallel="false" StopOnFirstFailure="true" Properties="Configuration=$(BUILDCONFIG);PackageRuntime=$(PackageRuntime);Version=$(RunnerVersion);RuntimeIdentifier=$(PackageRuntime);PublishDir=$(MSBuildProjectDirectory)/../_layout/bin" />
     </Target>
 
