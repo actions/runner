@@ -38,7 +38,7 @@
         <ProjectFiles Include="Runner.Plugins/Runner.Plugins.csproj" />
         <ProjectFiles Include="Runner.Client/Runner.Client.csproj" />
         <ProjectFiles Include="Runner.Server/Runner.Server.csproj" />
-        <ProjectFiles Include="Runner.Service/Windows/RunnerService.csproj" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86' Or $(PackageRuntime)' == 'win-arm' Or '$(PackageRuntime)' == 'win-arm64'" />
+        <ProjectFiles Include="Runner.Service/Windows/RunnerService.csproj" Condition="'$(PackageRuntime)' == 'win-x64' Or '$(PackageRuntime)' == 'win-x86' Or '$(PackageRuntime)' == 'win-arm' Or '$(PackageRuntime)' == 'win-arm64'" />
     </ItemGroup>
 
     <Target Name="Build" DependsOnTargets="GenerateConstant">
