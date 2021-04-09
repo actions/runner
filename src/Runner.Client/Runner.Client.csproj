@@ -17,6 +17,9 @@
     <ProjectReference Include="..\Runner.Server\Runner.Server.csproj" />
     <ProjectReference Include="..\Runner.Listener\Runner.Listener.csproj" />
     <ProjectReference Include="..\Runner.Worker\Runner.Worker.csproj" />
+    <ProjectReference Include="..\Runner.Plugins\Runner.Plugins.csproj" />
+    <ProjectReference Include="..\Runner.PluginHost\Runner.PluginHost.csproj" />
+    <ProjectReference Include="..\Runner.Service\Windows\RunnerService.csproj" Condition="'$(RuntimeIdentifier)' == 'win-x64' Or '$(RuntimeIdentifier)' == 'win-x86' Or '$(RuntimeIdentifier)' == 'win-arm' Or '$(RuntimeIdentifier)' == 'win-arm64'" />
   </ItemGroup>
 
 </Project>
