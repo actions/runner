@@ -30,6 +30,7 @@
 
     <ItemGroup>
         <ProjectFiles Include="Runner.Client/Runner.Client.csproj" />
+        <ProjectFiles Include="Runner.Server/Runner.Server.csproj" />
     </ItemGroup>
 
     <Target Name="Build" DependsOnTargets="GenerateConstant">
