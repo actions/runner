@@ -85,12 +85,14 @@ jobs:
         pushd _layout/bin
         sudo ./Runner.Server${{ matrix.exeSuffix }} &
         serverpid=$!
+        sleep 5
         # Test run job without a runner
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
         pushd ..
         ./config${{ matrix.scriptSuffix }} --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
         ./run${{ matrix.scriptSuffix }} &
         workerpid=$!
+        sleep 5
         popd
         # Test run job with runner
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
