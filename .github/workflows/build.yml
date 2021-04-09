@@ -18,33 +18,12 @@ jobs:
   build:
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
           devScript: ./dev.sh
           scriptSuffix: .sh
-
-        - runtime: linux-arm64
-          os: ubuntu-latest
-          devScript: ./dev.sh
-          scriptSuffix: .sh
-
-        - runtime: linux-arm
-          os: ubuntu-latest
-          devScript: ./dev.sh
-          scriptSuffix: .sh
-
-        - runtime: osx-x64
-          os: macOS-latest
-          devScript: ./dev.sh
-          scriptSuffix: .sh
-
-        - runtime: win-x64
-          os: windows-latest
-          devScript: ./dev
-          exeSuffix: .exe
-          scriptSuffix: .cmd
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -96,6 +75,7 @@ jobs:
         popd
         # Test run job with runner
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
+        sleep 40
         kill $workerpid
         kill $serverpid
         popd
