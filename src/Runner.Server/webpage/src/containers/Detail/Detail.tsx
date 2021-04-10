@@ -24,8 +24,10 @@ interface ITimeLine {
     Type: string,
     log: ILog | null,
     order: Number,
-    name: string
-    busy: boolean
+    name: string,
+    busy: boolean,
+    state: string,
+    result: string
 }
 
 // interface IJobEvent {
@@ -194,26 +196,6 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     if(newTimeline != null && newTimeline.length > 1) {
                         setTitle(newTimeline.shift().name);
                         setTimeline(newTimeline);
-                        // var convert = new Convert({
-                        //     newline: true,
-                        //     escapeXML: true
-                        // });
-                        // var proms = [];
-                        // for (const tl of newTimeline) {
-                        //     proms.push((async () => {
-                        //         if (tl.log !== null && tl.log.id !== -1) {
-                        //             const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + tl.log.id, { })).text();
-                        //             tl.log.content = convert.toHtml(log);
-                        //         } else {
-                        //             try {
-                        //                 tl.log = { id:-1, location: null, content: (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + timelineId + "/" + tl.id, { })).json() as ILogline[]).reduce((prev: string, c : ILogline) => prev + "<br/>" + convert.toHtml(c.line), "")};
-                        //             } catch {
-
-                        //             }
-                        //         }
-                        //     })());
-                        // }
-                        // await Promise.all(proms)
                     }
                     setTimeline(newTimeline);
                 } else {
@@ -287,7 +269,10 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     var e = JSON.parse(ev.data) as ITimeLineEvent;
                     setTitle(e.timeline.shift().name);
                     setTimeline(oldtimeline => {
-                        e.timeline.splice(0, oldtimeline.length)
+                        var del = e.timeline.splice(0, oldtimeline.length)
+                        for (let i = 0; i < del.length; i++) {
+                            oldtimeline[i].result = del[i].result
+                        }
                         if(e.timeline.length === 0) {
                             // Todo Merge Timelines here
                             return oldtimeline;
@@ -325,7 +310,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     return <div/>;
                 })()}</div>)}
                 {timeline.map((item: ITimeLine) =>
-                    <Collapsible key={id + item.id} className={styles.Collapsible} openedClassName={styles.Collapsible} triggerClassName={styles.Collapsible__trigger} triggerOpenedClassName={styles.Collapsible__trigger + " " + styles["is-open"]} contentOuterClassName={styles.Collapsible__contentOuter} contentInnerClassName={styles.Collapsible__contentInner} trigger={item.name} onOpening={() => {
+                    <Collapsible key={id + item.id} className={styles.Collapsible} openedClassName={styles.Collapsible} triggerClassName={styles.Collapsible__trigger} triggerOpenedClassName={styles.Collapsible__trigger + " " + styles["is-open"]} contentOuterClassName={styles.Collapsible__contentOuter} contentInnerClassName={styles.Collapsible__contentInner} trigger={(item.result == null ? item.state == null ? "Waiting" : item.state  : item.result) + " - " + item.name} onOpening={() => {
                         if(!item.busy && (item.log == null || (item.log.id !== -1 && (!item.log.content || item.log.content.length === 0)))) {
                             item.busy = true;
                             (async() => {

@@ -25,12 +25,12 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{timelineId}")]
-        public IActionResult GetTimelineRecords(Guid timelineId) {
+        public async Task<IActionResult> GetTimelineRecords(Guid timelineId) {
             (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
             if(!dict.TryGetValue(timelineId, out val)) {
                 return NotFound();
             }
-            return ((ControllerBase)this).Ok(val.Item1);
+            return await Ok(val.Item1, true);
         }
         
         public delegate void TimeLineUpdateDelegate(Guid timelineId, List<TimelineRecord> update);

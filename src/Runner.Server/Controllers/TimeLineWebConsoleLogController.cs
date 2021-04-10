@@ -96,13 +96,12 @@ namespace Runner.Server.Controllers
                 try
                 {
                     writer.NewLine = "\n";
-                    ConcurrentQueue<KeyValuePair<string,string>> queue = new ConcurrentQueue<KeyValuePair<string, string>>();
+                    ConcurrentQueue<KeyValuePair<string,string>> queue2 = new ConcurrentQueue<KeyValuePair<string, string>>();
                     LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
                         if (timelineId == timelineId2 || timelineId == Guid.Empty) {
-                            queue.Enqueue(new KeyValuePair<string, string>(timelineId2.ToString(), JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                            queue2.Enqueue(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
-                    ConcurrentQueue<KeyValuePair<string,string>> queue2 = new ConcurrentQueue<KeyValuePair<string, string>>();
                     TimelineController.TimeLineUpdateDelegate handler2 = (timelineId2, timeline) => {
                         if(timelineId2 == timelineId) {
                             queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
@@ -112,12 +111,7 @@ namespace Runner.Server.Controllers
                         try {
                             while(!requestAborted.IsCancellationRequested) {
                                 KeyValuePair<string, string> p;
-                                if(queue.TryDequeue(out p)) {
-                                    await writer.WriteLineAsync("event: log");
-                                    await writer.WriteLineAsync(string.Format("data: {0}", p.Value));
-                                    await writer.WriteLineAsync();
-                                    await writer.FlushAsync();
-                                } else if(queue2.TryDequeue(out p)) {
+                                if(queue2.TryDequeue(out p)) {
                                     await writer.WriteLineAsync($"event: {p.Key}");
                                     await writer.WriteLineAsync($"data: {p.Value}");
                                     await writer.WriteLineAsync();

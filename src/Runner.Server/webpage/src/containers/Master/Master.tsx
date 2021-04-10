@@ -23,30 +23,40 @@ interface IJobEvent {
 
 export const MasterContainer: React.FC<MasterProps> = (props) => {
     let { url } = useRouteMatch();
-    const [ jobs, setJobs ] = useState<Items | null>({items: []});
+    const [ jobs, setJobs ] = useState<IJob[]>([]);
     const { owner, repo } = useParams();
     useEffect(() => {
-        var apiUrl = ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message";
-        (async () => {
-            setJobs({ items: (JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[]).sort((a, b) => b.requestId - a.requestId).map((x : IJob) : Item => { return { id:  x.requestId, title: x.name, description: x.workflowname + " - " +  x.repo + " - " + x.requestId }})});
-        })();
         var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/event?filter=**");
         source.addEventListener("job", ev => {
             var je = JSON.parse((ev as MessageEvent).data) as IJobEvent;
             var x = je.job;
-            setJobs((jobs) => {
-                return { items: [{ id:  x.requestId, title: x.name, description: x.workflowname + " - " + x.repo + " - " + x.requestId }, ...jobs.items] };
+            setJobs(jobs => {
+                var r = jobs.filter((j) => j.requestId < x.requestId);
+                r.unshift(x);
+                return r;
             });
         });
+        var apiUrl = ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message";
+        (async () => {
+            var newjobs = JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[];
+            var sjobs = newjobs.sort((a, b) => b.requestId - a.requestId);
+            setJobs(jobs => {
+                if(jobs.length > 0) {
+                    var x = jobs[jobs.length - 1];
+                    sjobs = sjobs.filter((j) => j.requestId < x.requestId);
+                }
+                return [...sjobs, ...jobs];
+            });
+        })();
     }, [owner, repo])
     return (
         <React.Fragment>
             <Header title="Jobs" hideBackButton={true}/>
             <ul>
-                {jobs.items.map((item: Item) =>
-                    <li key={item.id}>
+                {jobs.map((x: IJob) =>
+                    <li key={x.requestId}>
                         <ListItemLink 
-                            to={`${url}/detail/${item.id}`} item={item} />
+                            to={`${url}/detail/${x.requestId}`} item={{ id:  x.requestId, title: x.name, description: x.workflowname + " - " + x.repo + " - " + x.requestId }} />
                     </li>
                 )}
             </ul>
