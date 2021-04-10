@@ -81,25 +81,18 @@ jobs:
       with:
         name: runner-package-${{ matrix.runtime }}
         path: _package
-    - name: windows-latest
-      if: ${{ contains(runner.os, 'windows') }}
-      run: |
-        echo Stop Services
-        net stop Apache
-        net stop nginx
-        echo Stopped Services
     - name: Test
       shell: bash
       if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
       run: |
         pushd _layout/bin
-        ${{ matrix.elevate }}./Runner.Server${{ matrix.exeSuffix }} &
+        ./Runner.Server${{ matrix.exeSuffix }} &
         serverpid=$!
         sleep 20
         # Test run job without a runner
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
         pushd ..
-        ./config${{ matrix.scriptSuffix }} --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
+        ./config${{ matrix.scriptSuffix }} --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
         ./run${{ matrix.scriptSuffix }} &
         workerpid=$!
         sleep 20
@@ -107,5 +100,5 @@ jobs:
         # Test run job with runner
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
         kill $workerpid
-        ${{ matrix.elevate }}kill $serverpid
+        kill $serverpid
         popd

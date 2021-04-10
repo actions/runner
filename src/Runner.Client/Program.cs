@@ -53,7 +53,7 @@ namespace Runner.Client
                     description: "Workflow to run"),
                 new Option<string>(
                     "--server",
-                    getDefaultValue: () => "http://localhost",
+                    getDefaultValue: () => "http://localhost:5000",
                     description: "Runner.Server address"),
                 new Option<string>(
                     "--payload",
