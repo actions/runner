@@ -24,21 +24,25 @@ jobs:
           os: ubuntu-latest
           devScript: ./dev.sh
           scriptSuffix: .sh
+          elevate: "sudo "
 
         - runtime: linux-arm64
           os: ubuntu-latest
           devScript: ./dev.sh
           scriptSuffix: .sh
+          elevate: "sudo "
 
         - runtime: linux-arm
           os: ubuntu-latest
           devScript: ./dev.sh
           scriptSuffix: .sh
+          elevate: "sudo "
 
         - runtime: osx-x64
           os: macOS-latest
           devScript: ./dev.sh
           scriptSuffix: .sh
+          elevate: "sudo "
 
         - runtime: win-x64
           os: windows-latest
@@ -83,7 +87,7 @@ jobs:
       if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
       run: |
         pushd _layout/bin
-        sudo ./Runner.Server${{ matrix.exeSuffix }} &
+        ${{ matrix.elevate }}./Runner.Server${{ matrix.exeSuffix }} &
         serverpid=$!
         sleep 20
         # Test run job without a runner
@@ -97,5 +101,5 @@ jobs:
         # Test run job with runner
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
         kill $workerpid
-        kill $serverpid
+        ${{ matrix.elevate }}kill $serverpid
         popd
