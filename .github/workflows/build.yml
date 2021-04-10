@@ -81,7 +81,13 @@ jobs:
       with:
         name: runner-package-${{ matrix.runtime }}
         path: _package
-    
+    - name: windows-latest
+      if: ${{ contains(runner.os, 'windows') }}
+      run:
+        echo Stop Services
+        net stop Apache
+        net stop nginx
+        echo Stopped Services
     - name: Test
       shell: bash
       if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
