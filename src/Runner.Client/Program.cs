@@ -105,6 +105,7 @@ namespace Runner.Client
                     var sr = await client.GetStringAsync(b2.ToString());
                     List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
                     foreach(Job j in jobs) {
+                        Console.WriteLine($"Running Job: {j.name}");
                         if(j.errors?.Count > 0) {
                             foreach (var error in j.errors) {
                                 Console.Error.WriteLine($"Error: {error}");
@@ -112,8 +113,15 @@ namespace Runner.Client
                             continue;
                         }
                         var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?timelineId={j.TimeLineId.ToString()}");
-                        Guid recordId = Guid.Empty;
                         List<TimelineRecord> timelineRecords = null;
+                        try {
+                            var content = await client.GetStringAsync(server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
+                            timelineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
+                        }
+                        catch (HttpRequestException) {
+                            Console.WriteLine("No Timeline found, wait for a timeline event");
+                        }
+                        Guid recordId = Guid.Empty;
                         List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
                         using(TextReader reader = new StreamReader(eventstream)) {
                             while(true) {
@@ -131,10 +139,6 @@ namespace Runner.Client
                                         continue;
                                     }
                                     if(recordId != e.record.StepId) {
-                                        if(timelineRecords == null) {
-                                            var content = await client.GetStringAsync(server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
-                                            timelineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
-                                        }
                                         if(recordId != Guid.Empty && timelineRecords != null) {
                                             var record = timelineRecords.Find(r => r.Id == recordId);
                                             if(record == null || !record.Result.HasValue) {
@@ -213,8 +217,8 @@ namespace Runner.Client
                         }
                         // Console.WriteLine(j.TimeLineId);
                     }
-                } catch {
-                    Console.WriteLine($"Failed to connect to Server {server}, make shure the server is running on that address or port");
+                } catch (Exception except) {
+                    Console.WriteLine($"Failed to connect to Server {server}, make shure the server is running on that address or port: {except.Message}, {except.StackTrace}");
                     return 1;
                 }
                 Console.WriteLine($"Job request sent to {server}");
