@@ -1,20 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Runner.Server.Controllers;
 
 namespace Runner.Server
 {
@@ -37,6 +25,12 @@ namespace Runner.Server
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
+                    var contentRoot = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                    var wwwRoot = System.IO.Path.Combine(contentRoot, "wwwroot");
+                    if(System.IO.Directory.Exists(contentRoot) && System.IO.Directory.Exists(wwwRoot)) {
+                        webBuilder.UseContentRoot(contentRoot);
+                        webBuilder.UseWebRoot(wwwRoot);
+                    }
                 });
     }
 }
