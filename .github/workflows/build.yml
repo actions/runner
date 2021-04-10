@@ -83,7 +83,7 @@ jobs:
         path: _package
     - name: windows-latest
       if: ${{ contains(runner.os, 'windows') }}
-      run:
+      run: |
         echo Stop Services
         net stop Apache
         net stop nginx
