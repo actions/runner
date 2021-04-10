@@ -100,7 +100,7 @@ namespace Runner.Client
                     query = new QueryBuilder();
                     query.Add("repo", hr.repo);
                     query.Add("runid", hr.run_id.ToString());
-                    b2.Query = query.ToString();
+                    b2.Query = query.ToString().TrimStart('?');
                     b2.Path = "runner/host/_apis/v1/Message";
                     var sr = await client.GetStringAsync(b2.ToString());
                     List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
