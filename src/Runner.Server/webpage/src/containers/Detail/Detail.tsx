@@ -271,7 +271,8 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     setTimeline(oldtimeline => {
                         var del = e.timeline.splice(0, oldtimeline.length)
                         for (let i = 0; i < del.length; i++) {
-                            oldtimeline[i].result = del[i].result
+                            oldtimeline[i].result = del[i].result;
+                            oldtimeline[i].state = del[i].state;
                         }
                         if(e.timeline.length === 0) {
                             // Todo Merge Timelines here

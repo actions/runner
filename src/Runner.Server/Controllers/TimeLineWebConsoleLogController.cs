@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -19,11 +20,11 @@ namespace Runner.Server.Controllers
     public class TimeLineWebConsoleLogController : VssControllerBase
     {
 
-        private readonly ILogger<TimeLineWebConsoleLogController> _logger;
+        private IMemoryCache _cache;
 
-        public TimeLineWebConsoleLogController(ILogger<TimeLineWebConsoleLogController> logger)
+        public TimeLineWebConsoleLogController(IMemoryCache cache)
         {
-            _logger = logger;
+            _cache = cache;
         }
 
         [HttpGet("{timelineId}/{recordId}")]
@@ -87,7 +88,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet]
-        public IActionResult Message([FromQuery] Guid timelineId)
+        public IActionResult Message([FromQuery] Guid timelineId, [FromQuery] long? runid)
         {
             var requestAborted = HttpContext.RequestAborted;
             return new PushStreamResult(async stream => {
@@ -98,12 +99,16 @@ namespace Runner.Server.Controllers
                     writer.NewLine = "\n";
                     ConcurrentQueue<KeyValuePair<string,string>> queue2 = new ConcurrentQueue<KeyValuePair<string, string>>();
                     LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
-                        if (timelineId == timelineId2 || timelineId == Guid.Empty) {
+                        (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
+                        MessageController.Job job;
+                        if (timelineId == timelineId2 || timelineId == Guid.Empty && (runid == null || TimelineController.dict.TryGetValue(timelineId, out val) && _cache.TryGetValue("Job_" + val.Item1[0].Id, out job) && job.runid == runid)) {
                             queue2.Enqueue(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = (timelineId2, timeline) => {
-                        if(timelineId2 == timelineId) {
+                        (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
+                        MessageController.Job job;
+                        if(timelineId == timelineId2 || timelineId == Guid.Empty && (runid == null || TimelineController.dict.TryGetValue(timelineId, out val) && _cache.TryGetValue("Job_" + val.Item1[0].Id, out job) && job.runid == runid)) {
                             queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };

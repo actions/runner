@@ -5,6 +5,7 @@ using System.CommandLine.Invocation;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using Microsoft.AspNetCore.Http.Extensions;
 using Newtonsoft.Json;
@@ -14,10 +15,16 @@ namespace Runner.Client
     class Program
     {
 
+        private class JobListItem {
+            public string Name {get;set;}
+            public string[] Needs {get;set;}
+        }
+
         private class HookResponse {
             public string repo {get;set;}
             public long run_id {get;set;}
             public bool skipped {get;set;}
+            public List<JobListItem> jobList {get;set;}
         }
 
         public class Job {
@@ -46,6 +53,19 @@ namespace Runner.Client
 
         static int Main(string[] args)
         {
+            var secretOpt = new Option<string>(
+                new[] { "-s", "--secret" },
+                description: "secret for you workflow, overrides keys from the secrets file");
+            secretOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
+            var envOpt = new Option<string>(
+                new[] { "-e", "--env" },
+                description: "env for you workflow, overrides keys from the env file");
+            envOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
+            var matrixOpt = new Option<string>(
+                new[] { "-m", "--matrix" },
+                description: "matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple times to filter more jobs");
+            matrixOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
+            
             var rootCommand = new RootCommand
             {
                 new Option<string>(
@@ -61,13 +81,31 @@ namespace Runner.Client
                 new Option<string>(
                     "--event",
                     getDefaultValue: () => "push",
-                    description: "Which event to send to a worker")
+                    description: "Which event to send to a worker"),
+                envOpt,
+                new Option<string>(
+                    "--env-file",
+                    getDefaultValue: () => ".env",
+                    description: "env overrides for you workflow"),
+                secretOpt,
+                new Option<string>(
+                    "--secrets-file",
+                    getDefaultValue: () => ".secrets",
+                    description: "secrets for you workflow"),
+                new Option<string>(
+                    new[] {"-j", "--job"},
+                    description: "job to run"),
+                matrixOpt,
+                new Option<bool>(
+                    new[] { "-l", "--list"},
+                    getDefaultValue: () => false,
+                    description: "list jobs for the selected event"),
             };
 
             rootCommand.Description = "Send events to your runner";
 
             // Note that the parameters of the handler method are matched according to the names of the options
-            rootCommand.Handler = CommandHandler.Create<string, string, string, string>(async (workflow, server, payload, Event) =>
+            Func<string, string, string, string, string[], string, string[], string, string, string[], bool, Task<int>> handler = async (workflow, server, payload, Event, env, envFile, secret, secretsFile, job, matrix, list) =>
             {
                 if(workflow == null || payload == null) {
                     Console.WriteLine("Missing `--workflow` or `--payload` option, type `--help` for help");
@@ -84,6 +122,59 @@ namespace Runner.Client
                     Console.WriteLine($"Failed to read file: {workflow}");
                     return 1;
                 }
+                List<string> wenv = new List<string>();
+                List<string> wsecrets = new List<string>();
+                try {
+                    wenv.AddRange(await File.ReadAllLinesAsync(envFile, Encoding.UTF8));
+                } catch {
+                    if(envFile != ".env") {
+                        Console.WriteLine($"Failed to read file: {envFile}");
+                    }
+                }
+                try {
+                    wsecrets.AddRange(await File.ReadAllLinesAsync(secretsFile, Encoding.UTF8));
+                } catch {
+                    if(secretsFile != ".secrets") {
+                        Console.WriteLine($"Failed to read file: {secretsFile}");
+                    }
+                }
+                if(job != null) {
+                    query.Add("job", job);
+                }
+                if(matrix?.Length > 0) {
+                    if(job == null) {
+                        Console.WriteLine("--matrix is only supported together with --job");
+                        return 1;
+                    }
+                    query.Add("matrix", matrix);
+                }
+                if(list) {
+                    query.Add("list", "1");
+                }
+                if(env?.Length > 0) {
+                    foreach (var e in env) {
+                        if(e.IndexOf('=') > 0) {
+                            wenv.Add(e);
+                        } else {
+                            wenv.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                        }
+                    }
+                }
+                if(secret?.Length > 0) {
+                    foreach (var e in secret) {
+                        if(e.IndexOf('=') > 0) {
+                            wsecrets.Add(e);
+                        } else {
+                            wsecrets.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                        }
+                    }
+                }
+                if(wenv.Count > 0) {
+                    query.Add("env", wenv);
+                }
+                if(wsecrets.Count > 0) {
+                    query.Add("secrets", wsecrets);
+                }
                 b.Query = query.ToQueryString().ToString().TrimStart('?');
                 string payloadContent;
                 try {
@@ -96,6 +187,18 @@ namespace Runner.Client
                     var resp = await client.PostAsync(b.Uri.ToString(), new StringContent(payloadContent));
                     var s = await resp.Content.ReadAsStringAsync();
                     var hr = JsonConvert.DeserializeObject<HookResponse>(s);
+                    if(list) {
+                        if(hr.jobList != null) {
+                            Console.WriteLine($"Found {hr.jobList.Count} matched Job(s)");
+                            foreach(var j in hr.jobList) {
+                                Console.WriteLine(j.Name);
+                            }
+                            return 0;
+                        }
+                        Console.WriteLine("Failed to enumerate jobs");
+                        return 1;
+                    }
+
                     var b2 = new UriBuilder(b.ToString());
                     query = new QueryBuilder();
                     query.Add("repo", hr.repo);
@@ -223,7 +326,9 @@ namespace Runner.Client
                 }
                 Console.WriteLine($"Job request sent to {server}");
                 return 0;
-            });
+            };
+
+            rootCommand.Handler = CommandHandler.Create(handler);
 
             // Parse the incoming args and invoke the handler
             return rootCommand.InvokeAsync(args).Result;

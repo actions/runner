@@ -38,7 +38,7 @@ namespace Runner.Server.Controllers
             if (jevent is JobCompletedEvent ev) {
                 OnJobCompleted?.Invoke(ev);
                 MessageController.Job job;
-                if(_cache.TryGetValue("Job_" + ev.RequestId, out job)) {
+                if(_cache.TryGetValue("Job_" + ev.JobId, out job)) {
                     Session session;
                     if(_cache.TryGetValue(job.SessionId, out session)) {
                         session.Job = null;
