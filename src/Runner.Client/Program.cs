@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using Microsoft.AspNetCore.Http.Extensions;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace Runner.Client
 {
@@ -41,18 +42,22 @@ namespace Runner.Client
         }
 
         private class TimeLineEvent {
-            public string timelineId {get;set;}
+            public Guid timelineId {get;set;}
             public List<TimelineRecord> timeline {get;set;}
         }
 
         private class WebConsoleEvent {
-            public string timelineId {get;set;}
+            public Guid timelineId {get;set;}
             public Guid recordId {get;set;}
             public TimelineRecordFeedLinesWrapper record {get;set;}
         }
 
         static int Main(string[] args)
         {
+            if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
+                WindowsUtils.EnableVT();
+            }
+
             var secretOpt = new Option<string>(
                 new[] { "-s", "--secret" },
                 description: "secret for you workflow, overrides keys from the secrets file");
@@ -205,120 +210,126 @@ namespace Runner.Client
                     query.Add("runid", hr.run_id.ToString());
                     b2.Query = query.ToString().TrimStart('?');
                     b2.Path = "runner/host/_apis/v1/Message";
+                    var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?runid={hr.run_id}");
                     var sr = await client.GetStringAsync(b2.ToString());
                     List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
+                    Dictionary<Guid, List<TimelineRecord>> timelineRecords = new Dictionary<Guid, List<TimelineRecord>>();
+                    long rj = 0;
                     foreach(Job j in jobs) {
                         Console.WriteLine($"Running Job: {j.name}");
                         if(j.errors?.Count > 0) {
                             foreach (var error in j.errors) {
                                 Console.Error.WriteLine($"Error: {error}");
                             }
-                            continue;
+                        } else {
+                            rj++;
                         }
-                        var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?timelineId={j.TimeLineId.ToString()}");
-                        List<TimelineRecord> timelineRecords = null;
-                        try {
-                            var content = await client.GetStringAsync(server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
-                            timelineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
-                        }
-                        catch (HttpRequestException) {
-                            Console.WriteLine("No Timeline found, wait for a timeline event");
-                        }
-                        Guid recordId = Guid.Empty;
-                        List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
-                        using(TextReader reader = new StreamReader(eventstream)) {
-                            while(true) {
-                                var line = await reader.ReadLineAsync();
-                                if(line == null) {
-                                    break;
+                    }
+                    if(rj == 0) {
+                        return -1;
+                    }
+                    Dictionary<Guid, Guid> recordId = new Dictionary<Guid, Guid>();
+                    Dictionary<Guid, ConsoleColor> color = new Dictionary<Guid, ConsoleColor>();
+                    List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
+                    int col = 0;
+                    using(TextReader reader = new StreamReader(eventstream)) {
+                        while(true) {
+                            var line = await reader.ReadLineAsync();
+                            if(line == null) {
+                                break;
+                            }
+                            var data = await reader.ReadLineAsync();
+                            data = data.Substring("data: ".Length);
+                            await reader.ReadLineAsync();
+                            if(line == "event: log") {
+                                var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
+                                if(pending.Count > 0) {
+                                    pending.Add(e);
+                                    continue;
                                 }
-                                var data = await reader.ReadLineAsync();
-                                data = data.Substring("data: ".Length);
-                                await reader.ReadLineAsync();
-                                if(line == "event: log") {
-                                    var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
-                                    if(pending.Count > 0) {
-                                        pending.Add(e);
-                                        continue;
+                                Guid rec;
+                                if(!recordId.TryGetValue(e.timelineId, out rec)) {
+                                    pending.Add(e);
+                                    continue;
+                                } else if(rec != e.record.StepId) {
+                                    List<TimelineRecord> tr = null;
+                                    if(rec != Guid.Empty && timelineRecords.TryGetValue(e.timelineId, out tr)) {
+                                        var record = tr.Find(r => r.Id == rec);
+                                        if(record == null || !record.Result.HasValue) {
+                                            pending.Add(e);
+                                            continue;
+                                        }
+                                        Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{tr[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                     }
-                                    if(recordId != e.record.StepId) {
-                                        if(recordId != Guid.Empty && timelineRecords != null) {
-                                            var record = timelineRecords.Find(r => r.Id == recordId);
+                                    recordId[e.timelineId] = e.record.StepId;
+                                    if(tr != null || timelineRecords.TryGetValue(e.timelineId, out tr)) {
+                                        var record = tr.Find(r => r.Id == e.record.StepId);
+                                        Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{tr[0].Name}] \x1b[0mRunning: {record.Name}");
+                                    }
+                                }
+                                var old = Console.ForegroundColor;
+                                Console.ForegroundColor = color[e.timelineId];
+                                foreach (var webconsoleline in e.record.Value) {
+                                    if(webconsoleline.StartsWith("##[section]")) {
+                                        Console.WriteLine("******************************************************************************");
+                                        Console.WriteLine(webconsoleline.Substring("##[section]".Length));
+                                        Console.WriteLine("******************************************************************************");
+                                    } else {
+                                        Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m|\x1b[0m {webconsoleline}");
+                                    }
+                                }
+                                Console.ForegroundColor = old;
+                            }
+                            if(line == "event: timeline") {
+                                var e = JsonConvert.DeserializeObject<TimeLineEvent>(data);
+                                timelineRecords[e.timelineId] = e.timeline;
+                                if(!recordId.ContainsKey(e.timelineId)) {
+                                    recordId[e.timelineId] = Guid.Empty;
+                                    color[e.timelineId] = (ConsoleColor) col + 1;
+                                    col = (col + 1) % 14;
+                                }
+                                while(pending.Count > 0) {
+                                    var e2 = pending[0];
+                                    if(recordId[e.timelineId] != e2.record.StepId) {
+                                        List<TimelineRecord> tr = null;
+                                        if(recordId[e.timelineId] != Guid.Empty && timelineRecords.TryGetValue(e.timelineId, out tr)) {
+                                            var record = tr.Find(r => r.Id == recordId[e.timelineId]);
                                             if(record == null || !record.Result.HasValue) {
-                                                pending.Add(e);
-                                                continue;
+                                                break;
                                             }
-                                            // if(!record.Result.HasValue) {
-                                            //     var content = await client.GetStringAsync(server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
-                                            //     timelineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
-                                            //     record = timelineRecords.Find(r => r.Id == recordId);
-                                            // }
-                                            Console.WriteLine($"{record.Result.Value.ToString()}: {record.Name}");
-                                            // switch(record.Result.Value) {
-                                            //     case TaskResult.Succeeded:
-                                            //     break;
-                                            // }
+                                            Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{tr[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                         }
-                                        recordId = e.record.StepId;
-                                        if(recordId != Guid.Empty && timelineRecords != null) {
-                                            var record = timelineRecords.Find(r => r.Id == recordId);
-                                            Console.WriteLine($"Running: {record.Name}");
+                                        recordId[e.timelineId] = e2.record.StepId;
+                                        if(tr != null || timelineRecords.TryGetValue(e.timelineId, out tr)) {
+                                            var record = tr.Find(r => r.Id == recordId[e.timelineId]);
+                                            Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{tr[0].Name}] \x1b[0mRunning: {record.Name}");
                                         }
                                     }
-                                    foreach (var webconsoleline in e.record.Value) {
+                                    var old = Console.ForegroundColor;
+                                    Console.ForegroundColor = color[e.timelineId];
+                                    foreach (var webconsoleline in e2.record.Value) {
                                         if(webconsoleline.StartsWith("##[section]")) {
                                             Console.WriteLine("******************************************************************************");
                                             Console.WriteLine(webconsoleline.Substring("##[section]".Length));
                                             Console.WriteLine("******************************************************************************");
                                         } else {
-                                            Console.WriteLine(webconsoleline);
+                                            Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m|\x1b[0m {webconsoleline}");
                                         }
+                                    }
+                                    Console.ForegroundColor = old;
+                                    pending.RemoveAt(0);
+                                }
+                                if(recordId[e.timelineId] != Guid.Empty && timelineRecords != null) {
+                                    var record = e.timeline.Find(r => r.Id == recordId[e.timelineId]);
+                                    if(record != null && record.Result.HasValue) {
+                                        Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                     }
                                 }
-                                if(line == "event: timeline") {
-                                    var e = JsonConvert.DeserializeObject<TimeLineEvent>(data);
-                                    timelineRecords = e.timeline;
-                                    while(pending.Count > 0) {
-                                        var e2 = pending[0];
-                                        if(recordId != e2.record.StepId) {
-                                            if(recordId != Guid.Empty && timelineRecords != null) {
-                                                var record = timelineRecords.Find(r => r.Id == recordId);
-                                                if(record == null || !record.Result.HasValue) {
-                                                    break;
-                                                }
-                                                Console.WriteLine($"{record.Result.Value.ToString()}: {record.Name}");
-                                            }
-                                            recordId = e2.record.StepId;
-                                            if(recordId != Guid.Empty && timelineRecords != null) {
-                                                var record = timelineRecords.Find(r => r.Id == recordId);
-                                                Console.WriteLine($"Running: {record.Name}");
-                                            }
-                                        }
-                                        foreach (var webconsoleline in e2.record.Value) {
-                                            if(webconsoleline.StartsWith("##[section]")) {
-                                                Console.WriteLine("******************************************************************************");
-                                                Console.WriteLine(webconsoleline.Substring("##[section]".Length));
-                                                Console.WriteLine("******************************************************************************");
-                                            } else {
-                                                Console.WriteLine(webconsoleline);
-                                            }
-                                        }
-                                        pending.RemoveAt(0);
-                                    }
-                                    if(e.timeline[0].State == TimelineRecordState.Completed) {
-                                        if(recordId != Guid.Empty && timelineRecords != null) {
-                                        var record = timelineRecords.Find(r => r.Id == recordId);
-                                            if(record == null || !record.Result.HasValue) {
-                                                break;
-                                            }
-                                            Console.WriteLine($"{record.Result.Value.ToString()}: {record.Name}");
-                                        }
-                                        return 0;
-                                    }
+                                if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
+                                    return 0;
                                 }
                             }
                         }
-                        // Console.WriteLine(j.TimeLineId);
                     }
                 } catch (Exception except) {
                     Console.WriteLine($"Failed to connect to Server {server}, make shure the server is running on that address or port: {except.Message}, {except.StackTrace}");
