@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -877,7 +877,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname.ToString();
                                                 
-                                                queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData, next.Id, next.TimelineId, hook?.repository.full_name ?? "Unknown", $"{jobname}_{c}", workflowname, runid, secrets);
+                                                queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, hook?.repository.full_name ?? "Unknown", $"{jobname}_{c}", workflowname, runid, secrets);
                                                 
                                                 // yield return rep;
                                             }
@@ -898,7 +898,7 @@ namespace Runner.Server.Controllers
                                         templateContext.ExpressionValues[pair.Key] = pair.Value;
                                     }
                                     var jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobname;
-                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData, jobitem.Id, jobitem.TimelineId, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid, secrets);
+                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData.Clone() as DictionaryContextData, jobitem.Id, jobitem.TimelineId, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid, secrets);
                                 }
                                 else
                                 {
@@ -916,7 +916,7 @@ namespace Runner.Server.Controllers
                                         templateContext.ExpressionValues[pair.Key] = pair.Value;
                                     }
                                     var jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobname;
-                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData, jobitem.Id, jobitem.TimelineId, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid, secrets);
+                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData.Clone() as DictionaryContextData, jobitem.Id, jobitem.TimelineId, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid, secrets);
                                 }
                             };
                             jobitem.OnJobEvaluatable = handler;
