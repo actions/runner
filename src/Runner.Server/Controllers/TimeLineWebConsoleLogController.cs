@@ -101,15 +101,15 @@ namespace Runner.Server.Controllers
                     LogFeedEvent handler = (sender, timelineId2, recordId, record) => {
                         (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
                         MessageController.Job job;
-                        if (timelineId == timelineId2 || timelineId == Guid.Empty && (runid == null || TimelineController.dict.TryGetValue(timelineId, out val) && _cache.TryGetValue("Job_" + val.Item1[0].Id, out job) && job.runid == runid)) {
+                        if (timelineId == timelineId2 || timelineId == Guid.Empty && (runid == null || TimelineController.dict.TryGetValue(timelineId2, out val) && _cache.TryGetValue("Job_" + val.Item1[0].Id, out job) && job.runid == runid)) {
                             queue2.Enqueue(new KeyValuePair<string, string>("log", JsonConvert.SerializeObject(new { timelineId = timelineId2, recordId, record }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     TimelineController.TimeLineUpdateDelegate handler2 = (timelineId2, timeline) => {
                         (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
                         MessageController.Job job;
-                        if(timelineId == timelineId2 || timelineId == Guid.Empty && (runid == null || TimelineController.dict.TryGetValue(timelineId, out val) && _cache.TryGetValue("Job_" + val.Item1[0].Id, out job) && job.runid == runid)) {
-                            queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        if(timelineId == timelineId2 || timelineId == Guid.Empty && (runid == null || TimelineController.dict.TryGetValue(timelineId2, out val) && _cache.TryGetValue("Job_" + val.Item1[0].Id, out job) && job.runid == runid)) {
+                            queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
                     var ping = Task.Run(async () => {
