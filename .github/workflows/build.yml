@@ -100,9 +100,9 @@ jobs:
         popd
         # Test run job with runner
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
-        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/testworkflows/globalenv.yml --payload ../../src/Runner.Client/payload.json
-        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/testworkflows/localenv.yml --payload ../../src/Runner.Client/payload.json
-        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/testworkflows/stepenv.yml --payload ../../src/Runner.Client/payload.json
+        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/globalenv.yml --payload ../../src/Runner.Client/payload.json
+        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/localenv.yml --payload ../../src/Runner.Client/payload.json
+        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/stepenv.yml --payload ../../src/Runner.Client/payload.json
         
         kill $workerpid
         kill $serverpid
