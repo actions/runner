@@ -1,0 +1,15 @@
+name: stepenv
+on: [push]
+
+jobs:
+  sample:
+    runs-on: 'self-hosted'
+    steps:
+    - run: echo Assert Failed env.Expand = ${{ env.Expand }} != github.ref,
+      if: ${{ env.Expand != github.ref }}
+      env:
+        Expand: ${{ github.ref }}
+    - run: echo Success
+      if: ${{ env.Expand == github.ref }}
+      env:
+        Expand: ${{ github.ref }}

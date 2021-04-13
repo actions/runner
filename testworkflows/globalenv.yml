@@ -1,0 +1,13 @@
+name: globalenv
+on: [push]
+
+env:
+  Expand: ${{ github.ref }}
+jobs:
+  sample:
+    runs-on: 'self-hosted'
+    steps:
+    - run: echo Assert Failed env.Expand = ${{ env.Expand }} != github.ref,
+      if: ${{ env.Expand != github.ref }}
+    - run: echo Success
+      if: ${{ env.Expand == github.ref }}
