@@ -227,7 +227,7 @@ namespace Runner.Client
                         }
                     }
                     if(rj == 0) {
-                        return -1;
+                        return 1;
                     }
                     var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?runid={hr.run_id}");
                     Dictionary<Guid, Guid> recordId = new Dictionary<Guid, Guid>();
