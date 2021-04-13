@@ -210,7 +210,6 @@ namespace Runner.Client
                     query.Add("runid", hr.run_id.ToString());
                     b2.Query = query.ToString().TrimStart('?');
                     b2.Path = "runner/host/_apis/v1/Message";
-                    var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?runid={hr.run_id}");
                     var sr = await client.GetStringAsync(b2.ToString());
                     List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
                     Dictionary<Guid, List<TimelineRecord>> timelineRecords = new Dictionary<Guid, List<TimelineRecord>>();
@@ -230,6 +229,7 @@ namespace Runner.Client
                     if(rj == 0) {
                         return -1;
                     }
+                    var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?runid={hr.run_id}");
                     Dictionary<Guid, Guid> recordId = new Dictionary<Guid, Guid>();
                     Dictionary<Guid, ConsoleColor> color = new Dictionary<Guid, ConsoleColor>();
                     List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
