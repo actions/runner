@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -339,7 +339,7 @@ namespace Runner.Client
                                     Console.ForegroundColor = old;
                                     pending.RemoveAt(0);
                                 }
-                                if(recordId[e.timelineId] != Guid.Empty && timelineRecords != null) {
+                                if(recordId[e.timelineId] != Guid.Empty && timelineRecords != null && e.timeline[0].State == TimelineRecordState.Completed) {
                                     var record = e.timeline.Find(r => r.Id == recordId[e.timelineId]);
                                     if(record != null && record.Result.HasValue) {
                                         Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
