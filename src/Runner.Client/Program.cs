@@ -215,9 +215,11 @@ namespace Runner.Client
                     List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
                     Dictionary<Guid, List<TimelineRecord>> timelineRecords = new Dictionary<Guid, List<TimelineRecord>>();
                     long rj = 0;
+                    bool hasErrors = false;
                     foreach(Job j in jobs) {
                         Console.WriteLine($"Running Job: {j.name}");
                         if(j.errors?.Count > 0) {
+                            hasErrors = true;
                             foreach (var error in j.errors) {
                                 Console.Error.WriteLine($"Error: {error}");
                             }
@@ -340,6 +342,28 @@ namespace Runner.Client
                                     }
                                     sr2 = await client.GetStringAsync(b2.ToString());
                                     jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                    if(jobs2.Count > jobs.Count) {
+                                        foreach(var j in jobs2) {
+                                            if(j.errors == null || j.errors.Count == 0) {
+                                                continue;
+                                            }
+                                            bool cont = false;
+                                            foreach(var j2 in jobs) {
+                                                if(j.JobId == j2.JobId) {
+                                                    cont = true;
+                                                    break;
+                                                }
+                                            }
+                                            if(cont) {
+                                                continue;
+                                            }
+                                            hasErrors = true;
+                                            foreach(var error in j.errors) {
+                                                Console.Error.WriteLine($"Error: {error}");
+                                            }
+                                        }
+                                        jobs = jobs2;
+                                    }
                                     var nc = jobs2.Count(j => !(j.errors?.Count > 0));
                                     if(nc > rj) {
                                         rj = nc;
@@ -347,7 +371,7 @@ namespace Runner.Client
                                             continue;
                                         }
                                     }
-                                    return timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped) ? 0 : 1;
+                                    return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped) ? 0 : 1;
                                 }
                             }
                         }
