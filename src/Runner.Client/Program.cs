@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -213,6 +213,9 @@ namespace Runner.Client
                     var sr = await client.GetStringAsync(b2.ToString());
                     List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
                     Dictionary<Guid, List<TimelineRecord>> timelineRecords = new Dictionary<Guid, List<TimelineRecord>>();
+                    Dictionary<Guid, Guid> recordId = new Dictionary<Guid, Guid>();
+                    Dictionary<Guid, ConsoleColor> color = new Dictionary<Guid, ConsoleColor>();
+                    int col = 0;
                     long rj = 0;
                     bool hasErrors = false;
                     foreach(Job j in jobs) {
@@ -222,7 +225,16 @@ namespace Runner.Client
                             foreach (var error in j.errors) {
                                 Console.Error.WriteLine($"Error: {error}");
                             }
-                        } else {
+                        } else if(j.TimeLineId != Guid.Empty) {
+                            try {
+                                var content = await client.GetStringAsync(server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
+                                timelineRecords[j.TimeLineId] = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
+                                recordId[j.TimeLineId] = Guid.Empty;
+                                color[j.TimeLineId] = (ConsoleColor) col + 1;
+                                col = (col + 1) % 14;
+                            }
+                            catch (HttpRequestException) {
+                            }
                             rj++;
                         }
                     }
@@ -230,10 +242,7 @@ namespace Runner.Client
                         return 1;
                     }
                     var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?runid={hr.run_id}");
-                    Dictionary<Guid, Guid> recordId = new Dictionary<Guid, Guid>();
-                    Dictionary<Guid, ConsoleColor> color = new Dictionary<Guid, ConsoleColor>();
                     List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
-                    int col = 0;
                     using(TextReader reader = new StreamReader(eventstream)) {
                         while(true) {
                             var line = await reader.ReadLineAsync();
