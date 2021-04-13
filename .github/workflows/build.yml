@@ -91,7 +91,7 @@ jobs:
         serverpid=$!
         sleep 20
         # Test run job without a runner
-        #./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json
+        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../src/Runner.Client/workflow.yml --payload ../../src/Runner.Client/payload.json && exit 1 || [[ "$?" = "1" ]]
         pushd ..
         ./config${{ matrix.scriptSuffix }} --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
         ./run${{ matrix.scriptSuffix }} &
