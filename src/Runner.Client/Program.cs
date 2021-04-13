@@ -326,7 +326,28 @@ namespace Runner.Client
                                     }
                                 }
                                 if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
-                                    return 0;
+                                    var b3 = new UriBuilder(b.ToString());
+                                    query = new QueryBuilder();
+                                    query.Add("repo", hr.repo);
+                                    query.Add("runid", hr.run_id.ToString());
+                                    query.Add("depending", "1");
+                                    b3.Query = query.ToString().TrimStart('?');
+                                    b3.Path = "runner/host/_apis/v1/Message";
+                                    var sr2 = await client.GetStringAsync(b3.ToString());
+                                    List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                    if(jobs2?.Count > 0) {
+                                        continue;
+                                    }
+                                    sr2 = await client.GetStringAsync(b2.ToString());
+                                    jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                    var nc = jobs2.Count(j => !(j.errors?.Count > 0));
+                                    if(nc > rj) {
+                                        rj = nc;
+                                        if(timelineRecords.Count < rj) {
+                                            continue;
+                                        }
+                                    }
+                                    return timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped) ? 0 : 1;
                                 }
                             }
                         }

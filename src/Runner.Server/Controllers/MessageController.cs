@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -352,6 +352,8 @@ namespace Runner.Server.Controllers
             LoadEnvSec(contents, (envKey, envValue) => environment.Add(new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, envKey), new StringToken(null, null, null, envValue))));
             return environment;
         }
+
+        private static ConcurrentDictionary<long, List<JobItem>> dependentjobgroups = new ConcurrentDictionary<long, List<JobItem>>();
 
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null) {
             string repository_name = hook?.repository?.full_name ?? "Unknown";
@@ -718,6 +720,7 @@ namespace Runner.Server.Controllers
                                 dependentjobgroup.Remove(jobitem);
                                 if(!dependentjobgroup.Any()) {
                                     jobgroup.Clear();
+                                    dependentjobgroups.TryRemove(runid, out _);
                                 }
 
                                 exctx.JobContext = ctx;
@@ -969,6 +972,7 @@ namespace Runner.Server.Controllers
                         }
                     });
                 }
+                dependentjobgroups[runid] = dependentjobgroup;
                 if(list) {
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = false, jobList = (from ji in dependentjobgroup select new JobListItem{Name= ji.name, Needs = ji.Needs}).ToList()};
                 } else {
@@ -1391,10 +1395,15 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet]
-        public Task<FileStreamResult> GetJobs([FromQuery] string repo, [FromQuery] long? runid) {
-            // return JsonConvert.SerializeObject(jobs.Values);
+        public Task<FileStreamResult> GetJobs([FromQuery] string repo, [FromQuery] long? runid, [FromQuery] int? depending) {
+            if(runid != null && depending >= 1) {
+                List<JobItem> value;
+                if(dependentjobgroups.TryGetValue(runid.Value, out value)) {
+                    return Ok(from v in value select new Job { JobId = v.Id, TimeLineId = v.TimelineId, name = v.name }, true);
+                }
+                return Ok(new Job[0], true);
+            }
             return Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid == null || j.runid == runid) select j, true);
-            // return /* repo != null && repo.Length > 0 ? (from j in jobs.Values where TimelineController.dict[j.TimeLineId].Item1[0] == repo) : */ jobs.Values;
         }
 
         public class PushStreamResult: IActionResult
