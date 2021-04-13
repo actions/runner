@@ -275,6 +275,11 @@ namespace Runner.Client
                                     recordId[e.timelineId] = e.record.StepId;
                                     if(tr != null || timelineRecords.TryGetValue(e.timelineId, out tr)) {
                                         var record = tr.Find(r => r.Id == e.record.StepId);
+                                        if(record == null) {
+                                            pending.Add(e);
+                                            recordId[e.timelineId] = Guid.Empty;
+                                            continue;
+                                        }
                                         Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{tr[0].Name}] \x1b[0mRunning: {record.Name}");
                                     }
                                 }
@@ -313,6 +318,10 @@ namespace Runner.Client
                                         recordId[e.timelineId] = e2.record.StepId;
                                         if(tr != null || timelineRecords.TryGetValue(e.timelineId, out tr)) {
                                             var record = tr.Find(r => r.Id == recordId[e.timelineId]);
+                                            if(record == null) {
+                                                recordId[e.timelineId] = Guid.Empty;
+                                                break;
+                                            }
                                             Console.WriteLine($"\x1b[{(int)color[e.timelineId] + 30}m[{tr[0].Name}] \x1b[0mRunning: {record.Name}");
                                         }
                                     }
