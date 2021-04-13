@@ -5,8 +5,8 @@ jobs:
     strategy:
       matrix:
         test: [0,1,2]
-        test2: [0,1,2]
-        test3: [0,1,2]
+        test2: [0,1]
+        test3: [0]
     steps:
     - run: echo hello > hello.txt
     - uses: actions/upload-artifact@v2
@@ -19,4 +19,5 @@ jobs:
     steps:
     - uses: actions/download-artifact@v2
     - run: |
-        for($test = 0; $test -lt 3; $test++) { for($test1 = 0; $test1 -lt 3; $test1++) { for($test2 = 0; $test2 -lt 3; $test2++) { if(-Not (Test-Path -Path "my-artifact-$test-$test1-$test2/hello.txt")) { echo "my-artifact-$test-$test1-$test2/hello.txt" not found; exit 1; } } } }
+        for($test = 0; $test -lt 3; $test++) { for($test1 = 0; $test1 -lt 2; $test1++) { for($test2 = 0; $test2 -lt 1; $test2++) { if(-Not (Test-Path -Path "my-artifact-$test-$test1-$test2/hello.txt")) { echo "my-artifact-$test-$test1-$test2/hello.txt" not found; exit 1; } } } }
+      shell: pwsh
