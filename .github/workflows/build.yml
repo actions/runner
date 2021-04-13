@@ -82,6 +82,14 @@ jobs:
       with:
         name: runner-package-${{ matrix.runtime }}
         path: _package
+    - name: Setup
+      shell: pwsh
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $obj = Get-Content "_layout/bin/appsettings.json" | ConvertFrom-Json
+        $obj.'Runner.Server'.GITHUB_TOKEN = $Env:GITHUB_TOKEN
+        $obj | ConvertTo-Json -Depth 20 | Set-Content  "_layout/bin/appsettings.json"
     - name: Test
       shell: bash
       if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
@@ -103,6 +111,7 @@ jobs:
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/globalenv.yml --payload ../../src/Runner.Client/payload.json
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/localenv.yml --payload ../../src/Runner.Client/payload.json
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/stepenv.yml --payload ../../src/Runner.Client/payload.json
+        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/matrixtest.yml --payload ../../src/Runner.Client/payload.json
         
         kill $workerpid
         kill $serverpid
