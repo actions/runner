@@ -192,6 +192,10 @@ namespace Runner.Client
                     var resp = await client.PostAsync(b.Uri.ToString(), new StringContent(payloadContent));
                     var s = await resp.Content.ReadAsStringAsync();
                     var hr = JsonConvert.DeserializeObject<HookResponse>(s);
+                    if(hr.skipped) {
+                        Console.WriteLine("This workflow was skipped, due to filters");
+                        return 0;
+                    }
                     if(list) {
                         if(hr.jobList != null) {
                             Console.WriteLine($"Found {hr.jobList.Count} matched Job(s)");

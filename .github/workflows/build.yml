@@ -112,6 +112,8 @@ jobs:
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/localenv.yml --payload ../../src/Runner.Client/payload.json
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/stepenv.yml --payload ../../src/Runner.Client/payload.json
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/matrixtest.yml --payload ../../src/Runner.Client/payload.json
+        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/skipped.yml --payload ../../src/Runner.Client/payload.json
+        ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/eventwithnulltoken.yml --payload ../../src/Runner.Client/payload.json
         
         kill $workerpid
         kill $serverpid

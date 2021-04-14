@@ -1,0 +1,8 @@
+name: skipped
+on: pull_request
+
+jobs:
+  sample:
+    runs-on: self-hosted
+    steps:
+    - run: echo Hello World

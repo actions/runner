@@ -1,0 +1,9 @@
+name: eventwithnulltoken
+on:
+  push:
+
+jobs:
+  eventwithnulltoken:
+    runs-on: self-hosted
+    steps:
+    - run: echo Hello World
