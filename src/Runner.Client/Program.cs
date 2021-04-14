@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -239,7 +239,7 @@ namespace Runner.Client
                         }
                     }
                     if(rj == 0) {
-                        return 1;
+                        return hasErrors ? 1 : 0;
                     }
                     var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?runid={hr.run_id}");
                     List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
