@@ -487,101 +487,104 @@ namespace Runner.Server.Controllers
                             
                             //TODO validate cron and handle it
                         } else {
-                            var push = e2.Value?.AssertMapping("map");
-                            if(push == null) {
+                            var rawEvent = e2.Value;
+                            if(rawEvent == null) {
                                 // Skip, not the right event
                                 return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
-                            List<string> allowed = new List<string>();
-                            allowed.Add("types");
+                            if(rawEvent.Type != TokenType.Null) {
+                                var push = rawEvent.AssertMapping($"expected mapping for event '{e}'");
+                                List<string> allowed = new List<string>();
+                                allowed.Add("types");
 
-                            if(e == "push" || e == "pull_request" || e == "workflow_run") {
-                                allowed.Add("branches");
-                                allowed.Add("branches-ignore");
-                            }
-                            if(e == "push" || e == "pull_request") {
-                                allowed.Add("tags");
-                                allowed.Add("tags-ignore");
-                            }
-
-                            if(!push.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
-                                var z = 0;
-                                var sb = new StringBuilder();
-                                foreach (var prop in (from p in push where !allowed.Any(s => s == p.Key.AssertString("Key").Value) select p.Key.AssertString("Key").Value)) {
-                                    if(z++ != 0) {
-                                        sb.Append(", ");
-                                    }
-                                    sb.Append(prop);
+                                if(e == "push" || e == "pull_request" || e == "workflow_run") {
+                                    allowed.Add("branches");
+                                    allowed.Add("branches-ignore");
                                 }
-                                throw new Exception($"The following event properties are invalid: {sb.ToString()}, please remove from {e}");
-                            }
-
-                            // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
-                            var branches = (from r in push where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                            var branchesIgnore = (from r in push where r.Key.AssertString("branches-ignore").Value == "branches-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                            var tags = (from r in push where r.Key.AssertString("tags").Value == "tags" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                            var tagsIgnore = (from r in push where r.Key.AssertString("tags-ignore").Value == "tags-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                            var paths = (from r in push where r.Key.AssertString("paths").Value == "paths" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                            var pathsIgnore = (from r in push where r.Key.AssertString("paths-ignore").Value == "paths-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                            var types = (from r in push where r.Key.AssertString("types").Value == "types" select r).FirstOrDefault().Value?.AssertSequence("seq");
-
-                            if(branches != null && branchesIgnore != null) {
-                                throw new Exception("branches and branches-ignore shall not be used at the same time");
-                            }
-                            if(tags != null && tagsIgnore != null) {
-                                throw new Exception("tags and tags-ignore shall not be used at the same time");
-                            }
-                            if(paths != null && pathsIgnore != null) {
-                                throw new Exception("paths and paths-ignore shall not be used at the same time");
-                            }
-
-                            
-                            if(types != null && hook?.Action != null) {
-                                if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
-                                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                if(e == "push" || e == "pull_request") {
+                                    allowed.Add("tags");
+                                    allowed.Add("tags-ignore");
                                 }
-                            }
 
-                            var heads = "refs/heads/";
-                            var rtags = "refs/tags/";
-
-                            var Ref2 = hook?.Ref;
-                            if(Ref2 == null) {
-                                if(e == "pull_request_target" || e == "pull_request") {
-                                    var tmp = hook?.pull_request?.Base?.Ref;
-                                    if(tmp != null) {
-                                        Ref2 = "refs/heads/" + tmp;
+                                if(!push.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
+                                    var z = 0;
+                                    var sb = new StringBuilder();
+                                    foreach (var prop in (from p in push where !allowed.Any(s => s == p.Key.AssertString("Key").Value) select p.Key.AssertString("Key").Value)) {
+                                        if(z++ != 0) {
+                                            sb.Append(", ");
+                                        }
+                                        sb.Append(prop);
                                     }
+                                    throw new Exception($"The following event properties are invalid: {sb.ToString()}, please remove from {e}");
                                 }
-                            }
-                            if(Ref2 != null) {
-                                if(Ref2.StartsWith(heads) == true) {
-                                    var branch = Ref2.Substring(heads.Length);
 
-                                    if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
-                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                    }
-                                    if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
-                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                    }
-                                } else if(Ref2.StartsWith(rtags) == true) {
-                                    var tag = Ref2.Substring(rtags.Length);
+                                // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
+                                var branches = (from r in push where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                                var branchesIgnore = (from r in push where r.Key.AssertString("branches-ignore").Value == "branches-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                                var tags = (from r in push where r.Key.AssertString("tags").Value == "tags" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                                var tagsIgnore = (from r in push where r.Key.AssertString("tags-ignore").Value == "tags-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                                var paths = (from r in push where r.Key.AssertString("paths").Value == "paths" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                                var pathsIgnore = (from r in push where r.Key.AssertString("paths-ignore").Value == "paths-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
+                                var types = (from r in push where r.Key.AssertString("types").Value == "types" select r).FirstOrDefault().Value?.AssertSequence("seq");
 
-                                    if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
-                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                    }
-                                    if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
+                                if(branches != null && branchesIgnore != null) {
+                                    throw new Exception("branches and branches-ignore shall not be used at the same time");
+                                }
+                                if(tags != null && tagsIgnore != null) {
+                                    throw new Exception("tags and tags-ignore shall not be used at the same time");
+                                }
+                                if(paths != null && pathsIgnore != null) {
+                                    throw new Exception("paths and paths-ignore shall not be used at the same time");
+                                }
+
+                                
+                                if(types != null && hook?.Action != null) {
+                                    if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
                                         return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
                                 }
-                            }
-                            if(hook.Commits != null) {
-                                var changedFiles = hook.Commits.SelectMany(commit => commit.Added.Concat(commit.Removed).Concat(commit.Modified));
-                                if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
-                                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+
+                                var heads = "refs/heads/";
+                                var rtags = "refs/tags/";
+
+                                var Ref2 = hook?.Ref;
+                                if(Ref2 == null) {
+                                    if(e == "pull_request_target" || e == "pull_request") {
+                                        var tmp = hook?.pull_request?.Base?.Ref;
+                                        if(tmp != null) {
+                                            Ref2 = "refs/heads/" + tmp;
+                                        }
+                                    }
                                 }
-                                if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
-                                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                if(Ref2 != null) {
+                                    if(Ref2.StartsWith(heads) == true) {
+                                        var branch = Ref2.Substring(heads.Length);
+
+                                        if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
+                                        if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
+                                    } else if(Ref2.StartsWith(rtags) == true) {
+                                        var tag = Ref2.Substring(rtags.Length);
+
+                                        if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
+                                        if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
+                                    }
+                                }
+                                if(hook.Commits != null) {
+                                    var changedFiles = hook.Commits.SelectMany(commit => commit.Added.Concat(commit.Removed).Concat(commit.Modified));
+                                    if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
+                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                    }
+                                    if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
+                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                    }
                                 }
                             }
                         }
