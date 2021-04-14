@@ -751,6 +751,7 @@ namespace Runner.Server.Controllers
                                         SequenceToken include = null;
                                         SequenceToken exclude = null;
                                         var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
+                                        var includematrix = new List<Dictionary<string, TemplateToken>> { };
                                         foreach (var item in matrix)
                                         {
                                             var key = item.Key.AssertString("Key").Value;
@@ -796,31 +797,32 @@ namespace Runner.Server.Controllers
                                                 });
                                             }
                                         }
-                                        if (include != null)
-                                        {
-                                            foreach (var item in include)
-                                            {
+                                        if(flatmatrix.Count == 0) {
+                                            // Fix empty matrix after exclude
+                                            flatmatrix.Add(new Dictionary<string, TemplateToken>());
+                                        }
+                                        var keys = flatmatrix.First().Keys.ToArray();
+                                        if (include != null) {
+                                            foreach (var item in include) {
                                                 var map = item.AssertMapping("include item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
                                                 bool matched = false;
-                                                flatmatrix.ForEach(dict =>
-                                                {
-                                                    foreach (var item in map)
-                                                    {
-                                                        TemplateToken val;
-                                                        if (dict.TryGetValue(item.Key, out val) && !TemplateTokenEqual(item.Value, val)) {
-                                                            return;
+                                                if(keys.Length > 0) {
+                                                    flatmatrix.ForEach(dict => {
+                                                        foreach (var item in keys) {
+                                                            TemplateToken val;
+                                                            if (dict.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val)) {
+                                                                return;
+                                                            }
                                                         }
-                                                    }
-                                                    matched = true;
-                                                    // Add missing keys
-                                                    foreach (var item in map)
-                                                    {
-                                                        dict.TryAdd(item.Key, item.Value);
-                                                    }
-                                                });
-                                                if (!matched)
-                                                {
-                                                    flatmatrix.Add(map);
+                                                        matched = true;
+                                                        // Add missing keys
+                                                        foreach (var item in map) {
+                                                            dict[item.Key] = item.Value;
+                                                        }
+                                                    });
+                                                }
+                                                if (!matched) {
+                                                    includematrix.Add(map);
                                                 }
                                             }
                                         }
@@ -830,8 +832,7 @@ namespace Runner.Server.Controllers
                                             var mdict = new Dictionary<string, TemplateToken>();
                                             foreach(var m_ in _matrix) {
                                                 var i = m_.IndexOf(":");
-                                                using (var stringReader = new StringReader(m_.Substring(i + 1)))
-                                                {
+                                                using (var stringReader = new StringReader(m_.Substring(i + 1))) {
                                                     var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
                                                     mdict[m_.Substring(0, i)] = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
                                                 }
@@ -847,28 +848,33 @@ namespace Runner.Server.Controllers
                                                 return true;
                                             });
                                         }
-
-                                        if(flatmatrix.Count > 0) {
-                                            strategyctx.Add("job-total", new NumberContextData(flatmatrix.Count));
+                                        var jobTotal = flatmatrix.Count + includematrix.Count;
+                                        if(keys.Length == 0 && jobTotal > 1) {
+                                            jobTotal--;
+                                        }
+                                        strategyctx.Add("job-total", new NumberContextData( jobTotal ));
+                                        {
                                             int i = 0;
-                                            foreach (var item in flatmatrix)
-                                            {
+                                            Func<IEnumerable<string>, string> defaultDisplayName = item => {
+                                                var displayname = new StringBuilder(jobname);
+                                                int z = 0;
+                                                foreach (var mk in item) {
+                                                    displayname.Append(z++ == 0 ? " (" : ", ");
+                                                    displayname.Append(mk);
+                                                }
+                                                if(z > 0) {
+                                                    displayname.Append( ")");
+                                                }
+                                                return displayname.ToString();
+                                            };
+                                            Action<string, Dictionary<string, TemplateToken>> act = (displayname, item) => {
                                                 int c = i++;
                                                 strategyctx["job-index"] = new NumberContextData((double)(c));
                                                 var matrixContext = new DictionaryContextData();
-                                                var displayname = new StringBuilder(jobname);
-                                                displayname.Append( " (");
-                                                int z = 0;
-                                                foreach (var mk in item)
-                                                {
-                                                    if(z++ > 0) {
-                                                        displayname.Append(", ");
-                                                    }
-                                                    displayname.Append(mk.Value.ToString());
+                                                foreach (var mk in item) {
                                                     PipelineContextData data = mk.Value.ToContextData();
                                                     matrixContext.Add(mk.Key, data);
                                                 }
-                                                displayname.Append( ")");
                                                 contextData["matrix"] = matrixContext;
                                                 var next = new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), TimelineId = Guid.NewGuid() };
                                                 if(dependentjobgroup.Any()) {
@@ -878,30 +884,20 @@ namespace Runner.Server.Controllers
                                                 foreach (var pair in contextData) {
                                                     templateContext.ExpressionValues[pair.Key] = pair.Value;
                                                 }
-                                                var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname.ToString();
+                                                var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
                                                 
                                                 queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, hook?.repository.full_name ?? "Unknown", $"{jobname}_{c}", workflowname, runid, secrets);
-                                                
-                                                // yield return rep;
+                                            };
+                                            if(keys.Length != 0 || includematrix.Count == 0) {
+                                                foreach (var item in flatmatrix) {
+                                                    act(defaultDisplayName(from key in keys select item[key].ToString()), item);
+                                                }
                                             }
-                                            return;
+                                            foreach (var item in includematrix) {
+                                                act(defaultDisplayName(from it in item select it.Value.ToString()), item);
+                                            }
                                         }
                                     }
-                                    // Match Github, and create a pseudo job
-                                    strategyctx.Add("job-index", new NumberContextData(0));
-                                    strategyctx.Add("job-total", new NumberContextData(1));
-                                    jobitem.Id = Guid.NewGuid();
-                                    jobitem.TimelineId = Guid.NewGuid();
-                                    if(dependentjobgroup.Any()) {
-                                        jobgroup.Add(jobitem);
-                                    }
-                                    contextData.Add("matrix", null);
-                                    templateContext.ExpressionValues.Clear();
-                                    foreach (var pair in contextData) {
-                                        templateContext.ExpressionValues[pair.Key] = pair.Value;
-                                    }
-                                    var jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobname;
-                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData.Clone() as DictionaryContextData, jobitem.Id, jobitem.TimelineId, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid, secrets);
                                 }
                                 else
                                 {
