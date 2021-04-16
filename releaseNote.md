@@ -1,8 +1,14 @@
 ## Features
 
+- Use GITHUB_TOKEN for ghcr.io containers if credentials are not provided (#990)
 
 ## Bugs
-  - Fixed an issue where docker containers failed to initialize (#977)
+
+- Do not trucate error message from template evaluation (#1038)
+- Make FileShare ReadWrite (#1033)
+- Mask secrets with double-quotes when passed to docker command line (#1002)
+- Delete script files before replacing during update (#984)
+
 
 ## Misc
 
