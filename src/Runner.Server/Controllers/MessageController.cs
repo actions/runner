@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -356,7 +356,7 @@ namespace Runner.Server.Controllers
         private static ConcurrentDictionary<long, List<JobItem>> dependentjobgroups = new ConcurrentDictionary<long, List<JobItem>>();
 
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null) {
-            string repository_name = hook?.repository?.full_name ?? "Unknown";
+            string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             var runid = _cache.GetOrCreate(repository_name, e => new Int64());
             _cache.Set(repository_name, runid + 1);
             var runnumberkey = $"{repository_name}:/{fileRelativePath}";
@@ -578,7 +578,7 @@ namespace Runner.Server.Controllers
                                     }
                                 }
                                 if(hook.Commits != null) {
-                                    var changedFiles = hook.Commits.SelectMany(commit => commit.Added.Concat(commit.Removed).Concat(commit.Modified));
+                                    var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
                                     if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
                                         return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
@@ -647,20 +647,18 @@ namespace Runner.Server.Controllers
                             var workflowname = (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                             githubctx.Add("workflow", new StringContextData(workflowname));
                             githubctx.Add("repository", new StringContextData(repository_name));
-                            if(hook != null){
-                                githubctx.Add("sha", new StringContextData(Sha));
-                                githubctx.Add("repository_owner", new StringContextData(hook.repository.Owner.login));
-                                githubctx.Add("ref", new StringContextData(Ref));
-                                githubctx.Add("job", new StringContextData(jobname));
-                                githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
-                                githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
-                                // event_path is filled by event
-                                githubctx.Add("event", payloadObject.ToPipelineContextData());
-                                githubctx.Add("event_name", new StringContextData(e));
-                                githubctx.Add("actor", new StringContextData(hook.sender.login));
-                                githubctx.Add("run_id", new StringContextData(runid.ToString()));
-                                githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                            }
+                            githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
+                            githubctx.Add("repository_owner", new StringContextData(hook?.repository?.Owner?.login ?? "Unknown"));
+                            githubctx.Add("ref", new StringContextData(Ref));
+                            githubctx.Add("job", new StringContextData(jobname));
+                            githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
+                            githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
+                            // event_path is filled by event
+                            githubctx.Add("event", payloadObject.ToPipelineContextData());
+                            githubctx.Add("event_name", new StringContextData(e));
+                            githubctx.Add("actor", new StringContextData(hook?.sender?.login));
+                            githubctx.Add("run_id", new StringContextData(runid.ToString()));
+                            githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
                             var needsctx = new DictionaryContextData();
                             contextData.Add("needs", needsctx);
                             var strategyctx = new DictionaryContextData();
@@ -889,7 +887,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
                                                 
-                                                queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, hook?.repository.full_name ?? "Unknown", $"{jobname}_{c}", workflowname, runid, secrets);
+                                                queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, secrets);
                                             };
                                             if(keys.Length != 0 || includematrix.Count == 0) {
                                                 foreach (var item in flatmatrix) {
@@ -918,7 +916,7 @@ namespace Runner.Server.Controllers
                                         templateContext.ExpressionValues[pair.Key] = pair.Value;
                                     }
                                     var jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobname;
-                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData.Clone() as DictionaryContextData, jobitem.Id, jobitem.TimelineId, hook?.repository.full_name ?? "Unknown", jobname, workflowname, runid, secrets);
+                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData.Clone() as DictionaryContextData, jobitem.Id, jobitem.TimelineId, repository_name, jobname, workflowname, runid, secrets);
                                 }
                             };
                             jobitem.OnJobEvaluatable = handler;
@@ -981,7 +979,7 @@ namespace Runner.Server.Controllers
                 List<string> _errors = new List<string>{ex.Message};
                 var RequestId = Interlocked.Increment(ref reqId);
                 var jid = Guid.NewGuid();
-                var job = jobs.AddOrUpdate(jid, new Job() { errors = _errors, message = null, repo = hook?.repository.full_name ?? "Unknown", name = fileRelativePath, workflowname = fileRelativePath, runid = runid, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
+                var job = jobs.AddOrUpdate(jid, new Job() { errors = _errors, message = null, repo = repository_name, name = fileRelativePath, workflowname = fileRelativePath, runid = runid, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
                 jobevent?.Invoke(this, job.repo, job);
             }
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
@@ -1332,7 +1330,7 @@ namespace Runner.Server.Controllers
             }
             var hook = obj.Key;
             if(workflow != null && workflow.Length > 0) {
-                var resp = ConvertYaml("workflow.yml", workflow, hook.repository.full_name, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix);
+                var resp = ConvertYaml("workflow.yml", workflow, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix);
                 return await Ok(resp);
             } else {
                 try {
