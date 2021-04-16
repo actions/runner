@@ -303,6 +303,12 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
         <Header title={title} />
         <main className={styles.main}>
             <div className={styles.text} style={{width: '100%'}}>
+                <button onClick={(event) => {
+                    (async () => {
+                        await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + getJobById(jobs, id).job.jobId, { method: "POST" });
+                    })();
+                }
+                } >Cancel</button>
                 {errors.map(e => <div>Error: {e}</div>)}
                 {artifacts.map((container: ArtifactResponse) => <div><div>{container.name}</div>{(() => {
                     if(container.files !== undefined) {

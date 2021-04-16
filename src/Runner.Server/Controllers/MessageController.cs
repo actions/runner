@@ -1138,6 +1138,9 @@ namespace Runner.Server.Controllers
             public string name { get; set; }
             public string workflowname { get; set; }
             public long runid { get; set; }
+            public bool CancelRequest { get; internal set; }
+            public bool Cancelled { get; internal set; }
+
             public List<string> errors;
         }
         static ConcurrentDictionary<Guid, Job> jobs = new ConcurrentDictionary<Guid, Job>();
@@ -1180,7 +1183,7 @@ namespace Runner.Server.Controllers
             Session session;
             if(!_cache.TryGetValue(sessionId, out session)) {
                 this.HttpContext.Response.StatusCode = 403;
-                return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This server have been restarted"), true, new Version(2, 0)));
+                return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This server has been restarted"), true, new Version(2, 0)));
             }
             sessions.AddOrUpdate(session, s => {
                 if(s.Timer == null) {
@@ -1228,6 +1231,23 @@ namespace Runner.Server.Controllers
                                     IV = session.Key.IV
                                 });
                             }
+                        }
+                    }
+                } else if(!session.Job.Cancelled) {
+                    if(session.Job.CancelRequest) {
+                        session.Job.Cancelled = true;
+                        session.Key.GenerateIV();
+                        using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                        using (var body = new MemoryStream())
+                        using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                            using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
+                                bodyWriter.Write(JsonConvert.SerializeObject(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(5))));
+                            return await Ok(new TaskAgentMessage() {
+                                Body = Convert.ToBase64String(body.ToArray()),
+                                MessageId = id++,
+                                MessageType = JobCancelMessage.MessageType,
+                                IV = session.Key.IV
+                            });
                         }
                     }
                 }
@@ -1401,6 +1421,14 @@ namespace Runner.Server.Controllers
                 return Ok(new Job[0], true);
             }
             return Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid == null || j.runid == runid) select j, true);
+        }
+
+        [HttpPost("cancel/{id}")]
+        public void CancelJob(Guid id) {
+            Job job;
+            if(jobs.TryGetValue(id, out job)) {
+                job.CancelRequest = true;
+            }
         }
 
         public class PushStreamResult: IActionResult
