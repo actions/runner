@@ -1328,8 +1328,6 @@ namespace Runner.Server.Controllers
                     foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name))) {
                         if(queue.Value.TryDequeue(out req)) {
                             if(req.CancelRequest) {
-                                req.Cancelled = true;
-                                FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                 continue;
                             }
                             var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/";
@@ -1567,6 +1565,10 @@ namespace Runner.Server.Controllers
             Job job;
             if(jobs.TryGetValue(id, out job)) {
                 job.CancelRequest = true;
+                if(job.SessionId == Guid.Empty) {
+                    job.Cancelled = true;
+                    FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                }
             }
         }
 
