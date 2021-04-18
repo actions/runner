@@ -766,11 +766,12 @@ namespace Runner.Server.Controllers
                                 var includematrix = new List<Dictionary<string, TemplateToken>> { };
                                 SequenceToken include = null;
                                 SequenceToken exclude = null;
+                                bool failFast = true;
+                                double? max_parallel = null;
                                 if (rawstrategy != null) {
                                     var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping("strategy");
-                                    strategyctx.Add("fail-fast", new BooleanContextData((from r in strategy where r.Key.AssertString("fail-fast").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean("fail-fast")?.Value ?? true));
-                                    var max_parallel = (from r in strategy where r.Key.AssertString("max-parallel").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber("max-parallel")?.Value;
-                                    strategyctx.Add("max-parallel", max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : null);
+                                    failFast = (from r in strategy where r.Key.AssertString("fail-fast").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean("fail-fast")?.Value ?? failFast;
+                                    max_parallel = (from r in strategy where r.Key.AssertString("max-parallel").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber("max-parallel")?.Value;
                                     var matrix = (from r in strategy where r.Key.AssertString("matrix").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping("matrix");
                                     if(matrix != null) {
                                         foreach (var item in matrix)
@@ -824,6 +825,8 @@ namespace Runner.Server.Controllers
                                         flatmatrix.Add(new Dictionary<string, TemplateToken>());
                                     }
                                 }
+                                strategyctx.Add("fail-fast", new BooleanContextData(failFast));
+                                strategyctx.Add("max-parallel", max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : null);
                                 var keys = flatmatrix.First().Keys.ToArray();
                                 if (include != null) {
                                     foreach (var item in include) {
@@ -893,7 +896,7 @@ namespace Runner.Server.Controllers
                                         }
                                         return displayname.ToString();
                                     };
-                                    Action<string, Dictionary<string, TemplateToken>> act = (displayname, item) => {
+                                    Func<string, Dictionary<string, TemplateToken>, Func<bool, Job>> act = (displayname, item) => {
                                         int c = i++;
                                         strategyctx["job-index"] = new NumberContextData((double)(c));
                                         var matrixContext = new DictionaryContextData();
@@ -917,15 +920,62 @@ namespace Runner.Server.Controllers
                                         var timeoutMinutes = (from r in run where r.Key.AssertString("timeout-minutes").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("timeout-minutes be a number").Value).Append(360).First();
                                         var cancelTimeoutMinutes = (from r in run where r.Key.AssertString("cancel-timeout-minutes").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("cancel-timeout-minutes be a number").Value).Append(5).First();
                                         
-                                        queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError);
+                                        return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError);
                                     };
+                                    ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                     if(keys.Length != 0 || includematrix.Count == 0) {
                                         foreach (var item in flatmatrix) {
-                                            act(defaultDisplayName(from key in keys select item[key].ToString()), item);
+                                            jobs.Enqueue(act(defaultDisplayName(from key in keys select item[key].ToString()), item));
                                         }
                                     }
                                     foreach (var item in includematrix) {
-                                        act(defaultDisplayName(from it in item select it.Value.ToString()), item);
+                                        jobs.Enqueue(act(defaultDisplayName(from it in item select it.Value.ToString()), item));
+                                    }
+                                    List<Job> scheduled = new List<Job>();
+                                    FinishJobController.JobCompleted handler2 = null;
+                                    Action cancelAll = () => {
+                                        FinishJobController.OnJobCompleted -= handler2;
+                                        foreach (var j in scheduled) {
+                                            j.CancelRequest = true;
+                                        }
+                                        scheduled.Clear();
+                                        Func<bool, Job> cb;
+                                        while(jobs.TryDequeue(out cb)) {
+                                            cb(true);
+                                        }
+                                    };
+                                    handler2 = e => {
+                                        Func<bool, Job> cb;
+                                        if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
+                                            if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned)) {
+                                                cancelAll();
+                                            } else {
+                                                while(jobs.TryDequeue(out cb)) {
+                                                    var jret = cb(false);
+                                                    if(jret != null) {
+                                                        scheduled.Add(jret);
+                                                        return;
+                                                    } else if(failFast) {
+                                                        cancelAll();
+                                                        return;
+                                                    }
+                                                }
+                                                if (scheduled.Count == 0) {
+                                                    FinishJobController.OnJobCompleted -= handler2;
+                                                }
+                                            }
+                                        }
+                                    };
+                                    Func<bool, Job> cb2;
+                                    FinishJobController.OnJobCompleted += handler2;
+                                    for (int j = 0; j < (max_parallel.HasValue ? (int)max_parallel.Value : jobTotal) && jobs.TryDequeue(out cb2); j++) {
+                                        var jret = cb2(false);
+                                        if(jret != null) {
+                                            scheduled.Add(jret);
+                                        } else if (failFast) {
+                                            cancelAll();
+                                            break;
+                                        }
                                     }
                                 }
                             };
@@ -1030,7 +1080,7 @@ namespace Runner.Server.Controllers
         }
 
         private static int reqId = 0;
-        private void queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError)
+        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError)
         {
             TimelineController.dict[timelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = jobId } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
@@ -1086,7 +1136,8 @@ namespace Runner.Server.Controllers
                 var jid = jobId;
                 var _job = jobs.AddOrUpdate(jid, new Job() { errors = errors, message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = _RequestId }, (id, job) => job);
                 jobevent?.Invoke(this, _job.repo, _job);
-                return;
+                FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = _RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                return null;
             }
             var res = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault();
             var seq = res.Value.AssertSequence("seq");
@@ -1144,13 +1195,11 @@ namespace Runner.Server.Controllers
             if(workflowDefaults != null) {
                 jobDefaults.Add(workflowDefaults);
             }
-            if (defaultToken != null)
-            {
+            if (defaultToken != null) {
                 jobDefaults.Add(defaultToken);
             }
 
             var RequestId = Interlocked.Increment(ref reqId);
-            ConcurrentQueue<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<Job>());
             var job = jobs.AddOrUpdate(jobId, new Job() { message = (apiUrl) => {
                 var auth = new GitHub.DistributedTask.WebApi.EndpointAuthorization() { Scheme = GitHub.DistributedTask.WebApi.EndpointAuthorizationSchemes.OAuth };
                 var tokenHandler = new JwtSecurityTokenHandler();
@@ -1175,8 +1224,18 @@ namespace Runner.Server.Controllers
                 req.RequestId = RequestId;
                 return req;
             }, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = RequestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError }, (id, job) => job);
-            queue.Enqueue(job);
             jobevent?.Invoke(this, job.repo, job);
+            return cancel => {
+                if(cancel) {
+                    job.Cancelled = true;
+                    job.CancelRequest = true;
+                    FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                } else {
+                    ConcurrentQueue<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<Job>());
+                    queue.Enqueue(job);
+                }
+                return job;
+            };
         }
 
         public delegate AgentJobRequestMessage MessageFactory(string apiUrl);
