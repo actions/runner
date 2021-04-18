@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1227,7 +1227,7 @@ namespace Runner.Server.Controllers
                                 return await Ok(new TaskAgentMessage() {
                                     Body = Convert.ToBase64String(body.ToArray()),
                                     MessageId = id++,
-                                    MessageType = "PipelineAgentJobRequest",
+                                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
                                     IV = session.Key.IV
                                 });
                             }
