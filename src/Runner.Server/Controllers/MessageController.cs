@@ -1169,12 +1169,14 @@ namespace Runner.Server.Controllers
             // Environment
             TemplateToken deploymentEnvironment = (from r in run where r.Key.AssertString("environment").Value == "environment" select r).FirstOrDefault().Value;
             GitHub.DistributedTask.WebApi.ActionsEnvironmentReference deploymentEnvironmentValue = null;
-            if(deploymentEnvironment is StringToken ename) {
-                deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
-            } else {
-                var mtoken = deploymentEnvironment.AssertMapping("Environment must be a mapping or string");
-                deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString("name").Value == "name" select r.Value).First().AssertString("name").Value);
-                deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString("url").Value == "url" select r.Value).FirstOrDefault();
+            if(deploymentEnvironment != null) {
+                if(deploymentEnvironment is StringToken ename) {
+                    deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
+                } else {
+                    var mtoken = deploymentEnvironment.AssertMapping("Environment must be a mapping or string");
+                    deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString("name").Value == "name" select r.Value).First().AssertString("name").Value);
+                    deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString("url").Value == "url" select r.Value).FirstOrDefault();
+                }
             }
 
             var resources = new JobResources();
