@@ -70,6 +70,7 @@
           "env": "job-env",
           "outputs": "job-outputs",
           "defaults": "job-defaults",
+          "environment" : "environment",
           "steps": "steps"
         }
       }
@@ -218,6 +219,18 @@
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "string-runner-context"
+      }
+    },
+
+    "environment": {
+      "one-of": ["non-empty-string", "environment-mapping" ]
+    },
+    "environment-mapping": {
+      "mapping": {
+        "properties":{
+          "name": "non-empty-string",
+          "url": "string-runner-context-no-secrets"
+        }
       }
     },
 

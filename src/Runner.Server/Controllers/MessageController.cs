@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -164,25 +164,28 @@ namespace Runner.Server.Controllers
             Cancelled
         }
 
-        interface IJobCtx {
-            Stat? Status {get;}
-        }
-
-        interface IExecutionContext {
-            IJobCtx JobContext {get; }
-        }
-
         public sealed class SuccessFunction : Function
         {
             protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
             {
                 resultMemory = null;
                 var templateContext = evaluationContext.State as TemplateContext;
-                // ArgUtil.NotNull(templateContext, nameof(templateContext));
-                var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
-                // ArgUtil.NotNull(executionContext, nameof(executionContext));
-                Stat jobStatus = executionContext.JobContext.Status ?? Stat.Success;
-                return jobStatus == Stat.Success;
+                var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
+                if(Parameters?.Any() ?? false) {
+                    foreach(var parameter in Parameters) {
+                        var s = parameter.Evaluate(evaluationContext).ConvertToString();
+                        JobItem item = null;
+                        if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
+                            if(item?.Status == Stat.Failure) {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                return executionContext.JobContext.Success;
             }
         }
 
@@ -192,11 +195,20 @@ namespace Runner.Server.Controllers
             {
                 resultMemory = null;
                 var templateContext = evaluationContext.State as TemplateContext;
-                // ArgUtil.NotNull(templateContext, nameof(templateContext));
-                var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
-                // ArgUtil.NotNull(executionContext, nameof(executionContext));
-                Stat jobStatus = executionContext.JobContext.Status ?? Stat.Success;
-                return jobStatus == Stat.Failure;
+                var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
+                if(Parameters?.Any() ?? false) {
+                    foreach(var parameter in Parameters) {
+                        var s = parameter.Evaluate(evaluationContext).ConvertToString();
+                        JobItem item = null;
+                        if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
+                            if(item?.Status == Stat.Failure) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                }
+                return executionContext.JobContext.Failure;
             }
         }
         public sealed class CancelledFunction : Function
@@ -205,22 +217,16 @@ namespace Runner.Server.Controllers
             {
                 resultMemory = null;
                 var templateContext = evaluationContext.State as TemplateContext;
-                // ArgUtil.NotNull(templateContext, nameof(templateContext));
-                var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
-                // ArgUtil.NotNull(executionContext, nameof(executionContext));
-                Stat jobStatus = executionContext.JobContext.Status ?? Stat.Success;
-                return jobStatus == Stat.Cancelled;
+                var executionContext = templateContext.State[nameof(ExecutionContext)] as ExecutionContext;
+                return executionContext.Cancelled;
             }
         }
 
-        class JobCtx : IJobCtx
+        class ExecutionContext
         {
-            public Stat? Status { get; set;}
-        }
-
-        class ExecutionContext : IExecutionContext
-        {
-            public IJobCtx JobContext { get; set; }
+            public List<JobItem> workflow { get; set; }
+            public bool Cancelled { get => workflow?.Any(job => job.Status == Stat.Cancelled) ?? false; }
+            public JobItem JobContext { get; set; }
         }
 
         class JobItem {
@@ -232,6 +238,18 @@ namespace Runner.Server.Controllers
 
             public Guid Id { get; set;}
             public Guid TimelineId { get; set;}
+
+            public List<JobItem> Childs { get; set; }
+
+            private Stat? stat;
+
+            public bool ContinueOnError {get;set;}
+
+            public Stat? Status { get => Childs?.Any() ?? false ? Childs.Any(c => c.Status == Stat.Cancelled) ? Stat.Cancelled : Childs.Any(c => c.Status == Stat.Failure) ? Stat.Failure :  Stat.Success : stat; set => stat = value; }
+            public Dictionary<string, JobItem> Dependencies { get; set;}
+
+            public bool Success { get => Dependencies?.All(p => p.Value.Status == Stat.Success) ?? true; }
+            public bool Failure { get => !Success; }
 
             // public List<Task<IEnumerable<AgentJobRequestMessage>>> enum
         }
@@ -375,12 +393,11 @@ namespace Runner.Server.Controllers
                     TraceWriter = new TraceWriter()
                 };
                 ExecutionContext exctx = new ExecutionContext();
-                exctx.JobContext = new JobCtx() {};
-                templateContext.State[nameof(IExecutionContext)] = exctx;
+                templateContext.State[nameof(ExecutionContext)] = exctx;
                 templateContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
                 templateContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
-                templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
-                templateContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
+                templateContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, Int32.MaxValue));
+                templateContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, Int32.MaxValue));
                 foreach (var func in ExpressionConstants.WellKnownFunctions.Values)
                 {
                     templateContext.ExpressionFunctions.Add(func);
@@ -505,6 +522,9 @@ namespace Runner.Server.Controllers
                                     allowed.Add("tags");
                                     allowed.Add("tags-ignore");
                                 }
+                                if(e == "workflow_dispatch") {
+                                    allowed.Add("inputs");
+                                }
 
                                 if(!push.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
                                     var z = 0;
@@ -621,12 +641,10 @@ namespace Runner.Server.Controllers
                             throw new Exception(b.ToString());
                         }
                         foreach (var job in jobs) {
-                            var ctx = new JobCtx() { Status = null };
-                            exctx.JobContext = ctx;
                             var jn = job.Key.AssertString($"action.yml property key");
                             var jobname = jn.Value;
                             var run = job.Value.AssertMapping("jobs");
-                            var jobitem = new JobItem() { name = jobname };
+                            var jobitem = new JobItem() { name = jobname, Id = Guid.NewGuid() };
                             dependentjobgroup.Add(jobitem);
 
                             var needs = (from r in run where r.Key.AssertString("needs").Value == "needs" select r).FirstOrDefault().Value;
@@ -693,23 +711,24 @@ namespace Runner.Server.Controllers
                                     switch(e.Result) {
                                         case TaskResult.Failed:
                                         case TaskResult.Abandoned:
-                                            result = NeedsTaskResult.Failure;
+                                            result = job.ContinueOnError ? NeedsTaskResult.Success : NeedsTaskResult.Failure;
+                                            job.Status =  job.ContinueOnError ? Stat.Success : Stat.Failure;
                                             break;
                                         case TaskResult.Canceled:
                                             result = NeedsTaskResult.Cancelled;
+                                            job.Status = Stat.Cancelled;
                                             break;
                                         case TaskResult.Succeeded:
                                         case TaskResult.SucceededWithIssues:
                                             result = NeedsTaskResult.Success;
+                                            job.Status = Stat.Success;
                                             break;
                                         case TaskResult.Skipped:
                                             result = NeedsTaskResult.Skipped;
+                                            job.Status = Stat.Success;
                                             break;
                                     }
                                     jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
-                                    if(e.Result != TaskResult.Succeeded && e.Result != TaskResult.SucceededWithIssues) {
-                                        ctx.Status = Stat.Failure;
-                                    }
                                     guids.Remove(job.Id);
                                     if(guids.Count == 0 && neededJobs.Count == 0) {
                                         FinishJobController.OnJobCompleted -= jobitem.OnJobEvaluatable;
@@ -724,7 +743,7 @@ namespace Runner.Server.Controllers
                                     dependentjobgroups.TryRemove(runid, out _);
                                 }
 
-                                exctx.JobContext = ctx;
+                                exctx.JobContext = jobitem;
                                 var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
                                 var condition = new BasicExpressionToken(null, null, null, PipelineTemplateConverter.ConvertToIfCondition(templateContext, ifexpr, true));
                                 templateContext.ExpressionValues.Clear();
@@ -735,24 +754,25 @@ namespace Runner.Server.Controllers
                                 var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, condition, 0, fileId, true);
                                 bool _res = PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
                                 if(!_res) {
-                                    jobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped });
+                                    if(dependentjobgroup.Any()) {
+                                        jobgroup.Add(jobitem);
+                                    }
+                                    jobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, Outputs = new Dictionary<String, VariableValue>() });
                                     return;
                                 }
                                 
                                 var rawstrategy = (from r in run where r.Key.AssertString("strategy").Value == "strategy" select r).FirstOrDefault().Value;
-                                
-                                if (rawstrategy != null)
-                                {
+                                var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
+                                var includematrix = new List<Dictionary<string, TemplateToken>> { };
+                                SequenceToken include = null;
+                                SequenceToken exclude = null;
+                                if (rawstrategy != null) {
                                     var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping("strategy");
                                     strategyctx.Add("fail-fast", new BooleanContextData((from r in strategy where r.Key.AssertString("fail-fast").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean("fail-fast")?.Value ?? true));
                                     var max_parallel = (from r in strategy where r.Key.AssertString("max-parallel").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber("max-parallel")?.Value;
                                     strategyctx.Add("max-parallel", max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : null);
                                     var matrix = (from r in strategy where r.Key.AssertString("matrix").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping("matrix");
                                     if(matrix != null) {
-                                        SequenceToken include = null;
-                                        SequenceToken exclude = null;
-                                        var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
-                                        var includematrix = new List<Dictionary<string, TemplateToken>> { };
                                         foreach (var item in matrix)
                                         {
                                             var key = item.Key.AssertString("Key").Value;
@@ -798,134 +818,119 @@ namespace Runner.Server.Controllers
                                                 });
                                             }
                                         }
-                                        if(flatmatrix.Count == 0) {
-                                            // Fix empty matrix after exclude
-                                            flatmatrix.Add(new Dictionary<string, TemplateToken>());
-                                        }
-                                        var keys = flatmatrix.First().Keys.ToArray();
-                                        if (include != null) {
-                                            foreach (var item in include) {
-                                                var map = item.AssertMapping("include item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
-                                                bool matched = false;
-                                                if(keys.Length > 0) {
-                                                    flatmatrix.ForEach(dict => {
-                                                        foreach (var item in keys) {
-                                                            TemplateToken val;
-                                                            if (dict.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val)) {
-                                                                return;
-                                                            }
-                                                        }
-                                                        matched = true;
-                                                        // Add missing keys
-                                                        foreach (var item in map) {
-                                                            dict[item.Key] = item.Value;
-                                                        }
-                                                    });
-                                                }
-                                                if (!matched) {
-                                                    includematrix.Add(map);
-                                                }
-                                            }
-                                        }
-
-                                        // Filter matrix from cli
-                                        if(jobname == selectedJob && _matrix?.Length > 0) {
-                                            var mdict = new Dictionary<string, TemplateToken>();
-                                            foreach(var m_ in _matrix) {
-                                                var i = m_.IndexOf(":");
-                                                using (var stringReader = new StringReader(m_.Substring(i + 1))) {
-                                                    var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
-                                                    mdict[m_.Substring(0, i)] = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
-                                                }
-                                            }
-                                            
-                                            flatmatrix.RemoveAll(dict => {
-                                                foreach(var kv in mdict) {
+                                    }
+                                    if(flatmatrix.Count == 0) {
+                                        // Fix empty matrix after exclude
+                                        flatmatrix.Add(new Dictionary<string, TemplateToken>());
+                                    }
+                                }
+                                var keys = flatmatrix.First().Keys.ToArray();
+                                if (include != null) {
+                                    foreach (var item in include) {
+                                        var map = item.AssertMapping("include item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
+                                        bool matched = false;
+                                        if(keys.Length > 0) {
+                                            flatmatrix.ForEach(dict => {
+                                                foreach (var item in keys) {
                                                     TemplateToken val;
-                                                    if (dict.TryGetValue(kv.Key, out val) && TemplateTokenEqual(kv.Value, val)) {
-                                                        return false;
+                                                    if (dict.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val)) {
+                                                        return;
                                                     }
                                                 }
-                                                return true;
+                                                matched = true;
+                                                // Add missing keys
+                                                foreach (var item in map) {
+                                                    dict[item.Key] = item.Value;
+                                                }
                                             });
                                         }
-                                        var jobTotal = flatmatrix.Count + includematrix.Count;
-                                        if(keys.Length == 0 && jobTotal > 1) {
-                                            jobTotal--;
-                                        }
-                                        strategyctx.Add("job-total", new NumberContextData( jobTotal ));
-                                        {
-                                            int i = 0;
-                                            Func<IEnumerable<string>, string> defaultDisplayName = item => {
-                                                var displayname = new StringBuilder(jobname);
-                                                int z = 0;
-                                                foreach (var mk in item) {
-                                                    displayname.Append(z++ == 0 ? " (" : ", ");
-                                                    displayname.Append(mk);
-                                                }
-                                                if(z > 0) {
-                                                    displayname.Append( ")");
-                                                }
-                                                return displayname.ToString();
-                                            };
-                                            Action<string, Dictionary<string, TemplateToken>> act = (displayname, item) => {
-                                                int c = i++;
-                                                strategyctx["job-index"] = new NumberContextData((double)(c));
-                                                var matrixContext = new DictionaryContextData();
-                                                foreach (var mk in item) {
-                                                    PipelineContextData data = mk.Value.ToContextData();
-                                                    matrixContext.Add(mk.Key, data);
-                                                }
-                                                contextData["matrix"] = matrixContext;
-                                                var next = new JobItem() { name = jobitem.name, Id = Guid.NewGuid(), TimelineId = Guid.NewGuid() };
-                                                if(dependentjobgroup.Any()) {
-                                                    jobgroup.Add(next);
-                                                }
-                                                templateContext.ExpressionValues.Clear();
-                                                foreach (var pair in contextData) {
-                                                    templateContext.ExpressionValues[pair.Key] = pair.Value;
-                                                }
-                                                var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
-                                                
-                                                queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, secrets);
-                                            };
-                                            if(keys.Length != 0 || includematrix.Count == 0) {
-                                                foreach (var item in flatmatrix) {
-                                                    act(defaultDisplayName(from key in keys select item[key].ToString()), item);
-                                                }
-                                            }
-                                            foreach (var item in includematrix) {
-                                                act(defaultDisplayName(from it in item select it.Value.ToString()), item);
-                                            }
+                                        if (!matched) {
+                                            includematrix.Add(map);
                                         }
                                     }
                                 }
-                                else
+
+                                // Filter matrix from cli
+                                if(jobname == selectedJob && _matrix?.Length > 0) {
+                                    var mdict = new Dictionary<string, TemplateToken>();
+                                    foreach(var m_ in _matrix) {
+                                        var i = m_.IndexOf(":");
+                                        using (var stringReader = new StringReader(m_.Substring(i + 1))) {
+                                            var yamlObjectReader = new YamlObjectReader(fileId, stringReader);
+                                            mdict[m_.Substring(0, i)] = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
+                                        }
+                                    }
+                                    
+                                    flatmatrix.RemoveAll(dict => {
+                                        foreach(var kv in mdict) {
+                                            TemplateToken val;
+                                            if (dict.TryGetValue(kv.Key, out val) && TemplateTokenEqual(kv.Value, val)) {
+                                                return false;
+                                            }
+                                        }
+                                        return true;
+                                    });
+                                }
+                                var jobTotal = flatmatrix.Count + includematrix.Count;
+                                if(keys.Length == 0 && jobTotal > 1) {
+                                    jobTotal--;
+                                }
+                                strategyctx["job-total"] = new NumberContextData( jobTotal );
+                                if(jobTotal > 1) {
+                                    jobitem.Childs = new List<JobItem>();
+                                }
                                 {
-                                    strategyctx.Add("fail-fast", new BooleanContextData(true));
-                                    strategyctx.Add("job-index", new NumberContextData(0));
-                                    strategyctx.Add("job-total", new NumberContextData(1));
-                                    jobitem.Id = Guid.NewGuid();
-                                    jobitem.TimelineId = Guid.NewGuid();
-                                    if(dependentjobgroup.Any()) {
-                                        jobgroup.Add(jobitem);
+                                    int i = 0;
+                                    Func<IEnumerable<string>, string> defaultDisplayName = item => {
+                                        var displayname = new StringBuilder(jobname);
+                                        int z = 0;
+                                        foreach (var mk in item) {
+                                            displayname.Append(z++ == 0 ? " (" : ", ");
+                                            displayname.Append(mk);
+                                        }
+                                        if(z > 0) {
+                                            displayname.Append( ")");
+                                        }
+                                        return displayname.ToString();
+                                    };
+                                    Action<string, Dictionary<string, TemplateToken>> act = (displayname, item) => {
+                                        int c = i++;
+                                        strategyctx["job-index"] = new NumberContextData((double)(c));
+                                        var matrixContext = new DictionaryContextData();
+                                        foreach (var mk in item) {
+                                            PipelineContextData data = mk.Value.ToContextData();
+                                            matrixContext.Add(mk.Key, data);
+                                        }
+                                        contextData["matrix"] = matrixContext;
+                                        var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
+                                        next.TimelineId = Guid.NewGuid();
+                                        if(dependentjobgroup.Any()) {
+                                            jobgroup.Add(next);
+                                            jobitem.Childs?.Add(next);
+                                        }
+                                        templateContext.ExpressionValues.Clear();
+                                        foreach (var pair in contextData) {
+                                            templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                        }
+                                        var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
+                                        next.ContinueOnError = (from r in run where r.Key.AssertString("continue-on-error").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean("continue-on-error be a boolean").Value).FirstOrDefault();
+                                        var timeoutMinutes = (from r in run where r.Key.AssertString("timeout-minutes").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("timeout-minutes be a number").Value).Append(360).First();
+                                        var cancelTimeoutMinutes = (from r in run where r.Key.AssertString("cancel-timeout-minutes").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("cancel-timeout-minutes be a number").Value).Append(5).First();
+                                        
+                                        queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError);
+                                    };
+                                    if(keys.Length != 0 || includematrix.Count == 0) {
+                                        foreach (var item in flatmatrix) {
+                                            act(defaultDisplayName(from key in keys select item[key].ToString()), item);
+                                        }
                                     }
-                                    contextData.Add("matrix", null);
-                                    templateContext.ExpressionValues.Clear();
-                                    foreach (var pair in contextData) {
-                                        templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                    foreach (var item in includematrix) {
+                                        act(defaultDisplayName(from it in item select it.Value.ToString()), item);
                                     }
-                                    var jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobname;
-                                    queueJob(templateContext, workflowDefaults, workflowEnvironment, jobdisplayname, run, contextData.Clone() as DictionaryContextData, jobitem.Id, jobitem.TimelineId, repository_name, jobname, workflowname, runid, secrets);
                                 }
                             };
                             jobitem.OnJobEvaluatable = handler;
                             jobitem.Needs = neededJobs.ToArray();
-                            if(neededJobs.Count > 0) {
-                                if(selectedJob == null && !list) {
-                                    FinishJobController.OnJobCompleted += jobitem.OnJobEvaluatable;
-                                }
-                            }
                         }
                         break;
                         case "defaults":
@@ -963,13 +968,52 @@ namespace Runner.Server.Controllers
                         }
                     }
                     dependentjobgroup = next;
-                    dependentjobgroup.ForEach(ji => {
-                        if(!list && ji.Needs?.Length > 0) {
-                            FinishJobController.OnJobCompleted += ji.OnJobEvaluatable;
-                        }
-                    });
+                    exctx.workflow = dependentjobgroup.ToList();
                 }
                 dependentjobgroups[runid] = dependentjobgroup;
+                dependentjobgroup.ForEach(ji => {
+                    if(ji.Needs?.Length > 0) {
+                        Func<JobItem, List<string>, Dictionary<string, JobItem>> pred = null;
+                        pred = (cur, cyclic) => {
+                            var ret = new Dictionary<string, JobItem>();
+                            if(cur.Needs?.Length > 0) {
+                                var pcyclic = cyclic.Append(cur.name).ToList();
+                                List<string> missingDeps = cur.Needs.ToList();
+                                dependentjobgroup.ForEach(d => {
+                                    if(cur.Needs.Contains(d.name)) {
+                                        if(pcyclic.Contains(d.name)) {
+                                            throw new Exception("Cyclic Dependency detected");
+                                        }
+                                        ret[d.name] = d;
+                                        if(d.Dependencies == null) {
+                                            d.Dependencies = pred?.Invoke(d, pcyclic);
+                                            foreach (var k in d.Dependencies) {
+                                                ret[k.Key] = k.Value;
+                                            }
+                                        } else {
+                                            foreach (var k in d.Dependencies) {
+                                                if(pcyclic.Contains(k.Key)) {
+                                                    throw new Exception("Cyclic Dependency detected");
+                                                }
+                                                ret[k.Key] = k.Value;
+                                            }
+                                        }
+                                        missingDeps.Remove(d.name);
+                                    }
+                                });
+                                if(missingDeps.Any()) {
+                                    throw new Exception("Missing Dependency detected");
+                                }
+                            }
+                            return ret;
+                        };
+                        if(ji.Dependencies == null)
+                            ji.Dependencies = pred(ji, new List<string>());
+                        if(!list) {
+                            FinishJobController.OnJobCompleted += ji.OnJobEvaluatable;
+                        }
+                    }
+                });
                 if(list) {
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = false, jobList = (from ji in dependentjobgroup select new JobListItem{Name= ji.name, Needs = ji.Needs}).ToList()};
                 } else {
@@ -986,7 +1030,7 @@ namespace Runner.Server.Controllers
         }
 
         private static int reqId = 0;
-        private void queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets)
+        private void queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError)
         {
             TimelineController.dict[timelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = jobId } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
@@ -1071,6 +1115,17 @@ namespace Runner.Server.Controllers
             TemplateToken jobServiceContainer = (from r in run where r.Key.AssertString("services").Value == "services" select r).FirstOrDefault().Value;
             // Job outputs
             TemplateToken outputs = (from r in run where r.Key.AssertString("outputs").Value == "outputs" select r).FirstOrDefault().Value;
+            // Environment
+            TemplateToken deploymentEnvironment = (from r in run where r.Key.AssertString("environment").Value == "environment" select r).FirstOrDefault().Value;
+            GitHub.DistributedTask.WebApi.ActionsEnvironmentReference deploymentEnvironmentValue = null;
+            if(deploymentEnvironment is StringToken ename) {
+                deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
+            } else {
+                var mtoken = deploymentEnvironment.AssertMapping("Environment must be a mapping or string");
+                deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString("name").Value == "name" select r.Value).First().AssertString("name").Value);
+                deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString("url").Value == "url" select r.Value).FirstOrDefault();
+            }
+
             var resources = new JobResources();
             
 
@@ -1116,10 +1171,10 @@ namespace Runner.Server.Controllers
                 systemVssConnection.Data["CacheServerUrl"] = apiUrl;
                 resources.Endpoints.Add(systemVssConnection);
                 
-                var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, displayname, name, jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, jobDefaults, new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference("Test"));
+                var req = new AgentJobRequestMessage(new GitHub.DistributedTask.WebApi.TaskOrchestrationPlanReference() { PlanType = "free", ContainerId = 0, ScopeIdentifier = Guid.NewGuid(), PlanGroup = "free", PlanId = Guid.NewGuid(), Owner = new GitHub.DistributedTask.WebApi.TaskOrchestrationOwner() { Id = 0, Name = "Community" }, Version = 12 }, new GitHub.DistributedTask.WebApi.TimelineReference() { Id = timelineId, Location = null, ChangeId = 1 }, jobId, displayname, name, jobContainer, jobServiceContainer, environment, variables, new List<GitHub.DistributedTask.WebApi.MaskHint>(), resources, contextData, new WorkspaceOptions(), steps.Cast<JobStep>(), templateContext.GetFileTable().ToList(), outputs, jobDefaults, deploymentEnvironmentValue );
                 req.RequestId = RequestId;
                 return req;
-            }, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = RequestId, TimeLineId = timelineId }, (id, job) => job);
+            }, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = RequestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError }, (id, job) => job);
             queue.Enqueue(job);
             jobevent?.Invoke(this, job.repo, job);
         }
@@ -1141,6 +1196,9 @@ namespace Runner.Server.Controllers
             public bool CancelRequest { get; internal set; }
             public bool Cancelled { get; internal set; }
 
+            public double TimeoutMinutes {get;set;}
+            public double CancelTimeoutMinutes {get;set;}
+            public bool ContinueOnError {get;set;}
             public List<string> errors;
         }
         static ConcurrentDictionary<Guid, Job> jobs = new ConcurrentDictionary<Guid, Job>();
@@ -1208,16 +1266,36 @@ namespace Runner.Server.Controllers
                     Job req;
                     foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name))) {
                         if(queue.Value.TryDequeue(out req)) {
+                            if(req.CancelRequest) {
+                                req.Cancelled = true;
+                                FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                continue;
+                            }
                             var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/";
-                            
+                            if(req.message == null) {
+                                Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
+                                continue;
+                            }
                             var res = req.message.Invoke(apiUrl);
                             req.message = null;
+                            
                             
                             session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => {
                                 job.SessionId = sessionId;
                                 return job;
                             });
                             _cache.Set("Job_" + res.JobId, session.Job);
+                            if(session.JobTimer == null) {
+                                session.JobTimer = new System.Timers.Timer();
+                            }
+                            session.JobTimer.AutoReset = false;
+                            session.JobTimer.Interval = session.Job.TimeoutMinutes * 1000;
+                            session.JobTimer.Elapsed += (a,b) => {
+                                if(session.Job != null) {
+                                    session.Job.CancelRequest = true;
+                                }
+                            };
+                            session.JobTimer.Start();
                             session.Key.GenerateIV();
                             using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
                             using (var body = new MemoryStream())
@@ -1241,7 +1319,7 @@ namespace Runner.Server.Controllers
                         using (var body = new MemoryStream())
                         using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
                             using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
-                                bodyWriter.Write(JsonConvert.SerializeObject(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(5))));
+                                bodyWriter.Write(JsonConvert.SerializeObject(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes))));
                             return await Ok(new TaskAgentMessage() {
                                 Body = Convert.ToBase64String(body.ToArray()),
                                 MessageId = id++,

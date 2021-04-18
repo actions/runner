@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -39,6 +39,8 @@ namespace Runner.Client
             public string workflowname { get; set; }
             public long runid { get; set; }
             public List<string> errors {get;set;}
+
+            public bool ContinueOnError {get;set;}
         }
 
         private class TimeLineEvent {
@@ -393,7 +395,7 @@ namespace Runner.Client
                                             continue;
                                         }
                                     }
-                                    return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped) ? 0 : 1;
+                                    return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
                                 }
                             }
                         }

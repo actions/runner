@@ -586,8 +586,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             if (isJob)
             {
                 namedValues = s_jobIfNamedValues;
-                // TODO: refactor into seperate functions
-                // functions = PhaseCondition.FunctionInfo;
+                functions = s_jobIfConditionFunctions;
             }
             else
             {
@@ -632,6 +631,15 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
         };
+
+        private static readonly IFunctionInfo[] s_jobIfConditionFunctions = new IFunctionInfo[]
+        {
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Always, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Cancelled, 0, 0),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Failure, 0, Int32.MaxValue),
+            new FunctionInfo<NoOperation>(PipelineTemplateConstants.Success, 0, Int32.MaxValue),
+        };
+
         private static readonly INamedValueInfo[] s_stepNamedValues = new INamedValueInfo[]
         {
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Strategy),

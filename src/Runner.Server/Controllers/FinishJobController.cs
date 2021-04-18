@@ -31,6 +31,10 @@ namespace Runner.Server.Controllers
         public static event JobAssigned OnJobAssigned;
         public static event JobStarted OnJobStarted;
 
+        public static void InvokeJobCompleted(JobCompletedEvent e) {
+            OnJobCompleted?.Invoke(e);
+        }
+
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
         public async Task<IActionResult> OnEvent(Guid scopeIdentifier, string hubName, Guid planId)
         {

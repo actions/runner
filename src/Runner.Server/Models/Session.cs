@@ -17,5 +17,6 @@ namespace Runner.Server.Models
         public MessageController.Job Job { get; set; }
 
         public Timer Timer {get; set;}
+        public Timer JobTimer {get; set;}
     }
 }
