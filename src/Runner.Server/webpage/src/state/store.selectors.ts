@@ -3,12 +3,13 @@ import { Item } from './example.model';
 export interface IJob {
     jobId: string,
     requestId: number,
-    timeLineId: string
+    timeLineId: string,
     name: string,
-    repo: string
-    workflowname: string
-    runid : number
-    errors: string[]
+    repo: string,
+    workflowname: string,
+    runid : number,
+    errors: string[],
+    cancelRequest: boolean
 }
 
 export const getJobById = (jobs : IJob[], id: number | string | undefined): { item: Item | null, job: IJob | null } => {

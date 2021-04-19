@@ -196,8 +196,10 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     if(newTimeline != null && newTimeline.length > 1) {
                         setTitle(newTimeline.shift().name);
                         setTimeline(newTimeline);
+                    } else {
+                        setTitle("Unknown");
+                        setTimeline([]);
                     }
-                    setTimeline(newTimeline);
                 } else {
                     setTitle((query.job.errors !== null && query.job.errors.length > 0) ? "Failed to run" : "Wait for workflow to run...");
                     setTimeline(e => []);
@@ -303,12 +305,19 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
         <Header title={title} />
         <main className={styles.main}>
             <div className={styles.text} style={{width: '100%'}}>
-                <button onClick={(event) => {
-                    (async () => {
-                        await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + getJobById(jobs, id).job.jobId, { method: "POST" });
-                    })();
+                {(() => {
+                    var job = getJobById(jobs, id);
+                    if(job !== undefined && job.job != null && !job.job.cancelRequest) {
+                        return  <button onClick={(event) => {
+                            (async () => {
+                                await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.job.jobId, { method: "POST" });
+                            })();
+                        }}>Cancel</button>;
+                    }
+                    return <div>This Job was cancelled</div>;
+                })()
                 }
-                } >Cancel</button>
+                
                 {errors.map(e => <div>Error: {e}</div>)}
                 {artifacts.map((container: ArtifactResponse) => <div><div>{container.name}</div>{(() => {
                     if(container.files !== undefined) {
