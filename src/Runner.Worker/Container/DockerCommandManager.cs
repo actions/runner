@@ -16,6 +16,7 @@ namespace GitHub.Runner.Worker.Container
     {
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
+        bool WindowsContainer { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
         Task<int> DockerPull(IExecutionContext context, string image);
         Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory);
@@ -42,6 +43,15 @@ namespace GitHub.Runner.Worker.Container
 
         public string DockerInstanceLabel { get; private set; }
 
+        public bool WindowsContainer { get {
+            if(windowsContainer != null) {
+                return windowsContainer.Value;
+            }
+            return true;
+            // throw new Exception("Unsupported");
+        } }
+        bool? windowsContainer = null;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -58,6 +68,15 @@ namespace GitHub.Runner.Worker.Container
             string clientVersionStr = (await ExecuteDockerCommandAsync(context, "version", "--format '{{.Client.APIVersion}}'")).FirstOrDefault();
             ArgUtil.NotNullOrEmpty(serverVersionStr, "Docker.Client.Version");
             context.Output($"Docker client API version: {clientVersionStr}");
+
+            string serverOsStr = (await ExecuteDockerCommandAsync(context, "version", "--format '{{.Server.Os}}'")).FirstOrDefault();
+            ArgUtil.NotNullOrEmpty(serverOsStr, "Docker.Server.Os");
+            context.Output($"Docker server Os: {serverOsStr}");
+            if(serverOsStr.Contains("windows")) {
+                windowsContainer = true;
+            } else {
+                windowsContainer = false;
+            }
 
             // we interested about major.minor.patch version
             Regex verRegex = new Regex("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
@@ -280,11 +299,9 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerNetworkCreate(IExecutionContext context, string network)
         {
-#if OS_WINDOWS
-            return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
-#else
+            // context.Warning("WindowsContainer:" + WindowsContainer);
+if(WindowsContainer) return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
             return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
-#endif
         }
 
         public async Task<int> DockerNetworkRemove(IExecutionContext context, string network)
@@ -333,10 +350,6 @@ namespace GitHub.Runner.Worker.Container
                 }
             };
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
             return await processInvoker.ExecuteAsync(
                             workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                             fileName: DockerPath,
@@ -395,10 +408,6 @@ namespace GitHub.Runner.Worker.Container
             processInvoker.ErrorDataReceived += stderrDataReceived;
 
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
             return await processInvoker.ExecuteAsync(
                 workingDirectory: context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
@@ -426,10 +435,6 @@ namespace GitHub.Runner.Worker.Container
                 context.Output(message.Data);
             };
 
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
             return await processInvoker.ExecuteAsync(
                 workingDirectory: workingDirectory ?? context.GetGitHubContext("workspace"),
                 fileName: DockerPath,
@@ -477,5 +482,31 @@ namespace GitHub.Runner.Worker.Container
 
             return output;
         }
+
+        // private async Task<List<string>> ExecuteDockerCommandAsync(string command, string options)
+        // {
+        //     string arg = $"{command} {options}".Trim();
+
+        //     List<string> output = new List<string>();
+        //     var processInvoker = new ProcessInvoker(null);
+        //     processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+        //     {
+        //         if (!string.IsNullOrEmpty(message.Data))
+        //         {
+        //             output.Add(message.Data);
+        //         }
+        //     };
+
+        //     await processInvoker.ExecuteAsync(
+        //                     workingDirectory: "",
+        //                     fileName: DockerPath,
+        //                     arguments: arg,
+        //                     environment: null,
+        //                     requireExitCodeZero: true,
+        //                     outputEncoding: null,
+        //                     cancellationToken: CancellationToken.None);
+
+        //     return output;
+        // }
     }
 }
