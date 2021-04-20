@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1469,7 +1469,7 @@ namespace Runner.Server.Controllers
             public string path {get;set;}
         }
         [HttpPost]
-        public async Task<ActionResult> OnWebhook([FromQuery] string workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
+        public async Task<ActionResult> OnWebhook([FromQuery] string[] workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
         {
             var obj = await FromBody2<GiteaHook>();
             // Try to fix head_commit == null 
@@ -1486,9 +1486,13 @@ namespace Runner.Server.Controllers
                 e = ev.First();
             }
             var hook = obj.Key;
-            if(workflow != null && workflow.Length > 0) {
-                var resp = ConvertYaml("workflow.yml", workflow, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix);
-                return await Ok(resp);
+            if(workflow?.Length > 0) {
+                List<HookResponse> responses = new List<HookResponse>();
+                foreach (var item in workflow) {
+                    responses.Add(ConvertYaml("workflow.yml", item, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix));
+                }
+                
+                return await Ok(responses, true);
             } else {
                 try {
                     var client = new HttpClient();
@@ -1549,15 +1553,18 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet]
-        public Task<FileStreamResult> GetJobs([FromQuery] string repo, [FromQuery] long? runid, [FromQuery] int? depending) {
+        public Task<FileStreamResult> GetJobs([FromQuery] string repo, [FromQuery] long[] runid, [FromQuery] int? depending) {
             if(runid != null && depending >= 1) {
+                IEnumerable<Job> ret = new Job[0];
+                foreach (var id in runid) {
                 List<JobItem> value;
-                if(dependentjobgroups.TryGetValue(runid.Value, out value)) {
-                    return Ok(from v in value select new Job { JobId = v.Id, TimeLineId = v.TimelineId, name = v.name }, true);
+                    if(dependentjobgroups.TryGetValue(id, out value)) {
+                        ret = ret.Concat(from v in value select new Job { JobId = v.Id, TimeLineId = v.TimelineId, name = v.name });
                 }
-                return Ok(new Job[0], true);
             }
-            return Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid == null || j.runid == runid) select j, true);
+                return Ok(ret, true);
+            }
+            return Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid.Length == 0 || runid.Contains(j.runid)) select j, true);
         }
 
         [HttpPost("cancel/{id}")]

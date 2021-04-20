@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -73,11 +73,13 @@ namespace Runner.Client
                 description: "matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple times to filter more jobs");
             matrixOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             
+            var workflowOption = new Option<string>(
+                "--workflow",
+                description: "Workflow to run");
+            workflowOption.Argument.Arity = new ArgumentArity(1, ArgumentArity.MaximumArity);
             var rootCommand = new RootCommand
             {
-                new Option<string>(
-                    "--workflow",
-                    description: "Workflow to run"),
+                workflowOption,
                 new Option<string>(
                     "--server",
                     getDefaultValue: () => "http://localhost:5000",
@@ -112,9 +114,9 @@ namespace Runner.Client
             rootCommand.Description = "Send events to your runner";
 
             // Note that the parameters of the handler method are matched according to the names of the options
-            Func<string, string, string, string, string[], string, string[], string, string, string[], bool, Task<int>> handler = async (workflow, server, payload, Event, env, envFile, secret, secretsFile, job, matrix, list) =>
+            Func<string[], string, string, string, string[], string, string[], string, string, string[], bool, Task<int>> handler = async (workflow, server, payload, Event, env, envFile, secret, secretsFile, job, matrix, list) =>
             {
-                if(workflow == null || payload == null) {
+                if(workflow == null || workflow.Length == 0 || payload == null) {
                     Console.WriteLine("Missing `--workflow` or `--payload` option, type `--help` for help");
                     return -1;
                 }
@@ -124,7 +126,11 @@ namespace Runner.Client
                 var query = new QueryBuilder();
                 b.Path = "runner/host/_apis/v1/Message";
                 try {
-                    query.Add("workflow", await File.ReadAllTextAsync(workflow, Encoding.UTF8));
+                    List<string> filecontents = new List<string>();
+                    foreach(var w in workflow) {
+                        filecontents.Add(await File.ReadAllTextAsync(w, Encoding.UTF8));
+                    }
+                    query.Add("workflow", filecontents);
                 } catch {
                     Console.WriteLine($"Failed to read file: {workflow}");
                     return 1;
@@ -193,27 +199,35 @@ namespace Runner.Client
                 try {
                     var resp = await client.PostAsync(b.Uri.ToString(), new StringContent(payloadContent));
                     var s = await resp.Content.ReadAsStringAsync();
-                    var hr = JsonConvert.DeserializeObject<HookResponse>(s);
-                    if(hr.skipped) {
-                        Console.WriteLine("This workflow was skipped, due to filters");
+                    var hr = JsonConvert.DeserializeObject<HookResponse[]>(s);
+                    if(hr.All(h => h.skipped)) {
+                        Console.WriteLine("All workflow were skipped, due to filters");
                         return 0;
                     }
                     if(list) {
-                        if(hr.jobList != null) {
-                            Console.WriteLine($"Found {hr.jobList.Count} matched Job(s)");
-                            foreach(var j in hr.jobList) {
+                        bool ok = false;
+                        int workflowNo = 0;
+                        foreach (var item in hr) {
+                            if(item.jobList != null) {
+                                Console.WriteLine($"Found {item.jobList.Count} matched Job(s) in workflow {workflowNo++}");
+                                foreach(var j in item.jobList) {
                                 Console.WriteLine(j.Name);
                             }
-                            return 0;
+                                ok = true;
+                            }
                         }
+                        if(ok) {
+                            return 0;
+                        } else {
                         Console.WriteLine("Failed to enumerate jobs");
                         return 1;
+                    }
                     }
 
                     var b2 = new UriBuilder(b.ToString());
                     query = new QueryBuilder();
-                    query.Add("repo", hr.repo);
-                    query.Add("runid", hr.run_id.ToString());
+                    query.Add("repo", hr.First().repo);
+                    query.Add("runid", hr.Select(h => h.run_id.ToString()));
                     b2.Query = query.ToString().TrimStart('?');
                     b2.Path = "runner/host/_apis/v1/Message";
                     var sr = await client.GetStringAsync(b2.ToString());
@@ -247,7 +261,11 @@ namespace Runner.Client
                     if(rj == 0) {
                         return hasErrors ? 1 : 0;
                     }
-                    var eventstream = await client.GetStreamAsync(server + $"/runner/server/_apis/v1/TimeLineWebConsoleLog?runid={hr.run_id}");
+                    var timeLineWebConsoleLog = new UriBuilder(server + "/runner/server/_apis/v1/TimeLineWebConsoleLog");
+                    var timeLineWebConsoleLogQuery = new QueryBuilder();
+                    timeLineWebConsoleLogQuery.Add("runid", hr.Select(h => h.run_id.ToString()));
+                    timeLineWebConsoleLog.Query = timeLineWebConsoleLogQuery.ToString().TrimStart('?');
+                    var eventstream = await client.GetStreamAsync(timeLineWebConsoleLog.ToString());
                     List<WebConsoleEvent> pending = new List<WebConsoleEvent>();
                     using(TextReader reader = new StreamReader(eventstream)) {
                         while(true) {
@@ -354,8 +372,8 @@ namespace Runner.Client
                                 if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
                                     var b3 = new UriBuilder(b.ToString());
                                     query = new QueryBuilder();
-                                    query.Add("repo", hr.repo);
-                                    query.Add("runid", hr.run_id.ToString());
+                                    query.Add("repo", hr.First().repo);
+                                    query.Add("runid", hr.Select(h => h.run_id.ToString()));
                                     query.Add("depending", "1");
                                     b3.Query = query.ToString().TrimStart('?');
                                     b3.Path = "runner/host/_apis/v1/Message";
