@@ -612,6 +612,8 @@ namespace Runner.Server.Controllers
                             }
                         }
                         break;
+                    default:
+                        throw new Exception($"Error: Your workflow is invalid, 'on' property has an unexpected yaml Type {tk.Type}");
                 }
 
                 var jobnamebuilder = new ReferenceNameBuilder();
