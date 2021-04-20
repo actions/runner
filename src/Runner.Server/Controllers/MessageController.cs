@@ -1111,15 +1111,15 @@ namespace Runner.Server.Controllers
 
                 if(runsOn is SequenceToken seq2) {
                     foreach(var t in seq2) {
-                        runsOnMap.Add(t.AssertString("runs-on member must be a str").Value);
+                        runsOnMap.Add(t.AssertString("runs-on member must be a str").Value.ToLowerInvariant());
                     }
                 } else {
-                    runsOnMap.Add(runsOn.AssertString("runs-on must be a str or array of string").Value);
+                    runsOnMap.Add(runsOn.AssertString("runs-on must be a str or array of string").Value.ToLowerInvariant());
                 }
             }
 
             var sessionsfreeze = sessions.ToArray();
-            var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name) select s.Key).FirstOrDefault();
+            var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()) select s.Key).FirstOrDefault();
             if(x == null) {
                 List<string> errors = new List<string>();
                 StringBuilder b = new StringBuilder();
@@ -1341,7 +1341,7 @@ namespace Runner.Server.Controllers
             {
                 if(session.Job == null) {
                     Job req;
-                    foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name))) {
+                    foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()))) {
                         if(queue.Value.TryDequeue(out req)) {
                             if(req.CancelRequest) {
                                 continue;
