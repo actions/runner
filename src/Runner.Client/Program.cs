@@ -207,22 +207,21 @@ namespace Runner.Client
                     }
                     if(list) {
                         bool ok = false;
-                        int workflowNo = 0;
-                        foreach (var item in hr) {
-                            if(item.jobList != null) {
-                                Console.WriteLine($"Found {item.jobList.Count} matched Job(s) in workflow {workflowNo++}");
-                                foreach(var j in item.jobList) {
-                                Console.WriteLine(j.Name);
-                            }
+                        for(int workflowNo = 0; workflowNo < hr.Length; workflowNo++) {
+                            if(hr[workflowNo].jobList != null) {
+                                Console.WriteLine($"Found {hr[workflowNo].jobList.Count} matched Job(s) in {(workflow?.Length > workflowNo ? workflow[workflowNo] : ("workflow " + workflowNo))}");
+                                foreach(var j in hr[workflowNo].jobList) {
+                                    Console.WriteLine(j.Name);
+                                }
                                 ok = true;
                             }
                         }
                         if(ok) {
                             return 0;
                         } else {
-                        Console.WriteLine("Failed to enumerate jobs");
-                        return 1;
-                    }
+                            Console.WriteLine("Failed to enumerate jobs");
+                            return 1;
+                        }
                     }
 
                     var b2 = new UriBuilder(b.ToString());
