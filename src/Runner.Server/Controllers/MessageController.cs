@@ -1002,6 +1002,9 @@ namespace Runner.Server.Controllers
                         break;
                     }
                 }
+                if(!dependentjobgroup.Any()) {
+                    throw new Exception("Your workflow is invalid, you have to define at least one job");
+                }
                 if(selectedJob != null) {
                     List<JobItem> next = new List<JobItem>();
                     dependentjobgroup.RemoveAll(j => {
