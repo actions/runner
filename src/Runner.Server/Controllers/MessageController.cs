@@ -524,6 +524,8 @@ namespace Runner.Server.Controllers
                                 if(e == "push" || e == "pull_request") {
                                     allowed.Add("tags");
                                     allowed.Add("tags-ignore");
+                                    allowed.Add("paths");
+                                    allowed.Add("paths-ignore");
                                 }
                                 if(e == "workflow_dispatch") {
                                     allowed.Add("inputs");
