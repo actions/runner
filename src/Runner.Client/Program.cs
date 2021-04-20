@@ -130,6 +130,7 @@ namespace Runner.Client
                     foreach(var w in workflow) {
                         filecontents.Add(await File.ReadAllTextAsync(w, Encoding.UTF8));
                     }
+                    query.Add("workflownames", workflow);
                     query.Add("workflow", filecontents);
                 } catch {
                     Console.WriteLine($"Failed to read file: {workflow}");

@@ -1483,7 +1483,7 @@ namespace Runner.Server.Controllers
             public string path {get;set;}
         }
         [HttpPost]
-        public async Task<ActionResult> OnWebhook([FromQuery] string[] workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
+        public async Task<ActionResult> OnWebhook([FromQuery] string[] workflownames, [FromQuery] string[] workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
         {
             var obj = await FromBody2<GiteaHook>();
             // Try to fix head_commit == null 
@@ -1502,8 +1502,8 @@ namespace Runner.Server.Controllers
             var hook = obj.Key;
             if(workflow?.Length > 0) {
                 List<HookResponse> responses = new List<HookResponse>();
-                foreach (var item in workflow) {
-                    responses.Add(ConvertYaml("workflow.yml", item, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix));
+                for (int i = 0; i < workflow.Length; i++) {
+                    responses.Add(ConvertYaml(workflownames?.Length > i ? workflownames[i] : "workflow_{i}.yml", workflow[i], hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix));
                 }
                 
                 return await Ok(responses, true);
