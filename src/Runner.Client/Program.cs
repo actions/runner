@@ -109,13 +109,24 @@ namespace Runner.Client
                     new[] { "-l", "--list"},
                     getDefaultValue: () => false,
                     description: "list jobs for the selected event"),
+                new Option<string>(
+                    new[] { "-W", "--workflows"},
+                    getDefaultValue: () => ".github/workflows",
+                    description: "directory which contains workflows"),
             };
 
             rootCommand.Description = "Send events to your runner";
 
             // Note that the parameters of the handler method are matched according to the names of the options
-            Func<string[], string, string, string, string[], string, string[], string, string, string[], bool, Task<int>> handler = async (workflow, server, payload, Event, env, envFile, secret, secretsFile, job, matrix, list) =>
+            Func<string[], string, string, string, string[], string, string[], string, string, string[], bool, string, Task<int>> handler = async (workflow, server, payload, Event, env, envFile, secret, secretsFile, job, matrix, list, workflows) =>
             {
+                if(workflow == null || workflow.Length == 0) {
+                    try {
+                        workflow = Directory.GetFiles(workflows, "*.yml");
+                    } catch {
+                        Console.Error.WriteLine($"Failed to read directory {workflows}");
+                    }
+                }
                 if(workflow == null || workflow.Length == 0 || payload == null) {
                     Console.WriteLine("Missing `--workflow` or `--payload` option, type `--help` for help");
                     return -1;
@@ -124,14 +135,12 @@ namespace Runner.Client
                 client.DefaultRequestHeaders.Add("X-GitHub-Event", Event);
                 var b = new UriBuilder(server);
                 var query = new QueryBuilder();
-                b.Path = "runner/host/_apis/v1/Message";
+                b.Path = "runner/host/_apis/v1/Message/schedule";
+                var mp = new MultipartFormDataContent();
                 try {
-                    List<string> filecontents = new List<string>();
                     foreach(var w in workflow) {
-                        filecontents.Add(await File.ReadAllTextAsync(w, Encoding.UTF8));
+                        mp.Add(new StreamContent(File.OpenRead(w)), w, w);
                     }
-                    query.Add("workflownames", workflow);
-                    query.Add("workflow", filecontents);
                 } catch {
                     Console.WriteLine($"Failed to read file: {workflow}");
                     return 1;
@@ -190,15 +199,16 @@ namespace Runner.Client
                     query.Add("secrets", wsecrets);
                 }
                 b.Query = query.ToQueryString().ToString().TrimStart('?');
-                string payloadContent;
+                Stream payloadContent;
                 try {
-                    payloadContent = await File.ReadAllTextAsync(payload, Encoding.UTF8);
+                    payloadContent = File.OpenRead(payload);
                 } catch {
                     Console.WriteLine($"Failed to read file: {payload}");
                     return 1;
                 }
+                mp.Add(new StreamContent(payloadContent), "event", "event.json");
                 try {
-                    var resp = await client.PostAsync(b.Uri.ToString(), new StringContent(payloadContent));
+                    var resp = await client.PostAsync(b.Uri.ToString(), mp);
                     var s = await resp.Content.ReadAsStringAsync();
                     var hr = JsonConvert.DeserializeObject<HookResponse[]>(s);
                     if(hr.All(h => h.skipped)) {

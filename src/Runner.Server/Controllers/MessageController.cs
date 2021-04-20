@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1564,6 +1564,44 @@ namespace Runner.Server.Controllers
                     await Console.Error.WriteLineAsync(ex.Message);
                     await Console.Error.WriteLineAsync(ex.StackTrace);
                 }
+            }
+            return Ok();
+        }
+
+        [HttpPost("schedule")]
+        public async Task<ActionResult> OnSchedule([FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
+        {
+            var form = await Request.ReadFormAsync();
+            KeyValuePair<GiteaHook, JObject> obj;
+            var eventFile = form.Files.GetFile("event");
+            using(var reader = new StreamReader(eventFile.OpenReadStream())) {
+                string text = await reader.ReadToEndAsync();
+                var obj_ = JObject.Parse(text);
+                obj = new KeyValuePair<GiteaHook, JObject>(JsonConvert.DeserializeObject<GiteaHook>(text), obj_);
+            }
+
+            var workflow = from f in form.Files where f.Name != "event" select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd());
+
+            // Try to fix head_commit == null 
+            if(obj.Key.head_commit == null) {
+                var val = obj.Value.GetValue("commits");
+                if(val != null && val.HasValues) {
+                    obj.Value.Remove("head_commit");
+                    obj.Value.Add("head_commit", val.First);
+                }
+            }
+            string e = "push";
+            StringValues ev;
+            if(Request.Headers.TryGetValue("X-GitHub-Event", out ev) && ev.Count == 1 && ev.First().Length > 0) {
+                e = ev.First();
+            }
+            var hook = obj.Key;
+            if(workflow.Any()) {
+                List<HookResponse> responses = new List<HookResponse>();
+                foreach (var w in workflow) {
+                    responses.Add(ConvertYaml(w.Key, w.Value, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix));
+                }
+                return await Ok(responses, true);
             }
             return Ok();
         }
