@@ -464,6 +464,9 @@ namespace Runner.Server.Controllers
                 }
 
                 TemplateToken tk = (from r in actionMapping where r.Key.AssertString("on").Value == "on" select r).FirstOrDefault().Value;
+                if(tk == null) {
+                    throw new Exception("Your workflow is invalid, missing 'on' property");
+                }
                 switch(tk.Type) {
                     case TokenType.String:
                         if(tk.AssertString("str").Value != e) {
