@@ -843,7 +843,7 @@ namespace Runner.Server.Controllers
                                             flatmatrix.ForEach(dict => {
                                                 foreach (var item in keys) {
                                                     TemplateToken val;
-                                                    if (dict.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val)) {
+                                                    if (map.TryGetValue(item, out val) && !TemplateTokenEqual(dict[item], val)) {
                                                         return;
                                                     }
                                                 }
