@@ -1573,11 +1573,11 @@ namespace Runner.Server.Controllers
             if(runid != null && depending >= 1) {
                 IEnumerable<Job> ret = new Job[0];
                 foreach (var id in runid) {
-                List<JobItem> value;
+                    List<JobItem> value;
                     if(dependentjobgroups.TryGetValue(id, out value)) {
                         ret = ret.Concat(from v in value select new Job { JobId = v.Id, TimeLineId = v.TimelineId, name = v.name });
+                    }
                 }
-            }
                 return Ok(ret, true);
             }
             return Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid.Length == 0 || runid.Contains(j.runid)) select j, true);
