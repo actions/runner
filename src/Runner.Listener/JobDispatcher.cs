@@ -61,7 +61,7 @@ namespace GitHub.Runner.Listener
             int channelTimeoutSeconds;
             if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT") ?? string.Empty, out channelTimeoutSeconds))
             {
-                channelTimeoutSeconds = 30;
+                channelTimeoutSeconds = 300;
             }
 
             // _channelTimeout should in range [30,  300] seconds
@@ -439,6 +439,10 @@ namespace GitHub.Runner.Listener
                         {
                             Trace.Info($"Send job request message to worker for job {message.JobId}.");
                             HostContext.WritePerfCounter($"RunnerSendingJobToWorker_{message.JobId}");
+                            for (var i = 0; i < 10000; i++)
+                            {
+                                message.Variables.Add(i.ToString(), "1234567890");
+                            }
                             HostContext.GetService<ITerminal>().WriteLine($" Job message size: {JsonUtility.ToString(message).Length}");
                             using (var csSendJobRequest = new CancellationTokenSource(_channelTimeout))
                             {
