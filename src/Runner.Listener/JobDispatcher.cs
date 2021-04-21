@@ -439,6 +439,7 @@ namespace GitHub.Runner.Listener
                         {
                             Trace.Info($"Send job request message to worker for job {message.JobId}.");
                             HostContext.WritePerfCounter($"RunnerSendingJobToWorker_{message.JobId}");
+                            HostContext.GetService<ITerminal>().WriteLine($" Job message size: {JsonUtility.ToString(message).Length}");
                             using (var csSendJobRequest = new CancellationTokenSource(_channelTimeout))
                             {
                                 await processChannel.SendAsync(

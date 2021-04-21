@@ -1,19 +1,16 @@
 namespace GitHub.Runner.Sdk
 {
-    /***
-     * WARNING: This file is automatically regenerated on layout so the runner can provide version/commit info (do not manually edit it).
-     */
     public static class BuildConstants
     {
         public static class Source
         {
-            public static readonly string CommitHash = "N/A";
+            public static readonly string CommitHash = "d14881b970bf72ee8e42719618cc5279ccdd1e4d";
         }
 
         public static class RunnerPackage
         {
-            public static readonly string PackageName = "N/A";
-            public static readonly string Version = "0";
+            public static readonly string PackageName = "osx-x64";
+            public static readonly string Version = "2.277.1";
         }
     }
 }
