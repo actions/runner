@@ -9,7 +9,7 @@
 ## Apple Silicon M1
 
 The runner is currently not supported on devices with an Apple M1 chip.  
-We are waiting for .NET to supports it.  
+We are waiting for official .NET support. You can read more here about the [current state of support here](https://github.com/orgs/dotnet/projects/18#card-56812463).
 Current .NET project board about M1 support:
 https://github.com/orgs/dotnet/projects/18#card-56812463
 
