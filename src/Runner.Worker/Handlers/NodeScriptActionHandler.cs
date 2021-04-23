@@ -97,7 +97,7 @@ namespace GitHub.Runner.Worker.Handlers
             Encoding outputEncoding = null;
 #endif
 
-            // Remove environment variable that may conflict the the node within the runner.
+            // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
