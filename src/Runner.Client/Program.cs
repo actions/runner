@@ -287,6 +287,9 @@ namespace Runner.Client
                 }
                 CancellationTokenSource source = new CancellationTokenSource();
                 CancellationToken token = source.Token;
+                Console.CancelKeyPress += (s, e) => {
+                    source.Cancel();
+                };
                 List<Task> listener = new List<Task>();
                 try {
                     if(parameters.server == null) {
