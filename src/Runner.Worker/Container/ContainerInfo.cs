@@ -54,7 +54,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
                 _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
-                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "/__e"));
+                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.DockerExternals), "/__e"));
                 if (this.IsJobContainer)
                 {
                     this.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));

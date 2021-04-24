@@ -35,6 +35,7 @@ using Microsoft.Extensions.Primitives;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
+using System.Threading.Channels;
 
 namespace Runner.Server.Controllers
 {
@@ -373,7 +374,7 @@ namespace Runner.Server.Controllers
 
         private static ConcurrentDictionary<long, List<JobItem>> dependentjobgroups = new ConcurrentDictionary<long, List<JobItem>>();
 
-        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null) {
+        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false) {
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             var runid = _cache.GetOrCreate(repository_name, e => new Int64());
             _cache.Set(repository_name, runid + 1);
@@ -927,7 +928,7 @@ namespace Runner.Server.Controllers
                                         var timeoutMinutes = (from r in run where r.Key.AssertString("timeout-minutes").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("timeout-minutes be a number").Value).Append(360).First();
                                         var cancelTimeoutMinutes = (from r in run where r.Key.AssertString("cancel-timeout-minutes").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("cancel-timeout-minutes be a number").Value).Append(5).First();
                                         
-                                        return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError);
+                                        return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout);
                                     };
                                     ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                     if(keys.Length != 0 || includematrix.Count == 0) {
@@ -1096,7 +1097,64 @@ namespace Runner.Server.Controllers
         }
 
         private static int reqId = 0;
-        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError)
+
+        private class shared {
+            public Channel<Task> Channel;
+            // public Channel<bool> Channel2;
+            public HttpResponse response;
+
+            public MemoryStream stream { get; internal set; }
+
+            // public string contentType { get; internal set; }
+        }
+
+        [HttpPost("multipartup/{id}")]
+        public async Task UploadMulti(string id) {
+            var sh = _cache.Get<shared>(id);
+            // sh.contentType = Request.Headers["Content-Type"].First();
+            // foreach (var item in Request.Headers) {
+            //     sh.response.Headers.Add(item.Key, item.Value);
+            // }
+            // await sh.response.StartAsync();
+            // var s = new MemoryStream();
+            var type = Request.Headers["Content-Type"].First();
+            var ntype = "multipart/form-data" + type.Substring("application/octet-stream".Length);
+            sh.response.Headers["Content-Type"] = new StringValues(ntype);
+            var task = Request.Body.CopyToAsync(sh.response.Body);
+            // sh.stream = s;
+            await sh.Channel.Writer.WriteAsync(task, HttpContext.RequestAborted);
+            // await sh.Channel2.Reader.ReadAsync(HttpContext.RequestAborted);
+            await task;
+        }
+        
+
+        [HttpGet("multipart/{runid}")]
+        public async Task GetMulti(long runid) {
+            var channel = Channel.CreateBounded<Task>(1);
+            var sh = new shared();
+            sh.Channel = channel;
+            // sh.Channel2 = Channel.CreateBounded<bool>(1);
+            string id = runid + "__,dfuusnd" + reqId + "_" + new Random().NextDouble();
+            _cache.Set(id, sh);
+            OnRepoDownload?.Invoke(runid, "/test/host/_apis/v1/Message/multipartup/" + id);
+            // var mp = new MultipartFormDataContent();
+            // mp.Add(new StringContent("Hello World"), "test", "test.yml");
+            // foreach (var item in mp.Headers) {
+            //     Response.Headers.Add(item.Key, new StringValues(item.Value.ToArray()));
+            // }
+            // var form = await Request.ReadFormAsync();
+            // form.Files.First().
+
+            // Response.OnCompleted(async cb => {
+            //     await sh.Channel2.Writer.WriteAsync(true);
+            // }, null);
+            sh.response = Response;
+            var task = await channel.Reader.ReadAsync(HttpContext.RequestAborted);
+            await task;
+            // await sh.stream.CopyToAsync(Response.Body);
+            // return new FileStreamResult(await channel.Reader.ReadAsync(HttpContext.RequestAborted));
+        }
+        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout)
         {
             TimelineController.dict[timelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = jobId } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
@@ -1115,6 +1173,27 @@ namespace Runner.Server.Controllers
                     }
                 } else {
                     runsOnMap.Add(runsOn.AssertString("runs-on must be a str or array of string").Value.ToLowerInvariant());
+                }
+            }
+
+            // Jobcontainer
+            TemplateToken jobContainer = (from r in run where r.Key.AssertString("container").Value == "container" select r).FirstOrDefault().Value;
+
+            foreach(var p in platform) {
+                var eq = p.IndexOf('=');
+                var set = p.Substring(0, eq).Split(",").Select(e => e.ToLowerInvariant()).ToHashSet();
+                if(runsOnMap.IsSubsetOf(set) && p.Length > (eq + 1)) {
+                    if(p[eq + 1] == '-') {
+                        runsOnMap = p.Substring(eq + 2, p.Length - (eq + 2)).Split(',').Select(e => e.ToLowerInvariant()).ToHashSet();
+                    } else {
+                        runsOnMap = new HashSet<string> { "self-hosted", "container-host" };
+                        if(jobContainer == null) {
+                            // Set just the container property of the workflow, the runner will use it
+                            jobContainer = new StringToken(null, null, null, p.Substring(eq + 1, p.Length - (eq + 1)));
+                        }
+                        // If jobContainer != null, nothing we need to do other than use a special runner
+                    }
+                    break;
                 }
             }
 
@@ -1160,6 +1239,19 @@ namespace Runner.Server.Controllers
 
             var steps = PipelineTemplateConverter.ConvertToSteps(templateContext, seq);
 
+            if(localcheckout) {
+                // Rewrite checkout step to copy repo via custom protocol
+                for (int i = 0; i < steps.Count; i++) {
+                    if(steps[i] is ActionStep astep && astep.Reference is RepositoryPathReference p && String.Compare(p.Name, "actions/checkout", true) == 0 && (p.Path == null || p.Path == "")) {
+                        var _localcheckout = astep.Clone() as ActionStep;
+                        _localcheckout.Reference = new RepositoryPathReference { Name = "localcheckout", Ref = "V1", RepositoryType = RepositoryTypes.GitHub, Path = "" };
+                        _localcheckout.ContextName = "_" + Guid.NewGuid().ToString();
+                        astep.Condition = $"({astep.Condition}) && !fromJSON(steps.{_localcheckout.ContextName}.outputs.skip)";
+                        steps.Insert(i++, _localcheckout);
+                    }
+                }
+            }
+
             foreach (var step in steps)
             {
                 step.Id = Guid.NewGuid();
@@ -1176,8 +1268,6 @@ namespace Runner.Server.Controllers
                 environment.Add(environmentToken);
             }
 
-            // Jobcontainer
-            TemplateToken jobContainer = (from r in run where r.Key.AssertString("container").Value == "container" select r).FirstOrDefault().Value;
             // Jobservicecontainer
             TemplateToken jobServiceContainer = (from r in run where r.Key.AssertString("services").Value == "services" select r).FirstOrDefault().Value;
             // Job outputs
@@ -1311,6 +1401,9 @@ namespace Runner.Server.Controllers
         // }
 
         private static ConcurrentDictionary<Session, Session> sessions = new ConcurrentDictionary<Session, Session>();
+        public delegate void RepoDownload(long runid, string url);
+
+        public static event RepoDownload OnRepoDownload;
 
         [HttpGet("{poolId}")]
         public async Task<IActionResult> GetMessage(int poolId, Guid sessionId)
@@ -1354,22 +1447,24 @@ namespace Runner.Server.Controllers
                             var res = req.message.Invoke(apiUrl);
                             req.message = null;
                             
-                            
+                            if(session.JobTimer == null) {
+                                session.JobTimer = new System.Timers.Timer();
+                                session.JobTimer.Elapsed += (a,b) => {
+                                    if(session.Job != null) {
+                                        session.Job.CancelRequest = true;
+                                    }
+                                };
+                                session.JobTimer.AutoReset = false;
+                            } else {
+                                session.JobTimer.Stop();
+                            }
                             session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => {
                                 job.SessionId = sessionId;
                                 return job;
                             });
                             _cache.Set("Job_" + res.JobId, session.Job);
-                            if(session.JobTimer == null) {
-                                session.JobTimer = new System.Timers.Timer();
-                            }
-                            session.JobTimer.AutoReset = false;
-                            session.JobTimer.Interval = session.Job.TimeoutMinutes * 1000;
-                            session.JobTimer.Elapsed += (a,b) => {
-                                if(session.Job != null) {
-                                    session.Job.CancelRequest = true;
-                                }
-                            };
+                            
+                            session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
                             session.JobTimer.Start();
                             session.Key.GenerateIV();
                             using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
@@ -1460,7 +1555,7 @@ namespace Runner.Server.Controllers
             [DataMember]
             public Repo repository {get; set;}
             
-            public string head_commit {get;set;}
+            public GitCommit head_commit {get;set;}
             public string Action {get;set;}
             public long? Number {get;set;}
             public string Ref {get;set;}
@@ -1569,7 +1664,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("schedule")]
-        public async Task<ActionResult> OnSchedule([FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
+        public async Task<ActionResult> OnSchedule([FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix, [FromQuery] string[] platform, [FromQuery] bool? localcheckout)
         {
             var form = await Request.ReadFormAsync();
             KeyValuePair<GiteaHook, JObject> obj;
@@ -1586,8 +1681,7 @@ namespace Runner.Server.Controllers
             if(obj.Key.head_commit == null) {
                 var val = obj.Value.GetValue("commits");
                 if(val != null && val.HasValues) {
-                    obj.Value.Remove("head_commit");
-                    obj.Value.Add("head_commit", val.First);
+                    obj.Value["head_commit"] = val.First;
                 }
             }
             string e = "push";
@@ -1599,7 +1693,7 @@ namespace Runner.Server.Controllers
             if(workflow.Any()) {
                 List<HookResponse> responses = new List<HookResponse>();
                 foreach (var w in workflow) {
-                    responses.Add(ConvertYaml(w.Key, w.Value, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix));
+                    responses.Add(ConvertYaml(w.Key, w.Value, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true));
                 }
                 return await Ok(responses, true);
             }

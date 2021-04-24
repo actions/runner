@@ -213,9 +213,9 @@ namespace GitHub.Runner.Worker
                 ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
 #if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.Externals : WellKnownDirectory.DockerExternals), container.TranslateToContainerPath(HostContext.GetDirectory(HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.Externals : WellKnownDirectory.DockerExternals))));
 #else
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.DockerExternals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.DockerExternals)), true));
 #endif
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
                 Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions));

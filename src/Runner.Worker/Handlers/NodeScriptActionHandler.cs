@@ -7,6 +7,7 @@ using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Linq;
+using GitHub.Runner.Worker.Container;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -81,8 +82,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
-            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
-
+            string file = Path.Combine(HostContext.GetDirectory(StepHost is ContainerStepHost && !HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.DockerExternals : WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{(StepHost is ContainerStepHost && !HostContext.GetService<IDockerCommandManager>().WindowsContainer ? "" : IOUtil.ExeExtension)}");
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid

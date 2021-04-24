@@ -15,6 +15,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -199,6 +200,8 @@ namespace GitHub.Runner.Worker
                     var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (container != null)
                     {
+                        // Needed to detect windows container at runtime
+                        await HostContext.GetService<IDockerCommandManager>().DockerVersion(context);
                         jobContext.Global.Container = new Container.ContainerInfo(HostContext, container);
                     }
 

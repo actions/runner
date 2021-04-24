@@ -214,7 +214,7 @@ namespace GitHub.Runner.Common
 
                 case WellKnownDirectory.Diag:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         Constants.Path.DiagDirectory);
                     break;
 
@@ -224,8 +224,22 @@ namespace GitHub.Runner.Common
                         Constants.Path.ExternalsDirectory);
                     break;
 
+                case WellKnownDirectory.DockerExternals:
+#if OS_LINUX
+                    path = GetDirectory(WellKnownDirectory.Externals);
+#else
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        Path.Join(Constants.Path.ExternalsDirectory, "linux"));
+#endif
+                    break;
+
                 case WellKnownDirectory.Root:
                     path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    break;
+
+                case WellKnownDirectory.ConfigRoot:
+                    path = Environment.GetEnvironmentVariable("RUNNER_SERVER_CONFIG_ROOT") ?? GetDirectory(WellKnownDirectory.Root);
                     break;
 
                 case WellKnownDirectory.Temp:
@@ -264,7 +278,7 @@ namespace GitHub.Runner.Common
                     ArgUtil.NotNull(settings, nameof(settings));
                     ArgUtil.NotNullOrEmpty(settings.WorkFolder, nameof(settings.WorkFolder));
                     path = Path.GetFullPath(Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         settings.WorkFolder));
                     break;
 
@@ -283,61 +297,61 @@ namespace GitHub.Runner.Common
             {
                 case WellKnownConfigFile.Runner:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".runner");
                     break;
 
                 case WellKnownConfigFile.Credentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".credentials");
                     break;
 
                 case WellKnownConfigFile.MigratedCredentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".credentials_migrated");
                     break;
 
                 case WellKnownConfigFile.RSACredentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".credentials_rsaparams");
                     break;
 
                 case WellKnownConfigFile.Service:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".service");
                     break;
 
                 case WellKnownConfigFile.CredentialStore:
 #if OS_OSX
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".credential_store.keychain");
 #else
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".credential_store");
 #endif
                     break;
 
                 case WellKnownConfigFile.Certificates:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".certificates");
                     break;
 
                 case WellKnownConfigFile.Options:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".options");
                     break;
 
                 case WellKnownConfigFile.SetupInfo:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".setup_info");
                     break;
 

@@ -112,6 +112,12 @@ namespace Runner.Server.Controllers
                             queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
+                    MessageController.RepoDownload rd = (_runid, url) => {
+                        if(runid.Contains(_runid)) {
+                            queue2.Enqueue(new KeyValuePair<string, string>("repodownload", url));
+                        }
+                    };
+                    
                     var ping = Task.Run(async () => {
                         try {
                             while(!requestAborted.IsCancellationRequested) {
@@ -135,9 +141,11 @@ namespace Runner.Server.Controllers
                     }, requestAborted);
                     logfeed += handler;
                     TimelineController.TimeLineUpdate += handler2;
+                    MessageController.OnRepoDownload += rd;
                     await ping;
                     logfeed -= handler;
                     TimelineController.TimeLineUpdate -= handler2;
+                    MessageController.OnRepoDownload -= rd;
                 } finally {
                     await writer.DisposeAsync();
                 }

@@ -198,8 +198,6 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                await HostContext.GetService<IDockerCommandManager>().DockerVersion(ExecutionContext);
-
                 if(!isContainerStepHost) {
                     shellCommand = "pwsh";
                     commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);

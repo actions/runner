@@ -137,9 +137,15 @@ if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
 fi
 
 # Download the external tools for Linux PACKAGERUNTIMEs.
+
+PREFIX=""
+if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "osx-x64" ]]; then
+    PREFIX="linux/"
+    PACKAGERUNTIME="linux-x64"
+fi
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-${NODE12_VERSION}-alpine-x64.tar.gz" node12_alpine
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" "${PREFIX}node12" fix_nested_dir
+    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-${NODE12_VERSION}-alpine-x64.tar.gz" "${PREFIX}node12_alpine"
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then

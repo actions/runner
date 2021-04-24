@@ -47,8 +47,8 @@ namespace GitHub.Runner.Worker.Container
             if(windowsContainer != null) {
                 return windowsContainer.Value;
             }
-            return true;
-            // throw new Exception("Unsupported");
+            // return false;
+            throw new Exception("Unsupported");
         } }
         bool? windowsContainer = null;
 
@@ -272,6 +272,11 @@ namespace GitHub.Runner.Worker.Container
 
             // [ARG...]
             dockerOptions.Add($"{container.ContainerEntryPointArgs}");
+
+            var dockerargs = Environment.GetEnvironmentVariable("RUNNER_SERVER_DOCKER_ARGS");
+            if(dockerargs != null) {
+                dockerOptions.Add(dockerargs);
+            }
 
             var optionsString = string.Join(" ", dockerOptions);
             return await ExecuteDockerCommandAsync(context, "run", optionsString, container.ContainerEnvironmentVariables, stdoutDataReceived, stderrDataReceived, context.CancellationToken);

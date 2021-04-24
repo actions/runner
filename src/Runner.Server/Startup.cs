@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace Runner.Server
 {
@@ -44,11 +45,6 @@ namespace Runner.Server
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-
-            using(var client = new SqLiteDb())
-            {
-                client.Database.EnsureCreated();
-            }
         }
 
         public IConfiguration Configuration { get; }
@@ -86,7 +82,9 @@ namespace Runner.Server
 
             });
             // services.AddDbContext<InMemoryDB>(options => options.UseInMemoryDatabase("db"));
-            services.AddDbContext<SqLiteDb>();
+            var sqlitecon = Configuration.GetConnectionString("sqlite");
+            services.AddDbContext<SqLiteDb>(conf => conf.UseSqlite(sqlitecon));
+            
             // services.AddAuthentication(x =>
             // {
             //     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -115,6 +113,9 @@ namespace Runner.Server
                                 });
             });
             services.AddMemoryCache();
+            services.Configure<KestrelServerOptions>(options => {
+                options.Limits.MaxRequestBodySize = int.MaxValue;
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
