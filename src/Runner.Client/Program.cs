@@ -285,267 +285,267 @@ namespace Runner.Client
                     watcher.EnableRaisingEvents = true;
 
                 }
-                bool first = true;
-                while(parameters.watch || first) {
-                    List<string> addedFiles = new List<string>();
-                    List<string> changedFiles = new List<string>();
-                    List<string> removedFiles = new List<string>();
-                    if(!first) {
-                        string addedFile = null;
-                        string changedFile = null;
-                        string removedFile = null;
-                        do {
-                            await Task.Delay(2000);
-                        } while(!added.TryDequeue(out addedFile) && !changed.TryDequeue(out changedFile) && !removed.TryDequeue(out removedFile));
-                        while(addedFile != null || added.TryDequeue(out addedFile)) {
-                            addedFiles.Add(addedFile);
-                            addedFile = null;
+                CancellationTokenSource source = new CancellationTokenSource();
+                CancellationToken token = source.Token;
+                List<Task> listener = new List<Task>();
+                try {
+                    if(parameters.server == null) {
+                        foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
+                            if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
+                                var builder = new UriBuilder();
+                                builder.Host = ip.ToString();
+                                builder.Scheme = "http";
+                                builder.Port = 5253;
+                                parameters.server = builder.Uri.ToString().Trim('/');
+                                break;
+                            }
                         }
-                        while(changedFile != null || changed.TryDequeue(out changedFile)) {
-                            changedFiles.Add(changedFile);
-                            changedFile = null;
+                        if(parameters.server == null) {
+                            parameters.server = "http://localhost:5253";
                         }
-                        while(removedFiles != null || removed.TryDequeue(out removedFile)) {
-                            removedFiles.Add(removedFile);
-                            removedFile = null;
+                        GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                        EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
+                            Console.WriteLine(e.Data);
+                        };
+                        if(parameters.verbose) {
+                            invoker.OutputDataReceived += _out;
+                            invoker.ErrorDataReceived += _out;
                         }
-                    }
-                    first = false;
-                    var workflows = parameters.workflow;
-                    if(workflows == null || workflows.Length == 0) {
+                        var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                        var server = Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}");
+                        string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
+                        JObject serverconfig = new JObject();
+                        var connectionopts = new JObject();
+                        connectionopts["sqlite"] = /* "Data Source=Agents.db;"; */"Data Source=:memory:;";
+                        serverconfig["ConnectionStrings"] = connectionopts;
+                        
+                        serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
+                        serverconfig["Runner.Server"] = JObject.FromObject(new { 
+                            GitServerUrl = "https://github.com",
+                            GitApiServerUrl = "https://api.github.com",
+                        });
                         try {
-                            workflows = Directory.GetFiles(parameters.workflows, "*.yml");
-                            if((workflows == null || workflows.Length == 0)) {
-                                Console.Error.WriteLine("No workflow *.yml file found inside of {parameters.workflows}");
+                            JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));
+                            orgserverconfig.Merge(serverconfig, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
+                            serverconfig = orgserverconfig;
+                        } catch {
+
+                        }
+                        await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
+                        var servertask = invoker.ExecuteAsync(binpath, server, "", new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }}, false, null, true, token).ContinueWith(x => {
+                            Console.WriteLine("Stopped Server");
+                            File.Delete(serverconfigfileName);
+                        });
+                        listener.Add(servertask);
+
+                        await Task.Delay(500);
+
+                        for(int i = 0; i < parameters.parallel; i++) {
+                            var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
+                            string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
+                            Directory.CreateDirectory(tmpdir);
+                            var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                            if(parameters.verbose) {
+                                inv.OutputDataReceived += _out;
+                                inv.ErrorDataReceived += _out;
+                            }
+                            // Agent-{Guid.NewGuid().ToString()}
+                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, true, null, true, token);
+                            listener.Add(new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose)).ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
+                                Console.WriteLine("Stopped Worker");
+                                Directory.Delete(tmpdir, true);
+                            }));
+
+                        }
+
+                        await Task.Delay(1000);
+                    }
+                    bool first = true;
+                    while(parameters.watch || first) {
+                        List<string> addedFiles = new List<string>();
+                        List<string> changedFiles = new List<string>();
+                        List<string> removedFiles = new List<string>();
+                        if(!first) {
+                            string addedFile = null;
+                            string changedFile = null;
+                            string removedFile = null;
+                            do {
+                                await Task.Delay(2000);
+                            } while(!added.TryDequeue(out addedFile) && !changed.TryDequeue(out changedFile) && !removed.TryDequeue(out removedFile));
+                            while(addedFile != null || added.TryDequeue(out addedFile)) {
+                                addedFiles.Add(addedFile);
+                                addedFile = null;
+                            }
+                            while(changedFile != null || changed.TryDequeue(out changedFile)) {
+                                changedFiles.Add(changedFile);
+                                changedFile = null;
+                            }
+                            while(removedFiles != null || removed.TryDequeue(out removedFile)) {
+                                removedFiles.Add(removedFile);
+                                removedFile = null;
+                            }
+                        }
+                        first = false;
+                        var workflows = parameters.workflow;
+                        if(workflows == null || workflows.Length == 0) {
+                            try {
+                                workflows = Directory.GetFiles(parameters.workflows, "*.yml");
+                                if((workflows == null || workflows.Length == 0)) {
+                                    Console.Error.WriteLine("No workflow *.yml file found inside of {parameters.workflows}");
+                                    continue;
+                                }
+                            } catch {
+                                Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
                                 continue;
                             }
-                        } catch {
-                            Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
-                            continue;
                         }
-                    }
-                    CancellationTokenSource source = new CancellationTokenSource();
-                    CancellationToken token = source.Token;
-                    List<Task> listener = new List<Task>();
-                    try {
-                        if(parameters.server == null) {
-                            foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
-                                if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
-                                    var builder = new UriBuilder();
-                                    builder.Host = ip.ToString();
-                                    builder.Scheme = "http";
-                                    builder.Port = 5253;
-                                    parameters.server = builder.Uri.ToString().Trim('/');
-                                    break;
+                        try {
+                            var client = new HttpClient();
+                            client.DefaultRequestHeaders.Add("X-GitHub-Event", parameters.Event);
+                            var b = new UriBuilder(parameters.server);
+                            var query = new QueryBuilder();
+                            b.Path = "runner/host/_apis/v1/Message/schedule";
+                            var mp = new MultipartFormDataContent();
+                            foreach(var w in workflows) {
+                                try {
+                                    mp.Add(new StreamContent(File.OpenRead(w)), w, w);
+                                } catch {
+                                    Console.WriteLine($"Failed to read file: {w}");
+                                    return 1;
                                 }
                             }
-                            if(parameters.server == null) {
-                                parameters.server = "http://localhost:5253";
-                            }
-                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                            EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
-                                Console.WriteLine(e.Data);
-                            };
-                            if(parameters.verbose) {
-                                invoker.OutputDataReceived += _out;
-                                invoker.ErrorDataReceived += _out;
-                            }
-                            var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                            var server = Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}");
-                            string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
-                            JObject serverconfig = new JObject();
-                            var connectionopts = new JObject();
-                            connectionopts["sqlite"] = /* "Data Source=Agents.db;"; */"Data Source=:memory:;";
-                            serverconfig["ConnectionStrings"] = connectionopts;
                             
-                            serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
-                            serverconfig["Runner.Server"] = JObject.FromObject(new { 
-                                GitServerUrl = "https://github.com",
-                                GitApiServerUrl = "https://api.github.com",
-                            });
+                            List<string> wenv = new List<string>();
+                            List<string> wsecrets = new List<string>();
                             try {
-                                JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));
-                                orgserverconfig.Merge(serverconfig, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
-                                serverconfig = orgserverconfig;
+                                wenv.AddRange(await File.ReadAllLinesAsync(parameters.envFile, Encoding.UTF8));
                             } catch {
-
-                            }
-                            await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
-                            var servertask = invoker.ExecuteAsync(binpath, server, "", new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }}, false, null, true, token).ContinueWith(x => {
-                                Console.WriteLine("Stopped Server");
-                                File.Delete(serverconfigfileName);
-                            });
-                            listener.Add(servertask);
-
-                            await Task.Delay(500);
-
-                            for(int i = 0; i < parameters.parallel; i++) {
-                                var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
-                                string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
-                                Directory.CreateDirectory(tmpdir);
-                                var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                if(parameters.verbose) {
-                                    inv.OutputDataReceived += _out;
-                                    inv.ErrorDataReceived += _out;
-                                }
-                                // Agent-{Guid.NewGuid().ToString()}
-                                var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, true, null, true, token);
-                                listener.Add(new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose)).ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
-                                    Console.WriteLine("Stopped Worker");
-                                    Directory.Delete(tmpdir, true);
-                                }));
-
-                            }
-
-                            await Task.Delay(1000);
-                        }
-                        var client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("X-GitHub-Event", parameters.Event);
-                        var b = new UriBuilder(parameters.server);
-                        var query = new QueryBuilder();
-                        b.Path = "runner/host/_apis/v1/Message/schedule";
-                        var mp = new MultipartFormDataContent();
-                        foreach(var w in workflows) {
-                            try {
-                                mp.Add(new StreamContent(File.OpenRead(w)), w, w);
-                            } catch {
-                                Console.WriteLine($"Failed to read file: {w}");
-                                return 1;
-                            }
-                        }
-                        
-                        List<string> wenv = new List<string>();
-                        List<string> wsecrets = new List<string>();
-                        try {
-                            wenv.AddRange(await File.ReadAllLinesAsync(parameters.envFile, Encoding.UTF8));
-                        } catch {
-                            if(parameters.envFile != ".env") {
-                                Console.WriteLine($"Failed to read file: {parameters.envFile}");
-                            }
-                        }
-                        try {
-                            wsecrets.AddRange(await File.ReadAllLinesAsync(parameters.secretsFile, Encoding.UTF8));
-                        } catch {
-                            if(parameters.secretsFile != ".secrets") {
-                                Console.WriteLine($"Failed to read file: {parameters.secretsFile}");
-                            }
-                        }
-                        if(parameters.job != null) {
-                            query.Add("job", parameters.job);
-                        }
-                        if(parameters.matrix?.Length > 0) {
-                            if(parameters.job == null) {
-                                Console.WriteLine("--matrix is only supported together with --job");
-                                return 1;
-                            }
-                            query.Add("matrix", parameters.matrix);
-                        }
-                        if(parameters.list) {
-                            query.Add("list", "1");
-                        }
-                        if(parameters.platform?.Length > 0) {
-                            query.Add("platform", parameters.platform);
-                        }
-                        if(parameters.env?.Length > 0) {
-                            foreach (var e in parameters.env) {
-                                if(e.IndexOf('=') > 0) {
-                                    wenv.Add(e);
-                                } else {
-                                    wenv.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                                if(parameters.envFile != ".env") {
+                                    Console.WriteLine($"Failed to read file: {parameters.envFile}");
                                 }
                             }
-                        }
-                        if(parameters.secret?.Length > 0) {
-                            foreach (var e in parameters.secret) {
-                                if(e.IndexOf('=') > 0) {
-                                    wsecrets.Add(e);
-                                } else {
-                                    wsecrets.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                            try {
+                                wsecrets.AddRange(await File.ReadAllLinesAsync(parameters.secretsFile, Encoding.UTF8));
+                            } catch {
+                                if(parameters.secretsFile != ".secrets") {
+                                    Console.WriteLine($"Failed to read file: {parameters.secretsFile}");
                                 }
                             }
-                        }
-                        if(wenv.Count > 0) {
-                            query.Add("env", wenv);
-                        }
-                        if(wsecrets.Count > 0) {
-                            query.Add("secrets", wsecrets);
-                        }
-                        b.Query = query.ToQueryString().ToString().TrimStart('?');
-                        JObject payloadContent = new JObject();
-                        var acommits = new JArray();
-                        payloadContent["commits"] = acommits;
-                        var sha = "4544205a385319fe846d5df4ed2e3b8173569d78";
-                        var bf = "0000000000000000000000000000000000000000";
-                        var user = JObject.FromObject(new { login = parameters.actor, name = parameters.actor, email = $"{parameters.actor}@runner.server.localhost", id = 976638, type = "user" });
-                        var commit = JObject.FromObject(new { message = "Untraced changes", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
-                        var repository = JObject.FromObject(new { owner = user, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = "repo", full_name = "local/repo" });
-                        acommits.AddFirst(commit);
-                        payloadContent["head_commit"] = commit;
-                        payloadContent["sender"] = user;
-                        payloadContent["pusher"] = user;
-                        payloadContent["repository"] = user;
-                        payloadContent["before"] = bf;
-                        payloadContent["after"] = sha;
-                        if(parameters.payload != null) {
-                            try {
-                                // 
-                                var filec = await File.ReadAllTextAsync(parameters.payload, Encoding.UTF8);
-                                var obj = JObject.Parse(filec);
-
-                                payloadContent.Merge(obj, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
-                                // var commits = obj.GetValue("commits");
-                                // JArray acommits = null;
-                                // if(commits is JArray a) {
-                                //     acommits = a;
-                                // } else {
-                                //     acommits = new JArray();
-                                //     obj["commits"] = acommits;
-                                // }
-                                // var sha = "4544205a385319fe846d5df4ed2e3b8173569d78";
-                                // var bf = "0000000000000000000000000000000000000000";
-                                // var user = JObject.FromObject(new { login = parameters.actor, name = parameters.actor, email = $"{parameters.actor}@runner.server.localhost", id = 976638, type = "user" });
-                                // var commit = JObject.FromObject(new { message = "Untraced changes", id = sha });
-                                // var repository = JObject.FromObject(new { owner = user, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = "repo", full_name = "local/repo" });
-                                // acommits.AddFirst(commit);
-                                // obj["head_commit"] = commit;
-                                // JToken val;
-                                // if(!obj.TryGetValue("sender", out val)) {
-                                //     obj["sender"] = user;
-                                // }
-                                // if(!obj.TryGetValue("pusher", out val)) {
-                                //     obj["pusher"] = user;
-                                // }
-                                // if(!obj.TryGetValue("repository", out val)) {
-                                //     obj["repository"] = user;
-                                // }
-                                // if(!obj.TryGetValue("before", out val)) {
-                                //     obj["before"] = bf;
-                                // }
-                                // if(!obj.TryGetValue("after", out val)) {
-                                //     obj["after"] = sha;
-                                // }
-                                
-                            } catch {
-                                Console.WriteLine($"Failed to read file: {parameters.payload}");
-                                return 1;
+                            if(parameters.job != null) {
+                                query.Add("job", parameters.job);
                             }
-                        }
-                        mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
+                            if(parameters.matrix?.Length > 0) {
+                                if(parameters.job == null) {
+                                    Console.WriteLine("--matrix is only supported together with --job");
+                                    return 1;
+                                }
+                                query.Add("matrix", parameters.matrix);
+                            }
+                            if(parameters.list) {
+                                query.Add("list", "1");
+                            }
+                            if(parameters.platform?.Length > 0) {
+                                query.Add("platform", parameters.platform);
+                            }
+                            if(parameters.env?.Length > 0) {
+                                foreach (var e in parameters.env) {
+                                    if(e.IndexOf('=') > 0) {
+                                        wenv.Add(e);
+                                    } else {
+                                        wenv.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                                    }
+                                }
+                            }
+                            if(parameters.secret?.Length > 0) {
+                                foreach (var e in parameters.secret) {
+                                    if(e.IndexOf('=') > 0) {
+                                        wsecrets.Add(e);
+                                    } else {
+                                        wsecrets.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                                    }
+                                }
+                            }
+                            if(wenv.Count > 0) {
+                                query.Add("env", wenv);
+                            }
+                            if(wsecrets.Count > 0) {
+                                query.Add("secrets", wsecrets);
+                            }
+                            b.Query = query.ToQueryString().ToString().TrimStart('?');
+                            JObject payloadContent = new JObject();
+                            var acommits = new JArray();
+                            payloadContent["commits"] = acommits;
+                            var sha = "4544205a385319fe846d5df4ed2e3b8173569d78";
+                            var bf = "0000000000000000000000000000000000000000";
+                            var user = JObject.FromObject(new { login = parameters.actor, name = parameters.actor, email = $"{parameters.actor}@runner.server.localhost", id = 976638, type = "user" });
+                            var commit = JObject.FromObject(new { message = "Untraced changes", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
+                            var repository = JObject.FromObject(new { owner = user, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = "repo", full_name = "local/repo" });
+                            acommits.AddFirst(commit);
+                            payloadContent["head_commit"] = commit;
+                            payloadContent["sender"] = user;
+                            payloadContent["pusher"] = user;
+                            payloadContent["repository"] = user;
+                            payloadContent["before"] = bf;
+                            payloadContent["after"] = sha;
+                            if(parameters.payload != null) {
+                                try {
+                                    // 
+                                    var filec = await File.ReadAllTextAsync(parameters.payload, Encoding.UTF8);
+                                    var obj = JObject.Parse(filec);
 
-                        // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                        // string stashcommitRef = null;
-                        // EventHandler<ProcessDataReceivedEventArgs> createStash = (s, e) => {
-                        //     stashcommitRef = e.Data;
-                        // };
-                        // invoker.OutputDataReceived += createStash;
-                        // var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                        // var git = WhichUtil.Which("git", true);
-                        // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "stash create", new Dictionary<string, string>(), CancellationToken.None);
-                        // invoker.OutputDataReceived -= createStash;
+                                    payloadContent.Merge(obj, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
+                                    // var commits = obj.GetValue("commits");
+                                    // JArray acommits = null;
+                                    // if(commits is JArray a) {
+                                    //     acommits = a;
+                                    // } else {
+                                    //     acommits = new JArray();
+                                    //     obj["commits"] = acommits;
+                                    // }
+                                    // var sha = "4544205a385319fe846d5df4ed2e3b8173569d78";
+                                    // var bf = "0000000000000000000000000000000000000000";
+                                    // var user = JObject.FromObject(new { login = parameters.actor, name = parameters.actor, email = $"{parameters.actor}@runner.server.localhost", id = 976638, type = "user" });
+                                    // var commit = JObject.FromObject(new { message = "Untraced changes", id = sha });
+                                    // var repository = JObject.FromObject(new { owner = user, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = "repo", full_name = "local/repo" });
+                                    // acommits.AddFirst(commit);
+                                    // obj["head_commit"] = commit;
+                                    // JToken val;
+                                    // if(!obj.TryGetValue("sender", out val)) {
+                                    //     obj["sender"] = user;
+                                    // }
+                                    // if(!obj.TryGetValue("pusher", out val)) {
+                                    //     obj["pusher"] = user;
+                                    // }
+                                    // if(!obj.TryGetValue("repository", out val)) {
+                                    //     obj["repository"] = user;
+                                    // }
+                                    // if(!obj.TryGetValue("before", out val)) {
+                                    //     obj["before"] = bf;
+                                    // }
+                                    // if(!obj.TryGetValue("after", out val)) {
+                                    //     obj["after"] = sha;
+                                    // }
+                                    
+                                } catch {
+                                    Console.WriteLine($"Failed to read file: {parameters.payload}");
+                                    return 1;
+                                }
+                            }
+                            mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
 
-                        // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"stash store {stashcommitRef} -m Runner", new Dictionary<string, string>(), CancellationToken.None);
-                        
-                        try {
+                            // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                            // string stashcommitRef = null;
+                            // EventHandler<ProcessDataReceivedEventArgs> createStash = (s, e) => {
+                            //     stashcommitRef = e.Data;
+                            // };
+                            // invoker.OutputDataReceived += createStash;
+                            // var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                            // var git = WhichUtil.Which("git", true);
+                            // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "stash create", new Dictionary<string, string>(), CancellationToken.None);
+                            // invoker.OutputDataReceived -= createStash;
+
+                            // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"stash store {stashcommitRef} -m Runner", new Dictionary<string, string>(), CancellationToken.None);
+                            
                             var resp = await client.PostAsync(b.Uri.ToString(), mp);
                             var s = await resp.Content.ReadAsStringAsync();
                             var hr = JsonConvert.DeserializeObject<HookResponse[]>(s);
@@ -781,13 +781,12 @@ namespace Runner.Client
                             // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                             // var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                             // await invoker.ExecuteAsync(binpath, Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}"), "", new Dictionary<string, string>(), CancellationToken.None);
-                            Console.WriteLine($"Failed to connect to Server {parameters.server}, make shure the server is running on that address or port: {except.Message}, {except.StackTrace}");
-                            return 1;
+                            Console.WriteLine($"Exception: {except.Message}, {except.StackTrace}");
+                            continue;
                         }
                     }
-                    finally {
-                        source.Cancel();
-                    }
+                } finally {
+                    source.Cancel();
                 }
                 // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"stash drop {stashcommitRef}", new Dictionary<string, string>(), CancellationToken.None);
                 return 0;
