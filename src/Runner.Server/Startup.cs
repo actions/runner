@@ -83,7 +83,10 @@ namespace Runner.Server
             });
             // services.AddDbContext<InMemoryDB>(options => options.UseInMemoryDatabase("db"));
             var sqlitecon = Configuration.GetConnectionString("sqlite");
-            services.AddDbContext<SqLiteDb>(conf => conf.UseSqlite(sqlitecon));
+            var b = new DbContextOptionsBuilder<SqLiteDb>();
+            b.UseSqlite(sqlitecon);
+            var c = new SqLiteDb(b.Options);
+            services.AddDbContext<SqLiteDb>(conf => conf.UseSqlite(c.Database.GetDbConnection()));
             
             // services.AddAuthentication(x =>
             // {

@@ -62,14 +62,22 @@ namespace Runner.Client
 
         private class TraceWriter : GitHub.Runner.Sdk.ITraceWriter
         {
+            private bool verbose;
+            public TraceWriter(bool verbose = false) {
+                this.verbose = verbose;
+            }
             public void Info(string message)
             {
-                // Console.WriteLine(message);
+                if(verbose) {
+                    Console.WriteLine(message);
+                }
             }
 
             public void Verbose(string message)
             {
-                // Console.WriteLine(message);
+                if(verbose) {
+                    Console.WriteLine(message);
+                }
             }
         }
 
@@ -95,6 +103,8 @@ namespace Runner.Client
             public string containerArchitecture { get; set; }
             public string defaultbranch { get; set; }
             public string directory { get; set; }
+            public bool verbose { get; set; }
+            public int parallel { get; set; }
         }
 
         static int Main(string[] args)
@@ -222,6 +232,13 @@ namespace Runner.Client
                 new Option<string>(
                     new[] {"-C", "--directory"},
                     "change the working directory before running"),
+                new Option<bool>(
+                    new[] {"-v", "--verbose"},
+                    "Run automatically on every file change"),
+                new Option<int>(
+                    "--parallel",
+                    getDefaultValue: () => 4,
+                    description: "Run n parallel runners, ignored if --server is used"),
             };
 
             rootCommand.Description = "Send events to your runner";
@@ -325,11 +342,14 @@ namespace Runner.Client
                             if(parameters.server == null) {
                                 parameters.server = "http://localhost:5253";
                             }
-                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter());
+                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                             EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
                                 Console.WriteLine(e.Data);
                             };
-                            invoker.OutputDataReceived += _out;
+                            if(parameters.verbose) {
+                                invoker.OutputDataReceived += _out;
+                                invoker.ErrorDataReceived += _out;
+                            }
                             var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                             var server = Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}");
                             string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
@@ -359,14 +379,18 @@ namespace Runner.Client
 
                             await Task.Delay(500);
 
-                            for(int i = 0; i < 1; i++) {
+                            for(int i = 0; i < parameters.parallel; i++) {
                                 var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
                                 string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
                                 Directory.CreateDirectory(tmpdir);
-                                var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter());
-                                inv.OutputDataReceived += _out;
-                                var code = await inv.ExecuteAsync(binpath, runner, $"Configure --unattended --url {parameters.server}/runner/server --token empty --labels container-host", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, true, null, true, token);
-                                listener.Add(new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter()).ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
+                                var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                if(parameters.verbose) {
+                                    inv.OutputDataReceived += _out;
+                                    inv.ErrorDataReceived += _out;
+                                }
+                                // Agent-{Guid.NewGuid().ToString()}
+                                var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, true, null, true, token);
+                                listener.Add(new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose)).ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
                                     Console.WriteLine("Stopped Worker");
                                     Directory.Delete(tmpdir, true);
                                 }));
@@ -508,7 +532,7 @@ namespace Runner.Client
                         }
                         mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
 
-                        // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter());
+                        // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                         // string stashcommitRef = null;
                         // EventHandler<ProcessDataReceivedEventArgs> createStash = (s, e) => {
                         //     stashcommitRef = e.Data;
@@ -754,7 +778,7 @@ namespace Runner.Client
                             }
                         } catch (Exception except) {
                             // System.Diagnostics.Process.Start()
-                            // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter());
+                            // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                             // var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                             // await invoker.ExecuteAsync(binpath, Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}"), "", new Dictionary<string, string>(), CancellationToken.None);
                             Console.WriteLine($"Failed to connect to Server {parameters.server}, make shure the server is running on that address or port: {except.Message}, {except.StackTrace}");

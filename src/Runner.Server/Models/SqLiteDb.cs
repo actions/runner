@@ -5,11 +5,15 @@ using Microsoft.EntityFrameworkCore;
 namespace Runner.Server.Models
 {
     public class SqLiteDb : DbContext {
+        private static bool _Init = false;
 
         public SqLiteDb(DbContextOptions<SqLiteDb> opt) : base(opt) {
             // Database.EnsureCreated();
-            Database.OpenConnection();
-            Database.Migrate();
+            if(!_Init) {
+                _Init = true;
+                Database.OpenConnection();
+                Database.Migrate();
+            }
         }
 
         public DbSet<Agent> Agents { get; set; }
@@ -33,15 +37,15 @@ namespace Runner.Server.Models
 
         }
 
-        public override void Dispose() {
-            Database.CloseConnection();
-            base.Dispose();
-        }
+        // public override void Dispose() {
+        //     Database.CloseConnection();
+        //     base.Dispose();
+        // }
 
-        public override async ValueTask DisposeAsync() {
-            await Database.CloseConnectionAsync();
-            await base.DisposeAsync();
-        }
+        // public override async ValueTask DisposeAsync() {
+        //     await Database.CloseConnectionAsync();
+        //     await base.DisposeAsync();
+        // }
     }
 
     

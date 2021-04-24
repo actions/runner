@@ -275,12 +275,20 @@ namespace Runner.Server.Controllers
         {
             public void Error(string format, params object[] args)
             {
-                Console.Error.WriteLine(format, args);
+                try {
+                    Console.Error.WriteLine(format, args);
+                } catch {
+                    Console.Error.WriteLine("%s", format);
+                }
             }
 
             public void Info(string format, params object[] args)
             {
-                Console.Out.WriteLine(format, args);
+                try {
+                    Console.Out.WriteLine(format, args);
+                } catch {
+                    Console.Out.WriteLine("%s", format);
+                }
             }
 
             public void Info(string message)
@@ -290,7 +298,11 @@ namespace Runner.Server.Controllers
 
             public void Verbose(string format, params object[] args)
             {
-                Console.Out.WriteLine(format, args);
+                try {
+                    Console.Out.WriteLine(format, args);
+                } catch {
+                    Console.Out.WriteLine("%s", format);
+                }
             }
 
             public void Verbose(string message)
@@ -833,8 +845,8 @@ namespace Runner.Server.Controllers
                                         flatmatrix.Add(new Dictionary<string, TemplateToken>());
                                     }
                                 }
-                                strategyctx.Add("fail-fast", new BooleanContextData(failFast));
-                                strategyctx.Add("max-parallel", max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : null);
+                                strategyctx["fail-fast"] = new BooleanContextData(failFast);
+                                strategyctx["max-parallel"] = max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : null;
                                 var keys = flatmatrix.First().Keys.ToArray();
                                 if (include != null) {
                                     foreach (var item in include) {
