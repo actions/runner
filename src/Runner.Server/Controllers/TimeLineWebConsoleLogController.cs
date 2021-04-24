@@ -117,6 +117,13 @@ namespace Runner.Server.Controllers
                             queue2.Enqueue(new KeyValuePair<string, string>("repodownload", url));
                         }
                     };
+
+                    FinishJobController.JobCompleted completed = (ev) => {
+                        MessageController.Job job;
+                        if(runid.Length == 0 || (_cache.TryGetValue("Job_" + ev.JobId, out job) && runid.Contains(job.runid))) {
+                            queue2.Enqueue(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        }
+                    };
                     
                     var ping = Task.Run(async () => {
                         try {
@@ -142,10 +149,12 @@ namespace Runner.Server.Controllers
                     logfeed += handler;
                     TimelineController.TimeLineUpdate += handler2;
                     MessageController.OnRepoDownload += rd;
+                    FinishJobController.OnJobCompleted += completed;
                     await ping;
                     logfeed -= handler;
                     TimelineController.TimeLineUpdate -= handler2;
                     MessageController.OnRepoDownload -= rd;
+                    FinishJobController.OnJobCompleted -= completed;
                 } finally {
                     await writer.DisposeAsync();
                 }

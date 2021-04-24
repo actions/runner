@@ -1344,6 +1344,7 @@ namespace Runner.Server.Controllers
                 req.RequestId = RequestId;
                 return req;
             }, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = RequestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError }, (id, job) => job);
+            _cache.Set("Job_" + job.JobId, job);
             jobevent?.Invoke(this, job.repo, job);
             return cancel => {
                 if(cancel) {

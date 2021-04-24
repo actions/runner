@@ -47,6 +47,9 @@ namespace Runner.Client
             public List<string> errors {get;set;}
 
             public bool ContinueOnError {get;set;}
+            public bool Cancelled { get; internal set; }
+
+            public bool Finished  {get;set;}
         }
 
         private class TimeLineEvent {
@@ -596,7 +599,11 @@ namespace Runner.Client
                                     foreach (var error in j.errors) {
                                         Console.Error.WriteLine($"Error: {error}");
                                     }
-                                } else if(j.TimeLineId != Guid.Empty) {
+                                } else if(j.Cancelled) {
+                                    hasErrors = true;
+                                    Console.Error.WriteLine($"Error: Cancelled");
+                                }
+                                else if(j.TimeLineId != Guid.Empty) {
                                     try {
                                         var content = await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
                                         timelineRecords[j.TimeLineId] = JsonConvert.DeserializeObject<List<TimelineRecord>>(content);
@@ -612,6 +619,7 @@ namespace Runner.Client
                             if(rj == 0) {
                                 return hasErrors ? 1 : 0;
                             }
+                            var jf = 0;
                             var timeLineWebConsoleLog = new UriBuilder(parameters.server + "/runner/server/_apis/v1/TimeLineWebConsoleLog");
                             var timeLineWebConsoleLogQuery = new QueryBuilder();
                             timeLineWebConsoleLogQuery.Add("runid", hr.Select(h => h.run_id.ToString()));
@@ -757,7 +765,7 @@ namespace Runner.Client
                                                 }
                                                 jobs = jobs2;
                                             }
-                                            var nc = jobs2.Count(j => !(j.errors?.Count > 0));
+                                            var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
                                             if(nc > rj) {
                                                 rj = nc;
                                                 if(timelineRecords.Count < rj) {
@@ -776,6 +784,115 @@ namespace Runner.Client
                                         repodownload.Headers.ContentType.MediaType = "application/octet-stream";
                                         await client.PostAsync(parameters.server + data, repodownload, token);
 
+                                    }
+                                    if(line == "event: finish") {
+                                        var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
+                                        // if(job.Result == TaskResult.Abandoned)
+                                        foreach(var j in jobs) {
+                                            if(j.JobId == ev.JobId) {
+                                                j.Finished = true;
+                                                Console.WriteLine($"Job {j.workflowname} - {j.name} Finished {ev.Result}");
+                                                if(ev.Result == TaskResult.Canceled || ev.Result == TaskResult.Abandoned || ev.Result == TaskResult.Failed) {
+                                                    hasErrors = true;
+                                                }
+                                                if(j.TimeLineId != Guid.Empty) {
+                                                    timelineRecords.Remove(j.TimeLineId);
+                                                    rj--;
+                                                    jf++;
+                                                }
+
+                                                break;
+                                            }
+                                        }
+
+                                        if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
+                                            var b3 = new UriBuilder(b.ToString());
+                                            query = new QueryBuilder();
+                                            query.Add("repo", hr.First().repo);
+                                            query.Add("runid", hr.Select(h => h.run_id.ToString()));
+                                            query.Add("depending", "1");
+                                            b3.Query = query.ToString().TrimStart('?');
+                                            b3.Path = "runner/host/_apis/v1/Message";
+                                            var sr2 = await client.GetStringAsync(b3.ToString());
+                                            List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                            if(jobs2?.Count > 0) {
+                                                continue;
+                                            }
+                                            sr2 = await client.GetStringAsync(b2.ToString());
+                                            jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                            if(jobs2.Count > jobs.Count) {
+                                                foreach(var j in jobs2) {
+                                                    if(j.errors == null || j.errors.Count == 0) {
+                                                        continue;
+                                                    }
+                                                    bool cont = false;
+                                                    foreach(var j2 in jobs) {
+                                                        if(j.JobId == j2.JobId) {
+                                                            cont = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if(cont) {
+                                                        continue;
+                                                    }
+                                                    hasErrors = true;
+                                                    foreach(var error in j.errors) {
+                                                        Console.Error.WriteLine($"Error: {error}");
+                                                    }
+                                                }
+                                                jobs = jobs2;
+                                            }
+                                            var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
+                                            if(nc > rj) {
+                                                rj = nc;
+                                                if(timelineRecords.Count < rj) {
+                                                    continue;
+                                                }
+                                            }
+                                            return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
+                                        }
+                                        // var b3 = new UriBuilder(b.ToString());
+                                        // query = new QueryBuilder();
+                                        // query.Add("repo", hr.First().repo);
+                                        // query.Add("runid", hr.Select(h => h.run_id.ToString()));
+                                        // query.Add("depending", "1");
+                                        // b3.Query = query.ToString().TrimStart('?');
+                                        // b3.Path = "runner/host/_apis/v1/Message";
+                                        // var sr2 = await client.GetStringAsync(b3.ToString());
+                                        // List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                        // bool cont2 = jobs2?.Count > 0;
+                                        // sr2 = await client.GetStringAsync(b2.ToString());
+                                        // jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                        // if(jobs2.Count > jobs.Count) {
+                                        //     foreach(var j in jobs2) {
+                                        //         if(j.errors == null || j.errors.Count == 0) {
+                                        //             continue;
+                                        //         }
+                                        //         bool cont = false;
+                                        //         foreach(var j2 in jobs) {
+                                        //             if(j.JobId == j2.JobId) {
+                                        //                 cont = true;
+                                        //                 break;
+                                        //             }
+                                        //         }
+                                        //         if(cont) {
+                                        //             continue;
+                                        //         }
+                                        //         hasErrors = true;
+                                        //         foreach(var error in j.errors) {
+                                        //             Console.Error.WriteLine($"Error: {error}");
+                                        //         }
+                                        //     }
+                                        //     jobs = jobs2;
+                                        // }
+                                        // var nc = jobs2.Count(j => !(j.errors?.Count > 0) && !j.Cancelled);
+                                        // rj = nc;
+                                        // if(cont2) {
+                                        //     continue;
+                                        // }
+                                        // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
+                                        //     return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
+                                        // }
                                     }
                                 }
                             }
