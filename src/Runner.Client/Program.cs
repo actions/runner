@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -16,6 +16,8 @@ using System.Threading;
 using System.Collections.Concurrent;
 using Newtonsoft.Json.Linq;
 using System.Net;
+using System.IO.Pipes;
+using System.Threading.Channels;
 
 namespace Runner.Client
 {
@@ -314,13 +316,13 @@ namespace Runner.Client
                                 var builder = new UriBuilder();
                                 builder.Host = ip.ToString();
                                 builder.Scheme = "http";
-                                builder.Port = 5253;
+                                builder.Port = 0;
                                 parameters.server = builder.Uri.ToString().Trim('/');
                                 break;
                             }
                         }
                         if(parameters.server == null) {
-                            parameters.server = "http://localhost:5253";
+                            parameters.server = "http://localhost:0";
                         }
                         GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
@@ -351,13 +353,23 @@ namespace Runner.Client
 
                         }
                         await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
-                        var servertask = invoker.ExecuteAsync(binpath, server, "", new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }}, false, null, true, token).ContinueWith(x => {
-                            Console.WriteLine("Stopped Server");
-                            File.Delete(serverconfigfileName);
-                        });
-                        listener.Add(servertask);
+                        using (AnonymousPipeServerStream pipeServer =
+                            new AnonymousPipeServerStream(PipeDirection.In,
+                            HandleInheritability.Inheritable))
+                        {
+                            var servertask = invoker.ExecuteAsync(binpath, server, "", new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }}, false, null, true, token).ContinueWith(x => {
+                                Console.WriteLine("Stopped Server");
+                                File.Delete(serverconfigfileName);
+                            });
+                            listener.Add(servertask);
+                            using (StreamReader rd = new StreamReader(pipeServer))
+                            {
+                                var line = rd.ReadLine();
+                                parameters.server = line;
+                            }
+                        }
 
-                        await Task.Delay(500);
+                        var workerchannel = Channel.CreateBounded<bool>(1);
 
                         for(int i = 0; i < parameters.parallel; i++) {
                             var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
@@ -368,16 +380,27 @@ namespace Runner.Client
                                 inv.OutputDataReceived += _out;
                                 inv.ErrorDataReceived += _out;
                             }
+                            
                             // Agent-{Guid.NewGuid().ToString()}
                             var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, true, null, true, token);
-                            listener.Add(new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose)).ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
+                            var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                            if(parameters.verbose) {
+                                runnerlistener.OutputDataReceived += _out;
+                                runnerlistener.ErrorDataReceived += _out;
+                            }
+                            runnerlistener.OutputDataReceived += (s, e) => {
+                                if(e.Data.Contains("Listen")) {
+                                    workerchannel.Writer.WriteAsync(true);
+                                }
+                            };
+                            listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
                                 Console.WriteLine("Stopped Worker");
                                 Directory.Delete(tmpdir, true);
                             }));
 
                         }
 
-                        await Task.Delay(1000);
+                        await workerchannel.Reader.ReadAsync();
                     }
                     bool first = true;
                     while(parameters.watch || first) {
@@ -956,6 +979,13 @@ namespace Runner.Client
                     }
                 }
             }
+            var startrunner = new Command("startrunner", "Configures and runs n runner");
+            rootCommand.AddCommand(startrunner);
+            Func<Parameters, Task<int>> thandler = p => {
+                p.StartRunner = true;
+                return handler(p);
+            };
+            startrunner.Handler = CommandHandler.Create(thandler);
 
             rootCommand.Handler = CommandHandler.Create(handler);
 

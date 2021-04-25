@@ -13,6 +13,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using System;
+using System.Linq;
+using System.IO;
+using System.IO.Pipes;
 
 namespace Runner.Server
 {
@@ -122,8 +127,24 @@ namespace Runner.Server
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IHostApplicationLifetime lifetime)
         {
+            var pipe = Environment.GetEnvironmentVariable("RUNNER_CLIENT_PIPE");
+            if(pipe != null) {
+                lifetime.ApplicationStarted.Register(() => {
+                    var addr = app.ServerFeatures.Get<IServerAddressesFeature>().Addresses.First();
+                    using (PipeStream pipeClient = new AnonymousPipeClientStream(PipeDirection.Out, pipe))
+                    {
+                        Console.WriteLine("[CLIENT] Current TransmissionMode: {0}.", pipeClient.TransmissionMode);
+
+                        using (StreamWriter sr = new StreamWriter(pipeClient))
+                        {
+                            sr.WriteLine(addr);
+                            // pipeClient.WaitForPipeDrain();
+                        }
+                    }
+                });
+            }
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

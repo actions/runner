@@ -227,7 +227,7 @@ namespace Runner.Server.Controllers
         {
             public List<JobItem> workflow { get; set; }
             public bool Cancelled { get => workflow?.Any(job => job.Status == Stat.Cancelled) ?? false; }
-            public bool Success { get => workflow?.All(job => job.Success) ?? false; }
+            public bool Success { get => workflow?.All(job => job.Status == Stat.Success) ?? false; }
             public JobItem JobContext { get; set; }
         }
 
@@ -1109,13 +1109,33 @@ namespace Runner.Server.Controllers
                     FinishJobController.JobCompleted workflowcomplete = null;
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault();
+                        Action<JobItem> updateStatus = job => {
+                            switch(e.Result) {
+                                case TaskResult.Failed:
+                                case TaskResult.Abandoned:
+                                    job.Status = job.ContinueOnError ? Stat.Success : Stat.Failure;
+                                    break;
+                                case TaskResult.Canceled:
+                                    job.Status = Stat.Cancelled;
+                                    break;
+                                case TaskResult.Succeeded:
+                                case TaskResult.SucceededWithIssues:
+                                    job.Status = Stat.Success;
+                                    break;
+                                case TaskResult.Skipped:
+                                    job.Status = Stat.Success;
+                                    break;
+                            }
+                        };
                         if(ja != null) {
                             if(e.JobId != ja.Id) {
                                 var c = ja.Childs.Where(ji => e.JobId == ji.Id).First();
                                 c.Completed = true;
+                                updateStatus(c);
                                 ja.Completed = ja.Childs.All(ji => ji.Completed);
                             } else {
                                 ja.Completed = true;
+                                updateStatus(ja);
                             }
                             if(jobs.All(j => j.Completed)) {
                                 FinishJobController.OnJobCompleted -= workflowcomplete;
