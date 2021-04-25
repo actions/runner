@@ -1,5 +1,7 @@
 # GitHub Actions Runner + Server
 
+[![Runner CI](https://github.com/ChristopherHX/runner.server/actions/workflows/build.yml/badge.svg)](https://github.com/ChristopherHX/runner.server/actions/workflows/build.yml)
+
 This fork adds two executables to this Project, `Runner.Server` as a runner backend like github and `Runner.Client` to schedule workflows via commandline from a local `workflow.yml` and a local webhook `payload.json`.
 
 <p align="center">
@@ -21,27 +23,25 @@ This builds both `Runner.Client` and `Runner.Server`.
 
 Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN property in `src\Runner.Server\appsettings.json` and `src\Runner.Server\appsettings.Development.json`.
 
-[Download an official Runner](https://github.com/actions/runner/releases/latest).
+[Download an unofficial Runner](https://github.com/ChristopherHX/runner/releases/latest).
 
-Start the `Runner.Server`, will have to use the default http(s) port, or register runners will fail.
-Linux won't allow port 80 by default and the server will crash. Using port 5000 prevents offical unmodified runners to connect to the server, because the runner drops the port of the repository during configure.
+Using port 5000 prevents offical unmodified runners to connect to the server, because the runner drops the port of the repository during configure. This fork has a patch applied to allow a random port.
 ```
-cd src/Runner.Server
-dotnet run
+./bin/Runner.Server
 ```
 
 Open a 2nd Terminal
 
-Setup the official runner, you can type anything for registration and removal token authentication isn't implemented yet.
+Setup the unofficial runner, you can type anything for registration and removal token authentication isn't implemented yet.
 
 Windows:
 ```
-.\config.cmd --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
+.\config.cmd --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
 ```
 
 Linux or macOS:
 ```
-./config.sh --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
+./config.sh --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
 ```
 
 Run the official runner
@@ -61,10 +61,10 @@ Open a 3rd Terminal
 Schedule one or more job's
 ```
 cd src/Runner.Client
-dotnet run -- --workflow workflow.yml --event push --payload payload.json
+dotnet run -- --workflow workflow.yml --event push --payload payload.json --server http://localhost:5000
 ```
 
-Open http://localhost to see the progress.
+Open http://localhost:5000 to see the progress.
 
 ## Notes
 This contains a reimplementations of some parts of the github server which aren't open source (yet?). 
