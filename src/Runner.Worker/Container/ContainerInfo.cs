@@ -43,20 +43,23 @@ namespace GitHub.Runner.Worker.Container
             this.RegistryAuthPassword = container.Credentials?.Password;
             this.RegistryServer = DockerUtil.ParseRegistryHostnameFromImageName(this.ContainerImage);
 
-#if OS_WINDOWS
-            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
-            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
-            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\__e"));
-            // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
-#else
-            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
-            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
-            _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "/__e"));
-            if (this.IsJobContainer)
+            if (hostContext.GetService<IDockerCommandManager>().WindowsContainer)
             {
-                this.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
+                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\__e"));
+                // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
             }
-#endif
+            else
+            {
+                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
+                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.DockerExternals), "/__e"));
+                if (this.IsJobContainer)
+                {
+                    this.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+                }
+            }
             if (container.Ports?.Count > 0)
             {
                 foreach (var port in container.Ports)
@@ -171,7 +174,7 @@ namespace GitHub.Runner.Worker.Container
                     if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
                         path.StartsWith(mapping.HostPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                     {
-                        return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length);
+                        return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
                     }
 #else
                     if (string.Equals(path, mapping.HostPath))

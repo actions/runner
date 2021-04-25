@@ -13,6 +13,8 @@ namespace GitHub.Runner.Common
         Tools,
         Update,
         Work,
+        ConfigRoot,
+        DockerExternals,
     }
 
     public enum WellKnownConfigFile

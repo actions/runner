@@ -33,14 +33,22 @@ namespace Runner.Server.Controllers
             _context = context;
         }
 
+        private static int lastId = 0;
+
         [HttpPost("{poolId}")]
         public async Task<IActionResult> Post(int poolId) {
             TaskAgent agent = await FromBody<TaskAgent>();
             agent.Authorization.AuthorizationUrl = new Uri($"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.RemoteIpAddress.ToString() + "]") : HttpContext.Connection.RemoteIpAddress.ToString())}:{Request.Host.Port ?? HttpContext.Connection.RemotePort}/test/auth/v1/");
             agent.Authorization.ClientId = Guid.NewGuid();
             Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
-            await _context.SaveChangesAsync(HttpContext.RequestAborted);
-            _agent.AddToCache(_cache);
+            try {
+                await _context.SaveChangesAsync(HttpContext.RequestAborted);
+            } catch {
+                _agent.Id = ++lastId;
+                await _context.SaveChangesAsync(HttpContext.RequestAborted);
+            }
+            lastId = _agent.Id;
+            // _agent.AddToCache(_cache);
             return await Ok(agent);
         }
 
@@ -51,10 +59,10 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{poolId}")]
-        public VssJsonCollectionWrapper<List<TaskAgent>> Get(int poolId)
+        public VssJsonCollectionWrapper<List<TaskAgent>> Get(int poolId, [FromQuery] string agentName)
         {
             return new VssJsonCollectionWrapper<List<TaskAgent>> (
-                (from agent in Pool.GetPoolById(_cache, _context, poolId)?.Agents ?? new List<Agent>() where agent != null select agent.TaskAgent).ToList()
+                (from agent in Pool.GetPoolById(_cache, _context, poolId)?.Agents ?? new List<Agent>() where agent != null && agent.TaskAgent.Name == agentName select agent.TaskAgent).ToList()
             );
         }
     }

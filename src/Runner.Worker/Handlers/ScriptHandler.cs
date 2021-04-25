@@ -8,6 +8,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Worker.Container;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -84,9 +85,11 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "pwsh";
+                // await HostContext.GetService<IDockerCommandManager>().DockerVersion(ExecutionContext);
+                shellCommand = /* HostContext.GetService<IDockerCommandManager>().WindowsContainer */true ? "pwsh" : "sh";
                 if (validateShellOnHost)
                 {
+                    shellCommand = "pwsh";
                     shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
                     if (string.IsNullOrEmpty(shellCommandPath))
                     {
@@ -195,18 +198,25 @@ namespace GitHub.Runner.Worker.Handlers
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
-                shellCommand = "pwsh";
-                commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
-                if (string.IsNullOrEmpty(commandPath))
-                {
-                    shellCommand = "powershell";
-                    Trace.Info($"Defaulting to {shellCommand}");
-                    commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                if(!isContainerStepHost) {
+                    shellCommand = "pwsh";
+                    commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                    if (string.IsNullOrEmpty(commandPath))
+                    {
+                        shellCommand = "powershell";
+                        Trace.Info($"Defaulting to {shellCommand}");
+                        commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                    }
+                    ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
+                } else if (HostContext.GetService<IDockerCommandManager>().WindowsContainer) {
+                    shellCommand = "cmd";
+                    commandPath = WhichUtil.Which("cmd", true, Trace, prependPath);
+                }else {
+#endif
+                    shellCommand = "sh";
+                    commandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+#if OS_WINDOWS
                 }
-                ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
-#else
-                shellCommand = "sh";
-                commandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
@@ -269,7 +279,7 @@ namespace GitHub.Runner.Worker.Handlers
             // dump out the command
             var fileName = isContainerStepHost ? shellCommand : commandPath;
 #if OS_OSX
-            if (Environment.ContainsKey("DYLD_INSERT_LIBRARIES"))  // We don't check `isContainerStepHost` because we don't support container on macOS
+            if (!isContainerStepHost && Environment.ContainsKey("DYLD_INSERT_LIBRARIES"))  // We don't check `isContainerStepHost` because we don't support container on macOS
             {
                 // launch `node macOSRunInvoker.js shell args` instead of `shell args` to avoid macOS SIP remove `DYLD_INSERT_LIBRARIES` when launch process
                 string node12 = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");

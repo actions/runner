@@ -112,6 +112,25 @@ namespace Runner.Server.Controllers
                             queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
+                    MessageController.RepoDownload rd = (_runid, url) => {
+                        if(runid.Contains(_runid)) {
+                            queue2.Enqueue(new KeyValuePair<string, string>("repodownload", url));
+                        }
+                    };
+
+                    FinishJobController.JobCompleted completed = (ev) => {
+                        MessageController.Job job;
+                        if(runid.Length == 0 || (_cache.TryGetValue("Job_" + ev.JobId, out job) && runid.Contains(job.runid))) {
+                            queue2.Enqueue(new KeyValuePair<string, string>("finish", JsonConvert.SerializeObject(ev, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        }
+                    };
+
+                    Action<MessageController.WorkflowEventArgs> workflow = workflow_ => {
+                        if(runid.Contains(workflow_.runid)) {
+                            queue2.Enqueue(new KeyValuePair<string, string>("workflow", JsonConvert.SerializeObject(workflow_, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                        }
+                    };
+                    
                     var ping = Task.Run(async () => {
                         try {
                             while(!requestAborted.IsCancellationRequested) {
@@ -135,9 +154,16 @@ namespace Runner.Server.Controllers
                     }, requestAborted);
                     logfeed += handler;
                     TimelineController.TimeLineUpdate += handler2;
+                    MessageController.OnRepoDownload += rd;
+                    FinishJobController.OnJobCompleted += completed;
+                    MessageController.workflowevent += workflow;
                     await ping;
                     logfeed -= handler;
                     TimelineController.TimeLineUpdate -= handler2;
+                    MessageController.OnRepoDownload -= rd;
+                    FinishJobController.OnJobCompleted -= completed;
+                    MessageController.workflowevent -= workflow;
+                    
                 } finally {
                     await writer.DisposeAsync();
                 }
@@ -149,16 +175,11 @@ namespace Runner.Server.Controllers
         {
             var record = await FromBody<TimelineRecordFeedLinesWrapper>();
             (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) timeline;
-            if(TimelineController.dict.ContainsKey(timelineId)) {
-                timeline = TimelineController.dict[timelineId];
-            } else {
-                timeline = (new List<TimelineRecord>(), new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>());
-            }
-            if(timeline.Item2.ContainsKey(record.StepId)) {
-                timeline.Item2[record.StepId].AddRange(record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)));
-            } else {
-                timeline.Item2.TryAdd(record.StepId, record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)).ToList());
-            }
+            timeline = TimelineController.dict.GetOrAdd(timelineId, g => (new List<TimelineRecord>(), new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()));
+            timeline.Item2.AddOrUpdate(record.StepId, t => record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)).ToList(), (g, t) => {
+                t.AddRange(record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)));
+                return t;
+            });
             logfeed?.Invoke(this, timelineId, recordId, record);
             return Ok();
         }

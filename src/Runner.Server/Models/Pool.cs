@@ -24,7 +24,7 @@ namespace Runner.Server.Models
         public TaskAgentPool TaskAgentPool {get;set;}
         public List<Agent> Agents {get;set;}
         public static Pool GetPoolById(IMemoryCache cache, SqLiteDb db, int id) {
-            return cache.Get<Pool>(CachePrefix + id) ?? db.Pools.Find(id);
+            return db.Pools.Find(id) ?? cache.Get<Pool>(CachePrefix + id);
         }
     }
 }

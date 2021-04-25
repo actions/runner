@@ -35,10 +35,6 @@ namespace GitHub.Runner.Worker
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
         {
             Trace.Entering();
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
@@ -69,27 +65,6 @@ namespace GitHub.Runner.Worker
             }
 #endif
 
-#if OS_WINDOWS
-            // Check OS version (Windows server 1803 is required)
-            object windowsInstallationType = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallationType", defaultValue: null);
-            ArgUtil.NotNull(windowsInstallationType, nameof(windowsInstallationType));
-            object windowsReleaseId = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", defaultValue: null);
-            ArgUtil.NotNull(windowsReleaseId, nameof(windowsReleaseId));
-            executionContext.Debug($"Current Windows version: '{windowsReleaseId} ({windowsInstallationType})'");
-
-            if (int.TryParse(windowsReleaseId.ToString(), out int releaseId))
-            {
-                if (!windowsInstallationType.ToString().StartsWith("Server", StringComparison.OrdinalIgnoreCase) || releaseId < 1803)
-                {
-                    throw new NotSupportedException("Container feature requires Windows Server 1803 or higher.");
-                }
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ReleaseId");
-            }
-#endif
-
             // Check docker client/server version
             executionContext.Output("##[group]Checking docker version");
             DockerVersion dockerVersion = await _dockerManger.DockerVersion(executionContext);
@@ -98,11 +73,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
             ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
 
-#if OS_WINDOWS
-            Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
-#else
             Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
-#endif
 
             if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
             {
@@ -242,28 +213,40 @@ namespace GitHub.Runner.Worker
                 ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
 #if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.Externals : WellKnownDirectory.DockerExternals), container.TranslateToContainerPath(HostContext.GetDirectory(HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.Externals : WellKnownDirectory.DockerExternals))));
 #else
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.DockerExternals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.DockerExternals)), true));
 #endif
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
+                Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
+                Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Tools));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
 
                 var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
                 Directory.CreateDirectory(tempHomeDirectory);
-                container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
-                container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
+                string prefix = "";
+                // await HostContext.GetService<IDockerCommandManager>().DockerVersion(ExecutionContext);
+                if(HostContext.GetService<IDockerCommandManager>().WindowsContainer) {
+                    prefix = "c:";
+                }
+                container.MountVolumes.Add(new MountVolume(tempHomeDirectory, prefix + "/github/home"));
+                container.AddPathTranslateMapping(tempHomeDirectory, prefix + "/github/home");
                 container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
 
                 var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
                 Directory.CreateDirectory(tempWorkflowDirectory);
-                container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
-                container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
+                container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, prefix + "/github/workflow"));
+                container.AddPathTranslateMapping(tempWorkflowDirectory, prefix + "/github/workflow");
 
                 container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-                container.ContainerEntryPoint = "tail";
-                container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+                if(!HostContext.GetService<IDockerCommandManager>().WindowsContainer) {
+                    container.ContainerEntryPoint = "tail";
+                    container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+                } else {
+                    container.ContainerEntryPoint = "ping";
+                    container.ContainerEntryPointArgs = "\"-t\" \"localhost\"";
+                }
             }
 
             container.ContainerId = await _dockerManger.DockerCreate(executionContext, container);

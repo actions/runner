@@ -1,6 +1,9 @@
-﻿using System.Reflection;
+﻿using System;
+using System.IO;
+using System.Reflection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
@@ -30,6 +33,12 @@ namespace Runner.Server
                     if(System.IO.Directory.Exists(contentRoot) && System.IO.Directory.Exists(wwwRoot)) {
                         webBuilder.UseContentRoot(contentRoot);
                         webBuilder.UseWebRoot(wwwRoot);
+                    }
+                    var RUNNER_SERVER_APP_JSON_SETTINGS_FILE = Environment.GetEnvironmentVariable("RUNNER_SERVER_APP_JSON_SETTINGS_FILE");
+                    if(RUNNER_SERVER_APP_JSON_SETTINGS_FILE != null) {
+                        webBuilder.ConfigureAppConfiguration((ctx, config) => {
+                            config.Add(new JsonStreamConfigurationSource() { Stream = File.OpenRead(RUNNER_SERVER_APP_JSON_SETTINGS_FILE) });
+                        });
                     }
                 });
     }
