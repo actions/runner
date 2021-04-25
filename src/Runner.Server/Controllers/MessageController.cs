@@ -781,7 +781,7 @@ namespace Runner.Server.Controllers
                                     if(dependentjobgroup.Any()) {
                                         jobgroup.Add(jobitem);
                                     }
-                                    jobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, Outputs = new Dictionary<String, VariableValue>() });
+                                    FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, Outputs = new Dictionary<String, VariableValue>() });
                                     return;
                                 }
                                 
@@ -967,6 +967,10 @@ namespace Runner.Server.Controllers
                                         FinishJobController.OnJobCompleted -= handler2;
                                         foreach (var j in scheduled) {
                                             j.CancelRequest = true;
+                                            if(j.SessionId == Guid.Empty) {
+                                                j.Cancelled = true;
+                                                FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = j.JobId, Result = TaskResult.Canceled, RequestId = j.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                            }
                                         }
                                         scheduled.Clear();
                                         Func<bool, Job> cb;
@@ -1103,25 +1107,39 @@ namespace Runner.Server.Controllers
                     var jobs = dependentjobgroup.ToArray();
                     jobCompleted(null);
                     FinishJobController.JobCompleted workflowcomplete = null;
-                    workflowcomplete = (e) => {
-                        lock(workflowcomplete) {                       
-                            var ja = jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault();
-                            if(ja != null) {
-                                if(e.JobId != ja.Id) {
-                                    var c = ja.Childs.Where(ji => e.JobId == ji.Id).First();
-                                    c.Completed = true;
-                                    ja.Completed = ja.Childs.All(ji => ji.Completed);
-                                } else {
-                                    ja.Completed = true;
-                                }
-                                if(jobs.All(j => j.Completed)) {
-                                    FinishJobController.OnJobCompleted -= workflowcomplete;
-                                    exctx.workflow = jobs.ToList();
-                                    workflowevent?.Invoke(new WorkflowEventArgs { runid = runid, Success = exctx.Success });
-                                } else {
-                                    jobCompleted(e);
-                                }
+                    FinishJobController.JobCompleted withoutlock = e => {
+                        var ja = jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault();
+                        if(ja != null) {
+                            if(e.JobId != ja.Id) {
+                                var c = ja.Childs.Where(ji => e.JobId == ji.Id).First();
+                                c.Completed = true;
+                                ja.Completed = ja.Childs.All(ji => ji.Completed);
+                            } else {
+                                ja.Completed = true;
                             }
+                            if(jobs.All(j => j.Completed)) {
+                                FinishJobController.OnJobCompleted -= workflowcomplete;
+                                exctx.workflow = jobs.ToList();
+                                workflowevent?.Invoke(new WorkflowEventArgs { runid = runid, Success = exctx.Success });
+                            } else {
+                                jobCompleted(e);
+                            }
+                        }
+                    };
+                    ConcurrentQueue<JobCompletedEvent> queue = new ConcurrentQueue<JobCompletedEvent>();
+                    workflowcomplete = (e) => {
+                        if(Monitor.TryEnter(workflowcomplete)) {      
+                            try {
+                                withoutlock(e);
+                                JobCompletedEvent ev;
+                                while(queue.TryDequeue(out ev)) {
+                                    withoutlock(ev);
+                                }
+                            } finally {
+                                Monitor.Exit(workflowcomplete);
+                            }
+                        } else {
+                            queue.Enqueue(e);
                         }
                     };
                     FinishJobController.OnJobCompleted += workflowcomplete;
