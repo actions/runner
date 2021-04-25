@@ -177,7 +177,7 @@ namespace Runner.Server.Controllers
                         var s = parameter.Evaluate(evaluationContext).ConvertToString();
                         JobItem item = null;
                         if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
-                            if(item?.Status == Stat.Failure) {
+                            if(item?.Status != Stat.Success) {
                                 return false;
                             }
                         } else {
@@ -227,6 +227,7 @@ namespace Runner.Server.Controllers
         {
             public List<JobItem> workflow { get; set; }
             public bool Cancelled { get => workflow?.Any(job => job.Status == Stat.Cancelled) ?? false; }
+            public bool Success { get => workflow?.All(job => job.Success) ?? false; }
             public JobItem JobContext { get; set; }
         }
 
@@ -251,6 +252,9 @@ namespace Runner.Server.Controllers
 
             public bool Success { get => Dependencies?.All(p => p.Value.Status == Stat.Success) ?? true; }
             public bool Failure { get => !Success; }
+
+            public bool Completed { get; set; }
+ 
 
             // public List<Task<IEnumerable<AgentJobRequestMessage>>> enum
         }
@@ -750,9 +754,9 @@ namespace Runner.Server.Controllers
                                     }
                                     jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
                                     guids.Remove(job.Id);
-                                    if(guids.Count == 0 && neededJobs.Count == 0) {
-                                        FinishJobController.OnJobCompleted -= jobitem.OnJobEvaluatable;
-                                    }
+                                    // if(guids.Count == 0 && neededJobs.Count == 0) {
+                                    //     FinishJobController.OnJobCompleted -= jobitem.OnJobEvaluatable;
+                                    // }
                                 }
                                 if(guids.Count > 0 || neededJobs.Count > 0) {
                                     return;
@@ -1088,15 +1092,39 @@ namespace Runner.Server.Controllers
                         };
                         if(ji.Dependencies == null)
                             ji.Dependencies = pred(ji, new List<string>());
-                        if(!list) {
-                            FinishJobController.OnJobCompleted += ji.OnJobEvaluatable;
-                        }
+                        // if(!list) {
+                        //     FinishJobController.OnJobCompleted += ji.OnJobEvaluatable;
+                        // }
                     }
                 });
                 if(list) {
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = false, jobList = (from ji in dependentjobgroup select new JobListItem{Name= ji.name, Needs = ji.Needs}).ToList()};
                 } else {
+                    var jobs = dependentjobgroup.ToArray();
                     jobCompleted(null);
+                    FinishJobController.JobCompleted workflowcomplete = null;
+                    workflowcomplete = (e) => {
+                        lock(workflowcomplete) {                       
+                            var ja = jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault();
+                            if(ja != null) {
+                                if(e.JobId != ja.Id) {
+                                    var c = ja.Childs.Where(ji => e.JobId == ji.Id).First();
+                                    c.Completed = true;
+                                    ja.Completed = ja.Childs.All(ji => ji.Completed);
+                                } else {
+                                    ja.Completed = true;
+                                }
+                                if(jobs.All(j => j.Completed)) {
+                                    FinishJobController.OnJobCompleted -= workflowcomplete;
+                                    exctx.workflow = jobs.ToList();
+                                    workflowevent?.Invoke(new WorkflowEventArgs { runid = runid, Success = exctx.Success });
+                                } else {
+                                    jobCompleted(e);
+                                }
+                            }
+                        }
+                    };
+                    FinishJobController.OnJobCompleted += workflowcomplete;
                 }
             } catch (Exception ex) {
                 List<string> _errors = new List<string>{ex.Message};
@@ -1761,6 +1789,11 @@ namespace Runner.Server.Controllers
 
         private delegate void JobEvent(object sender, string repo, Job job);
         private static event JobEvent jobevent;
+        public class WorkflowEventArgs {
+            public long runid {get;set;}
+            public bool Success {get;set;}
+        }
+        public static event Action<WorkflowEventArgs> workflowevent;
 
         [HttpGet("event")]
         public IActionResult Message(string owner, string repo, [FromQuery] string filter)

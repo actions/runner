@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
@@ -17,14 +19,15 @@ namespace Runner.Server.Controllers
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class LogfilesController : VssControllerBase
     {        
-        static Dictionary<int, (TaskLog, string)> logs = new Dictionary<int, (TaskLog, string)>();
+        static ConcurrentDictionary<int, (TaskLog, string)> logs = new ConcurrentDictionary<int, (TaskLog, string)>();
+        static int logid = 0;
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
         public async Task<IActionResult> CreateLog(Guid scopeIdentifier, string hubName, Guid planId)
         {
             var log = await FromBody<TaskLog>();
-            log.Id = logs.Keys.LastOrDefault() + 1;
-            logs.Add(log.Id, (log, ""));
+            log.Id = Interlocked.Increment(ref logid);
+            logs[log.Id] = (log, "");
             return await Ok(log);
         }
 
