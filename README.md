@@ -26,42 +26,55 @@ Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN propert
 [Download an unofficial Runner](https://github.com/ChristopherHX/runner/releases/latest).
 
 Using port 5000 prevents offical unmodified runners to connect to the server, because the runner drops the port of the repository during configure. This fork has a patch applied to allow a random port.
+
+Linux or macOS:
 ```
 ./bin/Runner.Server
+```
+
+Windows
+```
+.\bin\Runner.Server.exe
 ```
 
 Open a 2nd Terminal
 
 Setup the unofficial runner, you can type anything for registration and removal token authentication isn't implemented yet.
 
-Windows:
-```
-.\config.cmd --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
-```
-
 Linux or macOS:
 ```
 ./config.sh --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
 ```
 
-Run the official runner
-
 Windows:
 ```
-.\run.cmd
+.\config.cmd --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
 ```
+
+Run the official runner
 
 Linux or macOS:
 ```
 ./run.sh
 ```
 
+Windows:
+```
+.\run.cmd
+```
+
 Open a 3rd Terminal
 
 Schedule one or more job's
+
+Linux or macOS:
 ```
-cd src/Runner.Client
-dotnet run -- --workflow workflow.yml --event push --payload payload.json --server http://localhost:5000
+./bin/Runner.Client --workflow workflow.yml --event push --payload payload.json --server http://localhost:5000
+```
+
+Windows
+```
+.\bin\Runner.Client.exe --workflow workflow.yml --event push --payload payload.json --server http://localhost:5000
 ```
 
 Open http://localhost:5000 to see the progress.
@@ -91,9 +104,6 @@ Please open an issue at this fork, to get it fixed.
 </p>
 
 # GitHub Actions Runner
-
-[![Actions Status](https://github.com/actions/runner/workflows/Runner%20CI/badge.svg)](https://github.com/actions/runner/actions)
-[![Runner E2E Test](https://github.com/actions/runner/workflows/Runner%20E2E%20Test/badge.svg)](https://github.com/actions/runner/actions)
 
 The runner is the application that runs a job from a GitHub Actions workflow. It is used by GitHub Actions in the [hosted virtual environments](https://github.com/actions/virtual-environments), or you can [self-host the runner](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/about-self-hosted-runners) in your own environment.
 
