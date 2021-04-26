@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -431,7 +431,7 @@ namespace Runner.Client
                         var workflows = parameters.workflow;
                         if(workflows == null || workflows.Length == 0) {
                             try {
-                                workflows = Directory.GetFiles(parameters.workflows, "*.yml");
+                                workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true });
                                 if((workflows == null || workflows.Length == 0)) {
                                     Console.Error.WriteLine("No workflow *.yml file found inside of {parameters.workflows}");
                                     continue;
@@ -804,7 +804,7 @@ namespace Runner.Client
                                     }
                                     if(line == "event: repodownload") {
                                         var repodownload = new MultipartFormDataContent();
-                                        foreach(var w in Directory.EnumerateFiles(parameters.directory ?? ".", "*", new EnumerationOptions { RecurseSubdirectories = true })) {
+                                        foreach(var w in Directory.EnumerateFiles(parameters.directory ?? ".", "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
                                             var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
                                             repodownload.Add(new StreamContent(File.OpenRead(w)), relpath, relpath);
                                         }
