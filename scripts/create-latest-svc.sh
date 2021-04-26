@@ -19,6 +19,7 @@ set -e
 #      name        optional  defaults to hostname
 #      user        optional  user svc will run as. defaults to current
 #      labels      optional  list of labels (split by comma) applied on the runner
+#      group       optional  name of the runner group to add this runner to
 #
 # Notes:
 # PATS over envvars are more secure
@@ -32,6 +33,7 @@ ghe_hostname=${2}
 runner_name=${3:-$(hostname)}
 svc_user=${4:-$USER}
 labels=${5}
+runner_group=${6}
 
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
@@ -132,8 +134,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name --labels $labels"
-sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name --labels $labels
+echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name --labels $labels ${runner_group:+ --runnergroup '$runner_group'}"
+sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name --labels $labels ${runner_group:+ --runnergroup '$runner_group'}
 
 #---------------------------------------
 # Configuring as a service
