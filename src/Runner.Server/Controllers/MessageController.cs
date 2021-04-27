@@ -354,9 +354,10 @@ namespace Runner.Server.Controllers
         }
 
         private class HookResponse {
-            public string repo;
-            public long run_id;
-            public bool skipped;
+            public string repo {get;set;}
+            public long run_id {get;set;}
+            public bool skipped {get;set;}
+            public bool failed {get;set;}
             public List<JobListItem> jobList {get;set;}
         }
 
@@ -389,6 +390,18 @@ namespace Runner.Server.Controllers
         }
 
         private static ConcurrentDictionary<long, List<JobItem>> dependentjobgroups = new ConcurrentDictionary<long, List<JobItem>>();
+
+        private static ConcurrentDictionary<long, WorkflowEventArgs> _workflowstatus = new ConcurrentDictionary<long, WorkflowEventArgs>();
+
+        [HttpGet("WorkflowStatus/{runid}")]
+        public async Task<IActionResult> GetWorkflowStatus(long runid) {
+            WorkflowEventArgs ret;
+            if(_workflowstatus.TryGetValue(runid, out ret)) {
+                return await Ok(ret);
+            } else {
+                return NoContent();
+            }
+        }
 
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false) {
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
@@ -1105,7 +1118,6 @@ namespace Runner.Server.Controllers
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = false, jobList = (from ji in dependentjobgroup select new JobListItem{Name= ji.name, Needs = ji.Needs}).ToList()};
                 } else {
                     var jobs = dependentjobgroup.ToArray();
-                    jobCompleted(null);
                     FinishJobController.JobCompleted workflowcomplete = null;
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault();
@@ -1140,7 +1152,9 @@ namespace Runner.Server.Controllers
                             if(jobs.All(j => j.Completed)) {
                                 FinishJobController.OnJobCompleted -= workflowcomplete;
                                 exctx.workflow = jobs.ToList();
-                                workflowevent?.Invoke(new WorkflowEventArgs { runid = runid, Success = exctx.Success });
+                                var evargs = new WorkflowEventArgs { runid = runid, Success = exctx.Success };
+                                _workflowstatus[runid] = evargs;
+                                workflowevent?.Invoke(evargs);
                             } else {
                                 jobCompleted(e);
                             }
@@ -1163,6 +1177,7 @@ namespace Runner.Server.Controllers
                         }
                     };
                     FinishJobController.OnJobCompleted += workflowcomplete;
+                    jobCompleted(null);
                 }
             } catch (Exception ex) {
                 List<string> _errors = new List<string>{ex.Message};
@@ -1170,6 +1185,7 @@ namespace Runner.Server.Controllers
                 var jid = Guid.NewGuid();
                 var job = jobs.AddOrUpdate(jid, new Job() { errors = _errors, message = null, repo = repository_name, name = fileRelativePath, workflowname = fileRelativePath, runid = runid, /* SessionId = sessionId,  */JobId = jid, RequestId = RequestId }, (id, job) => job);
                 jobevent?.Invoke(this, job.repo, job);
+                return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
             }
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
         }

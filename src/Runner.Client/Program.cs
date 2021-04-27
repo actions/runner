@@ -34,6 +34,7 @@ namespace Runner.Client
             public string repo {get;set;}
             public long run_id {get;set;}
             public bool skipped {get;set;}
+            public bool failed {get;set;}
             public List<JobListItem> jobList {get;set;}
         }
 
@@ -124,6 +125,21 @@ namespace Runner.Client
             public ConsoleColor Color {get;set;}
             public Guid RecordId {get;set;}
             public List<WebConsoleEvent> Pending {get;set;}
+        }
+
+        private static string ReadSecret() {
+            StringBuilder input = new StringBuilder();
+            ConsoleKeyInfo keyInfo;
+            do {
+                keyInfo = Console.ReadKey(true);
+                if (keyInfo.Key == ConsoleKey.Backspace && input.Length > 0){
+                    input.Remove(input.Length - 1, 1);
+                }
+                else if (keyInfo.Key != ConsoleKey.Enter) {
+                    input.Append(keyInfo.KeyChar);
+                }
+            } while(keyInfo.Key != ConsoleKey.Enter);
+            return input.ToString();
         }
 
         static int Main(string[] args)
@@ -379,39 +395,52 @@ namespace Runner.Client
                             var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
                             string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
                             Directory.CreateDirectory(tmpdir);
-                            var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                            if(parameters.verbose) {
-                                inv.OutputDataReceived += _out;
-                                inv.ErrorDataReceived += _out;
-                            }
+                            int atempt = 1;
+                            while(true) {
+                                try {
+                                    var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                    if(parameters.verbose) {
+                                        inv.OutputDataReceived += _out;
+                                        inv.ErrorDataReceived += _out;
+                                    }
 
-                            var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }};
-                            if(parameters.containerArchitecture != null) {
-                                runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
-                            }
-                            if(parameters.privileged) {
-                                runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
-                            }
-                            if(parameters.userns != null) {
-                                runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
-                            }
-                            
-                            // Agent-{Guid.NewGuid().ToString()}
-                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
-                            var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                            if(parameters.verbose) {
-                                runnerlistener.OutputDataReceived += _out;
-                                runnerlistener.ErrorDataReceived += _out;
-                            }
-                            runnerlistener.OutputDataReceived += (s, e) => {
-                                if(e.Data.Contains("Listen")) {
-                                    workerchannel.Writer.WriteAsync(true);
+                                    var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }};
+                                    if(parameters.containerArchitecture != null) {
+                                        runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
+                                    }
+                                    if(parameters.privileged) {
+                                        runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
+                                    }
+                                    if(parameters.userns != null) {
+                                        runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
+                                    }
+                                    
+                                    // Agent-{Guid.NewGuid().ToString()}
+                                    var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
+                                    var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                    if(parameters.verbose) {
+                                        runnerlistener.OutputDataReceived += _out;
+                                        runnerlistener.ErrorDataReceived += _out;
+                                    }
+                                    runnerlistener.OutputDataReceived += (s, e) => {
+                                        if(e.Data.Contains("Listen")) {
+                                            workerchannel.Writer.WriteAsync(true);
+                                        }
+                                    };
+                                    listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
+                                        Console.WriteLine("Stopped Worker");
+                                        Directory.Delete(tmpdir, true);
+                                    }));
+                                    break;
+                                } catch {
+                                    if(atempt++ <= 3) {
+                                        await Task.Delay(500);
+                                    } else {
+                                        Console.Error.WriteLine("Failed to auto-configure actions runners after 3 attempts");
+                                        return 1;
+                                    }
                                 }
-                            };
-                            listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
-                                Console.WriteLine("Stopped Worker");
-                                Directory.Delete(tmpdir, true);
-                            }));
+                            }
 
                         }
                         if(parameters.parallel > 0) {
@@ -522,7 +551,12 @@ namespace Runner.Client
                                         if(e.IndexOf('=') > 0) {
                                             wenv.Add(e);
                                         } else {
-                                            wenv.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                                            var envvar = Environment.GetEnvironmentVariable(e);
+                                            if(envvar == null) {
+                                                await Console.Out.WriteAsync($"{e}=");
+                                                envvar = await Console.In.ReadLineAsync();
+                                            }
+                                            wenv.Add($"{e}={envvar}");
                                         }
                                     }
                                 }
@@ -531,7 +565,12 @@ namespace Runner.Client
                                         if(e.IndexOf('=') > 0) {
                                             wsecrets.Add(e);
                                         } else {
-                                            wsecrets.Add($"{e}:{Environment.GetEnvironmentVariable(e)}");
+                                            var envvar = Environment.GetEnvironmentVariable(e);
+                                            if(envvar == null) {
+                                                await Console.Out.WriteAsync($"{e}=");
+                                                envvar = ReadSecret();
+                                            }
+                                            wsecrets.Add($"{e}={envvar}");
                                         }
                                     }
                                 }
@@ -739,7 +778,6 @@ namespace Runner.Client
                             List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
                             Dictionary<Guid, TimeLineEntry> timelineRecords = new Dictionary<Guid, TimeLineEntry>();
                             int col = 0;
-                            long rj = 0;
                             bool hasErrors = false;
                             foreach(Job j in jobs) {
                                 Console.WriteLine($"Running Job: {j.name}");
@@ -760,23 +798,44 @@ namespace Runner.Client
                                     }
                                     catch (HttpRequestException) {
                                     }
-                                    rj++;
                                 }
                             }
-                            if(rj == 0) {
+
+                            var timeLineWebConsoleLog = new UriBuilder(parameters.server + "/runner/server/_apis/v1/TimeLineWebConsoleLog");
+                            var timeLineWebConsoleLogQuery = new QueryBuilder();
+                            timeLineWebConsoleLogQuery.Add("runid", hr.Select(h => h.run_id.ToString()));
+                            var pendingWorkflows = new List<long>();
+                            timeLineWebConsoleLog.Query = timeLineWebConsoleLogQuery.ToString().TrimStart('?');
+                            var eventstream = await client.GetStreamAsync(timeLineWebConsoleLog.ToString());
+                            foreach(var h in hr) {
+                                if(!h.skipped && !h.failed) {
+                                    var workflowstat = new UriBuilder(b.ToString());
+                                    workflowstat.Path = "runner/host/_apis/v1/Message/WorkflowStatus/" + h.run_id;
+                                    var workflowres = await client.GetStringAsync(workflowstat.ToString());
+                                    if(workflowres == "") {
+                                        pendingWorkflows.Add(h.run_id);
+                                    }
+                                    else {
+                                        var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(workflowres);
+                                        Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
+                                        if(!_workflow.Success) {
+                                            hasErrors = true;
+                                        }
+                                    }
+                                }
+                            }
+                            if(pendingWorkflows.Count == 0) {
+                                if(hasErrors) {
+                                    Console.WriteLine("All Workflows finished, at least one workflow failed");
+                                } else {
+                                    Console.WriteLine("All Workflows finished successfully");
+                                }
                                 if(parameters.watch) {
                                     Console.WriteLine("Waiting for file changes");
                                     continue;
                                 }
                                 return hasErrors ? 1 : 0;
                             }
-                            // var jf = 0;
-                            var timeLineWebConsoleLog = new UriBuilder(parameters.server + "/runner/server/_apis/v1/TimeLineWebConsoleLog");
-                            var timeLineWebConsoleLogQuery = new QueryBuilder();
-                            timeLineWebConsoleLogQuery.Add("runid", hr.Select(h => h.run_id.ToString()));
-                            var pendingWorkflows = hr.Where(h => !h.skipped).Select(h => h.run_id).ToList();
-                            timeLineWebConsoleLog.Query = timeLineWebConsoleLogQuery.ToString().TrimStart('?');
-                            var eventstream = await client.GetStreamAsync(timeLineWebConsoleLog.ToString());
                             using(TextReader reader = new StreamReader(eventstream)) {
                                 while(!source.IsCancellationRequested) {
                                     var line = await reader.ReadLineAsync();
