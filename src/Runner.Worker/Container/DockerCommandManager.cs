@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker.Container
         {
             base.Initialize(hostContext);
             DockerPath = WhichUtil.Which("docker", true, Trace);
-            DockerInstanceLabel = IOUtil.GetPathHash(hostContext.GetDirectory(WellKnownDirectory.Root)).Substring(0, 6);
+            DockerInstanceLabel = IOUtil.GetPathHash(hostContext.GetDirectory(WellKnownDirectory.ConfigRoot)).Substring(0, 6);
         }
 
         public async Task<DockerVersion> DockerVersion(IExecutionContext context)
