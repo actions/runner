@@ -92,11 +92,13 @@ namespace Runner.Client
             public string[] workflow { get; set; }
             public string server { get; set; }
             public string payload { get; set; }
+
+            public string eventpath { get => payload; set => payload = value; }
             public string Event { get; set; }
             public string[] env { get; set; }
             public string envFile { get; set; }
             public string[] secret { get; set; }
-            public string secretsFile { get; set; }
+            public string secretFile { get; set; }
             public string job { get; set; }
             public string[] matrix { get; set; }
             public bool list { get; set; }
@@ -213,7 +215,7 @@ namespace Runner.Client
                     "--server",
                     description: "Runner.Server address"),
                 new Option<string>(
-                    new[] { "--payload", "-e", "--eventpath" },
+                    new[] { "-e", "--payload", "--eventpath" },
                     "Webhook payload to send to the Runner"),
                 new Option<string>(
                     "--event",
@@ -226,7 +228,7 @@ namespace Runner.Client
                     description: "env overrides for you workflow"),
                 secretOpt,
                 new Option<string>(
-                    "--secrets-file",
+                    "--secret-file",
                     getDefaultValue: () => ".secrets",
                     description: "secrets for you workflow"),
                 new Option<string>(
@@ -524,10 +526,10 @@ namespace Runner.Client
                                     }
                                 }
                                 try {
-                                    wsecrets.AddRange(await File.ReadAllLinesAsync(parameters.secretsFile, Encoding.UTF8));
+                                    wsecrets.AddRange(await File.ReadAllLinesAsync(parameters.secretFile, Encoding.UTF8));
                                 } catch {
-                                    if(parameters.secretsFile != ".secrets") {
-                                        Console.WriteLine($"Failed to read file: {parameters.secretsFile}");
+                                    if(parameters.secretFile != ".secrets") {
+                                        Console.WriteLine($"Failed to read file: {parameters.secretFile}");
                                     }
                                 }
                                 if(parameters.job != null) {
