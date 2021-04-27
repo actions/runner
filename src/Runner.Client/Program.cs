@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -18,6 +18,7 @@ using Newtonsoft.Json.Linq;
 using System.Net;
 using System.IO.Pipes;
 using System.Threading.Channels;
+using System.Text.RegularExpressions;
 
 namespace Runner.Client
 {
@@ -172,7 +173,7 @@ namespace Runner.Client
                 description: "secret for you workflow, overrides keys from the secrets file");
             secretOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var envOpt = new Option<string>(
-                new[] { "-e", "--env" },
+                new[] { "--env" },
                 description: "env for you workflow, overrides keys from the env file");
             envOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var matrixOpt = new Option<string>(
@@ -196,10 +197,10 @@ namespace Runner.Client
                     "--server",
                     description: "Runner.Server address"),
                 new Option<string>(
-                    "--payload",
+                    new[] { "--payload", "-e", "--eventpath" },
                     "Webhook payload to send to the Runner"),
                 new Option<string>(
-                    new[] { "--event", "--eventpath"},
+                    "--event",
                     getDefaultValue: () => "push",
                     description: "Which event to send to a worker"),
                 envOpt,
@@ -245,7 +246,6 @@ namespace Runner.Client
                     "Run docker container architecture, if docker supports it"),
                 new Option<string>(
                     "--defaultbranch",
-                    getDefaultValue: () => "master",
                     description: "The default branch of your workflow run"),
                 new Option<string>(
                     new[] {"-C", "--directory"},
@@ -264,6 +264,9 @@ namespace Runner.Client
             // Note that the parameters of the handler method are matched according to the names of the options
             Func<Parameters, Task<int>> handler = async (parameters) =>
             {
+                if(parameters.list) {
+                    parameters.parallel = 0;
+                }
                 if(parameters.actor == null) {
                     parameters.actor = "runnerclient";
                 }
@@ -345,6 +348,7 @@ namespace Runner.Client
                         serverconfig["Runner.Server"] = JObject.FromObject(new { 
                             GitServerUrl = "https://github.com",
                             GitApiServerUrl = "https://api.github.com",
+                            GitGraphApiServerUrl = ""
                         });
                         try {
                             JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));
@@ -410,8 +414,9 @@ namespace Runner.Client
                             }));
 
                         }
-
-                        await workerchannel.Reader.ReadAsync();
+                        if(parameters.parallel > 0) {
+                            await workerchannel.Reader.ReadAsync();
+                        }
                     }
                     bool first = true;
                     while(!source.IsCancellationRequested && (parameters.watch || first)) {
@@ -544,14 +549,93 @@ namespace Runner.Client
                                 var bf = "0000000000000000000000000000000000000000";
                                 var user = JObject.FromObject(new { login = parameters.actor, name = parameters.actor, email = $"{parameters.actor}@runner.server.localhost", id = 976638, type = "user" });
                                 var commit = JObject.FromObject(new { message = "Untraced changes", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
-                                var repository = JObject.FromObject(new { owner = user, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = "repo", full_name = "local/repo" });
                                 acommits.AddFirst(commit);
                                 payloadContent["head_commit"] = commit;
                                 payloadContent["sender"] = user;
                                 payloadContent["pusher"] = user;
-                                payloadContent["repository"] = user;
+                                var repoowner = user;
                                 payloadContent["before"] = bf;
                                 payloadContent["after"] = sha;
+                                string reponame = "Unknown";
+                                string repofullname = "Unknown/Unknown";
+                                try {
+                                    string line = null;
+                                    EventHandler<ProcessDataReceivedEventArgs> handleoutput = (s, e) => {
+                                        if(line == null) {
+                                            line = e.Data;
+                                        }
+                                    };
+                                    GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                    gitinvoker.OutputDataReceived += handleoutput;
+                                    var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                                    var git = WhichUtil.Which("git", true);
+                                    await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "tag --points-at HEAD", new Dictionary<string, string>(), source.Token);
+                                    if(line != null) {
+                                        payloadContent["ref"] = "refs/tags/" + line;
+                                    }
+                                    gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                    gitinvoker.OutputDataReceived += handleoutput;
+                                    await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "symbolic-ref HEAD", new Dictionary<string, string>(), source.Token);
+                                    if(line != null) {
+                                        var _ref = line;
+                                        if(!payloadContent.ContainsKey("ref")) {
+                                            payloadContent["ref"] = _ref;
+                                        }
+                                        line = null;
+                                        gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                        gitinvoker.OutputDataReceived += handleoutput;
+                                        await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"for-each-ref --format='%(upstream:short)' {_ref}", new Dictionary<string, string>(), source.Token);
+                                        if(line != null) {
+                                            var remote = line.Substring(0, line.IndexOf('/'));
+                                            if(parameters.defaultbranch == null) {
+                                                line = null;
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                gitinvoker.OutputDataReceived += handleoutput;
+                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"symbolic-ref refs/remotes/{remote}/HEAD", new Dictionary<string, string>(), source.Token);
+                                                if(line != null && line.StartsWith($"refs/remotes/{remote}/")) {
+                                                    var defbranch = line.Substring($"refs/remotes/{remote}/".Length);
+                                                    parameters.defaultbranch = defbranch;
+                                                }
+                                            }
+                                            line = null;
+                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                            gitinvoker.OutputDataReceived += handleoutput;
+                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"remote get-url {remote}", new Dictionary<string, string>(), source.Token);
+                                            if(line != null) {
+                                                Regex repoRegex = new Regex("^.*[:/\\\\]([^:/\\\\]+)[/\\\\]([^:/\\\\]+)(.git)?$", RegexOptions.IgnoreCase);
+                                                var repoMatchResult = repoRegex.Match(line);
+                                                if(repoMatchResult.Success) {
+                                                    var owner = repoMatchResult.Groups[1].Value;
+                                                    var repo = repoMatchResult.Groups[2].Value;
+                                                    if(repo.EndsWith(".git")) {
+                                                        repo = repo.Substring(0, repo.Length - 4);
+                                                    }
+                                                    repofullname = owner + "/" +  repo;
+                                                    reponame = repo;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        await Console.Error.WriteLineAsync("No default github.ref found");
+                                    }
+                                    line = null;
+                                    gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                    gitinvoker.OutputDataReceived += handleoutput;
+                                    await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "rev-parse HEAD", new Dictionary<string, string>(), source.Token);
+                                    if(line != null) {
+                                        payloadContent["after"] = line;
+                                        line = null;
+                                    } else {
+                                        await Console.Error.WriteLineAsync("Couldn't retrive github.sha");
+                                    }
+
+                                } catch {
+                                    await Console.Error.WriteLineAsync("Failed to detect git repo the github context may have invalid values");
+                                }
+
+                                var repository = JObject.FromObject(new { owner = repoowner, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = reponame, full_name = repofullname });
+                                payloadContent["repository"] = repository;
+                                
                                 if(parameters.payload != null) {
                                     try {
                                         // 
@@ -1033,8 +1117,33 @@ namespace Runner.Client
 
             rootCommand.Handler = CommandHandler.Create(handler);
 
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            List<string> configs = new List<string>();
+            configs.Add(Path.Combine(home, ".actrc"));
+            var xdgconfighome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+            if(xdgconfighome != null) {
+                configs.Add(Path.Combine(xdgconfighome, ".actrc"));
+            } else {
+                configs.Add(Path.Combine(home, ".config", ".actrc"));
+            }
+            configs.Add(Path.Combine(".", ".actrc"));
+            List<string> cargs = new List<string>();
+            var cfgregex = new Regex("\\s");
+            foreach(var config in configs) {
+                try {
+                    var content = File.ReadAllLines(config);
+                    foreach(var line in content) {
+                        if(line.StartsWith("-")) {
+                            cargs.AddRange(cfgregex.Split(line, 2));
+                        }
+                    }
+                } catch {
+
+                }
+            }
+            cargs.AddRange(args);
             // Parse the incoming args and invoke the handler
-            return rootCommand.InvokeAsync(args).Result;
+            return rootCommand.InvokeAsync(cargs.ToArray()).Result;
         }
     }
 }
