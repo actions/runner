@@ -63,4 +63,4 @@ outputs:
     description: "Wether to invoke the official actions/checkout or not"
 runs:
   using: 'node12'
-  main: 'dist/index.js'
+  main: 'index.js'

@@ -1,11 +1,8 @@
 {
   "name": "localcheckout",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "build": "ncc build index.js --license licenses.txt"
-  },
   "keywords": [],
   "author": "",
   "license": "ISC",

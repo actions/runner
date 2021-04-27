@@ -28,6 +28,9 @@ try {
                     process.exit();
                 }
                 _first = false;
+                if(formname.startsWith("=?utf-8?B?")) {
+                    formname = Buffer.from(formname.substring("=?utf-8?B?".length), 'base64').toString('utf-8');
+                }
                 file.filename = path.join(dest, formname);
                 file.path = path.join(dest, formname);
                 fs.mkdirSync(path.dirname(file.path), { recursive: true });
