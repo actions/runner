@@ -371,7 +371,6 @@ namespace Runner.Client
                         }
 
                         var workerchannel = Channel.CreateBounded<bool>(1);
-
                         for(int i = 0; i < parameters.parallel; i++) {
                             var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
                             string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
@@ -381,9 +380,20 @@ namespace Runner.Client
                                 inv.OutputDataReceived += _out;
                                 inv.ErrorDataReceived += _out;
                             }
+
+                            var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }};
+                            if(parameters.containerArchitecture != null) {
+                                runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
+                            }
+                            if(parameters.privileged) {
+                                runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
+                            }
+                            if(parameters.userns != null) {
+                                runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
+                            }
                             
                             // Agent-{Guid.NewGuid().ToString()}
-                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, true, null, true, token);
+                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
                             var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                             if(parameters.verbose) {
                                 runnerlistener.OutputDataReceived += _out;
