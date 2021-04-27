@@ -1013,13 +1013,13 @@ namespace Runner.Client
                     }
                 }
             }
-            var startrunner = new Command("startrunner", "Configures and runs n runner");
-            rootCommand.AddCommand(startrunner);
-            Func<Parameters, Task<int>> thandler = p => {
-                p.StartRunner = true;
-                return handler(p);
-            };
-            startrunner.Handler = CommandHandler.Create(thandler);
+            // var startrunner = new Command("startrunner", "Configures and runs n runner");
+            // rootCommand.AddCommand(startrunner);
+            // Func<Parameters, Task<int>> thandler = p => {
+            //     p.StartRunner = true;
+            //     return handler(p);
+            // };
+            // startrunner.Handler = CommandHandler.Create(thandler);
 
             rootCommand.Handler = CommandHandler.Create(handler);
 
