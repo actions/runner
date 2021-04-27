@@ -306,6 +306,7 @@ namespace Runner.Client
                 CancellationTokenSource source = new CancellationTokenSource();
                 CancellationToken token = source.Token;
                 Console.CancelKeyPress += (s, e) => {
+                    e.Cancel = true;
                     source.Cancel();
                 };
                 List<Task> listener = new List<Task>();
@@ -403,7 +404,7 @@ namespace Runner.Client
                         await workerchannel.Reader.ReadAsync();
                     }
                     bool first = true;
-                    while(parameters.watch || first) {
+                    while(!source.IsCancellationRequested && (parameters.watch || first)) {
                         List<string> addedFiles = new List<string>();
                         List<string> changedFiles = new List<string>();
                         List<string> removedFiles = new List<string>();
@@ -411,9 +412,13 @@ namespace Runner.Client
                             string addedFile = null;
                             string changedFile = null;
                             string removedFile = null;
-                            do {
-                                await Task.Delay(2000);
-                            } while(!added.TryDequeue(out addedFile) && !changed.TryDequeue(out changedFile) && !removed.TryDequeue(out removedFile));
+                            try {
+                                do {
+                                    await Task.Delay(2000, source.Token);
+                                } while(!added.TryDequeue(out addedFile) && !changed.TryDequeue(out changedFile) && !removed.TryDequeue(out removedFile));
+                            } catch(TaskCanceledException) {
+
+                            }
                             while(addedFile != null || added.TryDequeue(out addedFile)) {
                                 addedFiles.Add(addedFile);
                                 addedFile = null;
@@ -425,6 +430,9 @@ namespace Runner.Client
                             while(removedFile != null || removed.TryDequeue(out removedFile)) {
                                 removedFiles.Add(removedFile);
                                 removedFile = null;
+                            }
+                            if(source.IsCancellationRequested) {
+                                break;
                             }
                         }
                         first = false;
@@ -676,7 +684,7 @@ namespace Runner.Client
                             timeLineWebConsoleLog.Query = timeLineWebConsoleLogQuery.ToString().TrimStart('?');
                             var eventstream = await client.GetStreamAsync(timeLineWebConsoleLog.ToString());
                             using(TextReader reader = new StreamReader(eventstream)) {
-                                while(true) {
+                                while(!source.IsCancellationRequested) {
                                     var line = await reader.ReadLineAsync();
                                     if(line == null) {
                                         break;
@@ -985,6 +993,7 @@ namespace Runner.Client
                     }
                 } finally {
                     source.Cancel();
+                    await Task.WhenAll(listener);
                 }
                 // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"stash drop {stashcommitRef}", new Dictionary<string, string>(), CancellationToken.None);
                 return 0;
