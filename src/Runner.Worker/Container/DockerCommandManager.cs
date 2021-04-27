@@ -138,7 +138,7 @@ namespace GitHub.Runner.Worker.Container
                 return await ExecuteDockerCommandAsync(context, $"pull", image, context.CancellationToken);
             }
             string extraopts = "";
-            if(ServerVersion >= new Version(1, 41)) {
+            if(ServerVersion >= new Version(1, 32)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
                     if(val.Contains(' ')) {
@@ -153,13 +153,24 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
         {
-            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag} -f \"{dockerFile}\" \"{dockerContext}\"", workingDirectory, context.CancellationToken);
+            string extraopts = "";
+            if(ServerVersion >= new Version(1, 38)) {
+                var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
+                if(val?.Length > 0) {
+                    if(val.Contains(' ')) {
+                        context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
+                    } else {
+                        extraopts = "--platform " + val;
+                    }
+                }
+            }
+            return await ExecuteDockerCommandAsync(context, "build", $"-t {tag}{(extraopts.Length > 0 ? " " + extraopts : "")} -f \"{dockerFile}\" \"{dockerContext}\"", workingDirectory, context.CancellationToken);
         }
 
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
         {
             IList<string> dockerOptions = new List<string>();
-            if(ServerVersion >= new Version(1, 41)) {
+            if(ServerVersion >= new Version(1, 32)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
                     if(val.Contains(' ')) {
@@ -265,7 +276,7 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             IList<string> dockerOptions = new List<string>();
-            if(ServerVersion >= new Version(1, 41)) {
+            if(ServerVersion >= new Version(1, 32)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
                     if(val.Contains(' ')) {
