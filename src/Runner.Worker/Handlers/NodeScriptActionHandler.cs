@@ -21,6 +21,30 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public NodeJSActionExecutionData Data { get; set; }
 
+        private static string GetHostArch() {
+            switch(System.Runtime.InteropServices.RuntimeInformation.OSArchitecture) {
+                case System.Runtime.InteropServices.Architecture.X86:
+                    return "386";
+                case System.Runtime.InteropServices.Architecture.X64:
+                    return "amd64";
+                case System.Runtime.InteropServices.Architecture.Arm:
+                    return "arm";
+                case System.Runtime.InteropServices.Architecture.Arm64:
+                    return "arm64";
+                default:
+                    throw new InvalidOperationException();
+            }
+        }
+
+        private static string GetHostOS() {
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                return "linux";
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                return "windows";
+            }
+            return null;
+        }
+
         public async Task RunAsync(ActionRunStage stage)
         {
             // Validate args.
@@ -82,7 +106,18 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
-            string file = Path.Combine(HostContext.GetDirectory(StepHost is ContainerStepHost && !HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.DockerExternals : WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{(StepHost is ContainerStepHost && !HostContext.GetService<IDockerCommandManager>().WindowsContainer ? "" : IOUtil.ExeExtension)}");
+            var externalsPath = HostContext.GetDirectory(WellKnownDirectory.Externals);
+            var exeExtension = IOUtil.ExeExtension;
+            if(StepHost is ContainerStepHost) {
+                var manager = HostContext.GetService<IDockerCommandManager>();
+                if(GetHostOS() != manager.Os || (GetHostArch() != manager.Arch && !manager.Arch.StartsWith(GetHostArch() + "/"))) {
+                    if(manager.Os != "windows") {
+                        exeExtension = "";
+                    }
+                    externalsPath = Path.Combine(externalsPath, manager.Os, manager.Arch.Substring(0, manager.Arch.IndexOf('/')));
+                }
+            }
+            string file = Path.Combine(externalsPath, nodeRuntimeVersion, "bin", $"node{exeExtension}");
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid

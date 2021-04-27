@@ -208,7 +208,7 @@ namespace GitHub.Runner.Worker.Handlers
                         commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                     }
                     ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
-                } else if (HostContext.GetService<IDockerCommandManager>().WindowsContainer) {
+                } else if (HostContext.GetService<IDockerCommandManager>().Os == "windows") {
                     shellCommand = "cmd";
                     commandPath = WhichUtil.Which("cmd", true, Trace, prependPath);
                 }else {

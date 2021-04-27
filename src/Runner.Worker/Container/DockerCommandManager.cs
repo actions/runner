@@ -16,7 +16,9 @@ namespace GitHub.Runner.Worker.Container
     {
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
-        bool WindowsContainer { get; }
+        string Os { get; }
+        string Arch { get; }
+        Version ServerVersion { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
         Task<int> DockerPull(IExecutionContext context, string image);
         Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory);
@@ -43,14 +45,24 @@ namespace GitHub.Runner.Worker.Container
 
         public string DockerInstanceLabel { get; private set; }
 
-        public bool WindowsContainer { get {
-            if(windowsContainer != null) {
-                return windowsContainer.Value;
+        public string Os { get {
+            if(os != null) {
+                return os;
             }
-            // return false;
             throw new Exception("Unsupported");
         } }
-        bool? windowsContainer = null;
+
+        public string Arch { get {
+            if(arch != null) {
+                return arch;
+            }
+            throw new Exception("Unsupported");
+        } }
+
+        public Version ServerVersion { get; private set; }
+
+        private string os = null;
+        private string arch = null;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -72,10 +84,19 @@ namespace GitHub.Runner.Worker.Container
             string serverOsStr = (await ExecuteDockerCommandAsync(context, "version", "--format '{{.Server.Os}}'")).FirstOrDefault();
             ArgUtil.NotNullOrEmpty(serverOsStr, "Docker.Server.Os");
             context.Output($"Docker server Os: {serverOsStr}");
-            if(serverOsStr.Contains("windows")) {
-                windowsContainer = true;
-            } else {
-                windowsContainer = false;
+            Regex osarchRegex = new Regex("^[\"'](.+)[\"']$", RegexOptions.IgnoreCase);
+            var osMatchResult = osarchRegex.Match(serverOsStr);
+            if(osMatchResult.Success) {
+                os = osMatchResult.Groups[1].Value;
+            }
+
+            string serverArchStr = (await ExecuteDockerCommandAsync(context, "version", "--format '{{.Server.Arch}}'")).FirstOrDefault();
+            ArgUtil.NotNullOrEmpty(serverArchStr, "Docker.Server.Arch");
+            context.Output($"Docker server Arch: {serverArchStr}");
+            
+            var archMatchResult = osarchRegex.Match(serverArchStr);
+            if(archMatchResult.Success) {
+                arch = archMatchResult.Groups[1].Value;
             }
 
             // we interested about major.minor.patch version
@@ -89,6 +110,7 @@ namespace GitHub.Runner.Worker.Container
                 {
                     serverVersion = null;
                 }
+                ServerVersion = serverVersion;
             }
 
             Version clientVersion = null;
@@ -115,7 +137,18 @@ namespace GitHub.Runner.Worker.Container
             {
                 return await ExecuteDockerCommandAsync(context, $"pull", image, context.CancellationToken);
             }
-            return await ExecuteDockerCommandAsync(context, $"--config {configFileDirectory} pull", image, context.CancellationToken);
+            string extraopts = "";
+            if(ServerVersion >= new Version(1, 41)) {
+                var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
+                if(val?.Length > 0) {
+                    if(val.Contains(' ')) {
+                        context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
+                    } else {
+                        extraopts = "--platform " + val;
+                    }
+                }
+            }
+            return await ExecuteDockerCommandAsync(context, $"--config {configFileDirectory} pull{(extraopts.Length > 0 ? " " + extraopts : "")}", image, context.CancellationToken);
         }
 
         public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
@@ -126,6 +159,28 @@ namespace GitHub.Runner.Worker.Container
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
         {
             IList<string> dockerOptions = new List<string>();
+            if(ServerVersion >= new Version(1, 41)) {
+                var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
+                if(val?.Length > 0) {
+                    if(val.Contains(' ')) {
+                        context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
+                    } else {
+                        dockerOptions.Add("--platform " + val);
+                    }
+                }
+            }
+            var privileged = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_PRIVILEGED")?.ToLower();
+            if(privileged == "true" || privileged == "1") {
+                dockerOptions.Add($"--privileged");
+            }
+            var userns = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_USERNS");
+            if(userns != null) {
+                if(userns.Contains(' ')) {
+                    context.Warning("Ignored docker userns `{userns}`, because it contains one or more spaces");
+                } else {
+                    dockerOptions.Add($"--userns {userns}");
+                }
+            }
             // OPTIONS
             dockerOptions.Add($"--name {container.ContainerDisplayName}");
             dockerOptions.Add($"--label {DockerInstanceLabel}");
@@ -210,6 +265,28 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             IList<string> dockerOptions = new List<string>();
+            if(ServerVersion >= new Version(1, 41)) {
+                var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
+                if(val?.Length > 0) {
+                    if(val.Contains(' ')) {
+                        context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
+                    } else {
+                        dockerOptions.Add("--platform " + val);
+                    }
+                }
+            }
+            var privileged = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_PRIVILEGED")?.ToLower();
+            if(privileged == "true" || privileged == "1") {
+                dockerOptions.Add($"--privileged");
+            }
+            var userns = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_USERNS");
+            if(userns != null) {
+                if(userns.Contains(' ')) {
+                    context.Warning("Ignored docker userns `{userns}`, because it contains one or more spaces");
+                } else {
+                    dockerOptions.Add($"--userns {userns}");
+                }
+            }
             // OPTIONS
             dockerOptions.Add($"--name {container.ContainerDisplayName}");
             dockerOptions.Add($"--label {DockerInstanceLabel}");
@@ -273,11 +350,6 @@ namespace GitHub.Runner.Worker.Container
             // [ARG...]
             dockerOptions.Add($"{container.ContainerEntryPointArgs}");
 
-            var dockerargs = Environment.GetEnvironmentVariable("RUNNER_SERVER_DOCKER_ARGS");
-            if(dockerargs != null) {
-                dockerOptions.Add(dockerargs);
-            }
-
             var optionsString = string.Join(" ", dockerOptions);
             return await ExecuteDockerCommandAsync(context, "run", optionsString, container.ContainerEnvironmentVariables, stdoutDataReceived, stderrDataReceived, context.CancellationToken);
         }
@@ -304,8 +376,7 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerNetworkCreate(IExecutionContext context, string network)
         {
-            // context.Warning("WindowsContainer:" + WindowsContainer);
-if(WindowsContainer) return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
+            if(os == "windows") return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
             return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
         }
 

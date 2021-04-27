@@ -122,36 +122,59 @@ function acquireExternalTool() {
     fi
 }
 
+function acquireNodeOfficial() {
+    local prefix=$1
+    local os=$2
+    local arch=$3
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-${os}-${arch}.tar.gz" "${prefix:+"${prefix}/"}node12" fix_nested_dir
+}
+
+function acquireNodeLinuxAlpine() {
+    local prefix=$1
+    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-${NODE12_VERSION}-alpine-x64.tar.gz" "${prefix:+"${prefix}/"}node12_alpine"
+}
+
 # Download the external tools only for Windows.
-if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
+if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/$PACKAGERUNTIME/node.exe" node12/bin
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/$PACKAGERUNTIME/node.lib" node12/bin
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
+    acquireNodeOfficial "linux/amd64" "linux" "x64"
+    acquireNodeLinuxAlpine "linux/amd64"
+    acquireNodeOfficial "linux/arm" "linux" "armv7l"
+    acquireNodeOfficial "linux/arm64" "linux" "arm64"
 fi
 
 # Download the external tools only for OSX.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir
+    acquireNodeOfficial "" "darwin" "x64"
+    acquireNodeOfficial "linux/amd64" "linux" "x64"
+    acquireNodeLinuxAlpine "linux/amd64"
+    acquireNodeOfficial "linux/arm" "linux" "armv7l"
+    acquireNodeOfficial "linux/arm64" "linux" "arm64"
 fi
 
 # Download the external tools for Linux PACKAGERUNTIMEs.
 
-PREFIX=""
-if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "osx-x64" ]]; then
-    PREFIX="linux/"
-    PACKAGERUNTIME="linux-x64"
-fi
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" "${PREFIX}node12" fix_nested_dir
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-${NODE12_VERSION}-alpine-x64.tar.gz" "${PREFIX}node12_alpine"
+    acquireNodeOfficial "" "linux" "x64"
+    acquireNodeLinuxAlpine ""
+    acquireNodeOfficial "linux/arm" "linux" "armv7l"
+    acquireNodeOfficial "linux/arm64" "linux" "arm64"
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-arm64.tar.gz" node12 fix_nested_dir
+    acquireNodeOfficial "" "linux" "arm64"
+    acquireNodeOfficial "linux/arm" "linux" "armv7l"
+    acquireNodeOfficial "linux/amd64" "linux" "x64"
+    acquireNodeLinuxAlpine "linux/amd64"
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
-    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir
+    acquireNodeOfficial "" "linux" "armv7l"
+    acquireNodeOfficial "linux/arm64" "linux" "arm64"
+    acquireNodeOfficial "linux/amd64" "linux" "x64"
+    acquireNodeLinuxAlpine "linux/amd64"
 fi

@@ -213,9 +213,9 @@ namespace GitHub.Runner.Worker
                 ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
 #if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.Externals : WellKnownDirectory.DockerExternals), container.TranslateToContainerPath(HostContext.GetDirectory(HostContext.GetService<IDockerCommandManager>().WindowsContainer ? WellKnownDirectory.Externals : WellKnownDirectory.DockerExternals))));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath((HostContext.GetDirectory(WellKnownDirectory.Externals)))));
 #else
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.DockerExternals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.DockerExternals)), true));
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
 #endif
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
                 Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions));
@@ -226,8 +226,7 @@ namespace GitHub.Runner.Worker
                 var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
                 Directory.CreateDirectory(tempHomeDirectory);
                 string prefix = "";
-                // await HostContext.GetService<IDockerCommandManager>().DockerVersion(ExecutionContext);
-                if(HostContext.GetService<IDockerCommandManager>().WindowsContainer) {
+                if(HostContext.GetService<IDockerCommandManager>().Os == "windows") {
                     prefix = "c:";
                 }
                 container.MountVolumes.Add(new MountVolume(tempHomeDirectory, prefix + "/github/home"));
@@ -240,7 +239,7 @@ namespace GitHub.Runner.Worker
                 container.AddPathTranslateMapping(tempWorkflowDirectory, prefix + "/github/workflow");
 
                 container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-                if(!HostContext.GetService<IDockerCommandManager>().WindowsContainer) {
+                if(HostContext.GetService<IDockerCommandManager>().Os != "windows") {
                     container.ContainerEntryPoint = "tail";
                     container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
                 } else {

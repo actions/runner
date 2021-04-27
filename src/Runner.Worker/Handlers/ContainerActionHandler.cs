@@ -168,9 +168,8 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
             string prefix = "";
-            await HostContext.GetService<IDockerCommandManager>().DockerVersion(ExecutionContext);
-            if(HostContext.GetService<IDockerCommandManager>().WindowsContainer) {
-                prefix = "c:/";
+            if(HostContext.GetService<IDockerCommandManager>().Os == "windows") {
+                prefix = "c:";
             } else {
                 container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
             }

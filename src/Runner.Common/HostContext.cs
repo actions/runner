@@ -224,16 +224,6 @@ namespace GitHub.Runner.Common
                         Constants.Path.ExternalsDirectory);
                     break;
 
-                case WellKnownDirectory.DockerExternals:
-#if OS_LINUX
-                    path = GetDirectory(WellKnownDirectory.Externals);
-#else
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
-                        Path.Join(Constants.Path.ExternalsDirectory, "linux"));
-#endif
-                    break;
-
                 case WellKnownDirectory.Root:
                     path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
                     break;
