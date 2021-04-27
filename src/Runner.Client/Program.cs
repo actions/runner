@@ -364,7 +364,7 @@ namespace Runner.Client
                         serverconfig["Runner.Server"] = JObject.FromObject(new { 
                             GitServerUrl = "https://github.com",
                             GitApiServerUrl = "https://api.github.com",
-                            GitGraphApiServerUrl = ""
+                            GitGraphQlServerUrl = "https://api.github.com/graphql",
                         });
                         try {
                             JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));

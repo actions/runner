@@ -45,6 +45,7 @@ namespace Runner.Server.Controllers
     {
         private string GitServerUrl;
         private string GitApiServerUrl;
+        private string GitGraphQlServerUrl;
         private IMemoryCache _cache;
         private string GITHUB_TOKEN;
         private List<Secret> secrets;
@@ -58,6 +59,7 @@ namespace Runner.Server.Controllers
         {
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
+            GitGraphQlServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitGraphQlServerUrl") ?? "";
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
             secrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();
             _cache = memoryCache;
@@ -699,6 +701,7 @@ namespace Runner.Server.Controllers
                             contextData.Add("github", githubctx);
                             githubctx.Add("server_url", new StringContextData(GitServerUrl));
                             githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
+                            githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
                             var workflowname = (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                             githubctx.Add("workflow", new StringContextData(workflowname));
                             githubctx.Add("repository", new StringContextData(repository_name));
