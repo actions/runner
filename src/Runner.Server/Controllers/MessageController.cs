@@ -1257,7 +1257,7 @@ namespace Runner.Server.Controllers
             // Jobcontainer
             TemplateToken jobContainer = (from r in run where r.Key.AssertString("container").Value == "container" select r).FirstOrDefault().Value;
 
-            foreach(var p in platform) {
+            foreach(var p in platform.Reverse()) {
                 var eq = p.IndexOf('=');
                 var set = p.Substring(0, eq).Split(",").Select(e => e.ToLowerInvariant()).ToHashSet();
                 if(runsOnMap.IsSubsetOf(set) && p.Length > (eq + 1)) {
