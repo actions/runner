@@ -50,7 +50,7 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
                 }
                 var os = HostContext.GetService<IDockerCommandManager>().Os;
-                ExecutionContext.SetRunnerContext("os", os);
+                ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
                 if(GetHostOS() != os) {
                     ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(runnerctx["tool_cache"].AssertString("runner ctx").Value, os));
                 }
