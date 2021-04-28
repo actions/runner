@@ -133,12 +133,9 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
         {
-            if (string.IsNullOrEmpty(configFileDirectory))
-            {
-                return await ExecuteDockerCommandAsync(context, $"pull", image, context.CancellationToken);
-            }
             string extraopts = "";
-            if(ServerVersion >= new Version(1, 32)) {
+            if(ServerVersion >= new Version(1, 32))
+            {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
                     if(val.Contains(' ')) {
@@ -147,6 +144,10 @@ namespace GitHub.Runner.Worker.Container
                         extraopts = "--platform " + val;
                     }
                 }
+            }
+            if (string.IsNullOrEmpty(configFileDirectory))
+            {
+                return await ExecuteDockerCommandAsync(context, $"pull{(extraopts.Length > 0 ? " " + extraopts : "")}", image, context.CancellationToken);
             }
             return await ExecuteDockerCommandAsync(context, $"--config {configFileDirectory} pull{(extraopts.Length > 0 ? " " + extraopts : "")}", image, context.CancellationToken);
         }
