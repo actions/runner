@@ -49,7 +49,7 @@ curl -O -L https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>
 tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 ```
 
-## Linux arm64 (Pre-release)
+## Linux arm64
 
 ``` bash
 # Create a folder
@@ -60,7 +60,7 @@ curl -O -L https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>
 tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 ```
 
-## Linux arm (Pre-release)
+## Linux arm
 
 ``` bash
 # Create a folder
