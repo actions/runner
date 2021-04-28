@@ -159,7 +159,12 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.SetGitHubContext("action_ref", null);
             }
 
-            var runnerctx = ExecutionContext.ExpressionValues["runner"] as RunnerContext;
+            RunnerContext runnerctx = null;
+            try {
+                runnerctx = ExecutionContext.ExpressionValues["runner"] as RunnerContext;
+            } catch {
+
+            }
 
             // Setup container stephost for running inside the container.
             if (ExecutionContext.Global.Container != null)
@@ -169,14 +174,16 @@ namespace GitHub.Runner.Worker
                 var containerStepHost = HostContext.CreateService<IContainerStepHost>();
                 containerStepHost.Container = ExecutionContext.Global.Container;
                 stepHost = containerStepHost;
-                ExecutionContext.ExpressionValues["runner"] = new RunnerContext();
-                foreach(var entr in runnerctx) {
-                    ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
-                }
-                var os = HostContext.GetService<IDockerCommandManager>().Os;
-                ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
-                if(GetHostOS() != os) {
-                    ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(runnerctx["tool_cache"].AssertString("runner ctx").Value, os));
+                if(runnerctx != null) {
+                    ExecutionContext.ExpressionValues["runner"] = new RunnerContext();
+                    foreach(var entr in runnerctx) {
+                        ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
+                    }
+                    var os = HostContext.GetService<IDockerCommandManager>().Os;
+                    ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
+                    if(GetHostOS() != os) {
+                        ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(runnerctx["tool_cache"].AssertString("runner ctx").Value, os));
+                    }
                 }
             }
 
@@ -284,7 +291,9 @@ namespace GitHub.Runner.Worker
             finally
             {
                 fileCommandManager.ProcessFiles(ExecutionContext, ExecutionContext.Global.Container);
-                ExecutionContext.ExpressionValues["runner"] = runnerctx;
+                if(runnerctx != null) {
+                    ExecutionContext.ExpressionValues["runner"] = runnerctx;
+                }
             }
 
         }

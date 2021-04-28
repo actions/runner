@@ -43,8 +43,13 @@ namespace GitHub.Runner.Worker.Handlers
 #if OS_WINDOWS || OS_OSX
             ExecutionContext.Warning("Container action is only supported on Linux");
 #endif
-            var runnerctx = ExecutionContext.ExpressionValues["runner"] as RunnerContext;
-            if(!(StepHost is IContainerStepHost)) {
+            RunnerContext runnerctx = null;
+            try {
+                runnerctx = ExecutionContext.ExpressionValues["runner"] as RunnerContext;
+            } catch {
+
+            }
+            if(!(StepHost is IContainerStepHost) && runnerctx != null) {
                 ExecutionContext.ExpressionValues["runner"] = new RunnerContext();
                 foreach(var entr in runnerctx) {
                     ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
@@ -243,7 +248,9 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Result = TaskResult.Failed;
                 }
             }
-            ExecutionContext.ExpressionValues["runner"] = runnerctx;
+            if(runnerctx != null) {
+                ExecutionContext.ExpressionValues["runner"] = runnerctx;
+            }
         }
     }
 }
