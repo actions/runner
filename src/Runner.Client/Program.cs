@@ -114,6 +114,7 @@ namespace Runner.Client
             public string directory { get; set; }
             public bool verbose { get; set; }
             public int parallel { get; set; }
+            public bool StartServer { get; set; }
             public bool StartRunner { get; set; }
         }
 
@@ -332,67 +333,76 @@ namespace Runner.Client
                 };
                 List<Task> listener = new List<Task>();
                 try {
-                    if(parameters.server == null) {
-                        foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
-                            if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
-                                var builder = new UriBuilder();
-                                builder.Host = ip.ToString();
-                                builder.Scheme = "http";
-                                builder.Port = 0;
-                                parameters.server = builder.Uri.ToString().Trim('/');
-                                break;
-                            }
-                        }
-                        if(parameters.server == null) {
-                            parameters.server = "http://localhost:0";
-                        }
-                        GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                    if(parameters.server == null || parameters.StartServer || parameters.StartRunner) {
+                        var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
                             Console.WriteLine(e.Data);
                         };
-                        if(parameters.verbose) {
-                            invoker.OutputDataReceived += _out;
-                            invoker.ErrorDataReceived += _out;
-                        }
-                        var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                        var server = Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}");
-                        string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
-                        JObject serverconfig = new JObject();
-                        var connectionopts = new JObject();
-                        connectionopts["sqlite"] = /* "Data Source=Agents.db;"; */"Data Source=:memory:;";
-                        serverconfig["ConnectionStrings"] = connectionopts;
-                        
-                        serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
-                        serverconfig["Runner.Server"] = JObject.FromObject(new { 
-                            GitServerUrl = "https://github.com",
-                            GitApiServerUrl = "https://api.github.com",
-                            GitGraphQlServerUrl = "https://api.github.com/graphql",
-                        });
-                        try {
-                            JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));
-                            orgserverconfig.Merge(serverconfig, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
-                            serverconfig = orgserverconfig;
-                        } catch {
-
-                        }
-                        await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
-                        using (AnonymousPipeServerStream pipeServer =
-                            new AnonymousPipeServerStream(PipeDirection.In,
-                            HandleInheritability.Inheritable))
-                        {
-                            var servertask = invoker.ExecuteAsync(binpath, server, "", new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }}, false, null, true, token).ContinueWith(x => {
-                                Console.WriteLine("Stopped Server");
-                                File.Delete(serverconfigfileName);
+                        if(parameters.StartRunner) {
+                            if(parameters.server == null) {
+                                parameters.server = "http://localhost:5000";
+                            }
+                        } else {
+                            if(parameters.server == null) {
+                                foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
+                                    if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
+                                        var builder = new UriBuilder();
+                                        builder.Host = ip.ToString();
+                                        builder.Scheme = "http";
+                                        builder.Port = 0;
+                                        parameters.server = builder.Uri.ToString().Trim('/');
+                                        break;
+                                    }
+                                }
+                                if(parameters.server == null) {
+                                    parameters.server = "http://localhost:0";
+                                }
+                            }
+                            GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                            if(parameters.verbose) {
+                                invoker.OutputDataReceived += _out;
+                                invoker.ErrorDataReceived += _out;
+                            }
+                            var server = Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}");
+                            string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
+                            JObject serverconfig = new JObject();
+                            var connectionopts = new JObject();
+                            connectionopts["sqlite"] = /* "Data Source=Agents.db;"; */"Data Source=:memory:;";
+                            serverconfig["ConnectionStrings"] = connectionopts;
+                            
+                            serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
+                            serverconfig["Runner.Server"] = JObject.FromObject(new { 
+                                GitServerUrl = "https://github.com",
+                                GitApiServerUrl = "https://api.github.com",
+                                GitGraphQlServerUrl = "https://api.github.com/graphql",
                             });
-                            listener.Add(servertask);
-                            using (StreamReader rd = new StreamReader(pipeServer))
+                            try {
+                                JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));
+                                orgserverconfig.Merge(serverconfig, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
+                                serverconfig = orgserverconfig;
+                            } catch {
+
+                            }
+                            await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
+                            using (AnonymousPipeServerStream pipeServer =
+                                new AnonymousPipeServerStream(PipeDirection.In,
+                                HandleInheritability.Inheritable))
                             {
-                                var line = rd.ReadLine();
-                                parameters.server = line;
+                                var servertask = invoker.ExecuteAsync(binpath, server, "", new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }}, false, null, true, token).ContinueWith(x => {
+                                    Console.WriteLine("Stopped Server");
+                                    File.Delete(serverconfigfileName);
+                                });
+                                listener.Add(servertask);
+                                using (StreamReader rd = new StreamReader(pipeServer))
+                                {
+                                    var line = rd.ReadLine();
+                                    parameters.server = line;
+                                }
                             }
                         }
 
                         var workerchannel = Channel.CreateBounded<bool>(1);
+                        // Parallel.For(0, parameters.parallel, () => {});
                         for(int i = 0; i < parameters.parallel; i++) {
                             var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
                             string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
@@ -406,7 +416,7 @@ namespace Runner.Client
                                         inv.ErrorDataReceived += _out;
                                     }
 
-                                    var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }};
+                                    var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "RUNNER_TOOL_CACHE", Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") ?? Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache") }};
                                     if(parameters.containerArchitecture != null) {
                                         runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
                                     }
@@ -429,9 +439,21 @@ namespace Runner.Client
                                             workerchannel.Writer.WriteAsync(true);
                                         }
                                     };
-                                    listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }}, false, null, true, token).ContinueWith(x => {
+                                    listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, token).ContinueWith(async x => {
                                         Console.WriteLine("Stopped Worker");
-                                        Directory.Delete(tmpdir, true);
+                                        int delattempt = 1;
+                                        while(true) {
+                                            try {
+                                                Directory.Delete(tmpdir, true);
+                                            } catch {
+                                                if(delattempt++ >= 3) {
+                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                    return;
+                                                } else {
+                                                    await Task.Delay(500);
+                                                }
+                                            }
+                                        }
                                     }));
                                     break;
                                 } catch {
@@ -447,6 +469,15 @@ namespace Runner.Client
                         }
                         if(parameters.parallel > 0) {
                             await workerchannel.Reader.ReadAsync();
+                        }
+
+                        if(parameters.StartServer || parameters.StartRunner) {
+                            if(parameters.StartServer) {
+                                Console.WriteLine($"The server is listening on {parameters.server}");
+                            }
+                            Console.WriteLine($"Press any key or CTRL+C to stop the {(parameters.StartServer ? "server" : "runners")}");
+                            await Task.WhenAny(Console.In.ReadLineAsync(), Task.Run(() => token.WaitHandle.WaitOne()));
+                            return 0;
                         }
                     }
                     bool first = true;
@@ -1168,13 +1199,31 @@ namespace Runner.Client
                     }
                 }
             }
-            // var startrunner = new Command("startrunner", "Configures and runs n runner");
-            // rootCommand.AddCommand(startrunner);
-            // Func<Parameters, Task<int>> thandler = p => {
-            //     p.StartRunner = true;
-            //     return handler(p);
-            // };
-            // startrunner.Handler = CommandHandler.Create(thandler);
+            var startserver = new Command("startserver", "Starts a server listening on the supplied address or selects a random free http address");
+            rootCommand.AddCommand(startserver);
+            Func<Parameters, Task<int>> sthandler = p => {
+                p.StartServer = true;
+                p.parallel = 0;
+                return handler(p);
+            };
+            startserver.Handler = CommandHandler.Create(sthandler);
+
+            var startrunner = new Command("startrunner", "Configures and runs n runner");
+            rootCommand.AddCommand(startrunner);
+            Func<Parameters, Task<int>> thandler = p => {
+                p.StartRunner = true;
+                return handler(p);
+            };
+            startrunner.Handler = CommandHandler.Create(thandler);
+
+            foreach(var opt in rootCommand.Options) {
+                if(opt.Aliases.Contains("--server") || opt.Aliases.Contains("--verbose")) {
+                    startserver.AddOption(opt);
+                    startrunner.AddOption(opt);
+                } else if(opt.Aliases.Contains("--parallel") || opt.Aliases.Contains("--privileged") || opt.Aliases.Contains("--userns") || opt.Aliases.Contains("--container-architecture")) {
+                    startrunner.AddOption(opt);
+                }
+            }
 
             rootCommand.Handler = CommandHandler.Create(handler);
 
