@@ -445,10 +445,11 @@ namespace Runner.Client
                                         while(true) {
                                             try {
                                                 Directory.Delete(tmpdir, true);
+                                                break;
                                             } catch {
                                                 if(delattempt++ >= 3) {
                                                     await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
-                                                    return;
+                                                    break;
                                                 } else {
                                                     await Task.Delay(500);
                                                 }
@@ -461,6 +462,20 @@ namespace Runner.Client
                                         await Task.Delay(500);
                                     } else {
                                         Console.Error.WriteLine("Failed to auto-configure actions runners after 3 attempts");
+                                        int delattempt = 1;
+                                        while(true) {
+                                            try {
+                                                Directory.Delete(tmpdir, true);
+                                                break;
+                                            } catch {
+                                                if(delattempt++ >= 3) {
+                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                    break;
+                                                } else {
+                                                    await Task.Delay(500);
+                                                }
+                                            }
+                                        }
                                         return 1;
                                     }
                                 }
