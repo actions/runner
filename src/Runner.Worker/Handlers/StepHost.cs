@@ -128,7 +128,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
-            var osReleaseIdCmd = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? "\"sh -c 'cat /etc/*release | grep ^ID'\"" : "sh -c \"cat /etc/*release | grep ^ID\"";
+            var osReleaseIdCmd = "sh -c \"cat /etc/*release | grep ^ID\"";
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
             var output = new List<string>();
@@ -141,13 +141,6 @@ namespace GitHub.Runner.Worker.Handlers
                     executionContext.Debug(line);
                     if (line.ToLower().Contains("alpine"))
                     {
-                        if (dockerManager.Arch != "amd64")
-                        {
-                            var os = Constants.Runner.Platform.ToString();
-                            var arch = dockerManager.Arch;
-                            var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
-                            throw new NotSupportedException(msg);
-                        }
                         nodeExternal = "node12_alpine";
                         executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
                         return nodeExternal;
