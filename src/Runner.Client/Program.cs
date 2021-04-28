@@ -493,62 +493,64 @@ namespace Runner.Client
                             List<string> changedFiles = new List<string>();
                             List<string> removedFiles = new List<string>();
                             if(!first) {
-                                FileSystemWatcher watcher = new FileSystemWatcher(parameters.directory ?? ".") {IncludeSubdirectories = true};
-                                watcher.Created += (s, f) => {
-                                    var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
-                                    Console.WriteLine($"Added {path}");
-                                    added.Enqueue(path);
-                                };
-                                watcher.Deleted += (s, f) => {
-                                    var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
-                                    Console.WriteLine($"Removed {path}");
-                                    removed.Enqueue(path);
-                                };
-                                watcher.Changed += (s, f) => {
-                                    var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
-                                    Console.WriteLine($"Changed {path}");
-                                    changed.Enqueue(path);
-                                };
-                                watcher.Renamed += (s, f) => {
-                                    var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
-                                    var oldpath = Path.GetRelativePath(parameters.directory ?? ".", f.OldFullPath);
-                                    Console.WriteLine($"Renamed {oldpath} to {path}");
-                                    if(oldpath != f.OldFullPath) {
-                                        removed.Enqueue(oldpath);
-                                    }
-                                    if(path != f.FullPath) {
+                                using(FileSystemWatcher watcher = new FileSystemWatcher(parameters.directory ?? ".") {IncludeSubdirectories = true}) {
+                                    watcher.Created += (s, f) => {
+                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
+                                        Console.WriteLine($"Added {path}");
                                         added.Enqueue(path);
+                                    };
+                                    watcher.Deleted += (s, f) => {
+                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
+                                        Console.WriteLine($"Removed {path}");
+                                        removed.Enqueue(path);
+                                    };
+                                    watcher.Changed += (s, f) => {
+                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
+                                        Console.WriteLine($"Changed {path}");
+                                        changed.Enqueue(path);
+                                    };
+                                    watcher.Renamed += (s, f) => {
+                                        var path = Path.GetRelativePath(parameters.directory ?? ".", f.FullPath);
+                                        var oldpath = Path.GetRelativePath(parameters.directory ?? ".", f.OldFullPath);
+                                        Console.WriteLine($"Renamed {oldpath} to {path}");
+                                        if(oldpath != f.OldFullPath) {
+                                            removed.Enqueue(oldpath);
+                                        }
+                                        if(path != f.FullPath) {
+                                            added.Enqueue(path);
+                                        }
+                                    };
+                                    watcher.Error += OnError;
+                                    watcher.EnableRaisingEvents = true;
+
+                                    Console.WriteLine("Watching for changes");
+
+                                    string addedFile = null;
+                                    string changedFile = null;
+                                    string removedFile = null;
+                                    try {
+                                        do {
+                                            await Task.Delay(2000, source.Token);
+                                        } while(!added.TryDequeue(out addedFile) && !changed.TryDequeue(out changedFile) && !removed.TryDequeue(out removedFile));
+                                    } catch(TaskCanceledException) {
+
                                     }
-                                };
-                                watcher.Error += OnError;
-                                watcher.EnableRaisingEvents = true;
-
-                                Console.WriteLine("Watching for changes");
-
-                                string addedFile = null;
-                                string changedFile = null;
-                                string removedFile = null;
-                                try {
-                                    do {
-                                        await Task.Delay(2000, source.Token);
-                                    } while(!added.TryDequeue(out addedFile) && !changed.TryDequeue(out changedFile) && !removed.TryDequeue(out removedFile));
-                                } catch(TaskCanceledException) {
-
-                                }
-                                while(addedFile != null || added.TryDequeue(out addedFile)) {
-                                    addedFiles.Add(addedFile);
-                                    addedFile = null;
-                                }
-                                while(changedFile != null || changed.TryDequeue(out changedFile)) {
-                                    changedFiles.Add(changedFile);
-                                    changedFile = null;
-                                }
-                                while(removedFile != null || removed.TryDequeue(out removedFile)) {
-                                    removedFiles.Add(removedFile);
-                                    removedFile = null;
-                                }
-                                if(source.IsCancellationRequested) {
-                                    return 0;
+                                    while(addedFile != null || added.TryDequeue(out addedFile)) {
+                                        addedFiles.Add(addedFile);
+                                        addedFile = null;
+                                    }
+                                    while(changedFile != null || changed.TryDequeue(out changedFile)) {
+                                        changedFiles.Add(changedFile);
+                                        changedFile = null;
+                                    }
+                                    while(removedFile != null || removed.TryDequeue(out removedFile)) {
+                                        removedFiles.Add(removedFile);
+                                        removedFile = null;
+                                    }
+                                    watcher.EnableRaisingEvents = false;
+                                    if(source.IsCancellationRequested) {
+                                        return 0;
+                                    }
                                 }
                             }
                             first = false;
