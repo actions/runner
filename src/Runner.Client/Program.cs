@@ -698,7 +698,7 @@ namespace Runner.Client
                                             gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                                             gitinvoker.OutputDataReceived += handleoutput;
                                             await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"for-each-ref --format='%(upstream:short)' {_ref}", new Dictionary<string, string>(), source.Token);
-                                            if(line != null) {
+                                            if(line != null && line != "") {
                                                 var remote = line.Substring(0, line.IndexOf('/'));
                                                 if(parameters.defaultbranch == null) {
                                                     line = null;

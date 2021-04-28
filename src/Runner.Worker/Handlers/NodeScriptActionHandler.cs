@@ -127,7 +127,8 @@ namespace GitHub.Runner.Worker.Handlers
                     if(os != "windows") {
                         exeExtension = "";
                     }
-                    externalsPath = Path.Combine(externalsPath, os, arch.Substring(0, arch.IndexOf('/')));
+                    var archi = arch.IndexOf('/');
+                    externalsPath = Path.Combine(externalsPath, os, archi != -1 ? arch.Substring(0, archi) : arch);
                 }
             }
             string file = Path.Combine(externalsPath, nodeRuntimeVersion, "bin", $"node{exeExtension}");
