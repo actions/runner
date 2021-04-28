@@ -328,7 +328,7 @@ namespace Runner.Client
                 CancellationTokenSource source = new CancellationTokenSource();
                 CancellationToken token = source.Token;
                 Console.CancelKeyPress += (s, e) => {
-                    e.Cancel = true;
+                    e.Cancel = !source.IsCancellationRequested;
                     source.Cancel();
                 };
                 List<Task> listener = new List<Task>();
@@ -491,7 +491,16 @@ namespace Runner.Client
                                 Console.WriteLine($"The server is listening on {parameters.server}");
                             }
                             Console.WriteLine($"Press any key or CTRL+C to stop the {(parameters.StartServer ? "server" : "runners")}");
-                            await Task.WhenAny(Console.In.ReadLineAsync(), Task.Run(() => token.WaitHandle.WaitOne()));
+
+                            try {
+                                Task.Run(() => {
+                                    Console.In.ReadLine();
+                                    source.Cancel();
+                                });
+                                await Task.Delay(-1, token);
+                            } catch {
+
+                            }
                             return 0;
                         }
                     }
