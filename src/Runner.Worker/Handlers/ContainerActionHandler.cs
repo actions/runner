@@ -20,6 +20,15 @@ namespace GitHub.Runner.Worker.Handlers
 
     public sealed class ContainerActionHandler : Handler, IContainerActionHandler
     {
+        private static string GetHostOS() {
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                return "linux";
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                return "windows";
+            }
+            return null;
+        }
+
         public ContainerActionExecutionData Data { get; set; }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously (method has async logic on only certain platforms)
@@ -34,6 +43,19 @@ namespace GitHub.Runner.Worker.Handlers
 #if OS_WINDOWS || OS_OSX
             ExecutionContext.Warning("Container action is only supported on Linux");
 #endif
+            var runnerctx = ExecutionContext.ExpressionValues["runner"] as RunnerContext;
+            if(!(StepHost is IContainerStepHost)) {
+                ExecutionContext.ExpressionValues["runner"] = new RunnerContext();
+                foreach(var entr in runnerctx) {
+                    ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
+                }
+                var os = HostContext.GetService<IDockerCommandManager>().Os;
+                ExecutionContext.SetRunnerContext("os", os);
+                if(GetHostOS() != os) {
+                    ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(runnerctx["tool_cache"].AssertString("runner ctx").Value, os));
+                }
+            }
+
             // Update the env dictionary.
             AddInputsToEnvironment();
 
@@ -221,6 +243,7 @@ namespace GitHub.Runner.Worker.Handlers
                     ExecutionContext.Result = TaskResult.Failed;
                 }
             }
+            ExecutionContext.ExpressionValues["runner"] = runnerctx;
         }
     }
 }
