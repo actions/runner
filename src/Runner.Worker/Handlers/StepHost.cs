@@ -128,7 +128,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
-            var osReleaseIdCmd = "\"sh -c 'cat /etc/*release | grep ^ID'\"";
+            var osReleaseIdCmd = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? "\"sh -c 'cat /etc/*release | grep ^ID'\"" : "sh -c \"cat /etc/*release | grep ^ID\"";
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
             var output = new List<string>();
