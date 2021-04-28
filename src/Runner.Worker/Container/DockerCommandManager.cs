@@ -138,7 +138,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
-                    if(val.Contains(' ')) {
+                    if(val.Contains(' ') || val.Contains('\t')) {
                         context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
                     } else {
                         extraopts = "--platform " + val;
@@ -158,7 +158,7 @@ namespace GitHub.Runner.Worker.Container
             if(ServerVersion >= new Version(1, 38)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
-                    if(val.Contains(' ')) {
+                    if(val.Contains(' ') || val.Contains('\t')) {
                         context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
                     } else {
                         extraopts = "--platform " + val;
@@ -174,7 +174,7 @@ namespace GitHub.Runner.Worker.Container
             if(ServerVersion >= new Version(1, 32)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
-                    if(val.Contains(' ')) {
+                    if(val.Contains(' ') || val.Contains('\t')) {
                         context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
                     } else {
                         dockerOptions.Add("--platform " + val);
@@ -280,7 +280,7 @@ namespace GitHub.Runner.Worker.Container
             if(ServerVersion >= new Version(1, 32)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
-                    if(val.Contains(' ')) {
+                    if(val.Contains(' ') || val.Contains('\t')) {
                         context.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
                     } else {
                         dockerOptions.Add("--platform " + val);

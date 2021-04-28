@@ -110,11 +110,24 @@ namespace GitHub.Runner.Worker.Handlers
             var exeExtension = IOUtil.ExeExtension;
             if(StepHost is ContainerStepHost) {
                 var manager = HostContext.GetService<IDockerCommandManager>();
-                if(GetHostOS() != manager.Os || (GetHostArch() != manager.Arch && !manager.Arch.StartsWith(GetHostArch() + "/"))) {
-                    if(manager.Os != "windows") {
+                var os = manager.Os;
+                var arch = manager.Arch;
+                if(manager.ServerVersion >= new Version(1, 32)) {
+                    var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
+                    if(val?.Length > 0) {
+                        if(val.Contains(' ') || val.Contains('\t')) {
+                            ExecutionContext.Warning("Ignored docker platform `{val}`, because it contains one or more spaces");
+                        } else {
+                            os = val.Substring(0, val.IndexOf('/'));
+                            arch = val.Substring(os.Length + 1);
+                        }
+                    }
+                }
+                if(GetHostOS() != os || (GetHostArch() != arch && !arch.StartsWith(GetHostArch() + "/"))) {
+                    if(os != "windows") {
                         exeExtension = "";
                     }
-                    externalsPath = Path.Combine(externalsPath, manager.Os, manager.Arch.Substring(0, manager.Arch.IndexOf('/')));
+                    externalsPath = Path.Combine(externalsPath, os, arch.Substring(0, arch.IndexOf('/')));
                 }
             }
             string file = Path.Combine(externalsPath, nodeRuntimeVersion, "bin", $"node{exeExtension}");
