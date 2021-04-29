@@ -1151,7 +1151,19 @@ namespace Runner.Client
                                                         var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
                                                         var file = File.OpenRead(w);
                                                         streamsToDispose.Add(file);
-                                                        repodownload.Add(new StreamContent(file), relpath, relpath);
+                                                        var mode = "644";
+                                                        if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                                                            try {
+                                                                var finfo = new Mono.Unix.UnixFileInfo(w);
+                                                                if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                                                    mode = "755";
+                                                                }
+                                                            }
+                                                            catch {
+
+                                                            }
+                                                        }
+                                                        repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
                                                     }
                                                 }
                                                 repodownload.Headers.ContentType.MediaType = "application/octet-stream";
