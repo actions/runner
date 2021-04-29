@@ -1095,9 +1095,14 @@ namespace Runner.Client
                                                             var filebeg = file.IndexOf('\t') + 1;
                                                             var mode = modeend == 6 ? file.Substring(3, modeend - 3) : "644";
                                                             var filename = file.Substring(filebeg);
-                                                            var fs = File.OpenRead(Path.Combine(parameters.directory ?? ".", filename));
-                                                            streamsToDispose.Add(fs);
-                                                            repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                                                            try {
+                                                                var fs = File.OpenRead(Path.Combine(parameters.directory ?? ".", filename));
+                                                                streamsToDispose.Add(fs);
+                                                                repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                                                            }
+                                                            catch {
+
+                                                            }
                                                         }
                                                     };
                                                     GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
@@ -1123,9 +1128,13 @@ namespace Runner.Client
 
                                                                 }
                                                             }
-                                                            var fs = File.OpenRead(relpath);
-                                                            streamsToDispose.Add(fs);
-                                                            repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                                                            try {
+                                                                var fs = File.OpenRead(relpath);
+                                                                streamsToDispose.Add(fs);
+                                                                repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                                                            } catch {
+
+                                                            }
                                                         }
                                                     };
                                                     await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "ls-files -z -o --exclude-standard", new Dictionary<string, string>(), source.Token);
