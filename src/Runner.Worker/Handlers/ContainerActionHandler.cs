@@ -49,12 +49,15 @@ namespace GitHub.Runner.Worker.Handlers
             } catch {
 
             }
+            var dockerManger = HostContext.GetService<IDockerCommandManager>();
+
             if(!(StepHost is IContainerStepHost) && runnerctx != null) {
                 ExecutionContext.ExpressionValues["runner"] = new RunnerContext();
                 foreach(var entr in runnerctx) {
                     ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
                 }
-                var os = HostContext.GetService<IDockerCommandManager>().Os;
+                await dockerManger.DockerVersion(executionContext);
+                var os = dockerManger.Os;
                 ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
                 if(GetHostOS() != os) {
                     ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(runnerctx["tool_cache"].AssertString("runner ctx").Value, os));
@@ -63,8 +66,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Update the env dictionary.
             AddInputsToEnvironment();
-
-            var dockerManger = HostContext.GetService<IDockerCommandManager>();
 
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
