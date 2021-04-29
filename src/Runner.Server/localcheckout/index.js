@@ -4,17 +4,25 @@ var http = require("http");
 var path = require("path");
 const fs = require("fs");
 const { env } = require("process");
+const del = require("del");
 
 try {
     const _path = core.getInput("path");
     const repository = core.getInput("repository");
     const ref = core.getInput("ref");
-    if (repository != env["GITHUB_REPOSITORY"] || ref != undefined && ref != '' && ref != env["GITHUB_REF"]) {
+    if (repository !== env["GITHUB_REPOSITORY"] || ref !== undefined && ref !== "" && ref !== env["GITHUB_REF"] && ref !== env["GITHUB_SHA"]) {
         core.setOutput("skip", false);
     } else {
         core.setOutput("skip", true);
         const url = env["ACTIONS_RUNTIME_URL"] + "_apis/v1/Message/multipart/" + env["GITHUB_RUN_ID"];
-        const dest = _path != '' && _path != undefined ? path.join(env["GITHUB_WORKSPACE"], _path) : env["GITHUB_WORKSPACE"];
+        const dest = _path !== "" && _path !== undefined ? path.join(env["GITHUB_WORKSPACE"], _path) : env["GITHUB_WORKSPACE"];
+        var clean = core.getInput("clean");
+        if(clean === undefined || clean === "" || clean === "true") {
+            var posixdest = dest.replace("\\", "/");
+            console.log("Clean folder: " + dest);
+            del.sync([ posixdest + "/**", "!" + posixdest ]);
+        }
+        console.log("Copying Repository to " + dest);
 
         var form = formidable({
             uploadDir: dest,
@@ -29,7 +37,7 @@ try {
                 }
                 _first = false;
                 if(formname.startsWith("=?utf-8?B?")) {
-                    formname = Buffer.from(formname.substring("=?utf-8?B?".length), 'base64').toString('utf-8');
+                    formname = Buffer.from(formname.substring("=?utf-8?B?".length), "base64").toString("utf-8");
                 }
                 var modeend = formname.indexOf(":");
                 if(modeend !== -1) {
@@ -40,7 +48,7 @@ try {
                 fs.mkdirSync(path.dirname(file.path), { recursive: true });
             }).on("file", (formname, file) => {
                 if(formname.startsWith("=?utf-8?B?")) {
-                    formname = Buffer.from(formname.substring("=?utf-8?B?".length), 'base64').toString('utf-8');
+                    formname = Buffer.from(formname.substring("=?utf-8?B?".length), "base64").toString("utf-8");
                 }
                 var modeend = formname.indexOf(":");
                 var mode = "644";
