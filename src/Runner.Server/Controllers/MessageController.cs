@@ -947,9 +947,9 @@ namespace Runner.Server.Controllers
                                         contextData["matrix"] = matrixContext;
                                         var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
                                         next.TimelineId = Guid.NewGuid();
+                                        jobitem.Childs?.Add(next);
                                         if(dependentjobgroup.Any()) {
                                             jobgroup.Add(next);
-                                            jobitem.Childs?.Add(next);
                                         }
                                         templateContext.ExpressionValues.Clear();
                                         foreach (var pair in contextData) {
