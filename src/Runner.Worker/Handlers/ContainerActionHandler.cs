@@ -56,7 +56,7 @@ namespace GitHub.Runner.Worker.Handlers
                 foreach(var entr in runnerctx) {
                     ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
                 }
-                await dockerManger.DockerVersion(executionContext);
+                await dockerManger.DockerVersion(ExecutionContext);
                 var os = dockerManger.Os;
                 ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
                 if(GetHostOS() != os) {
