@@ -160,6 +160,36 @@ namespace Runner.Client
             }
         }
 
+        private static async Task<bool> IsIgnored(string dir, string path) {
+            if(path.StartsWith(".git/") || path.StartsWith(".git\\")) {
+                return true;
+            }
+            try {
+                bool ret = false;
+                EventHandler<ProcessDataReceivedEventArgs> handleoutput = (s, e) => {
+                    var files = e.Data.Split('\0');
+                    foreach(var file in files) {
+                        if(file == "") break;
+                        if(file == path) {
+                            ret = true;
+                        }
+                    }
+                };
+                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(false));
+                gitinvoker.OutputDataReceived += handleoutput;
+                var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                var git = WhichUtil.Which("git", true);
+                var channel = Channel.CreateBounded<string>(1);
+                if(!channel.Writer.TryWrite(path + "\0")) {
+                    return false;
+                }
+                channel.Writer.Complete();
+                await gitinvoker.ExecuteAsync(dir, git, "check-ignore -z --stdin", new Dictionary<string, string>(), true, null, false, channel, CancellationToken.None);
+                return ret;
+            } catch {
+                return false;
+            }
+        }
         static int Main(string[] args)
         {
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
@@ -531,20 +561,26 @@ namespace Runner.Client
                                     try {
                                         do {
                                             await Task.Delay(2000, source.Token);
-                                        } while(!added.TryDequeue(out addedFile) && !changed.TryDequeue(out changedFile) && !removed.TryDequeue(out removedFile));
+                                        } while(!(added.TryDequeue(out addedFile) && !await IsIgnored(parameters.directory ?? ".", addedFile)) && !(changed.TryDequeue(out changedFile) && !await IsIgnored(parameters.directory ?? ".", changedFile)) && !(removed.TryDequeue(out removedFile) && !await IsIgnored(parameters.directory ?? ".", removedFile)));
                                     } catch(TaskCanceledException) {
 
                                     }
                                     while(addedFile != null || added.TryDequeue(out addedFile)) {
-                                        addedFiles.Add(addedFile);
+                                        if(!await IsIgnored(parameters.directory ?? ".", addedFile)) {
+                                            addedFiles.Add(addedFile);
+                                        }
                                         addedFile = null;
                                     }
                                     while(changedFile != null || changed.TryDequeue(out changedFile)) {
-                                        changedFiles.Add(changedFile);
+                                        if(!await IsIgnored(parameters.directory ?? ".", changedFile)) {
+                                            changedFiles.Add(changedFile);
+                                        }
                                         changedFile = null;
                                     }
                                     while(removedFile != null || removed.TryDequeue(out removedFile)) {
-                                        removedFiles.Add(removedFile);
+                                        if(!await IsIgnored(parameters.directory ?? ".", removedFile)) {
+                                            removedFiles.Add(removedFile);
+                                        }
                                         removedFile = null;
                                     }
                                     watcher.EnableRaisingEvents = false;
