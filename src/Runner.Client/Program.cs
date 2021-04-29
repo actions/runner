@@ -1086,11 +1086,64 @@ namespace Runner.Client
                                             var repodownload = new MultipartFormDataContent();
                                             List<Stream> streamsToDispose = new List<Stream>();
                                             try {
-                                                foreach(var w in Directory.EnumerateFiles(parameters.directory ?? ".", "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
-                                                    var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
-                                                    var file = File.OpenRead(w);
-                                                    streamsToDispose.Add(file);
-                                                    repodownload.Add(new StreamContent(file), relpath, relpath);
+                                                try {
+                                                    EventHandler<ProcessDataReceivedEventArgs> handleoutput = (s, e) => {
+                                                        var files = e.Data.Split('\0');
+                                                        foreach(var file in files) {
+                                                            if(file == "") break;
+                                                            var modeend = file.IndexOf(' ');
+                                                            var filebeg = file.IndexOf('\t') + 1;
+                                                            var mode = modeend == 6 ? file.Substring(3, modeend - 3) : "644";
+                                                            var filename = file.Substring(filebeg);
+                                                            var fs = File.OpenRead(Path.Combine(parameters.directory ?? ".", filename));
+                                                            streamsToDispose.Add(fs);
+                                                            repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                                                        }
+                                                    };
+                                                    GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                    gitinvoker.OutputDataReceived += handleoutput;
+                                                    var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                                                    var git = WhichUtil.Which("git", true);
+                                                    await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "ls-files -z -s", new Dictionary<string, string>(), source.Token);
+                                                    gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                    gitinvoker.OutputDataReceived += (s, e) => {
+                                                        var files = e.Data.Split('\0');
+                                                        foreach(var filename in files) {
+                                                            if(filename == "") break;
+                                                            var relpath = Path.Combine(parameters.directory ?? ".", filename);
+                                                            var mode = "644";
+                                                            if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                                                                try {
+                                                                    var finfo = new Mono.Unix.UnixFileInfo(relpath);
+                                                                    if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                                                        mode = "755";
+                                                                    }
+                                                                }
+                                                                catch {
+
+                                                                }
+                                                            }
+                                                            var fs = File.OpenRead(relpath);
+                                                            streamsToDispose.Add(fs);
+                                                            repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                                                        }
+                                                    };
+                                                    await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "ls-files -z -o --exclude-standard", new Dictionary<string, string>(), source.Token);
+                                                } catch {
+                                                    foreach(var fstream in streamsToDispose) {
+                                                        await fstream.DisposeAsync();
+                                                    }
+                                                    streamsToDispose.Clear();
+                                                    repodownload.Dispose();
+                                                    repodownload = new MultipartFormDataContent();
+                                                }
+                                                if(streamsToDispose.Count == 0) {
+                                                    foreach(var w in Directory.EnumerateFiles(parameters.directory ?? ".", "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
+                                                        var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
+                                                        var file = File.OpenRead(w);
+                                                        streamsToDispose.Add(file);
+                                                        repodownload.Add(new StreamContent(file), relpath, relpath);
+                                                    }
                                                 }
                                                 repodownload.Headers.ContentType.MediaType = "application/octet-stream";
                                                 await client.PostAsync(parameters.server + data, repodownload, token);
@@ -1098,6 +1151,7 @@ namespace Runner.Client
                                                 foreach(var fstream in streamsToDispose) {
                                                     await fstream.DisposeAsync();
                                                 }
+                                                repodownload.Dispose();
                                             }
                                         }
                                         if(line == "event: workflow") {
