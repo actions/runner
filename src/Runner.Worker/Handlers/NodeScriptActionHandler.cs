@@ -112,7 +112,7 @@ namespace GitHub.Runner.Worker.Handlers
                 var manager = HostContext.GetService<IDockerCommandManager>();
                 var os = manager.Os;
                 var arch = manager.Arch;
-                if(manager.ServerVersion >= new Version(1, 32)) {
+                if(manager.ClientVersion >= new Version(1, 32) && manager.ServerVersion >= new Version(1, 32)) {
                     var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                     if(val?.Length > 0) {
                         if(val.Contains(' ') || val.Contains('\t')) {
