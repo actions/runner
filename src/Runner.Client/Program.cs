@@ -288,7 +288,7 @@ namespace Runner.Client
                 new Option<string>(
                     new[] { "-W", "--workflows"},
                     getDefaultValue: () => ".github/workflows",
-                    description: "directory which contains workflows"),
+                    description: "workflow file or directory which contains workflows, only used if no --workflow option is set"),
                 platformOption,
                 new Option<string>(
                     new[] {"-a" , "--actor"},
@@ -592,15 +592,22 @@ namespace Runner.Client
                             first = false;
                             var workflows = parameters.workflow;
                             if(workflows == null || workflows.Length == 0) {
-                                try {
-                                    workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true });
-                                    if((workflows == null || workflows.Length == 0)) {
-                                        Console.Error.WriteLine($"No workflow *.yml file found inside of {parameters.workflows}");
-                                        return 0;
+                                if(Directory.Exists(parameters.workflows)) {
+                                    try {
+                                        workflows = Directory.GetFiles(parameters.workflows, "*.y?ml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Where(f => f.EndsWith(".yml") || f.EndsWith(".yaml")).ToArray();
+                                        if((workflows == null || workflows.Length == 0)) {
+                                            Console.Error.WriteLine($"No workflow *.yml file found inside of {parameters.workflows}");
+                                            return 1;
+                                        }   
+                                    } catch {
+                                        Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
+                                        return 1;
                                     }
-                                } catch {
-                                    Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
-                                    return 0;
+                                } else if (File.Exists(parameters.workflows)) {
+                                    workflows = new[] { parameters.workflows };
+                                } else {
+                                    Console.Error.WriteLine($"No such file or directory {parameters.workflows}");
+                                    return 1;
                                 }
                             }
                             try {
