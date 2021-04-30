@@ -594,11 +594,11 @@ namespace Runner.Client
                             if(workflows == null || workflows.Length == 0) {
                                 if(Directory.Exists(parameters.workflows)) {
                                     try {
-                                        workflows = Directory.GetFiles(parameters.workflows, "*.y?ml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Where(f => f.EndsWith(".yml") || f.EndsWith(".yaml")).ToArray();
+                                        workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Concat(Directory.GetFiles(parameters.workflows, "*.yaml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })).ToArray();
                                         if((workflows == null || workflows.Length == 0)) {
                                             Console.Error.WriteLine($"No workflow *.yml file found inside of {parameters.workflows}");
                                             return 1;
-                                        }   
+                                        }
                                     } catch {
                                         Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
                                         return 1;
