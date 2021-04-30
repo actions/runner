@@ -49,8 +49,8 @@ namespace GitHub.Runner.Worker.Handlers
                     childScopeName = $"__{Guid.NewGuid()}";
                 }
 
-                // Create nested steps
-                var nestedSteps = new List<IStep>();
+                // Create embedded steps
+                var embeddedSteps = new List<IStep>();
                 foreach (Pipelines.ActionStep stepData in Data.Steps)
                 {
                     var step = HostContext.CreateService<IActionRunner>();
@@ -70,11 +70,11 @@ namespace GitHub.Runner.Worker.Handlers
                     // Set GITHUB_ACTION_PATH
                     step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
 
-                    nestedSteps.Add(step);
+                    embeddedSteps.Add(step);
                 }
 
-                // Run nested steps
-                await RunStepsAsync(nestedSteps);
+                // Run embedded steps
+                await RunStepsAsync(embeddedSteps);
 
                 // Set outputs
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
@@ -134,16 +134,16 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private async Task RunStepsAsync(List<IStep> nestedSteps)
+        private async Task RunStepsAsync(List<IStep> embeddedSteps)
         {
-            ArgUtil.NotNull(nestedSteps, nameof(nestedSteps));
+            ArgUtil.NotNull(embeddedSteps, nameof(embeddedSteps));
 
-            foreach (IStep step in nestedSteps)
+            foreach (IStep step in embeddedSteps)
             {
-                Trace.Info($"Processing nested step: DisplayName='{step.DisplayName}'");
+                Trace.Info($"Processing embedded step: DisplayName='{step.DisplayName}'");
 
                 // Initialize env context
-                Trace.Info("Initialize Env context for nested step");
+                Trace.Info("Initialize Env context for embedded step");
 #if OS_WINDOWS
                 var envContext = new DictionaryContextData();
 #else
@@ -175,7 +175,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 try
                 {
-                    // Evaluate and merge nested-step env
+                    // Evaluate and merge embedded-step env
                     var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                     var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
                     foreach (var env in actionEnvironment)
@@ -186,7 +186,7 @@ namespace GitHub.Runner.Worker.Handlers
                 catch (Exception ex)
                 {
                     // Evaluation error
-                    Trace.Info("Caught exception from expression for nested step.env");
+                    Trace.Info("Caught exception from expression for embedded step.env");
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
