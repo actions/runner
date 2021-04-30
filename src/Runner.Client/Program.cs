@@ -346,6 +346,7 @@ namespace Runner.Client
                 List<Task> listener = new List<Task>();
                 try {
                     if(parameters.server == null || parameters.StartServer || parameters.StartRunner) {
+                        Console.WriteLine("Starting Server...");
                         var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
                             Console.WriteLine(e.Data);
@@ -413,89 +414,96 @@ namespace Runner.Client
                             }
                         }
 
-                        var workerchannel = Channel.CreateBounded<bool>(1);
-                        // Parallel.For(0, parameters.parallel, () => {});
-                        for(int i = 0; i < parameters.parallel; i++) {
-                            var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
-                            string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
-                            Directory.CreateDirectory(tmpdir);
-                            int atempt = 1;
-                            while(true) {
-                                try {
-                                    var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                    if(parameters.verbose) {
-                                        inv.OutputDataReceived += _out;
-                                        inv.ErrorDataReceived += _out;
+                        if(parameters.parallel > 0) {
+                            var workerchannel = Channel.CreateBounded<bool>(1);
+                            // Parallel.For(0, parameters.parallel, () => {});
+                            var __startrunner = Task.Run(async () => {
+                                for(int i = 0; i < parameters.parallel; i++) {
+                                    var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
+                                    string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
+                                    Directory.CreateDirectory(tmpdir);
+                                    int atempt = 1;
+                                    while(true) {
+                                        try {
+                                            var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                            if(parameters.verbose) {
+                                                inv.OutputDataReceived += _out;
+                                                inv.ErrorDataReceived += _out;
+                                            }
+
+                                            var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "RUNNER_TOOL_CACHE", Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") ?? Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache") }};
+                                            if(parameters.containerArchitecture != null) {
+                                                runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
+                                            }
+                                            if(parameters.privileged) {
+                                                runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
+                                            }
+                                            if(parameters.userns != null) {
+                                                runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
+                                            }
+                                            
+                                            // Agent-{Guid.NewGuid().ToString()}
+                                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
+                                            var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                            if(parameters.verbose) {
+                                                runnerlistener.OutputDataReceived += _out;
+                                                runnerlistener.ErrorDataReceived += _out;
+                                            }
+                                            runnerlistener.OutputDataReceived += (s, e) => {
+                                                if(e.Data.Contains("Listen")) {
+                                                    workerchannel.Writer.WriteAsync(true);
+                                                }
+                                            };
+                                            listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, token).ContinueWith(async x => {
+                                                Console.WriteLine("Stopped Worker");
+                                                int delattempt = 1;
+                                                while(true) {
+                                                    try {
+                                                        Directory.Delete(tmpdir, true);
+                                                        break;
+                                                    } catch {
+                                                        if(delattempt++ >= 3) {
+                                                            await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                            break;
+                                                        } else {
+                                                            await Task.Delay(500);
+                                                        }
+                                                    }
+                                                }
+                                            }));
+                                            break;
+                                        } catch {
+                                            if(atempt++ <= 3) {
+                                                await Task.Delay(500);
+                                            } else {
+                                                Console.Error.WriteLine("Failed to auto-configure actions runners after 3 attempts");
+                                                int delattempt = 1;
+                                                while(true) {
+                                                    try {
+                                                        Directory.Delete(tmpdir, true);
+                                                        break;
+                                                    } catch {
+                                                        if(delattempt++ >= 3) {
+                                                            await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                            break;
+                                                        } else {
+                                                            await Task.Delay(500);
+                                                        }
+                                                    }
+                                                }
+                                                return 1;
+                                            }
+                                        }
                                     }
 
-                                    var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "RUNNER_TOOL_CACHE", Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") ?? Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache") }};
-                                    if(parameters.containerArchitecture != null) {
-                                        runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
-                                    }
-                                    if(parameters.privileged) {
-                                        runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
-                                    }
-                                    if(parameters.userns != null) {
-                                        runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
-                                    }
-                                    
-                                    // Agent-{Guid.NewGuid().ToString()}
-                                    var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
-                                    var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                    if(parameters.verbose) {
-                                        runnerlistener.OutputDataReceived += _out;
-                                        runnerlistener.ErrorDataReceived += _out;
-                                    }
-                                    runnerlistener.OutputDataReceived += (s, e) => {
-                                        if(e.Data.Contains("Listen")) {
-                                            workerchannel.Writer.WriteAsync(true);
-                                        }
-                                    };
-                                    listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, token).ContinueWith(async x => {
-                                        Console.WriteLine("Stopped Worker");
-                                        int delattempt = 1;
-                                        while(true) {
-                                            try {
-                                                Directory.Delete(tmpdir, true);
-                                                break;
-                                            } catch {
-                                                if(delattempt++ >= 3) {
-                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
-                                                    break;
-                                                } else {
-                                                    await Task.Delay(500);
-                                                }
-                                            }
-                                        }
-                                    }));
-                                    break;
-                                } catch {
-                                    if(atempt++ <= 3) {
-                                        await Task.Delay(500);
-                                    } else {
-                                        Console.Error.WriteLine("Failed to auto-configure actions runners after 3 attempts");
-                                        int delattempt = 1;
-                                        while(true) {
-                                            try {
-                                                Directory.Delete(tmpdir, true);
-                                                break;
-                                            } catch {
-                                                if(delattempt++ >= 3) {
-                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
-                                                    break;
-                                                } else {
-                                                    await Task.Delay(500);
-                                                }
-                                            }
-                                        }
-                                        return 1;
-                                    }
+                                }
+                                return 0;
+                            });
+                            if(await Task.WhenAny(workerchannel.Reader.ReadAsync().AsTask(), __startrunner) == __startrunner) {
+                                if(await __startrunner != 0) {
+                                    return 1;
                                 }
                             }
-
-                        }
-                        if(parameters.parallel > 0) {
-                            await workerchannel.Reader.ReadAsync();
                         }
 
                         if(parameters.StartServer || parameters.StartRunner) {
