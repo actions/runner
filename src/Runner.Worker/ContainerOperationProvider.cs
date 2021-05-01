@@ -58,7 +58,7 @@ namespace GitHub.Runner.Worker
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
 #else
-            string[] initProcessCgroup = null;
+            IEnumerable<string> initProcessCgroup = null;
             try
             {
                 initProcessCgroup = File.ReadLines("/proc/1/cgroup");
