@@ -526,7 +526,7 @@ namespace Runner.Client
                             if(parameters.StartServer) {
                                 Console.WriteLine($"The server is listening on {parameters.server}");
                             }
-                            Console.WriteLine($"Press Enter or CTRL+C to stop the {(parameters.StartServer ? "Server" : "Runner{(parameters.parallel != 1 ? "s" : "")}")}");
+                            Console.WriteLine($"Press Enter or CTRL+C to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
                                 Task.Run(() => {
