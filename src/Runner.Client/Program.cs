@@ -363,7 +363,11 @@ namespace Runner.Client
                                     {
                                         socket.Connect("8.8.8.8", 65530);
                                         IPEndPoint endPoint = socket.LocalEndPoint as IPEndPoint;
-                                        parameters.server = endPoint.Address.ToString();
+                                        var builder = new UriBuilder();
+                                        builder.Host = endPoint.Address.ToString();
+                                        builder.Scheme = "http";
+                                        builder.Port = 0;
+                                        parameters.server = builder.Uri.ToString().Trim('/');
                                     }
                                 } catch {
                                 }
