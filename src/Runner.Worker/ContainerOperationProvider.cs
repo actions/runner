@@ -58,8 +58,16 @@ namespace GitHub.Runner.Worker
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
 #else
-            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+            string[] initProcessCgroup = null;
+            try
+            {
+                initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+            }
+            catch
+            {
+                // This fails on macOS
+            }
+            if (initProcessCgroup != null && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
             {
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
