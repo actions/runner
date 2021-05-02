@@ -11,7 +11,7 @@ This fork adds two executables to this Project, `Runner.Server` as a runner back
 ## Usage
 - [Download the Actions Runner Client + Server](https://github.com/ChristopherHX/runner/releases/latest)
 - Extract it anywhere you want
-- Clone you github actions repo
+- Clone your github actions repo
 - Run `Runner.Client`(`.exe`) (It is inside the bin folder of the package) inside your checkout
 
 ## Commandline Options
