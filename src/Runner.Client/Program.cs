@@ -346,7 +346,6 @@ namespace Runner.Client
                 List<Task> listener = new List<Task>();
                 try {
                     if(parameters.server == null || parameters.StartServer || parameters.StartRunner) {
-                        Console.WriteLine("Starting Server...");
                         var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                         EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
                             Console.WriteLine(e.Data);
@@ -356,18 +355,39 @@ namespace Runner.Client
                                 parameters.server = "http://localhost:5000";
                             }
                         } else {
+                            Console.WriteLine("Starting Server...");
                             if(parameters.server == null) {
-                                foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
-                                    if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
+                                try {
+                                    // From https://stackoverflow.com/a/27376368
+                                    using (System.Net.Sockets.Socket socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Dgram, 0))
+                                    {
+                                        socket.Connect("8.8.8.8", 65530);
+                                        IPEndPoint endPoint = socket.LocalEndPoint as IPEndPoint;
                                         var builder = new UriBuilder();
-                                        builder.Host = ip.ToString();
+                                        builder.Host = endPoint.Address.ToString();
                                         builder.Scheme = "http";
                                         builder.Port = 0;
                                         parameters.server = builder.Uri.ToString().Trim('/');
-                                        break;
+                                    }
+                                } catch {
+                                }
+                                if(parameters.server == null) {
+                                    try {
+                                        foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
+                                            if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
+                                                var builder = new UriBuilder();
+                                                builder.Host = ip.ToString();
+                                                builder.Scheme = "http";
+                                                builder.Port = 0;
+                                                parameters.server = builder.Uri.ToString().Trim('/');
+                                                break;
+                                            }
+                                        }
+                                    } catch {
                                     }
                                 }
                                 if(parameters.server == null) {
+                                    Console.WriteLine("Failed to autodetect non loopback ip, docker actions will fail to connect");
                                     parameters.server = "http://localhost:0";
                                 }
                             }
@@ -415,6 +435,7 @@ namespace Runner.Client
                         }
 
                         if(parameters.parallel > 0) {
+                            Console.WriteLine($"Starting {parameters.parallel} Runner{(parameters.parallel != 1 ? "s" : "")}...");
                             var workerchannel = Channel.CreateBounded<bool>(1);
                             // Parallel.For(0, parameters.parallel, () => {});
                             var __startrunner = Task.Run(async () => {
@@ -442,8 +463,7 @@ namespace Runner.Client
                                                 runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
                                             }
                                             
-                                            // Agent-{Guid.NewGuid().ToString()}
-                                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
+                                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent-{Guid.NewGuid().ToString()} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
                                             var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                                             if(parameters.verbose) {
                                                 runnerlistener.OutputDataReceived += _out;
@@ -455,7 +475,7 @@ namespace Runner.Client
                                                 }
                                             };
                                             listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, token).ContinueWith(async x => {
-                                                Console.WriteLine("Stopped Worker");
+                                                Console.WriteLine("Stopped Runner");
                                                 int delattempt = 1;
                                                 while(true) {
                                                     try {
@@ -510,7 +530,7 @@ namespace Runner.Client
                             if(parameters.StartServer) {
                                 Console.WriteLine($"The server is listening on {parameters.server}");
                             }
-                            Console.WriteLine($"Press any key or CTRL+C to stop the {(parameters.StartServer ? "server" : "runners")}");
+                            Console.WriteLine($"Press Enter or CTRL+C to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
                                 Task.Run(() => {
