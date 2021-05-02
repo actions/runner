@@ -9,10 +9,8 @@ This fork adds two executables to this Project, `Runner.Server` as a runner back
 </p>
 
 ## Usage
-- [Download the Actions Runner Client + Server](https://github.com/ChristopherHX/runner/releases/latest).
-
-- Extract it anywhere you want.
-
+- [Download the Actions Runner Client + Server](https://github.com/ChristopherHX/runner/releases/latest)
+- Extract it anywhere you want
 - Clone you github actions repo
 - Run `Runner.Client`(`.exe`) (It is inside the bin folder of the package) inside your checkout
 
@@ -93,17 +91,17 @@ If you get an error like:
 Error: No runner is registered for the requested runs-on labels: [ubuntu-latest], please register and run a self-hosted runner with at least these labels...
 ```
 
-Then you will need add one of the following cli options, replace `ubuntu-latest` with the content between `runs-on labels: [` The labels here without spaces `]`
+Then you will need to add one of the following cli options, replace `ubuntu-latest` with the content between `runs-on labels: [` The labels here without spaces `]`
 - to run it on your local machine `-P ubuntu-latest=-self-hosted`
 - to run it in a docker container `-P ubuntu-latest=catthehacker/ubuntu:act-latest`
   For more docker images refer to https://github.com/nektos/act#runners
 
-This Sofware reads [act configuration files](https://github.com/nektos/act#configuration), you can save this inside a `.actrc` in your current or home folder to avoid typing it in your commandline.
+This Software reads [act configuration files](https://github.com/nektos/act#configuration), you can save this inside a `.actrc` in your current or home folder to avoid typing it in your commandline.
 
 ## Coming from [act](https://github.com/nektos/act)?
 This Software shares absolutly no source code with `act` and may behave differently.
 Just replace `act` with `Runner.Client`(`.exe`) (It is inside the bin folder of the package).
-`Runner.Server` doesn't have all commandline options of act, type `--help` and compare the available commandlineoptions.
+`Runner.Client` doesn't have all commandline options of `act`, type `--help` and compare the available commandlineoptions.
 Then you will be able to use
 - `actions/cache@v2`
 - `actions/upload-artifact@v2`
@@ -156,7 +154,7 @@ Windows:
 .\config.cmd --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
 ```
 
-Run the official runner
+Run the unofficial runner
 
 Linux or macOS:
 ```
