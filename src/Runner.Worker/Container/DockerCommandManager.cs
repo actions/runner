@@ -18,6 +18,7 @@ namespace GitHub.Runner.Worker.Container
         string DockerInstanceLabel { get; }
         string Os { get; }
         string Arch { get; }
+        Version ClientVersion { get; }
         Version ServerVersion { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
         Task<int> DockerPull(IExecutionContext context, string image);
@@ -59,6 +60,7 @@ namespace GitHub.Runner.Worker.Container
             throw new Exception("Unsupported");
         } }
 
+        public Version ClientVersion { get; private set; }
         public Version ServerVersion { get; private set; }
 
         private string os = null;
@@ -121,6 +123,7 @@ namespace GitHub.Runner.Worker.Container
                 {
                     clientVersion = null;
                 }
+                ClientVersion = clientVersion;
             }
 
             return new DockerVersion(serverVersion, clientVersion);
@@ -134,7 +137,7 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
         {
             string extraopts = "";
-            if(ServerVersion >= new Version(1, 32))
+            if(ClientVersion >= new Version(1, 32) && ServerVersion >= new Version(1, 32))
             {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
@@ -155,7 +158,7 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
         {
             string extraopts = "";
-            if(ServerVersion >= new Version(1, 38)) {
+            if(ClientVersion >= new Version(1, 38) && ServerVersion >= new Version(1, 38)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
                     if(val.Contains(' ') || val.Contains('\t')) {
@@ -171,7 +174,7 @@ namespace GitHub.Runner.Worker.Container
         public async Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
         {
             IList<string> dockerOptions = new List<string>();
-            if(ServerVersion >= new Version(1, 32)) {
+            if(ClientVersion >= new Version(1, 32) && ServerVersion >= new Version(1, 32)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
                     if(val.Contains(' ') || val.Contains('\t')) {
@@ -277,7 +280,7 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             IList<string> dockerOptions = new List<string>();
-            if(ServerVersion >= new Version(1, 32)) {
+            if(ClientVersion >= new Version(1, 32) && ServerVersion >= new Version(1, 32)) {
                 var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                 if(val?.Length > 0) {
                     if(val.Contains(' ') || val.Contains('\t')) {

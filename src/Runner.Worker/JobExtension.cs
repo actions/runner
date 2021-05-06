@@ -210,6 +210,7 @@ namespace GitHub.Runner.Worker
                     var serviceContainers = templateEvaluator.EvaluateJobServiceContainers(message.JobServiceContainers, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (serviceContainers?.Count > 0)
                     {
+                        await HostContext.GetService<IDockerCommandManager>().DockerVersion(context);
                         foreach (var pair in serviceContainers)
                         {
                             var networkAlias = pair.Key;

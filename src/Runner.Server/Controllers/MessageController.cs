@@ -905,8 +905,7 @@ namespace Runner.Server.Controllers
                                             mdict[m_.Substring(0, i)] = TemplateReader.Read(templateContext, "any", yamlObjectReader, null, out _);
                                         }
                                     }
-                                    
-                                    flatmatrix.RemoveAll(dict => {
+                                    Predicate<Dictionary<string, TemplateToken>> match = dict => {
                                         foreach(var kv in mdict) {
                                             TemplateToken val;
                                             if (dict.TryGetValue(kv.Key, out val) && TemplateTokenEqual(kv.Value, val)) {
@@ -914,7 +913,15 @@ namespace Runner.Server.Controllers
                                             }
                                         }
                                         return true;
-                                    });
+                                    };
+                                    flatmatrix.RemoveAll(match);
+                                    includematrix.RemoveAll(match);
+                                    if(flatmatrix.Count + includematrix.Count == 0) {
+                                        if(dependentjobgroup.Any()) {
+                                            jobgroup.Add(jobitem);
+                                        }
+                                        FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, Outputs = new Dictionary<String, VariableValue>() });
+                                    }
                                 }
                                 var jobTotal = flatmatrix.Count + includematrix.Count;
                                 if(keys.Length == 0 && jobTotal > 1) {
@@ -949,9 +956,9 @@ namespace Runner.Server.Controllers
                                         contextData["matrix"] = matrixContext;
                                         var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
                                         next.TimelineId = Guid.NewGuid();
+                                        jobitem.Childs?.Add(next);
                                         if(dependentjobgroup.Any()) {
                                             jobgroup.Add(next);
-                                            jobitem.Childs?.Add(next);
                                         }
                                         templateContext.ExpressionValues.Clear();
                                         foreach (var pair in contextData) {
@@ -1074,6 +1081,9 @@ namespace Runner.Server.Controllers
                     }
                     dependentjobgroup = next;
                     exctx.workflow = dependentjobgroup.ToList();
+                    if(exctx.workflow.Count == 0) {
+                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                    }
                 }
                 dependentjobgroups[runid] = dependentjobgroup;
                 dependentjobgroup.ForEach(ji => {

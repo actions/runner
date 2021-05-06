@@ -288,7 +288,7 @@ namespace Runner.Client
                 new Option<string>(
                     new[] { "-W", "--workflows"},
                     getDefaultValue: () => ".github/workflows",
-                    description: "directory which contains workflows"),
+                    description: "workflow file or directory which contains workflows, only used if no --workflow option is set"),
                 platformOption,
                 new Option<string>(
                     new[] {"-a" , "--actor"},
@@ -355,18 +355,39 @@ namespace Runner.Client
                                 parameters.server = "http://localhost:5000";
                             }
                         } else {
+                            Console.WriteLine("Starting Server...");
                             if(parameters.server == null) {
-                                foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
-                                    if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
+                                try {
+                                    // From https://stackoverflow.com/a/27376368
+                                    using (System.Net.Sockets.Socket socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.InterNetwork, System.Net.Sockets.SocketType.Dgram, 0))
+                                    {
+                                        socket.Connect("8.8.8.8", 65530);
+                                        IPEndPoint endPoint = socket.LocalEndPoint as IPEndPoint;
                                         var builder = new UriBuilder();
-                                        builder.Host = ip.ToString();
+                                        builder.Host = endPoint.Address.ToString();
                                         builder.Scheme = "http";
                                         builder.Port = 0;
                                         parameters.server = builder.Uri.ToString().Trim('/');
-                                        break;
+                                    }
+                                } catch {
+                                }
+                                if(parameters.server == null) {
+                                    try {
+                                        foreach(var ip in Dns.GetHostAddresses(Dns.GetHostName())) {
+                                            if(!IPAddress.IsLoopback(ip) && ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
+                                                var builder = new UriBuilder();
+                                                builder.Host = ip.ToString();
+                                                builder.Scheme = "http";
+                                                builder.Port = 0;
+                                                parameters.server = builder.Uri.ToString().Trim('/');
+                                                break;
+                                            }
+                                        }
+                                    } catch {
                                     }
                                 }
                                 if(parameters.server == null) {
+                                    Console.WriteLine("Failed to autodetect non loopback ip, docker actions will fail to connect");
                                     parameters.server = "http://localhost:0";
                                 }
                             }
@@ -413,96 +434,103 @@ namespace Runner.Client
                             }
                         }
 
-                        var workerchannel = Channel.CreateBounded<bool>(1);
-                        // Parallel.For(0, parameters.parallel, () => {});
-                        for(int i = 0; i < parameters.parallel; i++) {
-                            var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
-                            string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
-                            Directory.CreateDirectory(tmpdir);
-                            int atempt = 1;
-                            while(true) {
-                                try {
-                                    var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                    if(parameters.verbose) {
-                                        inv.OutputDataReceived += _out;
-                                        inv.ErrorDataReceived += _out;
+                        if(parameters.parallel > 0) {
+                            Console.WriteLine($"Starting {parameters.parallel} Runner{(parameters.parallel != 1 ? "s" : "")}...");
+                            var workerchannel = Channel.CreateBounded<bool>(1);
+                            // Parallel.For(0, parameters.parallel, () => {});
+                            var __startrunner = Task.Run(async () => {
+                                for(int i = 0; i < parameters.parallel; i++) {
+                                    var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
+                                    string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
+                                    Directory.CreateDirectory(tmpdir);
+                                    int atempt = 1;
+                                    while(true) {
+                                        try {
+                                            var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                            if(parameters.verbose) {
+                                                inv.OutputDataReceived += _out;
+                                                inv.ErrorDataReceived += _out;
+                                            }
+
+                                            var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "RUNNER_TOOL_CACHE", Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") ?? Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache") }};
+                                            if(parameters.containerArchitecture != null) {
+                                                runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
+                                            }
+                                            if(parameters.privileged) {
+                                                runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
+                                            }
+                                            if(parameters.userns != null) {
+                                                runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
+                                            }
+                                            
+                                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent-{Guid.NewGuid().ToString()} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
+                                            var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                            if(parameters.verbose) {
+                                                runnerlistener.OutputDataReceived += _out;
+                                                runnerlistener.ErrorDataReceived += _out;
+                                            }
+                                            runnerlistener.OutputDataReceived += (s, e) => {
+                                                if(e.Data.Contains("Listen")) {
+                                                    workerchannel.Writer.WriteAsync(true);
+                                                }
+                                            };
+                                            listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, token).ContinueWith(async x => {
+                                                Console.WriteLine("Stopped Runner");
+                                                int delattempt = 1;
+                                                while(true) {
+                                                    try {
+                                                        Directory.Delete(tmpdir, true);
+                                                        break;
+                                                    } catch {
+                                                        if(delattempt++ >= 3) {
+                                                            await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                            break;
+                                                        } else {
+                                                            await Task.Delay(500);
+                                                        }
+                                                    }
+                                                }
+                                            }));
+                                            break;
+                                        } catch {
+                                            if(atempt++ <= 3) {
+                                                await Task.Delay(500);
+                                            } else {
+                                                Console.Error.WriteLine("Failed to auto-configure actions runners after 3 attempts");
+                                                int delattempt = 1;
+                                                while(true) {
+                                                    try {
+                                                        Directory.Delete(tmpdir, true);
+                                                        break;
+                                                    } catch {
+                                                        if(delattempt++ >= 3) {
+                                                            await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                            break;
+                                                        } else {
+                                                            await Task.Delay(500);
+                                                        }
+                                                    }
+                                                }
+                                                return 1;
+                                            }
+                                        }
                                     }
 
-                                    var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "RUNNER_TOOL_CACHE", Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") ?? Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache") }};
-                                    if(parameters.containerArchitecture != null) {
-                                        runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
-                                    }
-                                    if(parameters.privileged) {
-                                        runnerEnv["RUNNER_CONTAINER_PRIVILEGED"] = "1";
-                                    }
-                                    if(parameters.userns != null) {
-                                        runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
-                                    }
-                                    
-                                    // Agent-{Guid.NewGuid().ToString()}
-                                    var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent{i} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
-                                    var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                    if(parameters.verbose) {
-                                        runnerlistener.OutputDataReceived += _out;
-                                        runnerlistener.ErrorDataReceived += _out;
-                                    }
-                                    runnerlistener.OutputDataReceived += (s, e) => {
-                                        if(e.Data.Contains("Listen")) {
-                                            workerchannel.Writer.WriteAsync(true);
-                                        }
-                                    };
-                                    listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, token).ContinueWith(async x => {
-                                        Console.WriteLine("Stopped Worker");
-                                        int delattempt = 1;
-                                        while(true) {
-                                            try {
-                                                Directory.Delete(tmpdir, true);
-                                                break;
-                                            } catch {
-                                                if(delattempt++ >= 3) {
-                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
-                                                    break;
-                                                } else {
-                                                    await Task.Delay(500);
-                                                }
-                                            }
-                                        }
-                                    }));
-                                    break;
-                                } catch {
-                                    if(atempt++ <= 3) {
-                                        await Task.Delay(500);
-                                    } else {
-                                        Console.Error.WriteLine("Failed to auto-configure actions runners after 3 attempts");
-                                        int delattempt = 1;
-                                        while(true) {
-                                            try {
-                                                Directory.Delete(tmpdir, true);
-                                                break;
-                                            } catch {
-                                                if(delattempt++ >= 3) {
-                                                    await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
-                                                    break;
-                                                } else {
-                                                    await Task.Delay(500);
-                                                }
-                                            }
-                                        }
-                                        return 1;
-                                    }
+                                }
+                                return 0;
+                            });
+                            if(await Task.WhenAny(workerchannel.Reader.ReadAsync().AsTask(), __startrunner) == __startrunner) {
+                                if(await __startrunner != 0) {
+                                    return 1;
                                 }
                             }
-
-                        }
-                        if(parameters.parallel > 0) {
-                            await workerchannel.Reader.ReadAsync();
                         }
 
                         if(parameters.StartServer || parameters.StartRunner) {
                             if(parameters.StartServer) {
                                 Console.WriteLine($"The server is listening on {parameters.server}");
                             }
-                            Console.WriteLine($"Press any key or CTRL+C to stop the {(parameters.StartServer ? "server" : "runners")}");
+                            Console.WriteLine($"Press Enter or CTRL+C to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
                                 Task.Run(() => {
@@ -592,15 +620,22 @@ namespace Runner.Client
                             first = false;
                             var workflows = parameters.workflow;
                             if(workflows == null || workflows.Length == 0) {
-                                try {
-                                    workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true });
-                                    if((workflows == null || workflows.Length == 0)) {
-                                        Console.Error.WriteLine($"No workflow *.yml file found inside of {parameters.workflows}");
-                                        return 0;
+                                if(Directory.Exists(parameters.workflows)) {
+                                    try {
+                                        workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Concat(Directory.GetFiles(parameters.workflows, "*.yaml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })).ToArray();
+                                        if((workflows == null || workflows.Length == 0)) {
+                                            Console.Error.WriteLine($"No workflow *.yml file found inside of {parameters.workflows}");
+                                            return 1;
+                                        }
+                                    } catch {
+                                        Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
+                                        return 1;
                                     }
-                                } catch {
-                                    Console.Error.WriteLine($"Failed to read directory {parameters.workflows}");
-                                    return 0;
+                                } else if (File.Exists(parameters.workflows)) {
+                                    workflows = new[] { parameters.workflows };
+                                } else {
+                                    Console.Error.WriteLine($"No such file or directory {parameters.workflows}");
+                                    return 1;
                                 }
                             }
                             try {
@@ -1151,7 +1186,19 @@ namespace Runner.Client
                                                         var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
                                                         var file = File.OpenRead(w);
                                                         streamsToDispose.Add(file);
-                                                        repodownload.Add(new StreamContent(file), relpath, relpath);
+                                                        var mode = "644";
+                                                        if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                                                            try {
+                                                                var finfo = new Mono.Unix.UnixFileInfo(w);
+                                                                if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                                                    mode = "755";
+                                                                }
+                                                            }
+                                                            catch {
+
+                                                            }
+                                                        }
+                                                        repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
                                                     }
                                                 }
                                                 repodownload.Headers.ContentType.MediaType = "application/octet-stream";
