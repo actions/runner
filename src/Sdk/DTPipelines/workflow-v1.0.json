@@ -11,7 +11,10 @@
           "name": "string",
           "defaults": "workflow-defaults",
           "env": "workflow-env",
-          "jobs": "jobs"
+          "jobs": "jobs",
+          "environment" : "environment",
+          "permissions" : "permissions",
+          "concurrency" : "concurrency"
         }
       }
     },
@@ -71,6 +74,7 @@
           "outputs": "job-outputs",
           "defaults": "job-defaults",
           "environment" : "environment",
+          "permissions" : "permissions",
           "steps": "steps"
         }
       }
@@ -230,6 +234,41 @@
         "properties":{
           "name": "non-empty-string",
           "url": "string-runner-context-no-secrets"
+        }
+      }
+    },
+
+    "permissions": {
+      "one-of": ["non-empty-string", "permissions-mapping" ]
+    },
+    "permissions-mapping": {
+      "mapping": {
+        "properties": {
+          "actions": "non-empty-string",
+          "checks": "non-empty-string",
+          "contents": "non-empty-string",
+          "deployments": "non-empty-string",
+          "issues": "non-empty-string",
+          "packages": "non-empty-string",
+          "pull-requests": "non-empty-string",
+          "repository-projects": "non-empty-string",
+          "security-events": "non-empty-string",
+          "statuses": "non-empty-string"
+        }
+      }
+    },
+
+    "concurrency": {
+      "context":[
+        "github"
+      ],
+      "one-of": ["non-empty-string", "concurrency-mapping" ]
+    },
+    "concurrency-mapping": {
+      "mapping": {
+        "properties": {
+          "group": "non-empty-string",
+          "cancel": "boolean"
         }
       }
     },
