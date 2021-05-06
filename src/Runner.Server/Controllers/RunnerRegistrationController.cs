@@ -11,6 +11,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
@@ -38,6 +39,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Get()
         {
             StringValues auth;

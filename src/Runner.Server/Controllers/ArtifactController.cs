@@ -14,7 +14,6 @@ namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/pipelines/workflows/{run}/artifacts")]
-    [Authorize(AuthenticationSchemes = "Bearer")]
     public class ArtifactController : VssControllerBase{
 
         private string _targetFilePath;

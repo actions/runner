@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authorization;
 
 using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using Microsoft.Extensions.FileProviders;
@@ -53,25 +54,25 @@ namespace Runner.Server
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Runner.Server", Version = "v1" });
                 // add JWT Authentication
-                // var securityScheme = new OpenApiSecurityScheme
-                // {
-                //     Name = "JWT Authentication",
-                //     Description = "Enter JWT Bearer token **_only_**",
-                //     In = ParameterLocation.Header,
-                //     Type = SecuritySchemeType.Http,
-                //     Scheme = "bearer", // must be lower case
-                //     BearerFormat = "JWT",
-                //     Reference = new OpenApiReference
-                //     {
-                //         Id = JwtBearerDefaults.AuthenticationScheme,
-                //         Type = ReferenceType.SecurityScheme
-                //     }
-                // };
-                // c.AddSecurityDefinition(securityScheme.Reference.Id, securityScheme);
-                // c.AddSecurityRequirement(new OpenApiSecurityRequirement
-                // {
-                //     {securityScheme, new string[] { }}
-                // });
+                var securityScheme = new OpenApiSecurityScheme
+                {
+                    Name = "JWT Authentication",
+                    Description = "Enter JWT Bearer token **_only_**",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer", // must be lower case
+                    BearerFormat = "JWT",
+                    Reference = new OpenApiReference
+                    {
+                        Id = JwtBearerDefaults.AuthenticationScheme,
+                        Type = ReferenceType.SecurityScheme
+                    }
+                };
+                c.AddSecurityDefinition(securityScheme.Reference.Id, securityScheme);
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {securityScheme, new string[] { }}
+                });
 
             });
             // services.AddDbContext<InMemoryDB>(options => options.UseInMemoryDatabase("db"));
@@ -81,37 +82,24 @@ namespace Runner.Server
             var c = new SqLiteDb(b.Options);
             services.AddDbContext<SqLiteDb>(conf => conf.UseSqlite(c.Database.GetDbConnection()));
             
-            // services.AddAuthentication(x =>
-            // {
-            //     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            //     x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            // })
-            // .AddJwtBearer(x =>
-            // {
-            //     x.RequireHttpsMetadata = false;
-            //     x.SaveToken = true;
-            //     x.TokenValidationParameters = new TokenValidationParameters
-            //     {
-            //         ValidateIssuerSigningKey = true,
-            //         IssuerSigningKey = new SymmetricSecurityKey(Key.Key) /* new RsaSecurityKey(Key) */,
-            //         ValidateIssuer = false,
-            //         ValidateAudience = false
-            //     };
-            // });
             var sessionCookieLifetime = Configuration.GetValue("SessionCookieLifetimeMinutes", 60);
-            services.AddAuthorization();
+            services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();
+            services.AddAuthorization(options => {
+
+                options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                    .AddRequirements(new DevModeOrAuthenticatedUserRequirement()).Build();
+                // options.AddPolicy("DevModeOrAuthenticatedUser", builder => builder
+                //     .AddRequirements(new DevModeOrAuthenticatedUserRequirement()));
+            });
             var rsa = RSA.Create();
             AccessTokenParameter = rsa.ExportParameters(true);
-            services.AddAuthentication(options =>
+            var auth = services.AddAuthentication(options =>
             {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
             })
             .AddCookie(setup => {
                 setup.ExpireTimeSpan = TimeSpan.FromMinutes(sessionCookieLifetime);
-                // setup.Cookie.HttpOnly = false;
-                // setup.Cookie.SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Unspecified;
-                // setup.Cookie.SecurePolicy = Microsoft.AspNetCore.Http.CookieSecurePolicy.None;
                 setup.Events.OnValidatePrincipal = context => {
                     var httpContext = context.HttpContext;
                     httpContext.Items["Properties"] = context.Properties;
@@ -128,37 +116,40 @@ namespace Runner.Server
                     ValidIssuer = "http://githubactionsserver",
                     ValidAudience = "http://githubactionsserver",
                 };
-            })
-            .AddOpenIdConnect(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters() {
-                    ValidateActor = false,
-                    ValidateAudience = false,
-                    ValidateIssuer = false,
-                    ValidateIssuerSigningKey = false,
-                    ValidateLifetime = false,
-                    ValidateTokenReplay = false,
-                    SignatureValidator = delegate (string token, TokenValidationParameters parameters)
-                    {
-                        var jwt = new JwtSecurityToken(token);
-                        return jwt;
-                    }
-                };
-                // options.Events.OnTokenValidated = async ctx => {
-                //     ctx.Principal
-                // };
-                // options.SecurityTokenValidator = new Validator();
-                options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-                options.Authority = Configuration["Authority"];
-                options.SignedOutRedirectUri = "https://localhost";
-                options.ClientId = Configuration["ClientId"];
-                options.ClientSecret = Configuration["ClientSecret"];
-                options.ResponseType = "code";
-                options.SaveTokens = true;
-                options.GetClaimsFromUserInfoEndpoint = true;
-                options.RequireHttpsMetadata = false;
-                options.Scope.Add("openid");
             });
+
+            if(Configuration["Authority"] != null && Configuration["ClientId"] != null  && Configuration["ClientSecret"] != null) {
+                auth.AddOpenIdConnect(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters() {
+                        ValidateActor = false,
+                        ValidateAudience = false,
+                        ValidateIssuer = false,
+                        ValidateIssuerSigningKey = false,
+                        ValidateLifetime = false,
+                        ValidateTokenReplay = false,
+                        SignatureValidator = delegate (string token, TokenValidationParameters parameters)
+                        {
+                            var jwt = new JwtSecurityToken(token);
+                            return jwt;
+                        }
+                    };
+                    // options.Events.OnTokenValidated = async ctx => {
+                    //     ctx.Principal
+                    // };
+                    // options.SecurityTokenValidator = new Validator();
+                    options.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.Authority = Configuration["Authority"];
+                    options.SignedOutRedirectUri = "https://localhost";
+                    options.ClientId = Configuration["ClientId"];
+                    options.ClientSecret = Configuration["ClientSecret"];
+                    options.ResponseType = "code";
+                    options.SaveTokens = true;
+                    options.GetClaimsFromUserInfoEndpoint = true;
+                    options.RequireHttpsMetadata = false;
+                    options.Scope.Add("openid");
+                });
+            }
 
             services.AddCors(options =>
             {

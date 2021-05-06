@@ -8,6 +8,7 @@
   "license": "ISC",
   "dependencies": {
     "@actions/core": "^1.2.7",
+    "del": "^6.0.0",
     "formidable": "^1.2.2"
   }
 }

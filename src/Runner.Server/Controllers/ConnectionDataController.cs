@@ -15,7 +15,7 @@ namespace Runner.Server.Controllers
     {
 
         [HttpGet]
-        [Authorize(AuthenticationSchemes = "Bearer")]
+        [AllowAnonymous]
         public async Task<IActionResult> Get()
         {
             return await Ok(new ConnectionData() {
