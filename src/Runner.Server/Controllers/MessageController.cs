@@ -1404,7 +1404,9 @@ namespace Runner.Server.Controllers
             foreach (var secret in this.secrets) {
                 variables[secret.Name] = new VariableValue(secret.Value, true);
             }
-            LoadEnvSec(secrets, (name, value) => variables[name] = new VariableValue(value, true));
+            if(secrets != null) {
+                LoadEnvSec(secrets, (name, value) => variables[name] = new VariableValue(value, true));
+            }
 
             var defaultToken = (from r in run where r.Key.AssertString("defaults").Value == "defaults" select r).FirstOrDefault().Value;
 
