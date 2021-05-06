@@ -1716,6 +1716,7 @@ namespace Runner.Server.Controllers
             public string path {get;set;}
         }
         [HttpPost]
+        [AllowAnonymous]
         public async Task<ActionResult> OnWebhook([FromQuery] string[] workflownames, [FromQuery] string[] workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
         {
             var obj = await FromBody2<GiteaHook>();
