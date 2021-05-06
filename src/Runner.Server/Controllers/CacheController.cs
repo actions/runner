@@ -9,11 +9,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/artifactcache")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class CacheController : VssControllerBase{
         
         private string _targetFilePath;

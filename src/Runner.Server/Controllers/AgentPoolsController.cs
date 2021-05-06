@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -15,6 +16,7 @@ namespace Runner.Server.Controllers
 {
     [ApiController]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class AgentPoolsController : VssControllerBase
     {
 

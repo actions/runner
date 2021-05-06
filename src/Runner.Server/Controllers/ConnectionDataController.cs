@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using GitHub.Services.Location;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -14,9 +15,10 @@ namespace Runner.Server.Controllers
     {
 
         [HttpGet]
-        public Task<FileStreamResult> Get()
+        [Authorize(AuthenticationSchemes = "Bearer")]
+        public async Task<IActionResult> Get()
         {
-            return Ok(new ConnectionData() {
+            return await Ok(new ConnectionData() {
                 InstanceId = Guid.NewGuid(),
                 LocationServiceData = new LocationServiceData() {
                     ServiceDefinitions = new ServiceDefinition[] {

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -36,6 +37,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> OnEvent(Guid scopeIdentifier, string hubName, Guid planId)
         {
             var jevent = await FromBody<JobEvent>();

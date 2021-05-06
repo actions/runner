@@ -36,6 +36,7 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Runner.Server.Controllers
 {
@@ -66,6 +67,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpDelete("{poolId}/{messageId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public IActionResult DeleteMessage(int poolId, long messageId, Guid sessionId)
         {
             Session session;
@@ -1407,18 +1409,24 @@ namespace Runner.Server.Controllers
             var RequestId = Interlocked.Increment(ref reqId);
             var job = jobs.AddOrUpdate(jobId, new Job() { message = (apiUrl) => {
                 var auth = new GitHub.DistributedTask.WebApi.EndpointAuthorization() { Scheme = GitHub.DistributedTask.WebApi.EndpointAuthorizationSchemes.OAuth };
+                var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
+
+                var myIssuer = "http://githubactionsserver";
+                var myAudience = "http://githubactionsserver";
+
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var token = tokenHandler.CreateJwtSecurityToken(new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor() {
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
                     Subject = new ClaimsIdentity(new Claim[]
                     {
-                        new Claim(ClaimTypes.Dns, "Runner.Server"),
                     }),
-                    Expires = DateTime.UtcNow.AddDays(7),
-                    Issuer = "free",
-                    Audience = "free",
-                    SigningCredentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(new SymmetricSecurityKey(Startup.Key.Key), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha512Signature)  //new Microsoft.IdentityModel.Tokens.SigningCredentials(new Microsoft.IdentityModel.Tokens.RsaSecurityKey(Startup.Key), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha512)
-                    
-                });
+                    Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes),
+                    Issuer = myIssuer,
+                    Audience = myAudience,
+                    SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
+                };
+
+                var token = tokenHandler.CreateToken(tokenDescriptor);
                 var stoken = tokenHandler.WriteToken(token);
                 auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
                 var systemVssConnection = new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl ?? "http://192.168.178.20:5000") };
@@ -1504,6 +1512,7 @@ namespace Runner.Server.Controllers
         public static event RepoDownload OnRepoDownload;
 
         [HttpGet("{poolId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> GetMessage(int poolId, Guid sessionId)
         {
             Session session;

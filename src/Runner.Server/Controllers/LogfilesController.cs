@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -23,6 +24,7 @@ namespace Runner.Server.Controllers
         static int logid = 0;
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> CreateLog(Guid scopeIdentifier, string hubName, Guid planId)
         {
             var log = await FromBody<TaskLog>();
@@ -32,6 +34,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{logId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task AppendLogContent(Guid scopeIdentifier, string hubName, Guid planId, int logId)
         {
             using (StreamReader reader = new StreamReader(Request.Body, Encoding.UTF8))

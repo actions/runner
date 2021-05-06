@@ -28,6 +28,7 @@ namespace Runner.Server.Models
             get => RSA.Create(new RSAParameters() { Exponent = Exponent, Modulus = Modulus });
         }
 
+        public Guid ClientId { get; set; }
         public byte[] Exponent { get; set; }
         public byte[] Modulus { get; set; }
 
@@ -62,6 +63,7 @@ namespace Runner.Server.Models
             var _agent = new Agent();
             _agent.Exponent = agent.Authorization.PublicKey.Exponent;
             _agent.Modulus = agent.Authorization.PublicKey.Modulus;
+            _agent.ClientId = agent.Authorization.ClientId;
             _agent.TaskAgent = agent;
             _agent.Pool = Pool.GetPoolById(cache, db, poolId);
             db.Agents.Add(_agent);

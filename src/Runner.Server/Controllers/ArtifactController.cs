@@ -8,11 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/pipelines/workflows/{run}/artifacts")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class ArtifactController : VssControllerBase{
 
         private string _targetFilePath;
