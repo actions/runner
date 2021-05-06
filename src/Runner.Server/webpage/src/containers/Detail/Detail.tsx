@@ -349,8 +349,9 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                         const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + item.log.id, { })).text();
                                         var lines = log.split('\n');
                                         var offset = '2021-04-02T15:50:14.6619714Z '.length;
-                                        lines[0] = convert.toHtml(lines[0].substring(offset));
-                                        item.log.content = lines.reduce((prev, currentValue) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(currentValue.substring(offset)));
+                                        var re = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{7}Z /;
+                                        lines[0] = convert.toHtml(re.test(lines[0]) ? lines[0].substring(offset) : lines[0]);
+                                        item.log.content = lines.reduce((prev, currentValue) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(re.test(currentValue) ? currentValue.substring(offset) : currentValue));
                                     }
                                 } finally {
                                     item.busy = false;
