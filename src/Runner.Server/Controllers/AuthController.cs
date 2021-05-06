@@ -11,9 +11,11 @@ using Runner.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Runner.Server.Controllers {
     [ApiController]
+    [AllowAnonymous]
     [Route("test/auth/v1")]
     public class AuthController : VssControllerBase {
         private SqLiteDb db;
