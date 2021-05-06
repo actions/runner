@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -17,6 +19,7 @@ using Runner.Server.Models;
 namespace Runner.Server.Controllers
 {
     [ApiController]
+    // [Authorize]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class AgentController : VssControllerBase
     {

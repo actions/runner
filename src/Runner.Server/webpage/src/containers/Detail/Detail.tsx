@@ -41,10 +41,10 @@ interface ILogline {
 }
 
 interface IRecord {
-    Value: string[],
-    StepId: string,
-    StartLine: number
-    Count: number
+    value: string[],
+    stepId: string,
+    startLine: number
+    count: number
 }
 
 interface ILoglineEvent {
@@ -227,21 +227,21 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                 var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
                 var missed : ILoglineEvent[] = [];
                 var callback = function(timeline, e:ILoglineEvent) {
-                    var s = timeline.find(t => t.id === e.record.StepId);
+                    var s = timeline.find(t => t.id === e.record.stepId);
                     var convert = new Convert({
                         newline: true,
                         escapeXML: true
                     });
-                    if(s != null) {
+                    if(s != null && s != undefined) {
                         if(s.log == null) {
                             s.log = { id:-1, location: null, content: ""};
-                            if(e.record.StartLine > 1) {
+                            if(e.record.startLine > 1) {
                                 (async () => {
                                     console.log("Downloading previous log lines of this step...");
-                                    var lines = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item.description + "/" + e.record.StepId, { });
+                                    var lines = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item.description + "/" + e.record.stepId, { });
                                     if(lines.status === 200) {
                                         var missingLines = await lines.json() as ILogline[];
-                                        missingLines.length = e.record.StartLine - 1;
+                                        missingLines.length = e.record.startLine - 1;
                                         s.log.content = missingLines.reduce((prev: string, c : ILogline) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c.line), "") + s.log.content;
                                     } else {
                                         console.log("No logs to download..., currently fixes itself");
@@ -250,7 +250,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                             }
                         }
                         if (s.log.id === -1) {
-                            s.log.content = e.record.Value.reduce((prev: string, c : string) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c), s.log.content);
+                            s.log.content = e.record.value.reduce((prev: string, c : string) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c), s.log.content);
                         }
                         return true;
                     }
@@ -349,8 +349,9 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                         const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + item.log.id, { })).text();
                                         var lines = log.split('\n');
                                         var offset = '2021-04-02T15:50:14.6619714Z '.length;
-                                        lines[0] = convert.toHtml(lines[0].substring(offset));
-                                        item.log.content = lines.reduce((prev, currentValue) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(currentValue.substring(offset)));
+                                        var re = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{7}Z /;
+                                        lines[0] = convert.toHtml(re.test(lines[0]) ? lines[0].substring(offset) : lines[0]);
+                                        item.log.content = lines.reduce((prev, currentValue) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(re.test(currentValue) ? currentValue.substring(offset) : currentValue));
                                     }
                                 } finally {
                                     item.busy = false;

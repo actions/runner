@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -104,6 +105,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPatch("{scopeIdentifier}/{hubName}/{planId}/{timelineId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId)
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();

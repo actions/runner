@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -171,6 +172,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/{recordId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId)
         {
             var record = await FromBody<TimelineRecordFeedLinesWrapper>();

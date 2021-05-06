@@ -1,6 +1,7 @@
 const core = require("@actions/core");
 var formidable = require("formidable");
 var http = require("http");
+var https = require("https");
 var path = require("path");
 const fs = require("fs");
 const { env } = require("process");
@@ -28,7 +29,7 @@ try {
             uploadDir: dest,
             maxFileSize: 1024 * 1024 * 1024 * 1024
         });
-        http.get(url, res => {
+        (url.startsWith("https://") ? https.get : http.get)(url, res => {
             var _first = true;
             form.parse(res).on("fileBegin", (formname, file) => {
                 if(formname == null && _first) {

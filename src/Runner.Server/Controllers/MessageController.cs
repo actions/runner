@@ -36,6 +36,7 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Runner.Server.Controllers
 {
@@ -66,6 +67,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpDelete("{poolId}/{messageId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public IActionResult DeleteMessage(int poolId, long messageId, Guid sessionId)
         {
             Session session;
@@ -481,6 +483,20 @@ namespace Runner.Server.Controllers
                             Ref = $"refs/pull/{hook.Number}/head";
                         }
                     }
+                } else if(hook?.ref_type != null) {
+                    if(e == "create") {
+                        // Fixup create hooks to have a git ref
+                        if(hook?.ref_type == "branch") {
+                            Ref = "refs/heads/" + Ref;
+                        } else if(hook?.ref_type == "tag") {
+                            Ref = "refs/tags/" + Ref;
+                        }
+                    } else {
+                        Ref = null;
+                    }
+                }
+                if(Ref == null && hook?.repository?.default_branch != null) {
+                    Ref = "refs/heads/" + hook?.repository?.default_branch;
                 }
                 var Sha = hook.After;
                 if(Sha == null || Sha.Length == 0) {
@@ -1402,7 +1418,9 @@ namespace Runner.Server.Controllers
             foreach (var secret in this.secrets) {
                 variables[secret.Name] = new VariableValue(secret.Value, true);
             }
-            LoadEnvSec(secrets, (name, value) => variables[name] = new VariableValue(value, true));
+            if(secrets != null) {
+                LoadEnvSec(secrets, (name, value) => variables[name] = new VariableValue(value, true));
+            }
 
             var defaultToken = (from r in run where r.Key.AssertString("defaults").Value == "defaults" select r).FirstOrDefault().Value;
 
@@ -1417,18 +1435,24 @@ namespace Runner.Server.Controllers
             var RequestId = Interlocked.Increment(ref reqId);
             var job = jobs.AddOrUpdate(jobId, new Job() { message = (apiUrl) => {
                 var auth = new GitHub.DistributedTask.WebApi.EndpointAuthorization() { Scheme = GitHub.DistributedTask.WebApi.EndpointAuthorizationSchemes.OAuth };
+                var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
+
+                var myIssuer = "http://githubactionsserver";
+                var myAudience = "http://githubactionsserver";
+
                 var tokenHandler = new JwtSecurityTokenHandler();
-                var token = tokenHandler.CreateJwtSecurityToken(new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor() {
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
                     Subject = new ClaimsIdentity(new Claim[]
                     {
-                        new Claim(ClaimTypes.Dns, "Runner.Server"),
                     }),
-                    Expires = DateTime.UtcNow.AddDays(7),
-                    Issuer = "free",
-                    Audience = "free",
-                    SigningCredentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(new SymmetricSecurityKey(Startup.Key.Key), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha512Signature)  //new Microsoft.IdentityModel.Tokens.SigningCredentials(new Microsoft.IdentityModel.Tokens.RsaSecurityKey(Startup.Key), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha512)
-                    
-                });
+                    Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes),
+                    Issuer = myIssuer,
+                    Audience = myAudience,
+                    SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
+                };
+
+                var token = tokenHandler.CreateToken(tokenDescriptor);
                 var stoken = tokenHandler.WriteToken(token);
                 auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
                 var systemVssConnection = new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl ?? "http://192.168.178.20:5000") };
@@ -1514,6 +1538,7 @@ namespace Runner.Server.Controllers
         public static event RepoDownload OnRepoDownload;
 
         [HttpGet("{poolId}")]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> GetMessage(int poolId, Guid sessionId)
         {
             Session session;
@@ -1643,6 +1668,7 @@ namespace Runner.Server.Controllers
             public Uri html_url {get; set;}
 
             public GitUser Owner {get;set;}
+            public string default_branch { get; set; }
         }
 
         public class GitCommit {
@@ -1673,6 +1699,8 @@ namespace Runner.Server.Controllers
             public GitPullRequest pull_request {get;set;}
 
             public List<GitCommit> Commits {get;set;}
+            public string ref_type { get; set; }
+            public string Sha { get; set; }
         }
 
         public class Issue {
@@ -1688,6 +1716,7 @@ namespace Runner.Server.Controllers
             public string path {get;set;}
         }
         [HttpPost]
+        [AllowAnonymous]
         public async Task<ActionResult> OnWebhook([FromQuery] string[] workflownames, [FromQuery] string[] workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
         {
             var obj = await FromBody2<GiteaHook>();
@@ -1714,52 +1743,78 @@ namespace Runner.Server.Controllers
                 return await Ok(responses, true);
             } else {
                 try {
-                    var client = new HttpClient();
-                    client.DefaultRequestHeaders.Add("accept", "application/json");
-                    client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                    var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
-                    var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/contents/.github%2Fworkflows?ref={hook.After}");
-                    // {
-                    //     "type": "gitea",
-                    //     "config": {
-                    //     "content_type": "json",
-                    //     "url": "http://ubuntu.fritz.box/runner/host/_apis/v1/Message"
-                    //     },
-                    //     "events": [
-                    //     "create",
-                    //     "delete",
-                    //     "fork",
-                    //     "push",
-                    //     "issues",
-                    //     "issue_assign",
-                    //     "issue_label",
-                    //     "issue_milestone",
-                    //     "issue_comment",
-                    //     "pull_request",
-                    //     "pull_request_assign",
-                    //     "pull_request_label",
-                    //     "pull_request_milestone",
-                    //     "pull_request_comment",
-                    //     "pull_request_review_approved",
-                    //     "pull_request_review_rejected",
-                    //     "pull_request_review_comment",
-                    //     "pull_request_sync",
-                    //     "repository",
-                    //     "release"
-                    //     ],
-                    //     "active": true
-                    // }
-                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                        var content = await res.Content.ReadAsStringAsync();
-                        foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
-                        {
-                            try {
-                                var fileRes = await client.GetAsync(item.download_url);
-                                var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                ConvertYaml(item.path, filecontent, hook.repository.full_name, giteaUrl, hook, obj.Value, e);
-                            } catch (Exception ex) {
-                                await Console.Error.WriteLineAsync(ex.Message);
-                                await Console.Error.WriteLineAsync(ex.StackTrace);
+                    Dictionary<string, string> evs = new Dictionary<string, string>();
+                    if(hook?.After != null) {
+                        evs.Add(e, hook?.After);
+                    } else if(e == "pull_request") {
+                        evs.Add("pull_request_target", "");
+                        evs.Add("pull_request", hook?.pull_request?.head?.Sha);
+                    } else if(e.StartsWith("pull_request_")) {
+                        evs.Add(e, hook?.pull_request?.head?.Sha);
+                    } else if(e == "create" && hook?.ref_type != null) {
+                        evs.Add(e, hook?.Sha);
+                        hook.After = hook?.Sha;
+                    } else {
+                        var client = new HttpClient();
+                        client.DefaultRequestHeaders.Add("accept", "application/json");
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                        var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
+                        var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/commits?page=1&limit=1");
+                        if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                            var content = await res.Content.ReadAsStringAsync();
+                            var o = JsonConvert.DeserializeObject<GitCommit[]>(content)[0];
+                            hook.After = o.Sha;
+                        }
+                        evs.Add(e, "");
+                    }
+                    foreach(var em in evs) {
+                        var client = new HttpClient();
+                        client.DefaultRequestHeaders.Add("accept", "application/json");
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                        var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
+                        var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/contents/.github%2Fworkflows?ref={em.Value}");
+                        // {
+                        //     "type": "gitea",
+                        //     "config": {
+                        //     "content_type": "json",
+                        //     "url": "http://ubuntu.fritz.box/runner/host/_apis/v1/Message"
+                        //     },
+                        //     "events": [
+                        //     "create",
+                        //     "delete",
+                        //     "fork",
+                        //     "push",
+                        //     "issues",
+                        //     "issue_assign",
+                        //     "issue_label",
+                        //     "issue_milestone",
+                        //     "issue_comment",
+                        //     "pull_request",
+                        //     "pull_request_assign",
+                        //     "pull_request_label",
+                        //     "pull_request_milestone",
+                        //     "pull_request_comment",
+                        //     "pull_request_review_approved",
+                        //     "pull_request_review_rejected",
+                        //     "pull_request_review_comment",
+                        //     "pull_request_sync",
+                        //     "repository",
+                        //     "release"
+                        //     ],
+                        //     "active": true
+                        // }
+                        if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                            var content = await res.Content.ReadAsStringAsync();
+                            foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
+                            {
+                                try {
+                                    var fileRes = await client.GetAsync(item.download_url);
+                                    var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                    ConvertYaml(item.path, filecontent, hook.repository.full_name, giteaUrl, hook, obj.Value, em.Key);
+                                } catch (Exception ex) {
+                                    await Console.Error.WriteLineAsync(ex.Message);
+                                    await Console.Error.WriteLineAsync(ex.StackTrace);
+                                }
                             }
                         }
                     }
