@@ -235,96 +235,96 @@ namespace Runner.Client
 
             var secretOpt = new Option<string>(
                 new[] { "-s", "--secret" },
-                description: "secret for you workflow, overrides keys from the secrets file");
+                description: "Secret for your workflow, overrides keys from your secrets file. E.g. `-s Name` or `-s Name=Value`. You will be asked for a value if you add `--secret name`, but no environment variable with name `name` exists.");
             secretOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var envOpt = new Option<string>(
                 new[] { "--env" },
-                description: "env for you workflow, overrides keys from the env file");
+                description: "Environment variable for your workflow, overrides keys from your env file. E.g. `--env Name` or `--env Name=Value`. You will be asked for a value if you add `--env name`, but no environment variable with name `name` exists.");
             envOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var matrixOpt = new Option<string>(
                 new[] { "-m", "--matrix" },
-                description: "matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple times to filter more jobs");
+                description: "Matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple times to filter more specifically.");
             matrixOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             
             var workflowOption = new Option<string>(
                 "--workflow",
-                description: "Workflow to run");
+                description: "Workflow(s) to run. Use multiple times to execute more workflows parallel.");
             workflowOption.Argument.Arity = new ArgumentArity(1, ArgumentArity.MaximumArity);
 
             var platformOption = new Option<string>(
                 new[] { "-P", "--platform" },
-                description: "Platform mapping to run in a docker image or host");
+                description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine).");
             platformOption.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var rootCommand = new RootCommand
             {
                 workflowOption,
                 new Option<string>(
                     "--server",
-                    description: "Runner.Server address"),
+                    description: "Runner.Server address, e.g. `http://localhost:5000`, `https://localhost:5001`."),
                 new Option<string>(
                     new[] { "-e", "--payload", "--eventpath" },
-                    "Webhook payload to send to the Runner"),
+                    "Webhook payload to send to the Runner."),
                 new Option<string>(
                     "--event",
                     getDefaultValue: () => "push",
-                    description: "Which event to send to a worker"),
+                    description: "Which event to send to a worker, ignored if you use subcommands which overriding the event."),
                 envOpt,
                 new Option<string>(
                     "--env-file",
                     getDefaultValue: () => ".env",
-                    description: "env overrides for you workflow"),
+                    description: "Environment variables for your workflow."),
                 secretOpt,
                 new Option<string>(
                     "--secret-file",
                     getDefaultValue: () => ".secrets",
-                    description: "secrets for you workflow"),
+                    description: "Secrets for your workflow."),
                 new Option<string>(
                     new[] {"-j", "--job"},
-                    description: "job to run"),
+                    description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with --workflow to run exact one job."),
                 matrixOpt,
                 new Option<bool>(
                     new[] { "-l", "--list"},
                     getDefaultValue: () => false,
-                    description: "list jobs for the selected event"),
+                    description: "List jobs for the selected event (defaults to push)."),
                 new Option<string>(
                     new[] { "-W", "--workflows"},
                     getDefaultValue: () => ".github/workflows",
-                    description: "workflow file or directory which contains workflows, only used if no --workflow option is set"),
+                    description: "Workflow file or directory which contains workflows, only used if no --workflow option is set."),
                 platformOption,
                 new Option<string>(
                     new[] {"-a" , "--actor"},
-                    "The login of the user that initiated the workflow run"),
+                    "The login of the user that initiated the workflow run, ignored if already in your event payload."),
                 new Option<bool>(
                     new[] {"-w", "--watch"},
-                    "Run automatically on every file change"),
+                    "Run automatically on every file change."),
                 new Option<bool>(
                     new[] {"-q", "--quiet"},
-                    "Display no progress in the cli"),
+                    "Display no progress in the cli."),
                 new Option<bool>(
                     "--privileged",
-                    "Run docker container under privileged mode"),
+                    "Run the docker container under privileged mode, only applies to container jobs using this Runner fork."),
                 new Option<string>(
                     "--userns",
-                    "Run docker container under a specfic linux user namespace"),
+                    "Change docker container linux user namespace, only applies to container jobs using this Runner fork."),
                 new Option<string>(
                     "--container-architecture",
-                    "Run docker container architecture, if docker supports it"),
+                    "Change docker container platform, if docker supports it, only applies to container jobs using this Runner fork."),
                 new Option<string>(
                     "--defaultbranch",
-                    description: "The default branch of your workflow run"),
+                    description: "The default branch of your workflow run, ignored if already in your event payload."),
                 new Option<string>(
                     new[] {"-C", "--directory"},
-                    "change the working directory before running"),
+                    "Change the directory of your local repository, provided file / directory names are still resolved relative to your current working directory."),
                 new Option<bool>(
                     new[] {"-v", "--verbose"},
-                    "Run automatically on every file change"),
+                    "Print more details like server / runner logs to stdout."),
                 new Option<int>(
                     "--parallel",
                     getDefaultValue: () => 4,
-                    description: "Run n parallel runners, ignored if --server is used"),
+                    description: "Run n parallel runners, ignored if --server is used."),
             };
 
-            rootCommand.Description = "Send events to your runner";
+            rootCommand.Description = "Run your workflows locally.";
 
             // Note that the parameters of the handler method are matched according to the names of the options
             Func<Parameters, Task<int>> handler = async (parameters) =>
@@ -1371,7 +1371,7 @@ namespace Runner.Client
             };
 
             foreach(var ev in validevents) {
-                var cmd = new Command(ev, "");
+                var cmd = new Command(ev, $"Same as adding `--event {ev}` to the cli, overrides any `--event` options.");
                 rootCommand.AddCommand(cmd);
                 Func<Parameters, Task<int>> handler2 = (parameters) => {
                     parameters.Event = ev;
@@ -1384,7 +1384,7 @@ namespace Runner.Client
                     }
                 }
             }
-            var startserver = new Command("startserver", "Starts a server listening on the supplied address or selects a random free http address");
+            var startserver = new Command("startserver", "Starts a server listening on the supplied address or selects a random free http address.");
             rootCommand.AddCommand(startserver);
             Func<Parameters, Task<int>> sthandler = p => {
                 p.StartServer = true;
@@ -1393,7 +1393,7 @@ namespace Runner.Client
             };
             startserver.Handler = CommandHandler.Create(sthandler);
 
-            var startrunner = new Command("startrunner", "Configures and runs n runner");
+            var startrunner = new Command("startrunner", "Configures and runs n runner.");
             rootCommand.AddCommand(startrunner);
             Func<Parameters, Task<int>> thandler = p => {
                 p.StartRunner = true;

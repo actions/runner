@@ -17,71 +17,92 @@ This fork adds two executables to this Project, `Runner.Server` as a runner back
 ## Commandline Options
 ```
 Runner.Client:
-  Send events to your runner
+  Run your workflows locally.
 
 Usage:
   Runner.Client [options] [command]
 
 Options:
-  --workflow <workflow>                                Workflow to run
-  --server <server>                                    Runner.Server address
-  -e, --eventpath, --payload <eventpath>               Webhook payload to send to the Runner
-  --event <event>                                      Which event to send to a worker [default: push]
-  --env <env>                                          env for you workflow, overrides keys from the env file
-  --env-file <env-file>                                env overrides for you workflow [default: .env]
-  -s, --secret <secret>                                secret for you workflow, overrides keys from the secrets file
-  --secret-file <secret-file>                          secrets for you workflow [default: .secrets]
-  -j, --job <job>                                      job to run
-  -m, --matrix <matrix>                                matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple times to filter more jobs
-  -l, --list                                           list jobs for the selected event [default: False]
-  -W, --workflows <workflows>                          workflow file or directory which contains workflows, only used if no --workflow option is set [default: .github/workflows]
-  -P, --platform <platform>                            Platform mapping to run in a docker image or host
-  -a, --actor <actor>                                  The login of the user that initiated the workflow run
-  -w, --watch                                          Run automatically on every file change
-  -q, --quiet                                          Display no progress in the cli
-  --privileged                                         Run docker container under privileged mode
-  --userns <userns>                                    Run docker container under a specfic linux user namespace
-  --container-architecture <container-architecture>    Run docker container architecture, if docker supports it
-  --defaultbranch <defaultbranch>                      The default branch of your workflow run
-  -C, --directory <directory>                          change the working directory before running
-  -v, --verbose                                        Run automatically on every file change
-  --parallel <parallel>                                Run n parallel runners, ignored if --server is used [default: 4]
+  --workflow <workflow>                                Workflow(s) to run. Use multiple times to execute more workflows parallel.
+  --server <server>                                    Runner.Server address, e.g. `http://localhost:5000`,
+                                                       `https://localhost:5001`.
+  -e, --eventpath, --payload <eventpath>               Webhook payload to send to the Runner.
+  --event <event>                                      Which event to send to a worker, ignored if you use subcommands which
+                                                       overriding the event. [default: push]
+  --env <env>                                          Environment variable for your workflow, overrides keys from your env file.
+                                                       E.g. `--env Name` or `--env Name=Value`. You will be asked for a value if
+                                                       you add `--env name`, but no environment variable with name `name` exists.
+  --env-file <env-file>                                Environment variables for your workflow. [default: .env]
+  -s, --secret <secret>                                Secret for your workflow, overrides keys from your secrets file. E.g. `-s
+                                                       Name` or `-s Name=Value`. You will be asked for a value if you add `--secret
+                                                       name`, but no environment variable with name `name` exists.
+  --secret-file <secret-file>                          Secrets for your workflow. [default: .secrets]
+  -j, --job <job>                                      Job to run. If multiple jobs have the same name in multiple workflows, all
+                                                       matching jobs will run. Use together with --workflow to run exact one job.
+  -m, --matrix <matrix>                                Matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple
+                                                       times to filter more specifically.
+  -l, --list                                           List jobs for the selected event (defaults to push). [default: False]
+  -W, --workflows <workflows>                          Workflow file or directory which contains workflows, only used if no
+                                                       --workflow option is set. [default: .github/workflows]
+  -P, --platform <platform>                            Platform mapping to run the workflow in a docker container (similar behavior
+                                                       as using the container property of a workflow job) or host. E.g. `-P
+                                                       ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P
+                                                       ubuntu-latest=-self-hosted` (Local Machine), `-P
+                                                       windows-latest=-self-hosted` (Local Machine), `-P
+                                                       windows-latest=mcr.microsoft.com/windows/servercore` (Docker Windows
+                                                       container, windows only), `-P macos-latest=-self-hosted` (Local Machine).
+  -a, --actor <actor>                                  The login of the user that initiated the workflow run, ignored if already in
+                                                       your event payload.
+  -w, --watch                                          Run automatically on every file change.
+  -q, --quiet                                          Display no progress in the cli.
+  --privileged                                         Run the docker container under privileged mode, only applies to container
+                                                       jobs using this Runner fork.
+  --userns <userns>                                    Change docker container linux user namespace, only applies to container jobs
+                                                       using this Runner fork.
+  --container-architecture <container-architecture>    Change docker container platform, if docker supports it, only applies to
+                                                       container jobs using this Runner fork.
+  --defaultbranch <defaultbranch>                      The default branch of your workflow run, ignored if already in your event
+                                                       payload.
+  -C, --directory <directory>                          Change the directory of your local repository, provided file / directory
+                                                       names are still resolved relative to your current working directory.
+  -v, --verbose                                        Print more details like server / runner logs to stdout.
+  --parallel <parallel>                                Run n parallel runners, ignored if --server is used. [default: 4]
   --version                                            Show version information
   -?, -h, --help                                       Show help and usage information
 
 Commands:
-  schedule
-  workflow_dispatch
-  repository_dispatch
-  check_run
-  check_suite
-  create
-  delete
-  deployment
-  deployment_status
-  fork
-  gollum
-  issue_comment
-  issues
-  label
-  milestone
-  page_build
-  project
-  project_card
-  project_column
-  public
-  pull_request
-  pull_request_review
-  pull_request_review_comment
-  pull_request_target
-  push
-  registry_package
-  release
-  status
-  watch
-  workflow_run
-  startserver                    Starts a server listening on the supplied address or selects a random free http address
-  startrunner                    Configures and runs n runner
+  schedule                       Same as adding `--event schedule` to the cli, overrides any `--event` options.
+  workflow_dispatch              Same as adding `--event workflow_dispatch` to the cli, overrides any `--event` options.
+  repository_dispatch            Same as adding `--event repository_dispatch` to the cli, overrides any `--event` options.
+  check_run                      Same as adding `--event check_run` to the cli, overrides any `--event` options.
+  check_suite                    Same as adding `--event check_suite` to the cli, overrides any `--event` options.
+  create                         Same as adding `--event create` to the cli, overrides any `--event` options.
+  delete                         Same as adding `--event delete` to the cli, overrides any `--event` options.
+  deployment                     Same as adding `--event deployment` to the cli, overrides any `--event` options.
+  deployment_status              Same as adding `--event deployment_status` to the cli, overrides any `--event` options.
+  fork                           Same as adding `--event fork` to the cli, overrides any `--event` options.
+  gollum                         Same as adding `--event gollum` to the cli, overrides any `--event` options.
+  issue_comment                  Same as adding `--event issue_comment` to the cli, overrides any `--event` options.
+  issues                         Same as adding `--event issues` to the cli, overrides any `--event` options.
+  label                          Same as adding `--event label` to the cli, overrides any `--event` options.
+  milestone                      Same as adding `--event milestone` to the cli, overrides any `--event` options.
+  page_build                     Same as adding `--event page_build` to the cli, overrides any `--event` options.
+  project                        Same as adding `--event project` to the cli, overrides any `--event` options.
+  project_card                   Same as adding `--event project_card` to the cli, overrides any `--event` options.
+  project_column                 Same as adding `--event project_column` to the cli, overrides any `--event` options.
+  public                         Same as adding `--event public` to the cli, overrides any `--event` options.
+  pull_request                   Same as adding `--event pull_request` to the cli, overrides any `--event` options.
+  pull_request_review            Same as adding `--event pull_request_review` to the cli, overrides any `--event` options.
+  pull_request_review_comment    Same as adding `--event pull_request_review_comment` to the cli, overrides any `--event` options.
+  pull_request_target            Same as adding `--event pull_request_target` to the cli, overrides any `--event` options.
+  push                           Same as adding `--event push` to the cli, overrides any `--event` options.
+  registry_package               Same as adding `--event registry_package` to the cli, overrides any `--event` options.
+  release                        Same as adding `--event release` to the cli, overrides any `--event` options.
+  status                         Same as adding `--event status` to the cli, overrides any `--event` options.
+  watch                          Same as adding `--event watch` to the cli, overrides any `--event` options.
+  workflow_run                   Same as adding `--event workflow_run` to the cli, overrides any `--event` options.
+  startserver                    Starts a server listening on the supplied address or selects a random free http address.
+  startrunner                    Configures and runs n runner.
 ```
 
 ## Troubleshooting
