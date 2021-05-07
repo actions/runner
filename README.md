@@ -24,7 +24,7 @@ Usage:
 
 Options:
   --workflow <workflow>                                Workflow(s) to run. Use multiple times to execute more workflows parallel.
-  --server <server>                                    Runner.Server address, e.g. `http://localhost:5000`,
+  --server <server>                                    Runner.Server address, e.g. `http://localhost:5000` or
                                                        `https://localhost:5001`.
   -e, --eventpath, --payload <eventpath>               Webhook payload to send to the Runner.
   --event <event>                                      Which event to send to a worker, ignored if you use subcommands which
@@ -38,12 +38,15 @@ Options:
                                                        name`, but no environment variable with name `name` exists.
   --secret-file <secret-file>                          Secrets for your workflow. [default: .secrets]
   -j, --job <job>                                      Job to run. If multiple jobs have the same name in multiple workflows, all
-                                                       matching jobs will run. Use together with --workflow to run exact one job.
-  -m, --matrix <matrix>                                Matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple
-                                                       times to filter more specifically.
-  -l, --list                                           List jobs for the selected event (defaults to push). [default: False]
+                                                       matching jobs will run. Use together with `--workflow <workflow>` to run
+                                                       exact one job.
+  -m, --matrix <matrix>                                Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use
+                                                       multiple times to filter more specifically. If you want to force a value to
+                                                       be a string you need to quote it, e.g. `"-m Key:\"1\"` or `"-m Key:""1"""`
+                                                       (requires shell escaping)
+  -l, --list                                           List jobs for the selected event (defaults to push).
   -W, --workflows <workflows>                          Workflow file or directory which contains workflows, only used if no
-                                                       --workflow option is set. [default: .github/workflows]
+                                                       `--workflow <workflow>` option is set. [default: .github/workflows]
   -P, --platform <platform>                            Platform mapping to run the workflow in a docker container (similar behavior
                                                        as using the container property of a workflow job) or host. E.g. `-P
                                                        ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P
@@ -51,56 +54,57 @@ Options:
                                                        windows-latest=-self-hosted` (Local Machine), `-P
                                                        windows-latest=mcr.microsoft.com/windows/servercore` (Docker Windows
                                                        container, windows only), `-P macos-latest=-self-hosted` (Local Machine).
-  -a, --actor <actor>                                  The login of the user that initiated the workflow run, ignored if already in
+  -a, --actor <actor>                                  The login of the user who initiated the workflow run, ignored if already in
                                                        your event payload.
   -w, --watch                                          Run automatically on every file change.
   -q, --quiet                                          Display no progress in the cli.
   --privileged                                         Run the docker container under privileged mode, only applies to container
                                                        jobs using this Runner fork.
-  --userns <userns>                                    Change docker container linux user namespace, only applies to container jobs
-                                                       using this Runner fork.
-  --container-architecture <container-architecture>    Change docker container platform, if docker supports it, only applies to
+  --userns <userns>                                    Change the docker container linux user namespace, only applies to container
+                                                       jobs using this Runner fork.
+  --container-architecture <container-architecture>    Change the docker container platform, if docker supports it. Only applies to
                                                        container jobs using this Runner fork.
   --defaultbranch <defaultbranch>                      The default branch of your workflow run, ignored if already in your event
                                                        payload.
-  -C, --directory <directory>                          Change the directory of your local repository, provided file / directory
+  -C, --directory <directory>                          Change the directory of your local repository, provided file or directory
                                                        names are still resolved relative to your current working directory.
   -v, --verbose                                        Print more details like server / runner logs to stdout.
-  --parallel <parallel>                                Run n parallel runners, ignored if --server is used. [default: 4]
+  --parallel <parallel>                                Run n parallel runners, ignored if `--server <server>` is used. [default: 4]
   --version                                            Show version information
   -?, -h, --help                                       Show help and usage information
 
 Commands:
-  schedule                       Same as adding `--event schedule` to the cli, overrides any `--event` options.
-  workflow_dispatch              Same as adding `--event workflow_dispatch` to the cli, overrides any `--event` options.
-  repository_dispatch            Same as adding `--event repository_dispatch` to the cli, overrides any `--event` options.
-  check_run                      Same as adding `--event check_run` to the cli, overrides any `--event` options.
-  check_suite                    Same as adding `--event check_suite` to the cli, overrides any `--event` options.
-  create                         Same as adding `--event create` to the cli, overrides any `--event` options.
-  delete                         Same as adding `--event delete` to the cli, overrides any `--event` options.
-  deployment                     Same as adding `--event deployment` to the cli, overrides any `--event` options.
-  deployment_status              Same as adding `--event deployment_status` to the cli, overrides any `--event` options.
-  fork                           Same as adding `--event fork` to the cli, overrides any `--event` options.
-  gollum                         Same as adding `--event gollum` to the cli, overrides any `--event` options.
-  issue_comment                  Same as adding `--event issue_comment` to the cli, overrides any `--event` options.
-  issues                         Same as adding `--event issues` to the cli, overrides any `--event` options.
-  label                          Same as adding `--event label` to the cli, overrides any `--event` options.
-  milestone                      Same as adding `--event milestone` to the cli, overrides any `--event` options.
-  page_build                     Same as adding `--event page_build` to the cli, overrides any `--event` options.
-  project                        Same as adding `--event project` to the cli, overrides any `--event` options.
-  project_card                   Same as adding `--event project_card` to the cli, overrides any `--event` options.
-  project_column                 Same as adding `--event project_column` to the cli, overrides any `--event` options.
-  public                         Same as adding `--event public` to the cli, overrides any `--event` options.
-  pull_request                   Same as adding `--event pull_request` to the cli, overrides any `--event` options.
-  pull_request_review            Same as adding `--event pull_request_review` to the cli, overrides any `--event` options.
-  pull_request_review_comment    Same as adding `--event pull_request_review_comment` to the cli, overrides any `--event` options.
-  pull_request_target            Same as adding `--event pull_request_target` to the cli, overrides any `--event` options.
-  push                           Same as adding `--event push` to the cli, overrides any `--event` options.
-  registry_package               Same as adding `--event registry_package` to the cli, overrides any `--event` options.
-  release                        Same as adding `--event release` to the cli, overrides any `--event` options.
-  status                         Same as adding `--event status` to the cli, overrides any `--event` options.
-  watch                          Same as adding `--event watch` to the cli, overrides any `--event` options.
-  workflow_run                   Same as adding `--event workflow_run` to the cli, overrides any `--event` options.
+  schedule                       Same as adding `--event schedule` to the cli, overrides any `--event <event>` option.
+  workflow_dispatch              Same as adding `--event workflow_dispatch` to the cli, overrides any `--event <event>` option.
+  repository_dispatch            Same as adding `--event repository_dispatch` to the cli, overrides any `--event <event>` option.
+  check_run                      Same as adding `--event check_run` to the cli, overrides any `--event <event>` option.
+  check_suite                    Same as adding `--event check_suite` to the cli, overrides any `--event <event>` option.
+  create                         Same as adding `--event create` to the cli, overrides any `--event <event>` option.
+  delete                         Same as adding `--event delete` to the cli, overrides any `--event <event>` option.
+  deployment                     Same as adding `--event deployment` to the cli, overrides any `--event <event>` option.
+  deployment_status              Same as adding `--event deployment_status` to the cli, overrides any `--event <event>` option.
+  fork                           Same as adding `--event fork` to the cli, overrides any `--event <event>` option.
+  gollum                         Same as adding `--event gollum` to the cli, overrides any `--event <event>` option.
+  issue_comment                  Same as adding `--event issue_comment` to the cli, overrides any `--event <event>` option.
+  issues                         Same as adding `--event issues` to the cli, overrides any `--event <event>` option.
+  label                          Same as adding `--event label` to the cli, overrides any `--event <event>` option.
+  milestone                      Same as adding `--event milestone` to the cli, overrides any `--event <event>` option.
+  page_build                     Same as adding `--event page_build` to the cli, overrides any `--event <event>` option.
+  project                        Same as adding `--event project` to the cli, overrides any `--event <event>` option.
+  project_card                   Same as adding `--event project_card` to the cli, overrides any `--event <event>` option.
+  project_column                 Same as adding `--event project_column` to the cli, overrides any `--event <event>` option.
+  public                         Same as adding `--event public` to the cli, overrides any `--event <event>` option.
+  pull_request                   Same as adding `--event pull_request` to the cli, overrides any `--event <event>` option.
+  pull_request_review            Same as adding `--event pull_request_review` to the cli, overrides any `--event <event>` option.
+  pull_request_review_comment    Same as adding `--event pull_request_review_comment` to the cli, overrides any `--event <event>`
+                                 option.
+  pull_request_target            Same as adding `--event pull_request_target` to the cli, overrides any `--event <event>` option.
+  push                           Same as adding `--event push` to the cli, overrides any `--event <event>` option.
+  registry_package               Same as adding `--event registry_package` to the cli, overrides any `--event <event>` option.
+  release                        Same as adding `--event release` to the cli, overrides any `--event <event>` option.
+  status                         Same as adding `--event status` to the cli, overrides any `--event <event>` option.
+  watch                          Same as adding `--event watch` to the cli, overrides any `--event <event>` option.
+  workflow_run                   Same as adding `--event workflow_run` to the cli, overrides any `--event <event>` option.
   startserver                    Starts a server listening on the supplied address or selects a random free http address.
   startrunner                    Configures and runs n runner.
 ```

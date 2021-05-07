@@ -243,7 +243,7 @@ namespace Runner.Client
             envOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var matrixOpt = new Option<string>(
                 new[] { "-m", "--matrix" },
-                description: "Matrix filter e.g. '-m Key:value', use together with '--job'. Use multiple times to filter more specifically.");
+                description: "Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use multiple times to filter more specifically. If you want to force a value to be a string you need to quote it, e.g. `\"-m Key:\\\"1\\\"` or `\"-m Key:\"\"1\"\"\"` (requires shell escaping)");
             matrixOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             
             var workflowOption = new Option<string>(
@@ -260,7 +260,7 @@ namespace Runner.Client
                 workflowOption,
                 new Option<string>(
                     "--server",
-                    description: "Runner.Server address, e.g. `http://localhost:5000`, `https://localhost:5001`."),
+                    description: "Runner.Server address, e.g. `http://localhost:5000` or `https://localhost:5001`."),
                 new Option<string>(
                     new[] { "-e", "--payload", "--eventpath" },
                     "Webhook payload to send to the Runner."),
@@ -280,20 +280,19 @@ namespace Runner.Client
                     description: "Secrets for your workflow."),
                 new Option<string>(
                     new[] {"-j", "--job"},
-                    description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with --workflow to run exact one job."),
+                    description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with `--workflow <workflow>` to run exact one job."),
                 matrixOpt,
                 new Option<bool>(
                     new[] { "-l", "--list"},
-                    getDefaultValue: () => false,
                     description: "List jobs for the selected event (defaults to push)."),
                 new Option<string>(
                     new[] { "-W", "--workflows"},
                     getDefaultValue: () => ".github/workflows",
-                    description: "Workflow file or directory which contains workflows, only used if no --workflow option is set."),
+                    description: "Workflow file or directory which contains workflows, only used if no `--workflow <workflow>` option is set."),
                 platformOption,
                 new Option<string>(
                     new[] {"-a" , "--actor"},
-                    "The login of the user that initiated the workflow run, ignored if already in your event payload."),
+                    "The login of the user who initiated the workflow run, ignored if already in your event payload."),
                 new Option<bool>(
                     new[] {"-w", "--watch"},
                     "Run automatically on every file change."),
@@ -305,23 +304,23 @@ namespace Runner.Client
                     "Run the docker container under privileged mode, only applies to container jobs using this Runner fork."),
                 new Option<string>(
                     "--userns",
-                    "Change docker container linux user namespace, only applies to container jobs using this Runner fork."),
+                    "Change the docker container linux user namespace, only applies to container jobs using this Runner fork."),
                 new Option<string>(
                     "--container-architecture",
-                    "Change docker container platform, if docker supports it, only applies to container jobs using this Runner fork."),
+                    "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork."),
                 new Option<string>(
                     "--defaultbranch",
                     description: "The default branch of your workflow run, ignored if already in your event payload."),
                 new Option<string>(
                     new[] {"-C", "--directory"},
-                    "Change the directory of your local repository, provided file / directory names are still resolved relative to your current working directory."),
+                    "Change the directory of your local repository, provided file or directory names are still resolved relative to your current working directory."),
                 new Option<bool>(
                     new[] {"-v", "--verbose"},
                     "Print more details like server / runner logs to stdout."),
                 new Option<int>(
                     "--parallel",
                     getDefaultValue: () => 4,
-                    description: "Run n parallel runners, ignored if --server is used."),
+                    description: "Run n parallel runners, ignored if `--server <server>` is used."),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -1371,7 +1370,7 @@ namespace Runner.Client
             };
 
             foreach(var ev in validevents) {
-                var cmd = new Command(ev, $"Same as adding `--event {ev}` to the cli, overrides any `--event` options.");
+                var cmd = new Command(ev, $"Same as adding `--event {ev}` to the cli, overrides any `--event <event>` option.");
                 rootCommand.AddCommand(cmd);
                 Func<Parameters, Task<int>> handler2 = (parameters) => {
                     parameters.Event = ev;
