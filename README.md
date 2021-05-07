@@ -42,7 +42,7 @@ Options:
                                                        exact one job.
   -m, --matrix <matrix>                                Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use
                                                        multiple times to filter more specifically. If you want to force a value to
-                                                       be a string you need to quote it, e.g. `"-m Key:\"1\"` or `"-m Key:""1"""`
+                                                       be a string you need to quote it, e.g. `"-m Key:\"1\""` or `"-m Key:""1"""`
                                                        (requires shell escaping)
   -l, --list                                           List jobs for the selected event (defaults to push).
   -W, --workflows <workflows>                          Workflow file or directory which contains workflows, only used if no

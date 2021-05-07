@@ -243,7 +243,7 @@ namespace Runner.Client
             envOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var matrixOpt = new Option<string>(
                 new[] { "-m", "--matrix" },
-                description: "Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use multiple times to filter more specifically. If you want to force a value to be a string you need to quote it, e.g. `\"-m Key:\\\"1\\\"` or `\"-m Key:\"\"1\"\"\"` (requires shell escaping)");
+                description: "Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use multiple times to filter more specifically. If you want to force a value to be a string you need to quote it, e.g. `\"-m Key:\\\"1\\\"\"` or `\"-m Key:\"\"1\"\"\"` (requires shell escaping)");
             matrixOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             
             var workflowOption = new Option<string>(
