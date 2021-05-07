@@ -142,6 +142,7 @@ namespace Runner.Client
                     input.Append(keyInfo.KeyChar);
                 }
             } while(keyInfo.Key != ConsoleKey.Enter);
+            Console.WriteLine();
             return input.ToString();
         }
 
