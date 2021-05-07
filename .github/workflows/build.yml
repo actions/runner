@@ -118,3 +118,10 @@ jobs:
         kill $workerpid
         kill $serverpid
         popd
+    - name: Test cache
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-x64'
+      shell: bash
+      run: |
+        pushd _layout/bin
+        ./Runner.Client${{ matrix.exeSuffix }} -P ubuntu-latest=-self-hosted -W ../../testworkflows/cache.yml
+        popd
