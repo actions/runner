@@ -1572,7 +1572,19 @@ namespace Runner.Server.Controllers
                             if(req.CancelRequest) {
                                 continue;
                             }
-                            var apiUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/";
+                            var apiUrlBuilder = new UriBuilder();
+                            apiUrlBuilder.Scheme = Request.Scheme;
+                            apiUrlBuilder.Host = Request.Host.Host ?? HttpContext.Connection.LocalIpAddress.ToString();
+                            apiUrlBuilder.Path = req.repo.Count(c => c == '/') == 1 ? req.repo : "Unknown/Unknown";
+                            if(Request.Host.Port.HasValue) {
+                                apiUrlBuilder.Port = Request.Host.Port.Value;
+                            } else {
+                                apiUrlBuilder.Port = HttpContext.Connection.LocalPort;
+                            }
+                            var apiUrl = apiUrlBuilder.ToString();
+                            if(!apiUrl.EndsWith('/')) {
+                                apiUrl += "/";
+                            }
                             if(req.message == null) {
                                 Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
                                 continue;
