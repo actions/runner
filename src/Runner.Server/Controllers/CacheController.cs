@@ -35,7 +35,7 @@ namespace Runner.Server.Controllers {
             public string version  {get;set;}
         }
 
-        private static ConcurrentDictionary<string, string> cache = new ConcurrentDictionary<string, string>();
+        private static ConcurrentDictionary<string, ConcurrentDictionary<string, string>> cache = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>();
 
         private IMemoryCache _cache;
 
@@ -49,12 +49,13 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpPost("caches")]
-        public async Task<FileStreamResult> ReserveCache() {
+        public async Task<FileStreamResult> ReserveCache(string owner, string repo) {
             var req = await FromBody<ReserveCacheRequest>();
             int _id = Interlocked.Increment(ref id);
             var filename = Path.GetRandomFileName();
             _cache.Set("Cache_" + _id, filename);
-            cache.AddOrUpdate(req.key, (a) => { return filename; }, (a, b) => {
+            var repocache = cache.GetOrAdd($"{owner}/{repo}", k => new ConcurrentDictionary<string, string>());
+            repocache.AddOrUpdate(req.key, (a) => { return filename; }, (a, b) => {
                 System.IO.File.Delete(System.IO.Path.Combine(_targetFilePath, b));
                 return filename;
             });
@@ -62,13 +63,14 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpGet("cache")]
-        public async Task<ActionResult>/* IActionResult */ GetCacheEntry( [FromQuery] string keys, [FromQuery] string version) {
+        public async Task<ActionResult>/* IActionResult */ GetCacheEntry( string owner, string repo, [FromQuery] string keys, [FromQuery] string version) {
             var a = keys.Split(',');
             string val;
-            if(cache.TryGetValue(a[0], out val)) {
+            var repocache = cache.GetOrAdd($"{owner}/{repo}", k => new ConcurrentDictionary<string, string>());
+            if(repocache.TryGetValue(a[0], out val)) {
                 return await Ok(new ArtifactCacheEntry{ cacheKey = a[0], scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/artifactcache/get/{val}" });
             } else {
-                var b = cache.ToArray();
+                var b = repocache.ToArray();
                 foreach (var item in a) {
                     var res = (from c in b where item.StartsWith(c.Key) select c).FirstOrDefault();
                     if(res.Value != null) {
