@@ -51,6 +51,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public const String Path = "path";
         public const String Pool = "pool";
         public const String Ports = "ports";
+        public const String Pull = "pull";
         public const String Result = "result";
         public const String Run = "run";
         public const String RunDisplayPrefix = "Run ";
