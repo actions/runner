@@ -311,7 +311,7 @@ namespace GitHub.Runner.Worker
             var result = new TemplateContext
             {
                 CancellationToken = CancellationToken.None,
-                Errors = new TemplateValidationErrors(10, 500),
+                Errors = new TemplateValidationErrors(10, int.MaxValue), // Don't truncate error messages otherwise we might not scrub secrets correctly
                 Memory = new TemplateMemory(
                     maxDepth: 100,
                     maxEvents: 1000000,
