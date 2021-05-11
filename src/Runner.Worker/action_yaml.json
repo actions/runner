@@ -32,10 +32,10 @@
         "outputs": {
             "mapping": {
                 "loose-key-type": "non-empty-string",
-                "loose-value-type": "outputs-attributes"
+                "loose-value-type": "output-definition"
             }
         },
-        "outputs-attributes": {
+        "output-definition": {
             "mapping": {
                 "properties": {
                     "description": "string",
