@@ -59,7 +59,7 @@ namespace GitHub.Runner.Worker
             ActionDefinitionData actionDefinition = new ActionDefinitionData();
 
             // Clean up file name real quick
-            // Instead of using Regex which can be computationally expensive, 
+            // Instead of using Regex which can be computationally expensive,
             // we can just remove the # of characters from the fileName according to the length of the basePath
             string basePath = HostContext.GetDirectory(WellKnownDirectory.Actions);
             string fileRelativePath = manifestFile;
@@ -451,7 +451,10 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase))
+                else if (
+                    string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(usingToken.Value, "node14", StringComparison.OrdinalIgnoreCase)
+                )
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
                     {
@@ -486,7 +489,7 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker' or 'node12' instead.");
+                    throw new ArgumentOutOfRangeException($"'using: {usingToken.Value}' is not supported, use 'docker', 'node12', or 'node14' instead.");
                 }
             }
             else if (pluginToken != null)

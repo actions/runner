@@ -47,6 +47,7 @@
             "one-of": [
                 "container-runs",
                 "node12-runs",
+                "node14-runs",
                 "plugin-runs",
                 "composite-runs"
             ]
@@ -81,6 +82,18 @@
             }
         },
         "node12-runs": {
+            "mapping": {
+                "properties": {
+                    "using": "non-empty-string",
+                    "main": "non-empty-string",
+                    "pre": "non-empty-string",
+                    "pre-if": "non-empty-string",
+                    "post": "non-empty-string",
+                    "post-if": "non-empty-string"
+                }
+            }
+        },
+        "node14-runs": {
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
