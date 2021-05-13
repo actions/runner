@@ -223,77 +223,80 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
     useEffect(() => {
         if(id !== undefined && id !== null && id.length > 0) {
             var item = getJobById(jobs, id).item;
-            if(item !== null) {
+            if(item !== null && item.description && item.description != '') {
                 var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
-                var missed : ILoglineEvent[] = [];
-                var callback = function(timeline, e:ILoglineEvent) {
-                    var s = timeline.find(t => t.id === e.record.stepId);
-                    var convert = new Convert({
-                        newline: true,
-                        escapeXML: true
-                    });
-                    if(s != null && s != undefined) {
-                        if(s.log == null) {
-                            s.log = { id:-1, location: null, content: ""};
-                            if(e.record.startLine > 1) {
-                                (async () => {
-                                    console.log("Downloading previous log lines of this step...");
-                                    var lines = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item.description + "/" + e.record.stepId, { });
-                                    if(lines.status === 200) {
-                                        var missingLines = await lines.json() as ILogline[];
-                                        missingLines.length = e.record.startLine - 1;
-                                        s.log.content = missingLines.reduce((prev: string, c : ILogline) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c.line), "") + s.log.content;
-                                    } else {
-                                        console.log("No logs to download..., currently fixes itself");
-                                    }
-                                })();
+                try {
+                    var missed : ILoglineEvent[] = [];
+                    var callback = function(timeline, e:ILoglineEvent) {
+                        var s = timeline.find(t => t.id === e.record.stepId);
+                        var convert = new Convert({
+                            newline: true,
+                            escapeXML: true
+                        });
+                        if(s != null && s != undefined) {
+                            if(s.log == null) {
+                                s.log = { id:-1, location: null, content: ""};
+                                if(e.record.startLine > 1) {
+                                    (async () => {
+                                        console.log("Downloading previous log lines of this step...");
+                                        var lines = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item.description + "/" + e.record.stepId, { });
+                                        if(lines.status === 200) {
+                                            var missingLines = await lines.json() as ILogline[];
+                                            missingLines.length = e.record.startLine - 1;
+                                            s.log.content = missingLines.reduce((prev: string, c : ILogline) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c.line), "") + s.log.content;
+                                        } else {
+                                            console.log("No logs to download..., currently fixes itself");
+                                        }
+                                    })();
+                                }
                             }
+                            if (s.log.id === -1) {
+                                s.log.content = e.record.value.reduce((prev: string, c : string) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c), s.log.content);
+                            }
+                            return true;
                         }
-                        if (s.log.id === -1) {
-                            s.log.content = e.record.value.reduce((prev: string, c : string) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c), s.log.content);
-                        }
-                        return true;
+                        return false;
                     }
-                    return false;
-                }
-                source.addEventListener ("log", (ev : MessageEvent) => {
-                    console.log("new logline " + ev.data);
-                    var e = JSON.parse(ev.data) as ILoglineEvent;
-                    setTimeline(timeline => {
-                        if(callback(timeline, e)) {
-                            return [...timeline];
-                        }
-                        missed.push(e);
-                        return timeline;
-                    });
-                });
-                source.addEventListener ("timeline", (ev : MessageEvent) => {
-                    var e = JSON.parse(ev.data) as ITimeLineEvent;
-                    setTitle(e.timeline.shift().name);
-                    setTimeline(oldtimeline => {
-                        var del = e.timeline.splice(0, oldtimeline.length)
-                        for (let i = 0; i < del.length; i++) {
-                            oldtimeline[i].result = del[i].result;
-                            oldtimeline[i].state = del[i].state;
-                        }
-                        if(e.timeline.length === 0) {
-                            // Todo Merge Timelines here
-                            return oldtimeline;
-                        }
-                        var timeline = [...oldtimeline, ...e.timeline]
-                        for (; missed.length > 0;) {
-                            if(callback(timeline, missed[0])) {
-                                missed.shift();
-                            } else {
-                                break;
+                    source.addEventListener ("log", (ev : MessageEvent) => {
+                        console.log("new logline " + ev.data);
+                        var e = JSON.parse(ev.data) as ILoglineEvent;
+                        setTimeline(timeline => {
+                            if(callback(timeline, e)) {
+                                return [...timeline];
                             }
-                        }
-                        return timeline;
+                            missed.push(e);
+                            return timeline;
+                        });
                     });
-                    // console.log(ev.data)
-                });
-                return () => {
-                    source.close();
+                    source.addEventListener ("timeline", (ev : MessageEvent) => {
+                        var e = JSON.parse(ev.data) as ITimeLineEvent;
+                        setTitle(e.timeline.shift().name);
+                        setTimeline(oldtimeline => {
+                            var del = e.timeline.splice(0, oldtimeline.length)
+                            for (let i = 0; i < del.length; i++) {
+                                oldtimeline[i].result = del[i].result;
+                                oldtimeline[i].state = del[i].state;
+                            }
+                            if(e.timeline.length === 0) {
+                                // Todo Merge Timelines here
+                                return oldtimeline;
+                            }
+                            var timeline = [...oldtimeline, ...e.timeline]
+                            for (; missed.length > 0;) {
+                                if(callback(timeline, missed[0])) {
+                                    missed.shift();
+                                } else {
+                                    break;
+                                }
+                            }
+                            return timeline;
+                        });
+                        // console.log(ev.data)
+                    });
+                } finally {
+                    return () => {
+                        source.close();
+                    }
                 }
             }
         }
