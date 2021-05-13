@@ -1411,7 +1411,7 @@ namespace Runner.Server.Controllers
             var resources = new JobResources();
             
 
-            var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>();
+            var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
             variables.Add("system.github.token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("github_token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
@@ -1419,7 +1419,12 @@ namespace Runner.Server.Controllers
                 variables[secret.Name] = new VariableValue(secret.Value, true);
             }
             if(secrets != null) {
-                LoadEnvSec(secrets, (name, value) => variables[name] = new VariableValue(value, true));
+                LoadEnvSec(secrets, (name, value) => {
+                    variables[name] = new VariableValue(value, true);
+                    if(StringComparer.OrdinalIgnoreCase.Compare("github_token", name) == 0) {
+                        variables["system.github.token"] = new VariableValue(value, true);
+                    }
+                });
             }
 
             var defaultToken = (from r in run where r.Key.AssertString("defaults").Value == "defaults" select r).FirstOrDefault().Value;
