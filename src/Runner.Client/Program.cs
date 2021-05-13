@@ -196,6 +196,8 @@ namespace Runner.Client
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
                 WindowsUtils.EnableVT();
             }
+            Console.InputEncoding = Encoding.UTF8;
+            Console.OutputEncoding = Encoding.UTF8;
             
             //$content = Get-Content <path to raw https://github.com/github/docs/blob/main/content/actions/reference/events-that-trigger-workflows.md>
             //$content -match "#### ``.*``"
