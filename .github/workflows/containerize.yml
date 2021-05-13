@@ -1,0 +1,70 @@
+name: Containerize Runner
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+    paths-ignore:
+      - '**.md'
+      - '.github/*'
+
+jobs:
+  build-and-push:
+    name: Build and Push to Quay
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+
+    env:
+      DOCKER_VERSION: 19.03.12
+      DOCKER_QUAY_REGISTRY: quay.io
+      DOCKER_QUAY_NAMESPACE: sundae
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set Outputs
+        id: vars
+        run: |
+          echo ::set-output name=sha_short::${GITHUB_SHA::7}
+          if [[ $(diff releaseVersion src/runnerversion; echo $?) -eq 0 ]]
+          then
+            echo ::set-output name=runner_version::$(cat releaseVersion)
+          else
+            echo ::set-output name=runner_version::$(cat src/runnerVersion)
+          fi
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v1.0.1
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v1.1.1
+        with:
+          version: latest
+
+      - name: Wait for Release
+        uses: lewagon/wait-on-check-action@v0.2
+        with:
+          ref: ${{ github.ref }}
+          repo-token: ${{ github.token }}
+          running-workflow-name: "Runner CD"
+          wait-interval: 600
+
+      - name: Build and Push
+        uses: docker/build-push-action@v1
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            DOCKER_VERSION=${{ env.DOCKER_VERSION }}
+          tags: v${{ steps.vars.outputs.runner_version }}, v${{ steps.vars.outputs.runner_version }}-${{ steps.vars.outputs.sha_short }}, latest
+          registry: ${{ env.DOCKER_QUAY_REGISTRY }}
+          repository: ${{ env.DOCKER_QUAY_NAMESPACE }}/runner
+          username: ${{ secrets.DOCKER_QUAY_ROBOT_USERNAME }}
+          password: ${{ secrets.DOCKER_QUAY_ROBOT_PASSWORD }}
