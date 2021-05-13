@@ -32,7 +32,7 @@ jobs:
               runner_id: runnersResp.data.runners[i].id
             });
           }
-        github-token: ${{secrets.PAT}}
+        github-token: ${{ github.token }}
     - name: Generate Unique Runner label
       id: generator
       run: |
@@ -74,7 +74,7 @@ jobs:
       run: |
         ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
       working-directory: src
-    
+
     # Create runner package tar.gz/zip
     - name: Package Release
       run: |
@@ -149,7 +149,7 @@ jobs:
               core.info(`---------- Windows running: ${runWin64} -- Linux running: ${runLinux64} -- macOS running: ${runOsx64} -- Linux ARM64 running: ${runLinuxARM64} -----------`)
             }
           }
-        github-token: ${{secrets.PAT}}
+        github-token: ${{ github.token }}
 
   LinuxE2E:
     needs: [build, init]
@@ -166,7 +166,7 @@ jobs:
         env:
           unique_runner_name: linux-x64-${{needs.init.outputs.unique_runner_label}}
         run: |
-          ./config.sh --url ${{github.event.repository.html_url}} --unattended --name $unique_runner_name --pat ${{secrets.PAT}} --labels $unique_runner_name --replace
+          ./config.sh --url ${{github.event.repository.html_url}} --unattended --name $unique_runner_name --pat ${{ github.token }} --labels $unique_runner_name --replace
       - name: Start Runner and Wait for Job
         timeout-minutes: 5
         run: |
@@ -175,7 +175,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          ./config.sh remove --pat ${{secrets.PAT}}
+          ./config.sh remove --pat ${{ github.token }}
       - name: Upload Runner Logs
         if: always()
         uses: actions/upload-artifact@v2
@@ -197,7 +197,7 @@ jobs:
         env:
           unique_runner_name: osx-x64-${{needs.init.outputs.unique_runner_label}}
         run: |
-          ./config.sh --url ${{github.event.repository.html_url}} --unattended --name $unique_runner_name --pat ${{secrets.PAT}} --labels $unique_runner_name --replace
+          ./config.sh --url ${{github.event.repository.html_url}} --unattended --name $unique_runner_name --pat ${{ github.token }} --labels $unique_runner_name --replace
       - name: Start Runner and Wait for Job
         timeout-minutes: 5
         run: |
@@ -206,7 +206,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          ./config.sh remove --pat ${{secrets.PAT}}
+          ./config.sh remove --pat ${{ github.token }}
       - name: Upload Runner Logs
         if: always()
         uses: actions/upload-artifact@v2
@@ -231,7 +231,7 @@ jobs:
       - name: Configure Runner
         uses: docker://multiarch/ubuntu-core:arm64-bionic
         with:
-          args: 'bash -c "apt-get update && apt-get install -y curl && ./bin/installdependencies.sh && ./config.sh --unattended --name $unique_runner_name --url ${{github.event.repository.html_url}} --pat ${{secrets.PAT}} --labels $unique_runner_name  --replace"'
+          args: 'bash -c "apt-get update && apt-get install -y curl && ./bin/installdependencies.sh && ./config.sh --unattended --name $unique_runner_name --url ${{github.event.repository.html_url}} --pat ${{ github.token }} --labels $unique_runner_name  --replace"'
         env:
           RUNNER_ALLOW_RUNASROOT: 1
           unique_runner_name: linux-arm64-${{needs.init.outputs.unique_runner_label}}
@@ -249,7 +249,7 @@ jobs:
         continue-on-error: true
         uses: docker://multiarch/ubuntu-core:arm64-bionic
         with:
-          args: 'bash -c "apt-get update && apt-get install -y curl && ./bin/installdependencies.sh && ./config.sh remove --pat ${{secrets.PAT}}"'
+          args: 'bash -c "apt-get update && apt-get install -y curl && ./bin/installdependencies.sh && ./config.sh remove --pat ${{ github.token }}"'
         env:
           RUNNER_ALLOW_RUNASROOT: 1
 
@@ -274,7 +274,7 @@ jobs:
       - name: Configure Runner
         shell: cmd
         run: |
-          config.cmd --unattended --url ${{github.event.repository.html_url}} --name %unique_runner_name% --pat ${{secrets.PAT}} --labels %unique_runner_name% --replace
+          config.cmd --unattended --url ${{github.event.repository.html_url}} --name %unique_runner_name% --pat ${{ github.token }} --labels %unique_runner_name% --replace
         env:
           unique_runner_name: win-x64-${{needs.init.outputs.unique_runner_label}}
 
@@ -288,14 +288,14 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          config.cmd remove --pat ${{secrets.PAT}}
+          config.cmd remove --pat ${{ github.token }}
       - name: Upload Runner Logs
         if: always()
         uses: actions/upload-artifact@v2
         with:
           name: win_x64_logs
           path: _diag
-  
+
   check:
     name: Check runner logs 🕵️‍♂️
     needs: [WindowsE2E, LinuxE2E, macOSE2E, ARM64E2E]
