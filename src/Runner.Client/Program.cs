@@ -116,6 +116,7 @@ namespace Runner.Client
             public int parallel { get; set; }
             public bool StartServer { get; set; }
             public bool StartRunner { get; set; }
+            public bool NoCopyGitDir { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -323,6 +324,9 @@ namespace Runner.Client
                     "--parallel",
                     getDefaultValue: () => 4,
                     description: "Run n parallel runners, ignored if `--server <server>` is used."),
+                new Option<bool>(
+                    "--no-copy-git-dir",
+                    description: "Avoid copying the .git folder into the runner if it exists"),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -1179,6 +1183,30 @@ namespace Runner.Client
                                                         }
                                                     };
                                                     await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "ls-files -z -o --exclude-standard", new Dictionary<string, string>(), source.Token);
+                                                    if(!parameters.NoCopyGitDir) {
+                                                        // Copy .git dir if it exists (not working with git worktree) https://github.com/ChristopherHX/runner.server/issues/34
+                                                        var gitdir = Path.Combine(parameters.directory ?? ".", ".git");
+                                                        if(Directory.Exists(gitdir)) {
+                                                            foreach(var w in Directory.EnumerateFiles(gitdir, "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
+                                                                var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
+                                                                var file = File.OpenRead(w);
+                                                                streamsToDispose.Add(file);
+                                                                var mode = "644";
+                                                                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                                                                    try {
+                                                                        var finfo = new Mono.Unix.UnixFileInfo(w);
+                                                                        if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                                                            mode = "755";
+                                                                        }
+                                                                    }
+                                                                    catch {
+
+                                                                    }
+                                                                }
+                                                                repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
+                                                            }
+                                                        }
+                                                    }
                                                 } catch {
                                                     foreach(var fstream in streamsToDispose) {
                                                         await fstream.DisposeAsync();
