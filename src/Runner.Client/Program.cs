@@ -520,9 +520,12 @@ namespace Runner.Client
                                 }
                                 return 0;
                             });
-                            if(await Task.WhenAny(workerchannel.Reader.ReadAsync().AsTask(), __startrunner) == __startrunner) {
+                            var task = workerchannel.Reader.ReadAsync().AsTask();
+                            if(await Task.WhenAny(task, __startrunner) == __startrunner) {
                                 if(await __startrunner != 0) {
                                     return 1;
+                                } else {
+                                    await task;
                                 }
                             }
                         }

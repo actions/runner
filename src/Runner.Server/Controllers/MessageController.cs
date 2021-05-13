@@ -1532,7 +1532,7 @@ namespace Runner.Server.Controllers
         //     }
         // }
 
-        private static ConcurrentDictionary<Session, Session> sessions = new ConcurrentDictionary<Session, Session>();
+        public static ConcurrentDictionary<Session, Session> sessions = new ConcurrentDictionary<Session, Session>();
         public delegate void RepoDownload(long runid, string url);
 
         public static event RepoDownload OnRepoDownload;

@@ -114,7 +114,11 @@ jobs:
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/matrixtest.yml --payload ../../src/Runner.Client/payload.json --server http://localhost:5000
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/skipped.yml --payload ../../src/Runner.Client/payload.json --server http://localhost:5000
         ./Runner.Client${{ matrix.exeSuffix }} --workflow ../../testworkflows/eventwithnulltoken.yml --payload ../../src/Runner.Client/payload.json --server http://localhost:5000
-        
+        #Test using parallel 1
+        ./Runner.Client${{ matrix.exeSuffix }} -P ubuntu-latest=-self-hosted -W ../../testworkflows/matrixtest.yml --parallel 1
+        #Test using parallel 0, this have to fail
+        ./Runner.Client${{ matrix.exeSuffix }} -P ubuntu-latest=-self-hosted -W ../../testworkflows/matrixtest.yml --parallel 0 && exit 1 || [[ "$?" = "1" ]]
+
         kill $workerpid
         kill $serverpid
         popd

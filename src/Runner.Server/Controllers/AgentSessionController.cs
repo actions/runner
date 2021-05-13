@@ -56,6 +56,24 @@ namespace Runner.Server.Controllers
                 Encrypted = true,
                 Value = _session.Agent.PublicKey.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA256)
             };
+
+            MessageController.sessions.AddOrUpdate(_session, s => {
+                if(s.Timer == null) {
+                    s.Timer = new System.Timers.Timer();
+                }
+                s.Timer.AutoReset = false;
+                s.Timer.Interval = 60000;
+                s.Timer.Elapsed += (a,b) => {
+                    Session s2;
+                    MessageController.sessions.TryRemove(_session, out s2);
+                };
+                s.Timer.Start();
+                return s;
+            } , (s, v) => {
+                s.Timer.Stop();
+                s.Timer.Start();
+                return v;
+            });
             
             return await Ok(session);
         }
