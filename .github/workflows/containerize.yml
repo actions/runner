@@ -46,14 +46,6 @@ jobs:
         with:
           version: latest
 
-      - name: Wait for Release
-        uses: lewagon/wait-on-check-action@v0.2
-        with:
-          ref: ${{ github.ref }}
-          repo-token: ${{ github.token }}
-          running-workflow-name: "Runner CD"
-          wait-interval: 600
-
       - name: Build and Push
         uses: docker/build-push-action@v1
         with:
