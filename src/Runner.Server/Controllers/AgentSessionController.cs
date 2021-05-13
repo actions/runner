@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,9 +16,9 @@ using Runner.Server.Models;
 
 namespace Runner.Server.Controllers
 {
-    [Authorize(AuthenticationSchemes = "Bearer")]
     [ApiController]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class AgentSessionController : VssControllerBase
     {
 

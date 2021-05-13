@@ -19,8 +19,8 @@ using Runner.Server.Models;
 namespace Runner.Server.Controllers
 {
     [ApiController]
-    // [Authorize]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class AgentController : VssControllerBase
     {
 
