@@ -18,7 +18,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
 
             <Media query={mediaQueries.md}>
                 { matches => matches ? (
-                    <Link to="../../" className={styles.back}
+                    <Link to="../../../../" className={styles.back}
                         style={{ visibility: props.hideBackButton ? 'hidden' : 'visible' }}>
                         Back
                     </Link>
