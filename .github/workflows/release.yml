@@ -99,7 +99,6 @@ jobs:
 
     # Create runner package tar.gz/zip
     - name: Package Release
-      if: github.event_name != 'pull_request'
       run: |
         ${{ matrix.devScript }} package Release ${{ matrix.runtime }}
       working-directory: src
@@ -107,23 +106,24 @@ jobs:
     # Upload runner package tar.gz/zip as artifact.
     # Since each package name is unique, so we don't need to put ${{matrix}} info into artifact name
     - name: Publish Artifact
-      if: github.event_name != 'pull_request'
       uses: actions/upload-artifact@v1
       with:
         name: runner-packages
         path: _package
+
     # compute shas and set as job outputs to use in release notes
-    - run: brew install coreutils #needed for shasum util
+    - name: Install Dependencies for SHA Calculation (osx)
+      run: brew install coreutils #needed for shasum util
       if: ${{ matrix.os == 'macOS-latest' }}
-      name: Install Dependencies for SHA Calculation (osx)
-    - run: |
+
+    - name: Compute SHA256
+      run: |
         file=$(ls)
         sha=$(sha256sum $file | awk '{ print $1 }')
         echo "Computed sha256: $sha for $file"
         echo "::set-output name=${{matrix.runtime}}-sha256::$sha"
       shell: bash
       id: sha
-      name: Compute SHA256
       working-directory: _package
 
   release:
@@ -145,7 +145,7 @@ jobs:
       id: releaseNote
       uses: actions/github-script@0.3.0
       with:
-        github-token: ${{secrets.GITHUB_TOKEN}}
+        github-token: ${{github.token}}
         script: |
           const core = require('@actions/core')
           const fs = require('fs');
@@ -159,12 +159,13 @@ jobs:
           console.log(releaseNote)
           core.setOutput('version', runnerVersion);
           core.setOutput('note', releaseNote);
+
     # Create GitHub release
     - uses: actions/create-release@master
       id: createRelease
       name: Create ${{ steps.releaseNote.outputs.version }} Runner Release
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         tag_name: "v${{ steps.releaseNote.outputs.version }}"
         release_name: "v${{ steps.releaseNote.outputs.version }}"
@@ -175,7 +176,7 @@ jobs:
     - name: Upload Release Asset (win-x64)
       uses: actions/upload-release-asset@v1.0.1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
@@ -185,7 +186,7 @@ jobs:
     - name: Upload Release Asset (linux-x64)
       uses: actions/upload-release-asset@v1.0.1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
@@ -195,7 +196,7 @@ jobs:
     - name: Upload Release Asset (osx-x64)
       uses: actions/upload-release-asset@v1.0.1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-osx-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
@@ -205,7 +206,7 @@ jobs:
     - name: Upload Release Asset (linux-arm)
       uses: actions/upload-release-asset@v1.0.1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-linux-arm-${{ steps.releaseNote.outputs.version }}.tar.gz
@@ -215,7 +216,7 @@ jobs:
     - name: Upload Release Asset (linux-arm64)
       uses: actions/upload-release-asset@v1.0.1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-linux-arm64-${{ steps.releaseNote.outputs.version }}.tar.gz
