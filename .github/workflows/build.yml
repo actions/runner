@@ -119,7 +119,7 @@ jobs:
         kill $serverpid
         popd
     - name: Test cache
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm' && matrix.runtime != 'osx-x64'
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
       shell: bash
       run: |
         pushd _layout/bin

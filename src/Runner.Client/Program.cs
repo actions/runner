@@ -441,7 +441,8 @@ namespace Runner.Client
                             var __startrunner = Task.Run(async () => {
                                 for(int i = 0; i < parameters.parallel; i++) {
                                     var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
-                                    string tmpdir = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
+                                    var agentname = $"Agent-{Guid.NewGuid().ToString()}";
+                                    string tmpdir = Path.Join(Path.GetDirectoryName(binpath), "Agents", agentname);
                                     Directory.CreateDirectory(tmpdir);
                                     int atempt = 1;
                                     while(true) {
@@ -463,7 +464,7 @@ namespace Runner.Client
                                                 runnerEnv["RUNNER_CONTAINER_USERNS"] = parameters.userns;
                                             }
                                             
-                                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name Agent-{Guid.NewGuid().ToString()} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
+                                            var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, token);
                                             var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                                             if(parameters.verbose) {
                                                 runnerlistener.OutputDataReceived += _out;
