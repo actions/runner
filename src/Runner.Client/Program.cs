@@ -497,7 +497,7 @@ namespace Runner.Client
                                                         }
                                                     }
                                                 }
-                                            }));
+                                            }).Unwrap());
                                             break;
                                         } catch {
                                             if(atempt++ <= 3) {
