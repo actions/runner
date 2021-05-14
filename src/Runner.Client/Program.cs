@@ -117,6 +117,8 @@ namespace Runner.Client
             public bool StartServer { get; set; }
             public bool StartRunner { get; set; }
             public bool NoCopyGitDir { get; set; }
+            public bool KeepRunnerDirectory { get; set; }
+            public bool NoSharedToolcache { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -326,7 +328,13 @@ namespace Runner.Client
                     description: "Run n parallel runners, ignored if `--server <server>` is used."),
                 new Option<bool>(
                     "--no-copy-git-dir",
-                    description: "Avoid copying the .git folder into the runner if it exists"),
+                    description: "Avoid copying the .git folder into the runner if it exists."),
+                new Option<bool>(
+                    "--keep-runner-directory",
+                    description: "Skip deleting temporary runner directories."),
+                new Option<bool>(
+                    "--no-shared-toolcache",
+                    description: "Do not share toolcache between runners, a shared toolcache may cause workflow failures."),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -458,8 +466,11 @@ namespace Runner.Client
                                                 inv.OutputDataReceived += _out;
                                                 inv.ErrorDataReceived += _out;
                                             }
-
-                                            var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "RUNNER_TOOL_CACHE", Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") ?? Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache") }};
+                                            
+                                            var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }};
+                                            if(!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null) {
+                                                runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache");
+                                            }
                                             if(parameters.containerArchitecture != null) {
                                                 runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
                                             }
@@ -477,23 +488,25 @@ namespace Runner.Client
                                                 runnerlistener.ErrorDataReceived += _out;
                                             }
                                             runnerlistener.OutputDataReceived += (s, e) => {
-                                                if(e.Data.Contains("Listen")) {
+                                                if(e.Data.Contains("Listening for Jobs")) {
                                                     workerchannel.Writer.WriteAsync(true);
                                                 }
                                             };
                                             listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, token).ContinueWith(async x => {
                                                 Console.WriteLine("Stopped Runner");
-                                                int delattempt = 1;
-                                                while(true) {
-                                                    try {
-                                                        Directory.Delete(tmpdir, true);
-                                                        break;
-                                                    } catch {
-                                                        if(delattempt++ >= 3) {
-                                                            await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                if(!parameters.KeepRunnerDirectory) {
+                                                    int delattempt = 1;
+                                                    while(true) {
+                                                        try {
+                                                            Directory.Delete(tmpdir, true);
                                                             break;
-                                                        } else {
-                                                            await Task.Delay(500);
+                                                        } catch {
+                                                            if(delattempt++ >= 3) {
+                                                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                                break;
+                                                            } else {
+                                                                await Task.Delay(500);
+                                                            }
                                                         }
                                                     }
                                                 }
