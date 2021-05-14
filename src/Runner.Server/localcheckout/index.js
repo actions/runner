@@ -20,10 +20,10 @@ try {
         var clean = core.getInput("clean");
         if(clean === undefined || clean === "" || clean === "true") {
             var posixdest = dest.replace("\\", "/");
-            console.log("Clean folder: " + dest);
+            core.info("Clean folder: " + dest);
             del.sync([ posixdest + "/**", "!" + posixdest ]);
         }
-        console.log("Copying Repository to " + dest);
+        core.info("Copying Repository to " + dest);
 
         var form = formidable({
             uploadDir: dest,
@@ -33,7 +33,7 @@ try {
             var _first = true;
             form.parse(res).on("fileBegin", (formname, file) => {
                 if(formname == null && _first) {
-                    console.log("No files found to copy to " + dest);
+                    core.warning("No files found to copy to " + dest);
                     process.exit();
                 }
                 _first = false;
@@ -62,7 +62,7 @@ try {
                 } catch {
                     core.warning("Failed to set mode of `" + file.path + "` to " + mode);
                 }
-                console.log(formname + ", mode=" + mode + " => " + file.path);
+                core.debug(formname + ", mode=" + mode + " => " + file.path);
             });
         });
     }
