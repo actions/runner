@@ -1,17 +1,24 @@
-## Features
-- Reading act configuration files
-
-Please read https://github.com/ChristopherHX/runner.server#readme for more information.
-
-## Bugs
-- Fixed autosetup on mac
-- Fixed workflow not complete if --job or --matrix was used
-- Fixed docker container on macOs
-
-I guess it has a lot of undiscovered bugs
-
-## Misc
-
+## Changes
+- fix/keep-container (#50)
+- Fix dropped jobs with runonce (#49)
+- Fix once (#47)
+- More control about runner cleanup (#33)
+- Drop LogFormatter (#42)
+- fix create-event-sha-via-console (#45)
+- less verbose localcheckout / wwwroot update (#43)
+- Fix exit code of caught exception (#44)
+- More cli options (#41)
+- Fix leaking Agent dir (#39)
+- fix check-server-status-code (#40)
+- Cleanly abort workflow on internal errors (#38)
+- Copy git-dir (#37)
+- Force utf8 (#36)
+- Fix exception Secrets are case insensitive (#32)
+- Fix/parallel 1 norunners (#28)
+- Fix logs of different job (#27)
+- Fix back button not working (#26)
+- Fix fail to add runners (#25)
+- Fix/macos cache store fix (#24)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
