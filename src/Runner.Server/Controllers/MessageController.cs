@@ -491,6 +491,7 @@ namespace Runner.Server.Controllers
                         } else if(hook?.ref_type == "tag") {
                             Ref = "refs/tags/" + Ref;
                         }
+                        hook.After = hook?.Sha;
                     } else {
                         Ref = null;
                     }
@@ -1807,7 +1808,6 @@ namespace Runner.Server.Controllers
                         evs.Add(e, hook?.pull_request?.head?.Sha);
                     } else if(e == "create" && hook?.ref_type != null) {
                         evs.Add(e, hook?.Sha);
-                        hook.After = hook?.Sha;
                     } else {
                         var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("accept", "application/json");
