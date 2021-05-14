@@ -141,13 +141,12 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
-            foreach (var container in containers)
-            {
-                await StopContainerAsync(executionContext, container);
-            }
-
             var keepContainer = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_KEEP");
             if(keepContainer == null || keepContainer != "true" && keepContainer != "1") {
+                foreach (var container in containers)
+                {
+                    await StopContainerAsync(executionContext, container);
+                }
                 // Remove the container network
                 await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
             }
