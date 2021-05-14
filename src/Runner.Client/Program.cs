@@ -889,6 +889,7 @@ namespace Runner.Client
 
                                     // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"stash store {stashcommitRef} -m Runner", new Dictionary<string, string>(), CancellationToken.None);
                                     resp = await client.PostAsync(b.Uri.ToString(), mp);
+                                    resp.EnsureSuccessStatusCode();
                                 } finally {
                                     foreach(var fstream in workflowsToDispose) {
                                         await fstream.DisposeAsync();
