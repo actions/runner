@@ -1,3 +1,4 @@
+using System;
 using System.Security.Cryptography;
 using System.Timers;
 using GitHub.DistributedTask.WebApi;
@@ -18,5 +19,6 @@ namespace Runner.Server.Models
 
         public Timer Timer {get; set;}
         public Timer JobTimer {get; set;}
+        public Action DropMessage { get; set; }
     }
 }

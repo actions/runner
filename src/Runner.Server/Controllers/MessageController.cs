@@ -72,8 +72,8 @@ namespace Runner.Server.Controllers
         {
             Session session;
             if(_cache.TryGetValue(sessionId, out session) && session.TaskAgentSession.SessionId == sessionId) {
+                session.DropMessage = null;
                 return Ok();
-
             } else {
                 return NotFound();
             }
@@ -1598,6 +1598,7 @@ namespace Runner.Server.Controllers
                 s.Timer.Start();
                 return v;
             });
+            session.DropMessage?.Invoke();
             for (int i = 0; i < 10; i++)
             {
                 if(session.Job == null) {
@@ -1607,6 +1608,12 @@ namespace Runner.Server.Controllers
                             if(req.CancelRequest) {
                                 continue;
                             }
+                            var q = queue.Value;
+                            session.DropMessage = () => {
+                                q.Enqueue(req);
+                                session.Job = null;
+                                session.JobTimer?.Stop();
+                            };
                             var apiUrlBuilder = new UriBuilder();
                             apiUrlBuilder.Scheme = Request.Scheme;
                             apiUrlBuilder.Host = Request.Host.Host ?? HttpContext.Connection.LocalIpAddress.ToString();
@@ -1625,7 +1632,6 @@ namespace Runner.Server.Controllers
                                 continue;
                             }
                             var res = req.message.Invoke(apiUrl);
-                            req.message = null;
                             if(res == null) {
                                 Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
                                 Job job;
