@@ -307,7 +307,11 @@ namespace GitHub.Runner.Worker.Container
             dockerOptions.Add($"--label {DockerInstanceLabel}");
 
             dockerOptions.Add($"--workdir {container.ContainerWorkDirectory}");
-            dockerOptions.Add($"--rm");
+
+            var keepContainer = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_KEEP");
+            if(keepContainer == null || keepContainer != "true" && keepContainer != "1") {
+                dockerOptions.Add($"--rm");
+            }
 
             foreach (var env in container.ContainerEnvironmentVariables)
             {

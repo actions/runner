@@ -145,8 +145,12 @@ namespace GitHub.Runner.Worker
             {
                 await StopContainerAsync(executionContext, container);
             }
-            // Remove the container network
-            await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+
+            var keepContainer = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_KEEP");
+            if(keepContainer == null || keepContainer != "true" && keepContainer != "1") {
+                // Remove the container network
+                await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+            }
         }
 
         private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
