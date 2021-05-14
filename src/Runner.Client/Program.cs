@@ -1401,7 +1401,7 @@ namespace Runner.Client
                                 // var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                                 // await invoker.ExecuteAsync(binpath, Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}"), "", new Dictionary<string, string>(), CancellationToken.None);
                                 Console.WriteLine($"Exception: {except.Message}, {except.StackTrace}");
-                                return 0;
+                                return 1;
                             }
                             return 0;
                         });
