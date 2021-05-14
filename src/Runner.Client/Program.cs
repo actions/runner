@@ -231,7 +231,7 @@ namespace Runner.Client
                         runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
                     }
                     
-                    var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token empty --labels container-host{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}", runnerEnv, true, null, true, source.Token);
+                    var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, source.Token);
                     var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                     if(parameters.verbose) {
                         runnerlistener.OutputDataReceived += _out;
@@ -242,7 +242,7 @@ namespace Runner.Client
                             workerchannel.Writer.WriteAsync(true);
                         }
                     };
-                    listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run", runnerEnv, false, null, true, source.Token).ContinueWith(async x => {
+                    listener.Add(runnerlistener.ExecuteAsync(binpath, runner, $"Run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}", runnerEnv, false, null, true, source.Token).ContinueWith(async x => {
                         Console.WriteLine("Stopped Runner");
                         if(parameters.KeepContainer || parameters.NoReuse) {
                             if(!source.IsCancellationRequested) {
