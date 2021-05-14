@@ -80,7 +80,7 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
+            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.Using);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 
             // Format the arguments passed to node.

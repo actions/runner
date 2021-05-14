@@ -23,7 +23,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         string ResolvePathForStepHost(string path);
 
-        Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext);
+        Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string defaultVersion);
 
         Task<int> ExecuteAsync(string workingDirectory,
                                string fileName,
@@ -58,9 +58,10 @@ namespace GitHub.Runner.Worker.Handlers
             return path;
         }
 
-        public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext)
+        public Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string defaultVersion)
         {
-            return Task.FromResult<string>("node12");
+
+            return Task.FromResult<string>(defaultVersion);
         }
 
         public async Task<int> ExecuteAsync(string workingDirectory,
@@ -123,7 +124,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext)
+        public async Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string defaultVersion)
         {
             // Best effort to determine a compatible node runtime
             // There may be more variation in which libraries are linked than just musl/glibc,
@@ -148,14 +149,14 @@ namespace GitHub.Runner.Worker.Handlers
                             var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
                             throw new NotSupportedException(msg);
                         }
-                        nodeExternal = "node12_alpine";
+                        nodeExternal = $"{defaultVersion}_alpine";
                         executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
                         return nodeExternal;
                     }
                 }
             }
             // Optimistically use the default
-            nodeExternal = "node12";
+            nodeExternal = defaultVersion;
             executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
             return nodeExternal;
         }
