@@ -121,6 +121,11 @@ namespace Runner.Client
             public bool NoSharedToolcache { get; set; }
             public bool KeepContainer { get; set; }
             public bool NoReuse { get; set; }
+            public string GitServerUrl { get; set; }
+            public string GitApiServerUrl { get; set; }
+            public string GitGraphQlServerUrl { get; set; }
+            public string GitTarballUrl { get; set; }
+            public string GitZipballUrl { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -452,6 +457,24 @@ namespace Runner.Client
                 new Option<bool>(
                     "--no-reuse",
                     "Dot not reuse a configured self-hosted runner, creates a new instance after a job completes."),
+                new Option<string>(
+                    "--git-server-url",
+                    getDefaultValue: () => "https://github.com",
+                    description: "Url to github or gitea instance."),
+                new Option<string>(
+                    "--git-api-server-url",
+                    getDefaultValue: () => "https://api.github.com",
+                    description: "Url to github or gitea api."),
+                new Option<string>(
+                    "--git-graph-ql-server-url",
+                    getDefaultValue: () => "https://api.github.com/graphql",
+                    description: "Url to github graphql api."),
+                new Option<string>(
+                    "--git-tarball-url",
+                    description: "Url to github tarbal api url, defaults to `<git-api-server-url>/repos/{0}/tarball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
+                new Option<string>(
+                    "--git-zipball-url",
+                    description: "Url to github tarbal api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -536,17 +559,16 @@ namespace Runner.Client
                             
                             serverconfig["Kestrel"] = JObject.FromObject(new { Endpoints = new { Http = new { Url = parameters.server } } });
                             serverconfig["Runner.Server"] = JObject.FromObject(new { 
-                                GitServerUrl = "https://github.com",
-                                GitApiServerUrl = "https://api.github.com",
-                                GitGraphQlServerUrl = "https://api.github.com/graphql",
+                                GitServerUrl = parameters.GitServerUrl,
+                                GitApiServerUrl = parameters.GitApiServerUrl,
+                                GitGraphQlServerUrl = parameters.GitGraphQlServerUrl,
+                                ActionDownloadUrls = new [] {
+                                    new {
+                                        TarballUrl = parameters.GitTarballUrl ?? parameters.GitApiServerUrl + "/repos/{0}/tarball/{1}",
+                                        ZipballUrl = parameters.GitZipballUrl ?? parameters.GitApiServerUrl + "/repos/{0}/zipball/{1}",
+                                    }
+                                }
                             });
-                            try {
-                                JObject orgserverconfig = JObject.Parse(await File.ReadAllTextAsync(Path.Join(binpath, "appconfig.json"), Encoding.UTF8));
-                                orgserverconfig.Merge(serverconfig, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
-                                serverconfig = orgserverconfig;
-                            } catch {
-
-                            }
                             await File.WriteAllTextAsync(serverconfigfileName, serverconfig.ToString());
                             using (AnonymousPipeServerStream pipeServer =
                                 new AnonymousPipeServerStream(PipeDirection.In,
