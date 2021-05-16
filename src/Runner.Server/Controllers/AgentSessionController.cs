@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -81,9 +81,12 @@ namespace Runner.Server.Controllers
         [HttpDelete("{poolId}/{sessionId}")]
         public void Delete(int poolId, Guid sessionId)
         {
-            TaskAgentSession session;
+            Session session;
             if(_cache.TryGetValue(sessionId, out session)) {
+                session.DropMessage?.Invoke();
                 _cache.Remove(sessionId);
+                Session s2;
+                MessageController.sessions.TryRemove(session, out s2);
             }
         }
     }

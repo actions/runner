@@ -5,14 +5,11 @@ using Microsoft.EntityFrameworkCore;
 namespace Runner.Server.Models
 {
     public class SqLiteDb : DbContext {
-        private static bool _Init = false;
-
         public SqLiteDb(DbContextOptions<SqLiteDb> opt) : base(opt) {
-            // Database.EnsureCreated();
-            if(!_Init) {
-                _Init = true;
-                Database.OpenConnection();
+            try {
                 Database.Migrate();
+            } catch {
+                // This allways throws, if using the InMemory Database
             }
         }
 

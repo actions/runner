@@ -75,12 +75,15 @@ namespace Runner.Server
                 });
 
             });
-            // services.AddDbContext<InMemoryDB>(options => options.UseInMemoryDatabase("db"));
             var sqlitecon = Configuration.GetConnectionString("sqlite");
-            var b = new DbContextOptionsBuilder<SqLiteDb>();
-            b.UseSqlite(sqlitecon);
-            var c = new SqLiteDb(b.Options);
-            services.AddDbContext<SqLiteDb>(conf => conf.UseSqlite(c.Database.GetDbConnection()));
+            services.AddDbContext<SqLiteDb>(conf => {
+                if(sqlitecon?.Length > 0) {
+                    conf.UseSqlite(sqlitecon);
+                }
+                else {
+                    conf.UseInMemoryDatabase("Agents");
+                }
+            });
             
             var sessionCookieLifetime = Configuration.GetValue("SessionCookieLifetimeMinutes", 60);
             services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();

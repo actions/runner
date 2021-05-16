@@ -1599,80 +1599,89 @@ namespace Runner.Server.Controllers
                 return v;
             });
             session.DropMessage?.Invoke();
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 10 && !HttpContext.RequestAborted.IsCancellationRequested; i++)
             {
                 if(session.Job == null) {
                     Job req;
                     foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()))) {
-                        if(queue.Value.TryDequeue(out req)) {
-                            if(req.CancelRequest) {
-                                continue;
-                            }
-                            var q = queue.Value;
-                            session.DropMessage = () => {
-                                q.Enqueue(req);
-                                session.Job = null;
-                                session.JobTimer?.Stop();
-                            };
-                            var apiUrlBuilder = new UriBuilder();
-                            apiUrlBuilder.Scheme = Request.Scheme;
-                            apiUrlBuilder.Host = Request.Host.Host ?? HttpContext.Connection.LocalIpAddress.ToString();
-                            apiUrlBuilder.Path = req.repo.Count(c => c == '/') == 1 ? req.repo : "Unknown/Unknown";
-                            if(Request.Host.Port.HasValue) {
-                                apiUrlBuilder.Port = Request.Host.Port.Value;
-                            } else {
-                                apiUrlBuilder.Port = HttpContext.Connection.LocalPort;
-                            }
-                            var apiUrl = apiUrlBuilder.ToString();
-                            if(!apiUrl.EndsWith('/')) {
-                                apiUrl += "/";
-                            }
-                            if(req.message == null) {
-                                Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
-                                continue;
-                            }
-                            var res = req.message.Invoke(apiUrl);
-                            if(res == null) {
-                                Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
-                                Job job;
-                                if(jobs.TryGetValue(req.JobId, out job)) {
-                                    FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                        if(HttpContext.RequestAborted.IsCancellationRequested) {
+                            break;
+                        }
+                        try {
+                            if(queue.Value.TryDequeue(out req)) {
+                                if(req.CancelRequest) {
+                                    continue;
                                 }
-                                continue;
-                            }
-                            
-                            if(session.JobTimer == null) {
-                                session.JobTimer = new System.Timers.Timer();
-                                session.JobTimer.Elapsed += (a,b) => {
-                                    if(session.Job != null) {
-                                        session.Job.CancelRequest = true;
-                                    }
+                                var q = queue.Value;
+                                session.DropMessage = () => {
+                                    q.Enqueue(req);
+                                    session.Job = null;
+                                    session.JobTimer?.Stop();
                                 };
-                                session.JobTimer.AutoReset = false;
-                            } else {
-                                session.JobTimer.Stop();
-                            }
-                            session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => {
-                                job.SessionId = sessionId;
-                                return job;
-                            });
-                            _cache.Set("Job_" + res.JobId, session.Job);
-                            
-                            session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
-                            session.JobTimer.Start();
-                            session.Key.GenerateIV();
-                            using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
-                            using (var body = new MemoryStream())
-                            using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
-                                    bodyWriter.Write(JsonConvert.SerializeObject(res));
-                                return await Ok(new TaskAgentMessage() {
-                                    Body = Convert.ToBase64String(body.ToArray()),
-                                    MessageId = id++,
-                                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
-                                    IV = session.Key.IV
+                                var apiUrlBuilder = new UriBuilder();
+                                apiUrlBuilder.Scheme = Request.Scheme;
+                                apiUrlBuilder.Host = Request.Host.Host ?? HttpContext.Connection.LocalIpAddress.ToString();
+                                apiUrlBuilder.Path = req.repo.Count(c => c == '/') == 1 ? req.repo : "Unknown/Unknown";
+                                if(Request.Host.Port.HasValue) {
+                                    apiUrlBuilder.Port = Request.Host.Port.Value;
+                                } else {
+                                    apiUrlBuilder.Port = HttpContext.Connection.LocalPort;
+                                }
+                                var apiUrl = apiUrlBuilder.ToString();
+                                if(!apiUrl.EndsWith('/')) {
+                                    apiUrl += "/";
+                                }
+                                if(req.message == null) {
+                                    Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
+                                    continue;
+                                }
+                                var res = req.message.Invoke(apiUrl);
+                                if(res == null) {
+                                    Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
+                                    Job job;
+                                    if(jobs.TryGetValue(req.JobId, out job)) {
+                                        FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                    }
+                                    continue;
+                                }
+                                HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                                if(session.JobTimer == null) {
+                                    session.JobTimer = new System.Timers.Timer();
+                                    session.JobTimer.Elapsed += (a,b) => {
+                                        if(session.Job != null) {
+                                            session.Job.CancelRequest = true;
+                                        }
+                                    };
+                                    session.JobTimer.AutoReset = false;
+                                } else {
+                                    session.JobTimer.Stop();
+                                }
+                                session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => {
+                                    job.SessionId = sessionId;
+                                    return job;
                                 });
+                                _cache.Set("Job_" + res.JobId, session.Job);
+                                
+                                session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
+                                session.JobTimer.Start();
+                                session.Key.GenerateIV();
+                                using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                                using (var body = new MemoryStream())
+                                using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                                    using (var bodyWriter = new StreamWriter(cryptoStream, Encoding.UTF8))
+                                        bodyWriter.Write(JsonConvert.SerializeObject(res));
+                                    HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                                    return await Ok(new TaskAgentMessage() {
+                                        Body = Convert.ToBase64String(body.ToArray()),
+                                        MessageId = id++,
+                                        MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
+                                        IV = session.Key.IV
+                                    });
+                                }
                             }
+                        } catch {
+                            session.DropMessage?.Invoke();
+                            session.DropMessage = null;
                         }
                     }
                 } else if(!session.Job.Cancelled) {
