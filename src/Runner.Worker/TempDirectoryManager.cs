@@ -48,14 +48,19 @@ namespace GitHub.Runner.Worker
         public void CleanupTempDirectory()
         {
             ArgUtil.NotNullOrEmpty(_tempDirectory, nameof(_tempDirectory));
-            Trace.Info($"Cleaning runner temp folder: {_tempDirectory}");
-            try
-            {
-                IOUtil.DeleteDirectory(_tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Trace.Error(ex);
+            var keepContainer = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_KEEP");
+            if(keepContainer == null || keepContainer != "true" && keepContainer != "1") {
+                Trace.Info($"Cleaning runner temp folder: {_tempDirectory}");
+                try
+                {
+                    IOUtil.DeleteDirectory(_tempDirectory, contentsOnly: true, continueOnContentDeleteError: true, cancellationToken: CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error(ex);
+                }
+            } else {
+                Trace.Info($"Skip: Cleaning runner temp folder: {_tempDirectory}");
             }
         }
     }
