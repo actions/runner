@@ -27,6 +27,8 @@ namespace Runner.Server.Controllers
 
         private SqLiteDb _context;
 
+        private static Object lck = new Object();
+
         public AgentController(IMemoryCache cache, SqLiteDb context)
         {
             _cache = cache;
@@ -38,8 +40,10 @@ namespace Runner.Server.Controllers
             TaskAgent agent = await FromBody<TaskAgent>();
             agent.Authorization.AuthorizationUrl = new Uri($"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.RemoteIpAddress.ToString() + "]") : HttpContext.Connection.RemoteIpAddress.ToString())}:{Request.Host.Port ?? HttpContext.Connection.RemotePort}/test/auth/v1/");
             agent.Authorization.ClientId = Guid.NewGuid();
-            Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
-            await _context.SaveChangesAsync(HttpContext.RequestAborted);
+            lock(lck) {
+                Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
+                _context.SaveChanges();
+            }
             return await Ok(agent);
         }
 
