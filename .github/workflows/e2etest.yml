@@ -20,14 +20,14 @@ jobs:
         debug: true
         script: |
           var runnersResp = await github.actions.listSelfHostedRunnersForRepo({
-              owner: 'actions',
+              owner: 'adaptivelab',
               repo: 'runner',
               per_page: '100'
           });
           for(var i=0; i<runnersResp.data.total_count; i++){
             core.debug(JSON.stringify(runnersResp.data.runners[i]))
             await github.actions.deleteSelfHostedRunnerFromRepo({
-              owner: 'actions',
+              owner: 'adaptivelab',
               repo: 'runner',
               runner_id: runnersResp.data.runners[i].id
             });
@@ -102,7 +102,7 @@ jobs:
           function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
           async function dispatchWorkflow(runner) {
             await github.actions.createWorkflowDispatch({
-              owner: 'actions',
+              owner: 'adaptivelab',
               repo: 'runner',
               workflow_id: 'runner-basic-e2e-test-case.yml',
               ref: 'main',
@@ -113,7 +113,7 @@ jobs:
           while (true) {
             core.info(`------------- Waiting for runners to be configured --------------`)
             await sleep(10000);
-            var runnersResp = await github.actions.listSelfHostedRunnersForRepo({owner: 'actions', repo: 'runner', per_page: '100'});
+            var runnersResp = await github.actions.listSelfHostedRunnersForRepo({owner: 'adaptivelab', repo: 'runner', per_page: '100'});
             for (var i = 0; i < runnersResp.data.total_count; i++) {
               core.debug(JSON.stringify(runnersResp.data.runners[i]))
               var labels = runnersResp.data.runners[i].labels;
