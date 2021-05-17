@@ -464,6 +464,7 @@ namespace GitHub.Runner.Worker
                     {
                         return new NodeJSActionExecutionData()
                         {
+                            Using = usingToken.Value.ToLower(),
                             Script = mainToken.Value,
                             Pre = preToken?.Value,
                             InitCondition = preIfToken?.Value ?? "always()",
