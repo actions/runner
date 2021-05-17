@@ -10,7 +10,6 @@ jobs:
   build-and-push:
     name: Build and Push to Quay
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
 
     env:
       DOCKER_QUAY_REGISTRY: quay.io

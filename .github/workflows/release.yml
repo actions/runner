@@ -15,7 +15,7 @@ on:
 
 jobs:
   check:
-    if: github.event.pull_request.merged == false && startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -128,7 +128,7 @@ jobs:
       working-directory: _package
 
   release:
-    if: github.event.pull_request.merged != false
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -175,16 +175,6 @@ jobs:
           ${{ steps.releaseNote.outputs.note }}
 
     # Upload release assets
-    - name: Upload Release Asset (win-x64)
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
-        asset_content_type: application/octet-stream
-
     - name: Upload Release Asset (linux-x64)
       uses: actions/upload-release-asset@v1.0.1
       env:
@@ -193,6 +183,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
         asset_name: actions-runner-linux-x64-${{ steps.releaseNote.outputs.version }}.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (win-x64)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (osx-x64)
