@@ -2,14 +2,9 @@ name: Containerize Runner
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
+  release:
     types:
-      - closed
-    paths-ignore:
-      - '**.md'
-      - '.github/*'
+      - published
 
 jobs:
   build-and-push:
@@ -18,10 +13,8 @@ jobs:
     if: github.event.pull_request.merged == true
 
     env:
-      DOCKER_VERSION: 19.03.12
       DOCKER_QUAY_REGISTRY: quay.io
       DOCKER_QUAY_NAMESPACE: sundae
-      ADDITIONAL_PACKAGES: unzip
 
     steps:
 
@@ -54,9 +47,6 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          build-args: |
-            DOCKER_VERSION=${{ env.DOCKER_VERSION }}
-            ADDITIONAL_PACKAGES=${{ env.ADDITIONAL_PACKAGES }}
           tags: v${{ steps.vars.outputs.runner_version }}, v${{ steps.vars.outputs.runner_version }}-${{ steps.vars.outputs.sha_short }}, latest
           registry: ${{ env.DOCKER_QUAY_REGISTRY }}
           repository: ${{ env.DOCKER_QUAY_NAMESPACE }}/runner
