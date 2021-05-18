@@ -223,7 +223,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
     useEffect(() => {
         if(id !== undefined && id !== null && id.length > 0) {
             var item = getJobById(jobs, id).item;
-            if(item !== null && item.description && item.description != '') {
+            if(item !== null && item.description && item.description != '' && item.description != "00000000-0000-0000-0000-000000000000") {
                 var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
                 try {
                     var missed : ILoglineEvent[] = [];
