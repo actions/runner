@@ -579,10 +579,16 @@ namespace Runner.Client
                                     File.Delete(serverconfigfileName);
                                 });
                                 listener.Add(servertask);
-                                using (StreamReader rd = new StreamReader(pipeServer))
-                                {
-                                    var line = rd.ReadLine();
-                                    parameters.server = line;
+                                var serveriptask = Task.Run(() => {
+                                    using (StreamReader rd = new StreamReader(pipeServer))
+                                    {
+                                        var line = rd.ReadLine();
+                                        parameters.server = line;
+                                    }
+                                });
+                                if(await Task.WhenAny(serveriptask, servertask) == servertask) {
+                                    Console.Error.WriteLine("Failed to start server, rerun with `-v` to find out what is wrong");
+                                    return 1;
                                 }
                             }
                         }
