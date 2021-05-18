@@ -37,6 +37,8 @@ namespace Runner.Server
                     var RUNNER_SERVER_APP_JSON_SETTINGS_FILE = Environment.GetEnvironmentVariable("RUNNER_SERVER_APP_JSON_SETTINGS_FILE");
                     if(RUNNER_SERVER_APP_JSON_SETTINGS_FILE != null) {
                         webBuilder.ConfigureAppConfiguration((ctx, config) => {
+                            config.Sources.Clear();
+                            config.Properties.Clear();
                             config.Add(new JsonStreamConfigurationSource() { Stream = File.OpenRead(RUNNER_SERVER_APP_JSON_SETTINGS_FILE) });
                         });
                     }
