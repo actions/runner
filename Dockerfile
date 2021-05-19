@@ -39,12 +39,12 @@ RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
 && command curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import - \
 && groupadd -f rvm \
 && usermod -a -G rvm github \
-&& usermod -a -G rvm root \
+&& usermod -a -G rvm root
 USER github
 USER root
 RUN curl -sSL https://get.rvm.io | bash -s stable --ruby \
 && echo "DONE: install rvm" \
-&& sh /usr/local/rvm/scripts/rvm \
+&& . /usr/local/rvm/scripts/rvm \
 && echo "DONE: start rvm" \
 && rvm get stable --autolibs=enable \
 && rvm install ruby-2.6 \
