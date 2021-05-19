@@ -48,8 +48,8 @@ RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
 USER github
 USER root
 RUN curl -sSL https://get.rvm.io | bash -s stable --ruby \
-&& echo "DONE: download rvm" \
-&& source /usr/local/rvm/scripts/rvm \
+&& echo "DONE: download rvm"
+RUN /usr/local/rvm/scripts/rvm \
 && echo "DONE: install rvm" \
 && rvm get stable --autolibs=enable \
 && rvm install ruby-2.6 \
