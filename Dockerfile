@@ -1,4 +1,4 @@
-FROM debian:buster-slim
+FROM debian:buster
 
 ENV GITHUB_PAT ""
 ENV GITHUB_OWNER ""
@@ -15,6 +15,11 @@ RUN apt-get update \
         sudo \
         git \
         jq \
+        unzip \
+        gnupg2 \
+        gcc \
+        g++ \
+        make \
         iputils-ping \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -24,6 +29,30 @@ RUN apt-get update \
     && curl https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz --output docker-${DOCKER_VERSION}.tgz \
     && tar xvfz docker-${DOCKER_VERSION}.tgz \
     && cp docker/* /usr/bin/
+
+# Install azure-cli
+RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+# Install Ruby, Rake, Node and Yarn for Idean build tooling
+RUN gpg --keyserver hkp://pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2.69D6956105BD0E739499BDB \
+&& curl -sSL https://get.rvm.io | bash -s stable --ruby \
+&& source /usr/local/rvm/scripts/rvm \
+&& rvm get stable --autolibs=enable \
+&& usermod -a -G rvm github \
+&& usermod -a -G rvm root \
+&& rvm install ruby-2.6 \
+&& rvm --default use ruby-2.6 \
+&& curl -sL https://deb.nodesource.com/setup_14.x | bash - \
+&& curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
+&& echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
+&& apt-get update \
+&& apt-get install -y \
+nodejs \
+yarn \
+&& gem update --system \
+&& echo "gem: --no-document" >> ~/.gemrc \
+&& gem install rails -v 6.0.2 \
+&& gem install rake -v 11
 
 USER github
 WORKDIR /home/github
