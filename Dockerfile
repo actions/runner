@@ -66,6 +66,8 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - \
 && rbenv install 2.7.0 \
 && rbenv global 2.7.0 \
 && ruby -v \
+&& echo "gem: --no-document" >> ~/.gemrc \
+&& gem update --system \
 && gem install \
     bundler \
     rails \
