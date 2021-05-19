@@ -34,8 +34,9 @@ RUN apt-get update \
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
 # Install Ruby, Rake, Node and Yarn for Idean build tooling
-# RUN gpg --keyserver hkp://pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2.69D6956105BD0E739499BDB
-RUN curl -sSL https://get.rvm.io | bash -s stable --ruby \
+RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
+&& command curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import - \
+&& curl -sSL https://get.rvm.io | bash -s stable --ruby \
 && source /usr/local/rvm/scripts/rvm \
 && rvm get stable --autolibs=enable \
 && usermod -a -G rvm github \
