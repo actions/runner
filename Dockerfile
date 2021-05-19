@@ -20,6 +20,7 @@ RUN apt-get update \
         gcc \
         g++ \
         make \
+        procps \
         iputils-ping \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
