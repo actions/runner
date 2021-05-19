@@ -21,6 +21,20 @@ RUN apt-get update \
         g++ \
         make \
         procps \
+        dirmngr \
+        git-core \
+        zlib1g-dev \
+        build-essential \
+        libssl-dev \
+        libreadline-dev \
+        libyaml-dev \
+        libsqlite3-dev \
+        sqlite3 \
+        libxml2-dev \
+        libxslt1-dev \
+        libcurl4-openssl-dev \
+        software-properties-common \
+        libffi-dev \
         iputils-ping \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
@@ -35,31 +49,29 @@ RUN apt-get update \
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
 # Install Ruby, Rake, Node and Yarn for Idean build tooling
-RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
-&& command curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import - \
-&& groupadd -f rvm \
-&& usermod -a -G rvm github \
-&& usermod -a -G rvm root
-USER github
-USER root
-RUN curl -sSL https://get.rvm.io | bash -s stable --ruby \
-&& echo "DONE: install rvm" \
-&& . /usr/local/rvm/scripts/rvm \
-&& echo "DONE: start rvm" \
-&& rvm get stable --autolibs=enable \
-&& rvm install ruby-2.6 \
-&& rvm --default use ruby-2.6 \
-&& curl -sL https://deb.nodesource.com/setup_14.x | bash - \
-&& curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
+RUN curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - \
+&& curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
 && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
 && apt-get update \
 && apt-get install -y \
     nodejs \
     yarn \
-&& gem update --system \
+&& git clone https://github.com/rbenv/rbenv.git ~/.rbenv \
+&& echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc \
+&& echo 'eval "$(rbenv init -)"' >> ~/.bashrc \
+&& exec $SHELL \
+&& git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build \
+&& echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bashrc \
+&& exec $SHELL \
+&& rbenv install 2.7.0 \
+&& rbenv global 2.7.0 \
+&& ruby -v \
 && echo "gem: --no-document" >> ~/.gemrc \
-&& gem install rails -v 6.0.2 \
-&& gem install rake -v 11
+&& gem update --system \
+&& gem install \
+    bundler \
+    rails \
+    rake
 
 USER github
 WORKDIR /home/github
