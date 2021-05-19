@@ -43,8 +43,10 @@ RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
 && usermod -a -G rvm github \
 && echo "DONE: add github user to rvm group" \
 && usermod -a -G rvm root \
-&& echo "DONE: add root user to rvm group" \
-&& curl -sSL https://get.rvm.io | bash -s stable --ruby \
+&& echo "DONE: add root user to rvm group"
+USER github
+USER root
+RUN curl -sSL https://get.rvm.io | bash -s stable --ruby \
 && echo "DONE: download rvm" \
 && source /usr/local/rvm/scripts/rvm \
 && echo "DONE: install rvm" \
