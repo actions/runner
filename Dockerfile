@@ -36,6 +36,7 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 # Install Ruby, Rake, Node and Yarn for Idean build tooling
 RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
 && command curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import - \
+&& groupadd -f rvm \
 && usermod -a -G rvm github \
 && usermod -a -G rvm root \
 && curl -sSL https://get.rvm.io | bash -s stable --ruby \
