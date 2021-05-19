@@ -58,10 +58,13 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - \
     yarn \
 && git clone https://github.com/rbenv/rbenv.git ~/.rbenv \
 && echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc \
+&& export PATH="$HOME/.rbenv/bin:$PATH" \
 && echo 'eval "$(rbenv init -)"' >> ~/.bashrc \
+&& eval "$(rbenv init -)" \
 && exec $SHELL \
 && git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build \
 && echo 'export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH"' >> ~/.bashrc \
+&& export PATH="$HOME/.rbenv/plugins/ruby-build/bin:$PATH" \
 && exec $SHELL \
 && rbenv install 2.7.0 \
 && rbenv global 2.7.0 \
