@@ -35,12 +35,19 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
 # Install Ruby, Rake, Node and Yarn for Idean build tooling
 RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
+&& echo "DONE: mpapis key" \
 && command curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import - \
+&& echo "DONE: pkuczynski key" \
 && groupadd -f rvm \
+&& echo "DONE: rvm group add" \
 && usermod -a -G rvm github \
+&& echo "DONE: add github user to rvm group" \
 && usermod -a -G rvm root \
+&& echo "DONE: add root user to rvm group" \
 && curl -sSL https://get.rvm.io | bash -s stable --ruby \
+&& echo "DONE: download rvm" \
 && source /usr/local/rvm/scripts/rvm \
+&& echo "DONE: install rvm" \
 && rvm get stable --autolibs=enable \
 && rvm install ruby-2.6 \
 && rvm --default use ruby-2.6 \
