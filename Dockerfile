@@ -34,7 +34,7 @@ RUN apt-get update \
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
 # Install Ruby, Rake, Node and Yarn for Idean build tooling
-RUN gpg --keyserver hkp://pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2.69D6956105BD0E739499BDB
+# RUN gpg --keyserver hkp://pool.sks-keyservers.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2.69D6956105BD0E739499BDB
 RUN curl -sSL https://get.rvm.io | bash -s stable --ruby \
 && source /usr/local/rvm/scripts/rvm \
 && rvm get stable --autolibs=enable \
@@ -47,8 +47,8 @@ RUN curl -sSL https://get.rvm.io | bash -s stable --ruby \
 && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
 && apt-get update \
 && apt-get install -y \
-nodejs \
-yarn \
+    nodejs \
+    yarn \
 && gem update --system \
 && echo "gem: --no-document" >> ~/.gemrc \
 && gem install rails -v 6.0.2 \
