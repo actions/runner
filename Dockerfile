@@ -38,9 +38,9 @@ RUN command curl -sSL https://rvm.io/mpapis.asc | gpg2 --import - \
 && command curl -sSL https://rvm.io/pkuczynski.asc | gpg2 --import - \
 && curl -sSL https://get.rvm.io | bash -s stable --ruby \
 && source /usr/local/rvm/scripts/rvm \
-&& rvm get stable --autolibs=enable \
 && usermod -a -G rvm github \
 && usermod -a -G rvm root \
+&& rvm get stable --autolibs=enable \
 && rvm install ruby-2.6 \
 && rvm --default use ruby-2.6 \
 && curl -sL https://deb.nodesource.com/setup_14.x | bash - \
