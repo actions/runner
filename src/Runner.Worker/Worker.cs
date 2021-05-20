@@ -59,6 +59,9 @@ namespace GitHub.Runner.Worker
                         channelMessage = await channel.ReceiveAsync(csChannelMessage.Token);
                     }
 
+                    // This is useful for validating that the message wasn't truncated when being sent over the anonymous pipe.        
+                    Trace.Info($"Job Message char length: '{channelMessage.Body.Length}', byte length '{System.Text.ASCIIEncoding.Unicode.GetByteCount(channelMessage.Body)}'.");
+
                     // Deserialize the job message.
                     Trace.Info("Message received.");
                     ArgUtil.Equal(MessageType.NewJobRequest, channelMessage.MessageType, nameof(channelMessage.MessageType));
