@@ -86,7 +86,6 @@ namespace GitHub.Runner.Worker
             {
                 trace.Info($"Waiting for a debugger to be attached. {attemptCount} seconds left.");
                 await Task.Delay(1000);
-                attemptCount += 1;
             }
             Debugger.Break();
         }
