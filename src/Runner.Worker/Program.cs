@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
@@ -20,7 +20,7 @@ namespace GitHub.Runner.Worker
         public static async Task<int> MainAsync(IHostContext context, string[] args)
         {
             Tracing trace = context.GetTrace(nameof(GitHub.Runner.Worker));
-            if (bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER"), out _))
+            if (bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER"), out bool waitForDebugger) && waitForDebugger)
             {
                 await WaitForDebugger(trace);
             }
