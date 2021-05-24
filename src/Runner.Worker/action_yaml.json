@@ -46,8 +46,7 @@
         "runs": {
             "one-of": [
                 "container-runs",
-                "node12-runs",
-                "node14-runs",
+                "node-runs",
                 "plugin-runs",
                 "composite-runs"
             ]
@@ -81,19 +80,7 @@
                 "loose-value-type": "string"
             }
         },
-        "node12-runs": {
-            "mapping": {
-                "properties": {
-                    "using": "non-empty-string",
-                    "main": "non-empty-string",
-                    "pre": "non-empty-string",
-                    "pre-if": "non-empty-string",
-                    "post": "non-empty-string",
-                    "post-if": "non-empty-string"
-                }
-            }
-        },
-        "node14-runs": {
+        "node-runs": {
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
