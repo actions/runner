@@ -8,7 +8,6 @@
 **/*.xproj
 **/*.xproj.user
 **/.vs
-**/.vscode
 **/*.error
 **/*.json.pretty
 .idea/
