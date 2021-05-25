@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build listener",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "msbuild",
+                "-t:Build",
+                "-p:PackageRuntime=\"osx-x64\"",
+                "-p:BUILDCONFIG=\"Debug\"",
+                "-p:RunnerVersion=\"2.278.0\"",
+                "./dir.proj",       
+            ],
+            "options": {
+                    "cwd": "${workspaceFolder}/src"
+            },
+            "problemMatcher": "$msCompile",
+            
+        },
+        {
+            "label": "deploy to _layout",
+            "detail": "Build and Deploy all projects, scripts and external dependencies to _layout from src (run this the first time or after deleting _layout)",
+            "command": "./dev.sh",
+            "windows": {
+                "command": "dev.cmd"
+            },
+            "args": ["layout"],
+            "options": {
+                    "cwd": "${workspaceFolder}/src"
+            },
+        },
+        {
+            "label": "build to _layout",
+            "detail": "Build and Deploy all projects to _layout from src (run this on code change)",
+            "command": "./dev.sh",
+            "windows": {
+                "command": "dev.cmd"
+            },
+            "args": ["build"],
+            "options": {
+                    "cwd": "${workspaceFolder}/src"
+            },
+        }
+    ],
+}

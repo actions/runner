@@ -1,0 +1,59 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Deploy and Configure",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "deploy to _layout",
+            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
+            "args": ["configure"],
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "requireExactSource": false,
+        },    
+        {
+            "name": "Build and Run",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build to _layout",
+            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
+            "args": ["run"],
+            "cwd": "${workspaceFolder}/src",
+            "console": "integratedTerminal",
+            "requireExactSource": false,
+        },
+        {
+            "name": "Run",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
+            "args": ["run"],
+            "cwd": "${workspaceFolder}/src",
+            "stopAtEntry": true,
+            "console": "integratedTerminal",
+            "requireExactSource": false,
+        }, 
+        {
+            "name": "Configure",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
+            "args": ["configure"],
+            "cwd": "${workspaceFolder}/src",
+            "stopAtEntry": true,
+            "console": "integratedTerminal",
+            "requireExactSource": false,
+        },       
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+            "requireExactSource": false,
+        },
+    ],
+}
