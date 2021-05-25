@@ -45,6 +45,9 @@ RUN apt-get update \
     && tar xvfz docker-${DOCKER_VERSION}.tgz \
     && cp docker/* /usr/bin/
 
+USER github
+WORKDIR /home/github
+
 # Install azure-cli
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
@@ -52,8 +55,8 @@ RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 RUN curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - \
 && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
 && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
-&& apt-get update \
-&& apt-get install -y \
+&& sudo apt-get update \
+&& sudo apt-get install -y \
     nodejs \
     yarn \
 && git clone https://github.com/rbenv/rbenv.git ~/.rbenv \
@@ -75,9 +78,6 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - \
     bundler \
     rails \
     rake
-
-USER github
-WORKDIR /home/github
 
 RUN GITHUB_RUNNER_VERSION=$(curl --silent "https://api.github.com/repos/adaptivelab/runner/releases/latest" | jq -r '.tag_name[1:]') \
     && curl -Ls https://github.com/adaptivelab/runner/releases/download/v${GITHUB_RUNNER_VERSION}/actions-runner-linux-x64-${GITHUB_RUNNER_VERSION}.tar.gz | tar xz \
