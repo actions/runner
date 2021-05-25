@@ -8,9 +8,12 @@ ENV RUNNER_LABELS ""
 ENV ADDITIONAL_PACKAGES ""
 ENV DOCKER_VERSION "20.10.6"
 ENV DOCKER_HOST ""
+ENV GEM_HOME="/usr/local/bundle"
+ENV PATH $GEM_HOME/bin:$GEM_HOME/gems/bin:$PATH
 
 RUN apt-get update \
-    && apt-get install -y \
+    && DEBIAN_FRONTEND=noninteractive \
+      apt-get install -y \
         curl \
         sudo \
         git \
@@ -36,6 +39,7 @@ RUN apt-get update \
         software-properties-common \
         libffi-dev \
         iputils-ping \
+        apt-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m github \
@@ -56,7 +60,8 @@ RUN curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - \
 && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add - \
 && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
 && sudo apt-get update \
-&& sudo apt-get install -y \
+&& DEBIAN_FRONTEND=noninteractive \
+  sudo apt-get install -y \
     nodejs \
     yarn \
 && git clone https://github.com/rbenv/rbenv.git ~/.rbenv \
