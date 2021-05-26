@@ -39,7 +39,7 @@ Navigate to the `src` directory and run the following command:
 * `build` (`b`):   Build everything and update runner layout folder
 * `test` (`t`):    Build runner binaries and run unit tests
 
-Sample developer flow:
+**Sample developer flow:**
 
 ```bash
 git clone https://github.com/actions/runner
@@ -51,17 +51,32 @@ cd ./src
 ./dev.(sh/cmd) test # run all unit tests before git commit/push
 ```
 
-View logs:
+**Configure Runner:**
+```bash
+cd runner/_layout
+./config.sh # configure your custom runner
+```
+
+You will need your the name of your repository and a runner registration token. 
+You can find both at `https://github.com/{your-repo}/settings/actions/runners/new`
+
+These can also be passed down as arguments to `config.(sh/cmd)`:
+```bash
+cd runner/_layout
+./config.sh --url https://github.com/{your-repo} --token ABCABCABCABCABCABCABCABCABCAB
+```
+
+**Run Runner (Configure first!):**
+```bash
+cd runner/_layout
+./run.sh # run your custom runner
+```
+
+**View logs:**
 ```bash
 cd runner/_layout/_diag
 ls
 cat (Runner/Worker)_TIMESTAMP.log # view your log file
-```
-
-Run Runner:
-```bash
-cd runner/_layout
-./run.sh # run your custom runner
 ```
 
 ### Editors

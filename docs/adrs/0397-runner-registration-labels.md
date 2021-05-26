@@ -13,13 +13,13 @@ This is another version of [ADR275](https://github.com/actions/runner/pull/275)
 
 ## Decision
 
-This ADR proposes that we add a `--labels` option to `config`, which could be used to add custom additional labels to the configured runner.
+This ADR proposes that we add a `--labels` option to the `config`, which could be used to add custom additional labels to the configured runner.
 
-For example, to add a single extra label the operator could run:
+For example, to add a single additional label the operator could run:
 ```bash
 ./config.sh --labels mylabel
 ```
-> Note: the current runner command line parsing and envvar override algorithm only supports a single argument (key).
+> Note: the current runner command line parsing and envvar override algorithm only support a single argument (key).
 
 This would add the label `mylabel` to the runner, and enable users to select the runner in their workflow using this label:
 ```yaml
@@ -39,17 +39,17 @@ runs-on: [self-hosted, mylabel, anotherlabel]
 
 It would not be possible to remove labels from an existing runner using `config.sh`, instead labels would have to be removed using the GitHub UI.
 
-The labels argument will split on commas, trim and discard empty strings.  That effectively means don't use commans in unattended config label names.  Alternatively we could choose to escape commans but it's a nice to have.
+The labels argument will split on commas, trim and discard empty strings.  That effectively means don't use commas in unattended config label names.  Alternatively, we could choose to escape commas but it's a nice to have.
 
 ## Replace
 
-If an existing runner exists and the option to replace is chosen (interactively of via unattend as in this scenario), then the labels will be replaced / overwritten (not merged).
+If an existing runner exists and the option to replace is chosen (interactively or via unattended as in this scenario), then the labels will be replaced/overwritten (not merged).
 
 ## Overriding built-in labels
 
-Note that it is possible to register "built-in" hosted labels like `ubuntu-latest` and is not considered an error.  This is an effective way for the org / runner admin to dictate by policy through registration that this set of runners will be used without having to edit all the workflow files now and in the future.
+Note that it is possible to register "built-in" hosted labels like `ubuntu-latest` and is not considered an error.  This is an effective way for the org/runner admin to dictate by policy through registration that this set of runners will be used without having to edit all the workflow files now and in the future.
 
-We will also not make other restrictions such as limiting explicitly adding os / arch labels and validating.  We will assume that explicit labels were added for a reason and not restricting offers the most flexibility and future proofing / compat.
+We will also not make other restrictions such as limiting explicitly adding os/arch labels and validating.  We will assume that explicit labels were added for a reason and not restricting offers the most flexibility and future-proofing / compatibility.
 
 ## Consequences
 
