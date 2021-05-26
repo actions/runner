@@ -25,3 +25,4 @@ TestResults
 TestLogs
 .DS_Store
 **/*.DotSettings.user
+src/Runner.Sdk/BuildConstants.cs
