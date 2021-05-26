@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
@@ -81,10 +81,10 @@ namespace GitHub.Runner.Worker
         private static async Task WaitForDebugger(Tracing trace)
         {
             trace.Info($"Waiting for a debugger to be attached. Edit the 'GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER' environment variable to toggle this feature.");
-            int attemptCount = 30;
-            while (!Debugger.IsAttached && attemptCount-- > 0)
+            int waitInSeconds = 20;
+            while (!Debugger.IsAttached && waitInSeconds-- > 0)
             {
-                trace.Info($"Waiting for a debugger to be attached. {attemptCount} seconds left.");
+                trace.Info($"Waiting for a debugger to be attached. {waitInSeconds} seconds left.");
                 await Task.Delay(1000);
             }
             Debugger.Break();
