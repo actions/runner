@@ -53,7 +53,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(LoadSettings));
             if (!IsConfigured())
             {
-                throw new InvalidOperationException("Not configured. Run config.sh or invoke Runner.Listener with the argument [config]");
+                throw new InvalidOperationException("Not configured. Run config.(sh/cmd) to generate configuration.");
             }
 
             RunnerSettings settings = _store.GetSettings();
