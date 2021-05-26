@@ -96,6 +96,7 @@ namespace GitHub.Runner.Common
                     public static readonly string UserName = "username";
                     public static readonly string WindowsLogonAccount = "windowslogonaccount";
                     public static readonly string Work = "work";
+                    public static readonly string WorkerBinary = "workerbinary";
 
                     // Secret args. Must be added to the "Secrets" getter as well.
                     public static readonly string Token = "token";
