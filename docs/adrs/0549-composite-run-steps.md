@@ -8,17 +8,17 @@
 
 Customers want to be able to compose actions from actions (ex: https://github.com/actions/runner/issues/438)
 
-An important step towards meeting this goal is to build in functionality for actions where users can simply execute any number of steps. 
+An important step towards meeting this goal is to build functionality for actions where users can simply execute any number of steps. 
 
 ### Guiding Principles
 
-We don't want the workflow author to need to know how the internal workings of the action work. Users shouldn't know the internal workings of the composite action (for example, `default.shell` and `default.workingDir` should not be inherited from the workflow file to the action file). When deciding how to design certain parts of composite run steps, we want to think one logical step from the consumer.
+We don't want the workflow author to need to know how the internal workings of the action work. Users shouldn't know the internal workings of the composite action (for example, `default.shell` and `default.workingDir` should not be inherited from the workflow file to the action file). When deciding how to design certain parts of composite run steps, we want to treat it as one logical step for the consumer.
 
 A composite action is treated as **one** individual job step (this is known as encapsulation).
 
 ## Decision
 
-**In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to its parents' input variables and nested steps can overwrite the input variables).
+**In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to their parents' input variables and nested steps can overwrite the input variables).
 
 ### Composite Run Steps Features
 This feature supports at the top action level:
@@ -92,7 +92,7 @@ We will not support "defaults" in a composite action.
 
 ### Shell and Working-directory
 
-For each run step in a composite action, the action author can set the `shell` and `working-directory` attributes for that step. The shell attribute is **required** for each run step because the action author does not know what the workflow author is using for the operating system so we need to explicitly prevent unknown behavior by making sure that each run step has an explicit shell **set by the action author.** On the other hand, `working-directory` is optional. Moreover, the composite action author can map in values from the `inputs` for it's `shell` and `working-directory` attributes at the step level for an action. 
+For each run step in a composite action, the action author can set the `shell` and `working-directory` attributes for that step. The shell attribute is **required** for each run step because the action author does not know what the workflow author is using for the operating system so we need to explicitly prevent unknown behavior by making sure that each run step has an explicit shell **set by the action author.** On the other hand, `working-directory` is optional. Moreover, the composite action author can map in values from the `inputs` for its `shell` and `working-directory` attributes at the step level for an action. 
 
 For example,
 
@@ -218,9 +218,9 @@ Example Output:
 random-number 43243
 ```
 
-Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child action output(s) is viewable only by its parent using dot notation (ex `steps.foo.outputs.random-number`).
+Each of the output variables from the composite action is viewable from the workflow file that uses the composite action. In other words, every child's action output(s) are only viewable by its parent using dot notation (ex `steps.foo.outputs.random-number`).
 
-Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `random-id`). The reason why we are doing this is because we don't want to require the workflow author to know the internal workings of the composite action.
+Moreover, the output ids are only accessible within the scope where it was defined. Note that in the example above, in our `workflow.yml` file, it should not have access to output id (i.e. `random-id`). The reason why we are doing this is that we don't want to require the workflow author to know the internal workings of the composite action.
 
 ### Context
 
@@ -237,9 +237,9 @@ In the Composite Action, you'll only be able to use `::set-env::` to set environ
 We'll pass the secrets from the composite action's parents (ex: the workflow file) to the composite action. Secrets can be created in the composite action with the secrets context. In the actions yaml, we'll automatically mask the secret. 
 
 
-### If Condition
+### If-Condition
 
-** If and needs conditions will not be supported in the composite run steps feature. It will be supported later on in a new feature. **
+** `If` and `needs` conditions will not be supported in the composite run steps feature. It will be supported later on in a new feature. **
 
 Old reasoning:
 
@@ -248,7 +248,7 @@ Example `workflow.yml`:
 ```yaml
 steps:
   - run: exit 1
-  - uses: user/composite@v1  # <--- this will run, as it's marked as always runing
+  - uses: user/composite@v1  # <--- this will run, as it's marked as always running
     if: always()
 ```
 
@@ -269,15 +269,15 @@ runs:
       shell: bash
 ```
 
-**We will not support "if Condition" in a composite action for now. This functionality will be focused on in a future ADR.**
+**We will not support "if-condition" in a composite action for now. This functionality will be focused on in a future ADR.**
 
 See the paragraph below for a rudimentary approach (thank you to @cybojenix for the idea, example, and explanation for this approach):
 
 The `if` statement in the parent (in the example above, this is the `workflow.yml`) shows whether or not we should run the composite action. So, our composite action will run since the `if` condition for running the composite action is `always()`.
 
-**Note that the if condition on the parent does not propagate to the rest of its children though.**
+**Note that the "if-condition" on the parent does not propagate to the rest of its children though.**
 
-In the child action (in this example, this is the `action.yml`), it starts with a clean slate (in other words, no imposing if conditions). Similar to the logic in the paragraph above, `echo "I will run, as my current scope is succeeding"` will run since the `if` condition checks if the previous steps **within this composite action** has not failed. `run: echo "I will not run, as my current scope is now failing"` will not run since the previous step resulted in an error and by default, the if expression is set to `success()` if the if condition is not set for a step.
+In the child action (in this example, this is the `action.yml`), it starts with a clean slate (in other words, no imposing if-conditions). Similar to the logic in the paragraph above, `echo "I will run, as my current scope is succeeding"` will run since the `if` condition checks if the previous steps **within this composite action** have not failed. `run: echo "I will not run, as my current scope is now failing"` will not run since the previous step resulted in an error and by default, the if expression is set to `success()` if the if-condition is not set for a step.
 
 
 What if a step has `cancelled()`? We do the opposite of our approach above if `cancelled()` is used for any of our composite run steps. We will cancel any step that has this condition if the workflow is cancelled at all.
@@ -314,13 +314,13 @@ runs:
 
 **We will not support "timeout-minutes" in a composite action for now. This functionality will be focused on in a future ADR.**
 
-A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
+A composite action in its entirety is a job. You can set both timeout-minutes for the whole composite action or its steps as long as the sum of the `timeout-minutes` for each composite action step that has the attribute `timeout-minutes` is less than or equals to `timeout-minutes` for the composite action. There is no default timeout-minutes for each composite action step. 
 
-If the time taken for any of the steps in combination or individually exceed the whole composite action `timeout-minutes` attribute, the whole job will fail (1). If an individual step exceeds its own `timeout-minutes` attribute but the total time that has been used including this step is below the overall composite action `timeout-minutes`, the individual step will fail but the rest of the steps will run based on their own `timeout-minutes` attribute (they will still abide by condition (1) though).
+If the time taken for any of the steps in combination or individually exceeds the whole composite action `timeout-minutes` attribute, the whole job will fail (1). If an individual step exceeds its own `timeout-minutes` attribute but the total time that has been used including this step is below the overall composite action `timeout-minutes`, the individual step will fail but the rest of the steps will run based on their own `timeout-minutes` attribute (they will still abide by condition (1) though).
 
-For reference, in the example above, if the composite step `foo1` takes 11 minutes to run, that step will fail but the rest of the steps, `foo1` and `foo2`, will proceed as long as their total runtime with the previous failed `foo1` action is less than the composite action's `timeout-minutes` (50 minutes). If the composite step `foo2` takes 51 minutes to run, it will cause the whole composite action job to fail. I
+For reference, in the example above, if the composite step `foo1` takes 11 minutes to run, that step will fail but the rest of the steps, `foo1` and `foo2`, will proceed as long as their total runtime with the previous failed `foo1` action is less than the composite action's `timeout-minutes` (50 minutes). If the composite step `foo2` takes 51 minutes to run, it will cause the whole composite action job to fail.
 
-The rationale behind this is that users can configure their steps with the `if` condition to conditionally set how steps rely on each other. Due to the additional capabilities that are offered with combining `timeout-minutes` and/or `if`, we wanted the `timeout-minutes` condition to be as dumb as possible and not effect other steps. 
+The rationale behind this is that users can configure their steps with the `if` condition to conditionally set how steps rely on each other. Due to the additional capabilities that are offered with combining `timeout-minutes` and/or `if`, we wanted the `timeout-minutes` condition to be as dumb as possible and not affect other steps. 
 
 [Usage limits still apply](https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions?query=if%28%29#usage-limits)
 
@@ -361,7 +361,7 @@ For the composite action steps, it follows the same logic as above. In this exam
 ### Visualizing Composite Action in the GitHub Actions UI
 We want all the composite action's steps to be condensed into the original composite action node. 
 
-Here is a visual represenation of the [first example](#Steps)
+Here is a visual representation of the [first example](#Steps)
 
 ```yaml
 | composite_action_node |
