@@ -5,23 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Deploy and Configure",
+            "name": "Run [build]",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "deploy to _layout",
+            "preLaunchTask": "build runner layout",
             "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": ["configure"],
-            "cwd": "${workspaceFolder}/src",
-            "console": "integratedTerminal",
-            "requireExactSource": false,
-        },    
-        {
-            "name": "Build and Run",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build to _layout",
-            "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": ["run"],
+            "args": [
+                "run"
+            ],
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
@@ -31,21 +22,26 @@
             "type": "coreclr",
             "request": "launch",
             "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": ["run"],
+            "args": [
+                "run"
+            ],
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
-        }, 
+        },
         {
             "name": "Configure",
             "type": "coreclr",
             "request": "launch",
+            "preLaunchTask": "create runner layout",
             "program": "${workspaceFolder}/_layout/bin/Runner.Listener",
-            "args": ["configure"],
+            "args": [
+                "configure"
+            ],
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
-        },       
+        },
         {
             "name": ".NET Core Attach",
             "type": "coreclr",
