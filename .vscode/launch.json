@@ -43,7 +43,14 @@
             "requireExactSource": false,
         },
         {
-            "name": ".NET Core Attach",
+            "name": "Debug Worker",
+            "type": "coreclr",
+            "request": "attach",
+            "processName": "Runner.Worker",
+            "requireExactSource": false,
+        },
+        {
+            "name": "Attach Debugger",
             "type": "coreclr",
             "request": "attach",
             "processId": "${command:pickProcess}",
