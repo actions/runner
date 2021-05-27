@@ -7,7 +7,7 @@ To successfully start the runner, you need to register it using a repository and
 Run `Configure` first to build the source code and set up the runner in `_layout`. 
 Once it's done creating `_layout`, it asks for the url of your repository and your token in the terminal.
 
-Check [Quickstart](../contribute.md#quickstart:-run-a-job-from-a-real-repository) if you don't know how to get this token.
+Check [Quickstart](../contribute.md#quickstart-run-a-job-from-a-real-repository) if you don't know how to get this token.
 
 ## Debugging
 
