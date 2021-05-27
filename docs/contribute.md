@@ -24,6 +24,7 @@ An ADR is an Architectural Decision Record.  This allows consensus on the direct
 ![Win](res/win_sm.png) ![*nix](res/linux_sm.png)  Git for Windows and Linux [Install Here](https://git-scm.com/downloads) (needed for dev sh script)
 
 ## Quickstart: Run a job from a real repository
+
 If you just want to get from building the sourcecode to using it to execute an action, you will need:
 
 - The url of your repository
@@ -45,6 +46,7 @@ Tip: Make sure your job can run on this runner. The easiest way is to set `runs-
 
 
 ## Development Life Cycle
+If you're using VS Code, you can follow [these](contribute/vscode.md) steps instead. 
 
 ### To Build, Test, Layout 
 
@@ -116,8 +118,8 @@ cd runner/_layout
 ./config.(sh/cmd) # configure your custom runner
 ```
 
-You will need your the name of your repository and a runner registration token. 
-You can find both at `https://github.com/{your-repo}/settings/actions/runners/new`
+You will need your the name of your repository and a runner registration token.
+Check [Quickstart](##Quickstart:-Run-a-job-from-a-real-repository) if you don't know how to get this token.
 
 These can also be passed down as arguments to `config.(sh/cmd)`:
 ```bash
@@ -141,12 +143,12 @@ ls
 cat (Runner/Worker)_TIMESTAMP.log # view your log file
 ```
 
-### Editors
+## Editors
 
 [Using Visual Studio Code](https://code.visualstudio.com/)
 [Using Visual Studio](https://code.visualstudio.com/docs)  
 
-### Styling
+## Styling
 
 We use the .NET Foundation and CoreCLR style guidelines [located here](
 https://github.com/dotnet/corefx/blob/master/Documentation/coding-guidelines/coding-style.md)
