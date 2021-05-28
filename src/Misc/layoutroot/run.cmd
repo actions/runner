@@ -28,6 +28,6 @@ if /i "%~1" equ "localRun" (
   rem Sleep 5 seconds to wait for the update process finish and run the runner again.
   if ERRORLEVEL 3 (
     timeout /t 5 /nobreak > NUL
-    "%~dp0run.cmd"
+    "%~dp0run.cmd" %*
   )
 )
