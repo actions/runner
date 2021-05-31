@@ -37,7 +37,7 @@ cd runner/src
 ./dev.(sh/cmd) layout # the runner that built from source is in {root}/_layout
 cd ../_layout
 ./config.(sh/cmd) --url https://github.com/{your-repo} --token ABCABCABCABCABCABCABCABCABCAB # accept default name, labels and work folder
-./run.sh
+./run.(sh/cmd)
 ```
 
 If you trigger a job now, you can see the runner execute it.
@@ -132,7 +132,7 @@ cd runner/_layout
 All that's left to do is to start the runner:
 ```bash
 cd runner/_layout
-./run.sh # run your custom runner
+./run.(sh/cmd) # run your custom runner
 ```
 
 ### View logs:
