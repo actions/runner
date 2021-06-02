@@ -20,17 +20,15 @@ namespace Runner.Server.Controllers
     public class AgentPoolsController : VssControllerBase
     {
 
-        private readonly ILogger<AgentPoolsController> _logger;
         private IMemoryCache _cache;
 
         private List<Pool> pools;
 
         private SqLiteDb db;
 
-        public AgentPoolsController(ILogger<AgentPoolsController> logger, IMemoryCache cache, SqLiteDb db)
+        public AgentPoolsController(IMemoryCache cache, SqLiteDb db)
         {
             this.db = db;
-            _logger = logger;
             _cache = cache;
             if(!db.Pools.Any() && !_cache.TryGetValue(Pool.CachePools, out pools)) {
                 pools = new List<Pool> {
@@ -50,7 +48,7 @@ namespace Runner.Server.Controllers
         [HttpGet]
         public Task<FileStreamResult> Get(string poolName = "", string properties = "", string poolType = "")
         {
-            return Ok(new VssJsonCollectionWrapper<List<TaskAgentPool>> ((from pool in pools ?? db.Pools.Include(a => a.TaskAgentPool).AsEnumerable() select pool.TaskAgentPool).ToList()));
+            return Ok((from pool in pools ?? db.Pools.Include(a => a.TaskAgentPool).AsEnumerable() select pool.TaskAgentPool).ToList());
         }
     }
 }

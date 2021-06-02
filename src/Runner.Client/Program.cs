@@ -493,8 +493,11 @@ namespace Runner.Client
                 ConcurrentQueue<string> removed = new ConcurrentQueue<string>();
                 CancellationTokenSource source = new CancellationTokenSource();
                 CancellationToken token = source.Token;
+                bool canceled = false;
                 Console.CancelKeyPress += (s, e) => {
-                    e.Cancel = !source.IsCancellationRequested;
+                    e.Cancel = !canceled;
+                    Console.WriteLine($"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
+                    canceled = true;
                     source.Cancel();
                 };
                 List<Task> listener = new List<Task>();
@@ -613,11 +616,9 @@ namespace Runner.Client
                             Console.WriteLine($"Press Enter or CTRL+C to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
-                                Task.Run(() => {
+                                await Task.WhenAny(Task.Run(() => {
                                     Console.In.ReadLine();
-                                    source.Cancel();
-                                });
-                                await Task.Delay(-1, token);
+                                }), Task.Delay(-1, token));
                             } catch {
 
                             }

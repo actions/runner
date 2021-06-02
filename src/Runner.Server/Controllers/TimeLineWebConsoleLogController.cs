@@ -73,21 +73,6 @@ namespace Runner.Server.Controllers
         private delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
         private static event LogFeedEvent logfeed;
 
-        // private struct JsonRecord
-        // {
-        //     Guid timelineId;
-        //     Guid recordId;
-        //     TimelineRecordFeedLinesWrapper record;
-        // }
-
-        public class LowercaseContractResolver : DefaultContractResolver
-        {
-            protected override string ResolvePropertyName(string propertyName)
-            {
-                return propertyName.ToLower();
-            }
-        }
-
         [HttpGet]
         public IActionResult Message([FromQuery] Guid timelineId, [FromQuery] long[] runid)
         {

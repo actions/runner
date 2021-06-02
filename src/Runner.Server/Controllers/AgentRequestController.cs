@@ -17,13 +17,10 @@ namespace Runner.Server.Controllers
     [Authorize(AuthenticationSchemes = "Bearer")]
     public class AgentRequestController : VssControllerBase
     {
-        private readonly ILogger<AgentRequestController> _logger;
-
         private IMemoryCache _cache;
 
-        public AgentRequestController(ILogger<AgentRequestController> logger, IMemoryCache cache)
+        public AgentRequestController(IMemoryCache cache)
         {
-            _logger = logger;
             _cache = cache;
         }
 

@@ -22,15 +22,13 @@ namespace Runner.Server.Controllers
     public class AgentSessionController : VssControllerBase
     {
 
-        private readonly ILogger<AgentSessionController> _logger;
         private IMemoryCache _cache;
 
         private SqLiteDb _context;
     
 
-        public AgentSessionController(ILogger<AgentSessionController> logger, IMemoryCache cache, SqLiteDb context)
+        public AgentSessionController(IMemoryCache cache, SqLiteDb context)
         {
-            _logger = logger;
             _cache = cache;
             _context = context;
         }

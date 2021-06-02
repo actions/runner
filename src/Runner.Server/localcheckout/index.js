@@ -8,15 +8,24 @@ const { env } = require("process");
 const del = require("del");
 
 try {
+    const _checkoutref = core.getInput("checkoutref");
     const _path = core.getInput("path");
     const repository = core.getInput("repository");
     const ref = core.getInput("ref");
+    const recursive = core.getInput("recursive");
     if (repository !== env["GITHUB_REPOSITORY"] || ref !== undefined && ref !== "" && ref !== env["GITHUB_REF"] && ref !== env["GITHUB_SHA"]) {
         core.setOutput("skip", false);
     } else {
         core.setOutput("skip", true);
-        const url = env["ACTIONS_RUNTIME_URL"] + "_apis/v1/Message/multipart/" + env["GITHUB_RUN_ID"];
-        const dest = _path !== "" && _path !== undefined ? path.join(env["GITHUB_WORKSPACE"], _path) : env["GITHUB_WORKSPACE"];
+        const url = env["ACTIONS_RUNTIME_URL"] + "_apis/v1/Message/multipart/" + env["GITHUB_RUN_ID"] + "?recursive=" + recursive;
+        var githubWorkspacePath = env["GITHUB_WORKSPACE"]
+        if(_checkoutref.toLowerCase().startsWith("v1")) {
+            githubWorkspacePath = path.join(githubWorkspacePath,  "..")
+        }
+        const dest = _path !== "" && _path !== undefined ? path.join(githubWorkspacePath, _path) : githubWorkspacePath;
+        if(!(dest + path.sep).startsWith(githubWorkspacePath + path.sep)) {
+            throw new Error(`Repository path '${dest}' is not under '${githubWorkspacePath}'`)
+        }
         var clean = core.getInput("clean");
         if(clean === undefined || clean === "" || clean === "true") {
             var posixdest = dest.replace("\\", "/");

@@ -15,6 +15,7 @@ namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/artifactcache")]
+    [AllowAnonymous]
     public class CacheController : VssControllerBase{
         
         private string _targetFilePath;

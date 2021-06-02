@@ -1248,59 +1248,33 @@ namespace Runner.Server.Controllers
 
         private class shared {
             public Channel<Task> Channel;
-            // public Channel<bool> Channel2;
             public HttpResponse response;
-
             public MemoryStream stream { get; internal set; }
-
-            // public string contentType { get; internal set; }
         }
 
         [HttpPost("multipartup/{id}")]
-        public async Task UploadMulti(string id) {
+        public async Task UploadMulti(string id, [FromQuery] bool recursive) {
             var sh = _cache.Get<shared>(id);
-            // sh.contentType = Request.Headers["Content-Type"].First();
-            // foreach (var item in Request.Headers) {
-            //     sh.response.Headers.Add(item.Key, item.Value);
-            // }
-            // await sh.response.StartAsync();
-            // var s = new MemoryStream();
             var type = Request.Headers["Content-Type"].First();
             var ntype = "multipart/form-data" + type.Substring("application/octet-stream".Length);
             sh.response.Headers["Content-Type"] = new StringValues(ntype);
             var task = Request.Body.CopyToAsync(sh.response.Body);
-            // sh.stream = s;
             await sh.Channel.Writer.WriteAsync(task, HttpContext.RequestAborted);
-            // await sh.Channel2.Reader.ReadAsync(HttpContext.RequestAborted);
             await task;
         }
-        
 
         [HttpGet("multipart/{runid}")]
-        public async Task GetMulti(long runid) {
+        public async Task GetMulti(long runid, [FromQuery] bool recursive) {
             var channel = Channel.CreateBounded<Task>(1);
             var sh = new shared();
             sh.Channel = channel;
-            // sh.Channel2 = Channel.CreateBounded<bool>(1);
             string id = runid + "__,dfuusnd" + reqId + "_" + new Random().NextDouble();
             _cache.Set(id, sh);
-            OnRepoDownload?.Invoke(runid, "/test/host/_apis/v1/Message/multipartup/" + id);
-            // var mp = new MultipartFormDataContent();
-            // mp.Add(new StringContent("Hello World"), "test", "test.yml");
-            // foreach (var item in mp.Headers) {
-            //     Response.Headers.Add(item.Key, new StringValues(item.Value.ToArray()));
-            // }
-            // var form = await Request.ReadFormAsync();
-            // form.Files.First().
-
-            // Response.OnCompleted(async cb => {
-            //     await sh.Channel2.Writer.WriteAsync(true);
-            // }, null);
+            OnRepoDownload?.Invoke(runid, "/test/host/_apis/v1/Message/multipartup/" + id + $"?recursive={recursive}");
             sh.response = Response;
             var task = await channel.Reader.ReadAsync(HttpContext.RequestAborted);
             await task;
-            // await sh.stream.CopyToAsync(Response.Body);
-            // return new FileStreamResult(await channel.Reader.ReadAsync(HttpContext.RequestAborted));
+            _cache.Remove(id);
         }
         private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout)
         {
@@ -1394,6 +1368,10 @@ namespace Runner.Server.Controllers
                         var _localcheckout = astep.Clone() as ActionStep;
                         _localcheckout.Reference = new RepositoryPathReference { Name = "localcheckout", Ref = "V1", RepositoryType = RepositoryTypes.GitHub, Path = "" };
                         _localcheckout.ContextName = "_" + Guid.NewGuid().ToString();
+                        var inmap = _localcheckout.Inputs?.AssertMapping("inputs");
+                        if(inmap != null) {
+                            inmap.Add(new StringToken(null, null, null, "checkoutref"), new StringToken(null, null, null, p.Ref));
+                        }
                         astep.Condition = $"({astep.Condition}) && !fromJSON(steps.{_localcheckout.ContextName}.outputs.skip)";
                         steps.Insert(i++, _localcheckout);
                     }
