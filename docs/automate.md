@@ -23,7 +23,7 @@ export RUNNER_CFG_PAT=yourPAT
 
 Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
-curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
 
 ## Uninstall running as service 
@@ -38,7 +38,7 @@ curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/create
 
 Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
 ```bash
-curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/remove-svc.sh | bash -s yourorg/yourrepo
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/remove-svc.sh | bash -s yourorg/yourrepo
 ```
 
 ### Delete an offline runner
@@ -53,5 +53,5 @@ curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/remove
 
 Repo level one-liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) and replace runnername
 ```bash
-curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/delete.sh | bash -s yourorg/yourrepo runnername
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/delete.sh | bash -s yourorg/yourrepo runnername
 ```
