@@ -11,7 +11,7 @@ export RUNNER_CFG_PAT=yourPAT
 
 ## Create running as a service
 
-**Scenario**: Run on a machine or VM (not container) which automates:
+**Scenario**: Run on a machine or VM ([not container](#why-cant-i-use-a-container)) which automates:
 
  - Resolving latest released runner
  - Download and extract latest
@@ -26,9 +26,13 @@ Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just you
 curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
 
+### Why can't I use a container?
+
+The runner is installed as a service using `systemd` and `systemctl`. Docker does not support `systemd` for service configuration on a container.
+
 ## Uninstall running as service 
 
-**Scenario**: Run on a machine or VM (not container) which automates:
+**Scenario**: Run on a machine or VM ([not container](#why-cant-i-use-a-container)) which automates:
 
  - Stops and uninstalls the systemd (linux) or Launchd (osx) service
  - Acquires a removal token
