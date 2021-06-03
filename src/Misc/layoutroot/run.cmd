@@ -24,10 +24,10 @@ if /i "%~1" equ "localRun" (
   rem ********************************************************************************
   "%~dp0bin\Runner.Listener.exe" run %*
 
-  rem Return code 4 means the run once runner received an update message.
+  rem Return codes 3 and 4 mean the runner received an update message.
   rem Sleep 5 seconds to wait for the update process finish and run the runner again.
-  if ERRORLEVEL 4 (
+  if ERRORLEVEL 3 (
     timeout /t 5 /nobreak > NUL
-    "%~dp0bin\Runner.Listener.exe" run %*
+    "%~dp0run.cmd" %*
   )
 )
