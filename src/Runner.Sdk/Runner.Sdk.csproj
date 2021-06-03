@@ -11,6 +11,27 @@
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
   </PropertyGroup>
   
+
+  <Target Name="GenerateConstant" BeforeTargets="Build">
+    <ItemGroup>
+        <BuildConstants Include="namespace GitHub.Runner.Sdk"/>
+        <BuildConstants Include="{"/>
+        <BuildConstants Include="%20%20%20%20public static class BuildConstants"/>
+        <BuildConstants Include="%20%20%20%20{"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20public static class Source"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22N/A%22%3B"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20}%0A"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20public static class RunnerPackage"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string PackageName = %22N/A%22%3B"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string Version = %220%22%3B"/>
+        <BuildConstants Include="%20%20%20%20%20%20%20%20}"/>
+        <BuildConstants Include="%20%20%20%20}"/>
+        <BuildConstants Include="}"/>
+    </ItemGroup>
+    <WriteLinesToFile File="BuildConstants.cs" Lines="@(BuildConstants)" Overwrite="true" />
+  </Target>
   <ItemGroup>
     <ProjectReference Include="..\Sdk\Sdk.csproj" />
   </ItemGroup>
