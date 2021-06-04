@@ -124,7 +124,7 @@ function status()
         echo
         echo "not installed"
         echo
-        return
+        exit 1
     fi
 
     systemctl --no-pager status ${SVC_NAME}
