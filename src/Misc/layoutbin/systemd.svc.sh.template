@@ -114,7 +114,7 @@ function uninstall()
         echo "Service ${SVC_NAME} is not installed"
     fi    
     if [ -f "${CONFIG_PATH}" ]; then
-        rm "${CONFIG_PATH}" || failed "failed to delete ${CONFIG_PATH}"
+      rm "${CONFIG_PATH}" || failed "failed to delete ${CONFIG_PATH}"
     fi
     systemctl daemon-reload || failed "failed to reload daemons"
 }
