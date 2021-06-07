@@ -106,14 +106,27 @@ function stop()
 
 function uninstall()
 {
-    stop
-    systemctl disable ${SVC_NAME} || failed "failed to disable  ${SVC_NAME}"
-    rm "${UNIT_PATH}" || failed "failed to delete ${UNIT_PATH}"
+    if service_exists; then
+        stop
+        systemctl disable ${SVC_NAME} || failed "failed to disable ${SVC_NAME}"
+        rm "${UNIT_PATH}" || failed "failed to delete ${UNIT_PATH}"
+    else
+        echo "Service ${SVC_NAME} is not installed"
+    fi    
     if [ -f "${CONFIG_PATH}" ]; then
-      rm "${CONFIG_PATH}" || failed "failed to delete ${CONFIG_PATH}"
+        rm "${CONFIG_PATH}" || failed "failed to delete ${CONFIG_PATH}"
     fi
     systemctl daemon-reload || failed "failed to reload daemons"
 }
+
+function service_exists() {
+    if systemctl status "${SVC_NAME}" 2> /dev/null | grep -Fq "Active:"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 
 function status()
 {
