@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Primitives;
 
 namespace Runner.Server.Controllers {
 
@@ -16,6 +17,11 @@ namespace Runner.Server.Controllers {
     [Route("{owner}/{repo}/_apis/pipelines/workflows/{run}/artifacts")]
     [AllowAnonymous]
     public class ArtifactController : VssControllerBase{
+
+        private struct ArtifactRecord {
+            public string FileName {get;set;}
+            public bool GZip {get;set;}
+        }
 
         private string _targetFilePath;
 
@@ -55,8 +61,8 @@ namespace Runner.Server.Controllers {
         [HttpPost]
         public async Task<FileStreamResult> CreateContainer(int run) {
             var req = await FromBody<CreateContainerRequest>();
-            var c = _cache.GetOrCreate("artifact_run_" + run, e => new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>());
-            c.AddOrUpdate(req.Name, s => new ConcurrentDictionary<string, string>(), (a,b) => {
+            var c = _cache.GetOrCreate("artifact_run_" + run, e => new ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>());
+            c.AddOrUpdate(req.Name, s => new ConcurrentDictionary<string, ArtifactRecord>(), (a,b) => {
                 return b;
             });
             return await Ok(new ArtifactResponse { name = req.Name, fileContainerResourceUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{req.Name}" } );
@@ -71,7 +77,7 @@ namespace Runner.Server.Controllers {
 
         [HttpGet]
         public async Task<IActionResult> GetContainer(int run) {
-            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, string>>>("artifact_run_" + run);
+            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
             if(c == null) {
                 return NotFound();
             }
@@ -80,8 +86,8 @@ namespace Runner.Server.Controllers {
 
         [HttpPut("container/{containername}")]
         public async Task<IActionResult> UploadToContainer(int run, string containername, [FromQuery] string itemPath) {
-            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, string>>>("artifact_run_" + run);
-            ConcurrentDictionary<string, string> val;
+            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
+            ConcurrentDictionary<string, ArtifactRecord> val;
             if(c == null || !c.TryGetValue(containername, out val)) {
                 return NotFound();
             }
@@ -90,8 +96,8 @@ namespace Runner.Server.Controllers {
             int j = range.IndexOf('/');
             var start = Convert.ToInt64(range.Substring(6, i - 6));
             var end = Convert.ToInt64(range.Substring(i + 1, j - (i + 1)));
-            var trustedFileNameForFileStorage = val.GetOrAdd(itemPath, s => Path.GetRandomFileName());
-            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, trustedFileNameForFileStorage), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+            var trustedFileNameForFileStorage = val.GetOrAdd(itemPath, s => new ArtifactRecord { FileName = Path.GetRandomFileName(), GZip = Request.Headers.TryGetValue("Content-Encoding", out StringValues v) && v.Contains("gzip") });
+            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, trustedFileNameForFileStorage.FileName), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
                 targetStream.Seek(start, SeekOrigin.Begin);
                 await Request.Body.CopyToAsync(targetStream);
             }
@@ -100,8 +106,8 @@ namespace Runner.Server.Controllers {
 
         [HttpGet("container/{containername}")]
         public async Task<ActionResult> GetFilesFromContainer(int run, string containername, [FromQuery] string itemPath) {
-            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, string>>>("artifact_run_" + run);
-            ConcurrentDictionary<string, string> val;
+            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
+            ConcurrentDictionary<string, ArtifactRecord> val;
             if(c == null || !c.TryGetValue(containername, out val)) {
                 return NotFound();
             }
@@ -109,15 +115,19 @@ namespace Runner.Server.Controllers {
             foreach (var item in val) {
                 var builder = new Microsoft.AspNetCore.Http.Extensions.QueryBuilder();
                 builder.Add("filename", Path.GetFileName(item.Key));
-                ret.Add(new DownloadInfo { path = item.Key, itemType = "file", fileLength = 1 /* TODO do we need the real filesize? this works for now */, contentLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{containername}/{item.Value}{builder.ToString()}"});
+                builder.Add("gzip", item.Value.GZip.ToString());
+                ret.Add(new DownloadInfo { path = item.Key, itemType = "file", fileLength = 1 /* TODO do we need the real filesize? this works for now */, contentLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{containername}/{item.Value.FileName}{builder.ToString()}"});
             }
             return await Ok(ret);
         }
 
         [HttpGet("artifact/{containername}/{file}")]
-        public FileStreamResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename) {
+        public FileStreamResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename, [FromQuery] bool gzip) {
             if(filename?.Length > 0) {
                 Response.Headers.Add("Content-Disposition", $"attachment; filename={filename}");
+            }
+            if(gzip) {
+                Response.Headers.Add("Content-Encoding", "gzip");
             }
             return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, file)), "application/octet-stream");
         }

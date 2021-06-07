@@ -1,0 +1,25 @@
+on: push
+name: gzipart
+defaults:
+  run:
+    shell: bash
+jobs:
+  y:
+    runs-on: self-hosted
+    steps:
+    - run: echo "Some large amount of text that has a compression ratio that is greater than 100%. If greater than 100%, gzip is used to upload the file" > gzip.txt
+    - uses: actions/upload-artifact@v2
+      with:
+        name: GzipTest
+        path: gzip.txt
+  z:
+    needs: y
+    runs-on: self-hosted
+    steps:
+    - run: echo "Some large amount of text that has a compression ratio that is greater than 100%. If greater than 100%, gzip is used to upload the file" > gzip.txt
+    - uses: actions/download-artifact@v2
+      with:
+        name: GzipTest
+        path: gz
+    - run: cat gz/gzip.txt
+    - run: '[ "$(cat gzip.txt)" == "$(cat gz/gzip.txt)" ]'
