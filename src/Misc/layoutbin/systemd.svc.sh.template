@@ -120,7 +120,7 @@ function uninstall()
 }
 
 function service_exists() {
-    if systemctl status "${SVC_NAME}" 2> /dev/null | grep -Fq "Active:"; then
+    if [ -f "${UNIT_PATH}" ]; then
         return 0
     else
         return 1
@@ -129,7 +129,7 @@ function service_exists() {
 
 function status()
 {
-    if [ -f "${UNIT_PATH}" ]; then
+    if service_exists; then
         echo
         echo "${UNIT_PATH}"
     else
