@@ -10,7 +10,7 @@ Compilation failures during a CI build should surface good error messages.
 
 For example, the actual compile errors from the typescript compiler should bubble as issues in the UI. And not simply "tsc exited with exit code 1".
 
-VSCode has an extensible model for solving this type of problem. VSCode allows users to configure which [problems matchers](https://vscode-docs.readthedocs.io/en/stable/editor/tasks/#defining-a-problem-matcher) to use, when scanning output. For example, a user can apply the `tsc` problem matcher to receive a rich error output experience in VSCode, when compiling their typescript project.
+VSCode has an extensible model for solving this type of problem. VSCode allows users to configure which [problems matchers](https://code.visualstudio.com/docs/editor/tasks#_defining-a-problem-matcher) to use, when scanning output. For example, a user can apply the `tsc` problem matcher to receive a rich error output experience in VSCode, when compiling their typescript project.
 
 The problem-matcher concept fits well with "setup" actions. For example, the `setup-nodejs` action will download node.js, add it to the PATH, and register the `tsc` problem matcher. For the duration of the job, the `tsc` problem matcher will be applied against the output.
 
