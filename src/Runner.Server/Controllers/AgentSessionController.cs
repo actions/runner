@@ -82,6 +82,7 @@ namespace Runner.Server.Controllers
             Session session;
             if(_cache.TryGetValue(sessionId, out session)) {
                 session.DropMessage?.Invoke();
+                session.DropMessage = null;
                 _cache.Remove(sessionId);
                 Session s2;
                 MessageController.sessions.TryRemove(session, out s2);

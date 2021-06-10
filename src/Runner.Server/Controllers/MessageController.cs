@@ -802,6 +802,7 @@ namespace Runner.Server.Controllers
                                     }
 
                                     exctx.JobContext = jobitem;
+                                    Console.WriteLine($"Evaluate job-if Jobname: {jobitem.name}");
                                     var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
                                     var condition = new BasicExpressionToken(null, null, null, PipelineTemplateConverter.ConvertToIfCondition(templateContext, ifexpr, true));
                                     templateContext.ExpressionValues.Clear();
@@ -819,6 +820,7 @@ namespace Runner.Server.Controllers
                                         return;
                                     }
                                     
+                                    Console.WriteLine($"Evaluate strategy Jobname: {jobitem.name}");
                                     var rawstrategy = (from r in run where r.Key.AssertString("strategy").Value == "strategy" select r).FirstOrDefault().Value;
                                     var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
                                     var includematrix = new List<Dictionary<string, TemplateToken>> { };
@@ -1216,9 +1218,11 @@ namespace Runner.Server.Controllers
                     };
                     ConcurrentQueue<JobCompletedEvent> queue = new ConcurrentQueue<JobCompletedEvent>();
                     workflowcomplete = (e) => {
-                        if(Monitor.TryEnter(workflowcomplete)) {      
+                        if(!Monitor.IsEntered(workflowcomplete) && Monitor.TryEnter(workflowcomplete)) {      
                             try {
-                                withoutlock(e);
+                                if(e != null) {
+                                    withoutlock(e);
+                                }
                                 JobCompletedEvent ev;
                                 while(queue.TryDequeue(out ev)) {
                                     withoutlock(ev);
@@ -1230,8 +1234,14 @@ namespace Runner.Server.Controllers
                             queue.Enqueue(e);
                         }
                     };
-                    FinishJobController.OnJobCompleted += workflowcomplete;
-                    jobCompleted(null);
+                    Monitor.Enter(workflowcomplete);
+                    try {
+                        FinishJobController.OnJobCompleted += workflowcomplete;
+                        jobCompleted(null);
+                    } finally {
+                        Monitor.Exit(workflowcomplete);
+                    }
+                    workflowcomplete(null);
                 }
             } catch (Exception ex) {
                 List<string> _errors = new List<string>{ex.Message};
@@ -1577,6 +1587,7 @@ namespace Runner.Server.Controllers
                 return v;
             });
             session.DropMessage?.Invoke();
+            session.DropMessage = null;
             for (int i = 0; i < 10 && !HttpContext.RequestAborted.IsCancellationRequested; i++)
             {
                 if(session.Job == null) {
