@@ -87,7 +87,7 @@ namespace GitHub.Runner.Listener.Configuration
 
         public string GetUniqueRunnerGroupName()
         {
-            return RunnerServiceLocalGroupPrefix + IOUtil.GetPathHash(HostContext.GetDirectory(WellKnownDirectory.Bin)).Substring(0, 5);
+            return RunnerServiceLocalGroupPrefix + IOUtil.GetSha256Hash(HostContext.GetDirectory(WellKnownDirectory.Bin)).Substring(0, 5);
         }
 
         public bool LocalGroupExists(string groupName)
