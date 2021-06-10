@@ -19,10 +19,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="4.4.0" />
-    <PackageReference Include="System.Threading.Channels" Version="4.4.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="5.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="5.0.0" />
+    <PackageReference Include="System.Threading.Channels" Version="5.0.0" />
     <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +32,26 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Microsoft.Security.CredScan.KnowledgeBase.Client" />
+    <None Remove="Microsoft.Security.CredScan.KnowledgeBase" />
+    <None Remove="Microsoft.Security.Telemetry.Interfaces" />
+    <None Remove="Microsoft.Security.RegularExpressions" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Security.CredScan.KnowledgeBase.Client">
+      <HintPath>..\Microsoft.Security.CredScan.KnowledgeBase.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Security.CredScan.KnowledgeBase">
+      <HintPath>..\Microsoft.Security.CredScan.KnowledgeBase.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Security.RegularExpressions">
+      <HintPath>..\Microsoft.Security.RegularExpressions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Security.Telemetry.Interfaces">
+      <HintPath>..\Microsoft.Security.Telemetry.Interfaces.dll</HintPath>
+    </Reference>
+  </ItemGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>portable</DebugType>
   </PropertyGroup>
