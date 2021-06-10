@@ -268,7 +268,6 @@ namespace GitHub.Runner.Listener
                 }
 
                 Trace.Info($"Message '{message.MessageId}' received from session '{_session.SessionId}'.");
-                Trace.Info($"Message '{message.MessageId}' char length: '{message.Body.Length}', byte length '{System.Text.ASCIIEncoding.Unicode.GetByteCount(message.Body)}'.");
                 return message;
             }
         }
