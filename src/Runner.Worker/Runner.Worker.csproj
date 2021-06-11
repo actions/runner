@@ -17,6 +17,11 @@
     <ProjectReference Include="..\Runner.Common\Runner.Common.csproj" />
     <ProjectReference Include="..\Runner.Sdk\Runner.Sdk.csproj" />
   </ItemGroup>
+<!--
+  <ItemGroup>
+    <None Remove="Newtonsoft.Json" />
+  </ItemGroup>
+-->
 
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
@@ -31,6 +36,28 @@
     </EmbeddedResource>
   </ItemGroup>
 
+<!--  
+  <ItemGroup>
+    <None Remove="Microsoft.Security.CredScan.KnowledgeBase.Client" />
+    <None Remove="Microsoft.Security.CredScan.KnowledgeBase" />
+    <None Remove="Microsoft.Security.Telemetry.Interfaces" />
+    <None Remove="Microsoft.Security.RegularExpressions" />
+  </ItemGroup>
+-->
+  <ItemGroup>
+    <Reference Include="Microsoft.Security.CredScan.KnowledgeBase.Client">
+      <HintPath>..\Microsoft.Security.CredScan.KnowledgeBase.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Security.CredScan.KnowledgeBase">
+      <HintPath>..\Microsoft.Security.CredScan.KnowledgeBase.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Security.RegularExpressions">
+      <HintPath>..\Microsoft.Security.RegularExpressions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Security.Telemetry.Interfaces">
+      <HintPath>..\Microsoft.Security.Telemetry.Interfaces.dll</HintPath>
+    </Reference>
+  </ItemGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>portable</DebugType>
   </PropertyGroup>
