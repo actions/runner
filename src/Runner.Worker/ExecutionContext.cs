@@ -510,6 +510,17 @@ namespace GitHub.Runner.Worker
                 }
 
                 _record.WarningCount++;
+            } else if (issue.Type == IssueType.Notice) {
+
+                // tracking line number for each issue in log file
+                // log UI use this to navigate from issue to log
+                if (!string.IsNullOrEmpty(logMessage))
+                {
+                    long logLineNumber = Write(ConsoleColor.White, logMessage);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+
+                _record.Issues.Add(issue);
             }
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);

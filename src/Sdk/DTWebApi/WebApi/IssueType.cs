@@ -12,6 +12,6 @@ namespace GitHub.DistributedTask.WebApi
         Warning = 2,
 
         [EnumMember]
-        Notice = 2
+        Notice = 3
     }
 }
