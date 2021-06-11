@@ -598,6 +598,14 @@ namespace GitHub.Runner.Worker
                 {
                     if (attempt < 3)
                     {
+                        if (ex is WebApi.UnresolvableActionDownloadInfoException)
+                        {
+                            if ((ex as WebApi.UnresolvableActionDownloadInfoException).IsShortSha)
+                            {
+                                throw;
+                            }
+                        }
+
                         executionContext.Output($"Failed to resolve action download info. Error: {ex.Message}");
                         executionContext.Debug(ex.ToString());
                         if (String.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_DOWNLOAD_NO_BACKOFF")))

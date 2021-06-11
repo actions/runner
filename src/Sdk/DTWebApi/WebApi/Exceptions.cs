@@ -2476,24 +2476,32 @@ namespace GitHub.DistributedTask.WebApi
             : base(info, context)
         {
         }
-    }
 
-    [Serializable]
-    public sealed class FailedToResolveActionDownloadInfoException : DistributedTaskException
-    {
-        public FailedToResolveActionDownloadInfoException(String message)
-            : base(message)
+        public bool IsShortSha
         {
-        }
-
-        public FailedToResolveActionDownloadInfoException(String message, Exception innerException)
-            : base(message, innerException)
-        {
-        }
-
-        private FailedToResolveActionDownloadInfoException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
+            get
+            {
+                return Message.Contains("Please use the full commit SHA");
+            }
         }
     }
-}
+
+        [Serializable]
+        public sealed class FailedToResolveActionDownloadInfoException : DistributedTaskException
+        {
+            public FailedToResolveActionDownloadInfoException(String message)
+                : base(message)
+            {
+            }
+
+            public FailedToResolveActionDownloadInfoException(String message, Exception innerException)
+                : base(message, innerException)
+            {
+            }
+
+            private FailedToResolveActionDownloadInfoException(SerializationInfo info, StreamingContext context)
+                : base(info, context)
+            {
+            }
+        }
+    }
