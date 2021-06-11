@@ -23,15 +23,7 @@ We want to support the `uses` steps from workflows in composite actions, includi
 
 ### Composite Recursion Limit
 
-We will start with supporting a recursion limit of `3`
-That means you can have
-```
-- Composite Action
-  - Nested Composite Action
-    - Deep Nested Composite Action
-      - uses action step
-      - runs action step
-```
+- We will start with supporting a recursion limit of `10` composite actions deep
 - We are free to bump this limit in the future, the code will be written to just require updating a variable. If the graph evaluates beyond the recursion limit, the job will fail in the pre-job phase (The `Set up job` step).
 - A composite actions interface is its inputs and outputs, nothing else is carried over when invoking recursively.
 
@@ -68,13 +60,18 @@ That means you can have
 
 - While the composite action has an individual combined pre/post action, the `set-state` command will not be shared.
 - If the `set-state` command is used during a composite step, only the action that originally called `set-state` will have access to the env variable during the post run step.
-  - This prevents multible actions that set the same state from interfering with the execution of another action's post step.
+  - This prevents multiple actions that set the same state from interfering with the execution of another action's post step.
 
 ### Resolve Action Endpoint changes
 
 - The resolve actions endpoint will now validate policy to ensure that the given workflow run has access to download that action.
   - It will return a value indicated security was checked. Older server versions would lack this boolean. For composite actions that try to resolve an action, if the server does not respond with this value, we will fail the job as we could violate access policy if we allowed the composite action to continue.
     - Oder GHES/GHAE customers with newer runners will be locked out of composite uses steps until they upgrade their instance.
+
+### Local actions
+- TODO describe this more
+- We should support pre and post actions for local actions
+
 
 ### If, continue-on-error, timeout-minutes - Not being considered at this time
 
@@ -87,11 +84,10 @@ That means you can have
 - In actions, we have the idea of [defaults](https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#defaultsrun) , which allow you to specify a shell and working directory in one location, rather then on each step.
 - However, `shell` is currently required in composite run steps
   - In regular run steps, it is optional, and defaults to a different value based on the OS.
-- We could make it optional in composite run steps, and follow the trend of workflow run steps and add the `defaults` functionality
- - However, encouraging action authors to explicitly state the `shell` forces them to do the right thing regarding considering cross platform support.
- - We can change this in the future as needed, but for now its largely a convenience feature that adds no new functionality, let's wait on more user feedback before we consider this further.
+- We want to prioritize the right experience for the consumer, and make the action author continue to explicitly set these values. We can consider improving this experience in the future.
 
 ## Consequences
 
 - Workflows are now more reusable across multiple workflow files
 - Composite actions implement most of the existing workflow run steps, with room to expand these in the future
+- Feature flags will control this rollout
