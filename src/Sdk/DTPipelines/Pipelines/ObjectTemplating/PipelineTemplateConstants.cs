@@ -6,12 +6,13 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     [EditorBrowsable(EditorBrowsableState.Never)]
     public sealed class PipelineTemplateConstants
     {
+        public const String Args = "args";
         public const String Always = "always";
         public const String BooleanStepsContext = "boolean-steps-context";
         public const String BooleanStrategyContext = "boolean-strategy-context";
         public const String CancelTimeoutMinutes = "cancel-timeout-minutes";
         public const String Cancelled = "cancelled";
-        public const String Clean= "clean";
+        public const String Clean = "clean";
         public const String Container = "container";
         public const String ContinueOnError = "continue-on-error";
         public const String Credentials = "credentials";
