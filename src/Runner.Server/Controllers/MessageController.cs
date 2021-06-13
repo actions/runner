@@ -1217,8 +1217,9 @@ namespace Runner.Server.Controllers
                         }
                     };
                     ConcurrentQueue<JobCompletedEvent> queue = new ConcurrentQueue<JobCompletedEvent>();
+                    SemaphoreSlim s = new SemaphoreSlim(1, 1);
                     workflowcomplete = (e) => {
-                        if(!Monitor.IsEntered(workflowcomplete) && Monitor.TryEnter(workflowcomplete)) {      
+                        if(s.Wait(0)) {      
                             try {
                                 if(e != null) {
                                     withoutlock(e);
@@ -1228,18 +1229,18 @@ namespace Runner.Server.Controllers
                                     withoutlock(ev);
                                 }
                             } finally {
-                                Monitor.Exit(workflowcomplete);
+                                s.Release();
                             }
                         } else {
                             queue.Enqueue(e);
                         }
                     };
-                    Monitor.Enter(workflowcomplete);
+                    s.Wait();
                     try {
                         FinishJobController.OnJobCompleted += workflowcomplete;
                         jobCompleted(null);
                     } finally {
-                        Monitor.Exit(workflowcomplete);
+                        s.Release();
                     }
                     workflowcomplete(null);
                 }
