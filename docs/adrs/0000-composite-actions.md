@@ -8,13 +8,14 @@ We released [composite run steps](https://github.com/actions/runner/pull/554) la
 
 We want to support the `uses` steps from workflows in composite actions, including:
   - Container actions
-  - javascript actions
-  - and even other Composite actions (up to a limit of course!)
+  - Javascript actions
+  - Other Composite actions (up to a limit of course!)
   - The pre and post steps these actions can generate
 
 ## Guiding Principles
 
 - Composite Actions should function as a single step or action, no matter how many steps it is composed of or how many levels of recursion it has
+  - In the future we may add a configurable option to make this no longer the case
 - A workflow author should not need to understand the inner workings of a composite action in order to use it
 - Composite actions should leverage inputs to get values they need, they will not have full access to the `context` objects. The secrets context will **not** be available to composite actions, users will need to pass these values in as an input.
 - Other Actions should **just work** inside a composite action, without any code changes
