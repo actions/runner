@@ -135,9 +135,10 @@ namespace GitHub.Runner.Worker
                 externalsPath = Path.Combine(externalsPath, os, arch);
             }
 #endif
-            var exeExtension = platform == "windows" ? ".exe" : "";
+            var exeExtension = os == "windows" ? ".exe" : "";
             string file = Path.Combine(externalsPath, name, "bin", $"node{exeExtension}");
             if(!File.Exists(file)) {
+                executionContext.Write("", $"{file} executable not found locally");
                 Dictionary<string, Func<string, Task>> _tools = null;
                 if(name == "node12") {
                     string nodeUrl = "https://nodejs.org/dist";
@@ -158,7 +159,7 @@ namespace GitHub.Runner.Worker
                     };
                 }
                 if(_tools.TryGetValue(platform, out Func<string, Task> download)) {
-                    executionContext.Write("", "node executable not found locally, downloading...");
+                    executionContext.Write("", "downloading...");
                     await download(Path.Combine(externalsPath, name));
                     if(!File.Exists(file)) {
                         throw new Exception("node executable, not found after download");
