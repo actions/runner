@@ -9,6 +9,7 @@ jobs:
         dotnet-version: '5.0.x'
     - name: GenerateConstant
       run: dotnet msbuild ./dir.proj -t:GenerateConstant /p:RunnerVersion=$(Get-Content ./runnerversion) /p:PackageRuntime=any
+      shell: pwsh
       working-directory: ./src
     - name: Restore
       run: dotnet restore
