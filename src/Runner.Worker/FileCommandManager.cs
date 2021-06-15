@@ -244,15 +244,15 @@ namespace GitHub.Runner.Worker
                 return text.Substring(originalIndex);
             }
 
-#if OS_WINDOWS
-            var crLFIndex = text.IndexOf("\r\n", index, StringComparison.Ordinal);
-            if (crLFIndex >= 0 && crLFIndex < lfIndex)
-            {
-                index = crLFIndex + 2; // Skip over CRLF
-                newline = "\r\n";
-                return text.Substring(originalIndex, crLFIndex - originalIndex);
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                var crLFIndex = text.IndexOf("\r\n", index, StringComparison.Ordinal);
+                if (crLFIndex >= 0 && crLFIndex < lfIndex)
+                {
+                    index = crLFIndex + 2; // Skip over CRLF
+                    newline = "\r\n";
+                    return text.Substring(originalIndex, crLFIndex - originalIndex);
+                }
             }
-#endif
 
             index = lfIndex + 1; // Skip over LF
             newline = "\n";

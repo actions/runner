@@ -268,16 +268,12 @@ namespace GitHub.Runner.Worker
             step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
 
             // Add the composite action environment variables to each step.
-#if OS_WINDOWS
-            var envContext = new DictionaryContextData();
-#else
-            var envContext = new CaseSensitiveDictionaryContextData();
-#endif
+            IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
             foreach (var pair in envData)
             {
                 envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
             }
-            step.ExecutionContext.ExpressionValues["env"] = envContext;
+            step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
 
             return step;
         }
@@ -408,13 +404,8 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-#if OS_WINDOWS
-            var envContext = ExpressionValues["env"] as DictionaryContextData;
+            var envContext = ExpressionValues["env"] as IDictionaryContextData;
             envContext[name] = new StringContextData(value);
-#else
-            var envContext = ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
-            envContext[name] = new StringContextData(value);
-#endif
 
         }
 
@@ -658,12 +649,7 @@ namespace GitHub.Runner.Worker
             ExpressionValues["github"] = githubContext;
 
             Trace.Info("Initialize Env context");
-#if OS_WINDOWS
-            ExpressionValues["env"] = new DictionaryContextData();
-#else
-
-            ExpressionValues["env"] = new CaseSensitiveDictionaryContextData();
-#endif
+            ExpressionValues["env"] = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
 
             // Prepend Path
             Global.PrependPath = new List<string>();

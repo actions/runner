@@ -203,6 +203,17 @@ namespace GitHub.Runner.Common
             }
         }
 
+        private static string GetHostOS() {
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                return "linux";
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                return "windows";
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                return "osx";
+            }
+            return null;
+        }
+
         public string GetDirectory(WellKnownDirectory directory)
         {
             string path;
@@ -254,6 +265,7 @@ namespace GitHub.Runner.Common
                             GetDirectory(WellKnownDirectory.Work),
                             Constants.Path.ToolDirectory);
                     }
+                    path = Path.Combine(path, GetHostOS());
                     break;
 
                 case WellKnownDirectory.Update:
@@ -316,15 +328,15 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownConfigFile.CredentialStore:
-#if OS_OSX
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.ConfigRoot),
-                        ".credential_store.keychain");
-#else
-                    path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.ConfigRoot),
-                        ".credential_store");
-#endif
+                    if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                        path = Path.Combine(
+                            GetDirectory(WellKnownDirectory.ConfigRoot),
+                            ".credential_store.keychain");
+                    } else {
+                        path = Path.Combine(
+                            GetDirectory(WellKnownDirectory.ConfigRoot),
+                            ".credential_store");
+                    }
                     break;
 
                 case WellKnownConfigFile.Certificates:
@@ -371,6 +383,7 @@ namespace GitHub.Runner.Common
             Type target;
             if (!_serviceTypes.TryGetValue(typeof(T), out target))
             {
+                Type plat = null;
                 // Infer the concrete type from the ServiceLocatorAttribute.
                 CustomAttributeData attribute = typeof(T)
                     .GetTypeInfo()
@@ -384,15 +397,27 @@ namespace GitHub.Runner.Common
                         {
                             target = arg.TypedValue.Value as Type;
                         }
+                        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && string.Equals(arg.MemberName, ServiceLocatorAttribute.WindowsPropertyName, StringComparison.Ordinal))
+                        {
+                            plat = arg.TypedValue.Value as Type;
+                        }
+                        else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) && string.Equals(arg.MemberName, ServiceLocatorAttribute.LinuxPropertyName, StringComparison.Ordinal))
+                        {
+                            plat = arg.TypedValue.Value as Type;
+                        }
+                        else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) && string.Equals(arg.MemberName, ServiceLocatorAttribute.OSXPropertyName, StringComparison.Ordinal))
+                        {
+                            plat = arg.TypedValue.Value as Type;
+                        }
                     }
                 }
 
-                if (target == null)
+                if (target == null && plat == null)
                 {
                     throw new KeyNotFoundException(string.Format(CultureInfo.InvariantCulture, "Service mapping not found for key '{0}'.", typeof(T).FullName));
                 }
 
-                _serviceTypes.TryAdd(typeof(T), target);
+                _serviceTypes.TryAdd(typeof(T), plat ?? target);
                 target = _serviceTypes[typeof(T)];
             }
 

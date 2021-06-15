@@ -50,28 +50,28 @@ namespace GitHub.Runner.Worker
             // Check whether we are inside a container.
             // Our container feature requires to map working directory from host to the container.
             // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
-#if OS_WINDOWS
-            // service CExecSvc is Container Execution Agent.
-            ServiceController[] scServices = ServiceController.GetServices();
-            if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
-            {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                // service CExecSvc is Container Execution Agent.
+                ServiceController[] scServices = ServiceController.GetServices();
+                if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
+                {
+                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                }
+            } else {
+                IEnumerable<string> initProcessCgroup = null;
+                try
+                {
+                    initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+                }
+                catch
+                {
+                    // This fails on macOS
+                }
+                if (initProcessCgroup != null && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                }
             }
-#else
-            IEnumerable<string> initProcessCgroup = null;
-            try
-            {
-                initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-            }
-            catch
-            {
-                // This fails on macOS
-            }
-            if (initProcessCgroup != null && initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
-            {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-            }
-#endif
 
             // Check docker client/server version
             executionContext.Output("##[group]Checking docker version");
@@ -223,16 +223,16 @@ namespace GitHub.Runner.Worker
                 var workingDirectory = githubContext["workspace"] as StringContextData;
                 ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
-#if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath((HostContext.GetDirectory(WellKnownDirectory.Externals)))));
-#else
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
-#endif
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath((HostContext.GetDirectory(WellKnownDirectory.Externals)))));
+                } else {
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+                }
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
                 Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions));
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
                 Directory.CreateDirectory(HostContext.GetDirectory(WellKnownDirectory.Tools));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
+                container.MountVolumes.Add(new MountVolume(Path.GetDirectoryName(HostContext.GetDirectory(WellKnownDirectory.Tools)), container.TranslateToContainerPath(Path.GetDirectoryName(HostContext.GetDirectory(WellKnownDirectory.Tools)))));
 
                 var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
                 Directory.CreateDirectory(tempHomeDirectory);
@@ -337,7 +337,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-#if !OS_WINDOWS
         private async Task<List<string>> ExecuteCommandAsync(IExecutionContext context, string command, string arg)
         {
             context.Command($"{command} {arg}");
@@ -383,7 +382,6 @@ namespace GitHub.Runner.Worker
 
             return outputs;
         }
-#endif
 
         private async Task CreateContainerNetworkAsync(IExecutionContext executionContext, string network)
         {

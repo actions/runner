@@ -162,11 +162,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Populate env context for each step
                 Trace.Info("Initialize Env context for step");
-#if OS_WINDOWS
-                var envContext = new DictionaryContextData();
-#else
-                var envContext = new CaseSensitiveDictionaryContextData();
-#endif
+                IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
 
                 // Global env
                 foreach (var pair in ExecutionContext.Global.EnvironmentVariables)
@@ -177,18 +173,14 @@ namespace GitHub.Runner.Worker.Handlers
                 // Stomps over with outside step env
                 if (step.ExecutionContext.ExpressionValues.TryGetValue("env", out var envContextData))
                 {
-#if OS_WINDOWS
-                    var dict = envContextData as DictionaryContextData;
-#else
-                    var dict = envContextData as CaseSensitiveDictionaryContextData;
-#endif
+                    var dict = envContextData as IDictionaryContextData;
                     foreach (var pair in dict)
                     {
                         envContext[pair.Key] = pair.Value;
                     }
                 }
 
-                step.ExecutionContext.ExpressionValues["env"] = envContext;
+                step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
 
                 var actionStep = step as IActionRunner;
 

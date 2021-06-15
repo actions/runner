@@ -14,7 +14,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
     [JsonObject]
     [ClientIgnore]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class DictionaryContextData : PipelineContextData, IEnumerable<KeyValuePair<String, PipelineContextData>>, IReadOnlyObject
+    public class DictionaryContextData : PipelineContextData, IDictionaryContextData, IReadOnlyObject
     {
         public DictionaryContextData()
             : base(PipelineContextDataType.Dictionary)

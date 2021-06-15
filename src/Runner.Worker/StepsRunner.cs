@@ -86,11 +86,7 @@ namespace GitHub.Runner.Worker
 
                 // Populate env context for each step
                 Trace.Info("Initialize Env context for step");
-#if OS_WINDOWS
-                var envContext = new DictionaryContextData();
-#else
-                var envContext = new CaseSensitiveDictionaryContextData();
-#endif
+                IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
 
                 // Global env
                 foreach (var pair in step.ExecutionContext.Global.EnvironmentVariables)
@@ -98,7 +94,7 @@ namespace GitHub.Runner.Worker
                     envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
                 }
 
-                step.ExecutionContext.ExpressionValues["env"] = envContext;
+                step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
 
                 bool evaluateStepEnvFailed = false;
                 if (step is IActionRunner actionStep)

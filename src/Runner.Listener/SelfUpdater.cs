@@ -86,13 +86,13 @@ namespace GitHub.Runner.Listener
 
                 // kick off update script
                 Process invokeScript = new Process();
-#if OS_WINDOWS
-            invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
-            invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
-#elif (OS_OSX || OS_LINUX)
-                invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
-                invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
-#endif
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
+                    invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
+                } else if((System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) || System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))) {
+                    invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
+                    invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
+                }
                 invokeScript.Start();
                 Trace.Info($"Update script start running");
 
@@ -451,11 +451,7 @@ namespace GitHub.Runner.Listener
             string updateLog = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Diag), $"SelfUpdate-{DateTime.UtcNow.ToString("yyyyMMdd-HHmmss")}.log");
             string runnerRoot = HostContext.GetDirectory(WellKnownDirectory.Root);
 
-#if OS_WINDOWS
-            string templateName = "update.cmd.template";
-#else
-            string templateName = "update.sh.template";
-#endif
+            string templateName = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? "update.cmd.template" : "update.sh.template";
 
             string templatePath = Path.Combine(runnerRoot, $"bin.{_targetPackage.Version}", templateName);
             string template = File.ReadAllText(templatePath);
@@ -468,11 +464,7 @@ namespace GitHub.Runner.Listener
             template = template.Replace("_UPDATE_LOG_", updateLog);
             template = template.Replace("_RESTART_INTERACTIVE_RUNNER_", restartInteractiveRunner ? "1" : "0");
 
-#if OS_WINDOWS
-            string scriptName = "_update.cmd";
-#else
-            string scriptName = "_update.sh";
-#endif
+            string scriptName = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? "_update.cmd" : "_update.sh";
 
             string updateScript = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), scriptName);
             if (File.Exists(updateScript))

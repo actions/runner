@@ -1,4 +1,3 @@
-#if OS_WINDOWS
 using System;
 using System.IO;
 using System.Linq;
@@ -169,4 +168,3 @@ namespace GitHub.Runner.Listener.Configuration
         }
     }
 }
-#endif

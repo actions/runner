@@ -46,14 +46,14 @@ namespace GitHub.Runner.Worker.Container
             if (hostContext.GetService<IDockerCommandManager>().Os == "windows")
             {
                 _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
-                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+                _pathMappings.Add(new PathMapping(Path.GetDirectoryName(hostContext.GetDirectory(WellKnownDirectory.Tools)), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
                 _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\__e"));
                 // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
             }
             else
             {
                 _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
-                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Tools), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+                _pathMappings.Add(new PathMapping(Path.GetDirectoryName(hostContext.GetDirectory(WellKnownDirectory.Tools)), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
                 _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "/__e"));
                 if (this.IsJobContainer)
                 {
@@ -165,28 +165,28 @@ namespace GitHub.Runner.Worker.Container
             {
                 foreach (var mapping in _pathMappings)
                 {
-#if OS_WINDOWS
-                    if (string.Equals(path, mapping.HostPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return mapping.ContainerPath;
-                    }
+                    if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                        if (string.Equals(path, mapping.HostPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return mapping.ContainerPath;
+                        }
 
-                    if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                        path.StartsWith(mapping.HostPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                    }
-#else
-                    if (string.Equals(path, mapping.HostPath))
-                    {
-                        return mapping.ContainerPath;
-                    }
+                        if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                            path.StartsWith(mapping.HostPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                        }
+                    } else {
+                        if (string.Equals(path, mapping.HostPath))
+                        {
+                            return mapping.ContainerPath;
+                        }
 
-                    if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar))
-                    {
-                        return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length);
+                        if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar))
+                        {
+                            return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length);
+                        }
                     }
-#endif
                 }
             }
 
@@ -199,28 +199,28 @@ namespace GitHub.Runner.Worker.Container
             {
                 foreach (var mapping in _pathMappings)
                 {
-#if OS_WINDOWS
-                    if (string.Equals(path, mapping.ContainerPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return mapping.HostPath;
-                    }
+                    if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                        if (string.Equals(path, mapping.ContainerPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return mapping.HostPath;
+                        }
 
-                    if (path.StartsWith(mapping.ContainerPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
-                        path.StartsWith(mapping.ContainerPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return mapping.HostPath + path.Remove(0, mapping.ContainerPath.Length);
-                    }
-#else
-                    if (string.Equals(path, mapping.ContainerPath))
-                    {
-                        return mapping.HostPath;
-                    }
+                        if (path.StartsWith(mapping.ContainerPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
+                            path.StartsWith(mapping.ContainerPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return mapping.HostPath + path.Remove(0, mapping.ContainerPath.Length);
+                        }
+                    } else {
+                        if (string.Equals(path, mapping.ContainerPath))
+                        {
+                            return mapping.HostPath;
+                        }
 
-                    if (path.StartsWith(mapping.ContainerPath + Path.DirectorySeparatorChar))
-                    {
-                        return mapping.HostPath + path.Remove(0, mapping.ContainerPath.Length);
+                        if (path.StartsWith(mapping.ContainerPath + Path.DirectorySeparatorChar))
+                        {
+                            return mapping.HostPath + path.Remove(0, mapping.ContainerPath.Length);
+                        }
                     }
-#endif
                 }
             }
 

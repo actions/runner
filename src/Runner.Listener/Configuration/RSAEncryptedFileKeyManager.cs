@@ -1,4 +1,3 @@
-#if OS_WINDOWS
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -84,4 +83,3 @@ namespace GitHub.Runner.Listener.Configuration
         }
     }
 }
-#endif

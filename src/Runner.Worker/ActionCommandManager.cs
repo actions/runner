@@ -188,11 +188,7 @@ namespace GitHub.Runner.Worker
             bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
             // Apply environment from env context, env context contains job level env and action's env block
-#if OS_WINDOWS
-            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
-#else
-            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
-#endif
+            var envContext = context.ExpressionValues["env"] as IDictionaryContextData;
             if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
             {
                 bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
@@ -329,11 +325,7 @@ namespace GitHub.Runner.Worker
             bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
             // Apply environment from env context, env context contains job level env and action's env block
-#if OS_WINDOWS
-            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
-#else
-            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
-#endif
+            var envContext = context.ExpressionValues["env"] as IDictionaryContextData;
             if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
             {
                 bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);

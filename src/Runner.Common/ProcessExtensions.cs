@@ -14,12 +14,18 @@ using System.Threading.Tasks;
 
 namespace GitHub.Runner.Common
 {
-#if OS_WINDOWS
+    public static class CommonProcessExtensions
+    {
+        public static string GetEnvironmentVariable(this Process process, IHostContext hostContext, string variable) {
+            return System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? WindowsProcessExtensions.GetEnvironmentVariable(process, hostContext, Constants.ProcessTrackingId) : LinuxProcessExtensions.GetEnvironmentVariable(process, hostContext, Constants.ProcessTrackingId);
+        }
+    }
+
     public static class WindowsProcessExtensions
     {
         // Reference: https://blogs.msdn.microsoft.com/matt_pietrek/2004/08/25/reading-another-processs-environment/
         // Reference: http://blog.gapotchenko.com/eazfuscator.net/reading-environment-variables
-        public static string GetEnvironmentVariable(this Process process, IHostContext hostContext, string variable)
+        public static string GetEnvironmentVariable(Process process, IHostContext hostContext, string variable)
         {
             var trace = hostContext.GetTrace(nameof(WindowsProcessExtensions));
             Dictionary<string, string> environmentVariables = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -285,10 +291,9 @@ namespace GitHub.Runner.Common
         [DllImport("kernel32.dll")]
         private static extern int VirtualQueryEx(IntPtr processHandle, IntPtr baseAddress, ref MEMORY_BASIC_INFORMATION memoryInformation, int memoryInformationLength);
     }
-#else
     public static class LinuxProcessExtensions
     {
-        public static string GetEnvironmentVariable(this Process process, IHostContext hostContext, string variable)
+        public static string GetEnvironmentVariable(Process process, IHostContext hostContext, string variable)
         {
             var trace = hostContext.GetTrace(nameof(LinuxProcessExtensions));
             Dictionary<string, string> env = new Dictionary<string, string>();
@@ -392,5 +397,4 @@ namespace GitHub.Runner.Common
             }
         }
     }
-#endif
 }

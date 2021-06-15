@@ -32,11 +32,7 @@ namespace GitHub.Runner.Common
     public static class Constants
     {
         /// <summary>Path environment variable name.</summary>
-#if OS_WINDOWS
-        public static readonly string PathVariable = "Path";
-#else
         public static readonly string PathVariable = "PATH";
-#endif
 
         public static string ProcessTrackingId = "RUNNER_TRACKING_ID";
         public static string PluginTracePrefix = "##[plugin.trace]";
@@ -67,6 +63,19 @@ namespace GitHub.Runner.Common
             public static readonly OSPlatform Platform = OSPlatform.OSX;
 #elif OS_WINDOWS
             public static readonly OSPlatform Platform = OSPlatform.Windows;
+#else
+            public static OSPlatform Platform { get {
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                    return OSPlatform.Linux;
+                }
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    return OSPlatform.Windows;
+                }
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                    return OSPlatform.OSX;
+                }
+                throw new NotSupportedException();
+            } }
 #endif
 
 #if X86
@@ -77,6 +86,20 @@ namespace GitHub.Runner.Common
             public static readonly Architecture PlatformArchitecture = Architecture.Arm;
 #elif ARM64            
             public static readonly Architecture PlatformArchitecture = Architecture.Arm64;
+#else
+            public static Architecture PlatformArchitecture { get {
+                switch(System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture) {
+                    case System.Runtime.InteropServices.Architecture.X86:
+                        return Architecture.X86;
+                    case System.Runtime.InteropServices.Architecture.X64:
+                        return Architecture.X64;
+                    case System.Runtime.InteropServices.Architecture.Arm:
+                        return Architecture.Arm;
+                    case System.Runtime.InteropServices.Architecture.Arm64:
+                        return Architecture.Arm64;
+                }
+                throw new NotSupportedException();
+            } }
 #endif
 
             public static readonly TimeSpan ExitOnUnloadTimeout = TimeSpan.FromSeconds(30);

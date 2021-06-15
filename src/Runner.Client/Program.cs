@@ -206,7 +206,17 @@ namespace Runner.Client
             EventHandler<ProcessDataReceivedEventArgs> _out = (s, e) => {
                 Console.WriteLine(e.Data);
             };
-            var runner = Path.Join(binpath, $"Runner.Listener{IOUtil.ExeExtension}");
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+            var dotnet = WhichUtil.Which("dotnet", true);
+            string ext = ".dll";
+#else
+            string ext = IOUtil.ExeExtension;
+#endif
+            var runner = Path.Join(binpath, $"Runner.Listener{ext}");
+            var file = runner;
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+            file = dotnet;
+#endif
             var agentname = $"Agent-{Guid.NewGuid().ToString()}";
             string tmpdir = Path.Join(Path.GetDirectoryName(binpath), "Agents", agentname);
             Directory.CreateDirectory(tmpdir);
@@ -236,8 +246,13 @@ namespace Runner.Client
                         if(parameters.KeepContainer) {
                             runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
                         }
+
+                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token empty --labels container-host";
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                        arguments = $"\"{runner}\" {arguments}";
+#endif
                         
-                        var code = await inv.ExecuteAsync(binpath, runner, $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token empty --labels container-host", runnerEnv, true, null, true, source.Token);
+                        var code = await inv.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, source.Token);
                         var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                         if(parameters.verbose) {
                             runnerlistener.OutputDataReceived += _out;
@@ -251,7 +266,11 @@ namespace Runner.Client
                         if(source.IsCancellationRequested) {
                             return 1;
                         }
-                        await runnerlistener.ExecuteAsync(binpath, runner, $"Run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}", runnerEnv, true, null, true, source.Token);
+                        arguments = $"Run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                        arguments = $"\"{runner}\" {arguments}";
+#endif
+                        await runnerlistener.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, source.Token);
                         break;
                     } catch {
                         if(atempt++ <= 3) {
@@ -553,7 +572,19 @@ namespace Runner.Client
                                 invoker.OutputDataReceived += _out;
                                 invoker.ErrorDataReceived += _out;
                             }
-                            var server = Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}");
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                            var dotnet = WhichUtil.Which("dotnet", true);
+                            string ext = ".dll";
+#else
+                            string ext = IOUtil.ExeExtension;
+#endif
+                            var server = Path.Join(binpath, $"Runner.Server{ext}");
+                            var file = server;
+                            var arguments = "";
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                            file = dotnet;
+                            arguments = $"\"{server}\"";
+#endif
                             string serverconfigfileName = Path.Join(Path.GetTempPath(), Path.GetRandomFileName());
                             JObject serverconfig = new JObject();
                             var connectionopts = new JObject();
@@ -577,7 +608,7 @@ namespace Runner.Client
                                 new AnonymousPipeServerStream(PipeDirection.In,
                                 HandleInheritability.Inheritable))
                             {
-                                var servertask = invoker.ExecuteAsync(binpath, server, "", new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }}, false, null, true, token).ContinueWith(x => {
+                                var servertask = invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }}, false, null, true, token).ContinueWith(x => {
                                     Console.WriteLine("Stopped Server");
                                     File.Delete(serverconfigfileName);
                                 });

@@ -90,12 +90,22 @@ namespace GitHub.Runner.Worker
             ArgUtil.Directory(workingDirectory, nameof(workingDirectory));
 
             // Runner.PluginHost
-            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{IOUtil.ExeExtension}");
-            ArgUtil.File(file, $"Runner.PluginHost{IOUtil.ExeExtension}");
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+            string ext = ".dll";
+#else
+            string ext = IOUtil.ExeExtension;
+#endif
+            string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), $"Runner.PluginHost{ext}");
+            ArgUtil.File(file, $"Runner.PluginHost{ext}");
 
             // Runner.PluginHost's arguments
             string arguments = $"action \"{plugin}\"";
 
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+            var dotnet = WhichUtil.Which("dotnet", true);
+            arguments = $"\"{file}\" {arguments}";
+            file = dotnet;
+#endif
             // construct plugin context
             RunnerActionPluginExecutionContext pluginContext = new RunnerActionPluginExecutionContext
             {
