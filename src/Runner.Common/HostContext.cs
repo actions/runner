@@ -230,9 +230,13 @@ namespace GitHub.Runner.Common
                     break;
 
                 case WellKnownDirectory.Externals:
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                    path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "gharun");
+#else
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
                         Constants.Path.ExternalsDirectory);
+#endif
                     break;
 
                 case WellKnownDirectory.Root:

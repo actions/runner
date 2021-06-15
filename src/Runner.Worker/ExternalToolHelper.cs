@@ -142,7 +142,7 @@ namespace GitHub.Runner.Worker
                 if(name == "node12") {
                     string nodeUrl = "https://nodejs.org/dist";
                     string nodeVersion = "12.13.1";
-                    string tarextraopts = " --exclude \"*/lib/*\" \"*/bin/node*\" \"*/LICENSE\"";
+                    string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/node*\" \"*/LICENSE\"" : "";
                     _tools = new Dictionary<string, Func<string, Task>> {
                         { "windows/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"))},
                         { "linux/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts)},

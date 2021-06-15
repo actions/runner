@@ -421,11 +421,11 @@ namespace GitHub.Runner.Listener
 #else
                                 string ext = IOUtil.ExeExtension;
 #endif
-                                string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
+                                string workerFileName = Path.Combine(assemblyDirectory, $"{_workerProcessName}{ext}");
                                 string arguments = "spawnclient " + pipeHandleOut + " " + pipeHandleIn;
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                                 var dotnet = WhichUtil.Which("dotnet", true);
-                                arguments = $"\"{file}\" {arguments}";
+                                arguments = $"\"{workerFileName}\" {arguments}";
                                 workerFileName = dotnet;
 #endif
                                 workerProcessTask = processInvoker.ExecuteAsync(

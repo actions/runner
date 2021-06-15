@@ -218,7 +218,7 @@ namespace Runner.Client
             file = dotnet;
 #endif
             var agentname = $"Agent-{Guid.NewGuid().ToString()}";
-            string tmpdir = Path.Join(Path.GetDirectoryName(binpath), "Agents", agentname);
+            string tmpdir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "gharun", "Agents", agentname);
             Directory.CreateDirectory(tmpdir);
             try {
                 int atempt = 1;
@@ -232,7 +232,7 @@ namespace Runner.Client
                         
                         var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }};
                         if(!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null) {
-                            runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(new DirectoryInfo(binpath).Parent.FullName, "_tool_cache");
+                            runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "gharun", "tool_cache");
                         }
                         if(parameters.containerArchitecture != null) {
                             runnerEnv["RUNNER_CONTAINER_ARCH"] = parameters.containerArchitecture;
@@ -462,7 +462,7 @@ namespace Runner.Client
                     "Print more details like server / runner logs to stdout."),
                 new Option<int>(
                     "--parallel",
-                    getDefaultValue: () => 4,
+                    getDefaultValue: () => 1,
                     description: "Run n parallel runners, ignored if `--server <server>` is used."),
                 new Option<bool>(
                     "--no-copy-git-dir",
