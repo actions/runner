@@ -6,7 +6,7 @@ jobs:
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '5.0.x'
+        dotnet-version: '5.0.0'
     - name: GenerateConstant
       run: dotnet msbuild ./dir.proj -t:GenerateConstant /p:RunnerVersion=$(Get-Content ./runnerversion) /p:PackageRuntime=any
       shell: pwsh
