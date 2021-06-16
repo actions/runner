@@ -12,6 +12,9 @@
     <Authors>Christopher Homberger</Authors>
     <PackageTags>GitHub Actions;GitHub Runner;Actions;Runner;Runner.Client;Runner.Server</PackageTags>
     <Description>Unofficial GitHub Actions Runner Client, run your github action workflows locally. More Information https://github.com/ChristopherHX/runner.server</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <ProjectUrl>https://github.com/ChristopherHX/runner.server</ProjectUrl>
+    <RuntimeFrameworkVersion>5.0.0</RuntimeFrameworkVersion>
   </PropertyGroup>
 
   <ItemGroup>
