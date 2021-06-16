@@ -22,7 +22,7 @@ jobs:
     - name: Pack
       run: |
         $d = Get-Date
-        dotnet pack --no-restore --no-build /p:Version=$($(Get-Content ../runnerversion) + "-preview." + $d.Year + "."  + $d.Month + "." +  $d.Day + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
+        dotnet pack --no-restore --no-build /p:Version=$($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts
