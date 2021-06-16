@@ -17,7 +17,7 @@ namespace GitHub.Runner.Common
     public static class CommonProcessExtensions
     {
         public static string GetEnvironmentVariable(this Process process, IHostContext hostContext, string variable) {
-            return System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? WindowsProcessExtensions.GetEnvironmentVariable(process, hostContext, Constants.ProcessTrackingId) : LinuxProcessExtensions.GetEnvironmentVariable(process, hostContext, Constants.ProcessTrackingId);
+            return System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? WindowsProcessExtensions.GetEnvironmentVariable(process, hostContext, variable) : LinuxProcessExtensions.GetEnvironmentVariable(process, hostContext, variable);
         }
     }
 
