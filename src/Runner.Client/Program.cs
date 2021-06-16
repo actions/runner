@@ -140,6 +140,12 @@ namespace Runner.Client
             public List<WebConsoleEvent> Pending {get;set;}
         }
 
+        struct RepoDownload {
+            public string Url {get;set;}
+            public bool Submodules {get;set;}
+            public bool NestedSubmodules {get;set;}
+        };
+
         private static string ReadSecret() {
             StringBuilder input = new StringBuilder();
             ConsoleKeyInfo keyInfo;
@@ -880,7 +886,7 @@ namespace Runner.Client
                                             line = null;
                                             gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                                             gitinvoker.OutputDataReceived += handleoutput;
-                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"for-each-ref --format='%(upstream:short)' {_ref}", new Dictionary<string, string>(), source.Token);
+                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"for-each-ref --format=%(upstream:short) {_ref}", new Dictionary<string, string>(), source.Token);
                                             if(line != null && line != "") {
                                                 var remote = line.Substring(0, line.IndexOf('/'));
                                                 if(parameters.defaultbranch == null) {
@@ -1231,86 +1237,13 @@ namespace Runner.Client
                                             // }
                                         }
                                         if(line == "event: repodownload") {
+                                            var endpoint = JsonConvert.DeserializeObject<RepoDownload>(data);
                                             Task.Run(async () => {
                                                 var repodownload = new MultipartFormDataContent();
                                                 List<Stream> streamsToDispose = new List<Stream>();
                                                 try {
                                                     try {
-                                                        EventHandler<ProcessDataReceivedEventArgs> handleoutput = (s, e) => {
-                                                            var files = e.Data.Split('\0');
-                                                            foreach(var file in files) {
-                                                                if(file == "") break;
-                                                                var modeend = file.IndexOf(' ');
-                                                                var filebeg = file.IndexOf('\t') + 1;
-                                                                var mode = modeend == 6 ? file.Substring(3, modeend - 3) : "644";
-                                                                var filename = file.Substring(filebeg);
-                                                                try {
-                                                                    var fs = File.OpenRead(Path.Combine(parameters.directory ?? ".", filename));
-                                                                    streamsToDispose.Add(fs);
-                                                                    repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
-                                                                }
-                                                                catch {
-
-                                                                }
-                                                            }
-                                                        };
-                                                        GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                                        gitinvoker.OutputDataReceived += handleoutput;
-                                                        var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                                                        var git = WhichUtil.Which("git", true);
-                                                        await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "ls-files -z -s", new Dictionary<string, string>(), source.Token);
-                                                        gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                                        gitinvoker.OutputDataReceived += (s, e) => {
-                                                            var files = e.Data.Split('\0');
-                                                            foreach(var filename in files) {
-                                                                if(filename == "") break;
-                                                                var relpath = Path.Combine(parameters.directory ?? ".", filename);
-                                                                var mode = "644";
-                                                                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                                                                    try {
-                                                                        var finfo = new Mono.Unix.UnixFileInfo(relpath);
-                                                                        if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
-                                                                            mode = "755";
-                                                                        }
-                                                                    }
-                                                                    catch {
-
-                                                                    }
-                                                                }
-                                                                try {
-                                                                    var fs = File.OpenRead(relpath);
-                                                                    streamsToDispose.Add(fs);
-                                                                    repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
-                                                                } catch {
-
-                                                                }
-                                                            }
-                                                        };
-                                                        await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "ls-files -z -o --exclude-standard", new Dictionary<string, string>(), source.Token);
-                                                        if(!parameters.NoCopyGitDir) {
-                                                            // Copy .git dir if it exists (not working with git worktree) https://github.com/ChristopherHX/runner.server/issues/34
-                                                            var gitdir = Path.Combine(parameters.directory ?? ".", ".git");
-                                                            if(Directory.Exists(gitdir)) {
-                                                                foreach(var w in Directory.EnumerateFiles(gitdir, "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
-                                                                    var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
-                                                                    var file = File.OpenRead(w);
-                                                                    streamsToDispose.Add(file);
-                                                                    var mode = "644";
-                                                                    if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                                                                        try {
-                                                                            var finfo = new Mono.Unix.UnixFileInfo(w);
-                                                                            if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
-                                                                                mode = "755";
-                                                                            }
-                                                                        }
-                                                                        catch {
-
-                                                                        }
-                                                                    }
-                                                                    repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
-                                                                }
-                                                            }
-                                                        }
+                                                        await CollectRepoFiles(parameters.directory ?? Path.GetFullPath("."), endpoint, repodownload, streamsToDispose, 0, parameters, source);
                                                     } catch {
                                                         foreach(var fstream in streamsToDispose) {
                                                             await fstream.DisposeAsync();
@@ -1340,7 +1273,7 @@ namespace Runner.Client
                                                         }
                                                     }
                                                     repodownload.Headers.ContentType.MediaType = "application/octet-stream";
-                                                    await client.PostAsync(parameters.server + data, repodownload, token);
+                                                    await client.PostAsync(parameters.server + endpoint.Url, repodownload, token);
                                                 } finally {
                                                     foreach(var fstream in streamsToDispose) {
                                                         await fstream.DisposeAsync();
@@ -1577,6 +1510,99 @@ namespace Runner.Client
             cargs.AddRange(args);
             // Parse the incoming args and invoke the handler
             return rootCommand.InvokeAsync(cargs.ToArray()).Result;
+        }
+
+        private static async Task CollectRepoFiles(string wd, RepoDownload endpoint, MultipartFormDataContent repodownload, List<Stream> streamsToDispose, long level, Parameters parameters, CancellationTokenSource source) {
+            List<Func<Task>> submoduleTasks = new List<Func<Task>>();
+            EventHandler<ProcessDataReceivedEventArgs> handleoutput = (s, e) => {
+                var files = e.Data.Split('\0');
+                foreach(var file in files) {
+                    if(file == "") break;
+                    var modeend = file.IndexOf(' ');
+                    var filebeg = file.IndexOf('\t') + 1;
+                    var filename = file.Substring(filebeg);
+                    string mode = "644";
+                    if(modeend == 6) {
+                        if(file.StartsWith("100")) {
+                            mode = file.Substring(3, modeend - 3);
+                        } else if(file.StartsWith("160")) {
+                            if(endpoint.Submodules && level == 0 || endpoint.NestedSubmodules) {
+                                submoduleTasks.Add(() => CollectRepoFiles(Path.Combine(wd, filename), endpoint, repodownload, streamsToDispose, level + 1, parameters, source));
+                            }
+                        }
+                    }
+                    try {
+                        var fs = File.OpenRead(Path.Combine(wd, filename));
+                        streamsToDispose.Add(fs);
+                        repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                    }
+                    catch {
+
+                    }
+                }
+            };
+            GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+            gitinvoker.OutputDataReceived += handleoutput;
+            var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var git = WhichUtil.Which("git", true);
+            var garg = "ls-files -z -s";
+            await gitinvoker.ExecuteAsync(wd, git, garg, new Dictionary<string, string>(), source.Token);
+            // collect all submodules
+            foreach (var submodule in submoduleTasks) {
+                await submodule();
+            }
+            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+            gitinvoker.OutputDataReceived += (s, e) => {
+                var files = e.Data.Split('\0');
+                foreach(var filename in files) {
+                    if(filename == "") break;
+                    var relpath = Path.Combine(wd, filename);
+                    var mode = "644";
+                    if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                        try {
+                            var finfo = new Mono.Unix.UnixFileInfo(relpath);
+                            if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                mode = "755";
+                            }
+                        }
+                        catch {
+
+                        }
+                    }
+                    try {
+                        var fs = File.OpenRead(relpath);
+                        streamsToDispose.Add(fs);
+                        repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                    } catch {
+
+                    }
+                }
+            };
+            await gitinvoker.ExecuteAsync(wd, git, "ls-files -z -o --exclude-standard", new Dictionary<string, string>(), source.Token);
+            if(!parameters.NoCopyGitDir) {
+                // Copy .git dir if it exists (not working with git worktree) https://github.com/ChristopherHX/runner.server/issues/34
+                var gitdir = Path.Combine(wd, ".git");
+                if(Directory.Exists(gitdir)) {
+                    foreach(var w in Directory.EnumerateFiles(gitdir, "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
+                        var relpath = Path.GetRelativePath(wd, w).Replace('\\', '/');
+                        var file = File.OpenRead(w);
+                        streamsToDispose.Add(file);
+                        var mode = "644";
+                        if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                            try {
+                                var finfo = new Mono.Unix.UnixFileInfo(w);
+                                if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                    mode = "755";
+                                }
+                            }
+                            catch {
+
+                            }
+                        }
+                        repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
+                    }
+                }
+            }
         }
     }
 }

@@ -12,12 +12,21 @@ try {
     const _path = core.getInput("path");
     const repository = core.getInput("repository");
     const ref = core.getInput("ref");
-    const recursive = core.getInput("recursive");
     if (repository !== env["GITHUB_REPOSITORY"] || ref !== undefined && ref !== "" && ref !== env["GITHUB_REF"] && ref !== env["GITHUB_SHA"]) {
         core.setOutput("skip", false);
     } else {
         core.setOutput("skip", true);
-        const url = env["ACTIONS_RUNTIME_URL"] + "_apis/v1/Message/multipart/" + env["GITHUB_RUN_ID"] + "?recursive=" + recursive;
+
+        var submodules = false
+        var nestedSubmodules = false
+        const submodulesString = (core.getInput('submodules') || '').toUpperCase()
+        if (submodulesString == 'RECURSIVE') {
+            submodules = true
+            nestedSubmodules = true
+        } else if (submodulesString == 'TRUE') {
+            submodules = true
+        }
+        const url = env["ACTIONS_RUNTIME_URL"] + "_apis/v1/Message/multipart/" + env["GITHUB_RUN_ID"] + "?submodules=" + (submodules ? "true" : "false") + "&nestedSubmodules=" + (nestedSubmodules ? "true" : "false");
         var githubWorkspacePath = env["GITHUB_WORKSPACE"]
         if(_checkoutref.toLowerCase().startsWith("v1")) {
             githubWorkspacePath = path.join(githubWorkspacePath,  "..")

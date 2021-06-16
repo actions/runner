@@ -98,9 +98,9 @@ namespace Runner.Server.Controllers
                             queue2.Enqueue(new KeyValuePair<string, string>("timeline", JsonConvert.SerializeObject(new { timelineId = timelineId2, timeline }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
-                    MessageController.RepoDownload rd = (_runid, url) => {
+                    MessageController.RepoDownload rd = (_runid, url, submodules, nestedSubmodules) => {
                         if(runid.Contains(_runid)) {
-                            queue2.Enqueue(new KeyValuePair<string, string>("repodownload", url));
+                            queue2.Enqueue(new KeyValuePair<string, string>("repodownload", JsonConvert.SerializeObject(new { url, submodules, nestedSubmodules }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
                         }
                     };
 
