@@ -19,6 +19,8 @@ using System.Net;
 using System.IO.Pipes;
 using System.Threading.Channels;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
+using System.ComponentModel;
 
 namespace Runner.Client
 {
@@ -1260,12 +1262,36 @@ namespace Runner.Client
                                                             var mode = "644";
                                                             if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                                                                 try {
-                                                                    var finfo = new Mono.Unix.UnixFileInfo(w);
+                                                                    var finfo = new Mono.Unix.UnixSymbolicLinkInfo(w);
+                                                                    if(finfo.IsSymbolicLink) {
+                                                                        var dest = finfo.ContentsPath;
+                                                                        repodownload.Add(new StringContent(dest), "lnk:" + relpath);
+                                                                        continue;
+                                                                    }
                                                                     if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
                                                                         mode = "755";
                                                                     }
                                                                 }
                                                                 catch {
+
+                                                                }
+                                                            } else {
+                                                                try {
+                                                                    if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                                                        var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
+                                                                        repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                                                        continue;
+                                                                    }
+                                                                } catch {
+
+                                                                }
+                                                                try {
+                                                                    if(new DirectoryInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                                                        var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
+                                                                        repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                                                        continue;
+                                                                    }
+                                                                } catch {
 
                                                                 }
                                                             }
@@ -1519,6 +1545,7 @@ namespace Runner.Client
                 foreach(var file in files) {
                     if(file == "") break;
                     var modeend = file.IndexOf(' ');
+                    var shaend = file.IndexOf(' ', modeend + 1);
                     var filebeg = file.IndexOf('\t') + 1;
                     var filename = file.Substring(filebeg);
                     string mode = "644";
@@ -1529,11 +1556,27 @@ namespace Runner.Client
                             if(endpoint.Submodules && level == 0 || endpoint.NestedSubmodules) {
                                 submoduleTasks.Add(() => CollectRepoFiles(Path.Combine(wd, filename), endpoint, repodownload, streamsToDispose, level + 1, parameters, source));
                             }
+                        } else if(file.StartsWith("120")) {
+                            //Symlink
+                            submoduleTasks.Add(async () => {
+                                GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                string dest = null;
+                                gitinvoker.OutputDataReceived += (s, e) => {
+                                    dest = e.Data;
+                                };
+                                var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                                var git = WhichUtil.Which("git", true);
+                                var sha = file.Substring(modeend + 1, shaend - (modeend + 1));
+                                await gitinvoker.ExecuteAsync(wd, git, $"cat-file -p {sha}", new Dictionary<string, string>(), source.Token);
+                                repodownload.Add(new StringContent(dest), "lnk:" + Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename)));
+                            });
+                            // readlink git cat-file -p sha
                         }
                     }
                     try {
                         var fs = File.OpenRead(Path.Combine(wd, filename));
                         streamsToDispose.Add(fs);
+                        filename = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
                         repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
                     }
                     catch {
@@ -1545,8 +1588,7 @@ namespace Runner.Client
             gitinvoker.OutputDataReceived += handleoutput;
             var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var git = WhichUtil.Which("git", true);
-            var garg = "ls-files -z -s";
-            await gitinvoker.ExecuteAsync(wd, git, garg, new Dictionary<string, string>(), source.Token);
+            await gitinvoker.ExecuteAsync(wd, git, "ls-files -z -s", new Dictionary<string, string>(), source.Token);
             // collect all submodules
             foreach (var submodule in submoduleTasks) {
                 await submodule();
@@ -1559,20 +1601,48 @@ namespace Runner.Client
                     var relpath = Path.Combine(wd, filename);
                     var mode = "644";
                     if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                        try {
-                            var finfo = new Mono.Unix.UnixFileInfo(relpath);
-                            if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
-                                mode = "755";
+                            try {
+                                var finfo = new Mono.Unix.UnixSymbolicLinkInfo(relpath);
+                                if(finfo.IsSymbolicLink) {
+                                    var dest = finfo.ContentsPath;
+                                    relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                                    repodownload.Add(new StringContent(dest), "lnk:" + relpath);
+                                    continue;
+                                }
+                                if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                    mode = "755";
+                                }
+                            }
+                            catch {
+
+                            }
+                        } else {
+                            try {
+                                if(new FileInfo(relpath).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(relpath), NativeMethods.GetFinalPathName(relpath));
+                                    relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                    continue;
+                                }
+                            } catch {
+
+                            }
+                            try {
+                                if(new DirectoryInfo(relpath).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(relpath), NativeMethods.GetFinalPathName(relpath));
+                                    relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                    continue;
+                                }
+                            } catch {
+
                             }
                         }
-                        catch {
-
-                        }
-                    }
                     try {
                         var fs = File.OpenRead(relpath);
                         streamsToDispose.Add(fs);
-                        repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                        relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
+                        repodownload.Add(new StreamContent(fs), mode + ":" + relpath, relpath);
                     } catch {
 
                     }
@@ -1584,13 +1654,18 @@ namespace Runner.Client
                 var gitdir = Path.Combine(wd, ".git");
                 if(Directory.Exists(gitdir)) {
                     foreach(var w in Directory.EnumerateFiles(gitdir, "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
-                        var relpath = Path.GetRelativePath(wd, w).Replace('\\', '/');
+                        var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
                         var file = File.OpenRead(w);
                         streamsToDispose.Add(file);
                         var mode = "644";
                         if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                             try {
-                                var finfo = new Mono.Unix.UnixFileInfo(w);
+                                var finfo = new Mono.Unix.UnixSymbolicLinkInfo(w);
+                                if(finfo.IsSymbolicLink) {
+                                    var dest = finfo.ContentsPath;
+                                    repodownload.Add(new StringContent(dest), "lnk:" + relpath);
+                                    continue;
+                                }
                                 if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
                                     mode = "755";
                                 }
@@ -1598,9 +1673,80 @@ namespace Runner.Client
                             catch {
 
                             }
+                        } else {
+                            try {
+                                if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
+                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                    continue;
+                                }
+                            } catch {
+
+                            }
+                            try {
+                                if(new DirectoryInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
+                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                    continue;
+                                }
+                            } catch {
+
+                            }
                         }
                         repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
                     }
+                }
+            }
+        }
+
+        public static class NativeMethods
+        {
+            private static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
+
+            private const uint FILE_READ_EA = 0x0008;
+            private const uint FILE_FLAG_BACKUP_SEMANTICS = 0x2000000;
+
+            [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+            static extern uint GetFinalPathNameByHandle(IntPtr hFile, [MarshalAs(UnmanagedType.LPTStr)] StringBuilder lpszFilePath, uint cchFilePath, uint dwFlags);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            static extern bool CloseHandle(IntPtr hObject);
+
+            [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+            public static extern IntPtr CreateFile(
+                    [MarshalAs(UnmanagedType.LPTStr)] string filename,
+                    [MarshalAs(UnmanagedType.U4)] uint access,
+                    [MarshalAs(UnmanagedType.U4)] FileShare share,
+                    IntPtr securityAttributes, // optional SECURITY_ATTRIBUTES struct or IntPtr.Zero
+                    [MarshalAs(UnmanagedType.U4)] FileMode creationDisposition,
+                    [MarshalAs(UnmanagedType.U4)] uint flagsAndAttributes,
+                    IntPtr templateFile);
+
+            public static string GetFinalPathName(string path)
+            {
+                var h = CreateFile(path, 
+                    FILE_READ_EA, 
+                    FileShare.ReadWrite | FileShare.Delete, 
+                    IntPtr.Zero, 
+                    FileMode.Open, 
+                    FILE_FLAG_BACKUP_SEMANTICS,
+                    IntPtr.Zero);
+                if (h == INVALID_HANDLE_VALUE)
+                    throw new Win32Exception();
+
+                try
+                {
+                    var sb = new StringBuilder(1024);
+                    var res = GetFinalPathNameByHandle(h, sb, 1024, 0);
+                    if (res == 0)
+                        throw new Win32Exception();
+
+                    return sb.ToString();
+                }
+                finally
+                {
+                    CloseHandle(h);
                 }
             }
         }

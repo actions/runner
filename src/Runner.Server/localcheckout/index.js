@@ -81,6 +81,26 @@ try {
                     core.warning("Failed to set mode of `" + file.path + "` to " + mode);
                 }
                 core.debug(formname + ", mode=" + mode + " => " + file.path);
+            }).on("field", (formname, value) => {
+                if(formname.startsWith("=?utf-8?B?")) {
+                    formname = Buffer.from(formname.substring("=?utf-8?B?".length), "base64").toString("utf-8");
+                }
+                var modeend = formname.indexOf(":");
+                var mode = "644";
+                if(modeend != -1) {
+                    mode = formname.substr(0, modeend);
+                    formname = formname.substr(modeend + 1);
+                }
+                if(mode === "lnk") {
+                    try {
+                        fs.symlinkSync(path.join(dest, value), path.join(dest, formname));
+                    } catch {
+                        core.warning("Failed to create symlink `" + path.join(dest, formname) + "` to `" + path.join(dest, value) + "`");
+                    }
+                } else {
+                    core.warning("Expected mode lnk, ignore entry `" + formname + "`");
+                }
+                core.debug(formname + ", mode=" + mode + " => " + value);
             });
         });
     }

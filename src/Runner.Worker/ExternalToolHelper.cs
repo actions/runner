@@ -41,12 +41,14 @@ namespace GitHub.Runner.Worker
             return $"{NODE_URL}/v{NODE12_VERSION}/node-v{NODE12_VERSION}-{os}-{arch}.{suffix}";
         }
 
-        private static async Task DownloadTool(IHostContext hostContext, IExecutionContext executionContext, string link, string destDirectory, string tarextraopts = "") {
+        private static async Task DownloadTool(IHostContext hostContext, IExecutionContext executionContext, string link, string destDirectory, string tarextraopts = "", bool unwrap = false) {
             executionContext.Write("", $"Downloading from {link} to {destDirectory}");
             string tempDirectory = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "runner.server", "temp" + System.Guid.NewGuid().ToString());
             var stagingDirectory = Path.Combine(tempDirectory, "_staging");
+            var stagingDirectory2 = Path.Combine(tempDirectory, "_staging2");
             try {
                 Directory.CreateDirectory(stagingDirectory);
+                Directory.CreateDirectory(stagingDirectory2);
                 Directory.CreateDirectory(destDirectory);
                 string archiveName = "";
                 {
@@ -109,16 +111,19 @@ namespace GitHub.Runner.Worker
                     return;
                 }
 
-                // repository archive from github always contains a nested folder
-                var subDirectories = new DirectoryInfo(stagingDirectory).GetDirectories();
-                if (subDirectories.Length != 1)
-                {
-                    throw new InvalidOperationException($"'{archiveFile}' contains '{subDirectories.Length}' directories");
-                }
-                else
-                {
-                    executionContext.Debug($"Unwrap '{subDirectories[0].Name}' to '{destDirectory}'");
-                    IOUtil.CopyDirectory(subDirectories[0].FullName, destDirectory, executionContext.CancellationToken);
+                if(unwrap) {
+                    var subDirectories = new DirectoryInfo(stagingDirectory).GetDirectories();
+                    if (subDirectories.Length != 1)
+                    {
+                        throw new InvalidOperationException($"'{archiveFile}' contains '{subDirectories.Length}' directories");
+                    }
+                    else
+                    {
+                        executionContext.Debug($"Unwrap '{subDirectories[0].Name}' to '{destDirectory}'");
+                        IOUtil.MoveDirectory(subDirectories[0].FullName, destDirectory, stagingDirectory2, executionContext.CancellationToken);
+                    }
+                } else {
+                    IOUtil.MoveDirectory(stagingDirectory, destDirectory, stagingDirectory2, executionContext.CancellationToken); 
                 }
             } finally {
                 IOUtil.DeleteDirectory(tempDirectory, CancellationToken.None);
@@ -142,14 +147,18 @@ namespace GitHub.Runner.Worker
                 Dictionary<string, Func<string, Task>> _tools = null;
                 if(name == "node12") {
                     string nodeUrl = "https://nodejs.org/dist";
+                    string nodeUnofficialUrl = "https://unofficial-builds.nodejs.org/download/release";
                     string nodeVersion = "12.13.1";
                     string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/node*\" \"*/LICENSE\"" : "";
                     _tools = new Dictionary<string, Func<string, Task>> {
-                        { "windows/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"))},
-                        { "linux/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts)},
-                        { "linux/arm", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "armv7l", "tar.gz"), dest, tarextraopts)},
-                        { "linux/arm64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "arm64", "tar.gz"), dest, tarextraopts)},
-                        { "osx/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "darwin", "x64", "tar.gz"), dest, tarextraopts)},
+                        { "windows/386", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x86", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "windows/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "windows/arm64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "win", "arm64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "linux/386", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "linux", "x86", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/arm", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "armv7l", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/arm64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "arm64", "tar.gz"), dest, tarextraopts, true)},
+                        { "osx/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "darwin", "x64", "tar.gz"), dest, tarextraopts, true)},
                     };
 
                 } else if(name == "node12_alpine") {
