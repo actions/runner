@@ -75,6 +75,11 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
+            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context) && actionCommand.Command == "notice")
+            {
+                return false;
+            }
+
             // Serialize order
             lock (_commandSerializeLock)
             {
@@ -140,6 +145,10 @@ namespace GitHub.Runner.Worker
             }
 
             return true;
+        }
+
+        internal static bool EnhancedAnnotationsEnabled(IExecutionContext context) {
+            return context.Global.Variables.GetBoolean("DistributedTask.EnhancedAnnotations") ?? false;
         }
     }
 
@@ -565,6 +574,13 @@ namespace GitHub.Runner.Worker
                 {
                     issue.Data[property.Key] = property.Value;
                 }
+            }
+
+            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
+            {
+                issue.Data.Remove(IssueCommandProperties.EndLine);
+                issue.Data.Remove(IssueCommandProperties.EndColumn);
+                issue.Data.Remove(IssueCommandProperties.Title);
             }
 
             context.AddIssue(issue);
