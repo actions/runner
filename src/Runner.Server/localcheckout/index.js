@@ -49,7 +49,17 @@ try {
         });
         (url.startsWith("https://") ? https.get : http.get)(url, res => {
             var _first = true;
-            form.parse(res).on("fileBegin", (formname, file) => {
+            var symlinks = [];
+            form.parse(res, (err, fields, files) => {
+                core.warning("Creating Symlinks");
+                for(var lnk of symlinks) {
+                    try {
+                        fs.symlinkSync(lnk.value, lnk.path);
+                    } catch {
+                        core.warning("Failed to create symlink `" + lnk.path + "` to `" + lnk.value + "`");
+                    }
+                }
+            }).on("fileBegin", (formname, file) => {
                 if(formname == null && _first) {
                     core.warning("No files found to copy to " + dest);
                     process.exit();
@@ -93,9 +103,11 @@ try {
                 }
                 if(mode === "lnk") {
                     try {
-                        fs.symlinkSync(path.join(dest, value), path.join(dest, formname));
+                        destpath = path.join(dest, formname);
+                        fs.mkdirSync(path.dirname(destpath), { recursive: true });
+                        symlinks.push({path: path.join(dest, formname), value: value});
                     } catch {
-                        core.warning("Failed to create symlink `" + path.join(dest, formname) + "` to `" + path.join(dest, value) + "`");
+                        core.warning("Failed to create directory for symlink `" + path.join(dest, formname) + "` to `" + value + "`");
                     }
                 } else {
                     core.warning("Expected mode lnk, ignore entry `" + formname + "`");
