@@ -1556,6 +1556,7 @@ namespace Runner.Client
                             if(endpoint.Submodules && level == 0 || endpoint.NestedSubmodules) {
                                 submoduleTasks.Add(() => CollectRepoFiles(Path.Combine(wd, filename), endpoint, repodownload, streamsToDispose, level + 1, parameters, source));
                             }
+                            continue;
                         } else if(file.StartsWith("120")) {
                             //Symlink
                             submoduleTasks.Add(async () => {
@@ -1570,6 +1571,7 @@ namespace Runner.Client
                                 await gitinvoker.ExecuteAsync(wd, git, $"cat-file -p {sha}", new Dictionary<string, string>(), source.Token);
                                 repodownload.Add(new StringContent(dest), "lnk:" + Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename)));
                             });
+                            continue;
                             // readlink git cat-file -p sha
                         }
                     }
