@@ -1278,16 +1278,7 @@ namespace Runner.Client
                                                             } else {
                                                                 try {
                                                                     if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                                                        var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
-                                                                        repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
-                                                                        continue;
-                                                                    }
-                                                                } catch {
-
-                                                                }
-                                                                try {
-                                                                    if(new DirectoryInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                                                        var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
+                                                                        var dest = ReadSymlinkWindows(w);
                                                                         repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
                                                                         continue;
                                                                     }
@@ -1621,17 +1612,7 @@ namespace Runner.Client
                         } else {
                             try {
                                 if(new FileInfo(relpath).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(relpath), NativeMethods.GetFinalPathName(relpath));
-                                    relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
-                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
-                                    continue;
-                                }
-                            } catch {
-
-                            }
-                            try {
-                                if(new DirectoryInfo(relpath).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(relpath), NativeMethods.GetFinalPathName(relpath));
+                                    var dest = ReadSymlinkWindows(relpath);
                                     relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
                                     repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
                                     continue;
@@ -1678,16 +1659,7 @@ namespace Runner.Client
                         } else {
                             try {
                                 if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
-                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
-                                    continue;
-                                }
-                            } catch {
-
-                            }
-                            try {
-                                if(new DirectoryInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                    var dest = Path.GetRelativePath("\\\\?\\" + Path.GetDirectoryName(w), NativeMethods.GetFinalPathName(w));
+                                    var dest = ReadSymlinkWindows(w);
                                     repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
                                     continue;
                                 }
@@ -1698,6 +1670,20 @@ namespace Runner.Client
                         repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
                     }
                 }
+            }
+        }
+
+        private static string ReadSymlinkWindows(string w) {
+            try {
+                return NativeMethods.ReadSymlink(w);
+            } catch {
+                var finalPath = NativeMethods.GetFinalPathName(w);
+                var relativeTo = Path.GetDirectoryName(w);
+                var prefix = "\\\\?\\";
+                if(finalPath.StartsWith(prefix)) {
+                    relativeTo = prefix + relativeTo;
+                }
+                return Path.GetRelativePath(relativeTo, finalPath);
             }
         }
 
@@ -1714,6 +1700,28 @@ namespace Runner.Client
             [DllImport("kernel32.dll", SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
             static extern bool CloseHandle(IntPtr hObject);
+
+            public static Int32 FSCTL_GET_REPARSE_POINT = ( ((0x00000009) << 16) | ((0) << 14) | ((42) << 2) | (0) );
+            public static uint FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
+
+            [StructLayout(LayoutKind.Sequential)]
+            class REPARSE_DATA_BUFFER {
+                public uint ReparseTag;
+                public ushort ReparseDataLength;
+                public ushort Reserved;
+                public ushort SubstituteNameOffset;
+                public ushort SubstituteNameLength;
+                public ushort PrintNameOffset;
+                public ushort PrintNameLength;
+                public uint Flags;
+
+                [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x3FF0)]
+                public byte[] PathBuffer;
+            }
+
+
+            [DllImport("kernel32.dll")]
+            public static extern byte DeviceIoControl(IntPtr hDevice, Int32 dwIoControlCode, IntPtr lpInBuffer, Int32 nInBufferSize, IntPtr lpOutBuffer, Int32 nOutBufferSize, ref Int32 lpBytesReturned, IntPtr lpOverlapped);
 
             [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
             public static extern IntPtr CreateFile(
@@ -1751,10 +1759,42 @@ namespace Runner.Client
                     CloseHandle(h);
                 }
             }
+
+            private static uint IO_REPARSE_TAG_SYMLINK = 0xA000000C;
+
+            public static string ReadSymlink(string path)
+            {
+                var h = CreateFile(path, 
+                    FILE_READ_EA, 
+                    FileShare.ReadWrite | FileShare.Delete, 
+                    IntPtr.Zero, 
+                    FileMode.Open, 
+                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                    IntPtr.Zero);
+                if (h == INVALID_HANDLE_VALUE)
+                    throw new Win32Exception();
+
+                try
+                {
+                    REPARSE_DATA_BUFFER rdb = new REPARSE_DATA_BUFFER();
+                    var buf = Marshal.AllocHGlobal(Marshal.SizeOf(rdb));
+                    int size = 0;
+                    var res = DeviceIoControl(h, FSCTL_GET_REPARSE_POINT, IntPtr.Zero, 0, buf, Marshal.SizeOf(rdb), ref size, IntPtr.Zero);
+                    if (res == 0)
+                        throw new Win32Exception();
+                    Marshal.PtrToStructure<REPARSE_DATA_BUFFER>(buf, rdb);
+                    if(rdb.ReparseTag != IO_REPARSE_TAG_SYMLINK) {
+                        throw new Exception("Invalid reparse point, only symlinks are supported");
+                    }
+                    //var sres = Encoding.Unicode.GetString(rdb.PathBuffer, rdb.PrintNameOffset, rdb.PrintNameLength);
+                    var sres2 = Encoding.Unicode.GetString(rdb.PathBuffer, rdb.SubstituteNameOffset, rdb.SubstituteNameLength);
+                    return sres2;
+                }
+                finally
+                {
+                    CloseHandle(h);
+                }
+            }
         }
     }
 }
-
-// Console.WriteLine("Try starting Runner.Server, Please wait...");
-//                     var proc = Process.StartProcess("Runner.Server", $"--server {server}");
-//                     proc.EnableRaisingEvents = true;
