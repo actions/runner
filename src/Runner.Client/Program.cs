@@ -1111,7 +1111,7 @@ namespace Runner.Client
                                                 col = (col + 1) % 14;
                                                 continue;
                                             } else if(rec.RecordId != e.record.StepId) {
-                                                if(rec.RecordId != Guid.Empty && rec.TimeLine != null) {
+                                                if(rec.RecordId != Guid.Empty && rec.TimeLine != null && (rec.TimeLine.Count == 0 || rec.RecordId != rec.TimeLine[0].Id)) {
                                                     var record = rec.TimeLine.Find(r => r.Id == rec.RecordId);
                                                     if(record == null || !record.Result.HasValue) {
                                                         rec.Pending.Add(e);
@@ -1154,7 +1154,7 @@ namespace Runner.Client
                                             while(timelineRecords[e.timelineId].Pending.Count > 0) {
                                                 var e2 = timelineRecords[e.timelineId].Pending[0];
                                                 if(timelineRecords[e.timelineId].RecordId != e2.record.StepId) {
-                                                    if(timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords[e.timelineId].TimeLine != null) {
+                                                    if(timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords[e.timelineId].TimeLine != null && (timelineRecords[e.timelineId].TimeLine.Count == 0 || timelineRecords[e.timelineId].RecordId != timelineRecords[e.timelineId].TimeLine[0].Id)) {
                                                         var record = timelineRecords[e.timelineId].TimeLine.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
                                                         if(record == null || !record.Result.HasValue) {
                                                             break;
