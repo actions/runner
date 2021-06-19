@@ -51,14 +51,37 @@ try {
             var _first = true;
             var symlinks = [];
             form.parse(res, (err, fields, files) => {
-                core.warning("Creating Symlinks");
-                for(var lnk of symlinks) {
-                    try {
-                        fs.symlinkSync(lnk.value, lnk.path);
-                    } catch {
-                        core.warning("Failed to create symlink `" + lnk.path + "` to `" + lnk.value + "`");
+                core.debug("Creating Symlinks");
+                while(true) {
+                    var dsymlinks = [];
+                    for(var lnk of symlinks) {
+                        if(fs.existsSync(path.join(path.dirname(lnk.path), lnk.value))) {
+                            core.debug("path=`" + lnk.path + "` => `" + lnk.value + "`");
+                            try {
+                                fs.symlinkSync(lnk.value, lnk.path);
+                            } catch {
+                                core.warning("Failed to create symlink `" + lnk.path + "` to `" + lnk.value + "`");
+                            }
+                        } else {
+                            core.debug("Delay restoring symlink path=`" + lnk.path + "` => `" + lnk.value + "`");
+                            dsymlinks.push(lnk);
+                        }
                     }
+                    if(symlinks.length === dsymlinks.length) {
+                        core.debug("Creating dead Symlinks");
+                        for(var lnk of symlinks) {
+                            core.debug("path=`" + lnk.path + "` => `" + lnk.value + "`");
+                            try {
+                                fs.symlinkSync(lnk.value, lnk.path);
+                            } catch {
+                                core.warning("Failed to create symlink `" + lnk.path + "` to `" + lnk.value + "`");
+                            }
+                        }
+                        break;
+                    }
+                    symlinks = dsymlinks;
                 }
+                core.debug("Finished creating Symlinks");
             }).on("fileBegin", (formname, file) => {
                 if(formname == null && _first) {
                     core.warning("No files found to copy to " + dest);
