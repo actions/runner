@@ -2,10 +2,10 @@ name: Runner E2E Test
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-    - main
-    - releases/*
+#  push:
+#    branches:
+#    - main
+#    - releases/*
 
 jobs:
   init:
