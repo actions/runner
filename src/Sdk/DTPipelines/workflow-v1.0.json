@@ -12,7 +12,6 @@
           "defaults": "workflow-defaults",
           "env": "workflow-env",
           "jobs": "jobs",
-          "environment" : "environment",
           "permissions" : "permissions",
           "concurrency" : "concurrency"
         }
@@ -75,6 +74,7 @@
           "defaults": "job-defaults",
           "environment" : "environment",
           "permissions" : "permissions",
+          "concurrency" : "concurrency",
           "steps": "steps"
         }
       }
