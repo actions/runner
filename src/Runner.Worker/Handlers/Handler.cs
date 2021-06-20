@@ -26,11 +26,9 @@ namespace GitHub.Runner.Worker.Handlers
 
     public abstract class Handler : RunnerService
     {
-#if OS_WINDOWS
         // In windows OS the maximum supported size of a environment variable value is 32k.
         // You can set environment variable greater then 32K, but that variable will not be able to read in node.exe.
         private const int _environmentVariableMaximumSize = 32766;
-#endif
 
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
@@ -136,12 +134,12 @@ namespace GitHub.Runner.Worker.Handlers
 
             Environment[key] = value ?? string.Empty;
 
-#if OS_WINDOWS
-            if (Environment[key].Length > _environmentVariableMaximumSize)
-            {
-                ExecutionContext.Warning($"Environment variable '{key}' exceeds the maximum supported length. Environment variable length: {value.Length} , Maximum supported length: {_environmentVariableMaximumSize}");
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                if (Environment[key].Length > _environmentVariableMaximumSize)
+                {
+                    ExecutionContext.Warning($"Environment variable '{key}' exceeds the maximum supported length. Environment variable length: {value.Length} , Maximum supported length: {_environmentVariableMaximumSize}");
+                }
             }
-#endif
         }
 
         protected void AddPrependPathToEnvironment()

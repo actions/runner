@@ -181,9 +181,7 @@ namespace GitHub.Runner.Worker
                     }
                     var os = HostContext.GetService<IDockerCommandManager>().Os;
                     ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
-                    if(GetHostOS() != os) {
-                        ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(runnerctx["tool_cache"].AssertString("runner ctx").Value, os));
-                    }
+                    ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(Path.GetDirectoryName(runnerctx["tool_cache"].AssertString("runner ctx").Value), os));
                 }
             }
 
@@ -252,11 +250,7 @@ namespace GitHub.Runner.Worker
             ExecutionContext.Debug("Loading env");
             var environment = new Dictionary<String, String>(VarUtil.EnvironmentVariableKeyComparer);
 
-#if OS_WINDOWS
-            var envContext = ExecutionContext.ExpressionValues["env"] as DictionaryContextData;
-#else
-            var envContext = ExecutionContext.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
-#endif
+            var envContext = ExecutionContext.ExpressionValues["env"] as IDictionaryContextData;
             // Apply environment from env context, env context contains job level env and action's evn block
             foreach (var env in envContext)
             {

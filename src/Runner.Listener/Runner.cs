@@ -484,13 +484,13 @@ namespace GitHub.Runner.Listener
         {
             string separator;
             string ext;
-#if OS_WINDOWS
-            separator = "\\";
-            ext = "cmd";
-#else
-            separator = "/";
-            ext = "sh";
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                separator = "\\";
+                ext = "cmd";
+            } else {
+                separator = "/";
+                ext = "sh";
+            }
             _term.WriteLine($@"
 Commands:
  .{separator}config.{ext}         Configures the runner
@@ -513,12 +513,12 @@ Config Options:
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
  --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`");
-#if OS_WINDOWS
-    _term.WriteLine($@" --runasservice   Run the runner as a service");
-    _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
-    _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
-#endif
-    _term.WriteLine($@"
+        if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            _term.WriteLine($@" --runasservice   Run the runner as a service");
+            _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
+            _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
+        }
+        _term.WriteLine($@"
 Examples:
  Check GitHub server network connectivity:
   .{separator}run.{ext} --check --url <url> --pat <pat>
@@ -528,10 +528,10 @@ Examples:
   .{separator}config.{ext} --unattended --url <url> --token <token> --replace [--name <name>]
  Configure a runner non-interactively with three extra labels:
   .{separator}config.{ext} --unattended --url <url> --token <token> --labels L1,L2,L3");
-#if OS_WINDOWS
-    _term.WriteLine($@" Configure a runner to run as a service:");
-    _term.WriteLine($@"  .{separator}config.{ext} --url <url> --token <token> --runasservice");
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                _term.WriteLine($@" Configure a runner to run as a service:");
+                _term.WriteLine($@"  .{separator}config.{ext} --url <url> --token <token> --runasservice");
+            }
         }
     }
 }

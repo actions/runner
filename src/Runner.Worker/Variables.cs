@@ -64,11 +64,7 @@ namespace GitHub.Runner.Worker
         // All file path variables needs to be retrive and set through ExecutionContext, so it can handle container file path translation.
         public string Build_Number => Get(SdkConstants.Variables.Build.BuildNumber);
 
-#if OS_WINDOWS
-        public bool Retain_Default_Encoding => false;
-#else
-        public bool Retain_Default_Encoding => true;
-#endif
+        public bool Retain_Default_Encoding => !System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
 
         public bool? Step_Debug => GetBoolean(Constants.Variables.Actions.StepDebug);
 

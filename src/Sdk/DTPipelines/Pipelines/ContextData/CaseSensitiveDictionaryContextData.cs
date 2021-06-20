@@ -14,7 +14,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
     [JsonObject]
     [ClientIgnore]
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public class CaseSensitiveDictionaryContextData : PipelineContextData, IEnumerable<KeyValuePair<String, PipelineContextData>>, IReadOnlyObject
+    public class CaseSensitiveDictionaryContextData : PipelineContextData, IDictionaryContextData, IReadOnlyObject
     {
         public CaseSensitiveDictionaryContextData()
             : base(PipelineContextDataType.CaseSensitiveDictionary)

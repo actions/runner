@@ -1,5 +1,4 @@
-﻿#if OS_LINUX
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -52,4 +51,3 @@ namespace GitHub.Runner.Listener.Configuration
         }
     }
 }
-#endif

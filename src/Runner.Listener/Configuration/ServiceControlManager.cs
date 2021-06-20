@@ -7,7 +7,6 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Listener.Configuration
 {
-#if OS_WINDOWS
     [ServiceLocator(Default = typeof(WindowsServiceControlManager))]
     public interface IWindowsServiceControlManager : IRunnerService
     {
@@ -15,20 +14,12 @@ namespace GitHub.Runner.Listener.Configuration
 
         void UnconfigureService();
     }
-#endif
 
-#if !OS_WINDOWS
-
-#if OS_LINUX
-    [ServiceLocator(Default = typeof(SystemDControlManager))]
-#elif OS_OSX
-    [ServiceLocator(Default = typeof(OsxServiceControlManager))]
-#endif
+    [ServiceLocator(Default = typeof(SystemDControlManager), OSX = typeof(OsxServiceControlManager))]
     public interface ILinuxServiceControlManager : IRunnerService
     {
         void GenerateScripts(RunnerSettings settings);
     }
-#endif
 
     public class ServiceControlManager : RunnerService
     {

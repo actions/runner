@@ -1,0 +1,39 @@
+on: push
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '5.0.x'
+    - name: GenerateConstant
+      run: dotnet msbuild ./dir.proj -t:GenerateConstant /p:RunnerVersion=$(Get-Content ./runnerversion) /p:PackageRuntime=any
+      shell: pwsh
+      working-directory: ./src
+    - name: Restore
+      run: dotnet restore
+      shell: pwsh
+      working-directory: ./src/Runner.Client
+    - name: Build
+      run: dotnet build --no-restore /p:BUILD_OS=Any
+      shell: pwsh
+      working-directory: ./src/Runner.Client
+    - name: Pack
+      run: |
+        $d = Get-Date
+        dotnet pack --no-restore --no-build /p:Version=$($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
+      shell: pwsh
+      working-directory: ./src/Runner.Client
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: nupkg
+        path: src/Runner.Client/nupkg
+    - name: Push to Nuget
+      if: env.GHARUN != ''
+      run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json
+      shell: pwsh
+      working-directory: ./src/Runner.Client/nupkg
+      env:
+        GHARUN: ${{secrets.GHARUN}}

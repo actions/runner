@@ -5,11 +5,7 @@ namespace GitHub.Runner.Sdk
 {
     public static class PathUtil
     {
-#if OS_WINDOWS
-        public static readonly string PathVariable = "Path";
-#else
         public static readonly string PathVariable = "PATH";
-#endif
 
         public static string PrependPath(string path, string currentPath)
         {

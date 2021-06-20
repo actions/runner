@@ -1,4 +1,3 @@
-#if OS_LINUX || OS_OSX
 using System;
 using System.IO;
 using System.Security.Cryptography;
@@ -94,4 +93,3 @@ namespace GitHub.Runner.Listener.Configuration
         }
     }
 }
-#endif

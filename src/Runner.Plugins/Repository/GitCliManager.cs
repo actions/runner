@@ -15,11 +15,8 @@ namespace GitHub.Runner.Plugins.Repository
 {
     public class GitCliManager
     {
-#if OS_WINDOWS
-        private static readonly Encoding s_encoding = Encoding.UTF8;
-#else
-        private static readonly Encoding s_encoding = null;
-#endif
+        private static readonly Encoding s_encoding = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? Encoding.UTF8 : null;
+
         private readonly Dictionary<string, string> gitEnv = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             { "GIT_TERMINAL_PROMPT", "0" },

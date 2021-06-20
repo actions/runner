@@ -16,11 +16,11 @@ namespace GitHub.Runner.Sdk
         {
             get
             {
-#if OS_WINDOWS
-                return ".exe";
-#else
-                return string.Empty;
-#endif
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    return ".exe";
+                } else {
+                    return string.Empty;
+                }
             }
         }
 
@@ -28,11 +28,11 @@ namespace GitHub.Runner.Sdk
         {
             get
             {
-#if OS_LINUX
-                return StringComparison.Ordinal;
-#else
-                return StringComparison.OrdinalIgnoreCase;
-#endif
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                    return StringComparison.Ordinal;
+                } else {
+                    return StringComparison.OrdinalIgnoreCase;
+                }
             }
         }
 
@@ -337,18 +337,18 @@ namespace GitHub.Runner.Sdk
                     throw new InvalidOperationException($"The file path {relativePath} is invalid");
                 }
 
-#if OS_WINDOWS
-                if (segments.Count > 1)
-                {
-                    return String.Join(Path.DirectorySeparatorChar, segments);
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    if (segments.Count > 1)
+                    {
+                        return String.Join(Path.DirectorySeparatorChar, segments);
+                    }
+                    else
+                    {
+                        return segments.Pop() + Path.DirectorySeparatorChar;
+                    }
+                } else {
+                    return Path.DirectorySeparatorChar + String.Join(Path.DirectorySeparatorChar, segments);
                 }
-                else
-                {
-                    return segments.Pop() + Path.DirectorySeparatorChar;
-                }
-#else
-                return Path.DirectorySeparatorChar + String.Join(Path.DirectorySeparatorChar, segments);
-#endif
             }
         }
 

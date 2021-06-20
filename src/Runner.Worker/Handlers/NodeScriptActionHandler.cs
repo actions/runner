@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -8,6 +9,9 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 using System;
 using System.Linq;
 using GitHub.Runner.Worker.Container;
+using System.IO.Compression;
+using System.Net.Http;
+using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -20,30 +24,6 @@ namespace GitHub.Runner.Worker.Handlers
     public sealed class NodeScriptActionHandler : Handler, INodeScriptActionHandler
     {
         public NodeJSActionExecutionData Data { get; set; }
-
-        private static string GetHostArch() {
-            switch(System.Runtime.InteropServices.RuntimeInformation.OSArchitecture) {
-                case System.Runtime.InteropServices.Architecture.X86:
-                    return "386";
-                case System.Runtime.InteropServices.Architecture.X64:
-                    return "amd64";
-                case System.Runtime.InteropServices.Architecture.Arm:
-                    return "arm";
-                case System.Runtime.InteropServices.Architecture.Arm64:
-                    return "arm64";
-                default:
-                    throw new InvalidOperationException();
-            }
-        }
-
-        private static string GetHostOS() {
-            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
-                return "linux";
-            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                return "windows";
-            }
-            return null;
-        }
 
         public async Task RunAsync(ActionRunStage stage)
         {
@@ -106,8 +86,8 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
-            var externalsPath = HostContext.GetDirectory(WellKnownDirectory.Externals);
-            var exeExtension = IOUtil.ExeExtension;
+            var _os = ExternalToolHelper.GetHostOS();
+            var _arch = ExternalToolHelper.GetHostArch();
             if(StepHost is ContainerStepHost) {
                 var manager = HostContext.GetService<IDockerCommandManager>();
                 var os = manager.Os;
@@ -123,28 +103,20 @@ namespace GitHub.Runner.Worker.Handlers
                         }
                     }
                 }
-                if(GetHostOS() != os || (GetHostArch() != arch && !arch.StartsWith(GetHostArch() + "/"))) {
-                    if(os != "windows") {
-                        exeExtension = "";
-                    }
-                    var archi = arch.IndexOf('/');
-                    externalsPath = Path.Combine(externalsPath, os, archi != -1 ? arch.Substring(0, archi) : arch);
-                }
+                var archi = arch.IndexOf('/');
+                _os = os;
+                _arch = (archi != -1 ? arch.Substring(0, archi) : arch);
             }
-            string file = Path.Combine(externalsPath, nodeRuntimeVersion, "bin", $"node{exeExtension}");
+            string file = await ExternalToolHelper.GetNodeTool(HostContext, ExecutionContext, nodeRuntimeVersion, _os, _arch);
+
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.
             // 2) Escape double quotes within the script file path. Double-quote is a valid
             // file name character on Linux.
             string arguments = StepHost.ResolvePathForStepHost(StringUtil.Format(@"""{0}""", target.Replace(@"""", @"\""")));
 
-#if OS_WINDOWS
             // It appears that node.exe outputs UTF8 when not in TTY mode.
-            Encoding outputEncoding = Encoding.UTF8;
-#else
-            // Let .NET choose the default.
-            Encoding outputEncoding = null;
-#endif
+            Encoding outputEncoding = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? Encoding.UTF8 : null;
 
             // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795

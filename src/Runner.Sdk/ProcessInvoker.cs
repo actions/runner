@@ -245,14 +245,14 @@ namespace GitHub.Runner.Sdk
                 Interlocked.Increment(ref _asyncStreamReaderCount);
             }
 
-#if OS_WINDOWS
-            // If StandardErrorEncoding or StandardOutputEncoding is not specified the on the
-            // ProcessStartInfo object, then .NET PInvokes to resolve the default console output
-            // code page:
-            //      [DllImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
-            //      public extern static uint GetConsoleOutputCP();
-            StringUtil.EnsureRegisterEncodings();
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                // If StandardErrorEncoding or StandardOutputEncoding is not specified the on the
+                // ProcessStartInfo object, then .NET PInvokes to resolve the default console output
+                // code page:
+                //      [DllImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
+                //      public extern static uint GetConsoleOutputCP();
+                StringUtil.EnsureRegisterEncodings();
+            }
             if (outputEncoding != null)
             {
                 _proc.StartInfo.StandardErrorEncoding = outputEncoding;
@@ -456,20 +456,20 @@ namespace GitHub.Runner.Sdk
 
         private async Task<bool> SendSIGINT(TimeSpan timeout)
         {
-#if OS_WINDOWS
-            return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_C, timeout);
-#else
-            return await SendSignal(Signals.SIGINT, timeout);
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_C, timeout);
+            } else {
+                return await SendSignal(Signals.SIGINT, timeout);
+            }
         }
 
         private async Task<bool> SendSIGTERM(TimeSpan timeout)
         {
-#if OS_WINDOWS
-            return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_BREAK, timeout);
-#else
-            return await SendSignal(Signals.SIGTERM, timeout);
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                return await SendCtrlSignal(ConsoleCtrlEvent.CTRL_BREAK, timeout);
+            } else {
+                return await SendSignal(Signals.SIGTERM, timeout);
+            }
         }
 
         private void ProcessExitedHandler(object sender, EventArgs e)
@@ -549,38 +549,37 @@ namespace GitHub.Runner.Sdk
 
         private void KillProcessTree()
         {
-#if OS_WINDOWS
-            WindowsKillProcessTree();
-#else
-            NixKillProcessTree();
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                WindowsKillProcessTree();
+            } else {
+                NixKillProcessTree();
+            }
         }
 
         private void DecreaseProcessPriority(Process process)
         {
-#if OS_LINUX
-            int oomScoreAdj = 500;
-            string userOomScoreAdj;
-            if (process.StartInfo.Environment.TryGetValue("PIPELINE_JOB_OOMSCOREADJ", out userOomScoreAdj))
-            {
-                int userOomScoreAdjParsed;
-                if (int.TryParse(userOomScoreAdj, out userOomScoreAdjParsed) && userOomScoreAdjParsed >= -1000 && userOomScoreAdjParsed <= 1000)
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                int oomScoreAdj = 500;
+                string userOomScoreAdj;
+                if (process.StartInfo.Environment.TryGetValue("PIPELINE_JOB_OOMSCOREADJ", out userOomScoreAdj))
                 {
-                    oomScoreAdj = userOomScoreAdjParsed;
+                    int userOomScoreAdjParsed;
+                    if (int.TryParse(userOomScoreAdj, out userOomScoreAdjParsed) && userOomScoreAdjParsed >= -1000 && userOomScoreAdjParsed <= 1000)
+                    {
+                        oomScoreAdj = userOomScoreAdjParsed;
+                    }
+                    else
+                    {
+                        Trace.Info($"Invalid PIPELINE_JOB_OOMSCOREADJ ({userOomScoreAdj}). Valid range is -1000:1000. Using default 500.");
+                    }
                 }
-                else
-                {
-                    Trace.Info($"Invalid PIPELINE_JOB_OOMSCOREADJ ({userOomScoreAdj}). Valid range is -1000:1000. Using default 500.");
-                }
+                // Values (up to 1000) make the process more likely to be killed under OOM scenario,
+                // protecting the agent by extension. Default of 500 is likely to get killed, but can
+                // be adjusted up or down as appropriate.
+                WriteProcessOomScoreAdj(process.Id, oomScoreAdj);
             }
-            // Values (up to 1000) make the process more likely to be killed under OOM scenario,
-            // protecting the agent by extension. Default of 500 is likely to get killed, but can
-            // be adjusted up or down as appropriate.
-            WriteProcessOomScoreAdj(process.Id, oomScoreAdj);
-#endif
         }
 
-#if OS_WINDOWS
         private async Task<bool> SendCtrlSignal(ConsoleCtrlEvent signal, TimeSpan timeout)
         {
             Trace.Info($"Sending {signal} to process {_proc.Id}.");
@@ -815,7 +814,6 @@ namespace GitHub.Runner.Sdk
 
         // Delegate type to be used as the Handler Routine for SetConsoleCtrlHandler
         private delegate Boolean ConsoleCtrlDelegate(ConsoleCtrlEvent CtrlType);
-#else
         private async Task<bool> SendSignal(Signals signal, TimeSpan timeout)
         {
             Trace.Info($"Sending {signal} to process {_proc.Id}.");
@@ -857,8 +855,6 @@ namespace GitHub.Runner.Sdk
                 Trace.Info(ex.ToString());
             }
         }
-
-#if OS_LINUX
         private void WriteProcessOomScoreAdj(int processId, int oomScoreAdj)
         {
             try
@@ -876,7 +872,6 @@ namespace GitHub.Runner.Sdk
                 Trace.Info(ex.ToString());
             }
         }
-#endif
 
         private enum Signals : int
         {
@@ -886,7 +881,6 @@ namespace GitHub.Runner.Sdk
 
         [DllImport("libc", SetLastError = true)]
         private static extern int kill(int pid, int sig);
-#endif
     }
 
     public sealed class ProcessExitCodeException : Exception

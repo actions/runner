@@ -26,10 +26,8 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
         // min git version that support add extra auth header.
         private Version _minGitVersionSupportAuthHeader = new Version(2, 9);
 
-#if OS_WINDOWS
         // min git version that support override sslBackend setting.
         private Version _minGitVersionSupportSSLBackendOverride = new Version(2, 14, 2);
-#endif
 
         // min git-lfs version that support add extra auth header.
         private Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
@@ -429,14 +427,14 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             // v2.9 git exist use auth header.
             gitCommandManager.EnsureGitVersion(_minGitVersionSupportAuthHeader, throwOnNotMatch: true);
 
-#if OS_WINDOWS
-            // check git version for SChannel SSLBackend (Windows Only)
-            bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.GetRunnerContext("gituseschannel"));
-            if (schannelSslBackend)
-            {
-                gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                // check git version for SChannel SSLBackend (Windows Only)
+                bool schannelSslBackend = StringUtil.ConvertToBoolean(executionContext.GetRunnerContext("gituseschannel"));
+                if (schannelSslBackend)
+                {
+                    gitCommandManager.EnsureGitVersion(_minGitVersionSupportSSLBackendOverride, throwOnNotMatch: true);
+                }
             }
-#endif
             if (checkGitLfs)
             {
                 // v2.1 git-lfs exist use auth header.

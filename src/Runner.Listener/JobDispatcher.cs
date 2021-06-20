@@ -37,7 +37,7 @@ namespace GitHub.Runner.Listener
         private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
         private int _poolId;
         RunnerSettings _runnerSetting;
-        private static readonly string _workerProcessName = $"Runner.Worker{IOUtil.ExeExtension}";
+        private static readonly string _workerProcessName = $"Runner.Worker";
 
         // this is not thread-safe
         private readonly Queue<Guid> _jobDispatchedQueue = new Queue<Guid>();
@@ -416,11 +416,22 @@ namespace GitHub.Runner.Listener
                                 // Start the child process.
                                 HostContext.WritePerfCounter("StartingWorkerProcess");
                                 var assemblyDirectory = HostContext.GetDirectory(WellKnownDirectory.Bin);
-                                string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                string ext = ".dll";
+#else
+                                string ext = IOUtil.ExeExtension;
+#endif
+                                string workerFileName = Path.Combine(assemblyDirectory, $"{_workerProcessName}{ext}");
+                                string arguments = "spawnclient " + pipeHandleOut + " " + pipeHandleIn;
+#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                var dotnet = WhichUtil.Which("dotnet", true);
+                                arguments = $"\"{workerFileName}\" {arguments}";
+                                workerFileName = dotnet;
+#endif
                                 workerProcessTask = processInvoker.ExecuteAsync(
                                     workingDirectory: assemblyDirectory,
                                     fileName: workerFileName,
-                                    arguments: "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
+                                    arguments: arguments,
                                     environment: null,
                                     requireExitCodeZero: false,
                                     outputEncoding: null,

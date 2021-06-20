@@ -32,11 +32,12 @@ namespace GitHub.Runner.Listener
         private async static Task<int> MainAsync(IHostContext context, string[] args)
         {
             Tracing trace = context.GetTrace(nameof(GitHub.Runner.Listener));
-            trace.Info($"Runner is built for {Constants.Runner.Platform} ({Constants.Runner.PlatformArchitecture}) - {BuildConstants.RunnerPackage.PackageName}.");
+            trace.Info($"Runner is running on {Constants.Runner.Platform} ({Constants.Runner.PlatformArchitecture}) - {BuildConstants.RunnerPackage.PackageName}.");
             trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
             context.WritePerfCounter("RunnerProcessStarted");
             var terminal = context.GetService<ITerminal>();
 
+#if OS_WINDOWS || OS_LINUX || OS_OSX || X86 || X64 || ARM || ARM64
             // Validate the binaries intended for one OS are not running on a different OS.
             switch (Constants.Runner.Platform)
             {
@@ -65,6 +66,7 @@ namespace GitHub.Runner.Listener
                     terminal.WriteLine($"Running the runner on this platform is not supported. The current platform is {RuntimeInformation.OSDescription} and it was built for {Constants.Runner.Platform.ToString()}.");
                     return Constants.Runner.ReturnCode.TerminatedError;
             }
+#endif
 
             try
             {

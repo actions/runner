@@ -1,4 +1,3 @@
-#if OS_WINDOWS
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -1327,4 +1326,3 @@ namespace GitHub.Runner.Listener.Configuration
         public IntPtr hProfile;
     }
 }
-#endif

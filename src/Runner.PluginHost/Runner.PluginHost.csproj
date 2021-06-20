@@ -9,6 +9,7 @@
     <Version>$(Version)</Version>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <RuntimeFrameworkVersion>5.0.0</RuntimeFrameworkVersion>
   </PropertyGroup>
 
   <ItemGroup>

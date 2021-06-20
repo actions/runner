@@ -45,7 +45,7 @@ namespace Runner.Server.Controllers {
         public CacheController(IMemoryCache memoryCache, IWebHostEnvironment environment)
         {
             _cache = memoryCache;
-            _targetFilePath = Path.Combine(environment.ContentRootPath, "cache");
+            _targetFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "gharun", "cache");
             Directory.CreateDirectory(_targetFilePath);
         }
 

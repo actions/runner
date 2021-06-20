@@ -310,21 +310,21 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteSuccessMessage("Settings Saved.");
             _term.WriteLine();
 
-#if OS_WINDOWS
-            // config windows service
-            bool runAsService = command.GetRunAsService();
-            if (runAsService)
-            {
-                Trace.Info("Configuring to run the agent as service");
-                var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
-                serviceControlManager.ConfigureService(runnerSettings, command);
-            }
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                // config windows service
+                bool runAsService = command.GetRunAsService();
+                if (runAsService)
+                {
+                    Trace.Info("Configuring to run the agent as service");
+                    var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
+                    serviceControlManager.ConfigureService(runnerSettings, command);
+                }
 
-#elif OS_LINUX || OS_OSX
-            // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
-            var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
-            serviceControlManager.GenerateScripts(runnerSettings);
-#endif
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) || System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                // generate service config script for OSX and Linux, GenerateScripts() will no-opt on windows.
+                var serviceControlManager = HostContext.GetService<ILinuxServiceControlManager>();
+                serviceControlManager.GenerateScripts(runnerSettings);
+            }
         }
 
         public async Task UnconfigureAsync(CommandSettings command)
@@ -340,19 +340,19 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     currentAction = "Removing service";
                     _term.WriteLine(currentAction);
-#if OS_WINDOWS
-                    var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
-                    serviceControlManager.UnconfigureService();
+                    if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                        var serviceControlManager = HostContext.GetService<IWindowsServiceControlManager>();
+                        serviceControlManager.UnconfigureService();
 
-                    _term.WriteLine();
-                    _term.WriteSuccessMessage("Runner service removed");
-#elif OS_LINUX
-                    // unconfig system D service first
-                    throw new Exception("Unconfigure service first");
-#elif OS_OSX
-                    // unconfig osx service first
-                    throw new Exception("Unconfigure service first");
-#endif
+                        _term.WriteLine();
+                        _term.WriteSuccessMessage("Runner service removed");
+                    } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
+                        // unconfig system D service first
+                        throw new Exception("Unconfigure service first");
+                    } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                        // unconfig osx service first
+                        throw new Exception("Unconfigure service first");
+                    }
                 }
 
                 //delete agent from the server

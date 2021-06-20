@@ -54,7 +54,7 @@ namespace Runner.Server.Controllers {
         public ArtifactController(IMemoryCache memoryCache, IWebHostEnvironment environment)
         {
             _cache = memoryCache;
-            _targetFilePath = Path.Combine(environment.ContentRootPath, "artifacts");
+            _targetFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "gharun", "artifacts");
             Directory.CreateDirectory(_targetFilePath);
         }
 

@@ -25,6 +25,8 @@ namespace GitHub.Runner.Worker.Handlers
                 return "linux";
             } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                 return "windows";
+            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) {
+                return "osx";
             }
             return null;
         }
@@ -40,9 +42,6 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Data, nameof(Data));
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
-#if OS_WINDOWS || OS_OSX
-            ExecutionContext.Warning("Container action is only supported on Linux");
-#endif
             RunnerContext runnerctx = null;
             try {
                 runnerctx = ExecutionContext.ExpressionValues["runner"] as RunnerContext;
@@ -59,9 +58,7 @@ namespace GitHub.Runner.Worker.Handlers
                 await dockerManger.DockerVersion(ExecutionContext);
                 var os = dockerManger.Os;
                 ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
-                if(GetHostOS() != os) {
-                    ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(runnerctx["tool_cache"].AssertString("runner ctx").Value, os));
-                }
+                ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(Path.GetDirectoryName(runnerctx["tool_cache"].AssertString("runner ctx").Value), os));
             }
 
             // Update the env dictionary.

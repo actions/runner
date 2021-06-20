@@ -7,8 +7,15 @@ namespace GitHub.Runner.Common
     public sealed class ServiceLocatorAttribute : Attribute
     {
         public static readonly string DefaultPropertyName = "Default";
+        public static readonly string WindowsPropertyName = "Windows";
+        public static readonly string OSXPropertyName = "OSX";
+        public static readonly string LinuxPropertyName = "Linux";
 
         public Type Default { get; set; }
+
+        public Type Windows { get; set; }
+        public Type OSX { get; set; }
+        public Type Linux { get; set; }
     }
 
     public interface IRunnerService

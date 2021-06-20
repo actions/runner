@@ -109,11 +109,7 @@ namespace GitHub.Runner.Worker.Handlers
             path = path.Trim('\"');
 
             // try to resolve path inside container if the request path is part of the mount volume
-#if OS_WINDOWS
-            if (Container.MountVolumes.Exists(x => !string.IsNullOrEmpty(x.SourceVolumePath) && path.StartsWith(x.SourceVolumePath, StringComparison.OrdinalIgnoreCase)))
-#else
-            if (Container.MountVolumes.Exists(x => !string.IsNullOrEmpty(x.SourceVolumePath) && path.StartsWith(x.SourceVolumePath)))
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? Container.MountVolumes.Exists(x => !string.IsNullOrEmpty(x.SourceVolumePath) && path.StartsWith(x.SourceVolumePath, StringComparison.OrdinalIgnoreCase)) : Container.MountVolumes.Exists(x => !string.IsNullOrEmpty(x.SourceVolumePath) && path.StartsWith(x.SourceVolumePath)))
             {
                 return Container.TranslateToContainerPath(path);
             }
@@ -212,13 +208,13 @@ namespace GitHub.Runner.Worker.Handlers
                 processInvoker.OutputDataReceived += OutputDataReceived;
                 processInvoker.ErrorDataReceived += ErrorDataReceived;
 
-#if OS_WINDOWS
-                // It appears that node.exe outputs UTF8 when not in TTY mode.
-                outputEncoding = Encoding.UTF8;
-#else
-                // Let .NET choose the default.
-                outputEncoding = null;
-#endif
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    // It appears that node.exe outputs UTF8 when not in TTY mode.
+                    outputEncoding = Encoding.UTF8;
+                } else {
+                    // Let .NET choose the default.
+                    outputEncoding = null;
+                }
 
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: dockerClientPath,

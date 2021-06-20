@@ -766,11 +766,11 @@ namespace GitHub.Runner.Worker
 
         private static string BuildLinkToActionArchive(string apiUrl, string repository, string @ref)
         {
-#if OS_WINDOWS
-            return $"{apiUrl}/repos/{repository}/zipball/{@ref}";
-#else
-            return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
-#endif
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                return $"{apiUrl}/repos/{repository}/zipball/{@ref}";
+            } else {
+                return $"{apiUrl}/repos/{repository}/tarball/{@ref}";
+            }
         }
 
         // todo: Remove the parameter "actionDownloadDetails" when feature flag DistributedTask.NewActionMetadata is removed
@@ -780,13 +780,8 @@ namespace GitHub.Runner.Worker
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
             Directory.CreateDirectory(tempDirectory);
 
-#if OS_WINDOWS
-            string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.zip");
-            string link = downloadInfo?.ZipballUrl ?? actionDownloadDetails.ArchiveLink;
-#else
-            string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.tar.gz");
-            string link = downloadInfo?.TarballUrl ?? actionDownloadDetails.ArchiveLink;
-#endif
+            string archiveFile = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? Path.Combine(tempDirectory, $"{Guid.NewGuid()}.zip") : Path.Combine(tempDirectory, $"{Guid.NewGuid()}.tar.gz");
+            string link = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? downloadInfo?.ZipballUrl ?? actionDownloadDetails.ArchiveLink : downloadInfo?.TarballUrl ?? actionDownloadDetails.ArchiveLink;
 
             Trace.Info($"Save archive '{link}' into {archiveFile}.");
             try
@@ -886,37 +881,37 @@ namespace GitHub.Runner.Worker
                 var stagingDirectory = Path.Combine(tempDirectory, "_staging");
                 Directory.CreateDirectory(stagingDirectory);
 
-#if OS_WINDOWS
-                ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
-#else
-                string tar = WhichUtil.Which("tar", require: true, trace: Trace);
+                if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                    ZipFile.ExtractToDirectory(archiveFile, stagingDirectory);
+                } else {
+                    string tar = WhichUtil.Which("tar", require: true, trace: Trace);
 
-                // tar -xzf
-                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-                {
-                    processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
+                    // tar -xzf
+                    using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
-                        if (!string.IsNullOrEmpty(args.Data))
+                        processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
                         {
-                            Trace.Info(args.Data);
-                        }
-                    });
+                            if (!string.IsNullOrEmpty(args.Data))
+                            {
+                                Trace.Info(args.Data);
+                            }
+                        });
 
-                    processInvoker.ErrorDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
-                    {
-                        if (!string.IsNullOrEmpty(args.Data))
+                        processInvoker.ErrorDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
                         {
-                            Trace.Error(args.Data);
-                        }
-                    });
+                            if (!string.IsNullOrEmpty(args.Data))
+                            {
+                                Trace.Error(args.Data);
+                            }
+                        });
 
-                    int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
-                    if (exitCode != 0)
-                    {
-                        throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                        int exitCode = await processInvoker.ExecuteAsync(stagingDirectory, tar, $"-xzf \"{archiveFile}\"", null, executionContext.CancellationToken);
+                        if (exitCode != 0)
+                        {
+                            throw new NotSupportedException($"Can't use 'tar -xzf' extract archive file: {archiveFile}. return code: {exitCode}.");
+                        }
                     }
                 }
-#endif
 
                 // repository archive from github always contains a nested folder
                 var subDirectories = new DirectoryInfo(stagingDirectory).GetDirectories();
