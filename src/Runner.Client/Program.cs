@@ -519,13 +519,20 @@ namespace Runner.Client
                 ConcurrentQueue<string> changed = new ConcurrentQueue<string>();
                 ConcurrentQueue<string> removed = new ConcurrentQueue<string>();
                 CancellationTokenSource source = new CancellationTokenSource();
+                Action cancelWorkflow = null;
                 CancellationToken token = source.Token;
                 bool canceled = false;
                 Console.CancelKeyPress += (s, e) => {
-                    e.Cancel = !canceled;
-                    Console.WriteLine($"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
-                    canceled = true;
-                    source.Cancel();
+                    if(cancelWorkflow != null) {
+                        e.Cancel = true;
+                        Console.WriteLine($"CTRL+C received Cancel Running Jobs");
+                        cancelWorkflow.Invoke();
+                    } else {
+                        e.Cancel = !canceled;
+                        Console.WriteLine($"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
+                        canceled = true;
+                        source.Cancel();
+                    }
                 };
                 List<Task> listener = new List<Task>();
                 try {
@@ -1036,7 +1043,19 @@ namespace Runner.Client
                                 query.Add("runid", hr.Select(h => h.run_id.ToString()));
                                 b2.Query = query.ToString().TrimStart('?');
                                 b2.Path = "runner/host/_apis/v1/Message";
-                                var sr = await client.GetStringAsync(b2.ToString());
+                                var jobsUrl = b2.ToString();
+                                cancelWorkflow = async () => {
+                                    cancelWorkflow = null;
+                                    var sr = await client.GetStringAsync(jobsUrl);
+                                    List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
+                                    var b2 = new UriBuilder(b.ToString());
+                                    foreach(Job j in jobs) {
+                                        b2.Path = "runner/host/_apis/v1/Message/Cancel/" + j.JobId;
+                                        await client.PostAsync(b2.ToString(), null);
+                                    }
+                                };
+
+                                var sr = await client.GetStringAsync(jobsUrl);
                                 List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
                                 Dictionary<Guid, TimeLineEntry> timelineRecords = new Dictionary<Guid, TimeLineEntry>();
                                 int col = 0;
@@ -1443,6 +1462,8 @@ namespace Runner.Client
                                 // await invoker.ExecuteAsync(binpath, Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}"), "", new Dictionary<string, string>(), CancellationToken.None);
                                 Console.WriteLine($"Exception: {except.Message}, {except.StackTrace}");
                                 return 1;
+                            } finally {
+                                cancelWorkflow = null;
                             }
                             return 0;
                         });
