@@ -13,10 +13,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.Services.WebApi;
-using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("Test")]
 namespace GitHub.Runner.Listener
 {
     [ServiceLocator(Default = typeof(MessageListener))]
@@ -35,21 +32,11 @@ namespace GitHub.Runner.Listener
         private ITerminal _term;
         private IRunnerServer _runnerServer;
         private TaskAgentSession _session;
-        private ICredentialManager _credMgr;
-        private IConfigurationStore _configStore;
         private TimeSpan _getNextMessageRetryInterval;
         private readonly TimeSpan _sessionCreationRetryInterval = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _sessionConflictRetryLimit = TimeSpan.FromMinutes(4);
         private readonly TimeSpan _clockSkewRetryLimit = TimeSpan.FromMinutes(30);
         private readonly Dictionary<string, int> _sessionCreationExceptionTracker = new Dictionary<string, int>();
-
-        // Whether load credentials from .credentials_migrated file
-        internal bool _useMigratedCredentials;
-
-        // need to check auth url if there is only .credentials and auth schema is OAuth
-        internal bool _needToCheckAuthorizationUrlUpdate;
-        internal Task<VssCredentials> _authorizationUrlMigrationBackgroundTask;
-        internal Task _authorizationUrlRollbackReattemptDelayBackgroundTask;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -57,8 +44,6 @@ namespace GitHub.Runner.Listener
 
             _term = HostContext.GetService<ITerminal>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
-            _credMgr = HostContext.GetService<ICredentialManager>();
-            _configStore = HostContext.GetService<IConfigurationStore>();
         }
 
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
@@ -73,8 +58,8 @@ namespace GitHub.Runner.Listener
 
             // Create connection.
             Trace.Info("Loading Credentials");
-            _useMigratedCredentials = !StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_SPSAUTHURL"));
-            VssCredentials creds = _credMgr.LoadCredentials(_useMigratedCredentials);
+            var credMgr = HostContext.GetService<ICredentialManager>();
+            VssCredentials creds = credMgr.LoadCredentials();
 
             var agent = new TaskAgentReference
             {
@@ -88,17 +73,6 @@ namespace GitHub.Runner.Listener
 
             string errorMessage = string.Empty;
             bool encounteringError = false;
-
-            var originalCreds = _configStore.GetCredentials();
-            var migratedCreds = _configStore.GetMigratedCredentials();
-            if (migratedCreds == null)
-            {
-                _useMigratedCredentials = false;
-                if (originalCreds.Scheme == Constants.Configuration.OAuth)
-                {
-                    _needToCheckAuthorizationUrlUpdate = true;
-                }
-            }
 
             while (true)
             {
@@ -127,12 +101,6 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                     }
 
-                    if (_needToCheckAuthorizationUrlUpdate)
-                    {
-                        // start background task try to get new authorization url
-                        _authorizationUrlMigrationBackgroundTask = GetNewOAuthAuthorizationSetting(token);
-                    }
-
                     return true;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -150,23 +118,24 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
-                    if (!IsSessionCreationExceptionRetriable(ex))
+                    if (ex is VssOAuthTokenRequestException && creds.Federated is VssOAuthCredential vssOAuthCred)
                     {
-                        if (_useMigratedCredentials)
+                        // Check whether we get 401 because the runner registration already removed by the service.
+                        // If the runner registration get deleted, we can't exchange oauth token.
+                        Trace.Error("Test oauth app registration.");
+                        var oauthTokenProvider = new VssOAuthTokenProvider(vssOAuthCred, new Uri(serverUrl));
+                        var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
+                        if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
-                            // migrated credentials might cause lose permission during permission check,
-                            // we will force to use original credential and try again
-                            _useMigratedCredentials = false;
-                            var reattemptBackoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromHours(24), TimeSpan.FromHours(36));
-                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(reattemptBackoff, token); // retry migrated creds in 24-36 hours.
-                            creds = _credMgr.LoadCredentials(false);
-                            Trace.Error("Fallback to original credentials and try again.");
-                        }
-                        else
-                        {
-                            _term.WriteError($"Failed to create session. {ex.Message}");
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure.");
                             return false;
                         }
+                    }
+
+                    if (!IsSessionCreationExceptionRetriable(ex))
+                    {
+                        _term.WriteError($"Failed to create session. {ex.Message}");
+                        return false;
                     }
 
                     if (!encounteringError) //print the message only on the first error
@@ -227,51 +196,6 @@ namespace GitHub.Runner.Listener
                         encounteringError = false;
                         continuousError = 0;
                     }
-
-                    if (_needToCheckAuthorizationUrlUpdate &&
-                        _authorizationUrlMigrationBackgroundTask?.IsCompleted == true)
-                    {
-                        if (HostContext.GetService<IJobDispatcher>().Busy ||
-                            HostContext.GetService<ISelfUpdater>().Busy)
-                        {
-                            Trace.Info("Job or runner updates in progress, update credentials next time.");
-                        }
-                        else
-                        {
-                            try
-                            {
-                                var newCred = await _authorizationUrlMigrationBackgroundTask;
-                                await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), newCred);
-                                Trace.Info("Updated connection to use migrated credential for next GetMessage call.");
-                                _useMigratedCredentials = true;
-                                _authorizationUrlMigrationBackgroundTask = null;
-                                _needToCheckAuthorizationUrlUpdate = false;
-                            }
-                            catch (Exception ex)
-                            {
-                                Trace.Error("Fail to refresh connection with new authorization url.");
-                                Trace.Error(ex);
-                            }
-                        }
-                    }
-
-                    if (_authorizationUrlRollbackReattemptDelayBackgroundTask?.IsCompleted == true)
-                    {
-                        try
-                        {
-                            // we rolled back to use original creds about 2 days before, now it's a good time to try migrated creds again.
-                            Trace.Info("Re-attempt to use migrated credential");
-                            var migratedCreds = _credMgr.LoadCredentials();
-                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), migratedCreds);
-                            _useMigratedCredentials = true;
-                            _authorizationUrlRollbackReattemptDelayBackgroundTask = null;
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Error("Fail to refresh connection with new authorization url on rollback reattempt.");
-                            Trace.Error(ex);
-                        }
-                    }
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -295,21 +219,7 @@ namespace GitHub.Runner.Listener
                     }
                     else if (!IsGetNextMessageExceptionRetriable(ex))
                     {
-                        if (_useMigratedCredentials)
-                        {
-                            // migrated credentials might cause lose permission during permission check,
-                            // we will force to use original credential and try again
-                            _useMigratedCredentials = false;
-                            var reattemptBackoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromHours(24), TimeSpan.FromHours(36));
-                            _authorizationUrlRollbackReattemptDelayBackgroundTask = HostContext.Delay(reattemptBackoff, token); // retry migrated creds in 24-36 hours.
-                            var originalCreds = _credMgr.LoadCredentials(false);
-                            await _runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), originalCreds);
-                            Trace.Error("Fallback to original credentials and try again.");
-                        }
-                        else
-                        {
-                            throw;
-                        }
+                        throw;
                     }
                     else
                     {
@@ -409,7 +319,8 @@ namespace GitHub.Runner.Listener
                 var keyManager = HostContext.GetService<IRSAKeyManager>();
                 using (var rsa = keyManager.GetKey())
                 {
-                    return aes.CreateDecryptor(rsa.Decrypt(_session.EncryptionKey.Value, RSAEncryptionPadding.OaepSHA1), message.IV);
+                    var padding = _session.UseFipsEncryption ? RSAEncryptionPadding.OaepSHA256 : RSAEncryptionPadding.OaepSHA1;
+                    return aes.CreateDecryptor(rsa.Decrypt(_session.EncryptionKey.Value, padding), message.IV);
                 }
             }
             else
@@ -499,81 +410,6 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Info($"Retriable exception: {ex.Message}");
                 return true;
-            }
-        }
-
-        private async Task<VssCredentials> GetNewOAuthAuthorizationSetting(CancellationToken token)
-        {
-            Trace.Info("Start checking oauth authorization url update.");
-            while (true)
-            {
-                var backoff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromMinutes(30), TimeSpan.FromMinutes(45));
-                await HostContext.Delay(backoff, token);
-
-                try
-                {
-                    var migratedAuthorizationUrl = await _runnerServer.GetRunnerAuthUrlAsync(_settings.PoolId, _settings.AgentId);
-                    if (!string.IsNullOrEmpty(migratedAuthorizationUrl))
-                    {
-                        var credData = _configStore.GetCredentials();
-                        var clientId = credData.Data.GetValueOrDefault("clientId", null);
-                        var currentAuthorizationUrl = credData.Data.GetValueOrDefault("authorizationUrl", null);
-                        Trace.Info($"Current authorization url: {currentAuthorizationUrl}, new authorization url: {migratedAuthorizationUrl}");
-
-                        if (string.Equals(currentAuthorizationUrl, migratedAuthorizationUrl, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // We don't need to update credentials.
-                            Trace.Info("No needs to update authorization url");
-                            await Task.Delay(TimeSpan.FromMilliseconds(-1), token);
-                        }
-
-                        var keyManager = HostContext.GetService<IRSAKeyManager>();
-                        var signingCredentials = VssSigningCredentials.Create(() => keyManager.GetKey());
-
-                        var migratedClientCredential = new VssOAuthJwtBearerClientCredential(clientId, migratedAuthorizationUrl, signingCredentials);
-                        var migratedRunnerCredential = new VssOAuthCredential(new Uri(migratedAuthorizationUrl, UriKind.Absolute), VssOAuthGrant.ClientCredentials, migratedClientCredential);
-
-                        Trace.Info("Try connect service with Token Service OAuth endpoint.");
-                        var runnerServer = HostContext.CreateService<IRunnerServer>();
-                        await runnerServer.ConnectAsync(new Uri(_settings.ServerUrl), migratedRunnerCredential);
-                        await runnerServer.GetAgentPoolsAsync();
-                        Trace.Info($"Successfully connected service with new authorization url.");
-
-                        var migratedCredData = new CredentialData
-                        {
-                            Scheme = Constants.Configuration.OAuth,
-                            Data =
-                            {
-                                { "clientId", clientId },
-                                { "authorizationUrl", migratedAuthorizationUrl },
-                                { "oauthEndpointUrl", migratedAuthorizationUrl },
-                            },
-                        };
-
-                        _configStore.SaveMigratedCredential(migratedCredData);
-                        return migratedRunnerCredential;
-                    }
-                    else
-                    {
-                        Trace.Verbose("No authorization url updates");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Trace.Error("Fail to get/test new authorization url.");
-                    Trace.Error(ex);
-
-                    try
-                    {
-                        await _runnerServer.ReportRunnerAuthUrlErrorAsync(_settings.PoolId, _settings.AgentId, ex.ToString());
-                    }
-                    catch (Exception e)
-                    {
-                        // best effort
-                        Trace.Error("Fail to report the migration error");
-                        Trace.Error(e);
-                    }
-                }
             }
         }
     }

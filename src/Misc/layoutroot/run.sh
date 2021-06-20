@@ -26,25 +26,23 @@ if [[ "$1" == "localRun" ]]; then
 else
     "$DIR"/bin/Runner.Listener run $*
 
-# Return code 4 means the run once runner received an update message.
-# Sleep 5 seconds to wait for the update process finish and run the runner again.
+# Return code 3 means the run once runner received an update message.
+# Sleep 5 seconds to wait for the update process finish
     returnCode=$?
-    if [[ $returnCode == 4 ]]; then
+    if [[ $returnCode == 3 ]]; then
         if [ ! -x "$(command -v sleep)" ]; then
             if [ ! -x "$(command -v ping)" ]; then
                 COUNT="0"
                 while [[ $COUNT != 5000 ]]; do
-                    echo "SLEEP" >nul
+                    echo "SLEEP" > /dev/null
                     COUNT=$[$COUNT+1]
                 done
             else
-                ping -n 5 127.0.0.1 >nul
+                ping -c 5 127.0.0.1 > /dev/null
             fi
         else
-            sleep 5 >nul
+            sleep 5
         fi
-        
-        "$DIR"/bin/Runner.Listener run $*
     else
         exit $returnCode
     fi

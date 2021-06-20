@@ -23,6 +23,19 @@ namespace GitHub.Runner.Worker.Handlers
 
         public override void PrintActionDetails(ActionRunStage stage)
         {
+            // We don't want to display the internal workings if composite (similar/equivalent information can be found in debug)
+            void writeDetails(string message)
+            {
+                if (ExecutionContext.IsEmbedded)
+                {
+                    ExecutionContext.Debug(message);
+                }
+                else
+                {
+                    ExecutionContext.Output(message);
+                }
+            }
+
             if (stage == ActionRunStage.Post)
             {
                 throw new NotSupportedException("Script action should not have 'Post' job action.");
@@ -39,7 +52,7 @@ namespace GitHub.Runner.Worker.Handlers
                     firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                ExecutionContext.Output($"##[group]Run {firstLine}");
+                writeDetails(ExecutionContext.IsEmbedded ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
             }
             else
             {
@@ -50,20 +63,20 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (var line in multiLines)
             {
                 // Bright Cyan color
-                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
+                writeDetails($"\x1b[36;1m{line}\x1b[0m");
             }
 
             string argFormat;
             string shellCommand;
             string shellCommandPath = null;
             bool validateShellOnHost = !(StepHost is ContainerStepHost);
-            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
+            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
             string shell = null;
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
                 // TODO: figure out how defaults interact with template later
                 // for now, we won't check job.defaults if we are inside a template.
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     runDefaults.TryGetValue("shell", out shell);
                 }
@@ -109,23 +122,23 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (!string.IsNullOrEmpty(shellCommandPath))
             {
-                ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
+                writeDetails($"shell: {shellCommandPath} {argFormat}");
             }
             else
             {
-                ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
+                writeDetails($"shell: {shellCommand} {argFormat}");
             }
 
             if (this.Environment?.Count > 0)
             {
-                ExecutionContext.Output("env:");
+                writeDetails("env:");
                 foreach (var env in this.Environment)
                 {
-                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
+                    writeDetails($"  {env.Key}: {env.Value}");
                 }
             }
 
-            ExecutionContext.Output("##[endgroup]");
+            writeDetails(ExecutionContext.IsEmbedded ? "" : "##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)
@@ -151,9 +164,7 @@ namespace GitHub.Runner.Worker.Handlers
             string workingDirectory = null;
             if (!Inputs.TryGetValue("workingDirectory", out workingDirectory))
             {
-                // TODO: figure out how defaults interact with template later
-                // for now, we won't check job.defaults if we are inside a template.
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("working-directory", out workingDirectory))
                     {
@@ -167,9 +178,7 @@ namespace GitHub.Runner.Worker.Handlers
             string shell = null;
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
-                // TODO: figure out how defaults interact with template later
-                // for now, we won't check job.defaults if we are inside a template.
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("shell", out shell))
                     {
@@ -180,7 +189,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             var isContainerStepHost = StepHost is ContainerStepHost;
 
-            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.PrependPath.Reverse<string>());
+            string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
             string commandPath, argFormat, shellCommand;
             // Set up default command and arguments
             if (string.IsNullOrEmpty(shell))
@@ -232,7 +241,7 @@ namespace GitHub.Runner.Worker.Handlers
 #if OS_WINDOWS
             // Normalize Windows line endings
             contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
-            var encoding = ExecutionContext.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
+            var encoding = ExecutionContext.Global.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
                 ? Console.InputEncoding
                 : new UTF8Encoding(false);
 #else
@@ -285,7 +294,7 @@ namespace GitHub.Runner.Worker.Handlers
                                             requireExitCodeZero: false,
                                             outputEncoding: null,
                                             killProcessOnCancel: false,
-                                            inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
+                                            inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
                                             cancellationToken: ExecutionContext.CancellationToken);
 
                 // Error

@@ -40,7 +40,7 @@ Debian based OS (Debian, Ubuntu, Linux Mint)
 - libssl1.1, libssl1.0.2 or libssl1.0.0
 - libicu63, libicu60, libicu57 or libicu55
 
-Fedora based OS (Fedora, Redhat, Centos, Oracle Linux 7)
+Fedora based OS (Fedora, Red Hat Enterprise Linux, CentOS, Oracle Linux 7)
 
 - lttng-ust 
 - openssl-libs 

@@ -23,5 +23,7 @@
       <key>ACTIONS_RUNNER_SVC</key>
       <string>1</string>
     </dict>
+    <key>ProcessType</key>
+    <string>Interactive</string>
   </dict>
 </plist>

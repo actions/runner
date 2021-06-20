@@ -40,7 +40,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         /// <summary>
         /// Gets the maximum error message length before the message will be truncated.
         /// </summary>
-        public Int32 MaxErrorMessageLength => 500;
+        public Int32 MaxErrorMessageLength { get; set; } = 500;
 
         /// <summary>
         /// Gets the maximum number of errors that can be recorded when parsing a pipeline.
@@ -50,60 +50,6 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         public Int32 MaxEvents => 1000000; // 1 million
 
         public Int32 MaxResultSize { get; set; } = 10 * 1024 * 1024; // 10 mb
-
-        public DictionaryContextData EvaluateStepScopeInputs(
-            TemplateToken token,
-            DictionaryContextData contextData,
-            IList<IFunctionInfo> expressionFunctions)
-        {
-            var result = default(DictionaryContextData);
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData, expressionFunctions);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsScopeInputs, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("steps scope inputs");
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return result ?? new DictionaryContextData();
-        }
-
-        public DictionaryContextData EvaluateStepScopeOutputs(
-            TemplateToken token,
-            DictionaryContextData contextData,
-            IList<IFunctionInfo> expressionFunctions)
-        {
-            var result = default(DictionaryContextData);
-
-            if (token != null && token.Type != TokenType.Null)
-            {
-                var context = CreateContext(contextData, expressionFunctions);
-                try
-                {
-                    token = TemplateEvaluator.Evaluate(context, PipelineTemplateConstants.StepsScopeOutputs, token, 0, null, omitHeader: true);
-                    context.Errors.Check();
-                    result = token.ToContextData().AssertDictionary("steps scope outputs");
-                }
-                catch (Exception ex) when (!(ex is TemplateValidationException))
-                {
-                    context.Errors.Add(ex);
-                }
-
-                context.Errors.Check();
-            }
-
-            return result ?? new DictionaryContextData();
-        }
 
         public Boolean EvaluateStepContinueOnError(
             TemplateToken token,
@@ -332,6 +278,33 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
             return result;
         }
+
+        public TemplateToken EvaluateEnvironmentUrl(
+            TemplateToken token,
+            DictionaryContextData contextData,
+            IList<IFunctionInfo> expressionFunctions)
+        {
+            var result = default(TemplateToken);
+            if (token != null && token.Type != TokenType.Null)
+            {
+                var context = CreateContext(contextData, expressionFunctions);
+                try
+                {
+                    token = TemplateEvaluator.Evaluate(context, TemplateConstants.StringRunnerContextNoSecrets, token, 0, null, omitHeader: true);
+                    context.Errors.Check();
+                    result = token.AssertString("environment.url");
+                }
+                catch (Exception ex) when (!(ex is TemplateValidationException))
+                {
+                    context.Errors.Add(ex);
+                }
+
+                context.Errors.Check();
+            }
+
+            return result;
+        }
+
 
         public Dictionary<String, String> EvaluateJobDefaultsRun(
             TemplateToken token,

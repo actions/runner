@@ -46,7 +46,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Add Actions Runtime server info
-            var systemConnection = ExecutionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             Environment["ACTIONS_RUNTIME_URL"] = systemConnection.Url.AbsoluteUri;
             Environment["ACTIONS_RUNTIME_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
             if (systemConnection.Data.TryGetValue("CacheServerUrl", out var cacheUrl) && !string.IsNullOrEmpty(cacheUrl))
@@ -97,6 +97,9 @@ namespace GitHub.Runner.Worker.Handlers
             Encoding outputEncoding = null;
 #endif
 
+            // Remove environment variable that may cause conflicts with the node within the runner.
+            Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
+
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
@@ -113,7 +116,7 @@ namespace GitHub.Runner.Worker.Handlers
                                                 requireExitCodeZero: false,
                                                 outputEncoding: outputEncoding,
                                                 killProcessOnCancel: false,
-                                                inheritConsoleHandler: !ExecutionContext.Variables.Retain_Default_Encoding,
+                                                inheritConsoleHandler: !ExecutionContext.Global.Variables.Retain_Default_Encoding,
                                                 cancellationToken: ExecutionContext.CancellationToken);
 
                 // Wait for either the node exit or force finish through ##vso command

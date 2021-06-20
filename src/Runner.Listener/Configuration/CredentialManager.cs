@@ -13,7 +13,7 @@ namespace GitHub.Runner.Listener.Configuration
     public interface ICredentialManager : IRunnerService
     {
         ICredentialProvider GetCredentialProvider(string credType);
-        VssCredentials LoadCredentials(bool preferMigrated = true);
+        VssCredentials LoadCredentials();
     }
 
     public class CredentialManager : RunnerService, ICredentialManager
@@ -40,7 +40,7 @@ namespace GitHub.Runner.Listener.Configuration
             return creds;
         }
 
-        public VssCredentials LoadCredentials(bool preferMigrated = true)
+        public VssCredentials LoadCredentials()
         {
             IConfigurationStore store = HostContext.GetService<IConfigurationStore>();
 
@@ -50,14 +50,16 @@ namespace GitHub.Runner.Listener.Configuration
             }
 
             CredentialData credData = store.GetCredentials();
-
-            if (preferMigrated)
+            var migratedCred = store.GetMigratedCredentials();
+            if (migratedCred != null)
             {
-                var migratedCred = store.GetMigratedCredentials();
-                if (migratedCred != null)
-                {
-                    credData = migratedCred;
-                }
+                credData = migratedCred;
+
+                // Re-write .credentials with Token URL
+                store.SaveCredential(credData);
+
+                // Delete .credentials_migrated
+                store.DeleteMigratedCredential();
             }
 
             ICredentialProvider credProv = GetCredentialProvider(credData.Scheme);
@@ -67,6 +69,16 @@ namespace GitHub.Runner.Listener.Configuration
 
             return creds;
         }
+    }
+
+    [DataContract]
+    public sealed class GitHubRunnerRegisterToken
+    {
+        [DataMember(Name = "token")]
+        public string Token { get; set; }
+
+        [DataMember(Name = "expires_at")]
+        public string ExpiresAt { get; set; }
     }
 
     [DataContract]

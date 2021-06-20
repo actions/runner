@@ -8,7 +8,7 @@
 run-actions run scripts using a platform specific shell:
 `bash -eo pipefail` on non-windows, and `cmd.exe /c /d /s` on windows
 
-The `shell` option overwrites this to allow different flags or completely different shells/interpreters
+The `shell` option overrides this to allow different flags or completely different shells/interpreters
 
 A small example is:
 ```yml
@@ -84,7 +84,7 @@ powershell/pwsh
 - Users can always opt out by not using the builtins, and providing a shell option like: `pwsh -File {0}`, or `powershell -Command "& '{0}'"`, depending on need
 
 cmd
-- There doesnt seem to be a way to fully opt in to fail-fast behavior other than writing your script to check each error code and respond accordingly, so we cant actually provide that behavior by default, it will be completely up to the user to write this behavior into their script
+- There doesn't seem to be a way to fully opt in to fail-fast behavior other than writing your script to check each error code and respond accordingly, so we can't actually provide that behavior by default, it will be completely up to the user to write this behavior into their script
 - cmd.exe will exit (return the error code to the runner) with the errorlevel of the last program it executed. This is internally consistent with the previous default behavior (sh, pwsh) and is the cmd.exe default, so we keep that behavior
 
 ## Consequences

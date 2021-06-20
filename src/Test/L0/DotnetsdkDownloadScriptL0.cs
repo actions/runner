@@ -2,6 +2,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System;
 
 namespace GitHub.Runner.Common.Tests
 {
@@ -12,6 +13,12 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Runner")]
         public async Task EnsureDotnetsdkBashDownloadScriptUpToDate()
         {
+            if ((DateTime.UtcNow.Month - 1) % 3 != 0)
+            {
+                // Only check these script once a quater.
+                return;
+            }
+
             string shDownloadUrl = "https://dot.net/v1/dotnet-install.sh";
 
             using (HttpClient downloadClient = new HttpClient())
@@ -36,6 +43,12 @@ namespace GitHub.Runner.Common.Tests
         [Trait("Category", "Runner")]
         public async Task EnsureDotnetsdkPowershellDownloadScriptUpToDate()
         {
+            if ((DateTime.UtcNow.Month - 1) % 3 != 0)
+            {
+                // Only check these script once a quater.
+                return;
+            }
+
             string ps1DownloadUrl = "https://dot.net/v1/dotnet-install.ps1";
 
             using (HttpClient downloadClient = new HttpClient())

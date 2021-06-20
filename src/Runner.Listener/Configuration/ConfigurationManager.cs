@@ -4,7 +4,6 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
-using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +11,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace GitHub.Runner.Listener.Configuration
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(LoadSettings));
             if (!IsConfigured())
             {
-                throw new InvalidOperationException("Not configured");
+                throw new InvalidOperationException("Not configured. Run config.(sh/cmd) to configure the runner.");
             }
 
             RunnerSettings settings = _store.GetSettings();
@@ -92,9 +92,11 @@ namespace GitHub.Runner.Listener.Configuration
             _term.WriteSection("Authentication");
             while (true)
             {
-                // Get the URL
+                // When testing against a dev deployment of Actions Service, set this environment variable
+                var useDevActionsServiceUrl = Environment.GetEnvironmentVariable("USE_DEV_ACTIONS_SERVICE_URL");
                 var inputUrl = command.GetUrl();
-                if (inputUrl.Contains("codedev.ms", StringComparison.OrdinalIgnoreCase))
+                if (inputUrl.Contains("codedev.ms", StringComparison.OrdinalIgnoreCase)
+                    || useDevActionsServiceUrl != null)
                 {
                     runnerSettings.ServerUrl = inputUrl;
                     // Get the credentials
@@ -105,8 +107,8 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     runnerSettings.GitHubUrl = inputUrl;
-                    var githubToken = command.GetRunnerRegisterToken();
-                    GitHubAuthResult authResult = await GetTenantCredential(inputUrl, githubToken, Constants.RunnerEvent.Register);
+                    var registerToken = await GetRunnerTokenAsync(command, inputUrl, "registration");
+                    GitHubAuthResult authResult = await GetTenantCredential(inputUrl, registerToken, Constants.RunnerEvent.Register);
                     runnerSettings.ServerUrl = authResult.TenantUrl;
                     creds = authResult.ToVssCredentials();
                     Trace.Info("cred retrieved via GitHub auth");
@@ -115,7 +117,20 @@ namespace GitHub.Runner.Listener.Configuration
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
-                    runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
+                    runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || UrlUtil.IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
+
+                    // Warn if the Actions server url and GHES server url has different Host
+                    if (!runnerSettings.IsHostedServer)
+                    {
+                        // Example actionsServerUrl is https://my-ghes/_services/pipelines/[...]
+                        // Example githubServerUrl is https://my-ghes
+                        var actionsServerUrl = new Uri(runnerSettings.ServerUrl);
+                        var githubServerUrl = new Uri(runnerSettings.GitHubUrl);
+                        if (!string.Equals(actionsServerUrl.Authority, githubServerUrl.Authority, StringComparison.OrdinalIgnoreCase))
+                        {
+                            throw new InvalidOperationException($"GitHub Actions is not properly configured in GHES. GHES url: {runnerSettings.GitHubUrl}, Actions url: {runnerSettings.ServerUrl}.");
+                        }
+                    }
 
                     // Validate can connect.
                     await _runnerServer.ConnectAsync(new Uri(runnerSettings.ServerUrl), creds);
@@ -144,17 +159,34 @@ namespace GitHub.Runner.Listener.Configuration
 
             _term.WriteSection("Runner Registration");
 
-            //Get all the agent pools, and select the first private pool
+            // If we have more than one runner group available, allow the user to specify which one to be added into
+            string poolName = null;
+            TaskAgentPool agentPool = null;
             List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
-            TaskAgentPool agentPool = agentPools?.Where(x => x.IsHosted == false).FirstOrDefault();
+            TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
 
-            if (agentPool == null)
+            if (agentPools?.Where(x => !x.IsHosted).Count() > 1)
             {
-                throw new TaskAgentPoolNotFoundException($"Could not find any private pool. Contact support.");
+                poolName = command.GetRunnerGroupName(defaultPool?.Name);
+                _term.WriteLine();
+                agentPool = agentPools.Where(x => string.Equals(poolName, x.Name, StringComparison.OrdinalIgnoreCase) && !x.IsHosted).FirstOrDefault();
             }
             else
             {
-                Trace.Info("Found a private pool with id {1} and name {2}", agentPool.Id, agentPool.Name);
+                agentPool = defaultPool;
+            }
+
+            if (agentPool == null && poolName == null)
+            {
+                throw new TaskAgentPoolNotFoundException($"Could not find any self-hosted runner groups. Contact support.");
+            }
+            else if (agentPool == null && poolName != null)
+            {
+                throw new TaskAgentPoolNotFoundException($"Could not find any self-hosted runner group named \"{poolName}\".");
+            }
+            else
+            {
+                Trace.Info("Found a self-hosted runner group with id {1} and name {2}", agentPool.Id, agentPool.Name);
                 runnerSettings.PoolId = agentPool.Id;
                 runnerSettings.PoolName = agentPool.Name;
             }
@@ -195,7 +227,7 @@ namespace GitHub.Runner.Listener.Configuration
                     else if (command.Unattended)
                     {
                         // if not replace and it is unattended config.
-                        throw new TaskAgentExistsException($"Pool {runnerSettings.PoolId} already contains a runner with name {runnerSettings.AgentName}.");
+                        throw new TaskAgentExistsException($"A runner exists with the same name {runnerSettings.AgentName}.");
                     }
                 }
                 else
@@ -219,36 +251,11 @@ namespace GitHub.Runner.Listener.Configuration
             // Add Agent Id to settings
             runnerSettings.AgentId = agent.Id;
 
-            // respect the serverUrl resolve by server.
-            // in case of agent configured using collection url instead of account url.
-            string agentServerUrl;
-            if (agent.Properties.TryGetValidatedValue<string>("ServerUrl", out agentServerUrl) &&
-                !string.IsNullOrEmpty(agentServerUrl))
-            {
-                Trace.Info($"Agent server url resolve by server: '{agentServerUrl}'.");
-
-                // we need make sure the Schema/Host/Port component of the url remain the same.
-                UriBuilder inputServerUrl = new UriBuilder(runnerSettings.ServerUrl);
-                UriBuilder serverReturnedServerUrl = new UriBuilder(agentServerUrl);
-                if (Uri.Compare(inputServerUrl.Uri, serverReturnedServerUrl.Uri, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) != 0)
-                {
-                    inputServerUrl.Path = serverReturnedServerUrl.Path;
-                    Trace.Info($"Replace server returned url's scheme://host:port component with user input server url's scheme://host:port: '{inputServerUrl.Uri.AbsoluteUri}'.");
-                    runnerSettings.ServerUrl = inputServerUrl.Uri.AbsoluteUri;
-                }
-                else
-                {
-                    runnerSettings.ServerUrl = agentServerUrl;
-                }
-            }
-
             // See if the server supports our OAuth key exchange for credentials
             if (agent.Authorization != null &&
                 agent.Authorization.ClientId != Guid.Empty &&
                 agent.Authorization.AuthorizationUrl != null)
             {
-                UriBuilder configServerUrl = new UriBuilder(runnerSettings.ServerUrl);
-                UriBuilder oauthEndpointUrlBuilder = new UriBuilder(agent.Authorization.AuthorizationUrl);
                 var credentialData = new CredentialData
                 {
                     Scheme = Constants.Configuration.OAuth,
@@ -256,7 +263,7 @@ namespace GitHub.Runner.Listener.Configuration
                     {
                         { "clientId", agent.Authorization.ClientId.ToString("D") },
                         { "authorizationUrl", agent.Authorization.AuthorizationUrl.AbsoluteUri },
-                        { "oauthEndpointUrl", oauthEndpointUrlBuilder.Uri.AbsoluteUri },
+                        { "requireFipsCryptography", agent.Properties.GetValue("RequireFipsCryptography", false).ToString() }
                     },
                 };
 
@@ -367,8 +374,8 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                     else
                     {
-                        var githubToken = command.GetRunnerDeletionToken();
-                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, githubToken, Constants.RunnerEvent.Remove);
+                        var deletionToken = await GetRunnerTokenAsync(command, settings.GitHubUrl, "remove");
+                        GitHubAuthResult authResult = await GetTenantCredential(settings.GitHubUrl, deletionToken, Constants.RunnerEvent.Remove);
                         creds = authResult.ToVssCredentials();
                         Trace.Info("cred retrieved via GitHub auth");
                     }
@@ -462,7 +469,7 @@ namespace GitHub.Runner.Listener.Configuration
             // update should replace the existing labels
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
-            
+
             agent.Labels.Clear();
 
             agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
@@ -473,7 +480,7 @@ namespace GitHub.Runner.Listener.Configuration
             {
                 agent.Labels.Add(new AgentLabel(userLabel, LabelType.User));
             }
-            
+
             return agent;
         }
 
@@ -502,18 +509,107 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private bool IsHostedServer(UriBuilder gitHubUrl)
+        private async Task<string> GetRunnerTokenAsync(CommandSettings command, string githubUrl, string tokenType)
         {
-            return string.Equals(gitHubUrl.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(gitHubUrl.Host, "www.github.com", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(gitHubUrl.Host, "github.localhost", StringComparison.OrdinalIgnoreCase);
+            var githubPAT = command.GetGitHubPersonalAccessToken();
+            var runnerToken = string.Empty;
+            if (!string.IsNullOrEmpty(githubPAT))
+            {
+                Trace.Info($"Retriving runner {tokenType} token using GitHub PAT.");
+                var jitToken = await GetJITRunnerTokenAsync(githubUrl, githubPAT, tokenType);
+                Trace.Info($"Retrived runner {tokenType} token is good to {jitToken.ExpiresAt}.");
+                HostContext.SecretMasker.AddValue(jitToken.Token);
+                runnerToken = jitToken.Token;
+            }
+
+            if (string.IsNullOrEmpty(runnerToken))
+            {
+                if (string.Equals("registration", tokenType, StringComparison.OrdinalIgnoreCase))
+                {
+                    runnerToken = command.GetRunnerRegisterToken();
+                }
+                else
+                {
+                    runnerToken = command.GetRunnerDeletionToken();
+                }
+            }
+
+            return runnerToken;
+        }
+
+        private async Task<GitHubRunnerRegisterToken> GetJITRunnerTokenAsync(string githubUrl, string githubToken, string tokenType)
+        {
+            var githubApiUrl = "";
+            var gitHubUrlBuilder = new UriBuilder(githubUrl);
+            var path = gitHubUrlBuilder.Path.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
+            if (path.Length == 1)
+            {
+                // org runner
+                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/orgs/{path[0]}/actions/runners/{tokenType}-token";
+                }
+                else
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/orgs/{path[0]}/actions/runners/{tokenType}-token";
+                }
+            }
+            else if (path.Length == 2)
+            {
+                // repo or enterprise runner.
+                var repoScope = "repos/";
+                if (string.Equals(path[0], "enterprises", StringComparison.OrdinalIgnoreCase))
+                {
+                    repoScope = "";
+                }
+
+                if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/{repoScope}{path[0]}/{path[1]}/actions/runners/{tokenType}-token";
+                }
+                else
+                {
+                    githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/{repoScope}{path[0]}/{path[1]}/actions/runners/{tokenType}-token";
+                }
+            }
+            else
+            {
+                throw new ArgumentException($"'{githubUrl}' should point to an org or repository.");
+            }
+
+            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+            using (var httpClient = new HttpClient(httpClientHandler))
+            {
+                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
+                HostContext.SecretMasker.AddValue(base64EncodingToken);
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
+                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
+
+                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                    var jsonResponse = await response.Content.ReadAsStringAsync();
+                    return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
+                }
+                else
+                {
+                    _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                    var errorResponse = await response.Content.ReadAsStringAsync();
+                    _term.WriteError(errorResponse);
+                    response.EnsureSuccessStatusCode();
+                    return null;
+                }
+            }
         }
 
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken, string runnerEvent)
         {
             var githubApiUrl = "";
             var gitHubUrlBuilder = new UriBuilder(githubUrl);
-            if (IsHostedServer(gitHubUrlBuilder))
+            if (UrlUtil.IsHostedServer(gitHubUrlBuilder))
             {
                 githubApiUrl = $"{gitHubUrlBuilder.Scheme}://api.{gitHubUrlBuilder.Host}/actions/runner-registration";
             }

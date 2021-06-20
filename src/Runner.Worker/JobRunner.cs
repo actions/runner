@@ -5,21 +5,13 @@ using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
-using System.Text;
-using System.IO.Compression;
-using System.Diagnostics;
-using Newtonsoft.Json.Linq;
-using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.DistributedTask.ObjectTemplating;
 
 namespace GitHub.Runner.Worker
 {
@@ -107,7 +99,7 @@ namespace GitHub.Runner.Worker
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Failed);
                 }
 
-                if (jobContext.WriteDebug)
+                if (jobContext.Global.WriteDebug)
                 {
                     jobContext.SetRunnerContext("debug", "1");
                 }
@@ -121,13 +113,6 @@ namespace GitHub.Runner.Worker
                 // Setup TEMP directories
                 _tempDirectoryManager = HostContext.GetService<ITempDirectoryManager>();
                 _tempDirectoryManager.InitializeTempDirectory(jobContext);
-
-                // // Expand container properties
-                // jobContext.Container?.ExpandProperties(jobContext.Variables);
-                // foreach (var sidecar in jobContext.SidecarContainers)
-                // {
-                //     sidecar.ExpandProperties(jobContext.Variables);
-                // }
 
                 // Get the job extension.
                 Trace.Info("Getting job extension.");
@@ -224,14 +209,14 @@ namespace GitHub.Runner.Worker
             // Clean TEMP after finish process jobserverqueue, since there might be a pending fileupload still use the TEMP dir.
             _tempDirectoryManager?.CleanupTempDirectory();
 
-            if (!jobContext.Features.HasFlag(PlanFeatures.JobCompletedPlanEvent))
+            if (!jobContext.Global.Features.HasFlag(PlanFeatures.JobCompletedPlanEvent))
             {
                 Trace.Info($"Skip raise job completed event call from worker because Plan version is {message.Plan.Version}");
                 return result;
             }
 
             Trace.Info("Raising job completed event.");
-            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs);
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment);
 
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -251,6 +236,12 @@ namespace GitHub.Runner.Worker
                 catch (TaskOrchestrationPlanSecurityException ex)
                 {
                     Trace.Error($"TaskOrchestrationPlanSecurityException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
+                    Trace.Error(ex);
+                    return TaskResult.Failed;
+                }
+                catch (TaskOrchestrationPlanTerminatedException ex)
+                {
+                    Trace.Error($"TaskOrchestrationPlanTerminatedException received, while attempting to raise JobCompletedEvent for job {message.JobId}.");
                     Trace.Error(ex);
                     return TaskResult.Failed;
                 }

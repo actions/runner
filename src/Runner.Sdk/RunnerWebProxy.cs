@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -71,7 +71,7 @@ namespace GitHub.Runner.Sdk
 
             if (!string.IsNullOrEmpty(httpProxyAddress) && Uri.TryCreate(httpProxyAddress, UriKind.Absolute, out var proxyHttpUri))
             {
-                _httpProxyAddress = proxyHttpUri.AbsoluteUri;
+                _httpProxyAddress = proxyHttpUri.OriginalString;
 
                 // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
                 Environment.SetEnvironmentVariable("HTTP_PROXY", _httpProxyAddress);
@@ -101,7 +101,7 @@ namespace GitHub.Runner.Sdk
 
             if (!string.IsNullOrEmpty(httpsProxyAddress) && Uri.TryCreate(httpsProxyAddress, UriKind.Absolute, out var proxyHttpsUri))
             {
-                _httpsProxyAddress = proxyHttpsUri.AbsoluteUri;
+                _httpsProxyAddress = proxyHttpsUri.OriginalString;
 
                 // Set both environment variables since there are tools support both casing (curl, wget) and tools support only one casing (docker)
                 Environment.SetEnvironmentVariable("HTTPS_PROXY", _httpsProxyAddress);

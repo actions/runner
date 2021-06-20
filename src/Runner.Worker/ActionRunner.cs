@@ -94,6 +94,13 @@ namespace GitHub.Runner.Worker
             if (handlerData.HasPost && (Stage == ActionRunStage.Pre || Stage == ActionRunStage.Main))
             {
                 string postDisplayName = $"Post {this.DisplayName}";
+                if (Stage == ActionRunStage.Pre &&
+                    this.DisplayName.StartsWith("Pre ", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Trim the leading `Pre ` from the display name.
+                    // Otherwise, we will get `Post Pre xxx` as DisplayName for the Post step.
+                    postDisplayName = $"Post {this.DisplayName.Substring("Pre ".Length)}";
+                }
                 var repositoryReference = Action.Reference as RepositoryPathReference;
                 var pathString = string.IsNullOrEmpty(repositoryReference.Path) ? string.Empty : $"/{repositoryReference.Path}";
                 var repoString = string.IsNullOrEmpty(repositoryReference.Ref) ? $"{repositoryReference.Name}{pathString}" :
@@ -128,23 +135,42 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.SetGitHubContext("event_path", workflowFile);
             }
 
+            // Set GITHUB_ACTION_REPOSITORY if this Action is from a repository
+            if (Action.Reference is Pipelines.RepositoryPathReference repoPathReferenceAction &&
+                !string.Equals(repoPathReferenceAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                ExecutionContext.SetGitHubContext("action_repository", repoPathReferenceAction.Name);
+                ExecutionContext.SetGitHubContext("action_ref", repoPathReferenceAction.Ref);
+            }
+            else
+            {
+                ExecutionContext.SetGitHubContext("action_repository", null);
+                ExecutionContext.SetGitHubContext("action_ref", null);
+            }
+
             // Setup container stephost for running inside the container.
-            if (ExecutionContext.Container != null)
+            if (ExecutionContext.Global.Container != null)
             {
                 // Make sure required container is already created.
-                ArgUtil.NotNullOrEmpty(ExecutionContext.Container.ContainerId, nameof(ExecutionContext.Container.ContainerId));
+                ArgUtil.NotNullOrEmpty(ExecutionContext.Global.Container.ContainerId, nameof(ExecutionContext.Global.Container.ContainerId));
                 var containerStepHost = HostContext.CreateService<IContainerStepHost>();
-                containerStepHost.Container = ExecutionContext.Container;
+                containerStepHost.Container = ExecutionContext.Global.Container;
                 stepHost = containerStepHost;
             }
+
+            // Setup File Command Manager
+            var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
+            fileCommandManager.InitializeFiles(ExecutionContext, null);
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
 
+            var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> input in inputs)
             {
+                userInputs.Add(input.Key);
                 string message = "";
                 if (definition.Data?.Deprecated?.TryGetValue(input.Key, out message) == true)
                 {
@@ -152,17 +178,44 @@ namespace GitHub.Runner.Worker
                 }
             }
 
+            var validInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (handlerData.ExecutionType == ActionExecutionType.Container)
+            {
+                // container action always accept 'entryPoint' and 'args' as inputs
+                // https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepswithargs
+                validInputs.Add("entryPoint");
+                validInputs.Add("args");
+            }
             // Merge the default inputs from the definition
             if (definition.Data?.Inputs != null)
             {
                 var manifestManager = HostContext.GetService<IActionManifestManager>();
-                foreach (var input in (definition.Data?.Inputs))
+                foreach (var input in definition.Data.Inputs)
                 {
                     string key = input.Key.AssertString("action input name").Value;
+                    validInputs.Add(key);
                     if (!inputs.ContainsKey(key))
                     {
                         inputs[key] = manifestManager.EvaluateDefaultInput(ExecutionContext, key, input.Value);
                     }
+                }
+            }
+
+            // Validate inputs only for actions with action.yml
+            if (Action.Reference.Type == Pipelines.ActionSourceType.Repository)
+            {
+                var unexpectedInputs = new List<string>();
+                foreach (var input in userInputs)
+                {
+                    if (!validInputs.Contains(input))
+                    {
+                        unexpectedInputs.Add(input);
+                    }
+                }
+
+                if (unexpectedInputs.Count > 0)
+                {
+                    ExecutionContext.Warning($"Unexpected input(s) '{string.Join("', '", unexpectedInputs)}', valid inputs are ['{string.Join("', '", validInputs)}']");
                 }
             }
 
@@ -195,14 +248,22 @@ namespace GitHub.Runner.Worker
                             handlerData,
                             inputs,
                             environment,
-                            ExecutionContext.Variables,
+                            ExecutionContext.Global.Variables,
                             actionDirectory: definition.Directory);
 
             // Print out action details
             handler.PrintActionDetails(Stage);
 
             // Run the task.
-            await handler.RunAsync(Stage);
+            try
+            {
+                await handler.RunAsync(Stage);
+            }
+            finally
+            {
+                fileCommandManager.ProcessFiles(ExecutionContext, ExecutionContext.Global.Container);
+            }
+
         }
 
         public bool TryEvaluateDisplayName(DictionaryContextData contextData, IExecutionContext context)

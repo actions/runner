@@ -318,7 +318,12 @@ namespace GitHub.Runner.Sdk
                 }
             }
 
-            using (var registration = cancellationToken.Register(async () => await CancelAndKillProcessTree(killProcessOnCancel)))
+            var cancellationFinished = new TaskCompletionSource<bool>();
+            using (var registration = cancellationToken.Register(async () =>
+            {
+                await CancelAndKillProcessTree(killProcessOnCancel);
+                cancellationFinished.TrySetResult(true);
+            }))
             {
                 Trace.Info($"Process started with process id {_proc.Id}, waiting for process exit.");
                 while (true)
@@ -340,6 +345,13 @@ namespace GitHub.Runner.Sdk
                 // Just in case there was some pending output when the process shut down go ahead and check the
                 // data buffers one last time before returning
                 ProcessOutput();
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    // Ensure cancellation also finish on the cancellationToken.Register thread.
+                    await cancellationFinished.Task;
+                    Trace.Info($"Process Cancellation finished.");
+                }
 
                 Trace.Info($"Finished process {_proc.Id} with exit code {_proc.ExitCode}, and elapsed time {_stopWatch.Elapsed}.");
             }

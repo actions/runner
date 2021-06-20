@@ -21,7 +21,7 @@ namespace GitHub.Runner.Worker
             }
             set
             {
-                this["status"] = new StringContextData(value.ToString());
+                this["status"] = new StringContextData(value.ToString().ToLowerInvariant());
             }
         }
 

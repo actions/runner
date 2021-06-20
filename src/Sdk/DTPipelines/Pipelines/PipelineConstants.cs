@@ -94,5 +94,12 @@ namespace GitHub.DistributedTask.Pipelines
             public static readonly String Resources = "resources";
             public static readonly String All = "all";
         }
+
+        public static class ScriptStepInputs
+        {
+            public static readonly String Script = "script";
+            public static readonly String WorkingDirectory = "workingDirectory";
+            public static readonly String Shell = "shell";
+        }
     }
 }

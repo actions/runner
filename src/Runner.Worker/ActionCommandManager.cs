@@ -1,4 +1,5 @@
 ﻿using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
@@ -74,11 +75,13 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
-            // process action command in serialize order.
+            // Serialize order
             lock (_commandSerializeLock)
             {
+                // Currently stopped
                 if (_stopProcessCommand)
                 {
+                    // Resume token
                     if (!string.IsNullOrEmpty(_stopToken) &&
                              string.Equals(actionCommand.Command, _stopToken, StringComparison.OrdinalIgnoreCase))
                     {
@@ -95,8 +98,10 @@ namespace GitHub.Runner.Worker
                         return false;
                     }
                 }
+                // Currently processing
                 else
                 {
+                    // Stop command
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
                         context.Output(input);
@@ -106,6 +111,7 @@ namespace GitHub.Runner.Worker
                         _registeredCommands.Add(_stopToken);
                         return true;
                     }
+                    // Found command
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
                     {
                         if (context.EchoOnActionCommand && !extension.OmitEcho)
@@ -125,6 +131,7 @@ namespace GitHub.Runner.Worker
                             context.CommandResult = TaskResult.Failed;
                         }
                     }
+                    // Command not found
                     else
                     {
                         context.Warning($"Can't find command extension for ##[{actionCommand.Command}.command].");
@@ -183,12 +190,49 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
+            var allowUnsecureCommands = false;
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
+
+            // Apply environment from env context, env context contains job level env and action's env block
+#if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
+            if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            {
+                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
+            }
+
+            if (!allowUnsecureCommands)
+            {
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
+            }
+
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
                 throw new Exception("Required field 'name' is missing in ##[set-env] command.");
             }
 
-            context.EnvironmentVariables[envName] = command.Data;
+
+            foreach (var blocked in _setEnvBlockList)
+            {
+                if (string.Equals(blocked, envName, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Log Telemetry and let user know they shouldn't do this
+                    var issue = new Issue()
+                    {
+                        Type = IssueType.Error,
+                        Message = $"Can't update {blocked} environment variable using ::set-env:: command."
+                    };
+                    issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
+                    context.AddIssue(issue);
+
+                    return;
+                }
+            }
+
+            context.Global.EnvironmentVariables[envName] = command.Data;
             context.SetEnvContext(envName, command.Data);
             context.Debug($"{envName}='{command.Data}'");
         }
@@ -197,6 +241,11 @@ namespace GitHub.Runner.Worker
         {
             public const String Name = "name";
         }
+
+        private string[] _setEnvBlockList = 
+        {
+            "NODE_OPTIONS"
+        };
     }
 
     public sealed class SetOutputCommandExtension : RunnerService, IActionCommandExtension
@@ -281,10 +330,29 @@ namespace GitHub.Runner.Worker
         public Type ExtensionType => typeof(IActionCommandExtension);
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
-        {
+        {          
+            var allowUnsecureCommands = false;
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
+
+            // Apply environment from env context, env context contains job level env and action's env block
+#if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
+            if (!allowUnsecureCommands && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedCommands))
+            {
+                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedCommands].ToString(), out allowUnsecureCommands);
+            }
+
+            if (!allowUnsecureCommands)
+            {
+                throw new Exception(String.Format(Constants.Runner.UnsupportedCommandMessageDisabled, this.Command));
+            }
+
             ArgUtil.NotNullOrEmpty(command.Data, "path");
-            context.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
-            context.PrependPath.Add(command.Data);
+            context.Global.PrependPath.RemoveAll(x => string.Equals(x, command.Data, StringComparison.CurrentCulture));
+            context.Global.PrependPath.Add(command.Data);
         }
     }
 
@@ -486,7 +554,10 @@ namespace GitHub.Runner.Worker
 
             foreach (var property in command.Properties)
             {
-                issue.Data[property.Key] = property.Value;
+                if (!string.Equals(property.Key, Constants.Runner.InternalTelemetryIssueDataKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    issue.Data[property.Key] = property.Value;
+                }
             }
 
             context.AddIssue(issue);

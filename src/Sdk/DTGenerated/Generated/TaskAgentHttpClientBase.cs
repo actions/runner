@@ -587,6 +587,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="packageType"></param>
         /// <param name="platform"></param>
         /// <param name="version"></param>
+        /// <param name="includeToken"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -594,6 +595,7 @@ namespace GitHub.DistributedTask.WebApi
             string packageType,
             string platform,
             string version,
+            bool? includeToken = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -601,11 +603,18 @@ namespace GitHub.DistributedTask.WebApi
             Guid locationId = new Guid("8ffcd551-079c-493a-9c02-54346299d144");
             object routeValues = new { packageType = packageType, platform = platform, version = version };
 
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+            if (includeToken != null)
+            {
+                queryParams.Add("includeToken", includeToken.Value.ToString());
+            }
+
             return SendAsync<PackageMetadata>(
                 httpMethod,
                 locationId,
                 routeValues: routeValues,
                 version: new ApiResourceVersion(5.1, 2),
+                queryParameters: queryParams,
                 userState: userState,
                 cancellationToken: cancellationToken);
         }
@@ -616,6 +625,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="packageType"></param>
         /// <param name="platform"></param>
         /// <param name="top"></param>
+        /// <param name="includeToken"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -623,6 +633,7 @@ namespace GitHub.DistributedTask.WebApi
             string packageType,
             string platform = null,
             int? top = null,
+            bool? includeToken = null,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -634,6 +645,10 @@ namespace GitHub.DistributedTask.WebApi
             if (top != null)
             {
                 queryParams.Add("$top", top.Value.ToString(CultureInfo.InvariantCulture));
+            }
+            if (includeToken != null)
+            {
+                queryParams.Add("includeToken", includeToken.Value.ToString());
             }
 
             return SendAsync<List<PackageMetadata>>(

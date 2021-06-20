@@ -1,19 +1,18 @@
-﻿using GitHub.Runner.Common.Util;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Net.Http;
-using System.Diagnostics.Tracing;
 using GitHub.DistributedTask.Logging;
-using System.Net.Http.Headers;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
@@ -85,10 +84,12 @@ namespace GitHub.Runner.Common
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.CommandLineArgumentEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.XmlDataEscape);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
 
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))
@@ -614,9 +615,8 @@ namespace GitHub.Runner.Common
     {
         public static HttpClientHandler CreateHttpClientHandler(this IHostContext context)
         {
-            HttpClientHandler clientHandler = new HttpClientHandler();
-            clientHandler.Proxy = context.WebProxy;
-            return clientHandler;
+            var handlerFactory = context.GetService<IHttpClientHandlerFactory>();
+            return handlerFactory.CreateClientHandler(context.WebProxy);
         }
     }
 

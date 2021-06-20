@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System;
@@ -37,7 +37,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
 
-            var dockerManger = HostContext.GetService<IDockerCommandManager>();
+            var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
@@ -49,10 +49,18 @@ namespace GitHub.Runner.Worker.Handlers
                 // ensure docker file exist
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
-                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
 
-                var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(ExecutionContext, ExecutionContext.GetGitHubContext("workspace"), Directory.GetParent(dockerFile).FullName, imageName);
+                ExecutionContext.Output($"##[group]Building docker image");
+                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+                var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                var buildExitCode = await dockerManager.DockerBuild(
+                    ExecutionContext,
+                    ExecutionContext.GetGitHubContext("workspace"),
+                    dockerFile,
+                    Directory.GetParent(dockerFile).FullName,
+                    imageName);
+                ExecutionContext.Output("##[endgroup]");
+
                 if (buildExitCode != 0)
                 {
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
@@ -62,7 +70,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // run container
-            var container = new ContainerInfo()
+            var container = new ContainerInfo(HostContext)
             {
                 ContainerImage = Data.Image,
                 ContainerName = ExecutionContext.Id.ToString("N"),
@@ -153,16 +161,21 @@ namespace GitHub.Runner.Worker.Handlers
             Directory.CreateDirectory(tempHomeDirectory);
             this.Environment["HOME"] = tempHomeDirectory;
 
+            var tempFileCommandDirectory = Path.Combine(tempDirectory, "_runner_file_commands");
+            ArgUtil.Directory(tempFileCommandDirectory, nameof(tempFileCommandDirectory));
+
             var tempWorkflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
             container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
             container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
             container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
+            container.MountVolumes.Add(new MountVolume(tempFileCommandDirectory, "/github/file_commands"));
             container.MountVolumes.Add(new MountVolume(defaultWorkingDirectory, "/github/workspace"));
 
             container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
             container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
+            container.AddPathTranslateMapping(tempFileCommandDirectory, "/github/file_commands");
             container.AddPathTranslateMapping(defaultWorkingDirectory, "/github/workspace");
 
             container.ContainerWorkDirectory = "/github/workspace";
@@ -180,7 +193,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Add Actions Runtime server info
-            var systemConnection = ExecutionContext.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
             Environment["ACTIONS_RUNTIME_URL"] = systemConnection.Url.AbsoluteUri;
             Environment["ACTIONS_RUNTIME_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
             if (systemConnection.Data.TryGetValue("CacheServerUrl", out var cacheUrl) && !string.IsNullOrEmpty(cacheUrl))
@@ -196,7 +209,7 @@ namespace GitHub.Runner.Worker.Handlers
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             {
-                var runExitCode = await dockerManger.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
+                var runExitCode = await dockerManager.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
                 ExecutionContext.Debug($"Docker Action run completed with exit code {runExitCode}");
                 if (runExitCode != 0)
                 {

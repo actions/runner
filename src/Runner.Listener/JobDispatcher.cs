@@ -240,6 +240,15 @@ namespace GitHub.Runner.Listener
                 {
                     request = await runnerServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
                 }
+                catch (TaskAgentJobNotFoundException ex)
+                {
+                    Trace.Error($"Catch job-not-found exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
+                    Trace.Error(ex);
+                    jobDispatch.WorkerCancellationTokenSource.Cancel();
+                    // make sure worker process exit before we return, otherwise we might leave orphan worker process behind.
+                    await jobDispatch.WorkerDispatch;
+                    return;
+                }
                 catch (Exception ex)
                 {
                     // we can't even query for the jobrequest from server, something totally busted, stop runner/worker.
@@ -858,7 +867,6 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        // TODO: We need send detailInfo back to DT in order to add an issue for the job
         private async Task CompleteJobRequestAsync(int poolId, Pipelines.AgentJobRequestMessage message, Guid lockToken, TaskResult result, string detailInfo = null)
         {
             Trace.Entering();
@@ -952,8 +960,10 @@ namespace GitHub.Runner.Listener
                 ArgUtil.NotNull(timeline, nameof(timeline));
                 TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                 ArgUtil.NotNull(jobRecord, nameof(jobRecord));
+                var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
+                unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
                 jobRecord.ErrorCount++;
-                jobRecord.Issues.Add(new Issue() { Type = IssueType.Error, Message = errorMessage });
+                jobRecord.Issues.Add(unhandledExceptionIssue);
                 await jobServer.UpdateTimelineRecordsAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, new TimelineRecord[] { jobRecord }, CancellationToken.None);
             }
             catch (Exception ex)

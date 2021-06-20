@@ -203,6 +203,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             // Setup the execution context.
             _ec = new Mock<IExecutionContext>();
+            _ec.Setup(x => x.Global).Returns(new GlobalContext());
 
             GitHubContext githubContext = new GitHubContext();
             _ec.Setup(x => x.GetGitHubContext("repository")).Returns("actions/runner");

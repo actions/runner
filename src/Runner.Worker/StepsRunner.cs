@@ -66,11 +66,11 @@ namespace GitHub.Runner.Worker
                 }
 
                 var step = jobContext.JobSteps.Dequeue();
-                var nextStep = jobContext.JobSteps.Count > 0 ? jobContext.JobSteps.Peek() : null;
 
                 Trace.Info($"Processing step: DisplayName='{step.DisplayName}'");
                 ArgUtil.NotNull(step.ExecutionContext, nameof(step.ExecutionContext));
-                ArgUtil.NotNull(step.ExecutionContext.Variables, nameof(step.ExecutionContext.Variables));
+                ArgUtil.NotNull(step.ExecutionContext.Global, nameof(step.ExecutionContext.Global));
+                ArgUtil.NotNull(step.ExecutionContext.Global.Variables, nameof(step.ExecutionContext.Global.Variables));
 
                 // Start
                 step.ExecutionContext.Start();
@@ -82,28 +82,30 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
-                // Initialize scope
-                if (InitializeScope(step, scopeInputs))
-                {
-                    // Populate env context for each step
-                    Trace.Info("Initialize Env context for step");
+                // Expression values
+                step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
 #if OS_WINDOWS
-                    var envContext = new DictionaryContextData();
+                var envContext = new DictionaryContextData();
 #else
-                    var envContext = new CaseSensitiveDictionaryContextData();
+                var envContext = new CaseSensitiveDictionaryContextData();
 #endif
-                    step.ExecutionContext.ExpressionValues["env"] = envContext;
-                    foreach (var pair in step.ExecutionContext.EnvironmentVariables)
-                    {
-                        envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-                    }
+                step.ExecutionContext.ExpressionValues["env"] = envContext;
 
-                    if (step is IActionRunner actionStep)
-                    {
-                        // Set GITHUB_ACTION
-                        step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+                // Merge global env
+                foreach (var pair in step.ExecutionContext.Global.EnvironmentVariables)
+                {
+                    envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
+                }
 
-                        // Evaluate and merge action's env block to env context
+                bool evaluateStepEnvFailed = false;
+                if (step is IActionRunner actionStep)
+                {
+                    // Set GITHUB_ACTION
+                    step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+
+                    try
+                    {
+                        // Evaluate and merge step env
                         var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                         var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
                         foreach (var env in actionEnvironment)
@@ -111,7 +113,18 @@ namespace GitHub.Runner.Worker
                             envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        // Fail the step since there is an evaluate error
+                        Trace.Info("Caught exception from expression for step.env");
+                        evaluateStepEnvFailed = true;
+                        step.ExecutionContext.Error(ex);
+                        CompleteStep(step, TaskResult.Failed);
+                    }
+                }
 
+                if (!evaluateStepEnvFailed)
+                {
                     try
                     {
                         // Register job cancellation call back only if job cancellation token not been fire before each step run
@@ -120,7 +133,7 @@ namespace GitHub.Runner.Worker
                             // Test the condition again. The job was canceled after the condition was originally evaluated.
                             jobCancelRegister = jobContext.CancellationToken.Register(() =>
                             {
-                                // mark job as cancelled
+                                // Mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
                                 jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
 
@@ -141,7 +154,7 @@ namespace GitHub.Runner.Worker
                                     }
                                     catch (Exception ex)
                                     {
-                                        // Cancel the step since we get exception while re-evaluate step condition.
+                                        // Cancel the step since we get exception while re-evaluate step condition
                                         Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
                                         step.ExecutionContext.Error(ex);
                                     }
@@ -149,7 +162,7 @@ namespace GitHub.Runner.Worker
 
                                 if (!conditionReTestResult)
                                 {
-                                    // Cancel the step.
+                                    // Cancel the step
                                     Trace.Info("Cancel current running step.");
                                     step.ExecutionContext.CancelToken();
                                 }
@@ -159,13 +172,13 @@ namespace GitHub.Runner.Worker
                         {
                             if (jobContext.Result != TaskResult.Canceled)
                             {
-                                // mark job as cancelled
+                                // Mark job as cancelled
                                 jobContext.Result = TaskResult.Canceled;
                                 jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
                             }
                         }
 
-                        // Evaluate condition.
+                        // Evaluate condition
                         step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
                         var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
                         var conditionResult = false;
@@ -190,24 +203,23 @@ namespace GitHub.Runner.Worker
                             }
                         }
 
-                        // no evaluate error but condition is false
                         if (!conditionResult && conditionEvaluateError == null)
                         {
-                            // Condition == false
+                            // Condition is false
                             Trace.Info("Skipping step due to condition evaluation.");
-                            CompleteStep(step, nextStep, TaskResult.Skipped, resultCode: conditionTraceWriter.Trace);
+                            CompleteStep(step, TaskResult.Skipped, resultCode: conditionTraceWriter.Trace);
                         }
                         else if (conditionEvaluateError != null)
                         {
-                            // fail the step since there is an evaluate error.
+                            // Condition error
                             step.ExecutionContext.Error(conditionEvaluateError);
-                            CompleteStep(step, nextStep, TaskResult.Failed);
+                            CompleteStep(step, TaskResult.Failed);
                         }
                         else
                         {
-                            // Run the step.
+                            // Run the step
                             await RunStepAsync(step, jobContext.CancellationToken);
-                            CompleteStep(step, nextStep);
+                            CompleteStep(step);
                         }
                     }
                     finally
@@ -220,7 +232,7 @@ namespace GitHub.Runner.Worker
                     }
                 }
 
-                // Update the job result.
+                // Update the job result
                 if (step.ExecutionContext.Result == TaskResult.Failed)
                 {
                     Trace.Info($"Update job result with current step result '{step.ExecutionContext.Result}'.");
@@ -246,7 +258,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.UpdateTimelineRecordDisplayName(actionRunner.DisplayName);
             }
 
-            // Start the step.
+            // Start the step
             Trace.Info("Starting the step.");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
 
@@ -270,40 +282,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.SetTimeout(timeout);
             }
 
-#if OS_WINDOWS
-            try
-            {
-                if (Console.InputEncoding.CodePage != 65001)
-                {
-                    using (var p = HostContext.CreateService<IProcessInvoker>())
-                    {
-                        // Use UTF8 code page
-                        int exitCode = await p.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                                                fileName: WhichUtil.Which("chcp", true, Trace),
-                                                arguments: "65001",
-                                                environment: null,
-                                                requireExitCodeZero: false,
-                                                outputEncoding: null,
-                                                killProcessOnCancel: false,
-                                                redirectStandardIn: null,
-                                                inheritConsoleHandler: true,
-                                                cancellationToken: step.ExecutionContext.CancellationToken);
-                        if (exitCode == 0)
-                        {
-                            Trace.Info("Successfully returned to code page 65001 (UTF8)");
-                        }
-                        else
-                        {
-                            Trace.Warning($"'chcp 65001' failed with exit code {exitCode}");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.Warning($"'chcp 65001' failed with exception {ex.Message}");
-            }
-#endif
+            await EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
             try
             {
@@ -320,7 +299,7 @@ namespace GitHub.Runner.Worker
                 }
                 else
                 {
-                    // Log the exception and cancel the step.
+                    // Log the exception and cancel the step
                     Trace.Error($"Caught cancellation exception from step: {ex}");
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Result = TaskResult.Canceled;
@@ -328,7 +307,7 @@ namespace GitHub.Runner.Worker
             }
             catch (Exception ex)
             {
-                // Log the error and fail the step.
+                // Log the error and fail the step
                 Trace.Error($"Caught exception from step: {ex}");
                 step.ExecutionContext.Error(ex);
                 step.ExecutionContext.Result = TaskResult.Failed;
@@ -340,7 +319,7 @@ namespace GitHub.Runner.Worker
                 step.ExecutionContext.Result = TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
             }
 
-            // Fixup the step result if ContinueOnError.
+            // Fixup the step result if ContinueOnError
             if (step.ExecutionContext.Result == TaskResult.Failed)
             {
                 var continueOnError = false;
@@ -365,121 +344,13 @@ namespace GitHub.Runner.Worker
             }
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
 
-            // Complete the step context.
+            // Complete the step context
             step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
         }
 
-        private bool InitializeScope(IStep step, Dictionary<string, PipelineContextData> scopeInputs)
+        private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
         {
             var executionContext = step.ExecutionContext;
-            var stepsContext = executionContext.StepsContext;
-            if (!string.IsNullOrEmpty(executionContext.ScopeName))
-            {
-                // Gather uninitialized current and ancestor scopes
-                var scope = executionContext.Scopes[executionContext.ScopeName];
-                var scopesToInitialize = default(Stack<ContextScope>);
-                while (scope != null && !scopeInputs.ContainsKey(scope.Name))
-                {
-                    if (scopesToInitialize == null)
-                    {
-                        scopesToInitialize = new Stack<ContextScope>();
-                    }
-                    scopesToInitialize.Push(scope);
-                    scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
-                }
-
-                // Initialize current and ancestor scopes
-                while (scopesToInitialize?.Count > 0)
-                {
-                    scope = scopesToInitialize.Pop();
-                    executionContext.Debug($"Initializing scope '{scope.Name}'");
-                    executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.ParentName);
-                    executionContext.ExpressionValues["inputs"] = !String.IsNullOrEmpty(scope.ParentName) ? scopeInputs[scope.ParentName] : null;
-                    var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
-                    var inputs = default(DictionaryContextData);
-                    try
-                    {
-                        inputs = templateEvaluator.EvaluateStepScopeInputs(scope.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Info($"Caught exception from initialize scope '{scope.Name}'");
-                        Trace.Error(ex);
-                        executionContext.Error(ex);
-                        executionContext.Complete(TaskResult.Failed);
-                        return false;
-                    }
-
-                    scopeInputs[scope.Name] = inputs;
-                }
-            }
-
-            // Setup expression values
-            var scopeName = executionContext.ScopeName;
-            executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scopeName);
-            executionContext.ExpressionValues["inputs"] = string.IsNullOrEmpty(scopeName) ? null : scopeInputs[scopeName];
-
-            return true;
-        }
-
-        private void CompleteStep(IStep step, IStep nextStep, TaskResult? result = null, string resultCode = null)
-        {
-            var executionContext = step.ExecutionContext;
-            if (!string.IsNullOrEmpty(executionContext.ScopeName))
-            {
-                // Gather current and ancestor scopes to finalize
-                var scope = executionContext.Scopes[executionContext.ScopeName];
-                var scopesToFinalize = default(Queue<ContextScope>);
-                var nextStepScopeName = nextStep?.ExecutionContext.ScopeName;
-                while (scope != null &&
-                    !string.Equals(nextStepScopeName, scope.Name, StringComparison.OrdinalIgnoreCase) &&
-                    !(nextStepScopeName ?? string.Empty).StartsWith($"{scope.Name}.", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (scopesToFinalize == null)
-                    {
-                        scopesToFinalize = new Queue<ContextScope>();
-                    }
-                    scopesToFinalize.Enqueue(scope);
-                    scope = string.IsNullOrEmpty(scope.ParentName) ? null : executionContext.Scopes[scope.ParentName];
-                }
-
-                // Finalize current and ancestor scopes
-                var stepsContext = step.ExecutionContext.StepsContext;
-                while (scopesToFinalize?.Count > 0)
-                {
-                    scope = scopesToFinalize.Dequeue();
-                    executionContext.Debug($"Finalizing scope '{scope.Name}'");
-                    executionContext.ExpressionValues["steps"] = stepsContext.GetScope(scope.Name);
-                    executionContext.ExpressionValues["inputs"] = null;
-                    var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
-                    var outputs = default(DictionaryContextData);
-                    try
-                    {
-                        outputs = templateEvaluator.EvaluateStepScopeOutputs(scope.Outputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Info($"Caught exception from finalize scope '{scope.Name}'");
-                        Trace.Error(ex);
-                        executionContext.Error(ex);
-                        executionContext.Complete(TaskResult.Failed);
-                        return;
-                    }
-
-                    if (outputs?.Count > 0)
-                    {
-                        var parentScopeName = scope.ParentName;
-                        var contextName = scope.ContextName;
-                        foreach (var pair in outputs)
-                        {
-                            var outputName = pair.Key;
-                            var outputValue = pair.Value.ToString();
-                            stepsContext.SetOutput(parentScopeName, contextName, outputName, outputValue, out var reference);
-                            executionContext.Debug($"{reference}='{outputValue}'");
-                        }
-                    }
-                }
-            }
 
             executionContext.Complete(result, resultCode: resultCode);
         }

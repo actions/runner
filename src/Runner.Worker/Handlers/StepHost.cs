@@ -149,14 +149,14 @@ namespace GitHub.Runner.Worker.Handlers
                             throw new NotSupportedException(msg);
                         }
                         nodeExternal = "node12_alpine";
-                        executionContext.Output($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
+                        executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
                         return nodeExternal;
                     }
                 }
             }
             // Optimistically use the default
             nodeExternal = "node12";
-            executionContext.Output($"Running JavaScript Action with default external tool: {nodeExternal}");
+            executionContext.Debug($"Running JavaScript Action with default external tool: {nodeExternal}");
             return nodeExternal;
         }
 

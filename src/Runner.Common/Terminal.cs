@@ -96,13 +96,14 @@ namespace GitHub.Runner.Common
             Trace.Info($"WRITE: {message}");
             if (!Silent)
             {
-                if(colorCode != null)
+                if (colorCode != null)
                 {
                     Console.ForegroundColor = colorCode.Value;
                     Console.Write(message);
                     Console.ResetColor();
                 }
-                else {
+                else
+                {
                     Console.Write(message);
                 }
             }
@@ -120,13 +121,14 @@ namespace GitHub.Runner.Common
             Trace.Info($"WRITE LINE: {line}");
             if (!Silent)
             {
-                if(colorCode != null)
+                if (colorCode != null)
                 {
                     Console.ForegroundColor = colorCode.Value;
                     Console.WriteLine(line);
                     Console.ResetColor();
                 }
-                else {
+                else
+                {
                     Console.WriteLine(line);
                 }
             }

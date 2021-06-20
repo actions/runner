@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Xunit;
 using System.Threading;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -279,6 +280,71 @@ namespace GitHub.Runner.Common.Tests.Worker
                         It.IsAny<Pipelines.AgentJobRequestMessage>(),
                         It.IsAny<DateTime>()),
                     Times.Never);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void EnsureFinalizeJobRunsIfMessageHasNoEnvironmentUrl()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _message.ActionsEnvironment = new ActionsEnvironmentReference("production");
+
+                _jobEc = new Runner.Worker.ExecutionContext {Result = TaskResult.Succeeded};
+                _jobEc.Initialize(hc);
+                _jobEc.InitializeJob(_message, _tokenSource.Token);
+
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+
+                Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+            }
+        }
+
+        [Fact] [Trait("Level", "L0")] [Trait("Category", "Worker")]
+        public void EnsureFinalizeJobHandlesNullEnvironmentUrl()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _message.ActionsEnvironment = new ActionsEnvironmentReference("production")
+                {
+                    Url = null
+                };
+
+                _jobEc = new Runner.Worker.ExecutionContext {Result = TaskResult.Succeeded};
+                _jobEc.Initialize(hc);
+                _jobEc.InitializeJob(_message, _tokenSource.Token);
+
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+
+                Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+            }
+        }
+
+        [Fact] [Trait("Level", "L0")] [Trait("Category", "Worker")]
+        public void EnsureFinalizeJobHandlesNullEnvironment()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                var jobExtension = new JobExtension();
+                jobExtension.Initialize(hc);
+
+                _message.ActionsEnvironment = null;
+
+                _jobEc = new Runner.Worker.ExecutionContext {Result = TaskResult.Succeeded};
+                _jobEc.Initialize(hc);
+                _jobEc.InitializeJob(_message, _tokenSource.Token);
+
+                jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
+
+                Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
             }
         }
     }

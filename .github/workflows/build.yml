@@ -1,9 +1,10 @@
 name: Runner CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
-    - master
+    - main
     - releases/*
     paths-ignore:
     - '**.md'    

@@ -31,7 +31,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             _executionContext = executionContext;
             _commandManager = commandManager;
-            _container = container ?? executionContext.Container;
+            _container = container ?? executionContext.Global.Container;
 
             // Recursion failsafe (test override)
             var failsafeString = Environment.GetEnvironmentVariable("RUNNER_TEST_GET_REPOSITORY_PATH_FAILSAFE");
@@ -41,7 +41,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Determine the timeout
-            var timeoutStr = _executionContext.Variables.Get(_timeoutKey);
+            var timeoutStr = _executionContext.Global.Variables.Get(_timeoutKey);
             if (string.IsNullOrEmpty(timeoutStr) ||
                 !TimeSpan.TryParse(timeoutStr, CultureInfo.InvariantCulture, out _timeout) ||
                 _timeout <= TimeSpan.Zero)
@@ -352,15 +352,24 @@ namespace GitHub.Runner.Worker.Handlers
                 if (File.Exists(gitConfigPath))
                 {
                     // Check if the config contains the workflow repository url
-                    var qualifiedRepository = _executionContext.GetGitHubContext("repository");
-                    var configMatch = $"url = https://github.com/{qualifiedRepository}";
+                    var serverUrl = _executionContext.GetGitHubContext("server_url");
+                    serverUrl = !string.IsNullOrEmpty(serverUrl) ? serverUrl : "https://github.com";
+                    var host = new Uri(serverUrl, UriKind.Absolute).Host;
+                    var nameWithOwner = _executionContext.GetGitHubContext("repository");
+                    var patterns = new[] {
+                        $"url = {serverUrl}/{nameWithOwner}",
+                        $"url = git@{host}:{nameWithOwner}.git",
+                    };
                     var content = File.ReadAllText(gitConfigPath);
                     foreach (var line in content.Split("\n").Select(x => x.Trim()))
                     {
-                        if (String.Equals(line, configMatch, StringComparison.OrdinalIgnoreCase))
+                        foreach (var pattern in patterns)
                         {
-                            repositoryPath = directoryPath;
-                            break;
+                            if (String.Equals(line, pattern, StringComparison.OrdinalIgnoreCase))
+                            {
+                                repositoryPath = directoryPath;
+                                break;
+                            }
                         }
                     }
                 }

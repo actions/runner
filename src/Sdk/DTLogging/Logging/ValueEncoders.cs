@@ -37,6 +37,12 @@ namespace GitHub.DistributedTask.Logging
             return Base64StringEscapeShift(value, 2);
         }
 
+        // Used when we pass environment variables to docker to escape " with \"
+        public static String CommandLineArgumentEscape(String value)
+        {
+            return value.Replace("\"", "\\\"");
+        }
+
         public static String ExpressionStringEscape(String value)
         {
             return Expressions2.Sdk.ExpressionUtility.StringEscape(value);
@@ -58,6 +64,20 @@ namespace GitHub.DistributedTask.Logging
         public static String XmlDataEscape(String value)
         {
             return SecurityElement.Escape(value);
+        }
+
+        public static String TrimDoubleQuotes(String value)
+        {
+            var trimmed = string.Empty;
+            if (!string.IsNullOrEmpty(value) &&
+                value.Length > 8 &&
+                value.StartsWith('"') &&
+                value.EndsWith('"'))
+            {
+                trimmed = value.Substring(1, value.Length - 2);
+            }
+
+            return trimmed;
         }
 
         private static string Base64StringEscapeShift(String value, int shift)
