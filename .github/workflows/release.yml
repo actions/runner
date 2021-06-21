@@ -50,10 +50,11 @@ jobs:
       linux-arm64-sha: ${{ steps.sha.outputs.linux-arm64-sha256 }}
       linux-arm-sha: ${{ steps.sha.outputs.linux-arm-sha256 }}
       win-x64-sha: ${{ steps.sha.outputs.win-x64-sha256 }}
+      win-x86-sha: ${{ steps.sha.outputs.win-x86-sha256 }}
       osx-x64-sha: ${{ steps.sha.outputs.osx-x64-sha256 }}
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-x86, osx-x64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -72,6 +73,10 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
+          os: windows-latest
+          devScript: ./dev
+
+        - runtime: win-x86
           os: windows-latest
           devScript: ./dev
 
@@ -146,6 +151,7 @@ jobs:
           const runnerVersion = fs.readFileSync('${{ github.workspace }}/src/runnerversion', 'utf8').replace(/\n$/g, '')
           var releaseNote = fs.readFileSync('${{ github.workspace }}/releaseNote.md', 'utf8').replace(/<RUNNER_VERSION>/g, runnerVersion)
           releaseNote = releaseNote.replace(/<WIN_X64_SHA>/g, '${{needs.build.outputs.win-x64-sha}}')
+          releaseNote = releaseNote.replace(/<WIN_X86_SHA>/g, '${{needs.build.outputs.win-x86-sha}}')
           releaseNote = releaseNote.replace(/<OSX_X64_SHA>/g, '${{needs.build.outputs.osx-x64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_X64_SHA>/g, '${{needs.build.outputs.linux-x64-sha}}')
           releaseNote = releaseNote.replace(/<LINUX_ARM_SHA>/g, '${{needs.build.outputs.linux-arm-sha}}')
@@ -174,6 +180,16 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
         asset_name: actions-runner-win-x64-${{ steps.releaseNote.outputs.version }}.zip
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (win-x86)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/actions-runner-win-x86-${{ steps.releaseNote.outputs.version }}.zip
+        asset_name: actions-runner-win-x86-${{ steps.releaseNote.outputs.version }}.zip
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset (linux-x64)

@@ -43,7 +43,7 @@ jobs:
     name: Build runner packages 🏗 📦
     strategy:
       matrix:
-        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, osx-x64 ]
+        runtime: [ linux-x64, linux-arm64, linux-arm, win-x64, win-x86, osx-x64 ]
         include:
         - runtime: linux-x64
           os: ubuntu-latest
@@ -62,6 +62,10 @@ jobs:
           devScript: ./dev.sh
 
         - runtime: win-x64
+          os: windows-latest
+          devScript: ./dev
+
+        - runtime: win-x86
           os: windows-latest
           devScript: ./dev
 
@@ -109,7 +113,7 @@ jobs:
               inputs: {target_runner: runner}
             });
           }
-          var runWin64 = false, runLinux64 = false, runOsx64 = false, runLinuxARM64 = false;
+          var runWin64 = false, runWin86 = false, runLinux64 = false, runOsx64 = false, runLinuxARM64 = false;
           while (true) {
             core.info(`------------- Waiting for runners to be configured --------------`)
             await sleep(10000);
@@ -123,6 +127,11 @@ jobs:
                   core.info(`------------------- Windows runner is configured, queue Windows Run -------------------------`)
                   runWin64 = true;
                   await dispatchWorkflow('win-x64-${{needs.init.outputs.unique_runner_label}}');
+                  break;
+                } else if (labels[j].name == 'win-x86-${{needs.init.outputs.unique_runner_label}}' && runWin86 == false) {
+                  core.info(`------------------- Windows runner is configured, queue Windows Run -------------------------`)
+                  runWin86 = true;
+                  await dispatchWorkflow('win-x86-${{needs.init.outputs.unique_runner_label}}');
                   break;
                 } else if (labels[j].name == 'linux-x64-${{needs.init.outputs.unique_runner_label}}' && runLinux64 == false) {
                   core.info(`------------------- Linux runner is configured, queue Linux Run -------------------------`)
@@ -142,11 +151,11 @@ jobs:
                 }
               }
             }
-            if (runWin64 && runLinux64 && runOsx64 && runLinuxARM64) {
+            if (runWin64 && runWin86 && runLinux64 && runOsx64 && runLinuxARM64) {
               core.info(`--------------------- ALL runner are running jobs --------------------------`)
               break;
             } else {
-              core.info(`---------- Windows running: ${runWin64} -- Linux running: ${runLinux64} -- macOS running: ${runOsx64} -- Linux ARM64 running: ${runLinuxARM64} -----------`)
+              core.info(`---------- Windows running: ${runWin64} -- Windows x86 running: ${runWin86} -- Linux running: ${runLinux64} -- macOS running: ${runOsx64} -- Linux ARM64 running: ${runLinuxARM64} -----------`)
             }
           }
         github-token: ${{secrets.PAT}}
@@ -277,6 +286,42 @@ jobs:
           config.cmd --unattended --url ${{github.event.repository.html_url}} --name %unique_runner_name% --pat ${{secrets.PAT}} --labels %unique_runner_name% --replace
         env:
           unique_runner_name: win-x64-${{needs.init.outputs.unique_runner_label}}
+
+      - name: Start Runner and Wait for Job
+        shell: cmd
+        timeout-minutes: 5
+        run: |
+          run.cmd --once
+      - name: Remove Runner
+        shell: cmd
+        if: always()
+        continue-on-error: true
+        run: |
+          config.cmd remove --pat ${{secrets.PAT}}
+      - name: Upload Runner Logs
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: win_x64_logs
+          path: _diag
+
+  Windowsx86E2E:
+    needs: [build, init]
+    runs-on: windows-latest
+    steps:
+      - name: Download Runner
+        uses: actions/download-artifact@v2
+        with:
+          name: runner-package-win-x86
+      - name: Unzip Runner Package
+        run: |
+          Get-ChildItem *.zip | Expand-Archive -DestinationPath $PWD
+      - name: Configure Runner
+        shell: cmd
+        run: |
+          config.cmd --unattended --url ${{github.event.repository.html_url}} --name %unique_runner_name% --pat ${{secrets.PAT}} --labels %unique_runner_name% --replace
+        env:
+          unique_runner_name: win-x86-${{needs.init.outputs.unique_runner_label}}
 
       - name: Start Runner and Wait for Job
         shell: cmd
