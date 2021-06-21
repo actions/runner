@@ -119,6 +119,10 @@ jobs:
         #Test using parallel 0, this have to fail
         ./Runner.Client${{ matrix.exeSuffix }} -P ubuntu-latest=-self-hosted -W ../../testworkflows/matrixtest.yml --parallel 0 && exit 1 || [[ "$?" = "1" ]]
         ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/artifact.yml
+        ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/issue70/main.yml
+        ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/issue70/main2.yml && exit 1 || [[ "$?" = "1" ]]
+        ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/issue70/main3.yml && exit 1 || [[ "$?" = "1" ]]
+        ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/issue70/main4.yml && exit 1 || [[ "$?" = "1" ]]
 
         kill $workerpid
         kill $serverpid

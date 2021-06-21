@@ -1,0 +1,15 @@
+on: push
+jobs:
+  issue70:
+    runs-on: self-hosted
+    continue-on-error: ${{matrix.exit && true || false}}
+    strategy:
+      matrix:
+        include:
+        - sleep: 0
+          exit: 1
+        - sleep: 1
+    steps:
+    - run: |
+        sleep ${{matrix.sleep || 0}}
+        exit ${{matrix.exit || 0}}

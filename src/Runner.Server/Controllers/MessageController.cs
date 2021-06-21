@@ -1024,7 +1024,7 @@ namespace Runner.Server.Controllers
                                         handler2 = e => {
                                             Func<bool, Job> cb;
                                             if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
-                                                if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned)) {
+                                                if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (jobitem.Childs?.Find(ji => ji.Id == e.JobId) ?? (jobitem.Id == e.JobId ? jobitem : null))?.ContinueOnError != true) {
                                                     cancelAll();
                                                 } else {
                                                     while(jobs.TryDequeue(out cb)) {
