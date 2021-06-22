@@ -383,25 +383,35 @@ namespace Runner.Client
 
             var secretOpt = new Option<string>(
                 new[] { "-s", "--secret" },
-                description: "Secret for your workflow, overrides keys from your secrets file. E.g. `-s Name` or `-s Name=Value`. You will be asked for a value if you add `--secret name`, but no environment variable with name `name` exists.");
+                description: "Secret for your workflow, overrides keys from your secrets file. E.g. `-s Name` or `-s Name=Value`. You will be asked for a value if you add `--secret name`, but no environment variable with name `name` exists.") {
+                    AllowMultipleArgumentsPerToken = false
+                };
             secretOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var envOpt = new Option<string>(
                 new[] { "--env" },
-                description: "Environment variable for your workflow, overrides keys from your env file. E.g. `--env Name` or `--env Name=Value`. You will be asked for a value if you add `--env name`, but no environment variable with name `name` exists.");
+                description: "Environment variable for your workflow, overrides keys from your env file. E.g. `--env Name` or `--env Name=Value`. You will be asked for a value if you add `--env name`, but no environment variable with name `name` exists.") {
+                    AllowMultipleArgumentsPerToken = false
+                };
             envOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var matrixOpt = new Option<string>(
                 new[] { "-m", "--matrix" },
-                description: "Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use multiple times to filter more specifically. If you want to force a value to be a string you need to quote it, e.g. `\"-m Key:\\\"1\\\"\"` or `\"-m Key:\"\"1\"\"\"` (requires shell escaping)");
+                description: "Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use multiple times to filter more specifically. If you want to force a value to be a string you need to quote it, e.g. `\"-m Key:\\\"1\\\"\"` or `\"-m Key:\"\"1\"\"\"` (requires shell escaping)") {
+                    AllowMultipleArgumentsPerToken = false
+                };
             matrixOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             
             var workflowOption = new Option<string>(
                 "--workflow",
-                description: "Workflow(s) to run. Use multiple times to execute more workflows parallel.");
+                description: "Workflow(s) to run. Use multiple times to execute more workflows parallel.") {
+                    AllowMultipleArgumentsPerToken = false
+                };
             workflowOption.Argument.Arity = new ArgumentArity(1, ArgumentArity.MaximumArity);
 
             var platformOption = new Option<string>(
                 new[] { "-P", "--platform" },
-                description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine).");
+                description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine).") {
+                    AllowMultipleArgumentsPerToken = false
+                };
             platformOption.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             var rootCommand = new RootCommand
             {
