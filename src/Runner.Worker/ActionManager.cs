@@ -38,6 +38,7 @@ namespace GitHub.Runner.Worker
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
         Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
+        Task<PrepareResult> PrepareActionsV2Async(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
@@ -51,6 +52,169 @@ namespace GitHub.Runner.Worker
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
 
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
+        public async Task<PrepareResult> PrepareActionsV2Async(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
+        {
+            // Assert inputs
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            ArgUtil.NotNull(steps, nameof(steps));
+            var state = new PrepareActionsState
+            {
+                ImagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase),
+                ImagesToPull = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase),
+                ImagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase),
+                ContainerSetupSteps = new List<JobExtensionRunner>(),
+                PreStepTracker = new Dictionary<Guid, IActionRunner>()
+            };
+            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
+            executionContext.Output("Prepare all required actions");
+            var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, 0);
+            return new PrepareResult(result.ContainerSetupSteps, result.PreStepTracker);
+        }
+
+        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0)
+        {
+            ArgUtil.NotNull(executionContext, nameof(executionContext));
+            if (depth > Constants.CompositeActionsMaxDepth)
+            {
+                throw new ActionDepthOutOfRange(depth);
+            }
+            var repositoryActions = new List<Pipelines.ActionStep>();
+
+            foreach (var action in actions)
+            {
+                if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
+                {
+                    ArgUtil.NotNull(action, nameof(action));
+                    var containerReference = action.Reference as Pipelines.ContainerRegistryReference;
+                    ArgUtil.NotNull(containerReference, nameof(containerReference));
+                    ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
+
+                    if (!state.ImagesToPull.ContainsKey(containerReference.Image))
+                    {
+                        state.ImagesToPull[containerReference.Image] = new List<Guid>();
+                    }
+
+                    Trace.Info($"Action {action.Name} ({action.Id}) needs to pull image '{containerReference.Image}'");
+                    state.ImagesToPull[containerReference.Image].Add(action.Id);
+                }
+                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository)
+                {
+                    repositoryActions.Add(action);
+                }
+            }
+
+            if (repositoryActions.Count > 0)
+            {
+                // Get the download info
+                var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
+
+                // Download each action
+                foreach (var action in repositoryActions)
+                {
+                    var lookupKey = GetDownloadInfoLookupKey(action);
+                    if (string.IsNullOrEmpty(lookupKey))
+                    {
+                        continue;
+                    }
+
+                    if (!downloadInfos.TryGetValue(lookupKey, out var downloadInfo))
+                    {
+                        throw new Exception($"Missing download info for {lookupKey}");
+                    }
+
+                    await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                }
+
+                // More preparation based on content in the repository (action.yml)
+                foreach (var action in repositoryActions)
+                {
+                    var setupInfo = PrepareRepositoryActionV2Async(executionContext, action);
+                    if (setupInfo != null && setupInfo.Container != null)
+                    { 
+                        if (!string.IsNullOrEmpty(setupInfo.Container.Image))
+                        {
+                            if (!state.ImagesToPull.ContainsKey(setupInfo.Container.Image))
+                            {
+                                state.ImagesToPull[setupInfo.Container.Image] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to pull image '{setupInfo.Container.Image}'");
+                            state.ImagesToPull[setupInfo.Container.Image].Add(action.Id);
+                        }
+                        else
+                        {
+                            ArgUtil.NotNullOrEmpty(setupInfo.Container.ActionRepository, nameof(setupInfo.Container.ActionRepository));
+
+                            if (!state.ImagesToBuild.ContainsKey(setupInfo.Container.ActionRepository))
+                            {
+                                state.ImagesToBuild[setupInfo.Container.ActionRepository] = new List<Guid>();
+                            }
+
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to build image '{setupInfo.Container.Dockerfile}'");
+                            state.ImagesToBuild[setupInfo.Container.ActionRepository].Add(action.Id);
+                            state.ImagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
+                        }
+                    }
+                    else if(setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
+                    {
+                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1);
+                    }
+                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
+                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
+                    {
+                        var definition = LoadAction(executionContext, action);
+                        // TODO: How should we handle pre with no Id's. 
+                        // Just create a pre for the composite action and figure it out from there?
+                        if (definition.Data.Execution.HasPre && depth < 1)
+                        {
+                            var actionRunner = HostContext.CreateService<IActionRunner>();
+                            actionRunner.Action = action;
+                            actionRunner.Stage = ActionRunStage.Pre;
+                            actionRunner.Condition = definition.Data.Execution.InitCondition;
+
+                            Trace.Info($"Add 'pre' execution for {action.Id}");
+                            state.PreStepTracker[action.Id] = actionRunner;
+                        }
+                    }
+                }
+            }
+
+            if (state.ImagesToPull.Count > 0)
+            {
+                foreach (var imageToPull in state.ImagesToPull)
+                {
+                    Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
+                    state.ContainerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
+                                                                   condition: $"{PipelineTemplateConstants.Success}()",
+                                                                   displayName: $"Pull {imageToPull.Key}",
+                                                                   data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
+                }
+            }
+
+            if (state.ImagesToBuild.Count > 0)
+            {
+                foreach (var imageToBuild in state.ImagesToBuild)
+                {
+                    var setupInfo = state.ImagesToBuildInfo[imageToBuild.Key];
+                    Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
+                    state.ContainerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                                                   condition: $"{PipelineTemplateConstants.Success}()",
+                                                                   displayName: $"Build {setupInfo.ActionRepository}",
+                                                                   data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
+                }
+            }
+
+#if !OS_LINUX
+            if (state.ContainerSetupSteps.Count > 0)
+            {
+                executionContext.Output("Container action is only supported on Linux, skip pull and build docker images.");
+                state.ContainerSetupSteps.Clear();
+            }
+#endif
+
+            return state;
+        }
         public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -173,6 +337,7 @@ namespace GitHub.Runner.Worker
                     }
 
                     await DownloadRepositoryActionAsync(executionContext, downloadInfo);
+                    // TODO figure out how to deal with composite
                 }
 
                 // More preparation based on content in the repository (action.yml)
@@ -212,6 +377,7 @@ namespace GitHub.Runner.Worker
                         var definition = LoadAction(executionContext, action);
                         if (definition.Data.Execution.HasPre)
                         {
+                            //thboop todo load pre for local actions
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
                             actionRunner.Stage = ActionRunStage.Pre;
@@ -986,6 +1152,123 @@ namespace GitHub.Runner.Worker
 
         private string GetWatermarkFilePath(string directory) => directory + ".completed";
 
+        private ActionSetupInfo PrepareRepositoryActionV2Async(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction, Int32 depth = 0)
+        {
+            var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
+            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                Trace.Info($"Repository action is in 'self' repository.");
+                return null;
+            }
+            var setupInfo = new ActionSetupInfo();
+            var actionContainer = new ActionContainer();
+            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
+            string actionEntryDirectory = destDirectory;
+            string dockerFileRelativePath = repositoryReference.Name;
+            ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
+            if (!string.IsNullOrEmpty(repositoryReference.Path))
+            {
+                actionEntryDirectory = Path.Combine(destDirectory, repositoryReference.Path);
+                dockerFileRelativePath = $"{dockerFileRelativePath}/{repositoryReference.Path}";
+                actionContainer.ActionRepository = $"{repositoryReference.Name}/{repositoryReference.Path}@{repositoryReference.Ref}";
+            }
+            else
+            {
+                actionContainer.ActionRepository = $"{repositoryReference.Name}@{repositoryReference.Ref}";
+            }
+
+            // find the docker file or action.yml file
+            var dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
+            var dockerFileLowerCase = Path.Combine(actionEntryDirectory, "dockerfile");
+            var actionManifest = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYmlFile);
+            var actionManifestYaml = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYamlFile);
+            if (File.Exists(actionManifest) || File.Exists(actionManifestYaml))
+            {
+                executionContext.Debug($"action.yml for action: '{actionManifest}'.");
+                var manifestManager = HostContext.GetService<IActionManifestManager>();
+                ActionDefinitionData actionDefinitionData = null;
+                if (File.Exists(actionManifest))
+                {
+                    actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
+                }
+                else
+                {
+                    actionDefinitionData = manifestManager.Load(executionContext, actionManifestYaml);
+                }
+
+                if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
+                {
+                    var containerAction = actionDefinitionData.Execution as ContainerActionExecutionData;
+                    if (containerAction.Image.EndsWith("Dockerfile") || containerAction.Image.EndsWith("dockerfile"))
+                    {
+                        var dockerFileFullPath = Path.Combine(actionEntryDirectory, containerAction.Image);
+                        executionContext.Debug($"Dockerfile for action: '{dockerFileFullPath}'.");
+
+                        actionContainer.Dockerfile = dockerFileFullPath;
+                        actionContainer.WorkingDirectory = destDirectory;
+                        setupInfo.Container = actionContainer;
+                        return setupInfo;
+                    }
+                    else if (containerAction.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var actionImage = containerAction.Image.Substring("docker://".Length);
+
+                        executionContext.Debug($"Container image for action: '{actionImage}'.");
+
+                        actionContainer.Image = actionImage;
+                        setupInfo.Container = actionContainer;
+                        return setupInfo;
+                    }
+                    else
+                    {
+                        throw new NotSupportedException($"'{containerAction.Image}' should be either '[path]/Dockerfile' or 'docker://image[:tag]'.");
+                    }
+                }
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.NodeJS)
+                {
+                    Trace.Info($"Action node.js file: {(actionDefinitionData.Execution as NodeJSActionExecutionData).Script}, no more preparation.");
+                    return null;
+                }
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Plugin)
+                {
+                    Trace.Info($"Action plugin: {(actionDefinitionData.Execution as PluginActionExecutionData).Plugin}, no more preparation.");
+                    return null;
+                }
+                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite)
+                {
+                    Trace.Info($"Loading Composite steps");
+                    var compositeAction = actionDefinitionData.Execution as CompositeActionExecutionData;
+                    setupInfo.Steps = compositeAction.Steps;
+                    return setupInfo;
+                }
+                else
+                {
+                    throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
+                }
+            }
+            else if (File.Exists(dockerFile))
+            {
+                executionContext.Debug($"Dockerfile for action: '{dockerFile}'.");
+                actionContainer.Dockerfile = dockerFile;
+                actionContainer.WorkingDirectory = destDirectory;
+                setupInfo.Container = actionContainer;
+                return setupInfo;
+            }
+            else if (File.Exists(dockerFileLowerCase))
+            {
+                executionContext.Debug($"Dockerfile for action: '{dockerFileLowerCase}'.");
+                actionContainer.Dockerfile = dockerFileLowerCase;
+                actionContainer.WorkingDirectory = destDirectory;
+                setupInfo.Container = actionContainer;
+                return setupInfo;
+            }
+            else
+            {
+                var fullPath = IOUtil.ResolvePath(actionEntryDirectory, "."); // resolve full path without access filesystem.
+                throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
+            }
+        }
+
         private ActionContainer PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
         {
             var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
@@ -1302,5 +1585,20 @@ namespace GitHub.Runner.Worker
         public string Dockerfile { get; set; }
         public string WorkingDirectory { get; set; }
         public string ActionRepository { get; set; }
+    }
+
+    public class ActionSetupInfo
+    {
+        public ActionContainer Container { get; set; }
+        public List<Pipelines.ActionStep> Steps {get; set;}
+    }
+
+    public class PrepareActionsState
+    {
+        public Dictionary<string, List<Guid>> ImagesToPull;
+        public Dictionary<string, List<Guid>> ImagesToBuild;
+        public Dictionary<string, ActionContainer> ImagesToBuildInfo;
+        public List<JobExtensionRunner> ContainerSetupSteps;
+        public Dictionary<Guid, IActionRunner> PreStepTracker;
     }
 }

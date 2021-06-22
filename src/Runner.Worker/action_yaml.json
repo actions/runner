@@ -109,13 +109,16 @@
         },
         "composite-steps": {
             "sequence": {
-                "one-of": [
-                    "composite-step",
-                    "uses-step"
-                ]
+                "item-type": "composite-step"
             }
         },
-        "composite-step": {
+        "composite-step":{
+            "one-of": [
+                "run-step",
+                "uses-step" 
+            ]
+        },
+        "run-step": {
             "mapping": {
                 "properties": {
                     "name": "string-steps-context",
@@ -212,37 +215,37 @@
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "string"
             }
+        },
+        "step-with": {
+            "context": [
+                "github",
+                "inputs",
+                "strategy",
+                "matrix",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "mapping": {
+                "loose-key-type": "non-empty-string",
+                "loose-value-type": "string"
+            }
+        },
+        "uses-input": {
+            "context": [
+                "github",
+                "inputs",
+                "strategy",
+                "matrix",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "string": {}
         }
-    },
-    "step-with": {
-        "context": [
-            "github",
-            "inputs",
-            "strategy",
-            "matrix",
-            "steps",
-            "job",
-            "runner",
-            "env",
-            "hashFiles(1,255)"
-        ],
-        "mapping": {
-            "loose-key-type": "non-empty-string",
-            "loose-value-type": "string"
-        }
-    },
-    "uses-input": {
-        "context": [
-            "github",
-            "inputs",
-            "strategy",
-            "matrix",
-            "steps",
-            "job",
-            "runner",
-            "env",
-            "hashFiles(1,255)"
-        ],
-        "string": {}
     }
 }

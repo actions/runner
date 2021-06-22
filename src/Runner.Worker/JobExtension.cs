@@ -239,7 +239,17 @@ namespace GitHub.Runner.Worker
                     // Download actions not already in the cache
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
-                    var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
+                    PrepareResult prepareResult;
+                    // TODO check other feature flag
+                    // TODO flip this condition its for testing now
+                    if (string.IsNullOrEmpty(context.Global.Variables.Get("ENABLE_COMPSOSITE")))
+                    {
+                        prepareResult = await actionManager.PrepareActionsV2Async(context, message.Steps);
+                    }
+                    else
+                    {
+                        prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
+                    }
                     preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
 
                     // Add start-container steps, record and stop-container steps

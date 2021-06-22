@@ -59,7 +59,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 //Assert
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
@@ -98,7 +98,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
 
                 //Assert
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "master.completed");
@@ -217,7 +217,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _configurationStore.Object.GetSettings().IsHostedServer = false;
 
                 //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
 
                 //Assert
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main.completed");
@@ -275,7 +275,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _configurationStore.Object.GetSettings().IsHostedServer = false;
 
                 //Act
-                Func<Task> action = async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                Func<Task> action = async () => await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
 
                 //Assert
                 await Assert.ThrowsAsync<ActionNotFoundException>(action);
@@ -311,7 +311,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 File.Copy(Path.Combine(TestUtil.GetSrcPath(), "Test", TestDataFolderName, "dockerfileaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
 
                 //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
 
                 // Make sure _actions folder get deleted
                 Assert.False(Directory.Exists(_hc.GetDirectory(WellKnownDirectory.Actions)));
@@ -347,7 +347,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.True(steps.Count == 0);
             }
@@ -386,7 +386,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfile");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
                 Assert.Equal(Path.Combine(actionDir, "Dockerfile"), (steps[0].Data as ContainerSetupInfo).Container.Dockerfile);
@@ -426,7 +426,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -465,7 +465,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -505,7 +505,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionfile_DockerfileRelativePath");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -545,7 +545,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionfile_DockerHubImage");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal("ubuntu:18.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
@@ -584,7 +584,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionYamlFile_DockerHubImage");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
                 Assert.Equal("ubuntu:18.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
@@ -623,7 +623,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithactionfileanddockerfile");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -740,7 +740,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 //Assert
                 Assert.Equal(actionId1, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
@@ -801,7 +801,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 // node.js based action doesn't need any extra steps to build/pull containers.
                 Assert.True(steps.Count == 0);
@@ -840,7 +840,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 //Act
                 try
                 {
-                    await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                    await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
                 }
                 catch (ArgumentException)
                 {
@@ -899,7 +899,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                var preResult = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                var preResult = await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
                 Assert.Equal(2, preResult.PreStepTracker.Count);
                 Assert.NotNull(preResult.PreStepTracker[actionId1]);
                 Assert.NotNull(preResult.PreStepTracker[actionId2]);
@@ -1857,7 +1857,7 @@ runs:
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 //Assert
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
@@ -1896,7 +1896,7 @@ runs:
                 };
 
                 //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
 
                 //Assert
                 var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/download-artifact", "master.completed");
@@ -1931,7 +1931,7 @@ runs:
                 File.Copy(Path.Combine(TestUtil.GetSrcPath(), "Test", TestDataFolderName, "dockerfileaction.yml"), Path.Combine(Path.GetDirectoryName(watermarkFile), "notexist", "action.yml"));
 
                 //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
 
                 // Make sure _actions folder get deleted
                 Assert.False(Directory.Exists(_hc.GetDirectory(WellKnownDirectory.Actions)));
@@ -1967,7 +1967,7 @@ runs:
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.True(steps.Count == 0);
             }
@@ -2006,7 +2006,7 @@ runs:
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfile");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
                 Assert.Equal(Path.Combine(actionDir, "Dockerfile"), (steps[0].Data as ContainerSetupInfo).Container.Dockerfile);
@@ -2046,7 +2046,7 @@ runs:
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -2085,7 +2085,7 @@ runs:
 
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithdockerfileinrelativepath");
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -2125,7 +2125,7 @@ runs:
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionfile_DockerfileRelativePath");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -2165,7 +2165,7 @@ runs:
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionfile_DockerHubImage");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal("ubuntu:18.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
@@ -2204,7 +2204,7 @@ runs:
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "RepositoryActionWithActionYamlFile_DockerHubImage");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal((steps[0].Data as ContainerSetupInfo).StepIds[0], actionId);
                 Assert.Equal("ubuntu:18.04", (steps[0].Data as ContainerSetupInfo).Container.Image);
@@ -2243,7 +2243,7 @@ runs:
                 var actionDir = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang", "runner_L0", "repositoryactionwithactionfileanddockerfile");
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 Assert.Equal(actionId, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
                 Assert.Equal(actionDir, (steps[0].Data as ContainerSetupInfo).Container.WorkingDirectory);
@@ -2360,7 +2360,7 @@ runs:
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 //Assert
                 Assert.Equal(actionId1, (steps[0].Data as ContainerSetupInfo).StepIds[0]);
@@ -2421,7 +2421,7 @@ runs:
                 };
 
                 //Act
-                var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
 
                 // node.js based action doesn't need any extra steps to build/pull containers.
                 Assert.True(steps.Count == 0);
@@ -2460,7 +2460,7 @@ runs:
                 //Act
                 try
                 {
-                    await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                    await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
                 }
                 catch (ArgumentException)
                 {
@@ -2519,7 +2519,7 @@ runs:
                 };
 
                 //Act
-                var preResult = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                var preResult = await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
                 Assert.Equal(2, preResult.PreStepTracker.Count);
                 Assert.NotNull(preResult.PreStepTracker[actionId1]);
                 Assert.NotNull(preResult.PreStepTracker[actionId2]);
@@ -2529,6 +2529,170 @@ runs:
                 Teardown();
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_CompositeActionWithActionfile_Node()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "CompositeBasic",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                var steps = (await _actionManager.PrepareActionsV2Async(_ec.Object, actions)).ContainerSetupSteps;
+
+                // node.js based action doesn't need any extra steps to build/pull containers.
+                Assert.True(steps.Count == 0);
+                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "TingluoHuang/runner_L0", "CompositeBasic.completed");
+                Assert.True(File.Exists(watermarkFile));
+                // Comes from the composite action
+                var watermarkFile2 = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), "actions/setup-node", "v2", "action.yml");
+                Assert.True(File.Exists(watermarkFile2));
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_CompositeActionWithActionfile_MaxLimit()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "CompositeLimit",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                Func<Task> result = async () => await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
+
+                //Assert
+                await Assert.ThrowsAsync<ActionDepthOutOfRange>(result);
+
+                // node.js based action doesn't need any extra steps to build/pull containers.
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_CompositeActionWithActionfile_CompositePrestepNested()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                var actionId = Guid.NewGuid();
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "CompositePrestep",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                var result =  await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
+
+                //Assert
+                // TODO: Update this test
+                Assert.Equal(0, result.PreStepTracker.Count);
+
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+#if OS_LINUX
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public async void PrepareActions_CompositeActionWithActionfile_CompositeContainerNested()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+                var actionId = Guid.NewGuid();
+                var actions = new List<Pipelines.ActionStep>
+                {
+                    new Pipelines.ActionStep()
+                    {
+                        Name = "action",
+                        Id = actionId,
+                        Reference = new Pipelines.RepositoryPathReference()
+                        {
+                            Name = "TingluoHuang/runner_L0",
+                            Ref = "CompositeContainerNested",
+                            RepositoryType = "GitHub"
+                        }
+                    }
+                };
+
+                //Act
+                var result =  await _actionManager.PrepareActionsV2Async(_ec.Object, actions);
+
+                //Assert
+                Assert.Equal(2, result.ContainerSetupSteps.Count);
+
+                // node.js based action doesn't need any extra steps to build/pull containers.
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+#endif
 
         [Fact]
         [Trait("Level", "L0")]
