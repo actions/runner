@@ -515,6 +515,30 @@ namespace Runner.Client
                 if(parameters.actor == null) {
                     parameters.actor = "runnerclient";
                 }
+                List<string> errors = new List<string>();
+                if(parameters.matrix?.Length > 0) {
+                    if(parameters.job == null) {
+                        errors.Add("--matrix is only supported together with --job");
+                    }
+                    foreach(var p in parameters.matrix) {
+                        if(!p.Contains(":")) {
+                            errors.Add($"Invalid Argument for `--matrix`: `{p}`, missing `:`");
+                        }
+                    }
+                }
+                if(parameters.platform?.Length > 0) {
+                    foreach(var p in parameters.platform) {
+                        if(!p.Contains("=")) {
+                            errors.Add($"Invalid Argument for `--platform`: `{p}`, missing `=`");
+                        }
+                    }
+                }
+                if(errors.Count > 0) {
+                    foreach(var error in errors) {
+                        Console.Error.WriteLine(error);
+                    }
+                    return 1;
+                }
                 ConcurrentQueue<string> added = new ConcurrentQueue<string>();
                 ConcurrentQueue<string> changed = new ConcurrentQueue<string>();
                 ConcurrentQueue<string> removed = new ConcurrentQueue<string>();
@@ -806,10 +830,6 @@ namespace Runner.Client
                                         query.Add("job", parameters.job);
                                     }
                                     if(parameters.matrix?.Length > 0) {
-                                        if(parameters.job == null) {
-                                            Console.WriteLine("--matrix is only supported together with --job");
-                                            return 1;
-                                        }
                                         query.Add("matrix", parameters.matrix);
                                     }
                                     if(parameters.list) {
