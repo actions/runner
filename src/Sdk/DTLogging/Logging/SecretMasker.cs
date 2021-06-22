@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Microsoft.Security.CredScan.KnowledgeBase.Client;
+using Newtonsoft.Json;
 
 namespace GitHub.DistributedTask.Logging
 {
@@ -239,16 +241,17 @@ namespace GitHub.DistributedTask.Logging
                 }
             }
 
-            // Short-circuit if nothing to replace.
-            if (secretPositions.Count == 0)
-            {
-                return input;
-            }
+            //Short-circuit if nothing to replace.
+            // if (secretPositions.Count == 0)
+            // {
+            //     goto scan;
+            // }
 
             // Merge positions into ranges of characters to replace.
             List<ReplacementPosition> replacementPositions = new List<ReplacementPosition>();
             ReplacementPosition currentReplacement = null;
-            foreach (ReplacementPosition secretPosition in secretPositions.OrderBy(x => x.Start))
+            if(secretPositions.Count != 0){
+                foreach (ReplacementPosition secretPosition in secretPositions.OrderBy(x => x.Start))
             {
                 if (currentReplacement == null)
                 {
@@ -270,6 +273,7 @@ namespace GitHub.DistributedTask.Logging
                     }
                 }
             }
+            }
 
             // Replace
             var stringBuilder = new StringBuilder();
@@ -285,7 +289,19 @@ namespace GitHub.DistributedTask.Logging
             {
                 stringBuilder.Append(input.Substring(startIndex));
             }
-
+            var scanner = new ClientCredentialScanner("FullTextProvider");
+            IEnumerable<CredScanResult> results = null;
+            Action<string> scanAction = delegate (string contentToScan)
+            {
+                results = scanner.Scan(contentToScan);
+            };
+            scanAction(stringBuilder.ToString());
+            foreach (var credScanResult in results)
+            {
+                string match = credScanResult.Match.MatchValue;
+                // Trace.Info($"Match: {match}");
+                stringBuilder.Replace(match, "REDACTED_CREDENTIALS");
+            }
             return stringBuilder.ToString();
         }
 

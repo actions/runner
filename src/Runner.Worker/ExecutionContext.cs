@@ -23,7 +23,6 @@ using GitHub.Services.WebApi;
 using Newtonsoft.Json;
 using ObjectTemplating = GitHub.DistributedTask.ObjectTemplating;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using Microsoft.Security.CredScan.KnowledgeBase.Client;
 
 namespace GitHub.Runner.Worker
 {
@@ -689,42 +688,12 @@ namespace GitHub.Runner.Worker
         // the rule is command messages - which should be crafted using strongly typed wrapper methods.
         public long Write(string tag, string message)
         {
+            var watch = new System.Diagnostics.Stopwatch();
+            watch.Start();
             string msg = HostContext.SecretMasker.MaskSecrets($"{tag}{message}");
-            Console.WriteLine("Scan Started.");
-            var scanner = new ClientCredentialScanner("FullTextProvider");
-            IEnumerable<CredScanResult> results = null;
-            Action<string> scanAction = delegate (string contentToScan)
-            {
-                results = scanner.Scan(contentToScan);
-            };
-            scanAction(msg);
-            foreach (var credScanResult in results)
-            {
-                string match = credScanResult.Match.MatchValue;
-                string context = credScanResult.Match.MatchContext;
-
-                int index = 0;
-                for (int i = 0; i < context.Length; i++)
-                {
-                    if (context[i] == match[0])
-                    {
-                        int j;
-                        for (j = 0; j < match.Length; j++)
-                        {
-                            if (context[i + j] != match[j]) break;
-                        }
-                        if (j == match.Length)
-                        {
-                            index = i;
-                            break;
-                        }
-                    }
-                }
-                string temp = context.Remove(index, match.Length);
-                temp.Insert(index, "REDACTED_CREDENTIALS");
-                msg = temp;
-                Console.WriteLine("String without credentials: " + temp.Insert(index, "REDACTED_CREDENTIALS"));
-            }
+            watch.Stop();
+            Trace.Info($"Execution Time: {watch.ElapsedMilliseconds} ms");
+            Trace.Info($"Message length: {msg.Length}");
             long totalLines;
             lock (_loggerLock)
             {
