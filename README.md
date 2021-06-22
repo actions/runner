@@ -14,6 +14,12 @@ This fork adds two executables to this Project, `Runner.Server` as a runner back
 - Clone your github actions repo
 - Run `Runner.Client`(`.exe`) (It is inside the bin folder of the package) inside your checkout
 
+### Dotnet Tool (gharun)
+The new nuget package [can be found here](https://www.nuget.org/packages/io.github.christopherhx.gharun)
+- Install the dotnet sdk 5.0.x (https://dotnet.microsoft.com/download/dotnet/5.0)
+- `dotnet tool install --global io.github.christopherhx.gharun`
+- Run `gharun` like `Runner.Client`
+
 ## Commandline Options
 ```
 Runner.Client:

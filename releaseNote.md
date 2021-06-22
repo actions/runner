@@ -1,24 +1,16 @@
 ## Changes
-- fix/keep-container (#50)
-- Fix dropped jobs with runonce (#49)
-- Fix once (#47)
-- More control about runner cleanup (#33)
-- Drop LogFormatter (#42)
-- fix create-event-sha-via-console (#45)
-- less verbose localcheckout / wwwroot update (#43)
-- Fix exit code of caught exception (#44)
-- More cli options (#41)
-- Fix leaking Agent dir (#39)
-- fix check-server-status-code (#40)
-- Cleanly abort workflow on internal errors (#38)
-- Copy git-dir (#37)
-- Force utf8 (#36)
-- Fix exception Secrets are case insensitive (#32)
-- Fix/parallel 1 norunners (#28)
-- Fix logs of different job (#27)
-- Fix back button not working (#26)
-- Fix fail to add runners (#25)
-- Fix/macos cache store fix (#24)
+- Fix keep-container empty home (#52)
+- ghes-from-cli (#48)
+- Fix gzip artifact + Test (#65)
+- Fix duplicated job resources (#66)
+- Fix job may run more than once (#67)
+- Modified Runner to run on any os / arch without recompiling (#46)
+- Basic Symlink support of localcheckout
+- Submodule support of localcheckout
+- No longer wait for job exit ACTIONS_STEP_DEBUG
+- Cancel Running Jobs in Runner.Client via CTRL+C
+- Fix environment / concurrency syntax
+- A nuget package named gharun (https://www.nuget.org/packages/io.github.christopherhx.gharun)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
