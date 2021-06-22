@@ -16,11 +16,11 @@ set -e
 #
 #      scope required  repo (:owner/:repo) or org (:organization)
 #      name  optional  defaults to hostname.  name to uninstall and remove
-# 
+#
 # Notes:
 # PATS over envvars are more secure
 # Should be used on VMs and not containers
-# Works on OSX and Linux 
+# Works on OSX and Linux
 # Assumes x64 arch
 #
 
@@ -59,7 +59,7 @@ fi
 
 export REMOVE_TOKEN=$(curl -s -X POST ${base_api_url}/${runner_scope}/actions/runners/remove-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
 
-if [ -z "$REMOVE_TOKEN" ]; then fatal "Failed to get a token"; fi 
+if [ -z "$REMOVE_TOKEN" ]; then fatal "Failed to get a token"; fi
 
 #---------------------------------------
 # Stop and uninstall the service
@@ -68,13 +68,9 @@ echo
 echo "Uninstall the service ..."
 pushd ./runner
 prefix=""
-if [ "${runner_plat}" == "linux" ]; then 
+if [ "${runner_plat}" == "linux" ]; then
     prefix="sudo "
-fi 
+fi
 ${prefix}./svc.sh stop
 ${prefix}./svc.sh uninstall
-<<<<<<< HEAD
 ./config.sh remove --token $REMOVE_TOKEN
-=======
-${prefix}./config.sh remove --token $REMOVE_TOKEN
->>>>>>> origin/automate

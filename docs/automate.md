@@ -11,11 +11,7 @@ export RUNNER_CFG_PAT=yourPAT
 
 ## Create running as a service
 
-<<<<<<< HEAD
 **Scenario**: Run on a machine or VM ([not container](#why-cant-i-use-a-container)) which automates:
-=======
-**Scenario**: Run on a machine or VM (not container) which automates:
->>>>>>> origin/automate
 
  - Resolving latest released runner
  - Download and extract latest
@@ -25,9 +21,8 @@ export RUNNER_CFG_PAT=yourPAT
 
 :point_right: [Sample script here](../scripts/create-latest-svc.sh) :point_left:
 
-Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level)
 ```bash
-<<<<<<< HEAD
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
 
@@ -35,17 +30,9 @@ curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-lat
 
 The runner is installed as a service using `systemd` and `systemctl`. Docker does not support `systemd` for service configuration on a container.
 
-## Uninstall running as service 
+## Uninstall running as service
 
 **Scenario**: Run on a machine or VM ([not container](#why-cant-i-use-a-container)) which automates:
-=======
-curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
-```
-
-## Uninstall running as service 
-
-**Scenario**: Run on a machine or VM (not container) which automates:
->>>>>>> origin/automate
 
  - Stops and uninstalls the systemd (linux) or Launchd (osx) service
  - Acquires a removal token
@@ -53,13 +40,9 @@ curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/create
 
 :point_right: [Sample script here](../scripts/remove-svc.sh) :point_left:
 
-Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level)
 ```bash
-<<<<<<< HEAD
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/remove-svc.sh | bash -s yourorg/yourrepo
-=======
-curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/remove-svc.sh | bash -s yourorg/yourrepo
->>>>>>> origin/automate
 ```
 
 ### Delete an offline runner
@@ -74,9 +57,5 @@ curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/remove
 
 Repo level one-liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) and replace runnername
 ```bash
-<<<<<<< HEAD
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/delete.sh | bash -s yourorg/yourrepo runnername
-=======
-curl -s https://raw.githubusercontent.com/actions/runner/automate/scripts/delete.sh | bash -s yourorg/yourrepo runnername
->>>>>>> origin/automate
 ```
