@@ -106,6 +106,7 @@ namespace GitHub.Runner.Worker
     {
         private const int _maxIssueCount = 10;
         private const int _throttlingDelayReportThreshold = 10 * 1000; // Don't report throttling with less than 10 seconds delay
+        private const string _noticeLogPrefix = "\u001b[31m"; //white text
 
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
@@ -510,6 +511,22 @@ namespace GitHub.Runner.Worker
                 }
 
                 _record.WarningCount++;
+            } else if (issue.Type == IssueType.Notice) {
+
+                // tracking line number for each issue in log file
+                // log UI use this to navigate from issue to log
+                if (!string.IsNullOrEmpty(logMessage))
+                {
+                    long logLineNumber = Write(_noticeLogPrefix, logMessage);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+
+                if (_record.NoticeCount < _maxIssueCount)
+                {
+                    _record.Issues.Add(issue);
+                }
+
+                _record.NoticeCount++;
             }
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
@@ -835,6 +852,7 @@ namespace GitHub.Runner.Worker
             _record.State = TimelineRecordState.Pending;
             _record.ErrorCount = 0;
             _record.WarningCount = 0;
+            _record.NoticeCount = 0;
 
             if (parentTimelineRecordId != null && parentTimelineRecordId.Value != Guid.Empty)
             {

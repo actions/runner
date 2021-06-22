@@ -498,6 +498,13 @@ namespace GitHub.Runner.Worker
         public override string Command => "error";
     }
 
+    public sealed class NoticeCommandExtension : IssueCommandExtension
+    {
+        public override IssueType Type => IssueType.Notice;
+
+        public override string Command => "notice";
+    }
+
     public abstract class IssueCommandExtension : RunnerService, IActionCommandExtension
     {
         public abstract IssueType Type { get; }
@@ -567,7 +574,10 @@ namespace GitHub.Runner.Worker
         {
             public const String File = "file";
             public const String Line = "line";
+            public const String EndLine = "end_line";
             public const String Column = "col";
+            public const String EndColumn = "end_column";
+            public const String Title = "title";
         }
 
     }
