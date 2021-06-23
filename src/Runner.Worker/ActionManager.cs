@@ -1149,7 +1149,7 @@ namespace GitHub.Runner.Worker
 
         private string GetWatermarkFilePath(string directory) => directory + ".completed";
 
-        private ActionSetupInfo PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction, Int32 depth = 0)
+        private ActionSetupInfo PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
         {
             var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
             if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
@@ -1266,7 +1266,6 @@ namespace GitHub.Runner.Worker
                 throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
             }
         }
-
 
         private static string GetDownloadInfoLookupKey(Pipelines.ActionStep action)
         {
