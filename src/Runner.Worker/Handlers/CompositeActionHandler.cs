@@ -12,8 +12,10 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.Expressions2;
+using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+
 
 
 namespace GitHub.Runner.Worker.Handlers
@@ -200,7 +202,6 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
-
                 await RunStepAsync(step);
 
                 // Check failed or canceled
@@ -218,35 +219,74 @@ namespace GitHub.Runner.Worker.Handlers
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
 
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
+            
 
-            try
+            //Evaluate Composite action condition
+            step.ExecutionContext.Debug($"Evaluating composite step condition for step: '{step.DisplayName}'");
+            var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
+            var conditionResult = false;
+            var conditionEvaluateError = default(Exception);
+            if (HostContext.RunnerShutdownToken.IsCancellationRequested)
             {
-                await step.RunAsync();
+                step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
             }
-            catch (OperationCanceledException ex)
+            else
             {
-                if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
-                    !ExecutionContext.Root.CancellationToken.IsCancellationRequested)
+                try
                 {
-                    Trace.Error($"Caught timeout exception from step: {ex.Message}");
-                    step.ExecutionContext.Error("The action has timed out.");
+                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
+                    var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                    conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("Caught exception from expression.");
+                    Trace.Error(ex);
+                    conditionEvaluateError = ex;
+                }
+            }
+            if (!conditionResult && conditionEvaluateError == null)
+            {
+                // Condition is false
+                Trace.Info("Skipping step due to condition evaluation.");
+                step.ExecutionContext.Complete(TaskResult.Skipped, resultCode: conditionTraceWriter.Trace);
+            }
+            else if (conditionEvaluateError != null)
+            {
+                // Condition error
+                step.ExecutionContext.Error(conditionEvaluateError);
+                step.ExecutionContext.Complete(TaskResult.Failed);
+            }
+            else 
+            {
+                try
+                {
+                    await step.RunAsync();
+                }
+                catch (OperationCanceledException ex)
+                {
+                    if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
+                        !ExecutionContext.Root.CancellationToken.IsCancellationRequested)
+                    {
+                        Trace.Error($"Caught timeout exception from step: {ex.Message}");
+                        step.ExecutionContext.Error("The action has timed out.");
+                        step.ExecutionContext.Result = TaskResult.Failed;
+                    }
+                    else
+                    {
+                        Trace.Error($"Caught cancellation exception from step: {ex}");
+                        step.ExecutionContext.Error(ex);
+                        step.ExecutionContext.Result = TaskResult.Canceled;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error and fail the step
+                    Trace.Error($"Caught exception from step: {ex}");
+                    step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Result = TaskResult.Failed;
                 }
-                else
-                {
-                    Trace.Error($"Caught cancellation exception from step: {ex}");
-                    step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Result = TaskResult.Canceled;
-                }
             }
-            catch (Exception ex)
-            {
-                // Log the error and fail the step
-                Trace.Error($"Caught exception from step: {ex}");
-                step.ExecutionContext.Error(ex);
-                step.ExecutionContext.Result = TaskResult.Failed;
-            }
-
             // Merge execution context result with command result
             if (step.ExecutionContext.CommandResult != null)
             {
