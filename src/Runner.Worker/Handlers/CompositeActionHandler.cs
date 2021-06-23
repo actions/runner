@@ -200,7 +200,6 @@ namespace GitHub.Runner.Worker.Handlers
 
                 await RunStepAsync(step);
 
-                // TODO: What if a composite action is not skipped, but all of its steps are skipped, do we mark it as skipped?
                 // Check failed or canceled
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
@@ -216,6 +215,7 @@ namespace GitHub.Runner.Worker.Handlers
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
 
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
+
             try
             {
                 await step.RunAsync();

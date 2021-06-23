@@ -267,7 +267,7 @@ namespace GitHub.Runner.Worker
 
                     // more preparation base on content in the repository (action.yml)
                     var setupInfo = PrepareRepositoryActionAsync(executionContext, action)?.Container;
-                    if (setupInfo != null && setupInfo != null)
+                    if (setupInfo != null)
                     {
                         if (!string.IsNullOrEmpty(setupInfo.Image))
                         {
