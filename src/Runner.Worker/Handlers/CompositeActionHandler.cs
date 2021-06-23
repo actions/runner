@@ -5,17 +5,16 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.Expressions2;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-
 
 
 namespace GitHub.Runner.Worker.Handlers
@@ -202,8 +201,10 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
+
                 await RunStepAsync(step);
 
+                // TODO: What if a composite action is not skipped, but all of its steps are skipped, do we mark it as skipped?
                 // Check failed or canceled
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
@@ -221,8 +222,8 @@ namespace GitHub.Runner.Worker.Handlers
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
             
 
-            //Evaluate Composite action condition
-            step.ExecutionContext.Debug($"Evaluating composite step condition for step: '{step.DisplayName}'");
+            // Evaluate Composite action condition
+            step.ExecutionContext.Debug($"Evaluating condition for composite step: '{step.DisplayName}'");
             var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
             var conditionResult = false;
             var conditionEvaluateError = default(Exception);
@@ -287,6 +288,7 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Result = TaskResult.Failed;
                 }
             }
+
             // Merge execution context result with command result
             if (step.ExecutionContext.CommandResult != null)
             {

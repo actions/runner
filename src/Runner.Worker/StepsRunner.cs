@@ -59,6 +59,7 @@ namespace GitHub.Runner.Worker
                     checkPostJobActions = true;
                     while (jobContext.PostJobSteps.TryPop(out var postStep))
                     {
+                        // TODO: SKip for composite (for now)
                         jobContext.JobSteps.Enqueue(postStep);
                     }
 

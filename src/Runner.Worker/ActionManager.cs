@@ -337,7 +337,6 @@ namespace GitHub.Runner.Worker
                     }
 
                     await DownloadRepositoryActionAsync(executionContext, downloadInfo);
-                    // TODO figure out how to deal with composite
                 }
 
                 // More preparation based on content in the repository (action.yml)
@@ -377,7 +376,6 @@ namespace GitHub.Runner.Worker
                         var definition = LoadAction(executionContext, action);
                         if (definition.Data.Execution.HasPre)
                         {
-                            //thboop todo load pre for local actions
                             var actionRunner = HostContext.CreateService<IActionRunner>();
                             actionRunner.Action = action;
                             actionRunner.Stage = ActionRunStage.Pre;
