@@ -240,17 +240,7 @@ namespace GitHub.Runner.Worker
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
                     PrepareResult prepareResult;
-                    // TODO should we also check DistributedTask.NewActionMetadata, 
-                    // we removed the backcompat code, so if NewActionMetadata was disabled, and Composite enabled, we would run into issues
-                    // TODO Make a real feature flag
-                    if (!string.IsNullOrEmpty(context.Global.Variables.Get("ENABLE_COMPOSITE")))
-                    {
-                        prepareResult = await actionManager.PrepareActionsV2Async(context, message.Steps);
-                    }
-                    else
-                    {
-                        prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
-                    }
+                    prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
                     preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
 
                     // Add start-container steps, record and stop-container steps

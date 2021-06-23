@@ -38,7 +38,6 @@ namespace GitHub.Runner.Worker
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
         Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
-        Task<PrepareResult> PrepareActionsV2Async(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
@@ -52,7 +51,7 @@ namespace GitHub.Runner.Worker
         private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
 
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
-        public async Task<PrepareResult> PrepareActionsV2Async(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
+        public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             // Assert inputs
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -213,214 +212,6 @@ namespace GitHub.Runner.Worker
             }
 
             return state;
-        }
-        public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
-        {
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(steps, nameof(steps));
-
-            executionContext.Output("Prepare all required actions");
-            Dictionary<string, List<Guid>> imagesToPull = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase);
-            Dictionary<string, List<Guid>> imagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase);
-            Dictionary<string, ActionContainer> imagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase);
-            List<JobExtensionRunner> containerSetupSteps = new List<JobExtensionRunner>();
-            Dictionary<Guid, IActionRunner> preStepTracker = new Dictionary<Guid, IActionRunner>();
-            IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
-
-            // TODO: Deprecate the PREVIEW_ACTION_TOKEN
-            // Log even if we aren't using it to ensure users know.
-            if (!string.IsNullOrEmpty(executionContext.Global.Variables.Get("PREVIEW_ACTION_TOKEN")))
-            {
-                executionContext.Warning("The 'PREVIEW_ACTION_TOKEN' secret is deprecated. Please remove it from the repository's secrets");
-            }
-
-            // Clear the cache (for self-hosted runners)
-            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
-
-            // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
-            var newActionMetadata = executionContext.Global.Variables.GetBoolean("DistributedTask.NewActionMetadata") ?? false;
-
-            var repositoryActions = new List<Pipelines.ActionStep>();
-
-            foreach (var action in actions)
-            {
-                if (action.Reference.Type == Pipelines.ActionSourceType.ContainerRegistry)
-                {
-                    ArgUtil.NotNull(action, nameof(action));
-                    var containerReference = action.Reference as Pipelines.ContainerRegistryReference;
-                    ArgUtil.NotNull(containerReference, nameof(containerReference));
-                    ArgUtil.NotNullOrEmpty(containerReference.Image, nameof(containerReference.Image));
-
-                    if (!imagesToPull.ContainsKey(containerReference.Image))
-                    {
-                        imagesToPull[containerReference.Image] = new List<Guid>();
-                    }
-
-                    Trace.Info($"Action {action.Name} ({action.Id}) needs to pull image '{containerReference.Image}'");
-                    imagesToPull[containerReference.Image].Add(action.Id);
-                }
-                // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
-                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository && !newActionMetadata)
-                {
-                    // only download the repository archive
-                    await DownloadRepositoryActionAsync(executionContext, action);
-
-                    // more preparation base on content in the repository (action.yml)
-                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action)?.Container;
-                    if (setupInfo != null)
-                    {
-                        if (!string.IsNullOrEmpty(setupInfo.Image))
-                        {
-                            if (!imagesToPull.ContainsKey(setupInfo.Image))
-                            {
-                                imagesToPull[setupInfo.Image] = new List<Guid>();
-                            }
-
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
-                            imagesToPull[setupInfo.Image].Add(action.Id);
-                        }
-                        else
-                        {
-                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
-
-                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
-                            {
-                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
-                            }
-
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
-                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
-                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
-                        }
-                    }
-
-                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
-                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
-                    {
-                        var definition = LoadAction(executionContext, action);
-                        if (definition.Data.Execution.HasPre)
-                        {
-                            var actionRunner = HostContext.CreateService<IActionRunner>();
-                            actionRunner.Action = action;
-                            actionRunner.Stage = ActionRunStage.Pre;
-                            actionRunner.Condition = definition.Data.Execution.InitCondition;
-
-                            Trace.Info($"Add 'pre' execution for {action.Id}");
-                            preStepTracker[action.Id] = actionRunner;
-                        }
-                    }
-                }
-                else if (action.Reference.Type == Pipelines.ActionSourceType.Repository && newActionMetadata)
-                {
-                    repositoryActions.Add(action);
-                }
-            }
-
-            if (repositoryActions.Count > 0)
-            {
-                // Get the download info
-                var downloadInfos = await GetDownloadInfoAsync(executionContext, repositoryActions);
-
-                // Download each action
-                foreach (var action in repositoryActions)
-                {
-                    var lookupKey = GetDownloadInfoLookupKey(action);
-                    if (string.IsNullOrEmpty(lookupKey))
-                    {
-                        continue;
-                    }
-
-                    if (!downloadInfos.TryGetValue(lookupKey, out var downloadInfo))
-                    {
-                        throw new Exception($"Missing download info for {lookupKey}");
-                    }
-
-                    await DownloadRepositoryActionAsync(executionContext, downloadInfo);
-                }
-
-                // More preparation based on content in the repository (action.yml)
-                foreach (var action in repositoryActions)
-                {
-                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action)?.Container;
-                    if (setupInfo != null)
-                    {
-                        if (!string.IsNullOrEmpty(setupInfo.Image))
-                        {
-                            if (!imagesToPull.ContainsKey(setupInfo.Image))
-                            {
-                                imagesToPull[setupInfo.Image] = new List<Guid>();
-                            }
-
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
-                            imagesToPull[setupInfo.Image].Add(action.Id);
-                        }
-                        else
-                        {
-                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
-
-                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
-                            {
-                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
-                            }
-
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
-                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
-                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
-                        }
-                    }
-
-                    var repoAction = action.Reference as Pipelines.RepositoryPathReference;
-                    if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
-                    {
-                        var definition = LoadAction(executionContext, action);
-                        if (definition.Data.Execution.HasPre)
-                        {
-                            var actionRunner = HostContext.CreateService<IActionRunner>();
-                            actionRunner.Action = action;
-                            actionRunner.Stage = ActionRunStage.Pre;
-                            actionRunner.Condition = definition.Data.Execution.InitCondition;
-
-                            Trace.Info($"Add 'pre' execution for {action.Id}");
-                            preStepTracker[action.Id] = actionRunner;
-                        }
-                    }
-                }
-            }
-
-            if (imagesToPull.Count > 0)
-            {
-                foreach (var imageToPull in imagesToPull)
-                {
-                    Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
-                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
-                                                                   condition: $"{PipelineTemplateConstants.Success}()",
-                                                                   displayName: $"Pull {imageToPull.Key}",
-                                                                   data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
-                }
-            }
-
-            if (imagesToBuild.Count > 0)
-            {
-                foreach (var imageToBuild in imagesToBuild)
-                {
-                    var setupInfo = imagesToBuildInfo[imageToBuild.Key];
-                    Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
-                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                                                   condition: $"{PipelineTemplateConstants.Success}()",
-                                                                   displayName: $"Build {setupInfo.ActionRepository}",
-                                                                   data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
-                }
-            }
-
-#if !OS_LINUX
-            if (containerSetupSteps.Count > 0)
-            {
-                executionContext.Output("Container action is only supported on Linux, skip pull and build docker images.");
-                containerSetupSteps.Clear();
-            }
-#endif
-
-            return new PrepareResult(containerSetupSteps, preStepTracker);
         }
 
         public Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action)
@@ -974,12 +765,10 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                // Legacy
                                 if (downloadInfo == null)
                                 {
                                     actionDownloadDetails.ConfigureAuthorization(executionContext, httpClient);
                                 }
-                                // FF DistributedTask.NewActionMetadata
                                 else
                                 {
                                     httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadInfo.Authentication?.Token);
@@ -1239,7 +1028,7 @@ namespace GitHub.Runner.Worker
                     setupInfo.Steps = compositeAction.Steps;
 
                     // Check backcompat
-                    if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("ENABLE_COMPOSITE")))
+                    if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")))
                     {
                         foreach (var step in compositeAction.Steps)
                         {
