@@ -161,7 +161,7 @@ namespace GitHub.Runner.Worker
                 // More preparation based on content in the repository (action.yml)
                 foreach (var action in repositoryActions)
                 {
-                    var setupInfo = PrepareRepositoryActionV2Async(executionContext, action);
+                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
                     if (setupInfo != null && setupInfo.Container != null)
                     { 
                         if (!string.IsNullOrEmpty(setupInfo.Container.Image))
@@ -267,30 +267,30 @@ namespace GitHub.Runner.Worker
 
                     // more preparation base on content in the repository (action.yml)
                     var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
-                    if (setupInfo != null)
+                    if (setupInfo != null && setupInfo.Container != null)
                     {
-                        if (!string.IsNullOrEmpty(setupInfo.Image))
+                        if (!string.IsNullOrEmpty(setupInfo.Container.Image))
                         {
-                            if (!imagesToPull.ContainsKey(setupInfo.Image))
+                            if (!imagesToPull.ContainsKey(setupInfo.Container.Image))
                             {
-                                imagesToPull[setupInfo.Image] = new List<Guid>();
+                                imagesToPull[setupInfo.Container.Image] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
-                            imagesToPull[setupInfo.Image].Add(action.Id);
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to pull image '{setupInfo.Container.Image}'");
+                            imagesToPull[setupInfo.Container.Image].Add(action.Id);
                         }
                         else
                         {
-                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
+                            ArgUtil.NotNullOrEmpty(setupInfo.Container.ActionRepository, nameof(setupInfo.Container.ActionRepository));
 
-                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
+                            if (!imagesToBuild.ContainsKey(setupInfo.Container.ActionRepository))
                             {
-                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
+                                imagesToBuild[setupInfo.Container.ActionRepository] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
-                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
-                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to build image '{setupInfo.Container.Dockerfile}'");
+                            imagesToBuild[setupInfo.Container.ActionRepository].Add(action.Id);
+                            imagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
                         }
                     }
 
@@ -342,30 +342,30 @@ namespace GitHub.Runner.Worker
                 foreach (var action in repositoryActions)
                 {
                     var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
-                    if (setupInfo != null)
+                    if (setupInfo != null && setupInfo.Container != null)
                     {
-                        if (!string.IsNullOrEmpty(setupInfo.Image))
+                        if (!string.IsNullOrEmpty(setupInfo.Container.Image))
                         {
-                            if (!imagesToPull.ContainsKey(setupInfo.Image))
+                            if (!imagesToPull.ContainsKey(setupInfo.Container.Image))
                             {
-                                imagesToPull[setupInfo.Image] = new List<Guid>();
+                                imagesToPull[setupInfo.Container.Image] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
-                            imagesToPull[setupInfo.Image].Add(action.Id);
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to pull image '{setupInfo.Container.Image}'");
+                            imagesToPull[setupInfo.Container.Image].Add(action.Id);
                         }
                         else
                         {
-                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
+                            ArgUtil.NotNullOrEmpty(setupInfo.Container.ActionRepository, nameof(setupInfo.Container.ActionRepository));
 
-                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
+                            if (!imagesToBuild.ContainsKey(setupInfo.Container.ActionRepository))
                             {
-                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
+                                imagesToBuild[setupInfo.Container.ActionRepository] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
-                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
-                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to build image '{setupInfo.Container.Dockerfile}'");
+                            imagesToBuild[setupInfo.Container.ActionRepository].Add(action.Id);
+                            imagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
                         }
                     }
 
@@ -1149,7 +1149,7 @@ namespace GitHub.Runner.Worker
 
         private string GetWatermarkFilePath(string directory) => directory + ".completed";
 
-        private ActionSetupInfo PrepareRepositoryActionV2Async(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction, Int32 depth = 0)
+        private ActionSetupInfo PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction, Int32 depth = 0)
         {
             var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
             if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
@@ -1233,6 +1233,7 @@ namespace GitHub.Runner.Worker
                 }
                 else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite)
                 {
+                    // TODO: we need to generate unique Id's for composite steps
                     Trace.Info($"Loading Composite steps");
                     var compositeAction = actionDefinitionData.Execution as CompositeActionExecutionData;
                     setupInfo.Steps = compositeAction.Steps;
@@ -1266,116 +1267,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private ActionContainer PrepareRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
-        {
-            var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
-            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-            {
-                Trace.Info($"Repository action is in 'self' repository.");
-                return null;
-            }
-
-            var setupInfo = new ActionContainer();
-            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
-            string actionEntryDirectory = destDirectory;
-            string dockerFileRelativePath = repositoryReference.Name;
-            ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
-            if (!string.IsNullOrEmpty(repositoryReference.Path))
-            {
-                actionEntryDirectory = Path.Combine(destDirectory, repositoryReference.Path);
-                dockerFileRelativePath = $"{dockerFileRelativePath}/{repositoryReference.Path}";
-                setupInfo.ActionRepository = $"{repositoryReference.Name}/{repositoryReference.Path}@{repositoryReference.Ref}";
-            }
-            else
-            {
-                setupInfo.ActionRepository = $"{repositoryReference.Name}@{repositoryReference.Ref}";
-            }
-
-            // find the docker file or action.yml file
-            var dockerFile = Path.Combine(actionEntryDirectory, "Dockerfile");
-            var dockerFileLowerCase = Path.Combine(actionEntryDirectory, "dockerfile");
-            var actionManifest = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYmlFile);
-            var actionManifestYaml = Path.Combine(actionEntryDirectory, Constants.Path.ActionManifestYamlFile);
-            if (File.Exists(actionManifest) || File.Exists(actionManifestYaml))
-            {
-                executionContext.Debug($"action.yml for action: '{actionManifest}'.");
-                var manifestManager = HostContext.GetService<IActionManifestManager>();
-                ActionDefinitionData actionDefinitionData = null;
-                if (File.Exists(actionManifest))
-                {
-                    actionDefinitionData = manifestManager.Load(executionContext, actionManifest);
-                }
-                else
-                {
-                    actionDefinitionData = manifestManager.Load(executionContext, actionManifestYaml);
-                }
-
-                if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Container)
-                {
-                    var containerAction = actionDefinitionData.Execution as ContainerActionExecutionData;
-                    if (containerAction.Image.EndsWith("Dockerfile") || containerAction.Image.EndsWith("dockerfile"))
-                    {
-                        var dockerFileFullPath = Path.Combine(actionEntryDirectory, containerAction.Image);
-                        executionContext.Debug($"Dockerfile for action: '{dockerFileFullPath}'.");
-
-                        setupInfo.Dockerfile = dockerFileFullPath;
-                        setupInfo.WorkingDirectory = destDirectory;
-                        return setupInfo;
-                    }
-                    else if (containerAction.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var actionImage = containerAction.Image.Substring("docker://".Length);
-
-                        executionContext.Debug($"Container image for action: '{actionImage}'.");
-
-                        setupInfo.Image = actionImage;
-                        return setupInfo;
-                    }
-                    else
-                    {
-                        throw new NotSupportedException($"'{containerAction.Image}' should be either '[path]/Dockerfile' or 'docker://image[:tag]'.");
-                    }
-                }
-                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.NodeJS)
-                {
-                    Trace.Info($"Action node.js file: {(actionDefinitionData.Execution as NodeJSActionExecutionData).Script}, no more preparation.");
-                    return null;
-                }
-                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Plugin)
-                {
-                    Trace.Info($"Action plugin: {(actionDefinitionData.Execution as PluginActionExecutionData).Plugin}, no more preparation.");
-                    return null;
-                }
-                else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite)
-                {
-                    Trace.Info($"Action composite: {(actionDefinitionData.Execution as CompositeActionExecutionData).Steps}, no more preparation.");
-                    return null;
-                }
-                else
-                {
-                    throw new NotSupportedException(actionDefinitionData.Execution.ExecutionType.ToString());
-                }
-            }
-            else if (File.Exists(dockerFile))
-            {
-                executionContext.Debug($"Dockerfile for action: '{dockerFile}'.");
-                setupInfo.Dockerfile = dockerFile;
-                setupInfo.WorkingDirectory = destDirectory;
-                return setupInfo;
-            }
-            else if (File.Exists(dockerFileLowerCase))
-            {
-                executionContext.Debug($"Dockerfile for action: '{dockerFileLowerCase}'.");
-                setupInfo.Dockerfile = dockerFileLowerCase;
-                setupInfo.WorkingDirectory = destDirectory;
-                return setupInfo;
-            }
-            else
-            {
-                var fullPath = IOUtil.ResolvePath(actionEntryDirectory, "."); // resolve full path without access filesystem.
-                throw new InvalidOperationException($"Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '{fullPath}'. Did you forget to run actions/checkout before running your local action?");
-            }
-        }
 
         private static string GetDownloadInfoLookupKey(Pipelines.ActionStep action)
         {
