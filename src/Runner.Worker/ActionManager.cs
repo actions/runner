@@ -266,31 +266,31 @@ namespace GitHub.Runner.Worker
                     await DownloadRepositoryActionAsync(executionContext, action);
 
                     // more preparation base on content in the repository (action.yml)
-                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
-                    if (setupInfo != null && setupInfo.Container != null)
+                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action)?.Container;
+                    if (setupInfo != null && setupInfo != null)
                     {
-                        if (!string.IsNullOrEmpty(setupInfo.Container.Image))
+                        if (!string.IsNullOrEmpty(setupInfo.Image))
                         {
-                            if (!imagesToPull.ContainsKey(setupInfo.Container.Image))
+                            if (!imagesToPull.ContainsKey(setupInfo.Image))
                             {
-                                imagesToPull[setupInfo.Container.Image] = new List<Guid>();
+                                imagesToPull[setupInfo.Image] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to pull image '{setupInfo.Container.Image}'");
-                            imagesToPull[setupInfo.Container.Image].Add(action.Id);
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
+                            imagesToPull[setupInfo.Image].Add(action.Id);
                         }
                         else
                         {
-                            ArgUtil.NotNullOrEmpty(setupInfo.Container.ActionRepository, nameof(setupInfo.Container.ActionRepository));
+                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
 
-                            if (!imagesToBuild.ContainsKey(setupInfo.Container.ActionRepository))
+                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
                             {
-                                imagesToBuild[setupInfo.Container.ActionRepository] = new List<Guid>();
+                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to build image '{setupInfo.Container.Dockerfile}'");
-                            imagesToBuild[setupInfo.Container.ActionRepository].Add(action.Id);
-                            imagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
+                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
+                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
                         }
                     }
 
@@ -341,31 +341,31 @@ namespace GitHub.Runner.Worker
                 // More preparation based on content in the repository (action.yml)
                 foreach (var action in repositoryActions)
                 {
-                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
-                    if (setupInfo != null && setupInfo.Container != null)
+                    var setupInfo = PrepareRepositoryActionAsync(executionContext, action)?.Container;
+                    if (setupInfo != null)
                     {
-                        if (!string.IsNullOrEmpty(setupInfo.Container.Image))
+                        if (!string.IsNullOrEmpty(setupInfo.Image))
                         {
-                            if (!imagesToPull.ContainsKey(setupInfo.Container.Image))
+                            if (!imagesToPull.ContainsKey(setupInfo.Image))
                             {
-                                imagesToPull[setupInfo.Container.Image] = new List<Guid>();
+                                imagesToPull[setupInfo.Image] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to pull image '{setupInfo.Container.Image}'");
-                            imagesToPull[setupInfo.Container.Image].Add(action.Id);
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to pull image '{setupInfo.Image}'");
+                            imagesToPull[setupInfo.Image].Add(action.Id);
                         }
                         else
                         {
-                            ArgUtil.NotNullOrEmpty(setupInfo.Container.ActionRepository, nameof(setupInfo.Container.ActionRepository));
+                            ArgUtil.NotNullOrEmpty(setupInfo.ActionRepository, nameof(setupInfo.ActionRepository));
 
-                            if (!imagesToBuild.ContainsKey(setupInfo.Container.ActionRepository))
+                            if (!imagesToBuild.ContainsKey(setupInfo.ActionRepository))
                             {
-                                imagesToBuild[setupInfo.Container.ActionRepository] = new List<Guid>();
+                                imagesToBuild[setupInfo.ActionRepository] = new List<Guid>();
                             }
 
-                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.Container.ActionRepository}' needs to build image '{setupInfo.Container.Dockerfile}'");
-                            imagesToBuild[setupInfo.Container.ActionRepository].Add(action.Id);
-                            imagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
+                            Trace.Info($"Action {action.Name} ({action.Id}) from repository '{setupInfo.ActionRepository}' needs to build image '{setupInfo.Dockerfile}'");
+                            imagesToBuild[setupInfo.ActionRepository].Add(action.Id);
+                            imagesToBuildInfo[setupInfo.ActionRepository] = setupInfo;
                         }
                     }
 
@@ -1237,6 +1237,18 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Loading Composite steps");
                     var compositeAction = actionDefinitionData.Execution as CompositeActionExecutionData;
                     setupInfo.Steps = compositeAction.Steps;
+
+                    // Check backcompat
+                    if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("ENABLE_COMPOSITE")))
+                    {
+                        foreach (var step in compositeAction.Steps)
+                        {
+                            if (step.Reference.Type != Pipelines.ActionSourceType.Script)
+                            {
+                                throw new Exception("Composite Actions with the `uses:` keyword are not supported on this server. Please update your GHES or GHAE instance.");
+                            }
+                        }
+                    }
                     return setupInfo;
                 }
                 else

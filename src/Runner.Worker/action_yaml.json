@@ -123,7 +123,6 @@
                 "properties": {
                     "name": "string-steps-context",
                     "id": "non-empty-string",
-                    "if": "step-if",
                     "run": {
                         "type": "string-steps-context",
                         "required": true
@@ -142,7 +141,6 @@
                 "properties": {
                     "name": "string-steps-context",
                     "id": "non-empty-string",
-                    "if": "step-if",
                     "uses": {
                         "type": "non-empty-string",
                         "required": true
@@ -234,23 +232,6 @@
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "string"
             }
-        },
-        "step-if": {
-            "context": [
-              "github",
-              "inputs",
-              "strategy",
-              "matrix",
-              "steps",
-              "job",
-              "runner",
-              "always(0,0)",
-              "failure(0,0)",
-              "cancelled(0,0)",
-              "success(0,0)",
-              "hashFiles(1,255)"
-            ],
-            "string": {}
         },
         "uses-input": {
             "context": [

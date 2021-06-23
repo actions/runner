@@ -355,8 +355,7 @@ namespace GitHub.Runner.Worker
 
             executionContext.Complete(result, resultCode: resultCode);
         }
-    }
-    public sealed class ConditionTraceWriter : ObjectTemplating::ITraceWriter
+        private sealed class ConditionTraceWriter : ObjectTemplating::ITraceWriter
         {
             private readonly IExecutionContext _executionContext;
             private readonly Tracing _trace;
@@ -393,4 +392,5 @@ namespace GitHub.Runner.Worker
                 _executionContext?.Debug(message);
             }
         }
+    }
 }
