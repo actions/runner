@@ -62,14 +62,46 @@ namespace GitHub.Runner.Worker
                 ImagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase),
                 ImagesToPull = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase),
                 ImagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase),
-                ContainerSetupSteps = new List<JobExtensionRunner>(),
                 PreStepTracker = new Dictionary<Guid, IActionRunner>()
             };
+            var containerSetupSteps = new List<JobExtensionRunner>();
             IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
             var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, 0);
-            return new PrepareResult(result.ContainerSetupSteps, result.PreStepTracker);
+            if (state.ImagesToPull.Count > 0)
+            {
+                foreach (var imageToPull in result.ImagesToPull)
+                {
+                    Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
+                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
+                                                                   condition: $"{PipelineTemplateConstants.Success}()",
+                                                                   displayName: $"Pull {imageToPull.Key}",
+                                                                   data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
+                }
+            }
+
+            if (result.ImagesToBuild.Count > 0)
+            {
+                foreach (var imageToBuild in result.ImagesToBuild)
+                {
+                    var setupInfo = result.ImagesToBuildInfo[imageToBuild.Key];
+                    Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
+                    containerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
+                                                                   condition: $"{PipelineTemplateConstants.Success}()",
+                                                                   displayName: $"Build {setupInfo.ActionRepository}",
+                                                                   data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
+                }
+            }
+
+#if !OS_LINUX
+            if (containerSetupSteps.Count > 0)
+            {
+                executionContext.Output("Container action is only supported on Linux, skip pull and build docker images.");
+                containerSetupSteps.Clear();
+            }
+#endif
+            return new PrepareResult(containerSetupSteps, result.PreStepTracker);
         }
 
         private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0)
@@ -179,39 +211,6 @@ namespace GitHub.Runner.Worker
                     }
                 }
             }
-
-            if (state.ImagesToPull.Count > 0)
-            {
-                foreach (var imageToPull in state.ImagesToPull)
-                {
-                    Trace.Info($"{imageToPull.Value.Count} steps need to pull image '{imageToPull.Key}'");
-                    state.ContainerSetupSteps.Add(new JobExtensionRunner(runAsync: this.PullActionContainerAsync,
-                                                                   condition: $"{PipelineTemplateConstants.Success}()",
-                                                                   displayName: $"Pull {imageToPull.Key}",
-                                                                   data: new ContainerSetupInfo(imageToPull.Value, imageToPull.Key)));
-                }
-            }
-
-            if (state.ImagesToBuild.Count > 0)
-            {
-                foreach (var imageToBuild in state.ImagesToBuild)
-                {
-                    var setupInfo = state.ImagesToBuildInfo[imageToBuild.Key];
-                    Trace.Info($"{imageToBuild.Value.Count} steps need to build image from '{setupInfo.Dockerfile}'");
-                    state.ContainerSetupSteps.Add(new JobExtensionRunner(runAsync: this.BuildActionContainerAsync,
-                                                                   condition: $"{PipelineTemplateConstants.Success}()",
-                                                                   displayName: $"Build {setupInfo.ActionRepository}",
-                                                                   data: new ContainerSetupInfo(imageToBuild.Value, setupInfo.Dockerfile, setupInfo.WorkingDirectory)));
-                }
-            }
-
-#if !OS_LINUX
-            if (state.ContainerSetupSteps.Count > 0)
-            {
-                executionContext.Output("Container action is only supported on Linux, skip pull and build docker images.");
-                state.ContainerSetupSteps.Clear();
-            }
-#endif
 
             return state;
         }
@@ -1596,7 +1595,6 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, List<Guid>> ImagesToPull;
         public Dictionary<string, List<Guid>> ImagesToBuild;
         public Dictionary<string, ActionContainer> ImagesToBuildInfo;
-        public List<JobExtensionRunner> ContainerSetupSteps;
         public Dictionary<Guid, IActionRunner> PreStepTracker;
     }
 }
