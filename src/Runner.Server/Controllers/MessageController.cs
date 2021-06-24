@@ -926,11 +926,11 @@ namespace Runner.Server.Controllers
                                         Predicate<Dictionary<string, TemplateToken>> match = dict => {
                                             foreach(var kv in mdict) {
                                                 TemplateToken val;
-                                                if (dict.TryGetValue(kv.Key, out val) && TemplateTokenEqual(kv.Value, val)) {
-                                                    return false;
+                                                if(!dict.TryGetValue(kv.Key, out val) || !TemplateTokenEqual(kv.Value, val)) {
+                                                    return true;
                                                 }
                                             }
-                                            return true;
+                                            return false;
                                         };
                                         flatmatrix.RemoveAll(match);
                                         includematrix.RemoveAll(match);
@@ -939,10 +939,11 @@ namespace Runner.Server.Controllers
                                                 jobgroup.Add(jobitem);
                                             }
                                             FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, Outputs = new Dictionary<String, VariableValue>() });
+                                            return;
                                         }
                                     }
                                     var jobTotal = flatmatrix.Count + includematrix.Count;
-                                    if(keys.Length == 0 && jobTotal > 1) {
+                                    if(flatmatrix.Count == 1 && keys.Length == 0 && jobTotal > 1) {
                                         jobTotal--;
                                     }
                                     strategyctx["job-total"] = new NumberContextData( jobTotal );
