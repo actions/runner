@@ -77,6 +77,7 @@ namespace GitHub.Runner.Worker
 
             if (!ActionCommandManager.EnhancedAnnotationsEnabled(context) && actionCommand.Command == "notice")
             {
+                context.Debug($"Enhanced Annotations not enabled on the server: 'notice' command will not be processed.");
                 return false;
             }
 
@@ -528,6 +529,13 @@ namespace GitHub.Runner.Worker
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
 
+            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
+            {
+                context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
+            }
+
+            IssueCommandExtension.ValidateLinesAndColumns(command);
+
             Issue issue = new Issue()
             {
                 Category = "General",
@@ -576,14 +584,31 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
+            context.AddIssue(issue);
+        }
+
+        static void ValidateLinesAndColumns(ActionCommand command) 
+        {
+            command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
+            command.Properties.TryGetValue(IssueCommandProperties.EndLine, out string endLine);
+            command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
+            command.Properties.TryGetValue(IssueCommandProperties.EndColumn, out string endColumn);
+
+            var hasColumnValue = column != null || endColumn != null;
+            var hasLine = line != null;
+            var hasEndLine = endLine != null;
+
+            Console.WriteLine($"hasColumnValue: {hasColumnValue}, hasLine: {hasLine}");
+
+            if (!hasLine && hasColumnValue) 
             {
-                issue.Data.Remove(IssueCommandProperties.EndLine);
-                issue.Data.Remove(IssueCommandProperties.EndColumn);
-                issue.Data.Remove(IssueCommandProperties.Title);
+                throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' can only be set if 'line' value is provided."); 
             }
 
-            context.AddIssue(issue);
+            if (hasEndLine && line != endLine && hasColumnValue) 
+            {
+                throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' cannot be set if 'line' and 'end line' are different values."); 
+            }
         }
 
         private static class IssueCommandProperties

@@ -190,6 +190,30 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void IssueCommandInvalidColumns()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
+                   .Returns((string tag, string line) =>
+                            {
+                                hc.GetTrace().Info($"{tag} {line}");
+                                return 1;
+                            });
+
+                // Different lines with columns
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::warning line=1,end_line=2,col=1,end_column=2::this is a warning", null));
+                Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
+            
+                // No lines with columns
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::warning col=1,end_column=2::this is a warning", null));
+                Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void EchoProcessCommandInvalid()
         {
             using (TestHostContext hc = CreateTestContext())
@@ -267,6 +291,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 new EchoCommandExtension(),
                 new InternalPluginSetRepoPathCommandExtension(),
                 new SetEnvCommandExtension(),
+                new WarningCommandExtension(),
             };
             foreach (var command in commands)
             {
