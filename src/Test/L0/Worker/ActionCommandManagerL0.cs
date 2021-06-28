@@ -36,7 +36,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                    {
                        hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
                    });
-
+                
                 _commandManager.EnablePluginInternalCommand();
 
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
@@ -175,7 +175,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var ec = new Runner.Worker.ExecutionContext();
                 ec.Initialize(hc);
                 ec.InitializeJob(jobRequest, System.Threading.CancellationToken.None);
-
                 ec.Complete();
 
                 Assert.True(ec.EchoOnActionCommand);
@@ -285,6 +284,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             _ec = new Mock<IExecutionContext>();
             _ec.SetupAllProperties();
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
+            _ec.Object.Global.Variables = new Variables(
+                hostContext,
+                new Dictionary<string, VariableValue>()
+            );
 
             // Command manager
             _commandManager = new ActionCommandManager();
