@@ -354,6 +354,7 @@ namespace GitHub.Runner.Worker
 
             executionContext.Complete(result, resultCode: resultCode);
         }
+
         private sealed class ConditionTraceWriter : ObjectTemplating::ITraceWriter
         {
             private readonly IExecutionContext _executionContext;

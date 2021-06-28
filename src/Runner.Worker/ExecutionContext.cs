@@ -245,6 +245,12 @@ namespace GitHub.Runner.Worker
 
         public void RegisterPostJobStep(IStep step)
         {
+            // TODO: Remove when we support composite post job steps
+            if (this.IsEmbedded)
+            {
+                Trace.Info("Skipping registering post job step for composite action");
+                return;
+            }
             if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");

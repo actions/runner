@@ -162,7 +162,7 @@ namespace GitHub.Runner.Worker
                 {
                     var setupInfo = PrepareRepositoryActionAsync(executionContext, action);
                     if (setupInfo != null && setupInfo.Container != null)
-                    { 
+                    {
                         if (!string.IsNullOrEmpty(setupInfo.Container.Image))
                         {
                             if (!state.ImagesToPull.ContainsKey(setupInfo.Container.Image))
@@ -601,90 +601,6 @@ namespace GitHub.Runner.Worker
             return actionDownloadInfos.Actions;
         }
 
-        // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
-        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, Pipelines.ActionStep repositoryAction)
-        {
-            Trace.Entering();
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-
-            var repositoryReference = repositoryAction.Reference as Pipelines.RepositoryPathReference;
-            ArgUtil.NotNull(repositoryReference, nameof(repositoryReference));
-
-            if (string.Equals(repositoryReference.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-            {
-                Trace.Info($"Repository action is in 'self' repository.");
-                return;
-            }
-
-            if (!string.Equals(repositoryReference.RepositoryType, Pipelines.RepositoryTypes.GitHub, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new NotSupportedException(repositoryReference.RepositoryType);
-            }
-
-            ArgUtil.NotNullOrEmpty(repositoryReference.Name, nameof(repositoryReference.Name));
-            ArgUtil.NotNullOrEmpty(repositoryReference.Ref, nameof(repositoryReference.Ref));
-
-            string destDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), repositoryReference.Name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar), repositoryReference.Ref);
-            string watermarkFile = GetWatermarkFilePath(destDirectory);
-            if (File.Exists(watermarkFile))
-            {
-                executionContext.Debug($"Action '{repositoryReference.Name}@{repositoryReference.Ref}' already downloaded at '{destDirectory}'.");
-                return;
-            }
-            else
-            {
-                // make sure we get a clean folder ready to use.
-                IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
-                Directory.CreateDirectory(destDirectory);
-                executionContext.Output($"Download action repository '{repositoryReference.Name}@{repositoryReference.Ref}'");
-            }
-
-            var configurationStore = HostContext.GetService<IConfigurationStore>();
-            var isHostedServer = configurationStore.GetSettings().IsHostedServer;
-            if (isHostedServer)
-            {
-                string apiUrl = GetApiUrl(executionContext);
-                string archiveLink = BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref);
-                var downloadDetails = new ActionDownloadDetails(archiveLink, ConfigureAuthorizationFromContext);
-                await DownloadRepositoryActionAsync(executionContext, downloadDetails, null, destDirectory);
-                return;
-            }
-            else
-            {
-                string apiUrl = GetApiUrl(executionContext);
-
-                // URLs to try:
-                var downloadAttempts = new List<ActionDownloadDetails> {
-                    // A built-in action or an action the user has created, on their GHES instance
-                    // Example:  https://my-ghes/api/v3/repos/my-org/my-action/tarball/v1
-                    new ActionDownloadDetails(
-                        BuildLinkToActionArchive(apiUrl, repositoryReference.Name, repositoryReference.Ref),
-                        ConfigureAuthorizationFromContext),
-
-                    // The same action, on GitHub.com
-                    // Example:  https://api.github.com/repos/my-org/my-action/tarball/v1
-                    new ActionDownloadDetails(
-                        BuildLinkToActionArchive(_dotcomApiUrl, repositoryReference.Name, repositoryReference.Ref),
-                        configureAuthorization: (e,h) => { /* no authorization for dotcom */ })
-                };
-
-                foreach (var downloadAttempt in downloadAttempts)
-                {
-                    try
-                    {
-                        await DownloadRepositoryActionAsync(executionContext, downloadAttempt, null, destDirectory);
-                        return;
-                    }
-                    catch (ActionNotFoundException)
-                    {
-                        Trace.Info($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}' at {downloadAttempt.ArchiveLink}");
-                        continue;
-                    }
-                }
-                throw new ActionNotFoundException($"Failed to find the action '{repositoryReference.Name}' at ref '{repositoryReference.Ref}'.  Paths attempted: {string.Join(", ", downloadAttempts.Select(d => d.ArchiveLink))}");
-            }
-        }
-
         private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo)
         {
             Trace.Entering();
@@ -708,7 +624,7 @@ namespace GitHub.Runner.Worker
                 executionContext.Output($"Download action repository '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}'");
             }
 
-            await DownloadRepositoryActionAsync(executionContext, null, downloadInfo, destDirectory);
+            await DownloadRepositoryActionAsync(executionContext, downloadInfo, destDirectory);
         }
 
         private string GetApiUrl(IExecutionContext executionContext)
@@ -731,8 +647,7 @@ namespace GitHub.Runner.Worker
 #endif
         }
 
-        // todo: Remove the parameter "actionDownloadDetails" when feature flag DistributedTask.NewActionMetadata is removed
-        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, ActionDownloadDetails actionDownloadDetails, WebApi.ActionDownloadInfo downloadInfo, string destDirectory)
+        private async Task DownloadRepositoryActionAsync(IExecutionContext executionContext, WebApi.ActionDownloadInfo downloadInfo, string destDirectory)
         {
             //download and extract action in a temp folder and rename it on success
             string tempDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Actions), "_temp_" + Guid.NewGuid());
@@ -740,10 +655,10 @@ namespace GitHub.Runner.Worker
 
 #if OS_WINDOWS
             string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.zip");
-            string link = downloadInfo?.ZipballUrl ?? actionDownloadDetails.ArchiveLink;
+            string link = downloadInfo?.ZipballUrl;
 #else
             string archiveFile = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.tar.gz");
-            string link = downloadInfo?.TarballUrl ?? actionDownloadDetails.ArchiveLink;
+            string link = downloadInfo?.TarballUrl;
 #endif
 
             Trace.Info($"Save archive '{link}' into {archiveFile}.");
@@ -765,14 +680,7 @@ namespace GitHub.Runner.Worker
                             using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                             using (var httpClient = new HttpClient(httpClientHandler))
                             {
-                                if (downloadInfo == null)
-                                {
-                                    actionDownloadDetails.ConfigureAuthorization(executionContext, httpClient);
-                                }
-                                else
-                                {
-                                    httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadInfo.Authentication?.Token);
-                                }
+                                httpClient.DefaultRequestHeaders.Authorization = CreateAuthHeader(downloadInfo.Authentication?.Token);
 
                                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                                 using (var response = await httpClient.GetAsync(link))
@@ -1110,20 +1018,6 @@ namespace GitHub.Runner.Worker
             var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"x-access-token:{token}"));
             HostContext.SecretMasker.AddValue(base64EncodingToken);
             return new AuthenticationHeaderValue("Basic", base64EncodingToken);
-        }
-
-        // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
-        private class ActionDownloadDetails
-        {
-            public string ArchiveLink { get; }
-
-            public Action<IExecutionContext, HttpClient> ConfigureAuthorization { get; }
-
-            public ActionDownloadDetails(string archiveLink, Action<IExecutionContext, HttpClient> configureAuthorization)
-            {
-                ArchiveLink = archiveLink;
-                ConfigureAuthorization = configureAuthorization;
-            }
         }
     }
 
