@@ -938,7 +938,7 @@ namespace GitHub.Runner.Worker
                         step.Id = Guid.NewGuid();
                         if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
                         {
-                            throw new Exception("Composite Actions with the `uses:` keyword are not supported on this server. Please update your GHES or GHAE instance.");
+                            throw new Exception("`uses:` keyword is not currently supported.");
                         }
                     }
 
