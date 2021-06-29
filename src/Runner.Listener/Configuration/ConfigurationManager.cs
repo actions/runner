@@ -351,7 +351,7 @@ namespace GitHub.Runner.Listener.Configuration
                     throw new Exception("Unconfigure service first");
 #elif OS_OSX
                     // unconfig osx service first
-                    throw new Exception("Unconfigure service first");
+                    throw new Exception("Uninstall service first");
 #endif
                 }
 
