@@ -223,7 +223,7 @@ namespace GitHub.DistributedTask.WebApi
             set;
         }
 
-        [DataMember(Order = 60)]
+        [DataMember(Order = 55)]
         public Int32? NoticeCount
         {
             get;
