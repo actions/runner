@@ -37,64 +37,6 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public async void PrepareActions_DownloadBuiltInActionFromGraph_OnPremises_Legacy()
-        {
-            try
-            {
-                // Arrange
-                Setup();
-                const string ActionName = "actions/sample-action";
-                var actions = new List<Pipelines.ActionStep>
-                {
-                    new Pipelines.ActionStep()
-                    {
-                        Name = "action",
-                        Id = Guid.NewGuid(),
-                        Reference = new Pipelines.RepositoryPathReference()
-                        {
-                            Name = ActionName,
-                            Ref = "main",
-                            RepositoryType = "GitHub"
-                        }
-                    }
-                };
-
-                // Return a valid action from GHES via mock
-                const string ApiUrl = "https://ghes.example.com/api/v3";
-                string expectedArchiveLink = "https://api.github.com/repos/actions/sample-action/tarball/main";
-                string archiveFile = await CreateRepoArchive();
-                using var stream = File.OpenRead(archiveFile);
-                var mockClientHandler = new Mock<HttpClientHandler>();
-                mockClientHandler.Protected().Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.Is<HttpRequestMessage>(m => m.RequestUri == new Uri(expectedArchiveLink)), ItExpr.IsAny<CancellationToken>())
-                    .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stream) });
-
-                var mockHandlerFactory = new Mock<IHttpClientHandlerFactory>();
-                mockHandlerFactory.Setup(p => p.CreateClientHandler(It.IsAny<RunnerWebProxy>())).Returns(mockClientHandler.Object);
-                _hc.SetSingleton(mockHandlerFactory.Object);
-
-                _ec.Setup(x => x.GetGitHubContext("api_url")).Returns(ApiUrl);
-                _configurationStore.Object.GetSettings().IsHostedServer = false;
-
-                //Act
-                await _actionManager.PrepareActionsAsync(_ec.Object, actions);
-
-                //Assert
-                var watermarkFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main.completed");
-                Assert.True(File.Exists(watermarkFile));
-
-                var actionYamlFile = Path.Combine(_hc.GetDirectory(WellKnownDirectory.Actions), ActionName, "main", "action.yml");
-                Assert.True(File.Exists(actionYamlFile));
-                _hc.GetTrace().Info(File.ReadAllText(actionYamlFile));
-            }
-            finally
-            {
-                Teardown();
-            }
-        }
-
-        [Fact]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public async void PrepareActions_DownloadActionFromDotCom_OnPremises_Legacy()
         {
             try
