@@ -598,8 +598,6 @@ namespace GitHub.Runner.Worker
             var hasLine = line != null;
             var hasEndLine = endLine != null;
 
-            Console.WriteLine($"hasColumnValue: {hasColumnValue}, hasLine: {hasLine}");
-
             if (!hasLine && hasColumnValue) 
             {
                 throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' can only be set if 'line' value is provided."); 
