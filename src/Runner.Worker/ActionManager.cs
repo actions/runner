@@ -108,7 +108,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             if (depth > Constants.CompositeActionsMaxDepth)
             {
-                throw new ActionDepthOutOfRange(depth);
+                throw new Exception($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}");
             }
             var repositoryActions = new List<Pipelines.ActionStep>();
 

@@ -239,8 +239,7 @@ namespace GitHub.Runner.Worker
                     // Download actions not already in the cache
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
-                    PrepareResult prepareResult;
-                    prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
+                    var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
                     preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
 
                     // Add start-container steps, record and stop-container steps

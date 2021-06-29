@@ -74,9 +74,6 @@ namespace GitHub.Runner.Worker.Handlers
                     // Set GITHUB_ACTION_PATH
                     step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
 
-                    // Add Expression Functions
-                    step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
-
                     embeddedSteps.Add(step);
                 }
 
@@ -148,6 +145,9 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (IStep step in embeddedSteps)
             {
                 Trace.Info($"Processing embedded step: DisplayName='{step.DisplayName}'");
+
+                // Add Expression Functions
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
                 // Initialize env context
                 Trace.Info("Initialize Env context for embedded step");

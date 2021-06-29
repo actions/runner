@@ -232,20 +232,6 @@
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "string"
             }
-        },
-        "uses-input": {
-            "context": [
-                "github",
-                "inputs",
-                "strategy",
-                "matrix",
-                "steps",
-                "job",
-                "runner",
-                "env",
-                "hashFiles(1,255)"
-            ],
-            "string": {}
         }
     }
 }

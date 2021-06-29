@@ -924,7 +924,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Func<Task> result = async () => await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                await Assert.ThrowsAsync<ActionDepthOutOfRange>(result);
+                var exception = await Assert.ThrowsAsync<Exception>(result);
+                Assert.Equal($"Composite action depth exceeded max depth {Constants.CompositeActionsMaxDepth}", exception.Message);
 
                 // node.js based action doesn't need any extra steps to build/pull containers.
             }
