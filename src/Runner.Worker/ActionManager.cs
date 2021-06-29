@@ -820,7 +820,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        // todo: Remove when feature flag DistributedTask.NewActionMetadata is removed
         private void ConfigureAuthorizationFromContext(IExecutionContext executionContext, HttpClient httpClient)
         {
             var authToken = Environment.GetEnvironmentVariable("_GITHUB_ACTION_TOKEN");
@@ -935,17 +934,15 @@ namespace GitHub.Runner.Worker
                     var compositeAction = actionDefinitionData.Execution as CompositeActionExecutionData;
                     setupInfo.Steps = compositeAction.Steps;
 
-                    // Check backcompat
-                    if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")))
+                    foreach (var step in compositeAction.Steps)
                     {
-                        foreach (var step in compositeAction.Steps)
+                        step.Id = Guid.NewGuid();
+                        if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
                         {
-                            if (step.Reference.Type != Pipelines.ActionSourceType.Script)
-                            {
-                                throw new Exception("Composite Actions with the `uses:` keyword are not supported on this server. Please update your GHES or GHAE instance.");
-                            }
+                            throw new Exception("Composite Actions with the `uses:` keyword are not supported on this server. Please update your GHES or GHAE instance.");
                         }
                     }
+
                     return setupInfo;
                 }
                 else
