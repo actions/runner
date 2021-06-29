@@ -195,8 +195,7 @@ namespace GitHub.Runner.Worker
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
                     {
                         var definition = LoadAction(executionContext, action);
-                        // TODO: How should we handle pre with no Id's. 
-                        // Just create a pre for the composite action and figure it out from there?
+                        // TODO: Support pre's in composite actions
                         if (definition.Data.Execution.HasPre && depth < 1)
                         {
                             var actionRunner = HostContext.CreateService<IActionRunner>();
