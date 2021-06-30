@@ -36,7 +36,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                    {
                        hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
                    });
-                
+
                 _commandManager.EnablePluginInternalCommand();
 
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[internal-set-repo-path repoFullName=actions/runner;workspaceRepo=true]somepath", null));
@@ -201,13 +201,27 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 return 1;
                             });
 
-                // Different lines with columns
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::warning line=1,end_line=2,col=1,end_column=2::this is a warning", null));
-                Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
+                var registeredCommands = new HashSet<string>(new string[1]{ "warning" });
+                ActionCommand command;
+                
+                ActionCommand.TryParseV2("::warning line=1,end_line=2,col=1,end_column=2::this is a warning", registeredCommands, out command);
+                Assert.Throws<Exception>(() => IssueCommandExtension.ValidateLinesAndColumns(command));
             
                 // No lines with columns
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::warning col=1,end_column=2::this is a warning", null));
-                Assert.Equal(TaskResult.Failed, _ec.Object.CommandResult);
+                ActionCommand.TryParseV2("::warning col=1,end_column=2::this is a warning", registeredCommands, out command);
+                Assert.Throws<Exception>(() => IssueCommandExtension.ValidateLinesAndColumns(command));
+
+                // No line with endLine
+                ActionCommand.TryParseV2("::warning end_line=1::this is a warning", registeredCommands, out command);
+                Assert.Throws<Exception>(() => IssueCommandExtension.ValidateLinesAndColumns(command));
+
+
+                // No column with end_column
+                ActionCommand.TryParseV2("::warning end_column=2::this is a warning", registeredCommands, out command);
+                Assert.Throws<Exception>(() => IssueCommandExtension.ValidateLinesAndColumns(command));
+
+                // Valid
+                ActionCommand.TryParseV2("::warning line=1,end_line=1,col=1,end_column=2::this is a warning", registeredCommands, out command);
             }
         }
 

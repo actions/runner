@@ -529,13 +529,16 @@ namespace GitHub.Runner.Worker
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
 
-            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
+            if (ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
+            {
+                IssueCommandExtension.ValidateLinesAndColumns(command);
+            }
+            else 
             {
                 context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
             }
 
-            IssueCommandExtension.ValidateLinesAndColumns(command);
-
+            
             Issue issue = new Issue()
             {
                 Category = "General",
@@ -587,23 +590,35 @@ namespace GitHub.Runner.Worker
             context.AddIssue(issue);
         }
 
-        static void ValidateLinesAndColumns(ActionCommand command) 
+        public static void ValidateLinesAndColumns(ActionCommand command) 
         {
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.EndLine, out string endLine);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
             command.Properties.TryGetValue(IssueCommandProperties.EndColumn, out string endColumn);
 
-            var hasColumnValue = column != null || endColumn != null;
-            var hasLine = line != null;
+            var hasStartLine = line != null;
             var hasEndLine = endLine != null;
+            var hasStartColumn = column != null;
+            var hasEndColumn =  endColumn != null;
+            var hasColumn = hasStartColumn || hasEndColumn;
 
-            if (!hasLine && hasColumnValue) 
+            if (hasEndLine && !hasStartLine)
+            {
+                throw new Exception($"Invalid {command.Command} command value. 'end_line' can only be set of 'line' is provided");
+            }
+
+            if (hasEndColumn && !hasStartColumn)
+            {
+                throw new Exception($"Invalid {command.Command} command value. 'end_column' can only be set of 'col' is provided");
+            }
+
+            if (!hasStartLine && hasColumn) 
             {
                 throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' can only be set if 'line' value is provided."); 
             }
 
-            if (hasEndLine && line != endLine && hasColumnValue) 
+            if (hasEndLine && line != endLine && hasColumn) 
             {
                 throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' cannot be set if 'line' and 'end line' are different values."); 
             }
