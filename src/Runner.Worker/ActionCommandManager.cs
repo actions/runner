@@ -596,20 +596,20 @@ namespace GitHub.Runner.Worker
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
             command.Properties.TryGetValue(IssueCommandProperties.EndColumn, out string endColumn);
 
-            var hasStartLine = !String.IsNullOrWhiteSpace(line);
-            var hasEndLine = !String.IsNullOrWhiteSpace(endLine);
-            var hasStartColumn = !String.IsNullOrWhiteSpace(column);
-            var hasEndColumn =  !String.IsNullOrWhiteSpace(endColumn);
+            var hasStartLine = int.TryParse(line, out int lineNumber);
+            var hasEndLine = int.TryParse(endLine, out int endLineNumber);
+            var hasStartColumn = int.TryParse(column, out int columnNumber);
+            var hasEndColumn = int.TryParse(endColumn, out int endColumnNumber);
             var hasColumn = hasStartColumn || hasEndColumn;
 
             if (hasEndLine && !hasStartLine)
             {
-                throw new Exception($"Invalid {command.Command} command value. 'end_line' can only be set of 'line' is provided");
+                throw new Exception($"Invalid {command.Command} command value. 'end_line' can only be set if 'line' is provided");
             }
 
             if (hasEndColumn && !hasStartColumn)
             {
-                throw new Exception($"Invalid {command.Command} command value. 'end_column' can only be set of 'col' is provided");
+                throw new Exception($"Invalid {command.Command} command value. 'end_column' can only be set if 'col' is provided");
             }
 
             if (!hasStartLine && hasColumn) 
@@ -621,6 +621,16 @@ namespace GitHub.Runner.Worker
             {
                 throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' cannot be set if 'line' and 'end line' are different values."); 
             }
+
+            if (hasStartLine && hasEndLine && endLineNumber < lineNumber) 
+            {
+                throw new Exception($"Invalid {command.Command} command value. 'end_line' cannot be less than 'line'."); 
+            }
+
+            if (hasStartColumn && hasEndColumn && endColumnNumber < columnNumber) 
+            {
+                throw new Exception($"Invalid {command.Command} command value. 'end_column' cannot be less than 'col'."); 
+            }    
         }
 
         private static class IssueCommandProperties
