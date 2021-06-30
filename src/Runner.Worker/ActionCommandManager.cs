@@ -537,7 +537,6 @@ namespace GitHub.Runner.Worker
             {
                 context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
             }
-
             
             Issue issue = new Issue()
             {

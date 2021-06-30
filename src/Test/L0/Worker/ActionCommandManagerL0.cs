@@ -175,6 +175,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var ec = new Runner.Worker.ExecutionContext();
                 ec.Initialize(hc);
                 ec.InitializeJob(jobRequest, System.Threading.CancellationToken.None);
+
                 ec.Complete();
 
                 Assert.True(ec.EchoOnActionCommand);
