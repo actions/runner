@@ -596,10 +596,10 @@ namespace GitHub.Runner.Worker
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
             command.Properties.TryGetValue(IssueCommandProperties.EndColumn, out string endColumn);
 
-            var hasStartLine = line != null;
-            var hasEndLine = endLine != null;
-            var hasStartColumn = column != null;
-            var hasEndColumn =  endColumn != null;
+            var hasStartLine = !String.IsNullOrWhiteSpace(line);
+            var hasEndLine = !String.IsNullOrWhiteSpace(endLine);
+            var hasStartColumn = !String.IsNullOrWhiteSpace(column);
+            var hasEndColumn =  !String.IsNullOrWhiteSpace(endColumn);
             var hasColumn = hasStartColumn || hasEndColumn;
 
             if (hasEndLine && !hasStartLine)

@@ -216,9 +216,12 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ActionCommand.TryParseV2("::warning end_line=1::this is a warning", registeredCommands, out command);
                 Assert.Throws<Exception>(() => IssueCommandExtension.ValidateLinesAndColumns(command));
 
-
                 // No column with end_column
                 ActionCommand.TryParseV2("::warning end_column=2::this is a warning", registeredCommands, out command);
+                Assert.Throws<Exception>(() => IssueCommandExtension.ValidateLinesAndColumns(command));
+
+                // Empty Strings
+                ActionCommand.TryParseV2("::warning line=,end_line=3::this is a warning", registeredCommands, out command);
                 Assert.Throws<Exception>(() => IssueCommandExtension.ValidateLinesAndColumns(command));
 
                 // Valid
