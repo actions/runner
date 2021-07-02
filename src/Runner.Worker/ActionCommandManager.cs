@@ -655,7 +655,6 @@ namespace GitHub.Runner.Worker
             public const String EndColumn = "endColumn";
             public const String Title = "title";
         }
-
     }
 
     public sealed class GroupCommandExtension : GroupingCommandExtension
