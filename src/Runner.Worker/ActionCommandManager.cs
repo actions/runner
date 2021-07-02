@@ -531,7 +531,12 @@ namespace GitHub.Runner.Worker
 
             if (ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
             {
-                IssueCommandExtension.ValidateLinesAndColumns(command);
+
+                if (!IssueCommandExtension.ValidateLinesAndColumns(command, context)) 
+                {
+                    context.Debug($"Validation failed for the {command.Command}. It will not be processed.");
+                    return;
+                }
             }
             else 
             {
@@ -589,7 +594,7 @@ namespace GitHub.Runner.Worker
             context.AddIssue(issue);
         }
 
-        public static void ValidateLinesAndColumns(ActionCommand command) 
+        public static bool ValidateLinesAndColumns(ActionCommand command, IExecutionContext context) 
         {
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.EndLine, out string endLine);
@@ -604,33 +609,41 @@ namespace GitHub.Runner.Worker
 
             if (hasEndLine && !hasStartLine)
             {
-                throw new Exception($"Invalid {command.Command} command value. 'end_line' can only be set if 'line' is provided");
+                context.Debug($"Invalid {command.Command} command value. 'end_line' can only be set if 'line' is provided");
+                return false;
             }
 
             if (hasEndColumn && !hasStartColumn)
             {
-                throw new Exception($"Invalid {command.Command} command value. 'end_column' can only be set if 'col' is provided");
+                context.Debug($"Invalid {command.Command} command value. 'end_column' can only be set if 'col' is provided");
+                return false;
             }
 
             if (!hasStartLine && hasColumn) 
             {
-                throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' can only be set if 'line' value is provided."); 
+                context.Debug($"Invalid {command.Command} command value. 'column' and 'end_column' can only be set if 'line' value is provided.");
+                return false;
             }
 
             if (hasEndLine && line != endLine && hasColumn) 
             {
-                throw new Exception($"Invalid {command.Command} command value. 'column' and 'end_column' cannot be set if 'line' and 'end line' are different values."); 
+                context.Debug($"Invalid {command.Command} command value. 'column' and 'end_column' cannot be set if 'line' and 'end line' are different values.");
+                return false;
             }
 
             if (hasStartLine && hasEndLine && endLineNumber < lineNumber) 
             {
-                throw new Exception($"Invalid {command.Command} command value. 'end_line' cannot be less than 'line'."); 
+                context.Debug($"Invalid {command.Command} command value. 'end_line' cannot be less than 'line'.");
+                return false; 
             }
 
             if (hasStartColumn && hasEndColumn && endColumnNumber < columnNumber) 
             {
-                throw new Exception($"Invalid {command.Command} command value. 'end_column' cannot be less than 'col'."); 
-            }    
+                context.Debug($"Invalid {command.Command} command value. 'end_column' cannot be less than 'col'.");
+                return false; 
+            }
+
+            return true;
         }
 
         private static class IssueCommandProperties
