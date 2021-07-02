@@ -106,7 +106,6 @@ namespace GitHub.Runner.Worker
     {
         private const int _maxIssueCount = 10;
         private const int _throttlingDelayReportThreshold = 10 * 1000; // Don't report throttling with less than 10 seconds delay
-        private const string _noticeLogPrefix = "\u001b[31m"; //white text
 
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
@@ -525,7 +524,7 @@ namespace GitHub.Runner.Worker
                 // log UI use this to navigate from issue to log
                 if (!string.IsNullOrEmpty(logMessage))
                 {
-                    long logLineNumber = Write(_noticeLogPrefix, logMessage);
+                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
                     issue.Data["logFileLineNumber"] = logLineNumber.ToString();
                 }
 
@@ -1032,6 +1031,7 @@ namespace GitHub.Runner.Worker
         public static readonly string Command = "##[command]";
         public static readonly string Error = "##[error]";
         public static readonly string Warning = "##[warning]";
+        public static readonly string Notice = "##[notice]";
         public static readonly string Debug = "##[debug]";
     }
 }
