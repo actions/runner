@@ -609,37 +609,37 @@ namespace GitHub.Runner.Worker
 
             if (hasEndLine && !hasStartLine)
             {
-                context.Debug($"Invalid {command.Command} command value. 'end_line' can only be set if 'line' is provided");
+                context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndLine}' can only be set if '{IssueCommandProperties.Line}' is provided");
                 return false;
             }
 
             if (hasEndColumn && !hasStartColumn)
             {
-                context.Debug($"Invalid {command.Command} command value. 'end_column' can only be set if 'col' is provided");
+                context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndColumn}' can only be set if '{IssueCommandProperties.Column}' is provided");
                 return false;
             }
 
             if (!hasStartLine && hasColumn) 
             {
-                context.Debug($"Invalid {command.Command} command value. 'column' and 'end_column' can only be set if 'line' value is provided.");
+                context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.Column}' and '{IssueCommandProperties.EndColumn}' can only be set if '{IssueCommandProperties.Line}' value is provided.");
                 return false;
             }
 
             if (hasEndLine && line != endLine && hasColumn) 
             {
-                context.Debug($"Invalid {command.Command} command value. 'column' and 'end_column' cannot be set if 'line' and 'end line' are different values.");
+                context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.Column}' and '{IssueCommandProperties.EndColumn}' cannot be set if '{IssueCommandProperties.Line}' and '{IssueCommandProperties.EndLine}' are different values.");
                 return false;
             }
 
             if (hasStartLine && hasEndLine && endLineNumber < lineNumber) 
             {
-                context.Debug($"Invalid {command.Command} command value. 'end_line' cannot be less than 'line'.");
+                context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndLine}' cannot be less than '{IssueCommandProperties.Line}'.");
                 return false; 
             }
 
             if (hasStartColumn && hasEndColumn && endColumnNumber < columnNumber) 
             {
-                context.Debug($"Invalid {command.Command} command value. 'end_column' cannot be less than 'col'.");
+                context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndColumn}' cannot be less than '{IssueCommandProperties.Column}'.");
                 return false; 
             }
 
@@ -650,9 +650,9 @@ namespace GitHub.Runner.Worker
         {
             public const String File = "file";
             public const String Line = "line";
-            public const String EndLine = "end_line";
+            public const String EndLine = "endLine";
             public const String Column = "col";
-            public const String EndColumn = "end_column";
+            public const String EndColumn = "endColumn";
             public const String Title = "title";
         }
 
