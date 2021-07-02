@@ -165,7 +165,7 @@ namespace GitHub.Runner.Listener.Configuration
             List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
             TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
 
-            if (agentPools?.Where(x => !x.IsHosted).Count() > 1)
+            if (agentPools?.Where(x => !x.IsHosted).Count() > 0)
             {
                 poolName = command.GetRunnerGroupName(defaultPool?.Name);
                 _term.WriteLine();
