@@ -47,7 +47,7 @@ namespace GitHub.Runner.Sdk
             return StringUtil.ConvertFromJson<T>(json);
         }
 
-        public static string GetPathHash(string path)
+        public static string GetSha256Hash(string path)
         {
             string hashString = path.ToLowerInvariant();
             using (SHA256 sha256hash = SHA256.Create())

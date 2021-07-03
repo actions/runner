@@ -75,11 +75,13 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
-            // process action command in serialize order.
+            // Serialize order
             lock (_commandSerializeLock)
             {
+                // Currently stopped
                 if (_stopProcessCommand)
                 {
+                    // Resume token
                     if (!string.IsNullOrEmpty(_stopToken) &&
                              string.Equals(actionCommand.Command, _stopToken, StringComparison.OrdinalIgnoreCase))
                     {
@@ -96,8 +98,10 @@ namespace GitHub.Runner.Worker
                         return false;
                     }
                 }
+                // Currently processing
                 else
                 {
+                    // Stop command
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
                         context.Output(input);
@@ -107,6 +111,7 @@ namespace GitHub.Runner.Worker
                         _registeredCommands.Add(_stopToken);
                         return true;
                     }
+                    // Found command
                     else if (_commandExtensions.TryGetValue(actionCommand.Command, out IActionCommandExtension extension))
                     {
                         if (context.EchoOnActionCommand && !extension.OmitEcho)
@@ -126,6 +131,7 @@ namespace GitHub.Runner.Worker
                             context.CommandResult = TaskResult.Failed;
                         }
                     }
+                    // Command not found
                     else
                     {
                         context.Warning($"Can't find command extension for ##[{actionCommand.Command}.command].");

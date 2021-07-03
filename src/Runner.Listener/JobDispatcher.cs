@@ -240,6 +240,15 @@ namespace GitHub.Runner.Listener
                 {
                     request = await runnerServer.GetAgentRequestAsync(_poolId, jobDispatch.RequestId, CancellationToken.None);
                 }
+                catch (TaskAgentJobNotFoundException ex)
+                {
+                    Trace.Error($"Catch job-not-found exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
+                    Trace.Error(ex);
+                    jobDispatch.WorkerCancellationTokenSource.Cancel();
+                    // make sure worker process exit before we return, otherwise we might leave orphan worker process behind.
+                    await jobDispatch.WorkerDispatch;
+                    return;
+                }
                 catch (Exception ex)
                 {
                     // we can't even query for the jobrequest from server, something totally busted, stop runner/worker.

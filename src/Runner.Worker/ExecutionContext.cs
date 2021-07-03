@@ -61,14 +61,15 @@ namespace GitHub.Runner.Worker
 
         bool EchoOnActionCommand { get; set; }
 
-        bool InsideComposite { get; }
+        bool IsEmbedded { get; }
 
         ExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null);
+        IExecutionContext CreateEmbeddedChild(string scopeName, string contextName);
 
         // logging
         long Write(string tag, string message);
@@ -99,7 +100,6 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep CreateCompositeStep(string scopeName, IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -157,7 +157,9 @@ namespace GitHub.Runner.Worker
 
         public bool EchoOnActionCommand { get; set; }
 
-        public bool InsideComposite { get; private set; }
+        // An embedded execution context shares the same record ID, record name, and logger
+        // as its enclosing execution context.
+        public bool IsEmbedded { get; private set; }
 
         public TaskResult? Result
         {
@@ -243,6 +245,12 @@ namespace GitHub.Runner.Worker
 
         public void RegisterPostJobStep(IStep step)
         {
+            // TODO: Remove when we support composite post job steps
+            if (this.IsEmbedded)
+            {
+                throw new Exception("Composite actions do not currently support post steps");
+
+            }
             if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
@@ -253,32 +261,7 @@ namespace GitHub.Runner.Worker
             Root.PostJobSteps.Push(step);
         }
 
-        /// <summary>
-        /// Helper function used in CompositeActionHandler::RunAsync to
-        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location.
-        /// </summary>
-        public IStep CreateCompositeStep(
-            string scopeName,
-            IActionRunner step,
-            DictionaryContextData inputsData,
-            Dictionary<string, string> envData)
-        {
-            step.ExecutionContext = Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
-            step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-            step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
-
-            // Add the composite action environment variables to each step.
-            IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
-            foreach (var pair in envData)
-            {
-                envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-            }
-            step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
-
-            return step;
-        }
-
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null)
         {
             Trace.Entering();
 
@@ -325,9 +308,18 @@ namespace GitHub.Runner.Worker
                 child._logger.Setup(_mainTimelineId, recordId);
             }
 
-            child.InsideComposite = insideComposite;
+            child.IsEmbedded = isEmbedded;
 
             return child;
+        }
+
+        /// <summary>
+        /// An embedded execution context shares the same record ID, record name, logger,
+        /// and a linked cancellation token.
+        /// </summary>
+        public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName)
+        {
+            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
         }
 
         public void Start(string currentOperation = null)

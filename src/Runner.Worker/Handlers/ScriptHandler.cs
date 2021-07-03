@@ -27,7 +27,7 @@ namespace GitHub.Runner.Worker.Handlers
             // We don't want to display the internal workings if composite (similar/equivalent information can be found in debug)
             void writeDetails(string message)
             {
-                if (ExecutionContext.InsideComposite)
+                if (ExecutionContext.IsEmbedded)
                 {
                     ExecutionContext.Debug(message);
                 }
@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker.Handlers
                     firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                writeDetails(ExecutionContext.InsideComposite ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
+                writeDetails(ExecutionContext.IsEmbedded ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
             }
             else
             {
@@ -141,7 +141,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            writeDetails(ExecutionContext.InsideComposite ? "" : "##[endgroup]");
+            writeDetails(ExecutionContext.IsEmbedded ? "" : "##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)

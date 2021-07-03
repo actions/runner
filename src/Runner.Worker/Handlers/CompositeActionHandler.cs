@@ -5,11 +5,15 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker;
+using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 
@@ -26,65 +30,60 @@ namespace GitHub.Runner.Worker.Handlers
 
         public async Task RunAsync(ActionRunStage stage)
         {
-            // Validate args.
+            // Validate args
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
             ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
 
-            // Resolve action steps
-            var actionSteps = Data.Steps;
-
-            // Create Context Data to reuse for each composite action step
-            var inputsData = new DictionaryContextData();
-            foreach (var i in Inputs)
-            {
-                inputsData[i.Key] = new StringContextData(i.Value);
-            }
-
-            // Initialize Composite Steps List of Steps
-            var compositeSteps = new List<IStep>();
-
-            // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
-            // context name. Generated context names start with "__"
-            var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
-            if (string.IsNullOrEmpty(childScopeName))
-            {
-                childScopeName = $"__{Guid.NewGuid()}";
-            }
-
-            foreach (Pipelines.ActionStep actionStep in actionSteps)
-            {
-                var actionRunner = HostContext.CreateService<IActionRunner>();
-                actionRunner.Action = actionStep;
-                actionRunner.Stage = stage;
-                actionRunner.Condition = actionStep.Condition;
-
-                var step = ExecutionContext.CreateCompositeStep(childScopeName, actionRunner, inputsData, Environment);
-
-                // Shallow copy github context
-                var gitHubContext = step.ExecutionContext.ExpressionValues["github"] as GitHubContext;
-                ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
-                gitHubContext = gitHubContext.ShallowCopy();
-                step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
-
-                // Set GITHUB_ACTION_PATH
-                step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
-
-                compositeSteps.Add(step);
-            }
-
             try
             {
-                // This is where we run each step.
-                await RunStepsAsync(compositeSteps);
+                // Inputs of the composite step
+                var inputsData = new DictionaryContextData();
+                foreach (var i in Inputs)
+                {
+                    inputsData[i.Key] = new StringContextData(i.Value);
+                }
 
-                // Get the pointer of the correct "steps" object and pass it to the ExecutionContext so that we can process the outputs correctly
+                // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
+                // context name. Generated context names start with "__"
+                var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
+                if (string.IsNullOrEmpty(childScopeName))
+                {
+                    childScopeName = $"__{Guid.NewGuid()}";
+                }
+
+                // Create embedded steps
+                var embeddedSteps = new List<IStep>();
+                foreach (Pipelines.ActionStep stepData in Data.Steps)
+                {
+                    var step = HostContext.CreateService<IActionRunner>();
+                    step.Action = stepData;
+                    step.Stage = stage;
+                    step.Condition = stepData.Condition;
+                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName);
+                    step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
+                    step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
+
+                    // Shallow copy github context
+                    var gitHubContext = step.ExecutionContext.ExpressionValues["github"] as GitHubContext;
+                    ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
+                    gitHubContext = gitHubContext.ShallowCopy();
+                    step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
+
+                    // Set GITHUB_ACTION_PATH
+                    step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
+
+                    embeddedSteps.Add(step);
+                }
+
+                // Run embedded steps
+                await RunStepsAsync(embeddedSteps);
+
+                // Set outputs
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
-                ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(ExecutionContext.GetFullyQualifiedContextName());
-
-                ProcessCompositeActionOutputs();
-
+                ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
+                ProcessOutputs();
                 ExecutionContext.Global.StepsContext.ClearScope(childScopeName);
             }
             catch (Exception ex)
@@ -96,7 +95,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private void ProcessCompositeActionOutputs()
+        private void ProcessOutputs()
         {
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
 
@@ -113,65 +112,56 @@ namespace GitHub.Runner.Worker.Handlers
                     evaluateContext[pair.Key] = pair.Value;
                 }
 
-                // Get the evluated composite outputs' values mapped to the outputs named
+                // Evaluate outputs
                 DictionaryContextData actionOutputs = actionManifestManager.EvaluateCompositeOutputs(ExecutionContext, Data.Outputs, evaluateContext);
 
-                // Set the outputs for the outputs object in the whole composite action
-                // Each pair is structured like this
-                // We ignore "description" for now
-                // {
-                //   "the-output-name": {
-                //     "description": "",
-                //     "value": "the value"
-                //   },
-                //   ...
-                // }
+                // Set outputs
+                //
+                // Each pair is structured like:
+                //   {
+                //     "the-output-name": {
+                //       "description": "",
+                //       "value": "the value"
+                //     },
+                //     ...
+                //   }
                 foreach (var pair in actionOutputs)
                 {
-                    var outputsName = pair.Key;
-                    var outputsAttributes = pair.Value as DictionaryContextData;
-                    outputsAttributes.TryGetValue("value", out var val);
-
-                    if (val != null)
+                    var outputName = pair.Key;
+                    var outputDefinition = pair.Value as DictionaryContextData;
+                    if (outputDefinition.TryGetValue("value", out var val))
                     {
-                        var outputsValue = val as StringContextData;
-                        // Set output in the whole composite scope. 
-                        if (!String.IsNullOrEmpty(outputsValue))
-                        {
-                            ExecutionContext.SetOutput(outputsName, outputsValue, out _);
-                        }
-                        else
-                        {
-                            ExecutionContext.SetOutput(outputsName, "", out _);
-                        }
+                        var outputValue = val.AssertString("output value");
+                        ExecutionContext.SetOutput(outputName, outputValue.Value, out _);
                     }
                 }
             }
         }
 
-        private async Task RunStepsAsync(List<IStep> compositeSteps)
+        private async Task RunStepsAsync(List<IStep> embeddedSteps)
         {
-            ArgUtil.NotNull(compositeSteps, nameof(compositeSteps));
+            ArgUtil.NotNull(embeddedSteps, nameof(embeddedSteps));
 
-            // The parent StepsRunner of the whole Composite Action Step handles the cancellation stuff already. 
-            foreach (IStep step in compositeSteps)
+            foreach (IStep step in embeddedSteps)
             {
-                Trace.Info($"Processing composite step: DisplayName='{step.DisplayName}'");
+                Trace.Info($"Processing embedded step: DisplayName='{step.DisplayName}'");
 
-                step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
+                // Add Expression Functions
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
 
-                // Populate env context for each step
-                Trace.Info("Initialize Env context for step");
+                // Initialize env context
+                Trace.Info("Initialize Env context for embedded step");
                 IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
+                step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
 
-                // Global env
+                // Merge global env
                 foreach (var pair in ExecutionContext.Global.EnvironmentVariables)
                 {
                     envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
                 }
 
-                // Stomps over with outside step env
-                if (step.ExecutionContext.ExpressionValues.TryGetValue("env", out var envContextData))
+                // Merge composite-step env
+                if (ExecutionContext.ExpressionValues.TryGetValue("env", out var envContextData))
                 {
                     var dict = envContextData as IDictionaryContextData;
                     foreach (var pair in dict)
@@ -180,13 +170,11 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-                step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
-
                 var actionStep = step as IActionRunner;
 
                 try
                 {
-                    // Evaluate and merge action's env block to env context
+                    // Evaluate and merge embedded-step env
                     var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
                     var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
                     foreach (var env in actionEnvironment)
@@ -196,38 +184,27 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 catch (Exception ex)
                 {
-                    // fail the step since there is an evaluate error.
-                    Trace.Info("Caught exception in Composite Steps Runner from expression for step.env");
-                    // evaluateStepEnvFailed = true;
+                    // Evaluation error
+                    Trace.Info("Caught exception from expression for embedded step.env");
                     step.ExecutionContext.Error(ex);
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
                 await RunStepAsync(step);
 
-                // Directly after the step, check if the step has failed or cancelled
-                // If so, return that to the output
+                // Check failed or canceled
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     ExecutionContext.Result = step.ExecutionContext.Result;
                     break;
                 }
-
-                // TODO: Add compat for other types of steps.
             }
-            // Completion Status handled by StepsRunner for the whole Composite Action Step
         }
 
         private async Task RunStepAsync(IStep step)
         {
-            // Start the step.
-            Trace.Info("Starting the step.");
+            Trace.Info($"Starting: {step.DisplayName}");
             step.ExecutionContext.Debug($"Starting: {step.DisplayName}");
-
-            // TODO: Fix for Step Level Timeout Attributes for an individual Composite Run Step
-            // For now, we are not going to support this for an individual composite run step
-
-            var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
 
             await Common.Util.EncodingUtil.SetEncoding(HostContext, Trace, step.ExecutionContext.CancellationToken);
 
@@ -253,7 +230,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             catch (Exception ex)
             {
-                // Log the error and fail the step.
+                // Log the error and fail the step
                 Trace.Error($"Caught exception from step: {ex}");
                 step.ExecutionContext.Error(ex);
                 step.ExecutionContext.Result = TaskResult.Failed;
@@ -266,9 +243,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
-
-            // Complete the step context.
-            step.ExecutionContext.Debug($"Finishing: {step.DisplayName}");
+            step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
         }
     }
 }
