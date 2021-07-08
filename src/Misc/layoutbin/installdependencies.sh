@@ -48,7 +48,10 @@ then
         echo "--------Debian Version--------"
         cat /etc/debian_version
         echo "------------------------------"
-        
+
+        mv /etc/apt/sources.list.d/sbt.list sbt.list
+        mv /etc/apt/sources.list.d/sbt.list.save sbt.list.save
+
         # prefer apt-get over apt
         command -v apt-get
         if [ $? -eq 0 ]
