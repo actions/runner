@@ -71,3 +71,16 @@ jobs:
       with:
         name: runner-package-${{ matrix.runtime }}
         path: _package
+
+    # compute shas and set as job outputs to use in release notes
+    - run: brew install coreutils #needed for shasum util
+      if: ${{ matrix.os == 'macOS-latest' }}
+      name: Install Dependencies for SHA Calculation (osx)
+    - run: |
+        file=$(ls)
+        sha=$(sha256sum $file | awk '{ print $1 }')
+        echo "Computed sha256: $sha for $file"
+      shell: bash
+      id: sha
+      name: Compute SHA256
+      working-directory: _package
