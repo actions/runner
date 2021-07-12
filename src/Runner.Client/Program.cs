@@ -111,7 +111,8 @@ namespace Runner.Client
             public bool quiet { get; set; }
             public bool privileged { get; set; }
             public string userns { get; set; }
-            public string containerArchitecture { get; set; }
+            public string containerPlatform { get; set; }
+            public string containerArchitecture { get => containerPlatform; set => containerPlatform = value; }
             public string defaultbranch { get; set; }
             public string directory { get; set; }
             public bool verbose { get; set; }
@@ -464,7 +465,7 @@ namespace Runner.Client
                     "--userns",
                     "Change the docker container linux user namespace, only applies to container jobs using this Runner fork."),
                 new Option<string>(
-                    "--container-architecture",
+                    new [] { "--container-architecture", "--container-platform" },
                     "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork."),
                 new Option<bool>(
                     "--keep-container",
@@ -493,7 +494,7 @@ namespace Runner.Client
                     description: "Do not share toolcache between runners, a shared toolcache may cause workflow failures."),
                 new Option<bool>(
                     "--no-reuse",
-                    "Dot not reuse a configured self-hosted runner, creates a new instance after a job completes."),
+                    "Do not reuse a configured self-hosted runner, creates a new instance after a job completes."),
                 new Option<string>(
                     "--git-server-url",
                     getDefaultValue: () => "https://github.com",
@@ -508,10 +509,10 @@ namespace Runner.Client
                     description: "Url to github graphql api."),
                 new Option<string>(
                     "--git-tarball-url",
-                    description: "Url to github tarbal api url, defaults to `<git-api-server-url>/repos/{0}/tarball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
+                    description: "Url to github or gitea tarball api url, defaults to `<git-api-server-url>/repos/{0}/tarball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
                 new Option<string>(
                     "--git-zipball-url",
-                    description: "Url to github tarbal api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
+                    description: "Url to github or gitea zipball api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
             };
 
             rootCommand.Description = "Run your workflows locally.";
