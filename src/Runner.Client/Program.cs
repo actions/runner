@@ -129,6 +129,7 @@ namespace Runner.Client
             public string GitGraphQlServerUrl { get; set; }
             public string GitTarballUrl { get; set; }
             public string GitZipballUrl { get; set; }
+            public bool RemoteCheckout { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -516,6 +517,9 @@ namespace Runner.Client
                 new Option<string>(
                     "--git-zipball-url",
                     description: "Url to github or gitea zipball api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
+                new Option<string>(
+                    "--remote-checkout",
+                    description: "Do not inject localcheckout into your workflows, always use the original actions/checkout."),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -692,7 +696,9 @@ namespace Runner.Client
                             }
                             var task = workerchannel.Reader.ReadAsync().AsTask();
                             if(await Task.WhenAny(listener.Append(task)) != task) {
-                                Console.Error.WriteLine("Fatal: Failed to start Runner or Server crashed");
+                                if(!canceled) {
+                                    Console.Error.WriteLine("Fatal: Failed to start Runner or Server crashed");
+                                }
                                 return 1;
                             }
                         }
@@ -889,6 +895,9 @@ namespace Runner.Client
                                     }
                                     if(wsecrets.Count > 0) {
                                         query.Add("secrets", wsecrets);
+                                    }
+                                    if(parameters.RemoteCheckout) {
+                                        query.Add("localcheckout", "0");
                                     }
                                     b.Query = query.ToQueryString().ToString().TrimStart('?');
                                     JObject payloadContent = new JObject();
