@@ -258,7 +258,7 @@ namespace GitHub.Runner.Listener
                     Trace.Error(ex);
 
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
-                    // make sure worker the process exits before we rethrow, otherwise we might leave orphan worker process behind.
+                    // make sure the worker process exits before we rethrow, otherwise we might leave orphan worker process behind.
                     await jobDispatch.WorkerDispatch;
 
                     // rethrow original exception
