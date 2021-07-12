@@ -564,13 +564,17 @@ namespace Runner.Client
                     if(cancelWorkflow != null) {
                         e.Cancel = true;
                         Console.WriteLine($"CTRL+C received Cancel Running Jobs");
-                        cancelWorkflow.Invoke();
-                    } else {
-                        e.Cancel = !canceled;
-                        Console.WriteLine($"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
-                        canceled = true;
-                        source.Cancel();
+                        try {
+                            cancelWorkflow.Invoke();
+                            return;
+                        } catch(Exception ex) {
+                            Console.WriteLine($"Failed to cancel pending or active jobs: {ex.ToString()}");
+                        }
                     }
+                    e.Cancel = !canceled;
+                    Console.WriteLine($"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
+                    canceled = true;
+                    source.Cancel();
                 };
                 List<Task> listener = new List<Task>();
                 try {
