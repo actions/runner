@@ -207,39 +207,62 @@ namespace GitHub.Runner.Common.Tests.Worker
                 
                 // Columns when lines are different
                 ActionCommand.TryParseV2("::warning line=1,endLine=2,col=1,endColumn=2::this is a warning", registeredCommands, out command);
-                Assert.False(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                Assert.Equal("1", command.Properties["col"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("col"));
             
                 // No lines with columns
                 ActionCommand.TryParseV2("::warning col=1,endColumn=2::this is a warning", registeredCommands, out command);
-                Assert.False(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                Assert.Equal("1", command.Properties["col"]);
+                Assert.Equal("2", command.Properties["endColumn"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("col"));
+                Assert.False(command.Properties.ContainsKey("endColumn"));
 
                 // No line with endLine
                 ActionCommand.TryParseV2("::warning endLine=1::this is a warning", registeredCommands, out command);
-                Assert.False(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                Assert.Equal("1", command.Properties["endLine"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal(command.Properties["endLine"], command.Properties["line"]);
 
                 // No column with endColumn
-                ActionCommand.TryParseV2("::warning endColumn=2::this is a warning", registeredCommands, out command);
-                Assert.False(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                ActionCommand.TryParseV2("::warning line=1,endColumn=2::this is a warning", registeredCommands, out command);
+                Assert.Equal("2", command.Properties["endColumn"]);
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal(command.Properties["endColumn"], command.Properties["col"]);
 
                 // Empty Strings
                 ActionCommand.TryParseV2("::warning line=,endLine=3::this is a warning", registeredCommands, out command);
-                Assert.False(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal(command.Properties["line"], command.Properties["endLine"]);
 
                 // Nonsensical line values
                 ActionCommand.TryParseV2("::warning line=4,endLine=3::this is a warning", registeredCommands, out command);
-                Assert.False(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("line"));
+                Assert.False(command.Properties.ContainsKey("endLine"));
 
                 /// Nonsensical column values
                 ActionCommand.TryParseV2("::warning line=1,endLine=1,col=3,endColumn=2::this is a warning", registeredCommands, out command);
-                Assert.False(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.False(command.Properties.ContainsKey("col"));
+                Assert.False(command.Properties.ContainsKey("endColumn"));
 
                 // Valid
                 ActionCommand.TryParseV2("::warning line=1,endLine=1,col=1,endColumn=2::this is a warning", registeredCommands, out command);
-                Assert.True(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal("1", command.Properties["line"]);
+                Assert.Equal("1", command.Properties["endLine"]);
+                Assert.Equal("1", command.Properties["col"]);
+                Assert.Equal("2", command.Properties["endColumn"]);
 
                 // Backwards compatibility
                 ActionCommand.TryParseV2("::warning line=1,col=1,file=test.txt::this is a warning", registeredCommands, out command);
-                Assert.True(IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object));
+                IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
+                Assert.Equal("1", command.Properties["line"]);
+                Assert.False(command.Properties.ContainsKey("endLine"));
+                Assert.Equal("1", command.Properties["col"]);
+                Assert.False(command.Properties.ContainsKey("endColumn"));
             }
         }
 

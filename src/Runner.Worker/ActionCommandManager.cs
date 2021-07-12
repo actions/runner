@@ -529,16 +529,7 @@ namespace GitHub.Runner.Worker
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
 
-            if (ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
-            {
-
-                if (!IssueCommandExtension.ValidateLinesAndColumns(command, context)) 
-                {
-                    context.Debug($"Validation failed for the {command.Command}. It will not be processed.");
-                    return;
-                }
-            }
-            else 
+            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
             {
                 context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
             }
@@ -594,7 +585,7 @@ namespace GitHub.Runner.Worker
             context.AddIssue(issue);
         }
 
-        public static bool ValidateLinesAndColumns(ActionCommand command, IExecutionContext context) 
+        public static void ValidateLinesAndColumns(ActionCommand command, IExecutionContext context) 
         {
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.EndLine, out string endLine);
@@ -610,40 +601,46 @@ namespace GitHub.Runner.Worker
             if (hasEndLine && !hasStartLine)
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndLine}' can only be set if '{IssueCommandProperties.Line}' is provided");
-                return false;
+                command.Properties[IssueCommandProperties.Line] = endLine;
+                hasStartLine = true;
+                line = endLine;
             }
 
             if (hasEndColumn && !hasStartColumn)
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndColumn}' can only be set if '{IssueCommandProperties.Column}' is provided");
-                return false;
+                command.Properties[IssueCommandProperties.Column] = endColumn;
+                hasStartColumn = true;
+                column = endColumn;
             }
 
             if (!hasStartLine && hasColumn) 
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.Column}' and '{IssueCommandProperties.EndColumn}' can only be set if '{IssueCommandProperties.Line}' value is provided.");
-                return false;
+                command.Properties.Remove(IssueCommandProperties.Column);
+                command.Properties.Remove(IssueCommandProperties.EndColumn);
             }
 
             if (hasEndLine && line != endLine && hasColumn) 
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.Column}' and '{IssueCommandProperties.EndColumn}' cannot be set if '{IssueCommandProperties.Line}' and '{IssueCommandProperties.EndLine}' are different values.");
-                return false;
+                command.Properties.Remove(IssueCommandProperties.Column);
+                command.Properties.Remove(IssueCommandProperties.EndColumn);
             }
 
             if (hasStartLine && hasEndLine && endLineNumber < lineNumber) 
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndLine}' cannot be less than '{IssueCommandProperties.Line}'.");
-                return false; 
+                command.Properties.Remove(IssueCommandProperties.Line);
+                command.Properties.Remove(IssueCommandProperties.EndLine);
             }
 
             if (hasStartColumn && hasEndColumn && endColumnNumber < columnNumber) 
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndColumn}' cannot be less than '{IssueCommandProperties.Column}'.");
-                return false; 
+                command.Properties.Remove(IssueCommandProperties.Column);
+                command.Properties.Remove(IssueCommandProperties.EndColumn);
             }
-
-            return true;
         }
 
         private static class IssueCommandProperties
