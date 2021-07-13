@@ -1578,9 +1578,9 @@ namespace Runner.Client
                                                 List<Job> ljobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
                                                 foreach(var job in ljobs) {
                                                     try {
-                                                        var logBasePath = Path.Combine(parameters.LogOutputDir, runId.ToString(), job.name);
+                                                        var logBasePath = Path.Combine(parameters.LogOutputDir, runId.ToString(), special.Replace(job.name, "-"));
                                                         Directory.CreateDirectory(logBasePath);
-                                                        Console.WriteLine($"Downloading Logs {runId}/{job.name}");
+                                                        Console.WriteLine($"Downloading Logs {runId}/{special.Replace(job.name, "-")}");
                                                         var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
                                                         foreach(var timeLineRecord in timeLineRecords) {
                                                             try {
