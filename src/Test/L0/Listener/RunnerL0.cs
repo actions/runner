@@ -243,7 +243,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
-                    PoolId = 43242
+                    PoolId = 43242,
+                    Ephemeral = true
                 };
 
                 var message = new TaskAgentMessage()
@@ -294,7 +295,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
-                var command = new CommandSettings(hc, new string[] { "run", "--once" });
+                var command = new CommandSettings(hc, new string[] { "run" });
                 Task<int> runnerTask = runner.ExecuteCommand(command);
 
                 //Assert
@@ -332,7 +333,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 runner.Initialize(hc);
                 var settings = new RunnerSettings
                 {
-                    PoolId = 43242
+                    PoolId = 43242,
+                    Ephemeral = true
                 };
 
                 var message1 = new TaskAgentMessage()
@@ -390,7 +392,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
-                var command = new CommandSettings(hc, new string[] { "run", "--once" });
+                var command = new CommandSettings(hc, new string[] { "run" });
                 Task<int> runnerTask = runner.ExecuteCommand(command);
 
                 //Assert
@@ -431,7 +433,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var settings = new RunnerSettings
                 {
                     PoolId = 43242,
-                    AgentId = 5678
+                    AgentId = 5678,
+                    Ephemeral = true
                 };
 
                 var message1 = new TaskAgentMessage()
@@ -475,7 +478,7 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                 _configStore.Setup(x => x.IsServiceConfigured()).Returns(false);
                 //Act
-                var command = new CommandSettings(hc, new string[] { "run", "--once" });
+                var command = new CommandSettings(hc, new string[] { "run" });
                 Task<int> runnerTask = runner.ExecuteCommand(command);
 
                 //Assert
