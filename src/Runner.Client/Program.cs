@@ -21,6 +21,7 @@ using System.Threading.Channels;
 using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using GitHub.Services.WebApi;
 
 namespace Runner.Client
 {
@@ -90,6 +91,23 @@ namespace Runner.Client
             }
         }
 
+        private class ArtifactResponse {
+            public string containerId {get;set;}
+            public int size {get;set;}
+            public string signedContent {get;set;}
+            public string fileContainerResourceUrl {get;set;}
+            public string type {get;set;}
+            public string name {get;set;}
+            public string url {get;set;}
+        }
+
+        private class DownloadInfo {
+            public string path {get;set;}
+            public string itemType {get;set;}
+            public int fileLength {get;set;}
+            public string contentLocation {get;set;}
+        }
+
         private class Parameters {
             public string[] workflow { get; set; }
             public string server { get; set; }
@@ -130,6 +148,7 @@ namespace Runner.Client
             public string GitTarballUrl { get; set; }
             public string GitZipballUrl { get; set; }
             public bool RemoteCheckout { get; set; }
+            public string ArtifactOutputDir { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -520,6 +539,9 @@ namespace Runner.Client
                 new Option<bool>(
                     "--remote-checkout",
                     description: "Do not inject localcheckout into your workflows, always use the original actions/checkout."),
+                new Option<string>(
+                    "--artifact-output-dir",
+                    description: "Output folder for all artifacts produced by this runs"),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -568,12 +590,8 @@ namespace Runner.Client
                     if(cancelWorkflow != null) {
                         e.Cancel = true;
                         Console.WriteLine($"CTRL+C received Cancel Running Jobs");
-                        try {
-                            cancelWorkflow.Invoke();
-                            return;
-                        } catch(Exception ex) {
-                            Console.WriteLine($"Failed to cancel pending or active jobs: {ex.ToString()}");
-                        }
+                        cancelWorkflow.Invoke();
+                        return;
                     }
                     e.Cancel = !canceled;
                     Console.WriteLine($"CTRL+C received {(e.Cancel ? "Shutting down... CTRL+C again to Terminate" : "Terminating")}");
@@ -682,7 +700,9 @@ namespace Runner.Client
                                     }
                                 });
                                 if(await Task.WhenAny(serveriptask, servertask) == servertask) {
-                                    Console.Error.WriteLine("Failed to start server, rerun with `-v` to find out what is wrong");
+                                    if(!canceled) {
+                                        Console.Error.WriteLine("Failed to start server, rerun with `-v` to find out what is wrong");
+                                    }
                                     return 1;
                                 }
                             }
@@ -814,7 +834,10 @@ namespace Runner.Client
                                 }
                             }
                             try {
-                                var client = new HttpClient();
+                                HttpClientHandler handler = new HttpClientHandler() {
+                                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+                                };  
+                                var client = new HttpClient(handler);
                                 client.DefaultRequestHeaders.Add("X-GitHub-Event", parameters.Event);
                                 var b = new UriBuilder(parameters.server);
                                 var query = new QueryBuilder();
@@ -1092,13 +1115,17 @@ namespace Runner.Client
                                 b2.Path = "runner/host/_apis/v1/Message";
                                 var jobsUrl = b2.ToString();
                                 cancelWorkflow = async () => {
-                                    cancelWorkflow = null;
-                                    var sr = await client.GetStringAsync(jobsUrl);
-                                    List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
-                                    var b2 = new UriBuilder(b.ToString());
-                                    foreach(Job j in jobs) {
-                                        b2.Path = "runner/host/_apis/v1/Message/Cancel/" + j.JobId;
-                                        await client.PostAsync(b2.ToString(), null);
+                                    try {
+                                        cancelWorkflow = null;
+                                        var sr = await client.GetStringAsync(jobsUrl);
+                                        List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
+                                        var b2 = new UriBuilder(b.ToString());
+                                        foreach(Job j in jobs) {
+                                            b2.Path = "runner/host/_apis/v1/Message/Cancel/" + j.JobId;
+                                            await client.PostAsync(b2.ToString(), null);
+                                        }
+                                    } catch {
+                                        Console.WriteLine($"Failed to cancel pending or active jobs");
                                     }
                                 };
 
@@ -1108,7 +1135,7 @@ namespace Runner.Client
                                 int col = 0;
                                 bool hasErrors = false;
                                 foreach(Job j in jobs) {
-                                    Console.WriteLine($"Running Job: {j.name}");
+                                    Console.WriteLine($"Scheduled Job: {j.name}");
                                     if(j.errors?.Count > 0) {
                                         hasErrors = true;
                                         foreach (var error in j.errors) {
@@ -1160,346 +1187,385 @@ namespace Runner.Client
                                     }
                                     return hasErrors ? 1 : 0;
                                 }
-                                using(TextReader reader = new StreamReader(eventstream)) {
-                                    while(!source.IsCancellationRequested) {
-                                        var line = await reader.ReadLineAsync();
-                                        if(line == null) {
-                                            break;
-                                        }
-                                        var data = await reader.ReadLineAsync();
-                                        data = data.Substring("data: ".Length);
-                                        await reader.ReadLineAsync();
-                                        if(!parameters.quiet && line == "event: log") {
-                                            var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
-                                            TimeLineEntry rec;
-                                            if(!timelineRecords.TryGetValue(e.timelineId, out rec)) {
-                                                timelineRecords[e.timelineId] = new TimeLineEntry() { Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() { e } };
-                                                col = (col + 1) % 14;
-                                                continue;
-                                            } else if(rec.RecordId != e.record.StepId) {
-                                                if(rec.RecordId != Guid.Empty && rec.TimeLine != null && (rec.TimeLine.Count == 0 || rec.RecordId != rec.TimeLine[0].Id)) {
-                                                    var record = rec.TimeLine.Find(r => r.Id == rec.RecordId);
-                                                    if(record == null || !record.Result.HasValue) {
-                                                        rec.Pending.Add(e);
-                                                        continue;
-                                                    }
-                                                    Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
-                                                }
-                                                rec.RecordId = e.record.StepId;
-                                                if(rec.TimeLine != null) {
-                                                    var record = rec.TimeLine.Find(r => r.Id == e.record.StepId);
-                                                    if(record == null) {
-                                                        rec.Pending.Add(e);
-                                                        rec.RecordId = Guid.Empty;
-                                                        continue;
-                                                    }
-                                                    Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
-                                                }
+                                var runIds = new List<long>(pendingWorkflows);
+                                try {
+                                    using(TextReader reader = new StreamReader(eventstream)) {
+                                        while(!source.IsCancellationRequested) {
+                                            var line = await reader.ReadLineAsync();
+                                            if(line == null) {
+                                                break;
                                             }
-                                            var old = Console.ForegroundColor;
-                                            Console.ForegroundColor = rec.Color;
-                                            foreach (var webconsoleline in e.record.Value) {
-                                                if(webconsoleline.StartsWith("##[section]")) {
-                                                    Console.WriteLine("******************************************************************************");
-                                                    Console.WriteLine(webconsoleline.Substring("##[section]".Length));
-                                                    Console.WriteLine("******************************************************************************");
-                                                } else {
-                                                    Console.WriteLine($"\x1b[{(int)rec.Color + 30}m|\x1b[0m {webconsoleline}");
-                                                }
-                                            }
-                                            Console.ForegroundColor = old;
-                                        }
-                                        if(line == "event: timeline") {
-                                            var e = JsonConvert.DeserializeObject<TimeLineEvent>(data);
-                                            if(timelineRecords.ContainsKey(e.timelineId)) {
-                                                timelineRecords[e.timelineId].TimeLine = e.timeline;
-                                            } else {
-                                                timelineRecords[e.timelineId] = new TimeLineEntry { TimeLine = e.timeline, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>()};
-                                                col = (col + 1) % 14;
-                                            }
-                                            while(timelineRecords[e.timelineId].Pending.Count > 0) {
-                                                var e2 = timelineRecords[e.timelineId].Pending[0];
-                                                if(timelineRecords[e.timelineId].RecordId != e2.record.StepId) {
-                                                    if(timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords[e.timelineId].TimeLine != null && (timelineRecords[e.timelineId].TimeLine.Count == 0 || timelineRecords[e.timelineId].RecordId != timelineRecords[e.timelineId].TimeLine[0].Id)) {
-                                                        var record = timelineRecords[e.timelineId].TimeLine.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
+                                            var data = await reader.ReadLineAsync();
+                                            data = data.Substring("data: ".Length);
+                                            await reader.ReadLineAsync();
+                                            if(!parameters.quiet && line == "event: log") {
+                                                var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
+                                                TimeLineEntry rec;
+                                                if(!timelineRecords.TryGetValue(e.timelineId, out rec)) {
+                                                    timelineRecords[e.timelineId] = new TimeLineEntry() { Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() { e } };
+                                                    col = (col + 1) % 14;
+                                                    continue;
+                                                } else if(rec.RecordId != e.record.StepId) {
+                                                    if(rec.RecordId != Guid.Empty && rec.TimeLine != null && (rec.TimeLine.Count == 0 || rec.RecordId != rec.TimeLine[0].Id)) {
+                                                        var record = rec.TimeLine.Find(r => r.Id == rec.RecordId);
                                                         if(record == null || !record.Result.HasValue) {
-                                                            break;
+                                                            rec.Pending.Add(e);
+                                                            continue;
                                                         }
-                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                                     }
-                                                    timelineRecords[e.timelineId].RecordId = e2.record.StepId;
-                                                    if(timelineRecords[e.timelineId].TimeLine != null) {
-                                                        var record = timelineRecords[e.timelineId].TimeLine.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
+                                                    rec.RecordId = e.record.StepId;
+                                                    if(rec.TimeLine != null) {
+                                                        var record = rec.TimeLine.Find(r => r.Id == e.record.StepId);
                                                         if(record == null) {
-                                                            timelineRecords[e.timelineId].RecordId = Guid.Empty;
-                                                            break;
+                                                            rec.Pending.Add(e);
+                                                            rec.RecordId = Guid.Empty;
+                                                            continue;
                                                         }
-                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
                                                     }
                                                 }
                                                 var old = Console.ForegroundColor;
-                                                Console.ForegroundColor = timelineRecords[e.timelineId].Color;
-                                                foreach (var webconsoleline in e2.record.Value) {
+                                                Console.ForegroundColor = rec.Color;
+                                                foreach (var webconsoleline in e.record.Value) {
                                                     if(webconsoleline.StartsWith("##[section]")) {
                                                         Console.WriteLine("******************************************************************************");
                                                         Console.WriteLine(webconsoleline.Substring("##[section]".Length));
                                                         Console.WriteLine("******************************************************************************");
                                                     } else {
-                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m|\x1b[0m {webconsoleline}");
+                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m|\x1b[0m {webconsoleline}");
                                                     }
                                                 }
                                                 Console.ForegroundColor = old;
-                                                timelineRecords[e.timelineId].Pending.RemoveAt(0);
                                             }
-                                            if(!parameters.quiet && timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords != null && e.timeline[0].State == TimelineRecordState.Completed) {
-                                                var record = e.timeline.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
-                                                if(record != null && record.Result.HasValue) {
-                                                    Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                            if(line == "event: timeline") {
+                                                var e = JsonConvert.DeserializeObject<TimeLineEvent>(data);
+                                                if(timelineRecords.ContainsKey(e.timelineId)) {
+                                                    timelineRecords[e.timelineId].TimeLine = e.timeline;
+                                                } else {
+                                                    timelineRecords[e.timelineId] = new TimeLineEntry { TimeLine = e.timeline, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>()};
+                                                    col = (col + 1) % 14;
                                                 }
+                                                while(timelineRecords[e.timelineId].Pending.Count > 0) {
+                                                    var e2 = timelineRecords[e.timelineId].Pending[0];
+                                                    if(timelineRecords[e.timelineId].RecordId != e2.record.StepId) {
+                                                        if(timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords[e.timelineId].TimeLine != null && (timelineRecords[e.timelineId].TimeLine.Count == 0 || timelineRecords[e.timelineId].RecordId != timelineRecords[e.timelineId].TimeLine[0].Id)) {
+                                                            var record = timelineRecords[e.timelineId].TimeLine.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
+                                                            if(record == null || !record.Result.HasValue) {
+                                                                break;
+                                                            }
+                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        }
+                                                        timelineRecords[e.timelineId].RecordId = e2.record.StepId;
+                                                        if(timelineRecords[e.timelineId].TimeLine != null) {
+                                                            var record = timelineRecords[e.timelineId].TimeLine.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
+                                                            if(record == null) {
+                                                                timelineRecords[e.timelineId].RecordId = Guid.Empty;
+                                                                break;
+                                                            }
+                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                        }
+                                                    }
+                                                    var old = Console.ForegroundColor;
+                                                    Console.ForegroundColor = timelineRecords[e.timelineId].Color;
+                                                    foreach (var webconsoleline in e2.record.Value) {
+                                                        if(webconsoleline.StartsWith("##[section]")) {
+                                                            Console.WriteLine("******************************************************************************");
+                                                            Console.WriteLine(webconsoleline.Substring("##[section]".Length));
+                                                            Console.WriteLine("******************************************************************************");
+                                                        } else {
+                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m|\x1b[0m {webconsoleline}");
+                                                        }
+                                                    }
+                                                    Console.ForegroundColor = old;
+                                                    timelineRecords[e.timelineId].Pending.RemoveAt(0);
+                                                }
+                                                if(!parameters.quiet && timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords != null && e.timeline[0].State == TimelineRecordState.Completed) {
+                                                    var record = e.timeline.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
+                                                    if(record != null && record.Result.HasValue) {
+                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                    }
+                                                }
+                                                // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
+                                                //     var b3 = new UriBuilder(b.ToString());
+                                                //     query = new QueryBuilder();
+                                                //     query.Add("repo", hr.First().repo);
+                                                //     query.Add("runid", hr.Select(h => h.run_id.ToString()));
+                                                //     query.Add("depending", "1");
+                                                //     b3.Query = query.ToString().TrimStart('?');
+                                                //     b3.Path = "runner/host/_apis/v1/Message";
+                                                //     var sr2 = await client.GetStringAsync(b3.ToString());
+                                                //     List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                                //     if(jobs2?.Count > 0) {
+                                                //         continue;
+                                                //     }
+                                                //     sr2 = await client.GetStringAsync(b2.ToString());
+                                                //     jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                                //     if(jobs2.Count > jobs.Count) {
+                                                //         foreach(var j in jobs2) {
+                                                //             if(j.errors == null || j.errors.Count == 0) {
+                                                //                 continue;
+                                                //             }
+                                                //             bool cont = false;
+                                                //             foreach(var j2 in jobs) {
+                                                //                 if(j.JobId == j2.JobId) {
+                                                //                     cont = true;
+                                                //                     break;
+                                                //                 }
+                                                //             }
+                                                //             if(cont) {
+                                                //                 continue;
+                                                //             }
+                                                //             hasErrors = true;
+                                                //             foreach(var error in j.errors) {
+                                                //                 Console.Error.WriteLine($"Error: {error}");
+                                                //             }
+                                                //         }
+                                                //         jobs = jobs2;
+                                                //     }
+                                                //     var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
+                                                //     if(nc > rj) {
+                                                //         rj = nc;
+                                                //         if(timelineRecords.Count < rj) {
+                                                //             continue;
+                                                //         }
+                                                //     }
+                                                //     return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
+                                                // }
                                             }
-                                            // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
-                                            //     var b3 = new UriBuilder(b.ToString());
-                                            //     query = new QueryBuilder();
-                                            //     query.Add("repo", hr.First().repo);
-                                            //     query.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                            //     query.Add("depending", "1");
-                                            //     b3.Query = query.ToString().TrimStart('?');
-                                            //     b3.Path = "runner/host/_apis/v1/Message";
-                                            //     var sr2 = await client.GetStringAsync(b3.ToString());
-                                            //     List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                            //     if(jobs2?.Count > 0) {
-                                            //         continue;
-                                            //     }
-                                            //     sr2 = await client.GetStringAsync(b2.ToString());
-                                            //     jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                            //     if(jobs2.Count > jobs.Count) {
-                                            //         foreach(var j in jobs2) {
-                                            //             if(j.errors == null || j.errors.Count == 0) {
-                                            //                 continue;
-                                            //             }
-                                            //             bool cont = false;
-                                            //             foreach(var j2 in jobs) {
-                                            //                 if(j.JobId == j2.JobId) {
-                                            //                     cont = true;
-                                            //                     break;
-                                            //                 }
-                                            //             }
-                                            //             if(cont) {
-                                            //                 continue;
-                                            //             }
-                                            //             hasErrors = true;
-                                            //             foreach(var error in j.errors) {
-                                            //                 Console.Error.WriteLine($"Error: {error}");
-                                            //             }
-                                            //         }
-                                            //         jobs = jobs2;
-                                            //     }
-                                            //     var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
-                                            //     if(nc > rj) {
-                                            //         rj = nc;
-                                            //         if(timelineRecords.Count < rj) {
-                                            //             continue;
-                                            //         }
-                                            //     }
-                                            //     return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
-                                            // }
-                                        }
-                                        if(line == "event: repodownload") {
-                                            var endpoint = JsonConvert.DeserializeObject<RepoDownload>(data);
-                                            Task.Run(async () => {
-                                                var repodownload = new MultipartFormDataContent();
-                                                List<Stream> streamsToDispose = new List<Stream>();
-                                                try {
+                                            if(line == "event: repodownload") {
+                                                var endpoint = JsonConvert.DeserializeObject<RepoDownload>(data);
+                                                Task.Run(async () => {
+                                                    var repodownload = new MultipartFormDataContent();
+                                                    List<Stream> streamsToDispose = new List<Stream>();
                                                     try {
-                                                        await CollectRepoFiles(parameters.directory ?? Path.GetFullPath("."), endpoint, repodownload, streamsToDispose, 0, parameters, source);
-                                                    } catch {
+                                                        try {
+                                                            await CollectRepoFiles(parameters.directory ?? Path.GetFullPath("."), endpoint, repodownload, streamsToDispose, 0, parameters, source);
+                                                        } catch {
+                                                            foreach(var fstream in streamsToDispose) {
+                                                                await fstream.DisposeAsync();
+                                                            }
+                                                            streamsToDispose.Clear();
+                                                            repodownload.Dispose();
+                                                            repodownload = new MultipartFormDataContent();
+                                                        }
+                                                        if(streamsToDispose.Count == 0) {
+                                                            foreach(var w in Directory.EnumerateFiles(parameters.directory ?? ".", "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
+                                                                var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
+                                                                var file = File.OpenRead(w);
+                                                                streamsToDispose.Add(file);
+                                                                var mode = "644";
+                                                                if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                                                                    try {
+                                                                        var finfo = new Mono.Unix.UnixSymbolicLinkInfo(w);
+                                                                        if(finfo.IsSymbolicLink) {
+                                                                            var dest = finfo.ContentsPath;
+                                                                            repodownload.Add(new StringContent(dest), "lnk:" + relpath);
+                                                                            continue;
+                                                                        }
+                                                                        if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
+                                                                            mode = "755";
+                                                                        }
+                                                                    }
+                                                                    catch {
+
+                                                                    }
+                                                                } else {
+                                                                    try {
+                                                                        if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
+                                                                            var dest = ReadSymlinkWindows(w);
+                                                                            repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                                                            continue;
+                                                                        }
+                                                                    } catch {
+
+                                                                    }
+                                                                }
+                                                                repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
+                                                            }
+                                                        }
+                                                        repodownload.Headers.ContentType.MediaType = "application/octet-stream";
+                                                        await client.PostAsync(parameters.server + endpoint.Url, repodownload, token);
+                                                    } finally {
                                                         foreach(var fstream in streamsToDispose) {
                                                             await fstream.DisposeAsync();
                                                         }
-                                                        streamsToDispose.Clear();
                                                         repodownload.Dispose();
-                                                        repodownload = new MultipartFormDataContent();
                                                     }
-                                                    if(streamsToDispose.Count == 0) {
-                                                        foreach(var w in Directory.EnumerateFiles(parameters.directory ?? ".", "*", new EnumerationOptions { RecurseSubdirectories = true, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })) {
-                                                            var relpath = Path.GetRelativePath(parameters.directory ?? ".", w).Replace('\\', '/');
-                                                            var file = File.OpenRead(w);
-                                                            streamsToDispose.Add(file);
-                                                            var mode = "644";
-                                                            if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                                                                try {
-                                                                    var finfo = new Mono.Unix.UnixSymbolicLinkInfo(w);
-                                                                    if(finfo.IsSymbolicLink) {
-                                                                        var dest = finfo.ContentsPath;
-                                                                        repodownload.Add(new StringContent(dest), "lnk:" + relpath);
-                                                                        continue;
-                                                                    }
-                                                                    if(finfo.FileAccessPermissions.HasFlag(Mono.Unix.FileAccessPermissions.UserExecute)) {
-                                                                        mode = "755";
-                                                                    }
-                                                                }
-                                                                catch {
-
-                                                                }
-                                                            } else {
-                                                                try {
-                                                                    if(new FileInfo(w).Attributes.HasFlag(FileAttributes.ReparsePoint)){
-                                                                        var dest = ReadSymlinkWindows(w);
-                                                                        repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
-                                                                        continue;
-                                                                    }
-                                                                } catch {
-
-                                                                }
-                                                            }
-                                                            repodownload.Add(new StreamContent(file), mode + ":" + relpath, relpath);
+                                                });
+                                            }
+                                            if(line == "event: workflow") {
+                                                
+                                                var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(data);
+                                                Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
+                                                if(pendingWorkflows.Remove(_workflow.runid)) {
+                                                    hasErrors |= !_workflow.Success;
+                                                    if(pendingWorkflows.Count == 0) {
+                                                        if(hasErrors) {
+                                                            Console.WriteLine("All Workflows finished, at least one workflow failed");
+                                                        } else {
+                                                            Console.WriteLine("All Workflows finished successfully");
                                                         }
+                                                        if(parameters.watch) {
+                                                            Console.WriteLine("Waiting for file changes");
+                                                            break;
+                                                        }
+                                                        return hasErrors ? 1 : 0;
                                                     }
-                                                    repodownload.Headers.ContentType.MediaType = "application/octet-stream";
-                                                    await client.PostAsync(parameters.server + endpoint.Url, repodownload, token);
-                                                } finally {
-                                                    foreach(var fstream in streamsToDispose) {
-                                                        await fstream.DisposeAsync();
-                                                    }
-                                                    repodownload.Dispose();
-                                                }
-                                            });
-                                        }
-                                        if(line == "event: workflow") {
-                                            
-                                            var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(data);
-                                            Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
-                                            if(pendingWorkflows.Remove(_workflow.runid)) {
-                                                hasErrors |= !_workflow.Success;
-                                                if(pendingWorkflows.Count == 0) {
-                                                    if(hasErrors) {
-                                                        Console.WriteLine("All Workflows finished, at least one workflow failed");
-                                                    } else {
-                                                        Console.WriteLine("All Workflows finished successfully");
-                                                    }
-                                                    if(parameters.watch) {
-                                                        Console.WriteLine("Waiting for file changes");
-                                                        break;
-                                                    }
-                                                    return hasErrors ? 1 : 0;
                                                 }
                                             }
-                                        }
-                                        // if(line == "event: finish") {
-                                        //     var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
-                                        //     if(ev.Result == TaskResult.Canceled || ev.Result == TaskResult.Abandoned || ev.Result == TaskResult.Failed) {
-                                        //         hasErrors = true;
+                                            // if(line == "event: finish") {
+                                            //     var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
+                                            //     if(ev.Result == TaskResult.Canceled || ev.Result == TaskResult.Abandoned || ev.Result == TaskResult.Failed) {
+                                            //         hasErrors = true;
+                                            //     }
+                                            // }
+                                        //     if(line == "event: finish") {
+                                        //         var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
+                                        //         // if(job.Result == TaskResult.Abandoned)
+                                        //         foreach(var j in jobs) {
+                                        //             if(j.JobId == ev.JobId) {
+                                        //                 j.Finished = true;
+                                        //                 Console.WriteLine($"Job {j.workflowname} - {j.name} Finished {ev.Result}");
+                                        //                 if(ev.Result == TaskResult.Canceled || ev.Result == TaskResult.Abandoned || ev.Result == TaskResult.Failed) {
+                                        //                     hasErrors = true;
+                                        //                 }
+                                        //                 if(j.TimeLineId != Guid.Empty) {
+                                        //                     timelineRecords.Remove(j.TimeLineId);
+                                        //                     rj--;
+                                        //                     jf++;
+                                        //                 }
+
+                                        //                 break;
+                                        //             }
+                                        //         }
+
+                                        //         if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
+                                        //             var b3 = new UriBuilder(b.ToString());
+                                        //             query = new QueryBuilder();
+                                        //             query.Add("repo", hr.First().repo);
+                                        //             query.Add("runid", hr.Select(h => h.run_id.ToString()));
+                                        //             query.Add("depending", "1");
+                                        //             b3.Query = query.ToString().TrimStart('?');
+                                        //             b3.Path = "runner/host/_apis/v1/Message";
+                                        //             var sr2 = await client.GetStringAsync(b3.ToString());
+                                        //             List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                        //             if(jobs2?.Count > 0) {
+                                        //                 continue;
+                                        //             }
+                                        //             sr2 = await client.GetStringAsync(b2.ToString());
+                                        //             jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                        //             if(jobs2.Count > jobs.Count) {
+                                        //                 foreach(var j in jobs2) {
+                                        //                     if(j.errors == null || j.errors.Count == 0) {
+                                        //                         continue;
+                                        //                     }
+                                        //                     bool cont = false;
+                                        //                     foreach(var j2 in jobs) {
+                                        //                         if(j.JobId == j2.JobId) {
+                                        //                             cont = true;
+                                        //                             break;
+                                        //                         }
+                                        //                     }
+                                        //                     if(cont) {
+                                        //                         continue;
+                                        //                     }
+                                        //                     hasErrors = true;
+                                        //                     foreach(var error in j.errors) {
+                                        //                         Console.Error.WriteLine($"Error: {error}");
+                                        //                     }
+                                        //                 }
+                                        //                 jobs = jobs2;
+                                        //             }
+                                        //             var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
+                                        //             if(nc > rj) {
+                                        //                 rj = nc;
+                                        //                 if(timelineRecords.Count < rj) {
+                                        //                     continue;
+                                        //                 }
+                                        //             }
+                                        //             return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
+                                        //         }
+                                        //         // var b3 = new UriBuilder(b.ToString());
+                                        //         // query = new QueryBuilder();
+                                        //         // query.Add("repo", hr.First().repo);
+                                        //         // query.Add("runid", hr.Select(h => h.run_id.ToString()));
+                                        //         // query.Add("depending", "1");
+                                        //         // b3.Query = query.ToString().TrimStart('?');
+                                        //         // b3.Path = "runner/host/_apis/v1/Message";
+                                        //         // var sr2 = await client.GetStringAsync(b3.ToString());
+                                        //         // List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                        //         // bool cont2 = jobs2?.Count > 0;
+                                        //         // sr2 = await client.GetStringAsync(b2.ToString());
+                                        //         // jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
+                                        //         // if(jobs2.Count > jobs.Count) {
+                                        //         //     foreach(var j in jobs2) {
+                                        //         //         if(j.errors == null || j.errors.Count == 0) {
+                                        //         //             continue;
+                                        //         //         }
+                                        //         //         bool cont = false;
+                                        //         //         foreach(var j2 in jobs) {
+                                        //         //             if(j.JobId == j2.JobId) {
+                                        //         //                 cont = true;
+                                        //         //                 break;
+                                        //         //             }
+                                        //         //         }
+                                        //         //         if(cont) {
+                                        //         //             continue;
+                                        //         //         }
+                                        //         //         hasErrors = true;
+                                        //         //         foreach(var error in j.errors) {
+                                        //         //             Console.Error.WriteLine($"Error: {error}");
+                                        //         //         }
+                                        //         //     }
+                                        //         //     jobs = jobs2;
+                                        //         // }
+                                        //         // var nc = jobs2.Count(j => !(j.errors?.Count > 0) && !j.Cancelled);
+                                        //         // rj = nc;
+                                        //         // if(cont2) {
+                                        //         //     continue;
+                                        //         // }
+                                        //         // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
+                                        //         //     return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
+                                        //         // }
                                         //     }
-                                        // }
-                                    //     if(line == "event: finish") {
-                                    //         var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
-                                    //         // if(job.Result == TaskResult.Abandoned)
-                                    //         foreach(var j in jobs) {
-                                    //             if(j.JobId == ev.JobId) {
-                                    //                 j.Finished = true;
-                                    //                 Console.WriteLine($"Job {j.workflowname} - {j.name} Finished {ev.Result}");
-                                    //                 if(ev.Result == TaskResult.Canceled || ev.Result == TaskResult.Abandoned || ev.Result == TaskResult.Failed) {
-                                    //                     hasErrors = true;
-                                    //                 }
-                                    //                 if(j.TimeLineId != Guid.Empty) {
-                                    //                     timelineRecords.Remove(j.TimeLineId);
-                                    //                     rj--;
-                                    //                     jf++;
-                                    //                 }
+                                        }
+                                    }
+                                } finally {
+                                    if(parameters.ArtifactOutputDir?.Length > 0) {
+                                        foreach(var runId in runIds) {
+                                            try {
+                                                var artifactUri = new UriBuilder(parameters.server);
+                                                artifactUri.Path = $"/runner/server/_apis/pipelines/workflows/{runId}/artifacts";
+                                                var artifacts = JsonConvert.DeserializeObject<VssJsonCollectionWrapper<ArtifactResponse[]>>(await client.GetStringAsync(artifactUri.ToString()));
+                                                foreach(var artifact in artifacts.Value) {
+                                                    try {
+                                                        var artfactBasePath = Path.Combine(parameters.ArtifactOutputDir, runId.ToString(), artifact.name);
+                                                        Directory.CreateDirectory(artfactBasePath);
+                                                        Console.WriteLine($"Downloading {runId}/{artifact.name}");
+                                                        var files = JsonConvert.DeserializeObject<VssJsonCollectionWrapper<DownloadInfo[]>>(await client.GetStringAsync(artifact.fileContainerResourceUrl));
+                                                        foreach(var file in files.Value) {
+                                                            try {
+                                                                var destpath = Path.Combine(artfactBasePath, file.path.Replace('\\', '/'));
+                                                                Directory.CreateDirectory(Path.GetDirectoryName(destpath));
+                                                                using(var content = await client.GetStreamAsync(file.contentLocation))
+                                                                using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+                                                                    targetStream.Seek(0, SeekOrigin.Begin);
+                                                                    await content.CopyToAsync(targetStream);
+                                                                }
+                                                            } catch {
 
-                                    //                 break;
-                                    //             }
-                                    //         }
+                                                            }
+                                                        }
+                                                    } catch {
 
-                                    //         if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
-                                    //             var b3 = new UriBuilder(b.ToString());
-                                    //             query = new QueryBuilder();
-                                    //             query.Add("repo", hr.First().repo);
-                                    //             query.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                    //             query.Add("depending", "1");
-                                    //             b3.Query = query.ToString().TrimStart('?');
-                                    //             b3.Path = "runner/host/_apis/v1/Message";
-                                    //             var sr2 = await client.GetStringAsync(b3.ToString());
-                                    //             List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                    //             if(jobs2?.Count > 0) {
-                                    //                 continue;
-                                    //             }
-                                    //             sr2 = await client.GetStringAsync(b2.ToString());
-                                    //             jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                    //             if(jobs2.Count > jobs.Count) {
-                                    //                 foreach(var j in jobs2) {
-                                    //                     if(j.errors == null || j.errors.Count == 0) {
-                                    //                         continue;
-                                    //                     }
-                                    //                     bool cont = false;
-                                    //                     foreach(var j2 in jobs) {
-                                    //                         if(j.JobId == j2.JobId) {
-                                    //                             cont = true;
-                                    //                             break;
-                                    //                         }
-                                    //                     }
-                                    //                     if(cont) {
-                                    //                         continue;
-                                    //                     }
-                                    //                     hasErrors = true;
-                                    //                     foreach(var error in j.errors) {
-                                    //                         Console.Error.WriteLine($"Error: {error}");
-                                    //                     }
-                                    //                 }
-                                    //                 jobs = jobs2;
-                                    //             }
-                                    //             var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
-                                    //             if(nc > rj) {
-                                    //                 rj = nc;
-                                    //                 if(timelineRecords.Count < rj) {
-                                    //                     continue;
-                                    //                 }
-                                    //             }
-                                    //             return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
-                                    //         }
-                                    //         // var b3 = new UriBuilder(b.ToString());
-                                    //         // query = new QueryBuilder();
-                                    //         // query.Add("repo", hr.First().repo);
-                                    //         // query.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                    //         // query.Add("depending", "1");
-                                    //         // b3.Query = query.ToString().TrimStart('?');
-                                    //         // b3.Path = "runner/host/_apis/v1/Message";
-                                    //         // var sr2 = await client.GetStringAsync(b3.ToString());
-                                    //         // List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                    //         // bool cont2 = jobs2?.Count > 0;
-                                    //         // sr2 = await client.GetStringAsync(b2.ToString());
-                                    //         // jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                    //         // if(jobs2.Count > jobs.Count) {
-                                    //         //     foreach(var j in jobs2) {
-                                    //         //         if(j.errors == null || j.errors.Count == 0) {
-                                    //         //             continue;
-                                    //         //         }
-                                    //         //         bool cont = false;
-                                    //         //         foreach(var j2 in jobs) {
-                                    //         //             if(j.JobId == j2.JobId) {
-                                    //         //                 cont = true;
-                                    //         //                 break;
-                                    //         //             }
-                                    //         //         }
-                                    //         //         if(cont) {
-                                    //         //             continue;
-                                    //         //         }
-                                    //         //         hasErrors = true;
-                                    //         //         foreach(var error in j.errors) {
-                                    //         //             Console.Error.WriteLine($"Error: {error}");
-                                    //         //         }
-                                    //         //     }
-                                    //         //     jobs = jobs2;
-                                    //         // }
-                                    //         // var nc = jobs2.Count(j => !(j.errors?.Count > 0) && !j.Cancelled);
-                                    //         // rj = nc;
-                                    //         // if(cont2) {
-                                    //         //     continue;
-                                    //         // }
-                                    //         // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
-                                    //         //     return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
-                                    //         // }
-                                    //     }
+                                                    }
+                                                }
+                                                
+                                            } catch {
+
+                                            }
+                                        }
                                     }
                                 }
                             } catch (Exception except) {
