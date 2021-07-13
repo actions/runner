@@ -517,7 +517,7 @@ namespace Runner.Client
                 new Option<string>(
                     "--git-zipball-url",
                     description: "Url to github or gitea zipball api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
-                new Option<string>(
+                new Option<bool>(
                     "--remote-checkout",
                     description: "Do not inject localcheckout into your workflows, always use the original actions/checkout."),
             };
