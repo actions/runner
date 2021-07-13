@@ -149,6 +149,7 @@ namespace Runner.Client
             public string GitZipballUrl { get; set; }
             public bool RemoteCheckout { get; set; }
             public string ArtifactOutputDir { get; set; }
+            public string LogOutputDir { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -542,6 +543,9 @@ namespace Runner.Client
                 new Option<string>(
                     "--artifact-output-dir",
                     description: "Output folder for all artifacts produced by this runs"),
+                new Option<string>(
+                    "--log-output-dir",
+                    description: "Output folder for all logs produced by this runs"),
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -1553,6 +1557,46 @@ namespace Runner.Client
                                                                     targetStream.Seek(0, SeekOrigin.Begin);
                                                                     await content.CopyToAsync(targetStream);
                                                                 }
+                                                            } catch {
+
+                                                            }
+                                                        }
+                                                    } catch {
+
+                                                    }
+                                                }
+                                                
+                                            } catch {
+
+                                            }
+                                        }
+                                    }
+                                    if(parameters.LogOutputDir?.Length > 0) {
+                                        Regex special = new Regex("[*'\",_&#^@\\/ ]");
+                                        foreach(var runId in runIds) {
+                                            try {
+                                                List<Job> ljobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
+                                                foreach(var job in ljobs) {
+                                                    try {
+                                                        var logBasePath = Path.Combine(parameters.LogOutputDir, runId.ToString(), job.name);
+                                                        Directory.CreateDirectory(logBasePath);
+                                                        Console.WriteLine($"Downloading Logs {runId}/{job.name}");
+                                                        var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
+                                                        foreach(var timeLineRecord in timeLineRecords) {
+                                                            try {
+                                                                if(timeLineRecord?.Log?.Id != null) {
+
+                                                                    var destpath = Path.Combine(logBasePath, timeLineRecord.Log.Id + "-" + special.Replace(timeLineRecord.Name, "-"));
+                                                                    Directory.CreateDirectory(Path.GetDirectoryName(destpath));
+                                                                    var logFileUri = new UriBuilder(parameters.server);
+                                                                    logFileUri.Path = $"/runner/server/_apis/v1/Logfiles/{timeLineRecord.Log.Id}";
+                                                                    using(var content = await client.GetStreamAsync(logFileUri.ToString()))
+                                                                    using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+                                                                        targetStream.Seek(0, SeekOrigin.Begin);
+                                                                        await content.CopyToAsync(targetStream);
+                                                                    }
+                                                                }
+                                                                
                                                             } catch {
 
                                                             }
