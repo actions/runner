@@ -924,7 +924,7 @@ namespace Runner.Client
                                         query.Add("secrets", wsecrets);
                                     }
                                     if(parameters.RemoteCheckout) {
-                                        query.Add("localcheckout", "0");
+                                        query.Add("localcheckout", "false");
                                     }
                                     b.Query = query.ToQueryString().ToString().TrimStart('?');
                                     JObject payloadContent = new JObject();
