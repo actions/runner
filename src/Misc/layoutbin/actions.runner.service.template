@@ -3,7 +3,7 @@ Description={{Description}}
 After=network.target
 
 [Service]
-ExecStart={{RunnerRoot}}/runsvc.sh
+ExecStart=/usr/bin/env bash {{RunnerRoot}}/runsvc.sh
 User={{User}}
 WorkingDirectory={{RunnerRoot}}
 KillMode=process
