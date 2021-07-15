@@ -304,6 +304,8 @@ namespace GitHub.Runner.Listener.Configuration
 
             runnerSettings.MonitorSocketAddress = command.GetMonitorSocketAddress();
 
+            runnerSettings.WorkerBinary = command.GetWorkerBinary();
+
             _store.SaveSettings(runnerSettings);
 
             _term.WriteLine();
