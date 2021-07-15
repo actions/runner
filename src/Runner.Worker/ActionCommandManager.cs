@@ -100,7 +100,7 @@ namespace GitHub.Runner.Worker
                     }
                     else
                     {
-                        context.Debug($"Process commands has been stopped and waiting for '##[{_stopToken}]' to resume.");
+                        context.Debug($"Process commands has been stopped and waiting for `::{_stopToken}` to resume.");
                         return false;
                     }
                 }
@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
                         context.Output(input);
-                        context.Debug("Paused processing commands until '##[{actionCommand.Data}]' is received");
+                        context.Debug("Paused processing commands until `::{actionCommand.Data}` is received");
                         _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
@@ -132,7 +132,7 @@ namespace GitHub.Runner.Worker
                         catch (Exception ex)
                         {
                             var commandInformation = extension.OmitEcho ? extension.Command : input;
-                            context.Error($"Unable to process command '{commandInformation}' successfully.");
+                            context.Error($"Unable to process command `{commandInformation}` successfully.");
                             context.Error(ex);
                             context.CommandResult = TaskResult.Failed;
                         }
@@ -140,7 +140,7 @@ namespace GitHub.Runner.Worker
                     // Command not found
                     else
                     {
-                        context.Warning($"Can't find command extension for ##[{actionCommand.Command}.command].");
+                        context.Warning($"Can't find command extension for `::{actionCommand.Command}.command`.");
                     }
                 }
             }
@@ -172,12 +172,12 @@ namespace GitHub.Runner.Worker
         {
             if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.repoFullName, out string repoFullName) || string.IsNullOrEmpty(repoFullName))
             {
-                throw new Exception("Required field 'repoFullName' is missing in ##[internal-set-repo-path] command.");
+                throw new Exception("Required field `repoFullName` is missing in `::internal-set-repo-path` command.");
             }
 
             if (!command.Properties.TryGetValue(SetRepoPathCommandProperties.workspaceRepo, out string workspaceRepo) || string.IsNullOrEmpty(workspaceRepo))
             {
-                throw new Exception("Required field 'workspaceRepo' is missing in ##[internal-set-repo-path] command.");
+                throw new Exception("Required field `workspaceRepo` is missing in `::internal-set-repo-path` command.");
             }
 
             var directoryManager = HostContext.GetService<IPipelineDirectoryManager>();
@@ -221,7 +221,7 @@ namespace GitHub.Runner.Worker
 
             if (!command.Properties.TryGetValue(SetEnvCommandProperties.Name, out string envName) || string.IsNullOrEmpty(envName))
             {
-                throw new Exception("Required field 'name' is missing in ##[set-env] command.");
+                throw new Exception("Required field `name` is missing in `::set-env` command.");
             }
 
 
@@ -233,7 +233,7 @@ namespace GitHub.Runner.Worker
                     var issue = new Issue()
                     {
                         Type = IssueType.Error,
-                        Message = $"Can't update {blocked} environment variable using ::set-env:: command."
+                        Message = $"Can't update {blocked} environment variable using `::set-env` command."
                     };
                     issue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = $"{Constants.Runner.UnsupportedCommand}_{envName}";
                     context.AddIssue(issue);
@@ -269,7 +269,7 @@ namespace GitHub.Runner.Worker
         {
             if (!command.Properties.TryGetValue(SetOutputCommandProperties.Name, out string outputName) || string.IsNullOrEmpty(outputName))
             {
-                throw new Exception("Required field 'name' is missing in ##[set-output] command.");
+                throw new Exception("Required field `name` is missing in `::set-output` command.");
             }
 
             context.SetOutput(outputName, command.Data, out var reference);
@@ -293,7 +293,7 @@ namespace GitHub.Runner.Worker
         {
             if (!command.Properties.TryGetValue(SaveStateCommandProperties.Name, out string stateName) || string.IsNullOrEmpty(stateName))
             {
-                throw new Exception("Required field 'name' is missing in ##[save-state] command.");
+                throw new Exception("Required field `name` is missing in `::save-state` command.");
             }
 
             context.IntraActionState[stateName] = command.Data;
@@ -317,7 +317,7 @@ namespace GitHub.Runner.Worker
         {
             if (string.IsNullOrWhiteSpace(command.Data))
             {
-                context.Warning("Can't add secret mask for empty string in ##[add-mask] command.");
+                context.Warning("Can't add secret mask for empty string in `::add-mask` command.");
             }
             else
             {
@@ -428,14 +428,14 @@ namespace GitHub.Runner.Worker
             // Owner and file are mutually exclusive
             if (!string.IsNullOrEmpty(owner) && !string.IsNullOrEmpty(file))
             {
-                context.Warning("Either specify an owner name or a file path in ##[remove-matcher] command. Both values cannot be set.");
+                context.Warning("Either specify an owner name or a file path in `::remove-matcher` command. Both values cannot be set.");
                 return;
             }
 
             // Owner or file is required
             if (string.IsNullOrEmpty(owner) && string.IsNullOrEmpty(file))
             {
-                context.Warning("Either an owner name or a file path must be specified in ##[remove-matcher] command.");
+                context.Warning("Either an owner name or a file path must be specified in `::remove-matcher` command.");
                 return;
             }
 
@@ -674,7 +674,7 @@ namespace GitHub.Runner.Worker
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
         {
             var data = this is GroupCommandExtension ? command.Data : string.Empty;
-            context.Output($"##[{Command}]{data}");
+            context.Output($"::{Command}::{data}");
         }
     }
 
@@ -693,14 +693,14 @@ namespace GitHub.Runner.Worker
             {
                 case "ON":
                     context.EchoOnActionCommand = true;
-                    context.Debug("Setting echo command value to 'on'");
+                    context.Debug("Setting echo command value to `on`");
                     break;
                 case "OFF":
                     context.EchoOnActionCommand = false;
-                    context.Debug("Setting echo command value to 'off'");
+                    context.Debug("Setting echo command value to `off`");
                     break;
                 default:
-                    throw new Exception($"Invalid echo command value. Possible values can be: 'on', 'off'. Current value is: '{command.Data}'.");
+                    throw new Exception($"Invalid echo command value. Possible values can be: `on` and `off`. Current value is: `{command.Data}`.");
             }
         }
     }
