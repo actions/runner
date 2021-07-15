@@ -13,7 +13,9 @@
     <key>WorkingDirectory</key>
     <string>{{RunnerRoot}}</string>
     <key>RunAtLoad</key>
-    <true/>    
+    <true/>
+    <key>SessionCreate</key>
+    <true/>
     <key>StandardOutPath</key>
     <string>{{UserHome}}/Library/Logs/{{SvcName}}/stdout.log</string>
     <key>StandardErrorPath</key>
