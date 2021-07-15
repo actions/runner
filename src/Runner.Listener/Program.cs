@@ -4,6 +4,7 @@ using GitHub.Runner.Sdk;
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -29,43 +30,21 @@ namespace GitHub.Runner.Listener
         // 1: Terminate failure
         // 2: Retriable failure
         // 3: Exit for self update
-        private async static Task<int> MainAsync(IHostContext context, string[] args)
+        private static async Task<int> MainAsync(IHostContext context, string[] args)
         {
-            Tracing trace = context.GetTrace(nameof(GitHub.Runner.Listener));
+            var trace = context.GetTrace(nameof(GitHub.Runner.Listener));
             trace.Info($"Runner is built for {Constants.Runner.Platform} ({Constants.Runner.PlatformArchitecture}) - {BuildConstants.RunnerPackage.PackageName}.");
             trace.Info($"RuntimeInformation: {RuntimeInformation.OSDescription}.");
             context.WritePerfCounter("RunnerProcessStarted");
             var terminal = context.GetService<ITerminal>();
 
-            // Validate the binaries intended for one OS are not running on a different OS.
-            switch (Constants.Runner.Platform)
+            var validation = PlatformValidation.Validate(Constants.Runner.Platform);
+            if (!validation.IsValid)
             {
-                case Constants.OSPlatform.Linux:
-                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                    {
-                        terminal.WriteLine("This runner version is built for Linux. Please install a correct build for your OS.");
-                        return Constants.Runner.ReturnCode.TerminatedError;
-                    }
-                    break;
-                case Constants.OSPlatform.OSX:
-                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                    {
-                        terminal.WriteLine("This runner version is built for OSX. Please install a correct build for your OS.");
-                        return Constants.Runner.ReturnCode.TerminatedError;
-                    }
-                    break;
-                case Constants.OSPlatform.Windows:
-                    if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    {
-                        terminal.WriteLine("This runner version is built for Windows. Please install a correct build for your OS.");
-                        return Constants.Runner.ReturnCode.TerminatedError;
-                    }
-                    break;
-                default:
-                    terminal.WriteLine($"Running the runner on this platform is not supported. The current platform is {RuntimeInformation.OSDescription} and it was built for {Constants.Runner.Platform.ToString()}.");
-                    return Constants.Runner.ReturnCode.TerminatedError;
+                terminal.WriteLine(validation.Message);
+                return Constants.Runner.ReturnCode.TerminatedError;
             }
-
+            
             try
             {
                 trace.Info($"Version: {BuildConstants.RunnerPackage.Version}");
@@ -92,10 +71,10 @@ namespace GitHub.Runner.Listener
                 trace.Info("Arguments parsed");
 
                 // Up front validation, warn for unrecognized commandline args.
-                var unknownCommandlines = command.Validate();
-                if (unknownCommandlines.Count > 0)
+                var unknownCommandLines = command.Validate();
+                if (unknownCommandLines.Count > 0)
                 {
-                    terminal.WriteError($"Unrecognized command-line input arguments: '{string.Join(", ", unknownCommandlines)}'. For usage refer to: .\\config.cmd --help or ./config.sh --help");
+                    terminal.WriteError($"Unrecognized command-line input arguments: '{string.Join(", ", unknownCommandLines)}'. For usage refer to: .\\config.cmd --help or ./config.sh --help");
                 }
 
                 // Defer to the Runner class to execute the command.
