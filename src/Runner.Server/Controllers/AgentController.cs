@@ -53,6 +53,16 @@ namespace Runner.Server.Controllers
             return Agent.GetAgent(_cache, _context, poolId, agentId).TaskAgent;
         }
 
+        [HttpDelete("{poolId}/{agentId}")]
+        public void Delete(int poolId, int agentId)
+        {
+            lock(lck) {
+                var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
+                _context.Agents.Remove(agent);
+                _cache.Remove($"{Agent.CachePrefix}{poolId}_{agentId}");
+            }
+        }
+
         [HttpGet("{poolId}")]
         public VssJsonCollectionWrapper<List<TaskAgent>> Get(int poolId, [FromQuery] string agentName)
         {
