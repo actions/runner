@@ -544,6 +544,11 @@ namespace GitHub.Runner.Common
                         timelineRecord.WarningCount = rec.WarningCount;
                     }
 
+                    if (rec.NoticeCount != null && rec.NoticeCount > 0)
+                    {
+                        timelineRecord.NoticeCount = rec.NoticeCount;
+                    }
+
                     if (rec.Issues.Count > 0)
                     {
                         timelineRecord.Issues.Clear();

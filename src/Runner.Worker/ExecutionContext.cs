@@ -511,6 +511,24 @@ namespace GitHub.Runner.Worker
                 }
 
                 _record.WarningCount++;
+            } 
+            else if (issue.Type == IssueType.Notice) 
+            {
+
+                // tracking line number for each issue in log file
+                // log UI use this to navigate from issue to log
+                if (!string.IsNullOrEmpty(logMessage))
+                {
+                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+
+                if (_record.NoticeCount < _maxIssueCount)
+                {
+                    _record.Issues.Add(issue);
+                }
+
+                _record.NoticeCount++;
             }
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
@@ -831,6 +849,7 @@ namespace GitHub.Runner.Worker
             _record.State = TimelineRecordState.Pending;
             _record.ErrorCount = 0;
             _record.WarningCount = 0;
+            _record.NoticeCount = 0;
 
             if (parentTimelineRecordId != null && parentTimelineRecordId.Value != Guid.Empty)
             {
@@ -1002,6 +1021,7 @@ namespace GitHub.Runner.Worker
         public static readonly string Command = "##[command]";
         public static readonly string Error = "##[error]";
         public static readonly string Warning = "##[warning]";
+        public static readonly string Notice = "##[notice]";
         public static readonly string Debug = "##[debug]";
     }
 }

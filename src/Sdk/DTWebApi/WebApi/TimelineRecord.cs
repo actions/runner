@@ -38,6 +38,7 @@ namespace GitHub.DistributedTask.WebApi
             this.RefName = recordToBeCloned.RefName;
             this.ErrorCount = recordToBeCloned.ErrorCount;
             this.WarningCount = recordToBeCloned.WarningCount;
+            this.NoticeCount = recordToBeCloned.NoticeCount;
             this.AgentPlatform = recordToBeCloned.AgentPlatform;
 
             if (recordToBeCloned.Log != null)
@@ -217,6 +218,13 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(Order = 50)]
         public Int32? WarningCount
+        {
+            get;
+            set;
+        }
+
+        [DataMember(Order = 55)]
+        public Int32? NoticeCount
         {
             get;
             set;

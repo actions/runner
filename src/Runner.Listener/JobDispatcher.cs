@@ -27,11 +27,11 @@ namespace GitHub.Runner.Listener
         Task ShutdownAsync();
     }
 
-    // This implementation of IDobDispatcher is not thread safe.
-    // It is base on the fact that the current design of runner is dequeue
-    // and process one message from message queue everytime.
-    // In addition, it only execute one job every time, 
-    // and server will not send another job while this one is still running.
+    // This implementation of IJobDispatcher is not thread safe.
+    // It is based on the fact that the current design of the runner is a dequeue
+    // and processes one message from the message queue at a time.
+    // In addition, it only executes one job every time, 
+    // and the server will not send another job while this one is still running.
     public sealed class JobDispatcher : RunnerService, IJobDispatcher
     {
         private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
@@ -43,8 +43,8 @@ namespace GitHub.Runner.Listener
         private readonly Queue<Guid> _jobDispatchedQueue = new Queue<Guid>();
         private readonly ConcurrentDictionary<Guid, WorkerDispatcher> _jobInfos = new ConcurrentDictionary<Guid, WorkerDispatcher>();
 
-        //allow up to 30sec for any data to be transmitted over the process channel
-        //timeout limit can be overwrite by environment GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT
+        // allow up to 30sec for any data to be transmitted over the process channel
+        // timeout limit can be overwritten by environment GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT
         private TimeSpan _channelTimeout;
 
         private TaskCompletionSource<bool> _runOnceJobCompleted = new TaskCompletionSource<bool>();
@@ -64,7 +64,7 @@ namespace GitHub.Runner.Listener
                 channelTimeoutSeconds = 30;
             }
 
-            // _channelTimeout should in range [30,  300] seconds
+            // _channelTimeout should be in range [30,  300] seconds
             _channelTimeout = TimeSpan.FromSeconds(Math.Min(Math.Max(channelTimeoutSeconds, 30), 300));
             Trace.Info($"Set runner/worker IPC timeout to {_channelTimeout.TotalSeconds} seconds.");
         }
@@ -230,10 +230,12 @@ namespace GitHub.Runner.Listener
                     return;
                 }
 
-                // base on the current design, server will only send one job for a given runner everytime.
-                // if the runner received a new job request while a previous job request is still running, this typically indicate two situations
-                // 1. an runner bug cause server and runner mismatch on the state of the job request, ex. runner not renew jobrequest properly but think it still own the job reqest, however server already abandon the jobrequest.
-                // 2. a server bug or design change that allow server send more than one job request to an given runner that haven't finish previous job request.
+                // based on the current design, server will only send one job for a given runner at a time.
+                // if the runner received a new job request while a previous job request is still running, this typically indicates two situations
+                // 1. a runner bug caused a server and runner mismatch on the state of the job request, e.g. the runner didn't renew the jobrequest
+                //    properly but thinks it still owns the job reqest, however the server has already abandoned the jobrequest.
+                // 2. a server bug or design change that allowed the server to send more than one job request to an given runner that hasn't finished
+                //.   a previous job request.
                 var runnerServer = HostContext.GetService<IRunnerServer>();
                 TaskAgentJobRequest request = null;
                 try
@@ -245,7 +247,7 @@ namespace GitHub.Runner.Listener
                     Trace.Error($"Catch job-not-found exception while checking jobrequest {jobDispatch.JobId} status. Cancel running worker right away.");
                     Trace.Error(ex);
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
-                    // make sure worker process exit before we return, otherwise we might leave orphan worker process behind.
+                    // make sure worker process exits before we return, otherwise we might leave an orphan worker process behind.
                     await jobDispatch.WorkerDispatch;
                     return;
                 }
@@ -256,7 +258,7 @@ namespace GitHub.Runner.Listener
                     Trace.Error(ex);
 
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
-                    // make sure worker process exit before we rethrow, otherwise we might leave orphan worker process behind.
+                    // make sure the worker process exits before we rethrow, otherwise we might leave orphan worker process behind.
                     await jobDispatch.WorkerDispatch;
 
                     // rethrow original exception
@@ -265,8 +267,8 @@ namespace GitHub.Runner.Listener
 
                 if (request.Result != null)
                 {
-                    // job request has been finished, the server already has result.
-                    // this means runner is busted since it still running that request.
+                    // job request has been finished, the server already has the result.
+                    // this means the runner is busted since it is still running that request.
                     // cancel the zombie worker, run next job request.
                     Trace.Error($"Received job request while previous job {jobDispatch.JobId} still running on worker. Cancel the previous job since the job request have been finished on server side with result: {request.Result.Value}.");
                     jobDispatch.WorkerCancellationTokenSource.Cancel();
