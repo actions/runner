@@ -15,7 +15,7 @@ namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/artifactcache")]
-    [AllowAnonymous]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class CacheController : VssControllerBase{
         
         private string _targetFilePath;
@@ -83,8 +83,9 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpGet("get/{filename}")]
+        [AllowAnonymous]
         public FileStreamResult GetCacheEntry(string filename) {   
-            return new FileStreamResult(System.IO.File.OpenRead(System.IO.Path.Combine(_targetFilePath, filename)), "application/octet-stream");
+            return new FileStreamResult(System.IO.File.OpenRead(System.IO.Path.Combine(_targetFilePath, filename)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 
         [HttpPatch("caches/{cacheId}")]
