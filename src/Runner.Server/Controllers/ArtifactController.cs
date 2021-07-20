@@ -15,7 +15,7 @@ namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/pipelines/workflows/{run}/artifacts")]
-    [AllowAnonymous]
+    [Authorize(AuthenticationSchemes = "Bearer")]
     public class ArtifactController : VssControllerBase{
 
         private struct ArtifactRecord {
@@ -76,6 +76,7 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetContainer(int run) {
             var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
             if(c == null) {
@@ -105,6 +106,7 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpGet("container/{containername}")]
+        [AllowAnonymous]
         public async Task<ActionResult> GetFilesFromContainer(int run, string containername, [FromQuery] string itemPath) {
             var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
             ConcurrentDictionary<string, ArtifactRecord> val;
@@ -122,6 +124,7 @@ namespace Runner.Server.Controllers {
         }
 
         [HttpGet("artifact/{containername}/{file}")]
+        [AllowAnonymous]
         public FileStreamResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename, [FromQuery] bool gzip) {
             if(filename?.Length > 0) {
                 Response.Headers.Add("Content-Disposition", $"attachment; filename={filename}");
@@ -129,7 +132,7 @@ namespace Runner.Server.Controllers {
             if(gzip) {
                 Response.Headers.Add("Content-Encoding", "gzip");
             }
-            return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, file)), "application/octet-stream");
+            return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, file)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 
     }
