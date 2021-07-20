@@ -350,6 +350,7 @@ namespace GitHub.Runner.Worker
                 case "":
                 case "ERROR":
                 case "WARNING":
+                case "NOTICE":
                     break;
                 default:
                     throw new ArgumentException($"Matcher '{_owner}' contains unexpected default severity '{_severity}'");
