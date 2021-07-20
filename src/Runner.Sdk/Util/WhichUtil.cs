@@ -116,9 +116,9 @@ namespace GitHub.Runner.Sdk
             }
 
 #if OS_WINDOWS
-            trace?.Info($"{command}: command not found. Make sure '{command}' is installed and the path to the executable is included in the 'Path' environment variable.");
+            trace?.Info($"{command}: command not found. Make sure '{command}' is installed and its location included in the 'Path' environment variable.");
 #else
-            trace?.Info($"{command}: command not found. Make sure '{command}' is installed and included in the PATH environment variable.");
+            trace?.Info($"{command}: command not found. Make sure '{command}' is installed and its location included in the 'PATH' environment variable.");
 #endif
             if (require)
             {
