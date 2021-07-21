@@ -38,6 +38,7 @@ namespace GitHub.Runner.Worker
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
         Dictionary<Guid, List<Pipelines.ActionStep>> CachedChildPreSteps { get; }
+        Dictionary<Guid, Stack<Pipelines.ActionStep>> CachedChildPostSteps { get; }
         Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
@@ -55,6 +56,9 @@ namespace GitHub.Runner.Worker
 
         private readonly Dictionary<Guid, List<Pipelines.ActionStep>> _cachedChildPreSteps = new Dictionary<Guid, List<Pipelines.ActionStep>>();
         public Dictionary<Guid, List<Pipelines.ActionStep>> CachedChildPreSteps => _cachedChildPreSteps;
+
+        private readonly Dictionary<Guid, Stack<Pipelines.ActionStep>> _cachedChildPostSteps = new Dictionary<Guid, Stack<Pipelines.ActionStep>>();
+        public Dictionary<Guid, Stack<Pipelines.ActionStep>> CachedChildPostSteps => _cachedChildPostSteps;
 
         public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
@@ -227,6 +231,19 @@ namespace GitHub.Runner.Worker
                                 _cachedChildPreSteps[state.Ancestor.Id].Add(action);
                             }
                         }
+                        if (definition.Data.Execution.HasPost && depth > 0)
+                        {
+                            if (!_cachedChildPostSteps.ContainsKey(state.Ancestor.Id))
+                            {
+                                // If we haven't done so already, add the parent to the pre steps
+                                var actionRunner = HostContext.CreateService<IActionRunner>();
+                                actionRunner.Action = state.Ancestor;
+                                actionRunner.Stage = ActionRunStage.Post;
+                                actionRunner.Condition = state.Ancestor.Condition;
+                                _cachedChildPostSteps[state.Ancestor.Id] = new Stack<Pipelines.ActionStep>();
+                            }
+                            _cachedChildPostSteps[state.Ancestor.Id].Push(action);
+                        }
                     }
                 }
             }
@@ -376,9 +393,13 @@ namespace GitHub.Runner.Worker
                         Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction?.Steps)}");
                         Trace.Info($"Load: {compositeAction.Outputs?.Count ?? 0} number of outputs");
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction?.Outputs)}");
-                        if (CachedChildPreSteps.TryGetValue(action.Id, out var steps))
+                        if (CachedChildPreSteps.TryGetValue(action.Id, out var preSteps))
                         {
-                            compositeAction.PreSteps = steps;
+                            compositeAction.PreSteps = preSteps;
+                        }
+                        if (CachedChildPostSteps.TryGetValue(action.Id, out var postSteps))
+                        {
+                            compositeAction.PostSteps = postSteps;
                         }
                     }
                     else
@@ -1130,6 +1151,7 @@ namespace GitHub.Runner.Worker
         public override bool HasPost => false;
         public List<Pipelines.ActionStep> PreSteps { get; set; }
         public List<Pipelines.ActionStep> Steps { get; set; }
+        public Stack<Pipelines.ActionStep> PostSteps { get; set; }
         public MappingToken Outputs { get; set; }
     }
 

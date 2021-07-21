@@ -35,7 +35,21 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
             ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
-
+            List<Pipelines.ActionStep> steps;
+            if (stage == ActionRunStage.Pre)
+            {
+                ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
+                steps = Data.PreSteps;
+            } else if (stage == ActionRunStage.Post)
+            {
+                ArgUtil.NotNull(Data.PostSteps, nameof(Data.PostSteps));
+                steps = Data.PostSteps.ToList();
+            }  
+            else
+            {
+                ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
+                steps = Data.Steps;
+            }
             try
             {
                 // Inputs of the composite step
@@ -55,7 +69,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Create embedded steps
                 var embeddedSteps = new List<IStep>();
-                foreach (Pipelines.ActionStep stepData in Data.Steps)
+                foreach (Pipelines.ActionStep stepData in steps)
                 {
                     var step = HostContext.CreateService<IActionRunner>();
                     step.Action = stepData;
