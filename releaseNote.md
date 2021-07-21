@@ -1,16 +1,21 @@
 ## Features
 
-- Use GITHUB_TOKEN for ghcr.io containers if credentials are not provided (#990)
+- Add Job Message size to both Worker and Listener logs for debugging (#1100)
+- Add notice annotation level (in addition to error and warning) and support more annotation fields (#1175)
 
 ## Bugs
 
-- Do not trucate error message from template evaluation (#1038)
-- Make FileShare ReadWrite (#1033)
-- Mask secrets with double-quotes when passed to docker command line (#1002)
-- Delete script files before replacing during update (#984)
+- Remove the `NODE_ICU_DATA` environment variable that may cause conflicts with node within the runner. (#1060)
+- Handle cancelled jobs better to prevent orphaned processes (#1083)
+- No longer fail to remove a `systemd` service with `svc.sh uninstall` if the script had previously been run from the wrong location (#1135)
+- Send `SIGKILL` to the runner listener if it doesn't respond to `SIGINT` for 30 seconds
+- Match runner group name when configuring even if there's only a single runner group 
 
 
 ## Misc
+- Fix automation links in documentation (#1089)
+- Improve developer and first contributor experience by improving tooling for VS Code (#1101, #1117, #1119, #1132)
+- Fix bug where linux users are not able to run remove-svc.sh as root (#1127)
 
 
 ## Windows x64
