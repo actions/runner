@@ -968,7 +968,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 //Assert
                 // TODO: Update this test
-                Assert.Equal(0, result.PreStepTracker.Count);
+                Assert.Equal(2, result.PreStepTracker.Count);
 
             }
             finally

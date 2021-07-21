@@ -37,6 +37,7 @@ namespace GitHub.Runner.Worker
     public interface IActionManager : IRunnerService
     {
         Dictionary<Guid, ContainerInfo> CachedActionContainers { get; }
+        Dictionary<Guid, List<Pipelines.ActionStep>> CachedChildPreSteps { get; }
         Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
@@ -48,9 +49,13 @@ namespace GitHub.Runner.Worker
         //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
         private const int _defaultCopyBufferSize = 81920;
         private const string _dotcomApiUrl = "https://api.github.com";
-        private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
 
+        private readonly Dictionary<Guid, ContainerInfo> _cachedActionContainers = new Dictionary<Guid, ContainerInfo>();
         public Dictionary<Guid, ContainerInfo> CachedActionContainers => _cachedActionContainers;
+
+        private readonly Dictionary<Guid, List<Pipelines.ActionStep>> _cachedChildPreSteps = new Dictionary<Guid, List<Pipelines.ActionStep>>();
+        public Dictionary<Guid, List<Pipelines.ActionStep>> CachedChildPreSteps => _cachedChildPreSteps;
+
         public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
         {
             // Assert inputs
@@ -61,7 +66,8 @@ namespace GitHub.Runner.Worker
                 ImagesToBuild = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase),
                 ImagesToPull = new Dictionary<string, List<Guid>>(StringComparer.OrdinalIgnoreCase),
                 ImagesToBuildInfo = new Dictionary<string, ActionContainer>(StringComparer.OrdinalIgnoreCase),
-                PreStepTracker = new Dictionary<Guid, IActionRunner>()
+                PreStepTracker = new Dictionary<Guid, IActionRunner>(),
+                Ancestor = null
             };
             var containerSetupSteps = new List<JobExtensionRunner>();
             IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
@@ -189,22 +195,37 @@ namespace GitHub.Runner.Worker
                     }
                     else if(setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
+                        state.Ancestor = state.Ancestor ?? action;
                         state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1);
                     }
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
                     {
                         var definition = LoadAction(executionContext, action);
-                        // TODO: Support pre's in composite actions
-                        if (definition.Data.Execution.HasPre && depth < 1)
+                        // Thomas todo: figure out how to register pres for composite
+                        if (definition.Data.Execution.HasPre)
                         {
-                            var actionRunner = HostContext.CreateService<IActionRunner>();
-                            actionRunner.Action = action;
-                            actionRunner.Stage = ActionRunStage.Pre;
-                            actionRunner.Condition = definition.Data.Execution.InitCondition;
-
                             Trace.Info($"Add 'pre' execution for {action.Id}");
-                            state.PreStepTracker[action.Id] = actionRunner;
+                            if (depth < 1)
+                            {
+                                var actionRunner = HostContext.CreateService<IActionRunner>();
+                                actionRunner.Action = action;
+                                actionRunner.Stage = ActionRunStage.Pre;
+                                actionRunner.Condition = definition.Data.Execution.InitCondition;
+                                state.PreStepTracker[action.Id] = actionRunner;
+                            } else 
+                            {
+                                if (!_cachedChildPreSteps.ContainsKey(state.Ancestor.Id))
+                                {
+                                    // If we haven't done so already, add the parent to the pre steps
+                                    var actionRunner = HostContext.CreateService<IActionRunner>();
+                                    actionRunner.Action = state.Ancestor;
+                                    actionRunner.Stage = ActionRunStage.Pre;
+                                    actionRunner.Condition = state.Ancestor.Condition;
+                                    _cachedChildPreSteps[state.Ancestor.Id] = new List<Pipelines.ActionStep>();
+                                }
+                                _cachedChildPreSteps[state.Ancestor.Id].Add(action);
+                            }
                         }
                     }
                 }
@@ -355,6 +376,10 @@ namespace GitHub.Runner.Worker
                         Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction?.Steps)}");
                         Trace.Info($"Load: {compositeAction.Outputs?.Count ?? 0} number of outputs");
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction?.Outputs)}");
+                        if (CachedChildPreSteps.TryGetValue(action.Id, out var steps))
+                        {
+                            compositeAction.PreSteps = steps;
+                        }
                     }
                     else
                     {
@@ -928,7 +953,6 @@ namespace GitHub.Runner.Worker
                 }
                 else if (actionDefinitionData.Execution.ExecutionType == ActionExecutionType.Composite)
                 {
-                    // TODO: we need to generate unique Id's for composite steps
                     Trace.Info($"Loading Composite steps");
                     var compositeAction = actionDefinitionData.Execution as CompositeActionExecutionData;
                     setupInfo.Steps = compositeAction.Steps;
@@ -1102,8 +1126,9 @@ namespace GitHub.Runner.Worker
     public sealed class CompositeActionExecutionData : ActionExecutionData
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
-        public override bool HasPre => false;
+        public override bool HasPre => PreSteps.Count > 0;
         public override bool HasPost => false;
+        public List<Pipelines.ActionStep> PreSteps { get; set; }
         public List<Pipelines.ActionStep> Steps { get; set; }
         public MappingToken Outputs { get; set; }
     }
@@ -1177,5 +1202,6 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, List<Guid>> ImagesToBuild;
         public Dictionary<string, ActionContainer> ImagesToBuildInfo;
         public Dictionary<Guid, IActionRunner> PreStepTracker;
+        public Pipelines.ActionStep Ancestor;
     }
 }
