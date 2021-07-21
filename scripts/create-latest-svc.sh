@@ -9,16 +9,17 @@ set -e
 # Examples:
 # RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
 # RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg my.ghe.deployment.net
+# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh scope --scope org --user user_name
 #
 # Usage:
 #     export RUNNER_CFG_PAT=<yourPAT>
 #     ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
-#
-#      scope       required  repo (:owner/:repo) or org (:organization)
-#      ghe_domain  optional  the fully qualified domain name of your GitHub Enterprise Server deployment
-#      name        optional  defaults to hostname
-#      user        optional  user svc will run as. defaults to current
-#      labels      optional  list of labels (split by comma) applied on the runner
+
+#      -s|--scope|-[Ss]cope             required  repo (:owner/:repo) or org (:organization)
+#      -g|--ghe_domain|-[Gg]he_domain   optional  the fully qualified domain name of your GitHub Enterprise Server deployment
+#      -n|--name|-[Nn]ame               optional  defaults to hostname
+#      -u|--user|-[U]ser                optional  user svc will run as. defaults to current
+#      -l|--labels|-[Ll]abels           optional  list of labels (split by comma) applied on the runner
 #
 # Notes:
 # PATS over envvars are more secure
@@ -27,11 +28,47 @@ set -e
 # Assumes x64 arch
 #
 
+# detect whether there is a scope flag
+if [[ $* =~ (\ |^)-s\ |(\ |^)--scope\ |(\ |^)-[Ss]cope\  ]]; then
+while [ $# -ne 0 ]
+do
+    name="$1"
+    case "$name" in
+        -s|--scope|-[Ss]cope)
+            shift
+            runner_scope=$1
+            ;;
+        -g|--ghe_domain|-[Gg]he_domain)
+            shift
+            ghe_hostname=$1
+            ;;
+        -n|--name|-[Nn]ame)
+            shift
+            runner_name=$1
+            ;;
+        -u|--user|-[U]ser)
+            shift
+            svc_user=$1
+            ;;
+        -l|--labels|-[Ll]abels)
+            shift
+            labels=$1
+            ;;
+    esac
+    shift
+done
+else
+# process indexed args for backwards compatibility (flags were introduced on 21 July 2021)
 runner_scope=${1}
 ghe_hostname=${2}
 runner_name=${3:-$(hostname)}
 svc_user=${4:-$USER}
 labels=${5}
+fi
+
+# apply defaults
+runner_name=${runner_name:-$(hostname)}
+svc_user=${svc_user:-$USER}
 
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
