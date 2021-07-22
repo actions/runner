@@ -58,6 +58,7 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
+        HashSet<Guid> ChildStepsWithPostRegistered{ get; }
 
         bool EchoOnActionCommand { get; set; }
 
@@ -155,6 +156,9 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has StepsWithPostRegistered
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
+        // Only job level ExecutionContext has ChildStepsWithPostRegistered
+        public HashSet<Guid> ChildStepsWithPostRegistered { get; private set; }
+
         public bool EchoOnActionCommand { get; set; }
 
         // An embedded execution context shares the same record ID, record name, and logger
@@ -245,13 +249,14 @@ namespace GitHub.Runner.Worker
 
         public void RegisterPostJobStep(IStep step)
         {
-            // Thomas todo, figure out how to register post steps for composite
             if (this.IsEmbedded)
             {
-                throw new Exception("Composite actions do not currently support post steps");
-
-            }
-            if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
+                if (step is IActionRunner actionRunner && !Root.ChildStepsWithPostRegistered.Add(actionRunner.Action.Id))
+                {
+                    Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
+                }
+                return;
+            } else if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
                 return;
@@ -682,6 +687,9 @@ namespace GitHub.Runner.Worker
 
             // StepsWithPostRegistered for job ExecutionContext
             StepsWithPostRegistered = new HashSet<Guid>();
+
+            // ChildStepsWithPostRegistered for job ExecutionContext
+            ChildStepsWithPostRegistered = new HashSet<Guid>();
 
             // Job timeline record.
             InitializeTimelineRecord(

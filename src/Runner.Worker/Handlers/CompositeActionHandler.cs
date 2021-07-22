@@ -40,10 +40,19 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
                 steps = Data.PreSteps;
-            } else if (stage == ActionRunStage.Post)
+            } 
+            else if (stage == ActionRunStage.Post)
             {
                 ArgUtil.NotNull(Data.PostSteps, nameof(Data.PostSteps));
                 steps = Data.PostSteps.ToList();
+                // Only register post steps for steps that actually ran
+                for (int i = 0; i < steps.Count; i++)
+                {
+                    if (!ExecutionContext.Root.ChildStepsWithPostRegistered.Contains(steps[i].Id))
+                    {
+                        steps.RemoveAt(i);
+                    }
+                }
             }  
             else
             {
@@ -58,6 +67,8 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
+
+                // thomas todo handle local actions
 
                 // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
                 // context name. Generated context names start with "__"
