@@ -34,7 +34,7 @@ namespace GitHub.Runner.Worker.Handlers
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
-            ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
+
             List<Pipelines.ActionStep> steps;
             if (stage == ActionRunStage.Pre)
             {
@@ -59,6 +59,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
                 steps = Data.Steps;
             }
+
             try
             {
                 // Inputs of the composite step
@@ -68,7 +69,7 @@ namespace GitHub.Runner.Worker.Handlers
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
 
-                // thomas todo handle local actions
+                // Todo: Handle Local Composite actions
 
                 // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
                 // context name. Generated context names start with "__"

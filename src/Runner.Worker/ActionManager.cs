@@ -219,7 +219,8 @@ namespace GitHub.Runner.Worker
                                 actionRunner.Stage = ActionRunStage.Pre;
                                 actionRunner.Condition = definition.Data.Execution.InitCondition;
                                 state.PreStepTracker[action.Id] = actionRunner;
-                            } else 
+                            } 
+                            else 
                             {
                                 if (!_cachedChildPreSteps.ContainsKey(ancestor.Id))
                                 {
