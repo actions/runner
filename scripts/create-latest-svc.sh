@@ -28,8 +28,11 @@ set -e
 # Assumes x64 arch
 #
 
-# detect whether there is a scope flag
-if [[ $* =~ (\ |^)-s\ |(\ |^)--scope\ |(\ |^)-[Ss]cope\  ]]; then
+# detect whether there is a flag for runner_scope
+# surround flag patterns with '(\ |^)' and '\ ' to avoid parsing args like 'big-sur-runner-name' as flags
+# just because they contain the string '-s'
+valid_flag_pattern='(\ |^)-s\ |(\ |^)--scope\ |(\ |^)-[Ss]cope\ '
+if [[ $* =~ $valid_flag_pattern ]]; then
 while [ $# -ne 0 ]
 do
     name="$1"
@@ -58,7 +61,7 @@ do
     shift
 done
 else
-# process indexed args for backwards compatibility (flags were introduced on 21 July 2021)
+# process indexed args for backwards compatibility
 runner_scope=${1}
 ghe_hostname=${2}
 runner_name=${3:-$(hostname)}
