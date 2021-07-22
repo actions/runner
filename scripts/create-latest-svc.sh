@@ -49,7 +49,7 @@ do
             shift
             runner_name=$1
             ;;
-        -u|--user|-[U]ser)
+        -u|--user|-[Uu]ser)
             shift
             svc_user=$1
             ;;
@@ -61,12 +61,12 @@ do
     shift
 done
 else
-# process indexed args for backwards compatibility
-runner_scope=${1}
-ghe_hostname=${2}
-runner_name=${3:-$(hostname)}
-svc_user=${4:-$USER}
-labels=${5}
+    # process indexed args for backwards compatibility
+    runner_scope=${1}
+    ghe_hostname=${2}
+    runner_name=${3:-$(hostname)}
+    svc_user=${4:-$USER}
+    labels=${5}
 fi
 
 # apply defaults
