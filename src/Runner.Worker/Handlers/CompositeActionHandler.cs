@@ -68,9 +68,28 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
+                
+                List<JobExtensionRunner> containerDownloadSteps = null;
+                
+                // Download actions and expand graph for local actions
+                if (Action is Pipelines.RepositoryPathReference repoAction &&
+                    string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                {
 
-                // Todo: Handle Local Composite actions
-
+                    var actionManager = HostContext.GetService<IActionManager>();
+                    var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, steps, ExecutionContext.Id);
+                    foreach (var step in prepareResult.ContainerSetupSteps)
+                    {
+                        if (step is JobExtensionRunner)
+                        {
+                            JobExtensionRunner extensionStep = step as JobExtensionRunner;
+                            ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
+                            Guid stepId = Guid.NewGuid();
+                            extensionStep.ExecutionContext = ExecutionContext.CreateEmbeddedChild(stepId.ToString(), Guid.NewGuid().ToString());
+                        }
+                    }
+                    containerDownloadSteps = prepareResult.ContainerSetupSteps;
+                }
                 // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
                 // context name. Generated context names start with "__"
                 var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
@@ -81,6 +100,15 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Create embedded steps
                 var embeddedSteps = new List<IStep>();
+
+                // Add container download steps
+                if (containerDownloadSteps != null && containerDownloadSteps.Count > 0)
+                {
+                    foreach(var step in containerDownloadSteps)
+                    {
+                        embeddedSteps.Add(step);
+                    }
+                }
                 foreach (Pipelines.ActionStep stepData in steps)
                 {
                     var step = HostContext.CreateService<IActionRunner>();
@@ -102,7 +130,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                     embeddedSteps.Add(step);
                 }
-
+                
                 // Run embedded steps
                 await RunStepsAsync(embeddedSteps);
 
@@ -204,16 +232,17 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-                var actionStep = step as IActionRunner;
-
                 try
                 {
-                    // Evaluate and merge embedded-step env
-                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-                    var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
-                    foreach (var env in actionEnvironment)
+                    if (step is IActionRunner actionStep)
                     {
-                        envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                        // Evaluate and merge embedded-step env
+                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                        var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
+                        foreach (var env in actionEnvironment)
+                        {
+                            envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                        }
                     }
                 }
                 catch (Exception ex)

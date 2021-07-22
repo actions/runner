@@ -40,7 +40,7 @@ namespace GitHub.Runner.Worker
         Dictionary<Guid, List<Pipelines.ActionStep>> CachedChildPreSteps { get; }
         Dictionary<Guid, List<Guid>> CachedChildStepIds { get; }
         Dictionary<Guid, Stack<Pipelines.ActionStep>> CachedChildPostSteps { get; }
-        Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps);
+        Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps, Guid parentId = default(Guid));
         Definition LoadAction(IExecutionContext executionContext, Pipelines.ActionStep action);
     }
 
@@ -64,7 +64,7 @@ namespace GitHub.Runner.Worker
         private readonly Dictionary<Guid, Stack<Pipelines.ActionStep>> _cachedChildPostSteps = new Dictionary<Guid, Stack<Pipelines.ActionStep>>();
         public Dictionary<Guid, Stack<Pipelines.ActionStep>> CachedChildPostSteps => _cachedChildPostSteps;
 
-        public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps)
+        public async Task<PrepareResult> PrepareActionsAsync(IExecutionContext executionContext, IEnumerable<Pipelines.JobStep> steps, Guid parentId = default(Guid))
         {
             // Assert inputs
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -77,10 +77,19 @@ namespace GitHub.Runner.Worker
                 PreStepTracker = new Dictionary<Guid, IActionRunner>()
             };
             var containerSetupSteps = new List<JobExtensionRunner>();
-            IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            // Only delete if we are not in a composite action
+            var depth = 0;
+            if (parentId == default(Guid))
+            {
+                IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+            }
+            else
+            {
+                depth = 1;
+            }
             IEnumerable<Pipelines.ActionStep> actions = steps.OfType<Pipelines.ActionStep>();
             executionContext.Output("Prepare all required actions");
-            var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, 0);
+            var result = await PrepareActionsRecursiveAsync(executionContext, state, actions, depth, parentId);
             if (state.ImagesToPull.Count > 0)
             {
                 foreach (var imageToPull in result.ImagesToPull)
@@ -116,7 +125,7 @@ namespace GitHub.Runner.Worker
             return new PrepareResult(containerSetupSteps, result.PreStepTracker);
         }
 
-        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Pipelines.ActionStep ancestor = null)
+        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid ancestor = default(Guid))
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             if (depth > Constants.CompositeActionsMaxDepth)
@@ -202,8 +211,8 @@ namespace GitHub.Runner.Worker
                     }
                     else if(setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
-                        // Set id's before continuing
-                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1, ancestor ?? action);
+                        var tempAncestor = ancestor == Guid.Empty ? action.Id : ancestor;
+                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1, tempAncestor);
                     }
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
@@ -222,31 +231,21 @@ namespace GitHub.Runner.Worker
                             } 
                             else 
                             {
-                                if (!_cachedChildPreSteps.ContainsKey(ancestor.Id))
+                                if (!_cachedChildPreSteps.ContainsKey(ancestor))
                                 {
-                                    // If we haven't done so already, add the parent to the pre steps
-                                    var actionRunner = HostContext.CreateService<IActionRunner>();
-                                    actionRunner.Action = ancestor;
-                                    actionRunner.Stage = ActionRunStage.Pre;
-                                    // We don't have the ancestor's definition data so hard code for now.
-                                    actionRunner.Condition = $"{Constants.Expressions.Always}()";
-                                    _cachedChildPreSteps[ancestor.Id] = new List<Pipelines.ActionStep>();
+                                    _cachedChildPreSteps[ancestor] = new List<Pipelines.ActionStep>();
                                 }
-                                _cachedChildPreSteps[ancestor.Id].Add(action);
+                                _cachedChildPreSteps[ancestor].Add(action);
                             }
                         }
                         if (definition.Data.Execution.HasPost && depth > 0)
                         {
-                            if (!_cachedChildPostSteps.ContainsKey(ancestor.Id))
+                            if (!_cachedChildPostSteps.ContainsKey(ancestor))
                             {
                                 // If we haven't done so already, add the parent to the pre steps
-                                var actionRunner = HostContext.CreateService<IActionRunner>();
-                                actionRunner.Action = ancestor;
-                                actionRunner.Stage = ActionRunStage.Post;
-                                actionRunner.Condition = ancestor.Condition;
-                                _cachedChildPostSteps[ancestor.Id] = new Stack<Pipelines.ActionStep>();
+                                _cachedChildPostSteps[ancestor] = new Stack<Pipelines.ActionStep>();
                             }
-                            _cachedChildPostSteps[ancestor.Id].Push(action);
+                            _cachedChildPostSteps[ancestor].Push(action);
                         }
                     }
                 }
