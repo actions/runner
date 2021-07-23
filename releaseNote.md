@@ -1,16 +1,13 @@
 ## Changes
-- Fix keep-container empty home (#52)
-- ghes-from-cli (#48)
-- Fix gzip artifact + Test (#65)
-- Fix duplicated job resources (#66)
-- Fix job may run more than once (#67)
-- Modified Runner to run on any os / arch without recompiling (#46)
-- Basic Symlink support of localcheckout
-- Submodule support of localcheckout
-- No longer wait for job exit ACTIONS_STEP_DEBUG
-- Cancel Running Jobs in Runner.Client via CTRL+C
-- Fix environment / concurrency syntax
-- A nuget package named gharun (https://www.nuget.org/packages/io.github.christopherhx.gharun)
+- Update Runner to https://github.com/actions/runner/releases/tag/v2.279.0
+- Removing runners https://github.com/ChristopherHX/runner.server/commit/e9d7d200c58b03529e359bd45badcb2e62d341ea
+- Deny Anonymous Cache Access (#60)
+- block unknown artifact upload (#56)
+- Added `--remote-checkout` to always checkout the repo from github
+- Added `--artifact-output-dir` to save artifacts
+- Added `--log-output-dir` to save full logs
+- Added fallback if cancelling the job failed (this is a broken feature on linux / macOS)
+- Fixed behavior of `--matrix` to match description
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
