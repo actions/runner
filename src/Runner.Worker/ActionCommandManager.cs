@@ -295,6 +295,7 @@ namespace GitHub.Runner.Worker
             {
                 throw new Exception("Required field 'name' is missing in ##[save-state] command.");
             }
+            // Embedded steps (composite) keep track of the state at the root level
             if (context.IsEmbedded)
             {
                 var id = context.EmbeddedId;
@@ -304,6 +305,7 @@ namespace GitHub.Runner.Worker
                 }
                 context.Root.EmbeddedIntraActionState[id][stateName] = command.Data;
             }
+            // Otherwise modify the ExecutionContext
             else
             {
                 context.IntraActionState[stateName] = command.Data;

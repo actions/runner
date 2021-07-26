@@ -222,8 +222,8 @@ namespace GitHub.Runner.Worker
                     }
                     else if(setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
-                        var tempAncestor = rootStepId == Guid.Empty ? action.Id : rootStepId;
-                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1, tempAncestor);
+                        var rootStep = rootStepId == Guid.Empty ? action.Id : rootStepId;
+                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1, rootStep);
                     }
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
@@ -410,14 +410,17 @@ namespace GitHub.Runner.Worker
                         Trace.Verbose($"Details: {StringUtil.ConvertToJson(compositeAction?.Steps)}");
                         Trace.Info($"Load: {compositeAction.Outputs?.Count ?? 0} number of outputs");
                         Trace.Info($"Details: {StringUtil.ConvertToJson(compositeAction?.Outputs)}");
+
                         if (CachedEmbeddedPreSteps.TryGetValue(action.Id, out var preSteps))
                         {
                             compositeAction.PreSteps = preSteps;
                         }
+
                         if (CachedEmbeddedPostSteps.TryGetValue(action.Id, out var postSteps))
                         {
                             compositeAction.PostSteps = postSteps;
                         }
+
                         if (_cachedEmbeddedStepIds.ContainsKey(action.Id))
                         {
                             for (var i = 0; i < compositeAction.Steps.Count; i++)
@@ -1006,28 +1009,25 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Loading Composite steps");
                     var compositeAction = actionDefinitionData.Execution as CompositeActionExecutionData;
                     setupInfo.Steps = compositeAction.Steps;
+                        // cache steps ids if not done so already
+                    if (!_cachedEmbeddedStepIds.ContainsKey(repositoryAction.Id))
+                    {
+                        _cachedEmbeddedStepIds[repositoryAction.Id] = new List<Guid>();
+                        foreach (var compStep in compositeAction.Steps)
+                        {
+                            var guid = Guid.NewGuid();
+                            compStep.Id = guid;
+                            _cachedEmbeddedStepIds[repositoryAction.Id].Add(guid);
+                        }
+                    }
+                    // TODO: remove once we remove the DistributedTask.EnableCompositeActions FF
                     foreach (var step in compositeAction.Steps)
                     {
-                        if (!_cachedEmbeddedStepIds.ContainsKey(repositoryAction.Id))
-                        {
-                            _cachedEmbeddedStepIds[repositoryAction.Id] = new List<Guid>();
-                            foreach (var compStep in compositeAction.Steps)
-                            {
-                                var guid = Guid.NewGuid();
-                                compStep.Id = guid;
-                                _cachedEmbeddedStepIds[repositoryAction.Id].Add(guid);
-                                if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
-                                {
-                                    throw new Exception("`uses:` keyword is not currently supported.");
-                                }
-                            }
-                        }
-                        else if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
+                        if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
                         {
                             throw new Exception("`uses:` keyword is not currently supported.");
                         }
                     }
-
                     return setupInfo;
                 }
                 else

@@ -59,7 +59,7 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
-        HashSet<Guid> ChildStepsWithPostRegistered{ get; }
+        HashSet<Guid> EmbeddedStepsWithPostRegistered{ get; }
 
         // Keep track of embedded steps states
         Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; }
@@ -161,8 +161,8 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has StepsWithPostRegistered
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
-        // Only job level ExecutionContext has ChildStepsWithPostRegistered
-        public HashSet<Guid> ChildStepsWithPostRegistered { get; private set; }
+        // Only job level ExecutionContext has EmbeddedStepsWithPostRegistered
+        public HashSet<Guid> EmbeddedStepsWithPostRegistered { get; private set; }
 
         public Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; private set; }
 
@@ -258,12 +258,13 @@ namespace GitHub.Runner.Worker
         {
             if (this.IsEmbedded)
             {
-                if (step is IActionRunner actionRunner && !Root.ChildStepsWithPostRegistered.Add(actionRunner.Action.Id))
+                if (step is IActionRunner actionRunner && !Root.EmbeddedStepsWithPostRegistered.Add(actionRunner.Action.Id))
                 {
                     Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
                 }
                 return;
-            } else if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
+            } 
+            else if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
                 return;
@@ -696,9 +697,10 @@ namespace GitHub.Runner.Worker
             // StepsWithPostRegistered for job ExecutionContext
             StepsWithPostRegistered = new HashSet<Guid>();
 
-            // ChildStepsWithPostRegistered for job ExecutionContext
-            ChildStepsWithPostRegistered = new HashSet<Guid>();
+            // EmbeddedStepsWithPostRegistered for job ExecutionContext
+            EmbeddedStepsWithPostRegistered = new HashSet<Guid>();
 
+            // EmbeddedIntraActionState for job ExecutionContext
             EmbeddedIntraActionState = new Dictionary<Guid, Dictionary<string,string>>();
 
             // Job timeline record.
