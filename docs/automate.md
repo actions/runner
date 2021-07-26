@@ -48,7 +48,7 @@ curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-lat
 Or just pass them sequentially (order of arguments matters):
 
 ```
-curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s myorg/myrepo mydomain myname myuser mylab,ellist
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s myorg/myrepo mydomain myname myuser label1,label2
 ```
 
 ### Why can't I use a container?
