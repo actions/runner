@@ -5,17 +5,7 @@ set -e
 #
 # Removes a runner running as a service
 # Must be run on the machine where the service is run
-#
-# Examples:
-# RUNNER_CFG_PAT=<yourPAT> ./remove-svc.sh myuser/myrepo
-# RUNNER_CFG_PAT=<yourPAT> ./remove-svc.sh myorg
-#
-# Usage:
-#     export RUNNER_CFG_PAT=<yourPAT>
-#     ./remove-svc scope name
-#
-#      scope required  repo (:owner/:repo) or org (:organization)
-#      name  optional  defaults to hostname.  name to uninstall and remove
+# See EXAMPLES below
 # 
 # Notes:
 # PATS over envvars are more secure
@@ -24,8 +14,48 @@ set -e
 # Assumes x64 arch
 #
 
-runner_scope=${1}
-runner_name=${2:-$(hostname)}
+
+valid_flag_pattern='(\ |^)-s\ |(\ |^)--scope\ |(\ |^)-[Ss]cope\ '
+help_pattern='(\ |^)-h(\ |$)|(\ |^)--help(\ |$)|(\ |^)-[Hh]elp(\ |$)'
+if [[ $* =~ $valid_flag_pattern || $* =~ $help_pattern ]]; then
+while [ $# -ne 0 ]
+do
+    name="$1"
+    case "$name" in
+        -s|--scope|-[Ss]cope)
+            shift
+            runner_scope=$1
+            ;;
+        -n|--name|-[Nn]ame)
+            shift
+            runner_name=$1
+            ;;
+        *)
+            echo "
+ Examples:
+ RUNNER_CFG_PAT=<yourPAT> ./remove-svc.sh myuser/myrepo
+ RUNNER_CFG_PAT=<yourPAT> ./remove-svc.sh myorg
+
+ Usage:
+     export RUNNER_CFG_PAT=<yourPAT>
+     ./remove-svc myuser/myrepo
+     ./remove-svc myuser/myrepo runner-name
+     ./remove-svc --scope myuser/myrepo --name runner-name
+
+      scope required  repo (:owner/:repo) or org (:organization)
+      name  optional  defaults to hostname.  name to uninstall and remove"
+            exit 0
+    esac
+    shift
+done
+else
+    # process indexed args for backwards compatibility
+    runner_scope=${1}
+    runner_name=${2:-$(hostname)}
+fi
+
+# apply defaults
+runner_name=${runner_name:-$(hostname)}
 
 echo "Uninstalling runner ${runner_name} @ ${runner_scope}"
 sudo echo

@@ -2,37 +2,19 @@
 
 set -e
 
-#
-# Downloads latest releases (not pre-release) runner
-# Configures as a service
-#
-# Examples:
-# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
-# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg my.ghe.deployment.net
-# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh scope --scope org --user user_name
-#
-# Usage:
-#     export RUNNER_CFG_PAT=<yourPAT>
-#     ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
-
-#      -s|--scope|-[Ss]cope             required  repo (:owner/:repo) or org (:organization)
-#      -g|--ghe_domain|-[Gg]he_domain   optional  the fully qualified domain name of your GitHub Enterprise Server deployment
-#      -n|--name|-[Nn]ame               optional  defaults to hostname
-#      -u|--user|-[U]ser                optional  user svc will run as. defaults to current
-#      -l|--labels|-[Ll]abels           optional  list of labels (split by comma) applied on the runner
-#
-# Notes:
-# PATS over envvars are more secure
+# Downloads latest runner release (not pre-release) 
+# Configures it as a service more secure
 # Should be used on VMs and not containers
 # Works on OSX and Linux
 # Assumes x64 arch
-#
+# See EXAMPLES below
 
 # detect whether there is a flag for runner_scope
 # surround flag patterns with '(\ |^)' and '\ ' to avoid parsing args like 'big-sur-runner-name' as flags
 # just because they contain the string '-s'
 valid_flag_pattern='(\ |^)-s\ |(\ |^)--scope\ |(\ |^)-[Ss]cope\ '
-if [[ $* =~ $valid_flag_pattern ]]; then
+help_pattern='(\ |^)-h(\ |$)|(\ |^)--help(\ |$)|(\ |^)-[Hh]elp(\ |$)'
+if [[ $* =~ $valid_flag_pattern || $* =~ $help_pattern ]]; then
 while [ $# -ne 0 ]
 do
     name="$1"
@@ -57,6 +39,23 @@ do
             shift
             labels=$1
             ;;
+        *)
+            echo "
+Runner Service Installer
+Examples:
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg my.ghe.deployment.net
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh --scope org --user user_name
+Usage:
+    export RUNNER_CFG_PAT=<yourPAT>
+    ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
+    -s|--scope|-[Ss]cope             required  repo (:owner/:repo) or org (:organization)
+    -g|--ghe_domain|-[Gg]he_domain   optional  the fully qualified domain name of your GitHub Enterprise Server deployment
+    -n|--name|-[Nn]ame               optional  defaults to hostname
+    -u|--user|-[Uu]ser                optional  user svc will run as. defaults to current
+    -l|--labels|-[Ll]abels           optional  list of labels (split by comma) applied on the runner"
+            exit 0
+            ;;
     esac
     shift
 done
@@ -72,6 +71,14 @@ fi
 # apply defaults
 runner_name=${runner_name:-$(hostname)}
 svc_user=${svc_user:-$USER}
+
+echo $runner_scope
+echo $ghe_hostname
+echo $runner_name
+echo $svc_user
+echo $labels
+exit 0
+
 
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
@@ -122,7 +129,7 @@ if [[ "$runner_scope" == *\/* ]]; then
 fi
 
 export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
-
+echo $(curl -s -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" )
 if [ "null" == "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi
 
 #---------------------------------------
