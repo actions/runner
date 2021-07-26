@@ -36,6 +36,7 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Inputs, nameof(Inputs));
 
             List<Pipelines.ActionStep> steps;
+
             if (stage == ActionRunStage.Pre)
             {
                 ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
@@ -46,11 +47,11 @@ namespace GitHub.Runner.Worker.Handlers
                 ArgUtil.NotNull(Data.PostSteps, nameof(Data.PostSteps));
                 steps = Data.PostSteps.ToList();
                 // Only register post steps for steps that actually ran
-                for (int i = 0; i < steps.Count; i++)
+                foreach (var step in steps)
                 {
-                    if (!ExecutionContext.Root.ChildStepsWithPostRegistered.Contains(steps[i].Id))
+                    if (!ExecutionContext.Root.ChildStepsWithPostRegistered.Contains(step.Id))
                     {
-                        steps.RemoveAt(i);
+                        steps.Remove(step);
                     }
                 }
             }  
@@ -69,33 +70,27 @@ namespace GitHub.Runner.Worker.Handlers
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
                 
-                List<JobExtensionRunner> containerDownloadSteps = null;
-                
-                // Download actions and expand graph for local actions
-                if (Action is Pipelines.RepositoryPathReference repoAction &&
-                    string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-                {
 
-                    var actionManager = HostContext.GetService<IActionManager>();
-                    var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, steps, ExecutionContext.Id);
-                    foreach (var step in prepareResult.ContainerSetupSteps)
-                    {
-                        if (step is JobExtensionRunner)
-                        {
-                            JobExtensionRunner extensionStep = step as JobExtensionRunner;
-                            ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
-                            Guid stepId = Guid.NewGuid();
-                            extensionStep.ExecutionContext = ExecutionContext.CreateEmbeddedChild(stepId.ToString(), Guid.NewGuid().ToString());
-                        }
-                    }
-                    containerDownloadSteps = prepareResult.ContainerSetupSteps;
-                }
                 // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
                 // context name. Generated context names start with "__"
                 var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
                 if (string.IsNullOrEmpty(childScopeName))
                 {
                     childScopeName = $"__{Guid.NewGuid()}";
+                }
+
+
+                // If we need to setup containers beforehand, do it
+                List<JobExtensionRunner> containerDownloadSteps = null;
+                if (Data.ContainerSetupSteps != null && Data.ContainerSetupSteps.Count > 0)
+                {
+                    foreach (var step in Data.ContainerSetupSteps)
+                    {
+                        ArgUtil.NotNull(step, step.DisplayName);
+                        Guid stepId = Guid.NewGuid();
+                        step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, Guid.NewGuid().ToString(), stepId);
+                    }
+                    containerDownloadSteps = Data.ContainerSetupSteps;
                 }
 
                 // Create embedded steps
@@ -109,13 +104,15 @@ namespace GitHub.Runner.Worker.Handlers
                         embeddedSteps.Add(step);
                     }
                 }
+
                 foreach (Pipelines.ActionStep stepData in steps)
                 {
                     var step = HostContext.CreateService<IActionRunner>();
                     step.Action = stepData;
                     step.Stage = stage;
                     step.Condition = stepData.Condition;
-                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName);
+                    ExecutionContext.Root.EmbeddedIntraActionState.TryGetValue(step.Action.Id, out var intraActionState);
+                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, intraActionState: intraActionState);
                     step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
                     step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
 

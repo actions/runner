@@ -89,6 +89,27 @@ namespace GitHub.Runner.Worker
                 ExecutionContext.Warning($"`pre` execution is not supported for local action from '{repoAction.Path}'");
             }
 
+            // Handle Composite Local Actions
+            // Need to download and expand the tree of referenced actions
+            if (handlerData.ExecutionType == ActionExecutionType.Composite &&
+                handlerData is CompositeActionExecutionData compositeHandlerData &&
+                Stage == ActionRunStage.Main &&
+                Action.Reference is Pipelines.RepositoryPathReference localAction &&
+                string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                var actionManager = HostContext.GetService<IActionManager>();
+                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+
+                // Reload the data once caches are setup
+                definition = taskManager.LoadAction(ExecutionContext, Action);
+                ArgUtil.NotNull(definition, nameof(definition));
+                handlerData = definition.Data?.Execution;
+                ArgUtil.NotNull(handlerData, nameof(handlerData));
+
+                // Save container setup steps so we can reference them later
+                (handlerData as CompositeActionExecutionData).ContainerSetupSteps = prepareResult.ContainerSetupSteps;
+            }
+
             // The action has post cleanup defined.
             // we need to create timeline record for them and add them to the step list that StepRunner is using
             if (handlerData.HasPost && (Stage == ActionRunStage.Pre || Stage == ActionRunStage.Main))

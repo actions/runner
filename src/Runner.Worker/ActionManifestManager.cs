@@ -482,6 +482,7 @@ namespace GitHub.Runner.Worker
                             Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
                             PreSteps = new List<Pipelines.ActionStep>(),
                             PostSteps = new Stack<Pipelines.ActionStep>(),
+                            ContainerSetupSteps = new List<JobExtensionRunner>(),
                             InitCondition = "always()",
                             CleanupCondition = "always()",
                             Outputs = outputs

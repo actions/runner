@@ -295,8 +295,19 @@ namespace GitHub.Runner.Worker
             {
                 throw new Exception("Required field 'name' is missing in ##[save-state] command.");
             }
-
-            context.IntraActionState[stateName] = command.Data;
+            if (context.IsEmbedded)
+            {
+                var id = context.EmbeddedId;
+                if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
+                {
+                    context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>();
+                }
+                context.Root.EmbeddedIntraActionState[id][stateName] = command.Data;
+            }
+            else
+            {
+                context.IntraActionState[stateName] = command.Data;
+            }
             context.Debug($"Save intra-action state {stateName} = {command.Data}");
         }
 
