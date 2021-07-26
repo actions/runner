@@ -72,14 +72,6 @@ fi
 runner_name=${runner_name:-$(hostname)}
 svc_user=${svc_user:-$USER}
 
-echo $runner_scope
-echo $ghe_hostname
-echo $runner_name
-echo $svc_user
-echo $labels
-exit 0
-
-
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
 
