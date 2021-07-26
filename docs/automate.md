@@ -22,8 +22,33 @@ export RUNNER_CFG_PAT=yourPAT
 :point_right: [Sample script here](../scripts/create-latest-svc.sh) :point_left:
 
 Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+
 ```bash
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
+```
+
+You can call the script with additional arguments:
+```bash
+#   Usage:
+#       export RUNNER_CFG_PAT=<yourPAT>
+#       ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
+#       -s|--scope|-[Ss]cope             required  repo (:owner/:repo) or org (:organization)
+#       -g|--ghe_domain|-[Gg]he_domain   optional  the fully qualified domain name of your GitHub Enterprise Server deployment
+#       -n|--name|-[Nn]ame               optional  defaults to hostname
+#       -u|--user|-[Uu]ser                optional  user svc will run as. defaults to current
+#       -l|--labels|-[Ll]abels           optional  list of labels (split by comma) applied on the runner"
+```
+
+Use `--` to separate your named arguments:
+
+```
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s -- --scope myorg/myrepo --name myname --user myuser --labels label1,label2
+```
+
+Or just pass them sequentially (order of arguments matters):
+
+```
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s myorg/myrepo mydomain myname myuser mylab,ellist
 ```
 
 ### Why can't I use a container?
