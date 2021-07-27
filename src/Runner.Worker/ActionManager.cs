@@ -256,7 +256,7 @@ namespace GitHub.Runner.Worker
                         {
                             if (!_cachedEmbeddedPostSteps.ContainsKey(rootStepId))
                             {
-                                // If we haven't done so already, add the parent to the pre steps
+                                // If we haven't done so already, add the parent to the post steps
                                 _cachedEmbeddedPostSteps[rootStepId] = new Stack<Pipelines.ActionStep>();
                             }
                             _cachedEmbeddedPostSteps[rootStepId].Push(action);
@@ -1009,7 +1009,8 @@ namespace GitHub.Runner.Worker
                     Trace.Info($"Loading Composite steps");
                     var compositeAction = actionDefinitionData.Execution as CompositeActionExecutionData;
                     setupInfo.Steps = compositeAction.Steps;
-                        // cache steps ids if not done so already
+
+                    // cache steps ids if not done so already
                     if (!_cachedEmbeddedStepIds.ContainsKey(repositoryAction.Id))
                     {
                         _cachedEmbeddedStepIds[repositoryAction.Id] = new List<Guid>();
@@ -1020,6 +1021,7 @@ namespace GitHub.Runner.Worker
                             _cachedEmbeddedStepIds[repositoryAction.Id].Add(guid);
                         }
                     }
+
                     // TODO: remove once we remove the DistributedTask.EnableCompositeActions FF
                     foreach (var step in compositeAction.Steps)
                     {

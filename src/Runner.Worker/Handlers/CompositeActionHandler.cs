@@ -69,7 +69,6 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
-                
 
                 // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
                 // context name. Generated context names start with "__"
