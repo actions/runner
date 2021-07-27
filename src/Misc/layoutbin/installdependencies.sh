@@ -104,7 +104,7 @@ then
         fi
 
         # libicu version prefer: libicu66 -> libicu63 -> libicu60 -> libicu57 -> libicu55 -> libicu52
-        apt_get_with_fallbacks libicu66 libicu63 libicu60 libicu57 libicu55 libicu52
+        apt_get_with_fallbacks libicu72 libicu71 libicu70 libicu69 libicu68 libicu67 libicu66 libicu65 libicu63 libicu60 libicu57 libicu55 libicu52
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
