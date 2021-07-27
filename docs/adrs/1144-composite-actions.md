@@ -66,8 +66,7 @@ We want to support the `uses` steps from workflows in composite actions, includi
 ### Resolve Action Endpoint changes
 
 - The resolve actions endpoint will now validate policy to ensure that the given workflow run has access to download that action.
-  - It will return a value indicated security was checked. Older server versions would lack this boolean. For composite actions that try to resolve an action, if the server does not respond with this value, we will fail the job as we could violate access policy if we allowed the composite action to continue.
-    - Older GHES/GHAE customers with newer runners will be locked out of composite uses steps until they upgrade their instance.
+  - Older GHES/GHAE customers with newer runners will be locked out of composite uses steps until they upgrade their instance.
 
 ### Local actions
 - Local actions will expand the tree, perform policy checks, and download actions Just in Time when the step is running.
