@@ -71,6 +71,7 @@ namespace GitHub.Runner.Worker.Handlers
                 Data.Image = imageName;
             }
 
+            // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
                 var telemetry = new ActionsStepTelemetry {

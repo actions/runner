@@ -61,6 +61,7 @@ namespace GitHub.Runner.Worker.Handlers
                 steps = Data.Steps;
             }
 
+            // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
                 var hasRunsStep = false;

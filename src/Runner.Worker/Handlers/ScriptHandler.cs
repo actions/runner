@@ -156,7 +156,7 @@ namespace GitHub.Runner.Worker.Handlers
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
 
-            // Add Telemetry
+            // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
                 var telemetry = new ActionsStepTelemetry {
