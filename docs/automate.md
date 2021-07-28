@@ -22,7 +22,6 @@ export RUNNER_CFG_PAT=yourPAT
 :point_right: [Sample script here](../scripts/create-latest-svc.sh) :point_left:
 
 Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
-
 ```bash
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
@@ -39,18 +38,11 @@ You can call the script with additional arguments:
 #       -l          optional  list of labels (split by comma) applied on the runner"
 ```
 
-Use `--` to separate your named arguments:
+Use `--` to pass any number of optional named parameters:
 
 ```
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s -- -s myorg/myrepo -n myname -l label1,label2
 ```
-
-Or just pass them sequentially (order of the arguments matters):
-
-```
-curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s myorg/myrepo mydomain myname myuser label1,label2
-```
-
 ### Why can't I use a container?
 
 The runner is installed as a service using `systemd` and `systemctl`. Docker does not support `systemd` for service configuration on a container.
