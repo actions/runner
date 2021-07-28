@@ -35,8 +35,7 @@ while getopts 's:g:n:u:l:' opt; do
 Runner Service Installer
 Examples:
 RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
-RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg my.ghe.deployment.net
-RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh --scope org --user user_name
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh -s myorg -u user_name -l label1,label2
 Usage:
     export RUNNER_CFG_PAT=<yourPAT>
     ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
