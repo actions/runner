@@ -301,7 +301,7 @@ namespace GitHub.Runner.Worker
                 var id = context.EmbeddedId;
                 if (!context.Root.EmbeddedIntraActionState.ContainsKey(id))
                 {
-                    context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>();
+                    context.Root.EmbeddedIntraActionState[id] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 }
                 context.Root.EmbeddedIntraActionState[id][stateName] = command.Data;
             }

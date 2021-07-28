@@ -89,10 +89,10 @@ namespace GitHub.Runner.Worker
                 if (!_cachedEmbeddedStepIds.ContainsKey(rootStepId))
                 {
                     _cachedEmbeddedStepIds[rootStepId] = new List<Guid>();
-                    foreach (var compStep in steps)
+                    foreach (var compositeStep in steps)
                     {
                         var guid = Guid.NewGuid();
-                        compStep.Id = guid;
+                        compositeStep.Id = guid;
                         _cachedEmbeddedStepIds[rootStepId].Add(guid);
                     }
                 }
@@ -136,7 +136,7 @@ namespace GitHub.Runner.Worker
             return new PrepareResult(containerSetupSteps, result.PreStepTracker);
         }
 
-        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid rootStepId = default(Guid))
+        private async Task<PrepareActionsState> PrepareActionsRecursiveAsync(IExecutionContext executionContext, PrepareActionsState state, IEnumerable<Pipelines.ActionStep> actions, Int32 depth = 0, Guid parentStepId = default(Guid))
         {
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             if (depth > Constants.CompositeActionsMaxDepth)
@@ -220,10 +220,9 @@ namespace GitHub.Runner.Worker
                             state.ImagesToBuildInfo[setupInfo.Container.ActionRepository] = setupInfo.Container;
                         }
                     }
-                    else if(setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
+                    else if (setupInfo != null && setupInfo.Steps != null && setupInfo.Steps.Count > 0)
                     {
-                        var rootStep = rootStepId == Guid.Empty ? action.Id : rootStepId;
-                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1, rootStep);
+                        state = await PrepareActionsRecursiveAsync(executionContext, state, setupInfo.Steps, depth + 1, action.Id);
                     }
                     var repoAction = action.Reference as Pipelines.RepositoryPathReference;
                     if (repoAction.RepositoryType != Pipelines.PipelineConstants.SelfAlias)
@@ -244,22 +243,22 @@ namespace GitHub.Runner.Worker
                             // Embedded Step
                             else 
                             {
-                                if (!_cachedEmbeddedPreSteps.ContainsKey(rootStepId))
+                                if (!_cachedEmbeddedPreSteps.ContainsKey(parentStepId))
                                 {
-                                    _cachedEmbeddedPreSteps[rootStepId] = new List<Pipelines.ActionStep>();
+                                    _cachedEmbeddedPreSteps[parentStepId] = new List<Pipelines.ActionStep>();
                                 }
-                                _cachedEmbeddedPreSteps[rootStepId].Add(action);
+                                _cachedEmbeddedPreSteps[parentStepId].Add(action);
                             }
                         }
 
                         if (definition.Data.Execution.HasPost && depth > 0)
                         {
-                            if (!_cachedEmbeddedPostSteps.ContainsKey(rootStepId))
+                            if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
                             {
                                 // If we haven't done so already, add the parent to the post steps
-                                _cachedEmbeddedPostSteps[rootStepId] = new Stack<Pipelines.ActionStep>();
+                                _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
                             }
-                            _cachedEmbeddedPostSteps[rootStepId].Push(action);
+                            _cachedEmbeddedPostSteps[parentStepId].Push(action);
                         }
                     }
                 }
@@ -1014,10 +1013,10 @@ namespace GitHub.Runner.Worker
                     if (!_cachedEmbeddedStepIds.ContainsKey(repositoryAction.Id))
                     {
                         _cachedEmbeddedStepIds[repositoryAction.Id] = new List<Guid>();
-                        foreach (var compStep in compositeAction.Steps)
+                        foreach (var compositeStep in compositeAction.Steps)
                         {
                             var guid = Guid.NewGuid();
-                            compStep.Id = guid;
+                            compositeStep.Id = guid;
                             _cachedEmbeddedStepIds[repositoryAction.Id].Add(guid);
                         }
                     }
@@ -1192,7 +1191,6 @@ namespace GitHub.Runner.Worker
         public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
         public override bool HasPre => PreSteps.Count > 0;
         public override bool HasPost => PostSteps.Count > 0;
-        public List<JobExtensionRunner> ContainerSetupSteps { get; set; }
         public List<Pipelines.ActionStep> PreSteps { get; set; }
         public List<Pipelines.ActionStep> Steps { get; set; }
         public Stack<Pipelines.ActionStep> PostSteps { get; set; }

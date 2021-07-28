@@ -88,7 +88,7 @@ namespace GitHub.Runner.Worker
             {
                 ExecutionContext.Warning($"`pre` execution is not supported for local action from '{repoAction.Path}'");
             }
-
+            List<JobExtensionRunner> localActionContainerSetupSteps = null;
             // Handle Composite Local Actions
             // Need to download and expand the tree of referenced actions
             if (handlerData.ExecutionType == ActionExecutionType.Composite &&
@@ -100,14 +100,14 @@ namespace GitHub.Runner.Worker
                 var actionManager = HostContext.GetService<IActionManager>();
                 var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
 
-                // Reload the data once caches are setup
+                // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
                 definition = taskManager.LoadAction(ExecutionContext, Action);
                 ArgUtil.NotNull(definition, nameof(definition));
                 handlerData = definition.Data?.Execution;
                 ArgUtil.NotNull(handlerData, nameof(handlerData));
 
                 // Save container setup steps so we can reference them later
-                (handlerData as CompositeActionExecutionData).ContainerSetupSteps = prepareResult.ContainerSetupSteps;
+                localActionContainerSetupSteps = prepareResult.ContainerSetupSteps;
             }
 
             // The action has post cleanup defined.
@@ -270,7 +270,8 @@ namespace GitHub.Runner.Worker
                             inputs,
                             environment,
                             ExecutionContext.Global.Variables,
-                            actionDirectory: definition.Directory);
+                            actionDirectory: definition.Directory,
+                            localActionContainerSetupSteps: localActionContainerSetupSteps);
 
             // Print out action details
             handler.PrintActionDetails(Stage);

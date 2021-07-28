@@ -389,7 +389,7 @@ namespace GitHub.Runner.Worker
 
             _logger.End();
 
-            // Skip if generated context name. Generated context names start with "__". After M271-ish the server will never send an empty context name.
+            // Skip if generated context name. Generated context names start with "__". After 3.2 the server will never send an empty context name.
             if (!string.IsNullOrEmpty(ContextName) && !ContextName.StartsWith("__", StringComparison.Ordinal))
             {
                 Global.StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
@@ -452,7 +452,7 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // Skip if generated context name. Generated context names start with "__". After M271-ish the server will never send an empty context name.
+            // Skip if generated context name. Generated context names start with "__". After 3.2 the server will never send an empty context name.
             if (string.IsNullOrEmpty(ContextName) || ContextName.StartsWith("__", StringComparison.Ordinal))
             {
                 reference = null;

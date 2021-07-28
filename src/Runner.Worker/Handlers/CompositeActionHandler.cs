@@ -70,7 +70,7 @@ namespace GitHub.Runner.Worker.Handlers
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
 
-                // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
+                // Temporary hack until after 3.2. After 3.2 the server will never send an empty
                 // context name. Generated context names start with "__"
                 var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
                 if (string.IsNullOrEmpty(childScopeName))
@@ -78,28 +78,18 @@ namespace GitHub.Runner.Worker.Handlers
                     childScopeName = $"__{Guid.NewGuid()}";
                 }
 
-
-                // If we need to setup containers beforehand, do it
-                List<JobExtensionRunner> containerDownloadSteps = null;
-                if (Data.ContainerSetupSteps != null && Data.ContainerSetupSteps.Count > 0)
-                {
-                    foreach (var step in Data.ContainerSetupSteps)
-                    {
-                        ArgUtil.NotNull(step, step.DisplayName);
-                        Guid stepId = Guid.NewGuid();
-                        step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, Guid.NewGuid().ToString(), stepId);
-                    }
-                    containerDownloadSteps = Data.ContainerSetupSteps;
-                }
-
                 // Create embedded steps
                 var embeddedSteps = new List<IStep>();
 
-                // Add container download steps
-                if (containerDownloadSteps != null && containerDownloadSteps.Count > 0)
+                 // If we need to setup containers beforehand, do it
+                // only relevant for local composite actions that need to JIT download/setup containers
+                if (LocalActionContainerSetupSteps != null && LocalActionContainerSetupSteps.Count > 0)
                 {
-                    foreach(var step in containerDownloadSteps)
+                    foreach(var step in LocalActionContainerSetupSteps)
                     {
+                        ArgUtil.NotNull(step, step.DisplayName);
+                        var stepId = $"__{Guid.NewGuid()}";
+                        step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepId, Guid.NewGuid());
                         embeddedSteps.Add(step);
                     }
                 }
@@ -134,7 +124,6 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
                 ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
                 ProcessOutputs();
-                ExecutionContext.Global.StepsContext.ClearScope(childScopeName);
             }
             catch (Exception ex)
             {
