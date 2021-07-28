@@ -5,7 +5,17 @@ set -e
 #
 # Force deletes a runner from the service
 # The caller should have already ensured the runner is gone and/or stopped
-# See EXAMPLES below
+#
+# Examples:
+# RUNNER_CFG_PAT=<yourPAT> ./delete.sh myuser/myrepo myname
+# RUNNER_CFG_PAT=<yourPAT> ./delete.sh myorg
+#
+# Usage:
+#     export RUNNER_CFG_PAT=<yourPAT>
+#     ./delete.sh scope name
+#
+#      scope required  repo (:owner/:repo) or org (:organization)
+#      name  optional  defaults to hostname.  name to delete
 # 
 # Notes:
 # PATS over envvars are more secure
@@ -13,42 +23,9 @@ set -e
 # Assumes x64 arch
 #
 
-valid_flag_pattern='(\ |^)-s\ |(\ |^)--scope\ |(\ |^)-[Ss]cope\ '
-help_pattern='(\ |^)-h(\ |$)|(\ |^)--help(\ |$)|(\ |^)-[Hh]elp(\ |$)'
-if [[ $* =~ $valid_flag_pattern || $* =~ $help_pattern ]]; then
-while [ $# -ne 0 ]
-do
-    name="$1"
-    case "$name" in
-        -s|--scope|-[Ss]cope)
-            shift
-            runner_scope=$1
-            ;;
-        -n|--name|-[Nn]ame)
-            shift
-            runner_name=$1
-            ;;
-        *)
-            echo "
-Examples:
-RUNNER_CFG_PAT=<yourPAT> ./delete.sh -s myuser/myrepo -n myname
-RUNNER_CFG_PAT=<yourPAT> ./delete.sh myuser/myrepo myname
+runner_scope=${1}
+runner_name=${2}
 
-Usage:
-    export RUNNER_CFG_PAT=<yourPAT>
-    ./delete.sh scope name
-
-    scope required  repo (:owner/:repo) or org (:organization)
-    name  required  name of the runner to delete"
-            exit 0
-    esac
-    shift
-done
-else
-    # process indexed args for backwards compatibility
-    runner_scope=${1}
-    runner_name=${2}
-fi
 echo "Deleting runner ${runner_name} @ ${runner_scope}"
 
 function fatal()
