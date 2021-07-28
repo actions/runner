@@ -34,7 +34,32 @@ namespace GitHub.Runner.Worker.Handlers
             Trace.Entering();
             ArgUtil.NotNull(ExecutionContext, nameof(ExecutionContext));
             ArgUtil.NotNull(Inputs, nameof(Inputs));
-            ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
+
+            List<Pipelines.ActionStep> steps;
+
+            if (stage == ActionRunStage.Pre)
+            {
+                ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
+                steps = Data.PreSteps;
+            } 
+            else if (stage == ActionRunStage.Post)
+            {
+                ArgUtil.NotNull(Data.PostSteps, nameof(Data.PostSteps));
+                steps = Data.PostSteps.ToList();
+                // Only register post steps for steps that actually ran
+                foreach (var step in steps)
+                {
+                    if (!ExecutionContext.Root.EmbeddedStepsWithPostRegistered.Contains(step.Id))
+                    {
+                        steps.Remove(step);
+                    }
+                }
+            }  
+            else
+            {
+                ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
+                steps = Data.Steps;
+            }
 
             try
             {
@@ -45,7 +70,7 @@ namespace GitHub.Runner.Worker.Handlers
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
 
-                // Temporary hack until after M271-ish. After M271-ish the server will never send an empty
+                // Temporary hack until after 3.2. After 3.2 the server will never send an empty
                 // context name. Generated context names start with "__"
                 var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
                 if (string.IsNullOrEmpty(childScopeName))
@@ -55,13 +80,28 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Create embedded steps
                 var embeddedSteps = new List<IStep>();
-                foreach (Pipelines.ActionStep stepData in Data.Steps)
+
+                 // If we need to setup containers beforehand, do it
+                // only relevant for local composite actions that need to JIT download/setup containers
+                if (LocalActionContainerSetupSteps != null && LocalActionContainerSetupSteps.Count > 0)
+                {
+                    foreach(var step in LocalActionContainerSetupSteps)
+                    {
+                        ArgUtil.NotNull(step, step.DisplayName);
+                        var stepId = $"__{Guid.NewGuid()}";
+                        step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepId, Guid.NewGuid());
+                        embeddedSteps.Add(step);
+                    }
+                }
+
+                foreach (Pipelines.ActionStep stepData in steps)
                 {
                     var step = HostContext.CreateService<IActionRunner>();
                     step.Action = stepData;
                     step.Stage = stage;
                     step.Condition = stepData.Condition;
-                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName);
+                    ExecutionContext.Root.EmbeddedIntraActionState.TryGetValue(step.Action.Id, out var intraActionState);
+                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, intraActionState: intraActionState);
                     step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
                     step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
 
@@ -84,7 +124,6 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
                 ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
                 ProcessOutputs();
-                ExecutionContext.Global.StepsContext.ClearScope(childScopeName);
             }
             catch (Exception ex)
             {
@@ -178,16 +217,17 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-                var actionStep = step as IActionRunner;
-
                 try
                 {
-                    // Evaluate and merge embedded-step env
-                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-                    var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
-                    foreach (var env in actionEnvironment)
+                    if (step is IActionRunner actionStep)
                     {
-                        envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                        // Evaluate and merge embedded-step env
+                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                        var actionEnvironment = templateEvaluator.EvaluateStepEnvironment(actionStep.Action.Environment, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, Common.Util.VarUtil.EnvironmentVariableKeyComparer);
+                        foreach (var env in actionEnvironment)
+                        {
+                            envContext[env.Key] = new StringContextData(env.Value ?? string.Empty);
+                        }
                     }
                 }
                 catch (Exception ex)

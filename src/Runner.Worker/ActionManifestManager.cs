@@ -480,6 +480,10 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
+                            PreSteps = new List<Pipelines.ActionStep>(),
+                            PostSteps = new Stack<Pipelines.ActionStep>(),
+                            InitCondition = "always()",
+                            CleanupCondition = "always()",
                             Outputs = outputs
                         };
                     }

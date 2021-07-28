@@ -20,6 +20,7 @@ namespace GitHub.Runner.Worker.Handlers
         IStepHost StepHost { get; set; }
         Dictionary<string, string> Inputs { get; set; }
         string ActionDirectory { get; set; }
+        List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
         Task RunAsync(ActionRunStage stage);
         void PrintActionDetails(ActionRunStage stage);
     }
@@ -41,6 +42,7 @@ namespace GitHub.Runner.Worker.Handlers
         public IStepHost StepHost { get; set; }
         public Dictionary<string, string> Inputs { get; set; }
         public string ActionDirectory { get; set; }
+        public List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
 
         public virtual void PrintActionDetails(ActionRunStage stage)
         {
