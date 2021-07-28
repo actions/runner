@@ -10,10 +10,10 @@ namespace GitHub.DistributedTask.WebApi
     {
 
         [DataMember(EmitDefaultValue = false)]
-        public string? Ref { get; set; }
+        public string Ref { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public string? Type { get; set; }
+        public string Type { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public bool? HasRunsStep { get; set; }
