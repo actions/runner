@@ -2,45 +2,36 @@
 
 set -e
 
-# Downloads latest runner release (not pre-release) 
+# Downloads latest runner release (not pre-release)
 # Configures it as a service more secure
 # Should be used on VMs and not containers
 # Works on OSX and Linux
 # Assumes x64 arch
 # See EXAMPLES below
 
-# detect whether there is a flag for runner_scope
-# surround flag patterns with '(\ |^)' and '\ ' to avoid parsing args like 'big-sur-runner-name' as flags
-# just because they contain the string '-s'
-valid_flag_pattern='(\ |^)-s\ |(\ |^)--scope\ |(\ |^)-[Ss]cope\ '
-help_pattern='(\ |^)-h(\ |$)|(\ |^)--help(\ |$)|(\ |^)-[Hh]elp(\ |$)'
-if [[ $* =~ $valid_flag_pattern || $* =~ $help_pattern ]]; then
-while [ $# -ne 0 ]
-do
-    name="$1"
-    case "$name" in
-        -s|--scope|-[Ss]cope)
-            shift
-            runner_scope=$1
-            ;;
-        -g|--ghe_domain|-[Gg]he_domain)
-            shift
-            ghe_hostname=$1
-            ;;
-        -n|--name|-[Nn]ame)
-            shift
-            runner_name=$1
-            ;;
-        -u|--user|-[Uu]ser)
-            shift
-            svc_user=$1
-            ;;
-        -l|--labels|-[Ll]abels)
-            shift
-            labels=$1
-            ;;
-        *)
-            echo "
+flags_found=false
+
+while getopts 's:g:n:u:l:' opt; do
+    flags_found=true
+
+    case $opt in
+    s)
+        runner_scope=$OPTARG
+        ;;
+    g)
+        ghe_hostname=$OPTARG
+        ;;
+    n)
+        runner_name=$OPTARG
+        ;;
+    u)
+        svc_user=$OPTARG
+        ;;
+    l)
+        labels=$OPTARG
+        ;;
+    *)
+        echo "
 Runner Service Installer
 Examples:
 RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
@@ -49,18 +40,19 @@ RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh --scope org --user user_name
 Usage:
     export RUNNER_CFG_PAT=<yourPAT>
     ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
-    -s|--scope|-[Ss]cope             required  repo (:owner/:repo) or org (:organization)
-    -g|--ghe_domain|-[Gg]he_domain   optional  the fully qualified domain name of your GitHub Enterprise Server deployment
-    -n|--name|-[Nn]ame               optional  defaults to hostname
-    -u|--user|-[Uu]ser                optional  user svc will run as. defaults to current
-    -l|--labels|-[Ll]abels           optional  list of labels (split by comma) applied on the runner"
-            exit 0
-            ;;
+    -s          required  scope: repo (:owner/:repo) or org (:organization)
+    -g          optional  ghe_hostname: the fully qualified domain name of your GitHub Enterprise Server deployment
+    -n          optional  name of the runner, defaults to hostname
+    -u          optional  user svc will run as, defaults to current
+    -l          optional  list of labels (split by comma) applied on the runner"
+        exit 0
+        ;;
     esac
-    shift
 done
-else
-    # process indexed args for backwards compatibility
+
+shift "$((OPTIND - 1))"
+
+if ! "$flags_found"; then
     runner_scope=${1}
     ghe_hostname=${2}
     runner_name=${3:-$(hostname)}
@@ -181,7 +173,7 @@ echo
 echo "Configuring as a service ..."
 prefix=""
 if [ "${runner_plat}" == "linux" ]; then
-prefix="sudo "
+    prefix="sudo "
 fi
 
 ${prefix}./svc.sh install ${svc_user}
