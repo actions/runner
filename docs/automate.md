@@ -31,21 +31,21 @@ You can call the script with additional arguments:
 ```bash
 #   Usage:
 #       export RUNNER_CFG_PAT=<yourPAT>
-#       ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
-#       -s|--scope|-[Ss]cope             required  repo (:owner/:repo) or org (:organization)
-#       -g|--ghe_domain|-[Gg]he_domain   optional  the fully qualified domain name of your GitHub Enterprise Server deployment
-#       -n|--name|-[Nn]ame               optional  defaults to hostname
-#       -u|--user|-[Uu]ser                optional  user svc will run as. defaults to current
-#       -l|--labels|-[Ll]abels           optional  list of labels (split by comma) applied on the runner"
+#       ./create-latest-svc -s scope -g [ghe_domain] -n [name] -u [user] -l [labels]
+#       -s          required  scope: repo (:owner/:repo) or org (:organization)
+#       -g          optional  ghe_hostname: the fully qualified domain name of your GitHub Enterprise Server deployment
+#       -n          optional  name of the runner, defaults to hostname
+#       -u          optional  user svc will run as, defaults to current
+#       -l          optional  list of labels (split by comma) applied on the runner"
 ```
 
 Use `--` to separate your named arguments:
 
 ```
-curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s -- --scope myorg/myrepo --name myname --user myuser --labels label1,label2
+curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s -- -s myorg/myrepo -n myname -l label1,label2
 ```
 
-Or just pass them sequentially (order of arguments matters):
+Or just pass them sequentially (order of the arguments matters):
 
 ```
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s myorg/myrepo mydomain myname myuser label1,label2
