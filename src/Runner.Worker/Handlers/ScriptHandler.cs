@@ -156,6 +156,16 @@ namespace GitHub.Runner.Worker.Handlers
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
 
+            // Add Telemetry
+            if (stage == ActionRunStage.Main)
+            {
+                var telemetry = new ActionsStepTelemetry {
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = "run",
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+            }
+
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
             Inputs.TryGetValue("script", out var contents);

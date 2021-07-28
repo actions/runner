@@ -39,9 +39,11 @@ namespace GitHub.Runner.Worker.Handlers
 
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
+            string type = "Dockerfile";
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
             {
+                type = "DockerHub";
                 Data.Image = Data.Image.Substring("docker://".Length);
             }
             else if (Data.Image.EndsWith("Dockerfile") || Data.Image.EndsWith("dockerfile"))
@@ -67,6 +69,18 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 Data.Image = imageName;
+            }
+
+            if (stage == ActionRunStage.Main)
+            {
+                var telemetry = new ActionsStepTelemetry {
+                    Ref = GetActionRef(),
+                    HasPreStep = Data.HasPre,
+                    HasPostStep = Data.HasPost,
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = type,
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
 
             // run container

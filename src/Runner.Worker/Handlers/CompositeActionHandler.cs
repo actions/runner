@@ -61,6 +61,34 @@ namespace GitHub.Runner.Worker.Handlers
                 steps = Data.Steps;
             }
 
+            if (stage == ActionRunStage.Main)
+            {
+                var hasRunsStep = false;
+                var hasUsesStep = false;
+                foreach (var step in steps)
+                {
+                    if (step.Reference.Type == Pipelines.ActionSourceType.Repository)
+                    {
+                        hasUsesStep = true;
+                    }
+                    if (step.Reference.Type == Pipelines.ActionSourceType.Script)
+                    {
+                        hasRunsStep = true;
+                    }
+                }
+                var pathReference = Action as Pipelines.RepositoryPathReference;
+                var telemetry = new ActionsStepTelemetry {
+                    Ref = GetActionRef(),
+                    HasPreStep = Data.HasPre,
+                    HasPostStep = Data.HasPost,
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = "composite",
+                    HasRunsStep = hasRunsStep,
+                    HasUsesStep = hasUsesStep,
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+            }
+            
             try
             {
                 // Inputs of the composite step
