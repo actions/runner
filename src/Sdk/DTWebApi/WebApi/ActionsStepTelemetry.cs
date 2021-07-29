@@ -23,9 +23,6 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public bool IsEmbedded { get; set; }
-        
-        [DataMember(EmitDefaultValue = false)]
-        public bool? ContainsActionsYamlManifest { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
         public bool? HasPreStep { get; set; }

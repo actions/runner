@@ -39,11 +39,9 @@ namespace GitHub.Runner.Worker.Handlers
 
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
-            string type = "Dockerfile";
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
             {
-                type = "DockerHub";
                 Data.Image = Data.Image.Substring("docker://".Length);
             }
             else if (Data.Image.EndsWith("Dockerfile") || Data.Image.EndsWith("dockerfile"))
@@ -71,6 +69,7 @@ namespace GitHub.Runner.Worker.Handlers
                 Data.Image = imageName;
             }
 
+            string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";
             // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
@@ -79,8 +78,7 @@ namespace GitHub.Runner.Worker.Handlers
                     HasPreStep = Data.HasPre,
                     HasPostStep = Data.HasPost,
                     IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = type,
-                    ContainsActionsYamlManifest = !string.IsNullOrEmpty(Data.EntryPoint)
+                    Type = type
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }

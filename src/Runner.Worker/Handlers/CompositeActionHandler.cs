@@ -86,8 +86,7 @@ namespace GitHub.Runner.Worker.Handlers
                     Type = "composite",
                     HasRunsStep = hasRunsStep,
                     HasUsesStep = hasUsesStep,
-                    StepCount = steps.Count,
-                    ContainsActionsYamlManifest = true
+                    StepCount = steps.Count
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
