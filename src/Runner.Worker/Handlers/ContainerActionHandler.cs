@@ -52,8 +52,8 @@ namespace GitHub.Runner.Worker.Handlers
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
                 ArgUtil.File(dockerFile, nameof(Data.Image));
 
-                ExecutionContext.Output($"##[group]Building docker image");
-                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+                ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? "Building docker image" : $"##[group]Building docker image");
+                ExecutionContext.WriteDetails($"Dockerfile for action: '{dockerFile}'.");
                 var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
                 var buildExitCode = await dockerManager.DockerBuild(
                     ExecutionContext,
@@ -61,7 +61,7 @@ namespace GitHub.Runner.Worker.Handlers
                     dockerFile,
                     Directory.GetParent(dockerFile).FullName,
                     imageName);
-                ExecutionContext.Output("##[endgroup]");
+                ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? "" : "##[endgroup]");
 
                 if (buildExitCode != 0)
                 {
@@ -80,6 +80,7 @@ namespace GitHub.Runner.Worker.Handlers
                     HasPostStep = Data.HasPost,
                     IsEmbedded = ExecutionContext.IsEmbedded,
                     Type = type,
+                    ContainsActionsYamlManifest = !string.IsNullOrEmpty(Data.EntryPoint)
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }

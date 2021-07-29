@@ -78,6 +78,7 @@ namespace GitHub.Runner.Worker.Handlers
                     HasPostStep = Data.HasPost,
                     IsEmbedded = ExecutionContext.IsEmbedded,
                     Type = "node12",
+                    ContainsActionsYamlManifest = true
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }

@@ -68,13 +68,13 @@ namespace GitHub.Runner.Worker.Handlers
                 var hasUsesStep = false;
                 foreach (var step in steps)
                 {
-                    if (step.Reference.Type == Pipelines.ActionSourceType.Repository)
-                    {
-                        hasUsesStep = true;
-                    }
                     if (step.Reference.Type == Pipelines.ActionSourceType.Script)
                     {
                         hasRunsStep = true;
+                    }
+                    else
+                    {
+                        hasUsesStep = true;
                     }
                 }
                 var pathReference = Action as Pipelines.RepositoryPathReference;
@@ -86,6 +86,8 @@ namespace GitHub.Runner.Worker.Handlers
                     Type = "composite",
                     HasRunsStep = hasRunsStep,
                     HasUsesStep = hasUsesStep,
+                    StepCount = steps.Count,
+                    ContainsActionsYamlManifest = true
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }

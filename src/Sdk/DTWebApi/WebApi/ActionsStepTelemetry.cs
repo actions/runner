@@ -32,5 +32,8 @@ namespace GitHub.DistributedTask.WebApi
 
         [DataMember(EmitDefaultValue = false)]
         public bool? HasPostStep { get; set; }
+
+        [DataMember(EmitDefaultValue = false)]
+        public int? StepCount { get; set; }
     }
 }

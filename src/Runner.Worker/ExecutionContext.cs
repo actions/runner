@@ -972,6 +972,18 @@ namespace GitHub.Runner.Worker
             context.Write(null, message);
         }
 
+        public static void WriteDetails(this IExecutionContext context, string message)
+        {
+            if (context.IsEmbedded)
+            {
+                context.Debug(message);
+            }
+            else
+            {
+                context.Output(message);
+            }
+        }
+
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void Command(this IExecutionContext context, string message)
         {
