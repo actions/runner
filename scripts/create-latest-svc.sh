@@ -2,6 +2,8 @@
 
 set -e
 
+# Notes:
+# PATS over envvars are more secure
 # Downloads latest runner release (not pre-release)
 # Configures it as a service more secure
 # Should be used on VMs and not containers
