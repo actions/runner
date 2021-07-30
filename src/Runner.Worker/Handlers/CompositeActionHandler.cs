@@ -217,6 +217,10 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Add Expression Functions
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<HashFilesFunction>(PipelineTemplateConstants.HashFiles, 1, byte.MaxValue));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<CancelledFunction>(PipelineTemplateConstants.Cancelled, 0, 0));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<FailureFunction>(PipelineTemplateConstants.Failure, 0, 0));
+                step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<SuccessFunction>(PipelineTemplateConstants.Success, 0, 0));
 
                 // Initialize env context
                 Trace.Info("Initialize Env context for embedded step");
@@ -268,7 +272,49 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
-                await RunStepAsync(step);
+                // Evaluate condition
+                step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
+                var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
+                var conditionResult = false;
+                var conditionEvaluateError = default(Exception);
+                if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                {
+                    step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
+                }
+                else
+                {
+                    try
+                    {
+                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
+                        var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                        conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info("Caught exception from expression.");
+                        Trace.Error(ex);
+                        conditionEvaluateError = ex;
+                    }
+                }
+                if (!conditionResult && conditionEvaluateError == null)
+                {
+                    // Condition is false
+                    Trace.Info("Skipping step due to condition evaluation.");
+                    step.ExecutionContext.Result = TaskResult.Skipped;
+                    continue;
+                }
+                else if (conditionEvaluateError != null)
+                {
+                    // Condition error
+                    step.ExecutionContext.Error(conditionEvaluateError);
+                    step.ExecutionContext.Result = TaskResult.Failed;
+                    ExecutionContext.Result = TaskResult.Failed;
+                    break;
+                }
+                else
+                {
+                    await RunStepAsync(step);
+                }
 
                 // Check failed or canceled
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
