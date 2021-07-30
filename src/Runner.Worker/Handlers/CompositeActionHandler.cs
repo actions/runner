@@ -61,6 +61,36 @@ namespace GitHub.Runner.Worker.Handlers
                 steps = Data.Steps;
             }
 
+            // Add Telemetry to JobContext to send with JobCompleteMessage
+            if (stage == ActionRunStage.Main)
+            {
+                var hasRunsStep = false;
+                var hasUsesStep = false;
+                foreach (var step in steps)
+                {
+                    if (step.Reference.Type == Pipelines.ActionSourceType.Script)
+                    {
+                        hasRunsStep = true;
+                    }
+                    else
+                    {
+                        hasUsesStep = true;
+                    }
+                }
+                var pathReference = Action as Pipelines.RepositoryPathReference;
+                var telemetry = new ActionsStepTelemetry {
+                    Ref = GetActionRef(),
+                    HasPreStep = Data.HasPre,
+                    HasPostStep = Data.HasPost,
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = "composite",
+                    HasRunsStep = hasRunsStep,
+                    HasUsesStep = hasUsesStep,
+                    StepCount = steps.Count
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+            }
+            
             try
             {
                 // Inputs of the composite step

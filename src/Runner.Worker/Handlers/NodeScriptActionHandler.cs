@@ -69,6 +69,19 @@ namespace GitHub.Runner.Worker.Handlers
                 target = Data.Post;
             }
 
+            // Add Telemetry to JobContext to send with JobCompleteMessage
+            if (stage == ActionRunStage.Main)
+            {
+                var telemetry = new ActionsStepTelemetry {
+                    Ref = GetActionRef(),
+                    HasPreStep = Data.HasPre,
+                    HasPostStep = Data.HasPost,
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = "node12"
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+            }
+
             ArgUtil.NotNullOrEmpty(target, nameof(target));
             target = Path.Combine(ActionDirectory, target);
             ArgUtil.File(target, nameof(target));

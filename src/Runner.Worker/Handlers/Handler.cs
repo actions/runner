@@ -44,11 +44,45 @@ namespace GitHub.Runner.Worker.Handlers
         public string ActionDirectory { get; set; }
         public List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
 
+        public virtual string GetActionRef()
+        {
+            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                var registryAction = Action as Pipelines.ContainerRegistryReference;
+                return registryAction.Image;
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Repository)
+            {
+                var repoAction = Action as Pipelines.RepositoryPathReference;
+                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    return repoAction.Path;
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(repoAction.Path))
+                    {
+                        return $"{repoAction.Name}@{repoAction.Ref}";
+                    }
+                    else
+                    {
+                        return $"{repoAction.Name}/{repoAction.Path}@{repoAction.Ref}";
+                    }
+                }
+            }
+            else
+            {
+                // this should never happen
+                Trace.Error($"Can't generate ref for {Action.Type.ToString()}");
+            }
+            return "";
+        }
         public virtual void PrintActionDetails(ActionRunStage stage)
         {
+            
             if (stage == ActionRunStage.Post)
             {
-                ExecutionContext.Output($"Post job cleanup.");
+                ExecutionContext.WriteDetails($"Post job cleanup.");
                 return;
             }
 
@@ -84,30 +118,30 @@ namespace GitHub.Runner.Worker.Handlers
                 groupName = "Action details";
             }
 
-            ExecutionContext.Output($"##[group]{groupName}");
+            ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? groupName : $"##[group]{groupName}");
 
             if (this.Inputs?.Count > 0)
             {
-                ExecutionContext.Output("with:");
+                ExecutionContext.WriteDetails("with:");
                 foreach (var input in this.Inputs)
                 {
                     if (!string.IsNullOrEmpty(input.Value))
                     {
-                        ExecutionContext.Output($"  {input.Key}: {input.Value}");
+                        ExecutionContext.WriteDetails($"  {input.Key}: {input.Value}");
                     }
                 }
             }
 
             if (this.Environment?.Count > 0)
             {
-                ExecutionContext.Output("env:");
+                ExecutionContext.WriteDetails("env:");
                 foreach (var env in this.Environment)
                 {
-                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
+                    ExecutionContext.WriteDetails($"  {env.Key}: {env.Value}");
                 }
             }
 
-            ExecutionContext.Output("##[endgroup]");
+            ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? "" : "##[endgroup]");
         }
 
         public override void Initialize(IHostContext hostContext)
