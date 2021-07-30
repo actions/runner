@@ -11,6 +11,7 @@ using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
@@ -45,13 +46,17 @@ namespace GitHub.Runner.Worker.Handlers
             else if (stage == ActionRunStage.Post)
             {
                 ArgUtil.NotNull(Data.PostSteps, nameof(Data.PostSteps));
-                steps = Data.PostSteps.ToList();
+                steps = new List<Pipelines.ActionStep>();
                 // Only register post steps for steps that actually ran
-                foreach (var step in steps)
+                foreach (var step in Data.PostSteps.ToList())
                 {
-                    if (!ExecutionContext.Root.EmbeddedStepsWithPostRegistered.Contains(step.Id))
+                    if (ExecutionContext.Root.EmbeddedStepsWithPostRegistered.Contains(step.Id))
                     {
-                        steps.Remove(step);
+                        steps.Add(step);
+                    }
+                    else
+                    {
+                        Trace.Info($"Skipping executing post step id: {step.Id}, name: ${step.DisplayName}");
                     }
                 }
             }  
@@ -319,8 +324,10 @@ namespace GitHub.Runner.Worker.Handlers
                 // Check failed or canceled
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
+                    Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
                     ExecutionContext.Result = step.ExecutionContext.Result;
-                    break;
+                    ExecutionContext.Root.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Root.Result, step.ExecutionContext.Result.Value);
+                    ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
                 }
             }
         }
