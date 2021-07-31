@@ -1735,7 +1735,7 @@ namespace Runner.Client
                                 var git = WhichUtil.Which("git", true);
                                 var sha = file.Substring(modeend + 1, shaend - (modeend + 1));
                                 await gitinvoker.ExecuteAsync(wd, git, $"cat-file -p {sha}", new Dictionary<string, string>(), source.Token);
-                                repodownload.Add(new StringContent(dest), "lnk:" + Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename)));
+                                repodownload.Add(new StringContent(dest), "lnk:" + Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename)).Replace('\\', '/'));
                             });
                             continue;
                             // readlink git cat-file -p sha
@@ -1745,7 +1745,7 @@ namespace Runner.Client
                         var fs = File.OpenRead(Path.Combine(wd, filename));
                         streamsToDispose.Add(fs);
                         filename = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
-                        repodownload.Add(new StreamContent(fs), mode + ":" + filename, filename);
+                        repodownload.Add(new StreamContent(fs), mode + ":" + filename.Replace('\\', '/'), filename.Replace('\\', '/'));
                     }
                     catch {
 
@@ -1789,7 +1789,7 @@ namespace Runner.Client
                                 if(new FileInfo(relpath).Attributes.HasFlag(FileAttributes.ReparsePoint)){
                                     var dest = ReadSymlinkWindows(relpath);
                                     relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
-                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath);
+                                    repodownload.Add(new StringContent(dest.Replace('\\', '/')), "lnk:" + relpath.Replace('\\', '/'));
                                     continue;
                                 }
                             } catch {
@@ -1800,7 +1800,7 @@ namespace Runner.Client
                         var fs = File.OpenRead(relpath);
                         streamsToDispose.Add(fs);
                         relpath = Path.GetRelativePath(parameters.directory ?? ".", Path.Combine(wd, filename));
-                        repodownload.Add(new StreamContent(fs), mode + ":" + relpath, relpath);
+                        repodownload.Add(new StreamContent(fs), mode + ":" + relpath.Replace('\\', '/'), relpath.Replace('\\', '/'));
                     } catch {
 
                     }
