@@ -82,12 +82,6 @@ namespace GitHub.Runner.Worker
             ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
 
-            if (handlerData.HasPre &&
-                Action.Reference is Pipelines.RepositoryPathReference repoAction &&
-                string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-            {
-                ExecutionContext.Warning($"`pre` execution is not supported for local action from '{repoAction.Path}'");
-            }
             List<JobExtensionRunner> localActionContainerSetupSteps = null;
             // Handle Composite Local Actions
             // Need to download and expand the tree of referenced actions
@@ -108,6 +102,13 @@ namespace GitHub.Runner.Worker
 
                 // Save container setup steps so we can reference them later
                 localActionContainerSetupSteps = prepareResult.ContainerSetupSteps;
+            }
+
+            if (handlerData.HasPre &&
+                Action.Reference is Pipelines.RepositoryPathReference repoAction &&
+                string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                ExecutionContext.Warning($"`pre` execution is not supported for local action from '{repoAction.Path}'");
             }
 
             // The action has post cleanup defined.
