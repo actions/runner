@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System;
@@ -213,6 +213,10 @@ namespace GitHub.Runner.Worker.Handlers
             if (systemConnection.Data.TryGetValue("CacheServerUrl", out var cacheUrl) && !string.IsNullOrEmpty(cacheUrl))
             {
                 Environment["ACTIONS_CACHE_URL"] = cacheUrl;
+            }
+            if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
+            {
+                Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
             }
 
             foreach (var variable in this.Environment)
