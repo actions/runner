@@ -279,18 +279,17 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Register Callback
                 CancellationTokenRegistration? jobCancelRegister = null;
-                var jobContext = ExecutionContext.Root;
                 try
                 {
                     // Register job cancellation call back only if job cancellation token not been fire before each step run
-                    if (!jobContext.CancellationToken.IsCancellationRequested)
+                    if (!ExecutionContext.Root.CancellationToken.IsCancellationRequested)
                     {
                         // Test the condition again. The job was canceled after the condition was originally evaluated.
-                        jobCancelRegister = jobContext.CancellationToken.Register(() =>
+                        jobCancelRegister = ExecutionContext.Root.CancellationToken.Register(() =>
                         {
                             // Mark job as cancelled
-                            jobContext.Result = TaskResult.Canceled;
-                            jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
+                            ExecutionContext.Root.Result = TaskResult.Canceled;
+                            ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
 
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
@@ -325,11 +324,11 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                     else
                     {
-                        if (jobContext.Result != TaskResult.Canceled)
+                        if (ExecutionContext.Root.Result != TaskResult.Canceled)
                         {
                             // Mark job as cancelled
-                            jobContext.Result = TaskResult.Canceled;
-                            jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
+                            ExecutionContext.Root.Result = TaskResult.Canceled;
+                            ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
                         }
                     }
                     // Evaluate condition
