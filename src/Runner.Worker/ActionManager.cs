@@ -241,7 +241,7 @@ namespace GitHub.Runner.Worker
                                 state.PreStepTracker[action.Id] = actionRunner;
                             }
                             // Embedded Step
-                            else 
+                            else
                             {
                                 if (!_cachedEmbeddedPreSteps.ContainsKey(parentStepId))
                                 {
@@ -703,7 +703,7 @@ namespace GitHub.Runner.Worker
                 // make sure we get a clean folder ready to use.
                 IOUtil.DeleteDirectory(destDirectory, executionContext.CancellationToken);
                 Directory.CreateDirectory(destDirectory);
-                executionContext.Output($"Download action repository '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}'");
+                executionContext.Output($"Download action repository '{downloadInfo.NameWithOwner}@{downloadInfo.Ref}' (SHA:{downloadInfo.ResolvedSha})");
             }
 
             await DownloadRepositoryActionAsync(executionContext, downloadInfo, destDirectory);
@@ -1263,7 +1263,7 @@ namespace GitHub.Runner.Worker
     public class ActionSetupInfo
     {
         public ActionContainer Container { get; set; }
-        public List<Pipelines.ActionStep> Steps {get; set;}
+        public List<Pipelines.ActionStep> Steps { get; set; }
     }
 
     public class PrepareActionsState
