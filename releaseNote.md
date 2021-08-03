@@ -1,22 +1,17 @@
 ## Features
 
-- Add Job Message size to both Worker and Listener logs for debugging (#1100)
-- Add notice annotation level (in addition to error and warning) and support more annotation fields (#1175)
+- Adds support for composite actions if the server supports it (#1222)
+- Adds `generateIdTokenUri` to env variables for actions (#1234)
 
 ## Bugs
 
-- Remove the `NODE_ICU_DATA` environment variable that may cause conflicts with node within the runner. (#1060)
-- Handle cancelled jobs better to prevent orphaned processes (#1083)
-- No longer fail to remove a `systemd` service with `svc.sh uninstall` if the script had previously been run from the wrong location (#1135)
-- Send `SIGKILL` to the runner listener if it doesn't respond to `SIGINT` for 30 seconds
-- Match runner group name when configuring even if there's only a single runner group 
+- Prefer higher `libicu` versions in `installDependencies.sh` (#1228)
 
 
 ## Misc
-- Fix automation links in documentation (#1089)
-- Improve developer and first contributor experience by improving tooling for VS Code (#1101, #1117, #1119, #1132)
-- Fix bug where linux users are not able to run remove-svc.sh as root (#1127)
 
+- Send step telemetry to server on JobCompletion (#1229)
+- Print out the resolved SHA for each downloaded action (#1233)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
