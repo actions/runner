@@ -17,6 +17,15 @@ namespace Runner.Server
     {
         public static void Main(string[] args)
         {
+            if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                try {
+                    if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
+                        Console.WriteLine($"Failed to change Process Group");
+                    }
+                } catch {
+                    Console.WriteLine($"Failed to change Process Group exception");
+                }
+            }
             //var b = new ConfigurationBuilder();
             //b.AddJsonFile("C:\\Users\\Christopher\\runner\\src\\Runner.Server\\appsettings.Development.json");
             //new MessageController(/* new Logger<MessageController>(new LoggerFactory()) */b.Build(), new MemoryCache(new Options())).ConvertYaml("C:/Users/Christopher/runner/src/Runner.Server/test.yml");

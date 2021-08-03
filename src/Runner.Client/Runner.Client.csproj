@@ -27,6 +27,10 @@
     <Content Include="..\Misc\layoutbin\**" PackagePath="tools\net5.0\any" >
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="..\Runner.Server\$(OutDir)\Runner.Server.deps.json" PackagePath="tools\net5.0\any" >
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    
   </ItemGroup>
 
   <ItemGroup>

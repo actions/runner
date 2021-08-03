@@ -15,6 +15,15 @@ namespace GitHub.Runner.Listener
     {
         public static int Main(string[] args)
         {
+            if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                try {
+                    if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
+                        Console.WriteLine($"Failed to change Process Group");
+                    }
+                } catch {
+                    Console.WriteLine($"Failed to change Process Group exception");
+                }
+            }
             // Add environment variables from .env file
             LoadAndSetEnv();
 
