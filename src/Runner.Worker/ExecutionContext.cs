@@ -272,7 +272,7 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, this.ScopeName);
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, this.GetFullyQualifiedContextName());
             Root.PostJobSteps.Push(step);
         }
 
