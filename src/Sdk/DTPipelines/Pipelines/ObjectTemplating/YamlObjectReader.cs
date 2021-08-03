@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using YamlDotNet.Core;
@@ -14,25 +15,36 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
     /// </summary>
     internal sealed class YamlObjectReader : IObjectReader
     {
+        private IDictionary<string, TemplateToken> m_anchors;
+
         internal YamlObjectReader(
             Int32? fileId,
             TextReader input)
         {
             m_fileId = fileId;
-            m_parser = new Parser(input);
+            m_parser = new MergingParser(new Parser(input));
+            m_anchors = new Dictionary<string, TemplateToken>();
         }
 
         public Boolean AllowLiteral(out LiteralToken value)
         {
-            if (EvaluateCurrent() is Scalar scalar)
+            if (EvaluateCurrent() is AnchorAlias alias && m_anchors.TryGetValue(alias.Value.Value, out TemplateToken token) && token is LiteralToken literal) {
+                value = literal;
+                MoveNext();
+                return true;
+            }
+            else if (EvaluateCurrent() is Scalar scalar)
             {
                 // Tag specified
-                if (!String.IsNullOrEmpty(scalar.Tag))
+                if (scalar.Tag != TagName.Empty)
                 {
                     // String tag
-                    if (String.Equals(scalar.Tag, c_stringTag, StringComparison.Ordinal))
+                    if (String.Equals(scalar.Tag.Value, c_stringTag, StringComparison.Ordinal))
                     {
                         value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
+                        if (scalar.Anchor != null) {
+                            m_anchors[scalar.Anchor.Value] = value;
+                        }
                         MoveNext();
                         return true;
                     }
@@ -44,7 +56,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
 
                     // Boolean, Float, Integer, or Null
-                    switch (scalar.Tag)
+                    switch (scalar.Tag.Value)
                     {
                         case c_booleanTag:
                             value = ParseBoolean(scalar);
@@ -62,6 +74,9 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                             throw new NotSupportedException($"Unexpected tag '{scalar.Tag}'");
                     }
 
+                    if (scalar.Anchor != null) {
+                        m_anchors[scalar.Anchor.Value] = value;
+                    }
                     MoveNext();
                     return true;
                 }
@@ -87,12 +102,18 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                         value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
                     }
 
+                    if (scalar.Anchor != null) {
+                        m_anchors[scalar.Anchor.Value] = value;
+                    }
                     MoveNext();
                     return true;
                 }
 
                 // Otherwise assume string
                 value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
+                if (scalar.Anchor != null) {
+                    m_anchors[scalar.Anchor.Value] = value;
+                }
                 MoveNext();
                 return true;
             }
@@ -103,9 +124,17 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Boolean AllowSequenceStart(out SequenceToken value)
         {
-            if (EvaluateCurrent() is SequenceStart sequenceStart)
+            if (EvaluateCurrent() is AnchorAlias alias && m_anchors.TryGetValue(alias.Value.Value, out TemplateToken token) && token is SequenceToken seq) {
+                value = seq;
+                m_current = new SequenceEnd();
+                return true;
+            }
+            else if (EvaluateCurrent() is SequenceStart sequenceStart)
             {
                 value = new SequenceToken(m_fileId, sequenceStart.Start.Line, sequenceStart.Start.Column);
+                if (sequenceStart.Anchor != null) {
+                    m_anchors[sequenceStart.Anchor.Value] = value;
+                }
                 MoveNext();
                 return true;
             }
@@ -127,9 +156,17 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
 
         public Boolean AllowMappingStart(out MappingToken value)
         {
-            if (EvaluateCurrent() is MappingStart mappingStart)
+            if (EvaluateCurrent() is AnchorAlias alias && m_anchors.TryGetValue(alias.Value.Value, out TemplateToken token) && token is MappingToken map) {
+                value = map;
+                m_current = new MappingEnd();
+                return true;
+            }
+            else if (EvaluateCurrent() is MappingStart mappingStart)
             {
                 value = new MappingToken(m_fileId, mappingStart.Start.Line, mappingStart.Start.Column);
+                if (mappingStart.Anchor != null) {
+                    m_anchors[mappingStart.Anchor.Value] = value;
+                }
                 MoveNext();
                 return true;
             }
@@ -219,36 +256,16 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 m_current = m_parser.Current;
                 if (m_current != null)
                 {
-                    if (m_current is Scalar scalar)
-                    {
-                        // Verify not using achors
-                        if (scalar.Anchor != null)
-                        {
-                            throw new InvalidOperationException($"Anchors are not currently supported. Remove the anchor '{scalar.Anchor}'");
-                        }
-                    }
-                    else if (m_current is MappingStart mappingStart)
-                    {
-                        // Verify not using achors
-                        if (mappingStart.Anchor != null)
-                        {
-                            throw new InvalidOperationException($"Anchors are not currently supported. Remove the anchor '{mappingStart.Anchor}'");
-                        }
-                    }
-                    else if (m_current is SequenceStart sequenceStart)
-                    {
-                        // Verify not using achors
-                        if (sequenceStart.Anchor != null)
-                        {
-                            throw new InvalidOperationException($"Anchors are not currently supported. Remove the anchor '{sequenceStart.Anchor}'");
-                        }
-                    }
-                    else if (!(m_current is MappingEnd) &&
+                    if (!(m_current is Scalar) &&
+                        !(m_current is MappingStart) &&
+                        !(m_current is SequenceStart) &&
+                        !(m_current is MappingEnd) &&
                         !(m_current is SequenceEnd) &&
                         !(m_current is DocumentStart) &&
                         !(m_current is DocumentEnd) &&
                         !(m_current is StreamStart) &&
-                        !(m_current is StreamEnd))
+                        !(m_current is StreamEnd) &&
+                        !(m_current is AnchorAlias))
                     {
                         throw new InvalidOperationException($"Unexpected parsing event type: {m_current.GetType().Name}");
                     }
@@ -566,7 +583,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private const String c_nullTag = "tag:yaml.org,2002:null";
         private const String c_stringTag = "tag:yaml.org,2002:string";
         private readonly Int32? m_fileId;
-        private readonly Parser m_parser;
+        private readonly IParser m_parser;
         private ParsingEvent m_current;
     }
 }
