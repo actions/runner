@@ -272,7 +272,7 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState);
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, this.ScopeName);
             Root.PostJobSteps.Push(step);
         }
 
@@ -914,7 +914,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState)
+        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState, string scopeName)
         {
             if (!_expandedForPostJob)
             {
@@ -924,7 +924,7 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
+            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, scopeName, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
         }
     }
 

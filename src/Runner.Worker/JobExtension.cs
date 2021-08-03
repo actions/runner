@@ -312,7 +312,7 @@ namespace GitHub.Runner.Worker
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, stepId.ToString("N"), null, null, intraActionStates[actionStep.Action.Id]);
+                            actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, stepId.ToString("N"), null, actionStep.Action.ContextName, intraActionStates[actionStep.Action.Id]);
                         }
                     }
 
