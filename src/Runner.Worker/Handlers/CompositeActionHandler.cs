@@ -153,7 +153,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 // Run embedded steps
-                await RunStepsAsync(embeddedSteps);
+                await RunStepsAsync(embeddedSteps, stage);
 
                 // Set outputs
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
@@ -212,7 +212,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private async Task RunStepsAsync(List<IStep> embeddedSteps)
+        private async Task RunStepsAsync(List<IStep> embeddedSteps, ActionRunStage stage)
         {
             ArgUtil.NotNull(embeddedSteps, nameof(embeddedSteps));
 
@@ -388,9 +388,13 @@ namespace GitHub.Runner.Worker.Handlers
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
-                    ExecutionContext.Result = step.ExecutionContext.Result;
-                    ExecutionContext.Root.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Root.Result, step.ExecutionContext.Result.Value);
-                    ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                    ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
+
+                    // We should run cleanup even if one of the cleanup step fails
+                    if (stage != ActionRunStage.Post)
+                    {
+                        break;
+                    }
                 }
             }
         }
