@@ -507,7 +507,20 @@ namespace GitHub.Runner.Listener
                                 {
                                     detailInfo = string.Join(Environment.NewLine, workerOutput);
                                     Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
-                                    await LogWorkerProcessUnhandledException(message, detailInfo);
+
+                                    var jobServer = HostContext.GetService<IJobServer>();
+                                    VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+                                    VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
+                                    await jobServer.ConnectAsync(jobConnection);
+
+                                    await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
+
+                                    // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
+                                    if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        Trace.Info($"Finish job with result 'Failed' due to IOException.");
+                                        await ForceFailJob(jobServer, message);
+                                    }
                                 }
 
                                 TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
@@ -915,53 +928,16 @@ namespace GitHub.Runner.Listener
         }
 
         // log an error issue to job level timeline record
-        private async Task LogWorkerProcessUnhandledException(Pipelines.AgentJobRequestMessage message, string errorMessage)
+        private async Task LogWorkerProcessUnhandledException(IJobServer jobServer, Pipelines.AgentJobRequestMessage message, string errorMessage)
         {
             try
             {
-                var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection));
-                ArgUtil.NotNull(systemConnection, nameof(systemConnection));
-
-                var jobServer = HostContext.GetService<IJobServer>();
-                VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
-                VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
-
-                /* Below is the legacy 'OnPremises' code that is currently unused by the runner
-                   ToDo: re-implement code as appropriate once GHES support is added.
-                // Make sure SystemConnection Url match Config Url base for OnPremises server	
-                if (!message.Variables.ContainsKey(Constants.Variables.System.ServerType) ||	
-                    string.Equals(message.Variables[Constants.Variables.System.ServerType]?.Value, "OnPremises", StringComparison.OrdinalIgnoreCase))	
-                {	
-                    try	
-                    {	
-                        Uri result = null;	
-                        Uri configUri = new Uri(_runnerSetting.ServerUrl);	
-                        if (Uri.TryCreate(new Uri(configUri.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped)), jobServerUrl.PathAndQuery, out result))	
-                        {	
-                            //replace the schema and host portion of messageUri with the host from the	
-                            //server URI (which was set at config time)	
-                            jobServerUrl = result;	
-                        }	
-                    }	
-                    catch (InvalidOperationException ex)	
-                    {	
-                        //cannot parse the Uri - not a fatal error	
-                        Trace.Error(ex);	
-                    }	
-                    catch (UriFormatException ex)	
-                    {	
-                        //cannot parse the Uri - not a fatal error	
-                        Trace.Error(ex);	
-                    }	
-                } */
-
-                await jobServer.ConnectAsync(jobConnection);
-
                 var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
-
                 ArgUtil.NotNull(timeline, nameof(timeline));
+
                 TimelineRecord jobRecord = timeline.Records.FirstOrDefault(x => x.Id == message.JobId && x.RecordType == "Job");
                 ArgUtil.NotNull(jobRecord, nameof(jobRecord));
+
                 var unhandledExceptionIssue = new Issue() { Type = IssueType.Error, Message = errorMessage };
                 unhandledExceptionIssue.Data[Constants.Runner.InternalTelemetryIssueDataKey] = Constants.Runner.WorkerCrash;
                 jobRecord.ErrorCount++;
@@ -971,6 +947,21 @@ namespace GitHub.Runner.Listener
             catch (Exception ex)
             {
                 Trace.Error("Fail to report unhandled exception from Runner.Worker process");
+                Trace.Error(ex);
+            }
+        }
+
+        // raise job completed event to fail the job.
+        private async Task ForceFailJob(IJobServer jobServer, Pipelines.AgentJobRequestMessage message)
+        {
+            try
+            {
+                var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, TaskResult.Failed);
+                await jobServer.RaisePlanEventAsync<JobCompletedEvent>(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, jobCompletedEvent, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Fail to raise JobCompletedEvent back to service.");
                 Trace.Error(ex);
             }
         }
