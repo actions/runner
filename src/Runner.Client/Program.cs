@@ -1572,7 +1572,12 @@ namespace Runner.Client
                                         Regex special = new Regex("[*'\",_&#^@\\/ ]");
                                         foreach(var runId in runIds) {
                                             try {
-                                                List<Job> ljobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
+                                                var jobquery = new QueryBuilder();
+                                                jobquery.Add("repo", hr.First().repo);
+                                                jobquery.Add("runid", runId.ToString());
+                                                var joburib = new UriBuilder(jobsUrl);
+                                                joburib.Query = query.ToString().TrimStart('?');
+                                                List<Job> ljobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(joburib.ToString()));
                                                 foreach(var job in ljobs) {
                                                     try {
                                                         var logBasePath = Path.Combine(parameters.LogOutputDir, runId.ToString(), special.Replace(job.name, "-"));
