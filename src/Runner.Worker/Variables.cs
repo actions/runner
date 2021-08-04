@@ -70,7 +70,7 @@ namespace GitHub.Runner.Worker
         public bool Retain_Default_Encoding => true;
 #endif
 
-        public bool? Step_Debug => GetBoolean(Constants.Variables.Actions.StepDebug);
+        public bool? Step_Debug => true;
 
         public string System_PhaseDisplayName => Get(Constants.Variables.System.PhaseDisplayName);
 
