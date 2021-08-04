@@ -1,17 +1,14 @@
 ## Features
 
-- Adds support for composite actions if the server supports it (#1222)
-- Adds `generateIdTokenUri` to env variables for actions (#1234)
-
 ## Bugs
 
-- Prefer higher `libicu` versions in `installDependencies.sh` (#1228)
+- Fixed a bug where composite actions did not respect `continue-on-error` (#1238)
+- Fixed a bug where composite actions post steps did not have the correct step context (#1243)
 
 
 ## Misc
 
-- Send step telemetry to server on JobCompletion (#1229)
-- Print out the resolved SHA for each downloaded action (#1233)
+- Correctly finish Job when worker crashes with IO Exceptions (#1239)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
