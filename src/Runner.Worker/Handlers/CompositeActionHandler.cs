@@ -120,7 +120,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // only relevant for local composite actions that need to JIT download/setup containers
                 if (LocalActionContainerSetupSteps != null && LocalActionContainerSetupSteps.Count > 0)
                 {
-                    foreach(var step in LocalActionContainerSetupSteps)
+                    foreach (var step in LocalActionContainerSetupSteps)
                     {
                         ArgUtil.NotNull(step, step.DisplayName);
                         var stepId = $"__{Guid.NewGuid()}";
@@ -128,17 +128,31 @@ namespace GitHub.Runner.Worker.Handlers
                         embeddedSteps.Add(step);
                     }
                 }
-
                 foreach (Pipelines.ActionStep stepData in steps)
                 {
+                    // Compute child sibling scope names for post steps
+                    // We need to use the main's scope to keep step context correct, makes inputs flow correctly
+                    string siblingScopeName = null;
+                    if (!String.IsNullOrEmpty(ExecutionContext.SiblingScopeName) && stage == ActionRunStage.Post)
+                    {
+                        siblingScopeName = $"{ExecutionContext.SiblingScopeName}.{stepData.ContextName}";
+                    }
+
                     var step = HostContext.CreateService<IActionRunner>();
                     step.Action = stepData;
                     step.Stage = stage;
                     step.Condition = stepData.Condition;
                     ExecutionContext.Root.EmbeddedIntraActionState.TryGetValue(step.Action.Id, out var intraActionState);
-                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, intraActionState: intraActionState);
+                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, intraActionState: intraActionState, siblingScopeName: siblingScopeName);
                     step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-                    step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
+                    if (!String.IsNullOrEmpty(ExecutionContext.SiblingScopeName))
+                    {
+                        step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(ExecutionContext.SiblingScopeName);
+                    }
+                    else
+                    {
+                        step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);   
+                    }
 
                     // Shallow copy github context
                     var gitHubContext = step.ExecutionContext.ExpressionValues["github"] as GitHubContext;
@@ -153,7 +167,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 // Run embedded steps
-                await RunStepsAsync(embeddedSteps);
+                await RunStepsAsync(embeddedSteps, stage);
 
                 // Set outputs
                 ExecutionContext.ExpressionValues["inputs"] = inputsData;
@@ -212,7 +226,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        private async Task RunStepsAsync(List<IStep> embeddedSteps)
+        private async Task RunStepsAsync(List<IStep> embeddedSteps, ActionRunStage stage)
         {
             ArgUtil.NotNull(embeddedSteps, nameof(embeddedSteps));
 
@@ -388,9 +402,13 @@ namespace GitHub.Runner.Worker.Handlers
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
-                    ExecutionContext.Result = step.ExecutionContext.Result;
-                    ExecutionContext.Root.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Root.Result, step.ExecutionContext.Result.Value);
-                    ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                    ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
+
+                    // We should run cleanup even if one of the cleanup step fails
+                    if (stage != ActionRunStage.Post)
+                    {
+                        break;
+                    }
                 }
             }
         }
