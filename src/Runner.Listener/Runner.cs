@@ -466,8 +466,16 @@ namespace GitHub.Runner.Listener
                         await jobDispatcher.ShutdownAsync();
                     }
 
-                    //TODO: make sure we don't mask more important exception
-                    await _listener.DeleteSessionAsync();
+                    try
+                    {
+                        await _listener.DeleteSessionAsync();
+                    }
+                    catch (Exception ex) when (runOnce)
+                    {
+                        // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
+                        // and the delete session call will ends up with 401.
+                        Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
+                    }
 
                     messageQueueLoopTokenSource.Dispose();
                 }
