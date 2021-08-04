@@ -38,6 +38,7 @@ namespace GitHub.Runner.Worker
         Guid Id { get; }
         Guid EmbeddedId { get; }
         string ScopeName { get; }
+        string SiblingScopeName { get; }
         string ContextName { get; }
         Task ForceCompleted { get; }
         TaskResult? Result { get; set; }
@@ -74,8 +75,8 @@ namespace GitHub.Runner.Worker
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid));
-        IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, Dictionary<string, string> intraActionState = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null);
+        IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
 
         // logging
         long Write(string tag, string message);
@@ -140,6 +141,7 @@ namespace GitHub.Runner.Worker
         public Guid Id => _record.Id;
         public Guid EmbeddedId { get; private set; }
         public string ScopeName { get; private set; }
+        public string SiblingScopeName { get; private set; }
         public string ContextName { get; private set; }
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
@@ -258,6 +260,7 @@ namespace GitHub.Runner.Worker
 
         public void RegisterPostJobStep(IStep step)
         {
+            string siblingScopeName = null;
             if (this.IsEmbedded)
             {
                 if (step is IActionRunner actionRunner && !Root.EmbeddedStepsWithPostRegistered.Add(actionRunner.Action.Id))
@@ -271,12 +274,16 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
                 return;
             }
+            if (step is IActionRunner runner)
+            {
+                siblingScopeName = runner.Action.ContextName;
+            }
 
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState);
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, siblingScopeName);
             Root.PostJobSteps.Push(step);
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid))
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null)
         {
             Trace.Entering();
 
@@ -286,6 +293,7 @@ namespace GitHub.Runner.Worker
             child.ScopeName = scopeName;
             child.ContextName = contextName;
             child.EmbeddedId = embeddedId;
+            child.SiblingScopeName = siblingScopeName;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -333,9 +341,9 @@ namespace GitHub.Runner.Worker
         /// An embedded execution context shares the same record ID, record name, logger,
         /// and a linked cancellation token.
         /// </summary>
-        public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, Dictionary<string, string> intraActionState = null)
+        public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, Dictionary<string, string> intraActionState = null, string siblingScopeName = null)
         {
-            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId);
+            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
         }
 
         public void Start(string currentOperation = null)
@@ -914,7 +922,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState)
+        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState, string siblingScopeName = null)
         {
             if (!_expandedForPostJob)
             {
@@ -924,7 +932,7 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
+            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
         }
     }
 
