@@ -877,6 +877,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         }
                     }
                 };
+                _hc.EnqueueInstance<IActionRunner>(new Mock<IActionRunner>().Object);
 
                 //Act
                 var steps = (await _actionManager.PrepareActionsAsync(_ec.Object, actions)).ContainerSetupSteps;
@@ -967,8 +968,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var result =  await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
-                // TODO: Update this test
-                Assert.Equal(0, result.PreStepTracker.Count);
+                Assert.Equal(1, result.PreStepTracker.Count);
 
             }
             finally

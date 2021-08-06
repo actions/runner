@@ -58,6 +58,10 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Environment["ACTIONS_CACHE_URL"] = cacheUrl;
             }
+            if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
+            {
+                Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
+            }
 
             // Resolve the target script.
             string target = null;
@@ -72,6 +76,20 @@ namespace GitHub.Runner.Worker.Handlers
             else if (stage == ActionRunStage.Post)
             {
                 target = Data.Post;
+            }
+
+            // Add Telemetry to JobContext to send with JobCompleteMessage
+            if (stage == ActionRunStage.Main)
+            {
+                var telemetry = new ActionsStepTelemetry
+                {
+                    Ref = GetActionRef(),
+                    HasPreStep = Data.HasPre,
+                    HasPostStep = Data.HasPost,
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = "node12"
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));
