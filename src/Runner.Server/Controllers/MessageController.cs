@@ -1427,6 +1427,7 @@ namespace Runner.Server.Controllers
             variables.Add("system.github.token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("github_token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
+            variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
             foreach (var secret in this.secrets) {
                 variables[secret.Name] = new VariableValue(secret.Value, true);
             }
