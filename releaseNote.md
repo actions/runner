@@ -1,13 +1,11 @@
 ## Changes
-- Update Runner to https://github.com/actions/runner/releases/tag/v2.279.0
-- Removing runners https://github.com/ChristopherHX/runner.server/commit/e9d7d200c58b03529e359bd45badcb2e62d341ea
-- Deny Anonymous Cache Access (#60)
-- block unknown artifact upload (#56)
-- Added `--remote-checkout` to always checkout the repo from github
-- Added `--artifact-output-dir` to save artifacts
-- Added `--log-output-dir` to save full logs
-- Added fallback if cancelling the job failed (this is a broken feature on linux / macOS)
-- Fixed behavior of `--matrix` to match description
+- Update Runner to https://github.com/actions/runner/releases/tag/v2.280.1
+- Change Process group: Fix cancel jobs on Unix.
+- Fix \ in localcheckout (windows, regression)
+- Fix runId ignored for logs saved in log-output-dir
+- Log token validation errors (e.g. time is desynced between server and runner)
+- Enable DistributedTask.EnableCompositeActions FF (Allow uses in composite actions)
+  `-s DistributedTask.EnableCompositeActions=false` to disable
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
