@@ -6,7 +6,7 @@
 
 ## Misc
 
-- Allows Flags instead of parameters when configuring the runner (#1220)
+- Allows flags instead of parameters when configuring the runner (#1220)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
