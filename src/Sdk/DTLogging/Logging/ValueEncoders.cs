@@ -86,8 +86,9 @@ namespace GitHub.DistributedTask.Logging
             var trimmed = string.Empty;
             if (!string.IsNullOrEmpty(value))
             {
-                Regex specCharRegex = new Regex(@"^[+&;]*.", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-                var secretFragment = specCharRegex.Replace(value, string.Empty);
+                // Match any number of "+&;" characters and one extra character
+                Regex pwshSpecialChars = new Regex(@"^[+&;]*.", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+                var secretFragment = pwshSpecialChars.Replace(value, string.Empty);
 
                 // Don't mask secretFragments that are too short and generic
                 if (secretFragment.Length >= 6) {
