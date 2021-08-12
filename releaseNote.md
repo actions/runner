@@ -2,13 +2,11 @@
 
 ## Bugs
 
-- Fixed a bug where composite actions did not respect `continue-on-error` (#1238)
-- Fixed a bug where composite actions post steps did not have the correct step context (#1243)
-
+- Send Path when Resolving actions so we can correctly validate Policy for Composite Actions (#1250)
 
 ## Misc
 
-- Correctly finish Job when worker crashes with IO Exceptions (#1239)
+- Allows Flags instead of parameters when configuring up the runner (#1220)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
