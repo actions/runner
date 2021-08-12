@@ -298,11 +298,11 @@ namespace GitHub.Runner.Worker.Handlers
                     // Register job cancellation call back only if job cancellation token not been fire before each step run
                     if (!ExecutionContext.Root.CancellationToken.IsCancellationRequested)
                     {
-                        // Test the condition again. The job was canceled after the condition was originally evaluated.
+                        // Test the condition again. The job was cancelled after the condition was originally evaluated.
                         jobCancelRegister = ExecutionContext.Root.CancellationToken.Register(() =>
                         {
                             // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Canceled;
+                            ExecutionContext.Root.Result = TaskResult.Cancelled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
 
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
@@ -338,10 +338,10 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                     else
                     {
-                        if (ExecutionContext.Root.Result != TaskResult.Canceled)
+                        if (ExecutionContext.Root.Result != TaskResult.Cancelled)
                         {
                             // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Canceled;
+                            ExecutionContext.Root.Result = TaskResult.Cancelled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
                         }
                     }
@@ -398,8 +398,8 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-                // Check failed or canceled
-                if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
+                // Check failed or cancelled
+                if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Cancelled)
                 {
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
                     ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
@@ -437,7 +437,7 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     Trace.Error($"Caught cancellation exception from step: {ex}");
                     step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Result = TaskResult.Canceled;
+                    step.ExecutionContext.Result = TaskResult.Cancelled;
                 }
             }
             catch (Exception ex)

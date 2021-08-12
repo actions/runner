@@ -361,7 +361,7 @@ namespace GitHub.Runner.Worker
                     // Log the exception and cancel the JobExtension Initialization.
                     Trace.Error($"Caught cancellation exception from JobExtension Initialization: {ex}");
                     context.Error(ex);
-                    context.Result = TaskResult.Canceled;
+                    context.Result = TaskResult.Cancelled;
                     throw;
                 }
                 catch (FailedToResolveActionDownloadInfoException ex)

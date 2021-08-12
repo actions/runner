@@ -43,7 +43,7 @@ namespace GitHub.Services.Common
         {
             ArgumentUtility.CheckForNull(task, nameof(task));
 
-            // IsCompleted will return true when the task is in one of the three final states: RanToCompletion, Faulted, or Canceled.
+            // IsCompleted will return true when the task is in one of the three final states: RanToCompletion, Faulted, or Cancelled.
             if (task.IsCompleted)
             {
                 return await task;

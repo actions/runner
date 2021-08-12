@@ -1,4 +1,5 @@
-﻿using System.Runtime.Serialization;
+﻿using System;
+using System.Runtime.Serialization;
 
 namespace GitHub.DistributedTask.WebApi
 {
@@ -15,6 +16,9 @@ namespace GitHub.DistributedTask.WebApi
         Failed = 2,
 
         [EnumMember]
+        Cancelled = 3,
+
+        [Obsolete("Please use Cancelled instead"), EnumMember]
         Canceled = 3,
 
         [EnumMember]

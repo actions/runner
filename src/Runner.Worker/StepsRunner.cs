@@ -44,7 +44,7 @@ namespace GitHub.Runner.Worker
 
             // TaskResult:
             //  Abandoned (Server set this.)
-            //  Canceled
+            //  Cancelled
             //  Failed
             //  Skipped
             //  Succeeded
@@ -130,11 +130,11 @@ namespace GitHub.Runner.Worker
                         // Register job cancellation call back only if job cancellation token not been fire before each step run
                         if (!jobContext.CancellationToken.IsCancellationRequested)
                         {
-                            // Test the condition again. The job was canceled after the condition was originally evaluated.
+                            // Test the condition again. The job was cancelled after the condition was originally evaluated.
                             jobCancelRegister = jobContext.CancellationToken.Register(() =>
                             {
                                 // Mark job as cancelled
-                                jobContext.Result = TaskResult.Canceled;
+                                jobContext.Result = TaskResult.Cancelled;
                                 jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
 
                                 step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
@@ -170,10 +170,10 @@ namespace GitHub.Runner.Worker
                         }
                         else
                         {
-                            if (jobContext.Result != TaskResult.Canceled)
+                            if (jobContext.Result != TaskResult.Cancelled)
                             {
                                 // Mark job as cancelled
-                                jobContext.Result = TaskResult.Canceled;
+                                jobContext.Result = TaskResult.Cancelled;
                                 jobContext.JobContext.Status = jobContext.Result?.ToActionResult();
                             }
                         }
@@ -302,7 +302,7 @@ namespace GitHub.Runner.Worker
                     // Log the exception and cancel the step
                     Trace.Error($"Caught cancellation exception from step: {ex}");
                     step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Result = TaskResult.Canceled;
+                    step.ExecutionContext.Result = TaskResult.Cancelled;
                 }
             }
             catch (Exception ex)

@@ -34,7 +34,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
         // min git-lfs version that support add extra auth header.
         private Version _minGitLfsVersionSupportAuthHeader = new Version(2, 1);
 
-        public static string ProblemMatcher => @"    
+        public static string ProblemMatcher => @"
 {
     ""problemMatcher"": [
         {
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             // input Submodules can be ['', true, false, recursive]
             // '' or false indicate don't checkout submodules
             // true indicate checkout top level submodules
-            // recursive indicate checkout submodules recursively 
+            // recursive indicate checkout submodules recursively
             bool checkoutSubmodules = false;
             bool checkoutNestedSubmodules = false;
             if (!string.IsNullOrEmpty(submoduleInput))
@@ -150,7 +150,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             }
             else
             {
-                // delete the index.lock file left by previous canceled build or any operation cause git.exe crash last time.
+                // delete the index.lock file left by previous cancelled build or any operation cause git.exe crash last time.
                 string lockFile = Path.Combine(targetPath, ".git\\index.lock");
                 if (File.Exists(lockFile))
                 {
@@ -165,7 +165,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
                     }
                 }
 
-                // delete the shallow.lock file left by previous canceled build or any operation cause git.exe crash last time.		
+                // delete the shallow.lock file left by previous cancelled build or any operation cause git.exe crash last time.
                 string shallowLockFile = Path.Combine(targetPath, ".git\\shallow.lock");
                 if (File.Exists(shallowLockFile))
                 {
@@ -283,7 +283,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
             List<string> additionalLfsFetchArgs = new List<string>();
 
             // Add http.https://github.com.extraheader=... to gitconfig
-            // accessToken as basic auth header to handle any auth challenge from github.com 
+            // accessToken as basic auth header to handle any auth challenge from github.com
             string configKey = $"http.https://github.com/.extraheader";
             string configValue = $"\"AUTHORIZATION: {GenerateBasicAuthHeader(executionContext, accessToken)}\"";
             configModifications[configKey] = configValue.Trim('\"');
@@ -321,7 +321,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
 
             // Checkout
             // sourceToBuild is used for checkout
-            // if sourceBranch is a PR branch or sourceVersion is null, make sure branch name is a remote branch. we need checkout to detached head. 
+            // if sourceBranch is a PR branch or sourceVersion is null, make sure branch name is a remote branch. we need checkout to detached head.
             // (change refs/heads to refs/remotes/origin, refs/pull to refs/remotes/pull, or leave it as it when the branch name doesn't contain refs/...)
             // if sourceVersion provide, just use that for checkout, since when you checkout a commit, it will end up in detached head.
             cancellationToken.ThrowIfCancellationRequested();
@@ -446,7 +446,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_1
 
         private string GenerateBasicAuthHeader(RunnerActionPluginExecutionContext executionContext, string accessToken)
         {
-            // use basic auth header with username:password in base64encoding. 
+            // use basic auth header with username:password in base64encoding.
             string authHeader = $"x-access-token:{accessToken}";
             string base64encodedAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes(authHeader));
 

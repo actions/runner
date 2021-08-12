@@ -32,9 +32,9 @@ namespace GitHub.Runner.Common.Util
         }
 
         // Merge 2 TaskResults get the worst result.
-        // Succeeded -> Failed/Canceled/Skipped/Abandoned
-        // Failed -> Failed/Canceled
-        // Canceled -> Canceled
+        // Succeeded -> Failed/Cancelled/Skipped/Abandoned
+        // Failed -> Failed/Cancelled
+        // Cancelled -> Cancelled
         // Skipped -> Skipped
         // Abandoned -> Abandoned
         public static TaskResult MergeTaskResults(TaskResult? currentResult, TaskResult comingResult)
@@ -44,7 +44,7 @@ namespace GitHub.Runner.Common.Util
                 return comingResult;
             }
 
-            // current result is Canceled/Skip/Abandoned
+            // current result is Cancelled/Skip/Abandoned
             if (currentResult > TaskResult.Failed)
             {
                 return currentResult.Value;
@@ -67,7 +67,7 @@ namespace GitHub.Runner.Common.Util
                     return ActionResult.Success;
                 case TaskResult.Failed:
                     return ActionResult.Failure;
-                case TaskResult.Canceled:
+                case TaskResult.Cancelled:
                     return ActionResult.Cancelled;
                 case TaskResult.Skipped:
                     return ActionResult.Skipped;

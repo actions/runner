@@ -280,7 +280,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                         Expected = TaskResult.Succeeded
                     },
                 //  Abandoned
-                //  Canceled
+                //  Cancelled
                 //  Failed
                 //  Skipped
                 //  Succeeded
@@ -357,7 +357,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     new[] { CreateStep(hc, TaskResult.Succeeded, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
                     new[] { CreateStep(hc, TaskResult.Failed, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") },
-                    new[] { CreateStep(hc, TaskResult.Canceled, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") }
+                    new[] { CreateStep(hc, TaskResult.Cancelled, "success()"), CreateStep(hc, TaskResult.Succeeded, "always()") }
                 };
                 foreach (var variableSet in variableSets)
                 {

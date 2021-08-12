@@ -165,7 +165,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     async (Pipelines.AgentJobRequestMessage jm, CancellationToken ct) =>
                     {
                         await Task.Delay(-1, ct);
-                        return TaskResult.Canceled;
+                        return TaskResult.Cancelled;
                     });
 
                 //Act
