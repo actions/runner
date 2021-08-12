@@ -2,36 +2,68 @@
 
 set -e
 
-#
-# Downloads latest releases (not pre-release) runner
-# Configures as a service
-#
-# Examples:
-# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
-# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg my.ghe.deployment.net
-#
-# Usage:
-#     export RUNNER_CFG_PAT=<yourPAT>
-#     ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
-#
-#      scope       required  repo (:owner/:repo) or org (:organization)
-#      ghe_domain  optional  the fully qualified domain name of your GitHub Enterprise Server deployment
-#      name        optional  defaults to hostname
-#      user        optional  user svc will run as. defaults to current
-#      labels      optional  list of labels (split by comma) applied on the runner
-#
 # Notes:
 # PATS over envvars are more secure
+# Downloads latest runner release (not pre-release)
+# Configures it as a service more secure
 # Should be used on VMs and not containers
 # Works on OSX and Linux
 # Assumes x64 arch
-#
+# See EXAMPLES below
 
-runner_scope=${1}
-ghe_hostname=${2}
-runner_name=${3:-$(hostname)}
-svc_user=${4:-$USER}
-labels=${5}
+flags_found=false
+
+while getopts 's:g:n:u:l:' opt; do
+    flags_found=true
+
+    case $opt in
+    s)
+        runner_scope=$OPTARG
+        ;;
+    g)
+        ghe_hostname=$OPTARG
+        ;;
+    n)
+        runner_name=$OPTARG
+        ;;
+    u)
+        svc_user=$OPTARG
+        ;;
+    l)
+        labels=$OPTARG
+        ;;
+    *)
+        echo "
+Runner Service Installer
+Examples:
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh -s myorg -u user_name -l label1,label2
+Usage:
+    export RUNNER_CFG_PAT=<yourPAT>
+    ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
+    -s          required  scope: repo (:owner/:repo) or org (:organization)
+    -g          optional  ghe_hostname: the fully qualified domain name of your GitHub Enterprise Server deployment
+    -n          optional  name of the runner, defaults to hostname
+    -u          optional  user svc will run as, defaults to current
+    -l          optional  list of labels (split by comma) applied on the runner"
+        exit 0
+        ;;
+    esac
+done
+
+shift "$((OPTIND - 1))"
+
+if ! "$flags_found"; then
+    runner_scope=${1}
+    ghe_hostname=${2}
+    runner_name=${3:-$(hostname)}
+    svc_user=${4:-$USER}
+    labels=${5}
+fi
+
+# apply defaults
+runner_name=${runner_name:-$(hostname)}
+svc_user=${svc_user:-$USER}
 
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
@@ -142,7 +174,7 @@ echo
 echo "Configuring as a service ..."
 prefix=""
 if [ "${runner_plat}" == "linux" ]; then
-prefix="sudo "
+    prefix="sudo "
 fi
 
 ${prefix}./svc.sh install ${svc_user}
