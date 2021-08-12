@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Security;
 using System.Text;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
 namespace GitHub.DistributedTask.Logging
@@ -75,6 +76,23 @@ namespace GitHub.DistributedTask.Logging
                 value.EndsWith('"'))
             {
                 trimmed = value.Substring(1, value.Length - 2);
+            }
+
+            return trimmed;
+        }
+
+        public static String RemovePowerShellSpecialCharacters(String value)
+        {
+            var trimmed = string.Empty;
+            if (!string.IsNullOrEmpty(value))
+            {
+                Regex specCharRegex = new Regex(@"^[+&;]*.", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+                var secretFragment = specCharRegex.Replace(value, string.Empty);
+
+                // Don't mask secretFragments that are too short and generic
+                if (secretFragment.Length >= 6) {
+                    trimmed = secretFragment;
+                }
             }
 
             return trimmed;
