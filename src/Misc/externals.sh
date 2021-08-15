@@ -134,10 +134,18 @@ if [[ "$PACKAGERUNTIME" == "win-x64" || "$PACKAGERUNTIME" == "win-x86" ]]; then
     fi
 fi
 
-# Download the external tools only for OSX.
+# Download the external tools only for OSX X64.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-x64.tar.gz" node12 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-darwin-x64.tar.gz" node16 fix_nested_dir
+fi
+
+# Download the external tools only for OSX ARM64.
+if [[ "$PACKAGERUNTIME" == "osx-arm64" ]]; then
+    # Node 12 is not available, fallback to Node 16 instead
+    NODE12_VERSION="${NODE16_VERSION}"
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-darwin-arm64.tar.gz" node12 fix_nested_dir
+    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-darwin-arm64.tar.gz" node16 fix_nested_dir
 fi
 
 # Download the external tools for Linux PACKAGERUNTIMEs.
