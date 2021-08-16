@@ -1,0 +1,39 @@
+name: osx-arm64 Release Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - macos-arm64
+  
+jobs:
+  build:
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+    - uses: actions/checkout@v1
+
+    # Build runner layout
+    - name: Build & Layout Release
+      run: |
+        ./dev.sh layout Release osx-arm64
+      working-directory: src
+
+    # Run tests
+    - name: L0
+      run: |
+        ./dev.sh test
+      working-directory: src
+
+    # Create runner package tar.gz/zip
+    - name: Package Release
+      run: |
+        ./dev.sh package Release osx-arm64
+      working-directory: src
+
+    # Upload runner package tar.gz/zip as artifact.
+    # Since each package name is unique, so we don't need to put ${{matrix}} info into artifact name
+    - name: Publish Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: runner-packages
+        path: _package
