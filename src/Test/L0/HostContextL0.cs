@@ -111,6 +111,35 @@ namespace GitHub.Runner.Common.Tests
                 Teardown();
             }
         }
+        
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void ColorCodeSecretMasking()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+
+                // Act.
+                _hc.SecretMasker.AddValue("&61cd2edd9da64b3d977f95092f033d6d");
+                _hc.SecretMasker.AddValue("&+cd7ff41dd8d04636873b5ec626311dc6");
+                _hc.SecretMasker.AddValue("+&0198c1d16e7f4ea8912a857932a19c0e");
+
+                // Assert.
+                Assert.Equal("2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m6***[0m", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m61cd2edd9da64b3d977f95092f033d6d[0m"));
+                Assert.Equal("2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0m***", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0md7ff41dd8d04636873b5ec626311dc6"));
+                Assert.Equal("2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0***[0m", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0198c1d16e7f4ea8912a857932a19c0e[0m"));
+                Assert.Equal("2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '6***' is not recognized", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '61cd2edd9da64b3d977f95092f033d6d' is not recognized"));
+                Assert.Equal("2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0***' is not recognized", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0198c1d16e7f4ea8912a857932a19c0e' is not recognized"));
+            }
+            finally
+            {
+                // Cleanup.
+                Teardown();
+            }
+        }
 
         [Fact]
         [Trait("Level", "L0")]
