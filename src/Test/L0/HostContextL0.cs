@@ -111,8 +111,7 @@ namespace GitHub.Runner.Common.Tests
                 Teardown();
             }
         }
-        
-        [Fact]
+
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
         public void ColorCodeSecretMasking()
