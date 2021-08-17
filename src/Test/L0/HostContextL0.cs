@@ -112,9 +112,19 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+        [Theory]
+        [InlineData("&61cd2edd9da64b3d977f95092f033d6d",
+                    "2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m61cd2edd9da64b3d977f95092f033d6d[0m",
+                    "2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m6***[0m")]
+        [InlineData("&+cd7ff41dd8d04636873b5ec626311dc6",
+                    "2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0md7ff41dd8d04636873b5ec626311dc6",
+                    "2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0m***")]
+        [InlineData("+&0198c1d16e7f4ea8912a857932a19c0e",
+                    "2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0198c1d16e7f4ea8912a857932a19c0e[0m",
+                    "2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0***[0m")]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ColorCodeSecretMasking()
+        public void ColorCodeInsideSecretMasking(string secret, string rawOutput, string maskedOutput)
         {
             try
             {
@@ -122,16 +132,39 @@ namespace GitHub.Runner.Common.Tests
                 Setup();
 
                 // Act.
-                _hc.SecretMasker.AddValue("&61cd2edd9da64b3d977f95092f033d6d");
-                _hc.SecretMasker.AddValue("&+cd7ff41dd8d04636873b5ec626311dc6");
-                _hc.SecretMasker.AddValue("+&0198c1d16e7f4ea8912a857932a19c0e");
+                _hc.SecretMasker.AddValue(secret);
 
                 // Assert.
-                Assert.Equal("2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m6***[0m", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m61cd2edd9da64b3d977f95092f033d6d[0m"));
-                Assert.Equal("2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0m***", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0md7ff41dd8d04636873b5ec626311dc6"));
-                Assert.Equal("2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0***[0m", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0198c1d16e7f4ea8912a857932a19c0e[0m"));
-                Assert.Equal("2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '6***' is not recognized", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '61cd2edd9da64b3d977f95092f033d6d' is not recognized"));
-                Assert.Equal("2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0***' is not recognized", _hc.SecretMasker.MaskSecrets("2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0198c1d16e7f4ea8912a857932a19c0e' is not recognized"));
+                Assert.Equal(maskedOutput, _hc.SecretMasker.MaskSecrets(rawOutput));
+            }
+            finally
+            {
+                // Cleanup.
+                Teardown();
+            }
+        }
+
+        [Theory]
+        [InlineData("&61cd2edd9da64b3d977f95092f033d6d",
+                    "2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '61cd2edd9da64b3d977f95092f033d6d' is not recognized",
+                    "2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '6***' is not recognized")]
+        [InlineData("+&0198c1d16e7f4ea8912a857932a19c0e",
+                    "2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0198c1d16e7f4ea8912a857932a19c0e' is not recognized",
+                    "2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0***' is not recognized")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Common")]
+        public void PartialMasking(string secret, string rawOutput, string maskedOutput)
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+
+                // Act.
+                _hc.SecretMasker.AddValue(secret);
+
+                // Assert.
+                Assert.Equal(maskedOutput, _hc.SecretMasker.MaskSecrets(rawOutput));
             }
             finally
             {
