@@ -298,9 +298,7 @@ namespace GitHub.Runner.Worker.Handlers
                     // For main steps just run the action
                     if (stage == ActionRunStage.Main)
                     {
-                        {
-                            await RunStepAsync(step);
-                        }
+                        await RunStepAsync(step);
                     }
                     // We need to evaluate conditions for pre/post steps
                     else
