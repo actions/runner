@@ -294,7 +294,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // Register Callback
                 CancellationTokenRegistration? jobCancelRegister = null;
                 try
-                {   
+                {
                     // For main steps just run the action
                     if (stage == ActionRunStage.Main)
                     {
