@@ -117,22 +117,20 @@ namespace GitHub.DistributedTask.Logging
 
         public static String PowerShellPostAmpersandPlus(String value)
         {
-            // see comment in method above
-
             var trimmed = string.Empty;
             if (!string.IsNullOrEmpty(value) && value.Contains("&"))
             {
                 var secretSection = string.Empty;
                 if (value.Contains("&+"))
                 {
-                    secretSection = value.Substring(value.IndexOf("&+") + "&+".Length + 1); // +1 to skip 
+                    // +1 to skip the letter that got colored
+                    secretSection = value.Substring(value.IndexOf("&+") + "&+".Length + 1);
                 }
                 else
                 {
                     secretSection = value.Substring(value.LastIndexOf("&") + "&".Length);
                 }
 
-                // Don't mask short secrets
                 if (secretSection.Length >= 6)
                 {
                     trimmed = secretSection;
