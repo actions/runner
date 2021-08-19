@@ -113,18 +113,16 @@ namespace GitHub.Runner.Common.Tests
         }
 
         [Theory]
-        [InlineData("&61cd2edd9da64b3d977f95092f033d6d",
-                    "2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m61cd2edd9da64b3d977f95092f033d6d[0m",
-                    "2021-08-17T08:23:01.6151949Z [96m   2 | [0m echo &[96m6***[0m")]
-        [InlineData("&+cd7ff41dd8d04636873b5ec626311dc6",
-                    "2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0md7ff41dd8d04636873b5ec626311dc6",
-                    "2021-08-17T08:23:02.7026608Z [96m   2 | [0m echo &+[96mc[0m***")]
-        [InlineData("+&0198c1d16e7f4ea8912a857932a19c0e",
-                    "2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0198c1d16e7f4ea8912a857932a19c0e[0m",
-                    "2021-08-17T08:23:04.2018413Z [96m   2 | [0m echo +&[96m0***[0m")]
+        [InlineData("secret&secret&secret", "secret&secret&\x0033[96msecret\x0033[0m", "***\x0033[96m***\x0033[0m")]
+        [InlineData("secret&secret+secret", "secret&\x0033[96msecret+secret\x0033[0m", "***\x0033[96m***\x0033[0m")]
+        [InlineData("secret+secret&secret", "secret+secret&\x0033[96msecret\x0033[0m", "***\x0033[96m***\x0033[0m")]
+        [InlineData("secret&secret&+secretsecret", "secret&secret&+\x0033[96ms\x0033[0mecretsecret", "***\x0033[96ms\x0033[0m***")]
+        [InlineData("secret&+secret&secret", "secret&+\x0033[96ms\x0033[0mecret&secret", "***\x0033[96ms\x0033[0m***")]
+        [InlineData("secret&+secret&+secret", "secret&+\x0033[96ms\x0033[0mecret&+secret", "***\x0033[96ms\x0033[0m***")]
+        [InlineData("secret&+secret&secret&+secret", "secret&+\x0033[96ms\x0033[0mecret&secret&+secret", "***\x0033[96ms\x0033[0m***")]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void ColorCodeInsideSecretMasking(string secret, string rawOutput, string maskedOutput)
+        public void SecretSectionMasking(string secret, string rawOutput, string maskedOutput)
         {
             try
             {
@@ -146,14 +144,14 @@ namespace GitHub.Runner.Common.Tests
 
         [Theory]
         [InlineData("&61cd2edd9da64b3d977f95092f033d6d",
-                    "2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '61cd2edd9da64b3d977f95092f033d6d' is not recognized",
-                    "2021-08-17T08:23:01.6154829Z [91m[96m     | [91mThe term '6***' is not recognized")]
+                    "2021-08-17T08:23:01.6154829Z \x0033[91m\x0033[96m     | \x0033[91mThe term '61cd2edd9da64b3d977f95092f033d6d' is not recognized",
+                    "2021-08-17T08:23:01.6154829Z \x0033[91m\x0033[96m     | \x0033[91mThe term '***' is not recognized")]
         [InlineData("+&0198c1d16e7f4ea8912a857932a19c0e",
-                    "2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0198c1d16e7f4ea8912a857932a19c0e' is not recognized",
-                    "2021-08-17T08:23:04.2021000Z [91m[96m     | [91mThe term '0***' is not recognized")]
+                    "2021-08-17T08:23:04.2021000Z \x0033[91m\x0033[96m     | \x0033[91mThe term '0198c1d16e7f4ea8912a857932a19c0e' is not recognized",
+                    "2021-08-17T08:23:04.2021000Z \x0033[91m\x0033[96m     | \x0033[91mThe term '***' is not recognized")]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
-        public void PartialMasking(string secret, string rawOutput, string maskedOutput)
+        public void PartiallyMasksPowershellColorcodedSecrets(string secret, string rawOutput, string maskedOutput)
         {
             try
             {

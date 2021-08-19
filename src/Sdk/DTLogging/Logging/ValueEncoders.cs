@@ -81,18 +81,61 @@ namespace GitHub.DistributedTask.Logging
             return trimmed;
         }
 
-        public static String RemovePowerShellSpecialCharacters(String value)
+        public static String PowerShellPreAmpersandPlus(String value)
         {
-            var trimmed = string.Empty;
-            if (!string.IsNullOrEmpty(value))
-            {
-                // Match any number of "+&;" characters and one extra character
-                Regex pwshSpecialChars = new Regex(@"^[+&;]+.", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-                var secretFragment = pwshSpecialChars.Replace(value, string.Empty);
+            // if the secret is passed to PS as a command and it causes an error, sections of it can be surrounded by color codes
+            // or printed individually. 
+            
+            // The secret secretpart1&secretpart2&secretpart3 would be split into 2 sections:
+            // 'secretpart1&secretpart2&' and 'secretpart3'. This method masks for the first section.
+            
+            // The secret secretpart1&+secretpart2&secretpart3 would be split into 2 sections:
+            // 'secretpart1&+' and (no 's') 'ecretpart2&secretpart3'. This method masks for the first section.
 
-                // Don't mask secretFragments that are too short and generic
-                if (secretFragment.Length >= 6) {
-                    trimmed = secretFragment;
+            var trimmed = string.Empty;
+            if (!string.IsNullOrEmpty(value) && value.Contains("&"))
+            {
+                var secretSection = string.Empty;
+                if (value.Contains("&+"))
+                {
+                    secretSection = value.Substring(0, value.IndexOf("&+") + "&+".Length);
+                }
+                else
+                {
+                    secretSection = value.Substring(0, value.LastIndexOf("&") + "&".Length);
+                }
+
+                // Don't mask short secrets
+                if (secretSection.Length >= 6)
+                {
+                    trimmed = secretSection;
+                }
+            }
+
+            return trimmed;
+        }
+
+        public static String PowerShellPostAmpersandPlus(String value)
+        {
+            // see comment in method above
+
+            var trimmed = string.Empty;
+            if (!string.IsNullOrEmpty(value) && value.Contains("&"))
+            {
+                var secretSection = string.Empty;
+                if (value.Contains("&+"))
+                {
+                    secretSection = value.Substring(value.IndexOf("&+") + "&+".Length + 1); // +1 to skip 
+                }
+                else
+                {
+                    secretSection = value.Substring(value.LastIndexOf("&") + "&".Length);
+                }
+
+                // Don't mask short secrets
+                if (secretSection.Length >= 6)
+                {
+                    trimmed = secretSection;
                 }
             }
 
