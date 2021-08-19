@@ -40,7 +40,7 @@ namespace GitHub.Runner.Worker.Handlers
                     firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
+                ExecutionContext.Output($"##[group]Run {firstLine}");
             }
             else
             {
@@ -51,7 +51,7 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (var line in multiLines)
             {
                 // Bright Cyan color
-                ExecutionContext.WriteDetails($"\x1b[36;1m{line}\x1b[0m");
+                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
             }
 
             string argFormat;
@@ -110,23 +110,23 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (!string.IsNullOrEmpty(shellCommandPath))
             {
-                ExecutionContext.WriteDetails($"shell: {shellCommandPath} {argFormat}");
+                ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
             }
             else
             {
-                ExecutionContext.WriteDetails($"shell: {shellCommand} {argFormat}");
+                ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
             }
 
             if (this.Environment?.Count > 0)
             {
-                ExecutionContext.WriteDetails("env:");
+                ExecutionContext.Output("env:");
                 foreach (var env in this.Environment)
                 {
-                    ExecutionContext.WriteDetails($"  {env.Key}: {env.Value}");
+                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
                 }
             }
 
-            ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? "" : "##[endgroup]");
+            ExecutionContext.Output("##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)
