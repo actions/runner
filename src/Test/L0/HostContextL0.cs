@@ -142,35 +142,6 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
-        [Theory]
-        [InlineData("&61cd2edd9da64b3d977f95092f033d6d",
-                    "2021-08-17T08:23:01.6154829Z \x0033[91m\x0033[96m     | \x0033[91mThe term '61cd2edd9da64b3d977f95092f033d6d' is not recognized",
-                    "2021-08-17T08:23:01.6154829Z \x0033[91m\x0033[96m     | \x0033[91mThe term '***' is not recognized")]
-        [InlineData("+&0198c1d16e7f4ea8912a857932a19c0e",
-                    "2021-08-17T08:23:04.2021000Z \x0033[91m\x0033[96m     | \x0033[91mThe term '0198c1d16e7f4ea8912a857932a19c0e' is not recognized",
-                    "2021-08-17T08:23:04.2021000Z \x0033[91m\x0033[96m     | \x0033[91mThe term '***' is not recognized")]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Common")]
-        public void PartiallyMasksPowershellColorcodedSecrets(string secret, string rawOutput, string maskedOutput)
-        {
-            try
-            {
-                // Arrange.
-                Setup();
-
-                // Act.
-                _hc.SecretMasker.AddValue(secret);
-
-                // Assert.
-                Assert.Equal(maskedOutput, _hc.SecretMasker.MaskSecrets(rawOutput));
-            }
-            finally
-            {
-                // Cleanup.
-                Teardown();
-            }
-        }
-
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Common")]
