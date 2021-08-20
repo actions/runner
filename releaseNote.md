@@ -1,11 +1,5 @@
 ## Changes
-- Update Runner to https://github.com/actions/runner/releases/tag/v2.280.1
-- Change Process group: Fix cancel jobs on Unix.
-- Fix \ in localcheckout (windows, regression)
-- Fix runId ignored for logs saved in log-output-dir
-- Log token validation errors (e.g. time is desynced between server and runner)
-- Enable DistributedTask.EnableCompositeActions FF (Allow uses in composite actions)
-  `-s DistributedTask.EnableCompositeActions=false` to disable
+- Update Runner to https://github.com/actions/runner/releases/tag/v2.280.2
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
