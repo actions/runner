@@ -90,8 +90,8 @@ namespace GitHub.Runner.Common
             this.SecretMasker.AddValueEncoder(ValueEncoders.UriDataEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.XmlDataEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandPlus);
-            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandPlus);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
 
             // Create the trace manager.
             if (string.IsNullOrEmpty(logFile))

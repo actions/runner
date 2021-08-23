@@ -81,7 +81,7 @@ namespace GitHub.DistributedTask.Logging
             return trimmed;
         }
 
-        public static String PowerShellPreAmpersandPlus(String value)
+        public static String PowerShellPreAmpersandEscape(String value)
         {
             // if the secret is passed to PS as a command and it causes an error, sections of it can be surrounded by color codes
             // or printed individually. 
@@ -115,7 +115,7 @@ namespace GitHub.DistributedTask.Logging
             return trimmed;
         }
 
-        public static String PowerShellPostAmpersandPlus(String value)
+        public static String PowerShellPostAmpersandEscape(String value)
         {
             var trimmed = string.Empty;
             if (!string.IsNullOrEmpty(value) && value.Contains("&"))
