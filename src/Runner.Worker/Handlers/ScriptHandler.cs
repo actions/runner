@@ -147,7 +147,8 @@ namespace GitHub.Runner.Worker.Handlers
             // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
-                var telemetry = new ActionsStepTelemetry {
+                var telemetry = new ActionsStepTelemetry
+                {
                     IsEmbedded = ExecutionContext.IsEmbedded,
                     Type = "run",
                 };
@@ -276,6 +277,13 @@ namespace GitHub.Runner.Worker.Handlers
                 fileName = node12;
             }
 #endif
+            var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
+            {
+                Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
+                Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            }
+
             ExecutionContext.Debug($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
