@@ -96,7 +96,7 @@ namespace GitHub.Runner.Listener
                 invokeScript.Start();
                 Trace.Info($"Update script start running");
 
-                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should back online within 10 seconds.");
+                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.");
 
                 return true;
             }
