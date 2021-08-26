@@ -494,8 +494,8 @@ namespace GitHub.Runner.Worker
         private void UpdateRegistryAuthForGitHubToken(IExecutionContext executionContext, ContainerInfo container)
         {
             var registryIsTokenCompatible = container.RegistryServer.Equals("ghcr.io", StringComparison.OrdinalIgnoreCase) || container.RegistryServer.Equals("containers.pkg.github.com", StringComparison.OrdinalIgnoreCase);
-            var isTokenFromGithubDotcom = HostContext.GetService<IConfigurationStore>().GetSettings().IsHostedServer;
-            if (!registryIsTokenCompatible || !isTokenFromGithubDotcom)
+            var isFallbackTokenFromHostedGithub = HostContext.GetService<IConfigurationStore>().GetSettings().IsHostedServer;
+            if (!registryIsTokenCompatible || !isFallbackTokenFromHostedGithub)
             {
                 return;
             }
