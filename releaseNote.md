@@ -2,6 +2,8 @@
 
 ## Bugs
 
+- Fixed an issue where GHES runners fail to download public docker images (#1199)
+
 ## Misc
 
 ## Windows x64
