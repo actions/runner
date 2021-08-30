@@ -2,8 +2,6 @@
 
 ## Bugs
 
-- Fixed an issue where composite steps would not run on `failure()` or `always()` when the job failed (#1273)
-
 ## Misc
 
 ## Windows x64
