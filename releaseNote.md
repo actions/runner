@@ -2,7 +2,7 @@
 
 ## Bugs
 
-- Fixed an issue where composite steps would not run on `failure()` or `always()` when the job failed (#1273)
+- Fixed an issue where GHES runners fail to download public docker images (#1199)
 
 ## Misc
 
