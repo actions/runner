@@ -117,6 +117,7 @@ namespace GitHub.Runner.Listener.Configuration
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                    // Hosted usually means github.com or localhost, while OnPremises means GHES or GHAE
                     runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || UrlUtil.IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
 
                     // Warn if the Actions server url and GHES server url has different Host
@@ -165,7 +166,7 @@ namespace GitHub.Runner.Listener.Configuration
             List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
             TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
 
-            if (agentPools?.Where(x => !x.IsHosted).Count() > 1)
+            if (agentPools?.Where(x => !x.IsHosted).Count() > 0)
             {
                 poolName = command.GetRunnerGroupName(defaultPool?.Name);
                 _term.WriteLine();
@@ -186,7 +187,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-                Trace.Info("Found a self-hosted runner group with id {1} and name {2}", agentPool.Id, agentPool.Name);
+                Trace.Info($"Found a self-hosted runner group with id {agentPool.Id} and name {agentPool.Name}");
                 runnerSettings.PoolId = agentPool.Id;
                 runnerSettings.PoolName = agentPool.Name;
             }
