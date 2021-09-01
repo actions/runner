@@ -347,12 +347,9 @@ namespace GitHub.Runner.Listener.Configuration
 
                     _term.WriteLine();
                     _term.WriteSuccessMessage("Runner service removed");
-#elif OS_LINUX
-                    // unconfig system D service first
-                    throw new Exception("Unconfigure service first");
-#elif OS_OSX
-                    // unconfig osx service first
-                    throw new Exception("Unconfigure service first");
+#else
+                    // unconfig systemd or osx service first
+                    throw new Exception("Uninstall service first");
 #endif
                 }
 
