@@ -33,15 +33,23 @@ namespace GitHub.Runner.Worker
             "sha",
             "workflow",
             "workspace",
+            "ref_protected",
         };
 
         public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()
         {
             foreach (var data in this)
             {
-                if (_contextEnvAllowlist.Contains(data.Key) && data.Value is StringContextData value)
+                if (_contextEnvAllowlist.Contains(data.Key))
                 {
-                    yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", value);
+                    if (data.Value is StringContextData value)
+                    {
+                        yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", value);
+                    }
+                    else if (data.Value is BooleanContextData booleanValue)
+                    {
+                        yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", booleanValue.ToString());
+                    }
                 }
             }
         }
