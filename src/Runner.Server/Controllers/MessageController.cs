@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1010,7 +1010,7 @@ namespace Runner.Server.Controllers
                                         Action cancelAll = () => {
                                             FinishJobController.OnJobCompleted -= handler2;
                                             foreach (var j in scheduled) {
-                                                j.CancelRequest = true;
+                                                j.CancelRequest.Cancel();
                                                 if(j.SessionId == Guid.Empty) {
                                                     j.Cancelled = true;
                                                     FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = j.JobId, Result = TaskResult.Canceled, RequestId = j.RequestId, Outputs = new Dictionary<String, VariableValue>() });
@@ -1068,7 +1068,7 @@ namespace Runner.Server.Controllers
                                     if(!(jobitem.Childs?.RemoveAll(ji => {
                                         Job job;
                                         if(MessageController.jobs.TryGetValue(ji.Id, out job)) {
-                                            job.CancelRequest = true;
+                                            job.CancelRequest.Cancel();
                                             if(job.SessionId == Guid.Empty) {
                                                 job.Cancelled = true;
                                                 FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
@@ -1492,11 +1492,11 @@ namespace Runner.Server.Controllers
             return cancel => {
                 if(cancel) {
                     job.Cancelled = true;
-                    job.CancelRequest = true;
+                    job.CancelRequest.Cancel();
                     FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                 } else {
-                    ConcurrentQueue<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => new ConcurrentQueue<Job>());
-                    queue.Enqueue(job);
+                    Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+                    queue.Writer.WriteAsync(job);
                 }
                 return job;
             };
@@ -1505,6 +1505,9 @@ namespace Runner.Server.Controllers
         public delegate AgentJobRequestMessage MessageFactory(string apiUrl);
 
         public class Job {
+            public Job() {
+                CancelRequest = new CancellationTokenSource();
+            }
             public Guid JobId { get; set; }
             public long RequestId { get; set; }
             public Guid TimeLineId { get; set; }
@@ -1516,7 +1519,7 @@ namespace Runner.Server.Controllers
             public string name { get; set; }
             public string workflowname { get; set; }
             public long runid { get; set; }
-            public bool CancelRequest { get; internal set; }
+            public CancellationTokenSource CancelRequest { get; }
             public bool Cancelled { get; internal set; }
 
             public double TimeoutMinutes {get;set;}
@@ -1542,7 +1545,7 @@ namespace Runner.Server.Controllers
             }
         }
 
-        private static ConcurrentDictionary<HashSet<string>, ConcurrentQueue<Job>> jobqueue = new ConcurrentDictionary<HashSet<string>, ConcurrentQueue<Job>>(new EqualityComparer());
+        private static ConcurrentDictionary<HashSet<string>, Channel<Job>> jobqueue = new ConcurrentDictionary<HashSet<string>, Channel<Job>>(new EqualityComparer());
         private static int id = 0;
 
         // private string Decrypt(byte[] key, byte[] iv, byte[] message) {
@@ -1589,93 +1592,111 @@ namespace Runner.Server.Controllers
             });
             session.DropMessage?.Invoke();
             session.DropMessage = null;
-            for (int i = 0; i < 10 && !HttpContext.RequestAborted.IsCancellationRequested; i++)
-            {
-                if(session.Job == null) {
-                    Job req;
-                    foreach(var queue in jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()))) {
-                        if(HttpContext.RequestAborted.IsCancellationRequested) {
-                            break;
-                        }
-                        try {
-                            if(queue.Value.TryDequeue(out req)) {
-                                if(req.CancelRequest) {
-                                    continue;
-                                }
-                                var q = queue.Value;
-                                session.DropMessage = () => {
-                                    q.Enqueue(req);
-                                    session.Job = null;
-                                    session.JobTimer?.Stop();
-                                };
-                                var apiUrlBuilder = new UriBuilder();
-                                apiUrlBuilder.Scheme = Request.Scheme;
-                                apiUrlBuilder.Host = Request.Host.Host ?? HttpContext.Connection.LocalIpAddress.ToString();
-                                apiUrlBuilder.Path = req.repo.Count(c => c == '/') == 1 ? req.repo : "Unknown/Unknown";
-                                if(Request.Host.Port.HasValue) {
-                                    apiUrlBuilder.Port = Request.Host.Port.Value;
-                                } else {
-                                    apiUrlBuilder.Port = HttpContext.Connection.LocalPort;
-                                }
-                                var apiUrl = apiUrlBuilder.ToString();
-                                if(!apiUrl.EndsWith('/')) {
-                                    apiUrl += "/";
-                                }
-                                if(req.message == null) {
-                                    Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
-                                    continue;
-                                }
-                                var res = req.message.Invoke(apiUrl);
-                                if(res == null) {
-                                    Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
-                                    Job job;
-                                    if(jobs.TryGetValue(req.JobId, out job)) {
-                                        FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
-                                    }
-                                    continue;
-                                }
-                                HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                                if(session.JobTimer == null) {
-                                    session.JobTimer = new System.Timers.Timer();
-                                    session.JobTimer.Elapsed += (a,b) => {
-                                        if(session.Job != null) {
-                                            session.Job.CancelRequest = true;
-                                        }
-                                    };
-                                    session.JobTimer.AutoReset = false;
-                                } else {
-                                    session.JobTimer.Stop();
-                                }
-                                session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => {
-                                    job.SessionId = sessionId;
-                                    return job;
-                                });
-                                _cache.Set("Job_" + res.JobId, session.Job);
-                                
-                                session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
-                                session.JobTimer.Start();
-                                session.Key.GenerateIV();
-                                using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
-                                using (var body = new MemoryStream())
-                                using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                    new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
-                                    cryptoStream.FlushFinalBlock();
-                                    HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                                    return await Ok(new TaskAgentMessage() {
-                                        Body = Convert.ToBase64String(body.ToArray()),
-                                        MessageId = id++,
-                                        MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
-                                        IV = session.Key.IV
-                                    });
-                                }
-                            }
-                        } catch {
-                            session.DropMessage?.Invoke();
-                            session.DropMessage = null;
-                        }
+            var ts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, new CancellationTokenSource(TimeSpan.FromSeconds(50)).Token);
+            if(session.Job == null) {
+                var labels = session.Agent.TaskAgent.Labels.Select(l => l.Name.ToLowerInvariant()).ToArray();
+                HashSet<HashSet<String>> labelcom = labels.Select(l => new HashSet<string>{l}).ToHashSet(new EqualityComparer());
+                for(long j = 0; j < labels.LongLength; j++) {
+                    var it = labelcom.ToArray();
+                    for(long i = 0, size = it.LongLength; i < size; i++) {
+                        var res = it[i].Append(labels[j]).ToHashSet();
+                        labelcom.Add(res);
                     }
-                } else if(!session.Job.Cancelled) {
-                    if(session.Job.CancelRequest) {
+                }
+                foreach(var label in labelcom) {
+                    Channel<Job> queue = jobqueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
+                }
+                Job req;
+                var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant())).ToArray();
+                var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
+                await Task.WhenAny(poll);
+                if(HttpContext.RequestAborted.IsCancellationRequested) {
+                    return NoContent();
+                }
+                for(long i = 0; i < poll.LongLength; i++ ) {
+                    if(poll[i].IsCompletedSuccessfully && poll[i].Result) 
+                    try {
+                        if(queues[i].Value.Reader.TryRead(out req)) {
+                            if(req.CancelRequest.IsCancellationRequested) {
+                                continue;
+                            }
+                            var q = queues[i].Value;
+                            session.DropMessage = () => {
+                                q.Writer.WriteAsync(req);
+                                session.Job = null;
+                                session.JobTimer?.Stop();
+                            };
+                            var apiUrlBuilder = new UriBuilder();
+                            apiUrlBuilder.Scheme = Request.Scheme;
+                            apiUrlBuilder.Host = Request.Host.Host ?? HttpContext.Connection.LocalIpAddress.ToString();
+                            apiUrlBuilder.Path = req.repo.Count(c => c == '/') == 1 ? req.repo : "Unknown/Unknown";
+                            if(Request.Host.Port.HasValue) {
+                                apiUrlBuilder.Port = Request.Host.Port.Value;
+                            } else {
+                                apiUrlBuilder.Port = HttpContext.Connection.LocalPort;
+                            }
+                            var apiUrl = apiUrlBuilder.ToString();
+                            if(!apiUrl.EndsWith('/')) {
+                                apiUrl += "/";
+                            }
+                            if(req.message == null) {
+                                Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
+                                continue;
+                            }
+                            var res = req.message.Invoke(apiUrl);
+                            if(res == null) {
+                                Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
+                                Job job;
+                                if(jobs.TryGetValue(req.JobId, out job)) {
+                                    FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                }
+                                continue;
+                            }
+                            HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                            if(session.JobTimer == null) {
+                                session.JobTimer = new System.Timers.Timer();
+                                session.JobTimer.Elapsed += (a,b) => {
+                                    if(session.Job != null) {
+                                        session.Job.CancelRequest.Cancel();
+                                    }
+                                };
+                                session.JobTimer.AutoReset = false;
+                            } else {
+                                session.JobTimer.Stop();
+                            }
+                            session.Job = jobs.AddOrUpdate(res.JobId, new Job() { SessionId = sessionId, JobId = res.JobId, RequestId = res.RequestId, TimeLineId = res.Timeline.Id }, (id, job) => {
+                                job.SessionId = sessionId;
+                                return job;
+                            });
+                            _cache.Set("Job_" + res.JobId, session.Job);
+                            
+                            session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
+                            session.JobTimer.Start();
+                            session.Key.GenerateIV();
+                            using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                            using (var body = new MemoryStream())
+                            using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                                new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                cryptoStream.FlushFinalBlock();
+                                HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                                return await Ok(new TaskAgentMessage() {
+                                    Body = Convert.ToBase64String(body.ToArray()),
+                                    MessageId = id++,
+                                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
+                                    IV = session.Key.IV
+                                });
+                            }
+                        }
+                    } catch {
+                        session.DropMessage?.Invoke();
+                        session.DropMessage = null;
+                    }
+                }
+            } else if(!session.Job.Cancelled) {
+                try {                    
+                    await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(ts.Token, session.Job.CancelRequest.Token).Token);
+                } catch (TaskCanceledException) {
+                    if(session.Job.CancelRequest.IsCancellationRequested) {
                         session.Job.Cancelled = true;
                         session.Key.GenerateIV();
                         using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
@@ -1692,7 +1713,6 @@ namespace Runner.Server.Controllers
                         }
                     }
                 }
-                await Task.Delay(5000);
             }
             return NoContent();
         }
@@ -1941,7 +1961,7 @@ namespace Runner.Server.Controllers
         public void CancelJob(Guid id) {
             Job job;
             if(jobs.TryGetValue(id, out job)) {
-                job.CancelRequest = true;
+                job.CancelRequest.Cancel();
                 if(job.SessionId == Guid.Empty) {
                     job.Cancelled = true;
                     FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
