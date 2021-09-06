@@ -110,11 +110,17 @@ namespace GitHub.Runner.Worker
                     // Stop command
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
+                        if(_registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data)) 
+                        {
+                            context.Debug("You must use a non-empty token that is not a registered workflow command.");
+                            return false;
+                        }
                         context.Output(input);
-                        context.Debug("Paused processing commands until '##[{actionCommand.Data}]' is received");
+                        context.Debug("Paused processing commands until the token you called ::stopCommands:: with is received");
                         _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
+                        HostContext.SecretMasker.AddValue(_stopToken);
                         return true;
                     }
                     // Found command

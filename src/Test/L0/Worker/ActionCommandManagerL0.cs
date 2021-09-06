@@ -108,6 +108,46 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void StopProcessCommandBannedStopTokens()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
+                   .Returns((string tag, string line) =>
+                            {
+                                hc.GetTrace().Info($"{tag} {line}");
+                                return 1;
+                            });
+
+                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
+                   .Callback((Issue issue, string message) =>
+                   {
+                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
+                   });
+
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::stop-commands", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::set-env", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+
+ 
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::randomToken", null));
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::randomToken::", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void EchoProcessCommand()
         {
             using (TestHostContext hc = CreateTestContext())
