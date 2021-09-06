@@ -108,25 +108,10 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void StopProcessCommandBannedStopTokens()
+        public void StopProcessCommandRejectsBannedStopTokens()
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
-                   .Returns((string tag, string line) =>
-                            {
-                                hc.GetTrace().Info($"{tag} {line}");
-                                return 1;
-                            });
-
-                _ec.Setup(x => x.AddIssue(It.IsAny<Issue>(), It.IsAny<string>()))
-                   .Callback((Issue issue, string message) =>
-                   {
-                       hc.GetTrace().Info($"{issue.Type} {issue.Message} {message ?? string.Empty}");
-                   });
-
-                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
-
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::stop-commands", null));
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
 
@@ -135,13 +120,39 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::set-env", null));
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+            }
+        }
 
- 
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::randomToken", null));
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommandAcceptsValidToken()
+        {
+            var validToken = "randomToken";
+            using (TestHostContext hc = CreateTestContext())
+            {
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "::randomToken::", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::{validToken}::", null));
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
-                
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommandMasksValidTokenForEntireRun()
+        {
+            var validToken = "randomToken";
+            using (TestHostContext hc = CreateTestContext())
+            {
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets(validToken));
+
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::{validToken}::", null));
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets(validToken));
             }
         }
 
@@ -242,15 +253,15 @@ namespace GitHub.Runner.Common.Tests.Worker
                                 return 1;
                             });
 
-                var registeredCommands = new HashSet<string>(new string[1]{ "warning" });
+                var registeredCommands = new HashSet<string>(new string[1] { "warning" });
                 ActionCommand command;
-                
+
                 // Columns when lines are different
                 ActionCommand.TryParseV2("::warning line=1,endLine=2,col=1,endColumn=2::this is a warning", registeredCommands, out command);
                 Assert.Equal("1", command.Properties["col"]);
                 IssueCommandExtension.ValidateLinesAndColumns(command, _ec.Object);
                 Assert.False(command.Properties.ContainsKey("col"));
-            
+
                 // No lines with columns
                 ActionCommand.TryParseV2("::warning col=1,endColumn=2::this is a warning", registeredCommands, out command);
                 Assert.Equal("1", command.Properties["col"]);
