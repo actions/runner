@@ -106,6 +106,10 @@ namespace GitHub.Runner.Worker
 
                 jobContext.SetRunnerContext("os", VarUtil.OS);
 
+                var runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
+                jobContext.SetRunnerContext("name", runnerSettings.AgentName);
+                jobContext.SetRunnerContext("runner_group", runnerSettings.PoolName);
+
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
                 jobContext.SetRunnerContext("tool_cache", toolsDirectory);
