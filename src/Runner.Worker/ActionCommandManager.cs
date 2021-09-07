@@ -120,7 +120,10 @@ namespace GitHub.Runner.Worker
                         _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
-                        HostContext.SecretMasker.AddValue(_stopToken);
+                        if (_stopToken.Length > 6) 
+                        {
+                            HostContext.SecretMasker.AddValue(_stopToken);
+                        }
                         return true;
                     }
                     // Found command
