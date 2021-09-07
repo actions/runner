@@ -125,7 +125,10 @@ namespace GitHub.Services.Common
                 }
                 catch (TimeoutException)
                 {
-                    throw;
+                    // Let's consider runner TimeoutException as 'retry-able'. The lower layer (i.e. VssHttpMessageHandler)
+                    // special-cases TimeoutException from OperationCanceledException (caused by cancellation requests)
+                    // so we won't be accidentally stalling the runner on e.g. a Ctrl-Z operation.
+                    canRetry = true;
                 }
 
                 if (attempt < maxAttempts && canRetry)
