@@ -32,7 +32,7 @@ namespace GitHub.Runner.Worker
             "sha",
             "workflow",
             "workspace",
-            "attempt",
+            "run_attempt",
         };
 
         public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()
