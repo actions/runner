@@ -1576,7 +1576,7 @@ namespace Runner.Client
                                                 jobquery.Add("repo", hr.First().repo);
                                                 jobquery.Add("runid", runId.ToString());
                                                 var joburib = new UriBuilder(jobsUrl);
-                                                joburib.Query = query.ToString().TrimStart('?');
+                                                joburib.Query = jobquery.ToString().TrimStart('?');
                                                 List<Job> ljobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(joburib.ToString()));
                                                 foreach(var job in ljobs) {
                                                     try {
