@@ -26,13 +26,13 @@ namespace GitHub.Runner.Worker
             "repository",
             "repository_owner",
             "retention_days",
+            "run_attempt",
             "run_id",
             "run_number",
             "server_url",
             "sha",
             "workflow",
             "workspace",
-            "run_attempt",
         };
 
         public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()
