@@ -1855,7 +1855,12 @@ namespace Runner.Client
 
         private static string ReadSymlinkWindows(string w) {
             try {
-                return NativeMethods.ReadSymlink(w);
+                var targetPath = NativeMethods.ReadSymlink(w);
+                var prefix = "\\??\\";
+                if(targetPath.StartsWith(prefix)) {
+                    return Path.GetRelativePath(prefix + Path.GetDirectoryName(w), targetPath);
+                }
+                return targetPath;
             } catch {
                 var finalPath = NativeMethods.GetFinalPathName(w);
                 var relativeTo = Path.GetDirectoryName(w);
