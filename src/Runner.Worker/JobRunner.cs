@@ -108,7 +108,6 @@ namespace GitHub.Runner.Worker
 
                 var runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.SetRunnerContext("name", runnerSettings.AgentName);
-                jobContext.SetRunnerContext("runner_group", runnerSettings.PoolName);
 
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
