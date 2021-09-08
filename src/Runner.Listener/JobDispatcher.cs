@@ -770,7 +770,7 @@ namespace GitHub.Runner.Listener
 
         private void UpdateAgentNameIfNeeded(string agentName)
         {
-            var configurationStore = HostContext.GetService<ConfigurationStore>();
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
             var settings = configurationStore.GetSettings();
             if (settings.AgentName != agentName) {
                 settings.AgentName = agentName;
