@@ -661,7 +661,7 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, orchestrationId, token);
-                    UpdateAgentNameIfNeeded(request.ReservedAgent.Name);
+                    UpdateAgentNameIfNeeded(request.ReservedAgent?.Name);
 
                     Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
 
