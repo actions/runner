@@ -661,6 +661,7 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, orchestrationId, token);
+                    UpdateAgentNameIfNeeded(request.ReservedAgent.Name);
 
                     Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
 
@@ -764,6 +765,16 @@ namespace GitHub.Runner.Listener
                         return;
                     }
                 }
+            }
+        }
+
+        private void UpdateAgentNameIfNeeded(string agentName)
+        {
+            var configurationStore = HostContext.GetService<ConfigurationStore>();
+            var settings = configurationStore.GetSettings();
+            if (settings.AgentName != agentName) {
+                settings.AgentName = agentName;
+                configurationStore.SaveSettings(settings);
             }
         }
 
