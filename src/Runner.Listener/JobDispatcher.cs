@@ -664,14 +664,14 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, orchestrationId, token);
-                    UpdateAgentNameIfNeeded(request.ReservedAgent?.Name);
-
                     Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
 
                     if (!firstJobRequestRenewed.Task.IsCompleted)
                     {
                         // fire first renew succeed event.
                         firstJobRequestRenewed.TrySetResult(0);
+
+                        UpdateAgentNameIfNeeded(request.ReservedAgent?.Name);
                     }
 
                     if (encounteringError > 0)
@@ -773,10 +773,19 @@ namespace GitHub.Runner.Listener
 
         private void UpdateAgentNameIfNeeded(string agentName)
         {
-            if (_runnerSettings.AgentName != agentName)
+            try
             {
-                _runnerSettings.AgentName = agentName;
-                _configurationStore.SaveSettings(_runnerSettings);
+                if (_runnerSettings.AgentName != agentName)
+                {
+                    _runnerSettings.AgentName = agentName;
+                    _configurationStore.SaveSettings(_runnerSettings);
+                }
+
+            }
+            catch (IOException e)
+            {
+                    Trace.Error("Cannot update the settings file:");
+                    Trace.Error(e);
             }
         }
 
