@@ -36,7 +36,10 @@ namespace GitHub.Runner.Listener
     {
         private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
         private int _poolId;
-        RunnerSettings _runnerSetting;
+
+        IConfigurationStore _configurationStore;
+
+        RunnerSettings _runnerSettings;
         private static readonly string _workerProcessName = $"Runner.Worker{IOUtil.ExeExtension}";
 
         // this is not thread-safe
@@ -54,9 +57,9 @@ namespace GitHub.Runner.Listener
             base.Initialize(hostContext);
 
             // get pool id from config
-            var configurationStore = hostContext.GetService<IConfigurationStore>();
-            _runnerSetting = configurationStore.GetSettings();
-            _poolId = _runnerSetting.PoolId;
+            _configurationStore = hostContext.GetService<IConfigurationStore>();
+            _runnerSettings = _configurationStore.GetSettings();
+            _poolId = _runnerSettings.PoolId;
 
             int channelTimeoutSeconds;
             if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT") ?? string.Empty, out channelTimeoutSeconds))
@@ -770,11 +773,10 @@ namespace GitHub.Runner.Listener
 
         private void UpdateAgentNameIfNeeded(string agentName)
         {
-            var configurationStore = HostContext.GetService<IConfigurationStore>();
-            var settings = configurationStore.GetSettings();
-            if (settings.AgentName != agentName) {
-                settings.AgentName = agentName;
-                configurationStore.SaveSettings(settings);
+            if (_runnerSettings.AgentName != agentName)
+            {
+                _runnerSettings.AgentName = agentName;
+                _configurationStore.SaveSettings(_runnerSettings);
             }
         }
 
