@@ -163,10 +163,8 @@ namespace GitHub.DistributedTask.WebApi
             ActionsEnvironmentReference actionsEnvironment,
             List<ActionsStepTelemetry> actionsStepsTelemetry,
             List<Telemetry> telemetry)
-            : this(requestId, jobId, result, outputs)
+            : this(requestId, jobId, result, outputs, actionsEnvironment, actionsStepsTelemetry)
         {
-            this.ActionsEnvironment = actionsEnvironment;
-            this.ActionsStepsTelemetry = actionsStepsTelemetry;
             this.Telemetry = telemetry;
         }
 
