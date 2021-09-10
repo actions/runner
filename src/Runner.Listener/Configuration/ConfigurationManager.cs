@@ -65,18 +65,18 @@ namespace GitHub.Runner.Listener.Configuration
         public async Task ConfigureAsync(CommandSettings command)
         {
             _term.WriteLine();
-            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
-            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |", ConsoleColor.White);
-            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |", ConsoleColor.White);
-            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |", ConsoleColor.White);
-            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |", ConsoleColor.White);
-            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |", ConsoleColor.White);
-            _term.WriteLine("|                                                                              |", ConsoleColor.White);
-            _term.Write("|                       ", ConsoleColor.White);
+            _term.WriteLine("--------------------------------------------------------------------------------");
+            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |");
+            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |");
+            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |");
+            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |");
+            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |");
+            _term.WriteLine("|                                                                              |");
+            _term.Write("|                       ");
             _term.Write("Self-hosted runner registration", ConsoleColor.Cyan);
-            _term.WriteLine("                        |", ConsoleColor.White);
-            _term.WriteLine("|                                                                              |", ConsoleColor.White);
-            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
+            _term.WriteLine("                        |");
+            _term.WriteLine("|                                                                              |");
+            _term.WriteLine("--------------------------------------------------------------------------------");
 
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
