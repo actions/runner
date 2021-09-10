@@ -164,11 +164,8 @@ namespace GitHub.Runner.Common
             if (!Silent)
             {
                 Console.WriteLine();
-                // Console.ForegroundColor = ConsoleColor.White;
-                // [#1295] - Avoid white, it is unreadable on light themes.
                 Console.ResetColor();
                 Console.WriteLine($"# {message}");
-                Console.ResetColor();
                 Console.WriteLine();
             }
         }
@@ -179,11 +176,8 @@ namespace GitHub.Runner.Common
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write("√ ");
-                // Console.ForegroundColor = ConsoleColor.White;
-                // [#1295] - Avoid white, it is unreadable on light themes.
                 Console.ResetColor();
                 Console.WriteLine(message);
-                Console.ResetColor();
             }
         }
 
