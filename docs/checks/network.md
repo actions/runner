@@ -33,8 +33,10 @@ If the 3rd party tool is also experiencing the same error as the runner does, th
 
 Otherwise, contact GitHub customer support or log an issue at https://github.com/actions/runner
 
-### Troubleshooting: Why can't I configure a runner
+### Troubleshooting: Why can't I configure a runner?
+
 If you are having trouble connecting, try these steps:
+
 1. Validate you can reach our endpoints from your web browser. If not, the problem likely exists on your local network.
   - For hosted Github:
     - https://api.github.com/
@@ -44,11 +46,11 @@ If you are having trouble connecting, try these steps:
     - https://myGHES.com/_services/vstoken/_apis/health
     - https://myGHES.com/_services/pipelines/_apis/health
     - https://myGHES.com/api/v3
-1. Validate you can reach those endpoints in powershell core
+2. Validate you can reach those endpoints in powershell core
   - The runner runs on .net core, lets validate the local settings for that stack
   - Open up `pwsh`
   - Run the command using the urls above `Invoke-WebRequest {url}`
-1. If not, get a packet trace using a tool like wireshark and start looking at the TLS handshake. 
+3. If not, get a packet trace using a tool like wireshark and start looking at the TLS handshake. 
   - If you see a Client Hello followed by a Server RST:
     - You may need to configure your TLS settings to use the correct version
       - You should support TLS version 1.2 or later
