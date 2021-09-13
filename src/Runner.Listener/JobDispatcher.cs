@@ -782,10 +782,11 @@ namespace GitHub.Runner.Listener
                 }
 
             }
-            catch (IOException e)
+            catch (IOException ex)
             {
-                    Trace.Error("Cannot update the settings file:");
-                    Trace.Error(e);
+                // Warning, not an Error, because the job execution continues
+                Trace.Error("Cannot update the settings file:");
+                Trace.Error(ex);
             }
         }
 
