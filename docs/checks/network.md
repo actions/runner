@@ -37,25 +37,25 @@ Otherwise, contact GitHub customer support or log an issue at https://github.com
 
 If you are having trouble connecting, try these steps:
 
-1. Validate you can reach our endpoints from your web browser. If not, the problem likely exists on your local network.
-  - For hosted Github:
-    - https://api.github.com/
-    - https://vstoken.actions.githubusercontent.com/_apis/health
-    - https://pipelines.actions.githubusercontent.com/_apis/health
-  - For GHES/GHAE
-    - https://myGHES.com/_services/vstoken/_apis/health
-    - https://myGHES.com/_services/pipelines/_apis/health
-    - https://myGHES.com/api/v3
+1. Validate you can reach our endpoints from your web browser. If not, double check your local network connection
+    - For hosted Github:
+      - https://api.github.com/
+      - https://vstoken.actions.githubusercontent.com/_apis/health
+      - https://pipelines.actions.githubusercontent.com/_apis/health
+    - For GHES/GHAE
+      - https://myGHES.com/_services/vstoken/_apis/health
+      - https://myGHES.com/_services/pipelines/_apis/health
+      - https://myGHES.com/api/v3
 2. Validate you can reach those endpoints in powershell core
-  - The runner runs on .net core, lets validate the local settings for that stack
-  - Open up `pwsh`
-  - Run the command using the urls above `Invoke-WebRequest {url}`
+    - The runner runs on .net core, lets validate the local settings for that stack
+    - Open up `pwsh`
+    - Run the command using the urls above `Invoke-WebRequest {url}`
 3. If not, get a packet trace using a tool like wireshark and start looking at the TLS handshake. 
-  - If you see a Client Hello followed by a Server RST:
-    - You may need to configure your TLS settings to use the correct version
-      - You should support TLS version 1.2 or later
-    - You may need to configure your TLS settings to have up to date cipher suites, this may be solved by system updates and patches.
-    - Your firewall, proxy or network configuration may be blocking the connection
-    - You will want to reach out to whoever is in charge of your network with these pcap files to further troubleshoot
-  - If you see a failure later in the handshake:
-    - Try the fix in the [SSLCert Fix](./sslcert.md)
+    - If you see a Client Hello followed by a Server RST:
+      - You may need to configure your TLS settings to use the correct version
+        - You should support TLS version 1.2 or later
+      - You may need to configure your TLS settings to have up to date cipher suites, this may be solved by system updates and patches.
+      - Your firewall, proxy or network configuration may be blocking the connection
+      - You will want to reach out to whoever is in charge of your network with these pcap files to further troubleshoot
+    - If you see a failure later in the handshake:
+      - Try the fix in the [SSLCert Fix](./sslcert.md)
