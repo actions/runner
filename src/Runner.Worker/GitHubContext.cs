@@ -23,6 +23,7 @@ namespace GitHub.Runner.Worker
             "job",
             "path",
             "ref",
+            "ref_protected",
             "repository",
             "repository_owner",
             "retention_days",
@@ -33,7 +34,6 @@ namespace GitHub.Runner.Worker
             "sha",
             "workflow",
             "workspace",
-            "ref_protected",
         };
 
         public IEnumerable<KeyValuePair<string, string>> GetRuntimeEnvironmentVariables()
