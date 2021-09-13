@@ -6,12 +6,12 @@ namespace GitHub.DistributedTask.WebApi
     /// Information about a job run on the runner
     /// </summary>
     [DataContract]
-    public class Telemetry
+    public class JobTelemetry
     {
         [DataMember(EmitDefaultValue = false)]
-        public string Type { get; set; }
+        public string Message { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public string Message { get; set; }
+        public string Type { get; set; }
     }
 }

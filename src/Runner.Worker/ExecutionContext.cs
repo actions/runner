@@ -52,7 +52,7 @@ namespace GitHub.Runner.Worker
         Dictionary<string, VariableValue> JobOutputs { get; }
         ActionsEnvironmentReference ActionsEnvironment { get; }
         List<ActionsStepTelemetry> ActionsStepsTelemetry { get; }
-        List<Telemetry> Telemetry { get; }
+        List<JobTelemetry> JobTelemetry { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -151,7 +151,7 @@ namespace GitHub.Runner.Worker
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
         public List<ActionsStepTelemetry> ActionsStepsTelemetry { get; private set; }
-        public List<Telemetry> Telemetry { get; private set; }
+        public List<JobTelemetry> JobTelemetry { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -652,7 +652,7 @@ namespace GitHub.Runner.Worker
             // ActionsStepTelemetry
             ActionsStepsTelemetry = new List<ActionsStepTelemetry>();
 
-            Telemetry = new List<Telemetry>();
+            JobTelemetry = new List<JobTelemetry>();
 
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();

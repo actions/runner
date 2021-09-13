@@ -162,10 +162,10 @@ namespace GitHub.DistributedTask.WebApi
             Dictionary<String, VariableValue> outputs,
             ActionsEnvironmentReference actionsEnvironment,
             List<ActionsStepTelemetry> actionsStepsTelemetry,
-            List<Telemetry> telemetry)
+            List<JobTelemetry> jobTelemetry)
             : this(requestId, jobId, result, outputs, actionsEnvironment, actionsStepsTelemetry)
         {
-            this.Telemetry = telemetry;
+            this.JobTelemetry = jobTelemetry;
         }
 
         [DataMember(EmitDefaultValue = false)]
@@ -204,7 +204,7 @@ namespace GitHub.DistributedTask.WebApi
         }
 
         [DataMember(EmitDefaultValue = false)]
-        public List<Telemetry> Telemetry
+        public List<JobTelemetry> JobTelemetry
         {
             get;
             set;
