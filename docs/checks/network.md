@@ -25,7 +25,7 @@ Use a 3rd party tool to make the same requests as the runner did would be a good
 
 - Use `nslookup` to check DNS
 - Use `ping` to check Ping
-- Use `traceroute`, `tracepath`, or `tracert` to check the network route between the runner and the Actions service 
+- Use `traceroute`, `tracepath`, or `tracert` to check the network route between the runner and the Actions service
 - Use `curl -v` to check the network stack, good for verifying default certificate/proxy settings.
 - Use `Invoke-WebRequest` from `pwsh` (`PowerShell Core`) to check the dotnet network stack, good for verifying bugs in the dotnet framework.
 
@@ -50,7 +50,7 @@ If you are having trouble connecting, try these steps:
     - The runner runs on .net core, lets validate the local settings for that stack
     - Open up `pwsh`
     - Run the command using the urls above `Invoke-WebRequest {url}`
-3. If not, get a packet trace using a tool like wireshark and start looking at the TLS handshake. 
+3. If not, get a packet trace using a tool like wireshark and start looking at the TLS handshake.
     - If you see a Client Hello followed by a Server RST:
       - You may need to configure your TLS settings to use the correct version
         - You should support TLS version 1.2 or later
