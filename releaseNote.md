@@ -1,12 +1,17 @@
 ## Features
 
+- Allow setting default severity to "notice" (#1213)
+- Show More Step Information in composite Actions (#1279)
+
 ## Bugs
 
-- Send Path when resolving actions so we can correctly validate Policy for Composite Actions (#1250)
+- Temporary fix for macOS runner upgrade crash loop. (#1304)
+- Fixed an issue where GHES runners fail to download public docker images (#1199)
 
 ## Misc
 
-- Allows flags instead of parameters when configuring the runner (#1220)
+- Update error to say 'uninstall' not 'unconfigure' (#1179)
+- Typo fixed (#1289)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

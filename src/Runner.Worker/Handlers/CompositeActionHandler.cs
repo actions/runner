@@ -295,98 +295,107 @@ namespace GitHub.Runner.Worker.Handlers
                 CancellationTokenRegistration? jobCancelRegister = null;
                 try
                 {
-                    // Register job cancellation call back only if job cancellation token not been fire before each step run
-                    if (!ExecutionContext.Root.CancellationToken.IsCancellationRequested)
-                    {
-                        // Test the condition again. The job was cancelled after the condition was originally evaluated.
-                        jobCancelRegister = ExecutionContext.Root.CancellationToken.Register(() =>
-                        {
-                            // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Cancelled;
-                            ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
-
-                            step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
-                            var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
-                            var conditionReTestResult = false;
-                            if (HostContext.RunnerShutdownToken.IsCancellationRequested)
-                            {
-                                step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionReTestTraceWriter);
-                                    var condition = new BasicExpressionToken(null, null, null, step.Condition);
-                                    conditionReTestResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
-                                }
-                                catch (Exception ex)
-                                {
-                                    // Cancel the step since we get exception while re-evaluate step condition
-                                    Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
-                                    step.ExecutionContext.Error(ex);
-                                }
-                            }
-
-                            if (!conditionReTestResult)
-                            {
-                                // Cancel the step
-                                Trace.Info("Cancel current running step.");
-                                step.ExecutionContext.CancelToken();
-                            }
-                        });
-                    }
-                    else
-                    {
-                        if (ExecutionContext.Root.Result != TaskResult.Cancelled)
-                        {
-                            // Mark job as cancelled
-                            ExecutionContext.Root.Result = TaskResult.Cancelled;
-                            ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
-                        }
-                    }
-                    // Evaluate condition
-                    step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
-                    var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
-                    var conditionResult = false;
-                    var conditionEvaluateError = default(Exception);
-                    if (HostContext.RunnerShutdownToken.IsCancellationRequested)
-                    {
-                        step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
-                            var condition = new BasicExpressionToken(null, null, null, step.Condition);
-                            conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
-                        }
-                        catch (Exception ex)
-                        {
-                            Trace.Info("Caught exception from expression.");
-                            Trace.Error(ex);
-                            conditionEvaluateError = ex;
-                        }
-                    }
-                    if (!conditionResult && conditionEvaluateError == null)
-                    {
-                        // Condition is false
-                        Trace.Info("Skipping step due to condition evaluation.");
-                        step.ExecutionContext.Result = TaskResult.Skipped;
-                        continue;
-                    }
-                    else if (conditionEvaluateError != null)
-                    {
-                        // Condition error
-                        step.ExecutionContext.Error(conditionEvaluateError);
-                        step.ExecutionContext.Result = TaskResult.Failed;
-                        ExecutionContext.Result = TaskResult.Failed;
-                        break;
-                    }
-                    else
+                    // For main steps just run the action
+                    if (stage == ActionRunStage.Main)
                     {
                         await RunStepAsync(step);
+                    }
+                    // We need to evaluate conditions for pre/post steps
+                    else
+                    {
+                        // Register job cancellation call back only if job cancellation token not been fire before each step run
+                        if (!ExecutionContext.Root.CancellationToken.IsCancellationRequested)
+                        {
+                            // Test the condition again. The job was canceled after the condition was originally evaluated.
+                            jobCancelRegister = ExecutionContext.Root.CancellationToken.Register(() =>
+                            {
+                                // Mark job as cancelled
+                                ExecutionContext.Root.Result = TaskResult.Cancelled;
+                                ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+
+                                step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
+                                var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
+                                var conditionReTestResult = false;
+                                if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                                {
+                                    step.ExecutionContext.Debug($"Skip Re-evaluate condition on runner shutdown.");
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionReTestTraceWriter);
+                                        var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                        conditionReTestResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // Cancel the step since we get exception while re-evaluate step condition
+                                        Trace.Info("Caught exception from expression when re-test condition on job cancellation.");
+                                        step.ExecutionContext.Error(ex);
+                                    }
+                                }
+
+                                if (!conditionReTestResult)
+                                {
+                                    // Cancel the step
+                                    Trace.Info("Cancel current running step.");
+                                    step.ExecutionContext.CancelToken();
+                                }
+                            });
+                        }
+                        else
+                        {
+                            if (ExecutionContext.Root.Result != TaskResult.Cancelled)
+                            {
+                                // Mark job as cancelled
+                                ExecutionContext.Root.Result = TaskResult.Cancelled;
+                                ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                            }
+                        }
+                        // Evaluate condition
+                        step.ExecutionContext.Debug($"Evaluating condition for step: '{step.DisplayName}'");
+                        var conditionTraceWriter = new ConditionTraceWriter(Trace, step.ExecutionContext);
+                        var conditionResult = false;
+                        var conditionEvaluateError = default(Exception);
+                        if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                        {
+                            step.ExecutionContext.Debug($"Skip evaluate condition on runner shutdown.");
+                        }
+                        else
+                        {
+                            try
+                            {
+                                var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator(conditionTraceWriter);
+                                var condition = new BasicExpressionToken(null, null, null, step.Condition);
+                                conditionResult = templateEvaluator.EvaluateStepIf(condition, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions, step.ExecutionContext.ToExpressionState());
+                            }
+                            catch (Exception ex)
+                            {
+                                Trace.Info("Caught exception from expression.");
+                                Trace.Error(ex);
+                                conditionEvaluateError = ex;
+                            }
+                        }
+                        if (!conditionResult && conditionEvaluateError == null)
+                        {
+                            // Condition is false
+                            Trace.Info("Skipping step due to condition evaluation.");
+                            step.ExecutionContext.Result = TaskResult.Skipped;
+                            continue;
+                        }
+                        else if (conditionEvaluateError != null)
+                        {
+                            // Condition error
+                            step.ExecutionContext.Error(conditionEvaluateError);
+                            step.ExecutionContext.Result = TaskResult.Failed;
+                            ExecutionContext.Result = TaskResult.Failed;
+                            break;
+                        }
+                        else
+                        {
+                            await RunStepAsync(step);
+                        }
                     }
                 }
                 finally
@@ -424,7 +433,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 await step.RunAsync();
             }
-            catch (OperationCanceledException ex)
+CanceledException ex)
             {
                 if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
                     !ExecutionContext.Root.CancellationToken.IsCancellationRequested)
