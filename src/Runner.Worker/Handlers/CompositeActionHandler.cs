@@ -433,7 +433,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 await step.RunAsync();
             }
-CanceledException ex)
+            catch (OperationCanceledException ex)
             {
                 if (step.ExecutionContext.CancellationToken.IsCancellationRequested &&
                     !ExecutionContext.Root.CancellationToken.IsCancellationRequested)
