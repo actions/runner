@@ -234,7 +234,7 @@ namespace GitHub.Runner.Listener
                     HostContext.StartupType = startType;
 
                     // Run the runner interactively or as service
-                    return await RunAsync(settings, command.RunOnce);
+                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);  // TODO: Remove RunOnce later.
                 }
                 else
                 {
@@ -466,8 +466,16 @@ namespace GitHub.Runner.Listener
                         await jobDispatcher.ShutdownAsync();
                     }
 
-                    //TODO: make sure we don't mask more important exception
-                    await _listener.DeleteSessionAsync();
+                    try
+                    {
+                        await _listener.DeleteSessionAsync();
+                    }
+                    catch (Exception ex) when (runOnce)
+                    {
+                        // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
+                        // and the delete session call will ends up with 401.
+                        Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
+                    }
 
                     messageQueueLoopTokenSource.Dispose();
                 }
@@ -512,7 +520,9 @@ Config Options:
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
- --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`");
+ --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`
+ --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
+
 #if OS_WINDOWS
     _term.WriteLine($@" --runasservice   Run the runner as a service");
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
