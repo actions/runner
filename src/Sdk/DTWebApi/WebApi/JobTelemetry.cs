@@ -12,6 +12,6 @@ namespace GitHub.DistributedTask.WebApi
         public string Message { get; set; }
 
         [DataMember(EmitDefaultValue = false)]
-        public string Type { get; set; }
+        public JobTelemetryType Type { get; set; }
     }
 }
