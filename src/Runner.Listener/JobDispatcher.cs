@@ -775,16 +775,15 @@ namespace GitHub.Runner.Listener
         {
             try
             {
-                if (_runnerSettings.AgentName != agentName)
+                if (string.Equals(_runnerSettings.AgentName, agentName, StringComparison.Ordinal))
                 {
                     _runnerSettings.AgentName = agentName;
                     _configurationStore.SaveSettings(_runnerSettings);
                 }
 
             }
-            catch (IOException ex)
+            catch (Exception ex)
             {
-                // Warning, not an Error, because the job execution continues
                 Trace.Error("Cannot update the settings file:");
                 Trace.Error(ex);
             }
