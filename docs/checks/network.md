@@ -55,6 +55,7 @@ If you are having trouble connecting, try these steps:
       - You may need to configure your TLS settings to use the correct version
         - You should support TLS version 1.2 or later
       - You may need to configure your TLS settings to have up to date cipher suites, this may be solved by system updates and patches.
+        - Most notably, on windows server 2012 make sure [the tls cipher suite update](https://support.microsoft.com/en-us/topic/update-adds-new-tls-cipher-suites-and-changes-cipher-suite-priorities-in-windows-8-1-and-windows-server-2012-r2-8e395e43-c8ef-27d8-b60c-0fc57d526d94) is installed
       - Your firewall, proxy or network configuration may be blocking the connection
       - You will want to reach out to whoever is in charge of your network with these pcap files to further troubleshoot
     - If you see a failure later in the handshake:
