@@ -861,14 +861,14 @@ namespace Runner.Client
                                     List<string> wenv = new List<string>();
                                     List<string> wsecrets = new List<string>();
                                     try {
-                                        wenv.AddRange(await File.ReadAllLinesAsync(parameters.envFile, Encoding.UTF8));
+                                        wenv.AddRange(Util.ReadEnvFile(parameters.envFile));
                                     } catch {
                                         if(parameters.envFile != ".env") {
                                             Console.WriteLine($"Failed to read file: {parameters.envFile}");
                                         }
                                     }
                                     try {
-                                        wsecrets.AddRange(await File.ReadAllLinesAsync(parameters.secretFile, Encoding.UTF8));
+                                        wsecrets.AddRange(Util.ReadEnvFile(parameters.secretFile));
                                     } catch {
                                         if(parameters.secretFile != ".secrets") {
                                             Console.WriteLine($"Failed to read file: {parameters.secretFile}");
