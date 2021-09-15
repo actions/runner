@@ -95,7 +95,16 @@ namespace GitHub.Runner.Listener
                 var unknownCommandlines = command.Validate();
                 if (unknownCommandlines.Count > 0)
                 {
-                    terminal.WriteError($"Unrecognized command-line input arguments: '{string.Join(", ", unknownCommandlines)}'. For usage refer to: .\\config.cmd --help or ./config.sh --help");
+                    string separator;
+                    string ext;
+#if OS_WINDOWS
+                    separator = "\\";
+                    ext = "cmd";
+#else
+                    separator = "/";
+                    ext = "sh";
+#endif
+                    terminal.WriteError($"Unrecognized command-line input arguments: '{string.Join(", ", unknownCommandlines)}'. For usage refer to `.{separator}config.{ext} --help`");
                 }
 
                 // Defer to the Runner class to execute the command.
