@@ -330,13 +330,27 @@ namespace GitHub.Runner.Listener.Configuration
 #endif
         }
 
-        // Delete only the .runner file
+        // Delete .runner and .credentials files
         public void DeleteLocalRunnerConfig()
         {
             bool isConfigured = _store.IsConfigured();
+            bool hasCredentials = _store.HasCredentials();
+            //delete credential config files
+            var currentAction = "Removing .credentials";
+            if (hasCredentials)
+            {
+                _store.DeleteCredential();
+                var keyManager = HostContext.GetService<IRSAKeyManager>();
+                keyManager.DeleteKey();
+                _term.WriteSuccessMessage("Removed .credentials");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
 
             //delete settings config file
-            var currentAction = "Removing .runner";
+            currentAction = "Removing .runner";
             if (isConfigured)
             {
                 _store.DeleteSettings();
@@ -419,20 +433,6 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     _term.WriteLine("Cannot connect to server, because config files are missing. Skipping removing runner from the server.");
-                }
-
-                //delete credential config files
-                currentAction = "Removing .credentials";
-                if (hasCredentials)
-                {
-                    _store.DeleteCredential();
-                    var keyManager = HostContext.GetService<IRSAKeyManager>();
-                    keyManager.DeleteKey();
-                    _term.WriteSuccessMessage("Removed .credentials");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
                 }
 
                 DeleteLocalRunnerConfig();
