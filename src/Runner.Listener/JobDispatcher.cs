@@ -510,8 +510,9 @@ namespace GitHub.Runner.Listener
 
                                     var jobServer = HostContext.GetService<IJobServer>();
                                     VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+                                    VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
+                                    await jobServer.ConnectAsync(jobConnection);
 
-                                    await jobServer.ConnectAsync(systemConnection.Url, jobServerCredential);
                                     await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
 
                                     // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
@@ -790,8 +791,9 @@ namespace GitHub.Runner.Listener
 
                 var jobServer = HostContext.GetService<IJobServer>();
                 VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+                VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
 
-                await jobServer.ConnectAsync(systemConnection.Url, jobServerCredential);
+                await jobServer.ConnectAsync(jobConnection);
 
                 var timeline = await jobServer.GetTimelineAsync(message.Plan.ScopeIdentifier, message.Plan.PlanType, message.Plan.PlanId, message.Timeline.Id, CancellationToken.None);
 
