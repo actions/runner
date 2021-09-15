@@ -37,7 +37,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
 
-            var dockerManger = HostContext.GetService<IDockerCommandManager>();
+            var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
@@ -52,8 +52,8 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.Output($"##[group]Building docker image");
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-                var imageName = $"{dockerManger.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManger.DockerBuild(
+                var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                var buildExitCode = await dockerManager.DockerBuild(
                     ExecutionContext,
                     ExecutionContext.GetGitHubContext("workspace"),
                     dockerFile,
@@ -67,6 +67,20 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 Data.Image = imageName;
+            }
+
+            string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";
+            // Add Telemetry to JobContext to send with JobCompleteMessage
+            if (stage == ActionRunStage.Main)
+            {
+                var telemetry = new ActionsStepTelemetry {
+                    Ref = GetActionRef(),
+                    HasPreStep = Data.HasPre,
+                    HasPostStep = Data.HasPost,
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = type
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
 
             // run container
@@ -200,6 +214,11 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Environment["ACTIONS_CACHE_URL"] = cacheUrl;
             }
+            if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
+            {
+                Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
+                Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            }
 
             foreach (var variable in this.Environment)
             {
@@ -209,7 +228,7 @@ namespace GitHub.Runner.Worker.Handlers
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             {
-                var runExitCode = await dockerManger.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
+                var runExitCode = await dockerManager.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
                 ExecutionContext.Debug($"Docker Action run completed with exit code {runExitCode}");
                 if (runExitCode != 0)
                 {

@@ -18,5 +18,12 @@ namespace GitHub.DistributedTask.WebApi
             get;
             set;
         }
+
+        [DataMember]
+        public string Path
+        {
+            get;
+            set;
+        }
     }
 }

@@ -82,6 +82,28 @@ namespace GitHub.Runner.Worker
             ActionExecutionData handlerData = definition.Data?.Execution;
             ArgUtil.NotNull(handlerData, nameof(handlerData));
 
+            List<JobExtensionRunner> localActionContainerSetupSteps = null;
+            // Handle Composite Local Actions
+            // Need to download and expand the tree of referenced actions
+            if (handlerData.ExecutionType == ActionExecutionType.Composite &&
+                handlerData is CompositeActionExecutionData compositeHandlerData &&
+                Stage == ActionRunStage.Main &&
+                Action.Reference is Pipelines.RepositoryPathReference localAction &&
+                string.Equals(localAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+            {
+                var actionManager = HostContext.GetService<IActionManager>();
+                var prepareResult = await actionManager.PrepareActionsAsync(ExecutionContext, compositeHandlerData.Steps, ExecutionContext.Id);
+
+                // Reload definition since post may exist now (from embedded steps that were JIT downloaded)
+                definition = taskManager.LoadAction(ExecutionContext, Action);
+                ArgUtil.NotNull(definition, nameof(definition));
+                handlerData = definition.Data?.Execution;
+                ArgUtil.NotNull(handlerData, nameof(handlerData));
+
+                // Save container setup steps so we can reference them later
+                localActionContainerSetupSteps = prepareResult.ContainerSetupSteps;
+            }
+
             if (handlerData.HasPre &&
                 Action.Reference is Pipelines.RepositoryPathReference repoAction &&
                 string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
@@ -249,7 +271,8 @@ namespace GitHub.Runner.Worker
                             inputs,
                             environment,
                             ExecutionContext.Global.Variables,
-                            actionDirectory: definition.Directory);
+                            actionDirectory: definition.Directory,
+                            localActionContainerSetupSteps: localActionContainerSetupSteps);
 
             // Print out action details
             handler.PrintActionDetails(Stage);

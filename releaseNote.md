@@ -1,17 +1,20 @@
 ## Features
 
-- Use GITHUB_TOKEN for ghcr.io containers if credentials are not provided (#990)
+- Support the `--ephemeral` flag (#660)
+  - This optional flag will configure the runner to only take one job, and let the service un-configure the runner after that job finishes.
+  - Expect to see more info in the Github API documentation soon. We'll link to those docs directly as they become generally available!
 
 ## Bugs
 
-- Do not trucate error message from template evaluation (#1038)
-- Make FileShare ReadWrite (#1033)
-- Mask secrets with double-quotes when passed to docker command line (#1002)
-- Delete script files before replacing during update (#984)
-
+- Fix a bug in `script/delete` wherein a repo with multiple runners would be unable to find the correct runner (#1268) (#1269)
+- Mitigate a race condition when requesting an OIDC `Id_token` (#1320)
+- Make client retries more resilient in JobServer (#1316)
 
 ## Misc
 
+- Increase readability of colored console output (#1295) (#1319)
+- Add more network troubleshooting to the docs (#1325)
+- Bump [path-parse](https://github.com/jbgutierrez/path-parse) from 1.0.6 to 1.0.7 (#1256)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

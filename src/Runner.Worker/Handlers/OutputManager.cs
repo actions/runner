@@ -210,6 +210,10 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 issueType = DTWebApi.IssueType.Warning;
             }
+            else if (string.Equals(match.Severity, "notice", StringComparison.OrdinalIgnoreCase))
+            {
+                issueType = DTWebApi.IssueType.Notice;
+            }
             else
             {
                 _executionContext.Debug($"Skipped logging an issue for the matched line because the severity '{match.Severity}' is not supported.");

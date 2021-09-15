@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "create runner layout",
+            "detail": "Build and Copy all projects, scripts and external dependencies to _layout from src (run this the first time or after deleting _layout)",
+            "command": "./dev.sh",
+            "windows": {
+                "command": "dev.cmd"
+            },
+            "args": [
+                "layout"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/src"
+            },
+        },
+        {
+            "label": "build runner layout",
+            "detail": "Build and Copy all projects to _layout from src (run this on code change)",
+            "command": "./dev.sh",
+            "windows": {
+                "command": "dev.cmd"
+            },
+            "args": [
+                "build"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/src"
+            },
+        }
+    ],
+}

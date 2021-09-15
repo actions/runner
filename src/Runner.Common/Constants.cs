@@ -41,6 +41,8 @@ namespace GitHub.Runner.Common
         public static string PluginTracePrefix = "##[plugin.trace]";
         public static readonly int RunnerDownloadRetryMaxAttempts = 3;
 
+        public static readonly int CompositeActionsMaxDepth = 9;
+
         // This enum is embedded within the Constants class to make it easier to reference and avoid
         // ambiguous type reference with System.Runtime.InteropServices.OSPlatform and System.Runtime.InteropServices.Architecture
         public enum OSPlatform
@@ -123,9 +125,10 @@ namespace GitHub.Runner.Common
                 {
                     public static readonly string Check = "check";
                     public static readonly string Commit = "commit";
+                    public static readonly string Ephemeral = "ephemeral";
                     public static readonly string Help = "help";
                     public static readonly string Replace = "replace";
-                    public static readonly string Once = "once";
+                    public static readonly string Once = "once"; // TODO: Remove in 10/2021
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
