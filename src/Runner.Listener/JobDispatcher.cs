@@ -775,7 +775,7 @@ namespace GitHub.Runner.Listener
         {
             try
             {
-                if (string.Equals(_runnerSettings.AgentName, agentName, StringComparison.Ordinal))
+                if (!string.Equals(_runnerSettings.AgentName, agentName, StringComparison.Ordinal))
                 {
                     _runnerSettings.AgentName = agentName;
                     _configurationStore.SaveSettings(_runnerSettings);
