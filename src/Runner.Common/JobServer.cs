@@ -2,19 +2,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.Runner.Sdk;
 using GitHub.Services.WebApi;
-using GitHub.Services.Common;
 
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServer))]
     public interface IJobServer : IRunnerService
     {
-        Task ConnectAsync(Uri jobServerUrl, VssCredentials jobServerCredential, DelegatingHandler[] delegatingHandler = null);
+        Task ConnectAsync(VssConnection jobConnection);
 
         // logging and console
         Task<TaskLog> AppendLogContentAsync(Guid scopeIdentifier, string hubName, Guid planId, int logId, Stream uploadStream, CancellationToken cancellationToken);
@@ -35,21 +32,20 @@ namespace GitHub.Runner.Common
         private VssConnection _connection;
         private TaskHttpClient _taskClient;
 
-        public async Task ConnectAsync(Uri jobServerUrl, VssCredentials jobServerCredential, DelegatingHandler[] delegatingHandler = null)
+        public async Task ConnectAsync(VssConnection jobConnection)
         {
-            Trace.Info($"Establishing connection for JobServer");
+            _connection = jobConnection;
             int attemptCount = 5;
-
-            while (attemptCount-- > 0)
+            while (!_connection.HasAuthenticated && attemptCount-- > 0)
             {
                 try
                 {
-                    await RefreshConnectionAsync(jobServerUrl, jobServerCredential, delegatingHandler);
+                    await _connection.ConnectAsync();
                     break;
                 }
                 catch (Exception ex) when (attemptCount > 0)
                 {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attempts left.");
+                    Trace.Info($"Catch exception during connect. {attemptCount} attemp left.");
                     Trace.Error(ex);
                 }
 
@@ -57,15 +53,6 @@ namespace GitHub.Runner.Common
             }
 
             _taskClient = _connection.GetClient<TaskHttpClient>();
-        }
-
-        private async Task RefreshConnectionAsync(Uri jobServerUrl, VssCredentials jobServerCredential, DelegatingHandler[] delegatingHandler)
-        {
-            Trace.Info($"Refresh JobServer VssConnection to get on a different AFD node.");
-            _hasConnection = false;
-            _connection?.Dispose();
-            _connection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, delegatingHandler);
-            await _connection.ConnectAsync();
             _hasConnection = true;
         }
 
