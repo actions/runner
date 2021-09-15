@@ -1,7 +1,5 @@
-using GitHub.DistributedTask.Pipelines;
-using GitHub.DistributedTask.Pipelines.ContextData;
+﻿using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
 using System;
 using System.Collections.Generic;
@@ -120,7 +118,6 @@ namespace GitHub.Runner.Worker
                                 Message = $"Invoked ::stopCommand:: with the token between the brackets: [{actionCommand.Data}]",
                                 Type = JobTelemetryType.ActionCommand
                             };
-                            Debugger.Break();
                             context.Root.JobTelemetry.Add(telemetry);
                         }
                         _stopProcessCommand = true;
