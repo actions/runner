@@ -214,7 +214,7 @@ namespace GitHub.Runner.Listener
                     var startupTypeAsString = command.GetStartupType();
                     if (string.IsNullOrEmpty(startupTypeAsString) && configuredAsService)
                     {
-                        // We need try our best to make the startup type accurate 
+                        // We need try our best to make the startup type accurate
                         // The problem is coming from runner autoupgrade, which result an old version service host binary but a newer version runner binary
                         // At that time the servicehost won't pass --startuptype to Runner.Listener while the runner is actually running as service.
                         // We will guess the startup type only when the runner is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
@@ -478,6 +478,12 @@ namespace GitHub.Runner.Listener
                     }
 
                     messageQueueLoopTokenSource.Dispose();
+
+                    if (settings.Ephemeral)
+                    {
+                        var configManager = HostContext.GetService<IConfigurationManager>();
+                        configManager.DeleteLocalRunnerConfig();
+                    }
                 }
             }
             catch (TaskAgentAccessTokenExpiredException)

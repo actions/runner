@@ -22,6 +22,7 @@ namespace GitHub.Runner.Listener.Configuration
         bool IsConfigured();
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
+        void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
     }
 
@@ -329,6 +330,38 @@ namespace GitHub.Runner.Listener.Configuration
 #endif
         }
 
+        // Delete .runner and .credentials files
+        public void DeleteLocalRunnerConfig()
+        {
+            bool isConfigured = _store.IsConfigured();
+            bool hasCredentials = _store.HasCredentials();
+            //delete credential config files
+            var currentAction = "Removing .credentials";
+            if (hasCredentials)
+            {
+                _store.DeleteCredential();
+                var keyManager = HostContext.GetService<IRSAKeyManager>();
+                keyManager.DeleteKey();
+                _term.WriteSuccessMessage("Removed .credentials");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+
+            //delete settings config file
+            currentAction = "Removing .runner";
+            if (isConfigured)
+            {
+                _store.DeleteSettings();
+                _term.WriteSuccessMessage("Removed .runner");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+        }
+
         public async Task UnconfigureAsync(CommandSettings command)
         {
             string currentAction = string.Empty;
@@ -402,31 +435,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine("Cannot connect to server, because config files are missing. Skipping removing runner from the server.");
                 }
 
-                //delete credential config files
-                currentAction = "Removing .credentials";
-                if (hasCredentials)
-                {
-                    _store.DeleteCredential();
-                    var keyManager = HostContext.GetService<IRSAKeyManager>();
-                    keyManager.DeleteKey();
-                    _term.WriteSuccessMessage("Removed .credentials");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
-
-                //delete settings config file
-                currentAction = "Removing .runner";
-                if (isConfigured)
-                {
-                    _store.DeleteSettings();
-                    _term.WriteSuccessMessage("Removed .runner");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
+                DeleteLocalRunnerConfig();
             }
             catch (Exception)
             {

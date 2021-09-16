@@ -161,7 +161,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,
                        "--token", _expectedToken,
-                       "--labels", userLabels
+                       "--labels", userLabels,
+                       "--ephemeral",
                     });
                 trace.Info("Constructed.");
                 _store.Setup(x => x.IsConfigured()).Returns(false);
@@ -179,6 +180,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolId.Equals(_secondRunnerGroupId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+                Assert.True(s.Ephemeral.Equals(true));
 
                 // validate GetAgentPoolsAsync gets called twice with automation pool type
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));
