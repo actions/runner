@@ -671,6 +671,7 @@ namespace GitHub.Runner.Listener
                         // fire first renew succeed event.
                         firstJobRequestRenewed.TrySetResult(0);
 
+                        // Update settings if the runner name has been changed server-side
                         UpdateAgentNameIfNeeded(request.ReservedAgent?.Name);
                     }
 
@@ -773,20 +774,23 @@ namespace GitHub.Runner.Listener
 
         private void UpdateAgentNameIfNeeded(string agentName)
         {
+            var isNewAgentName = !string.Equals(_runnerSettings.AgentName, agentName, StringComparison.Ordinal);
+            if (!isNewAgentName || string.IsNullOrEmpty(agentName))
+            {
+                return;
+            }
+
+            _runnerSettings.AgentName = agentName;
             try
             {
-                if (!string.Equals(_runnerSettings.AgentName, agentName, StringComparison.Ordinal))
-                {
-                    _runnerSettings.AgentName = agentName;
-                    _configurationStore.SaveSettings(_runnerSettings);
-                }
-
+                _configurationStore.SaveSettings(_runnerSettings);
             }
             catch (Exception ex)
             {
                 Trace.Error("Cannot update the settings file:");
                 Trace.Error(ex);
             }
+
         }
 
         // Best effort upload any logs for this job.
