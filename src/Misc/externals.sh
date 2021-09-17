@@ -141,19 +141,11 @@ if [[ "$PACKAGERUNTIME" == "win-x64" ]]; then
     if [[ "$PRECACHE" != "" ]]; then
         acquireExternalTool "https://github.com/microsoft/vswhere/releases/download/2.6.7/vswhere.exe" vswhere
     fi
-    acquireNodeOfficial "linux/amd64" "linux" "x64"
-    acquireNodeLinuxAlpine "linux/amd64"
-    acquireNodeOfficial "linux/arm" "linux" "armv7l"
-    acquireNodeOfficial "linux/arm64" "linux" "arm64"
 fi
 
 # Download the external tools only for OSX.
 if [[ "$PACKAGERUNTIME" == "osx-x64" ]]; then
     acquireNodeOfficial "" "darwin" "x64"
-    acquireNodeOfficial "linux/amd64" "linux" "x64"
-    acquireNodeLinuxAlpine "linux/amd64"
-    acquireNodeOfficial "linux/arm" "linux" "armv7l"
-    acquireNodeOfficial "linux/arm64" "linux" "arm64"
 fi
 
 # Download the external tools for Linux PACKAGERUNTIMEs.
@@ -161,20 +153,12 @@ fi
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireNodeOfficial "" "linux" "x64"
     acquireNodeLinuxAlpine ""
-    acquireNodeOfficial "linux/arm" "linux" "armv7l"
-    acquireNodeOfficial "linux/arm64" "linux" "arm64"
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm64" ]]; then
     acquireNodeOfficial "" "linux" "arm64"
-    acquireNodeOfficial "linux/arm" "linux" "armv7l"
-    acquireNodeOfficial "linux/amd64" "linux" "x64"
-    acquireNodeLinuxAlpine "linux/amd64"
 fi
 
 if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
     acquireNodeOfficial "" "linux" "armv7l"
-    acquireNodeOfficial "linux/arm64" "linux" "arm64"
-    acquireNodeOfficial "linux/amd64" "linux" "x64"
-    acquireNodeLinuxAlpine "linux/amd64"
 fi
