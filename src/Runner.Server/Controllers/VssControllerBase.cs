@@ -25,7 +25,7 @@ namespace Runner.Server.Controllers
             using(var reader = new StreamReader(Request.Body)) {
                 string text = await reader.ReadToEndAsync();
                 var obj = JObject.Parse(text);
-                return new KeyValuePair<T, JObject>(JsonConvert.DeserializeObject<T>(text), obj);
+                return new KeyValuePair<T, JObject>(JsonConvert.DeserializeObject<T>(text, new VssJsonMediaTypeFormatter().SerializerSettings), obj);
             }
         }
 

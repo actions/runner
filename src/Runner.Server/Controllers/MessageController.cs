@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -163,12 +163,6 @@ namespace Runner.Server.Controllers
             }
         }
 
-        enum Stat {
-            Success,
-            Failure,
-            Cancelled
-        }
-
         public sealed class SuccessFunction : Function
         {
             protected sealed override object EvaluateCore(EvaluationContext evaluationContext, out ResultMemory resultMemory)
@@ -181,7 +175,7 @@ namespace Runner.Server.Controllers
                         var s = parameter.Evaluate(evaluationContext).ConvertToString();
                         JobItem item = null;
                         if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
-                            if(item?.Status != Stat.Success) {
+                            if(item?.Status != TaskResult.Succeeded && item?.Status != TaskResult.SucceededWithIssues) {
                                 return false;
                             }
                         } else {
@@ -190,7 +184,7 @@ namespace Runner.Server.Controllers
                     }
                     return true;
                 }
-                return executionContext.JobContext.Success;
+                return !executionContext.Cancelled && executionContext.JobContext.Success;
             }
         }
 
@@ -206,14 +200,14 @@ namespace Runner.Server.Controllers
                         var s = parameter.Evaluate(evaluationContext).ConvertToString();
                         JobItem item = null;
                         if(executionContext.JobContext.Dependencies?.TryGetValue(s, out item) ?? false) {
-                            if(item?.Status == Stat.Failure) {
+                            if(item?.Status == TaskResult.Failed) {
                                 return true;
                             }
                         }
                     }
                     return false;
                 }
-                return executionContext.JobContext.Failure;
+                return !executionContext.Cancelled && executionContext.JobContext.Failure;
             }
         }
         public sealed class CancelledFunction : Function
@@ -230,8 +224,8 @@ namespace Runner.Server.Controllers
         class ExecutionContext
         {
             public List<JobItem> workflow { get; set; }
-            public bool Cancelled { get => workflow?.Any(job => job.Status == Stat.Cancelled) ?? false; }
-            public bool Success { get => workflow?.All(job => job.Status == Stat.Success) ?? false; }
+            public bool Cancelled { get; set; }
+            public bool Success { get => workflow?.All(job => job.Status == TaskResult.Succeeded || job.Status == TaskResult.SucceededWithIssues || job.Status == TaskResult.Skipped) ?? false; }
             public JobItem JobContext { get; set; }
         }
 
@@ -247,15 +241,16 @@ namespace Runner.Server.Controllers
 
             public List<JobItem> Childs { get; set; }
 
-            private Stat? stat;
+            private TaskResult? stat;
 
             public bool ContinueOnError {get;set;}
 
-            public Stat? Status { get => Childs?.Any() ?? false ? Childs.Any(c => c.Status == Stat.Cancelled) ? Stat.Cancelled : Childs.Any(c => c.Status == Stat.Failure) ? Stat.Failure :  Stat.Success : stat; set => stat = value; }
+            public TaskResult? Status { get => Childs?.Any() ?? false ? Childs.Any(c => c.Status == TaskResult.Failed) ? TaskResult.Failed : TaskResult.Succeeded : stat; set => stat = ContinueOnError && value == TaskResult.Failed ? TaskResult.Succeeded : value; }
             public Dictionary<string, JobItem> Dependencies { get; set;}
 
-            public bool Success { get => Dependencies?.All(p => p.Value.Status == Stat.Success) ?? true; }
-            public bool Failure { get => !Success; }
+            // Ref: https://docs.microsoft.com/en-us/azure/devops/pipelines/process/expressions?view=azure-devops#job-status-functions
+            public bool Success { get => Dependencies?.All(p => p.Value.Status == TaskResult.Succeeded || p.Value.Status == TaskResult.SucceededWithIssues) ?? true; }
+            public bool Failure { get => Dependencies?.Any(p => p.Value.Status == TaskResult.Failed) ?? false; }
 
             public bool Completed { get; set; }
  
@@ -570,6 +565,9 @@ namespace Runner.Server.Controllers
                                     allowed.Add("branches");
                                     allowed.Add("branches-ignore");
                                 }
+                                if(e == "workflow_run") {
+                                    allowed.Add("workflows");
+                                }
                                 if(e == "push" || e == "pull_request") {
                                     allowed.Add("tags");
                                     allowed.Add("tags-ignore");
@@ -621,13 +619,12 @@ namespace Runner.Server.Controllers
                                 var heads = "refs/heads/";
                                 var rtags = "refs/tags/";
 
-                                var Ref2 = hook?.Ref;
-                                if(Ref2 == null) {
-                                    if(e == "pull_request_target" || e == "pull_request") {
-                                        var tmp = hook?.pull_request?.Base?.Ref;
-                                        if(tmp != null) {
-                                            Ref2 = "refs/heads/" + tmp;
-                                        }
+                                var Ref2 = Ref;
+                                // Only evaluate base ref https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestbranchestags
+                                if(e == "pull_request_target" || e == "pull_request") {
+                                    var tmp = hook?.pull_request?.Base?.Ref;
+                                    if(tmp != null) {
+                                        Ref2 = "refs/heads/" + tmp;
                                     }
                                 }
                                 if(Ref2 != null) {
@@ -666,6 +663,42 @@ namespace Runner.Server.Controllers
                     default:
                         throw new Exception($"Error: Your workflow is invalid, 'on' property has an unexpected yaml Type {tk.Type}");
                 }
+                var workflowname = (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
+                (new Func<Task>(async () => {
+                    var client = new HttpClient();
+                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                    var urlBuilder = new UriBuilder(GitApiServerUrl);
+                    urlBuilder.Path += "/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                    var res = await client.GetAsync(urlBuilder.ToString());
+                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                        var content = await res.Content.ReadAsStringAsync();
+                        foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
+                        {
+                            try {
+                                var fileRes = await client.GetAsync(item.download_url);
+                                var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                var _event = new JObject();
+                                _event["action"] = "requested";
+                                _event["workflow"] = workflowname;
+                                var workflow_run = new JObject();
+                                _event["workflow_run"] = workflow_run;
+                                workflow_run["head_branch"] = Ref;
+                                workflow_run["head_sha"] = Sha;
+                                if(payloadObject["pull_request"] != null) {
+                                    workflow_run["pull_requests"] = new JArray(payloadObject["pull_request"]);
+                                }
+                                _event["organization"] = payloadObject["organization"];
+                                _event["repository"] = payloadObject["repository"];
+                                _event["sender"] = payloadObject["sender"];
+                                ConvertYaml(item.path, filecontent, hook.repository.full_name, GitServerUrl, new GiteaHook(), _event, "workflow_run");
+                            } catch (Exception ex) {
+                                await Console.Error.WriteLineAsync(ex.Message);
+                                await Console.Error.WriteLineAsync(ex.StackTrace);
+                            }
+                        }
+                    }
+                }))();
 
                 var jobnamebuilder = new ReferenceNameBuilder();
                 foreach (var actionPair in actionMapping)
@@ -719,7 +752,6 @@ namespace Runner.Server.Controllers
                             githubctx.Add("server_url", new StringContextData(GitServerUrl));
                             githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
                             githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                            var workflowname = (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                             githubctx.Add("workflow", new StringContextData(workflowname));
                             githubctx.Add("repository", new StringContextData(repository_name));
                             githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
@@ -766,24 +798,21 @@ namespace Runner.Server.Controllers
                                             outputsctx.Add(item.Key, new StringContextData(item.Value.Value));
                                         }
                                         NeedsTaskResult result = NeedsTaskResult.Failure;
+                                        job.Status = e.Result;
                                         switch(e.Result) {
                                             case TaskResult.Failed:
                                             case TaskResult.Abandoned:
                                                 result = job.ContinueOnError ? NeedsTaskResult.Success : NeedsTaskResult.Failure;
-                                                job.Status =  job.ContinueOnError ? Stat.Success : Stat.Failure;
                                                 break;
                                             case TaskResult.Canceled:
                                                 result = NeedsTaskResult.Cancelled;
-                                                job.Status = Stat.Cancelled;
                                                 break;
                                             case TaskResult.Succeeded:
                                             case TaskResult.SucceededWithIssues:
                                                 result = NeedsTaskResult.Success;
-                                                job.Status = Stat.Success;
                                                 break;
                                             case TaskResult.Skipped:
                                                 result = NeedsTaskResult.Skipped;
-                                                job.Status = Stat.Success;
                                                 break;
                                         }
                                         jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
@@ -1179,22 +1208,7 @@ namespace Runner.Server.Controllers
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault();
                         Action<JobItem> updateStatus = job => {
-                            switch(e.Result) {
-                                case TaskResult.Failed:
-                                case TaskResult.Abandoned:
-                                    job.Status = job.ContinueOnError ? Stat.Success : Stat.Failure;
-                                    break;
-                                case TaskResult.Canceled:
-                                    job.Status = Stat.Cancelled;
-                                    break;
-                                case TaskResult.Succeeded:
-                                case TaskResult.SucceededWithIssues:
-                                    job.Status = Stat.Success;
-                                    break;
-                                case TaskResult.Skipped:
-                                    job.Status = Stat.Success;
-                                    break;
-                            }
+                            job.Status = e.Result;
                         };
                         if(ja != null) {
                             if(e.JobId != ja.Id) {
@@ -1211,6 +1225,42 @@ namespace Runner.Server.Controllers
                                 exctx.workflow = jobs.ToList();
                                 var evargs = new WorkflowEventArgs { runid = runid, Success = exctx.Success };
                                 _workflowstatus[runid] = evargs;
+                                (new Func<Task>(async () => {
+                                    var client = new HttpClient();
+                                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                                    client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                    var urlBuilder = new UriBuilder(GitApiServerUrl);
+                                    urlBuilder.Path += "/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                                    var res = await client.GetAsync(urlBuilder.ToString());
+                                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                                        var content = await res.Content.ReadAsStringAsync();
+                                        foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
+                                        {
+                                            try {
+                                                var fileRes = await client.GetAsync(item.download_url);
+                                                var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                                var _event = new JObject();
+                                                _event["action"] = "completed";
+                                                _event["workflow"] = workflowname;
+                                                var workflow_run = new JObject();
+                                                _event["workflow_run"] = workflow_run;
+                                                workflow_run["head_branch"] = Ref;
+                                                workflow_run["head_sha"] = Sha;
+                                                if(payloadObject["pull_request"] != null) {
+                                                    workflow_run["pull_requests"] = new JArray(payloadObject["pull_request"]);
+                                                }
+                                                workflow_run["conclusion"] = evargs.Success ? "success" : "failure";
+                                                _event["organization"] = payloadObject["organization"];
+                                                _event["repository"] = payloadObject["repository"];
+                                                _event["sender"] = payloadObject["sender"];
+                                                ConvertYaml(item.path, filecontent, hook.repository.full_name, GitServerUrl, new GiteaHook(), _event, "workflow_run");
+                                            } catch (Exception ex) {
+                                                await Console.Error.WriteLineAsync(ex.Message);
+                                                await Console.Error.WriteLineAsync(ex.StackTrace);
+                                            }
+                                        }
+                                    }
+                                }))();
                                 workflowevent?.Invoke(evargs);
                             } else {
                                 jobCompleted(e);
@@ -1291,6 +1341,49 @@ namespace Runner.Server.Controllers
         private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout)
         {
             TimelineController.dict[timelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = jobId } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
+            var rawSteps = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault().Value?.AssertSequence("seq");
+            if(rawSteps == null) {
+                var rawUses = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value?.AssertString("str");
+                var rawWith = (from r in run where r.Key.AssertString("str").Value == "with" select r).FirstOrDefault().Value?.AssertMapping("map");
+                var xref = rawUses.Value.Split('@', 2);
+                var parts = xref[0].Split('/', 3);
+                (new Func<Task>(async () => {
+                    var client = new HttpClient();
+                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                    var url = new UriBuilder(GitApiServerUrl);
+                    url.Path += $"/repos/{parts[0]}/{parts[1]}/contents/{Uri.EscapeUriString($".github/{parts[2]}")}";
+                    url.Query = $"ref={Uri.EscapeUriString(parts[3])}";
+                    var res = await client.GetAsync(url.ToString());
+                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                        var content = await res.Content.ReadAsStringAsync();
+                        var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
+                        {
+                            try {
+                                var fileRes = await client.GetAsync(item.download_url);
+                                var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
+                                hook["inputs"] = rawWith?.ToContextData()?.ToJToken();
+                                var ghook = hook.ToObject<GiteaHook>();
+                                var resp = ConvertYaml(item.path, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, secrets, null, platform, localcheckout);
+                                workflowevent += e => {
+                                    if(e.runid == resp.run_id) {
+                                        var _RequestId = Interlocked.Increment(ref reqId);
+                                        var jid = jobId;
+                                        var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = _RequestId }, (id, job) => job);
+                                        jobevent?.Invoke(this, _job.repo, _job);
+                                        FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = _RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                    }
+                                };
+                            } catch (Exception ex) {
+                                await Console.Error.WriteLineAsync(ex.Message);
+                                await Console.Error.WriteLineAsync(ex.StackTrace);
+                            }
+                        }
+                    }
+                }))();
+                return null;
+            }
             var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
             HashSet<string> runsOnMap = new HashSet<string>();
             if (runsOn != null) {
@@ -1368,10 +1461,7 @@ namespace Runner.Server.Controllers
                 FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = _RequestId, Outputs = new Dictionary<String, VariableValue>() });
                 return null;
             }
-            var res = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault();
-            var seq = res.Value.AssertSequence("seq");
-
-            var steps = PipelineTemplateConverter.ConvertToSteps(templateContext, seq);
+            var steps = PipelineTemplateConverter.ConvertToSteps(templateContext, rawSteps);
 
             if(localcheckout) {
                 // Rewrite checkout step to copy repo via custom protocol
@@ -1428,6 +1518,7 @@ namespace Runner.Server.Controllers
             variables.Add("github_token", new VariableValue(GITHUB_TOKEN, true));
             variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
             variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
+            variables.Add("DistributedTask.EnhancedAnnotations", new VariableValue("true", false));
             foreach (var secret in this.secrets) {
                 variables[secret.Name] = new VariableValue(secret.Value, true);
             }
@@ -1487,7 +1578,7 @@ namespace Runner.Server.Controllers
                     return null;
                 }
             }, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = RequestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError }, (id, job) => job);
-            _cache.Set("Job_" + job.JobId, job);
+            _cache.Set(job.JobId, job);
             jobevent?.Invoke(this, job.repo, job);
             return cancel => {
                 if(cancel) {
@@ -1668,7 +1759,7 @@ namespace Runner.Server.Controllers
                                 job.SessionId = sessionId;
                                 return job;
                             });
-                            _cache.Set("Job_" + res.JobId, session.Job);
+                            _cache.Set(res.JobId, session.Job);
                             
                             session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
                             session.JobTimer.Start();
@@ -1693,10 +1784,13 @@ namespace Runner.Server.Controllers
                     }
                 }
             } else if(!session.Job.Cancelled) {
-                try {                    
-                    await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(ts.Token, session.Job.CancelRequest.Token).Token);
-                } catch (TaskCanceledException) {
-                    if(session.Job.CancelRequest.IsCancellationRequested) {
+                /*try {*/
+                    Console.WriteLine("Waiting for request abort, timeout, job cancellation or job finish");
+                    await Task.WhenAny(Task.Delay(-1,session.JobRunningToken), Task.Delay(-1,ts.Token), Task.Delay(-1,session.Job.CancelRequest.Token));
+                    // await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token, session.Job.CancelRequest.Token).Token);
+                /*} catch (TaskCanceledException) { */
+                    Console.WriteLine("Finished: Waiting for request abort, timeout, job cancellation or job finish");
+                    if(!session.JobRunningToken.IsCancellationRequested && session.Job.CancelRequest.IsCancellationRequested) {
                         session.Job.Cancelled = true;
                         session.Key.GenerateIV();
                         using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
@@ -1712,7 +1806,18 @@ namespace Runner.Server.Controllers
                             });
                         }
                     }
+                    // The official runner ignores the next job if we don't delay here
+                    await Task.Delay(500);
+                /* } */
+            } else {
+                try {
+                    Console.WriteLine("Waiting for request abort, timeout or job finish");
+                    await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token).Token);
+                } catch (TaskCanceledException) {
+                    Console.WriteLine("Finished: Waiting for request abort, timeout or job finish");
                 }
+                // The official runner ignores the next job if we don't delay here
+                await Task.Delay(500);
             }
             return NoContent();
         }
@@ -1781,6 +1886,7 @@ namespace Runner.Server.Controllers
             public List<GitCommit> Commits {get;set;}
             public string ref_type { get; set; }
             public string Sha { get; set; }
+            public string tag_name { get; set; }
         }
 
         public class Issue {
@@ -1827,18 +1933,22 @@ namespace Runner.Server.Controllers
                     if(hook?.After != null) {
                         evs.Add(e, hook?.After);
                     } else if(e == "pull_request") {
-                        evs.Add("pull_request_target", "");
+                        evs.Add("pull_request_target", hook?.pull_request?.Base?.Sha);
                         evs.Add("pull_request", hook?.pull_request?.head?.Sha);
                     } else if(e.StartsWith("pull_request_")) {
                         evs.Add(e, hook?.pull_request?.head?.Sha);
                     } else if(e == "create" && hook?.ref_type != null) {
                         evs.Add(e, hook?.Sha);
+                    } else if(e == "release" && hook?.ref_type != null) {
+                        evs.Add(e, hook?.tag_name);
                     } else {
                         var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("accept", "application/json");
                         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                        var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
-                        var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/commits?page=1&limit=1");
+                        var urlBuilder = new UriBuilder(GitApiServerUrl);
+                        urlBuilder.Path += "/repos/{hook.repository.full_name}/commits";
+                        urlBuilder.Query = $"?page=1&limit=1";
+                        var res = await client.GetAsync(urlBuilder.ToString());
                         if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                             var content = await res.Content.ReadAsStringAsync();
                             var o = JsonConvert.DeserializeObject<GitCommit[]>(content)[0];
@@ -1850,8 +1960,10 @@ namespace Runner.Server.Controllers
                         var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("accept", "application/json");
                         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                        var giteaUrl = $"{hook.repository.html_url.Scheme}://{hook.repository.html_url.Host}:{hook.repository.html_url.Port}";
-                        var res = await client.GetAsync($"{giteaUrl}/api/v1/repos/{hook.repository.full_name}/contents/.github%2Fworkflows?ref={em.Value}");
+                        var urlBuilder = new UriBuilder(GitApiServerUrl);
+                        urlBuilder.Path += "/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                        urlBuilder.Query = $"?ref={Uri.EscapeDataString(em.Value)}";
+                        var res = await client.GetAsync(urlBuilder.ToString());
                         // {
                         //     "type": "gitea",
                         //     "config": {
@@ -1889,7 +2001,7 @@ namespace Runner.Server.Controllers
                                 try {
                                     var fileRes = await client.GetAsync(item.download_url);
                                     var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                    ConvertYaml(item.path, filecontent, hook.repository.full_name, giteaUrl, hook, obj.Value, em.Key);
+                                    ConvertYaml(item.path, filecontent, hook.repository.full_name, GitServerUrl, hook, obj.Value, em.Key);
                                 } catch (Exception ex) {
                                     await Console.Error.WriteLineAsync(ex.Message);
                                     await Console.Error.WriteLineAsync(ex.StackTrace);
@@ -1968,6 +2080,19 @@ namespace Runner.Server.Controllers
                 }
             }
         }
+
+        // [HttpPost("cancelWorkflow/{run_id}")]
+        // public void CancelWorkflow(long run_id) {
+        //     Job job;
+        //     _workflowstatus[0].
+        //     if(GetWorkflowStatus.TryGetValue(id, out job)) {
+        //         job.CancelRequest.Cancel();
+        //         if(job.SessionId == Guid.Empty) {
+        //             job.Cancelled = true;
+        //             FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+        //         }
+        //     }
+        // }
 
         public class PushStreamResult: IActionResult
         {

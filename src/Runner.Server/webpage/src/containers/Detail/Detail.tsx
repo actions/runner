@@ -310,7 +310,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
             <div className={styles.text} style={{width: '100%'}}>
                 {(() => {
                     var job = getJobById(jobs, id);
-                    if(job !== undefined && job.job != null && !job.job.cancelRequest) {
+                    if(job !== undefined && job.job != null) {
                         return  <button onClick={(event) => {
                             (async () => {
                                 await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.job.jobId, { method: "POST" });

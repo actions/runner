@@ -1,0 +1,24 @@
+on: push
+jobs:
+  skipped:
+    if: 'false'
+    runs-on: self-hosted
+    steps:
+    - run: exit 1
+  failAfterSkipped:
+    needs: skipped
+    runs-on: self-hosted
+    steps:
+    - run: exit 1
+  failAfterSkipped2:
+    if: success('skipped') || failure('skipped') || cancelled()
+    needs: skipped
+    runs-on: self-hosted
+    steps:
+    - run: exit 1
+  failAfterSkipped3:
+    if: success() || failure() || cancelled()
+    needs: skipped
+    runs-on: self-hosted
+    steps:
+    - run: exit 1

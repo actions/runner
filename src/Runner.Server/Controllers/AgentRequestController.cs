@@ -30,9 +30,9 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{poolId}/{requestId}")]
-        public TaskAgentJobRequest GetAgentRequest(int poolId, long requestId, string includeStatus = null)
+        public Task<FileStreamResult> GetAgentRequest(int poolId, long requestId, string includeStatus = null)
         {
-            return new TaskAgentJobRequest() {PlanId = Guid.NewGuid()};
+            return Ok(new TaskAgentJobRequest() {PlanId = Guid.NewGuid()});
         }
 
         [HttpPatch("{poolId}/{requestId}")]

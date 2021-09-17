@@ -109,12 +109,11 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId)
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
-            var compare = new TimelineRecord();
             var res = dict.AddOrUpdate(timelineId, id => (patch.Value, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()), (id, old) => {
                 old.Item1.AddRange(patch.Value);
                 return (MergeTimelineRecords(old.Item1), old.Item2);
             });
-            TimeLineUpdate?.Invoke(timelineId, res.Item1);
+            Task.Run(() => TimeLineUpdate?.Invoke(timelineId, res.Item1));
             return await Ok(patch);
         }
     }

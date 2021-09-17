@@ -38,7 +38,7 @@ namespace Runner.Server.Controllers
         [HttpPost("{poolId}")]
         public async Task<IActionResult> Post(int poolId) {
             TaskAgent agent = await FromBody<TaskAgent>();
-            agent.Authorization.AuthorizationUrl = new Uri($"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.RemoteIpAddress.ToString() + "]") : HttpContext.Connection.RemoteIpAddress.ToString())}:{Request.Host.Port ?? HttpContext.Connection.RemotePort}/test/auth/v1/");
+            agent.Authorization.AuthorizationUrl = new Uri($"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.LocalIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? HttpContext.Connection.LocalPort}/test/auth/v1/");
             agent.Authorization.ClientId = Guid.NewGuid();
             lock(lck) {
                 Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
@@ -48,9 +48,9 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{poolId}/{agentId}")]
-        public TaskAgent Get(int poolId, int agentId)
+        public async Task<ActionResult> Get(int poolId, int agentId)
         {
-            return Agent.GetAgent(_cache, _context, poolId, agentId).TaskAgent;
+            return await Ok(Agent.GetAgent(_cache, _context, poolId, agentId).TaskAgent);
         }
 
         [HttpDelete("{poolId}/{agentId}")]
@@ -64,11 +64,11 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet("{poolId}")]
-        public VssJsonCollectionWrapper<List<TaskAgent>> Get(int poolId, [FromQuery] string agentName)
+        public async Task<ActionResult> Get(int poolId, [FromQuery] string agentName)
         {
-            return new VssJsonCollectionWrapper<List<TaskAgent>> (
+            return await Ok(new VssJsonCollectionWrapper<List<TaskAgent>> (
                 (from agent in Pool.GetPoolById(_cache, _context, poolId)?.Agents ?? new List<Agent>() where agent != null && agent.TaskAgent.Name == agentName select agent.TaskAgent).ToList()
-            );
+            ));
         }
     }
 }

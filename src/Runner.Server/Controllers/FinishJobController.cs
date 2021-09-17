@@ -42,22 +42,23 @@ namespace Runner.Server.Controllers
         {
             var jevent = await FromBody<JobEvent>();
             if (jevent is JobCompletedEvent ev) {
-                OnJobCompleted?.Invoke(ev);
+                Task.Run(() => OnJobCompleted?.Invoke(ev));
                 MessageController.Job job;
-                if(_cache.TryGetValue("Job_" + ev.JobId, out job)) {
+                if(_cache.TryGetValue(ev.JobId, out job)) {
                     Session session;
                     if(_cache.TryGetValue(job.SessionId, out session)) {
+                        Console.Out.WriteLine("Job finished / set session job to null");
                         session.Job = null;
                     }
                 }
                 Console.Out.WriteLine("Job finished");
                 return Ok();
             } else if (jevent is JobAssignedEvent a) {
-                OnJobAssigned?.Invoke(a);
+                Task.Run(() => OnJobAssigned?.Invoke(a));
                 Console.Out.WriteLine("Job assigned");
                 return Ok();
             } else if(jevent is JobStartedEvent s) {
-                OnJobStarted?.Invoke(s);
+                Task.Run(() => OnJobStarted?.Invoke(s));
                 Console.Out.WriteLine("Job started");
                 return Ok();
             }

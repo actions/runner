@@ -38,7 +38,7 @@ namespace Runner.Server.Controllers
         public async Task AppendLogContent(Guid scopeIdentifier, string hubName, Guid planId, int logId)
         {
             using (StreamReader reader = new StreamReader(Request.Body, Encoding.UTF8))
-            {  
+            {
                 logs[logId] = (logs[logId].Item1, logs[logId].Item2 +  await reader.ReadToEndAsync());
             }
         }
