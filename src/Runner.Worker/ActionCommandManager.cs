@@ -115,7 +115,7 @@ namespace GitHub.Runner.Worker
                         {
                             var telemetry = new JobTelemetry
                             {
-                                Message = $"Invoked ::stopCommand:: with token: [{actionCommand.Data}]",
+                                Message = $"Invoked ::stopCommand:: with token: [{HostContext.SecretMasker.MaskSecrets(actionCommand.Data)}]",
                                 Type = JobTelemetryType.ActionCommand
                             };
                             context.JobTelemetry.Add(telemetry);
