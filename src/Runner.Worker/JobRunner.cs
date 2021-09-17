@@ -216,7 +216,7 @@ namespace GitHub.Runner.Worker
             }
 
             Trace.Info("Raising job completed event.");
-            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.ActionsStepsTelemetry, jobContext.JobTelemetry);
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.ActionsStepsTelemetry, MaskTelemetrySecrets(jobContext.JobTelemetry));
 
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -258,6 +258,15 @@ namespace GitHub.Runner.Worker
 
             // rethrow exceptions from all attempts.
             throw new AggregateException(exceptions);
+        }
+        private List<JobTelemetry> MaskTelemetrySecrets(List<JobTelemetry> jobTelemetry)
+        {
+            foreach (var telemetryItem in jobTelemetry)
+            {
+                telemetryItem.Message = HostContext.SecretMasker.MaskSecrets(telemetryItem.Message);
+            }
+
+            return jobTelemetry;
         }
 
         private async Task ShutdownQueue(bool throwOnFailure)
