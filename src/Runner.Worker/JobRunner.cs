@@ -272,6 +272,7 @@ namespace GitHub.Runner.Worker
             // rethrow exceptions from all attempts.
             throw new AggregateException(exceptions);
         }
+
         private List<JobTelemetry> MaskTelemetrySecrets(List<JobTelemetry> jobTelemetry)
         {
             foreach (var telemetryItem in jobTelemetry)
