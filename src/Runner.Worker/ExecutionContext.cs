@@ -296,6 +296,7 @@ namespace GitHub.Runner.Worker
             child.ContextName = contextName;
             child.EmbeddedId = embeddedId;
             child.SiblingScopeName = siblingScopeName;
+            child.JobTelemetry = JobTelemetry;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
