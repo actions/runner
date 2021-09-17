@@ -22,6 +22,7 @@ namespace GitHub.Runner.Listener.Configuration
         bool IsConfigured();
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
+        void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
     }
 
@@ -65,18 +66,18 @@ namespace GitHub.Runner.Listener.Configuration
         public async Task ConfigureAsync(CommandSettings command)
         {
             _term.WriteLine();
-            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
-            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |", ConsoleColor.White);
-            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |", ConsoleColor.White);
-            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |", ConsoleColor.White);
-            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |", ConsoleColor.White);
-            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |", ConsoleColor.White);
-            _term.WriteLine("|                                                                              |", ConsoleColor.White);
-            _term.Write("|                       ", ConsoleColor.White);
+            _term.WriteLine("--------------------------------------------------------------------------------");
+            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |");
+            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |");
+            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |");
+            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |");
+            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |");
+            _term.WriteLine("|                                                                              |");
+            _term.Write("|                       ");
             _term.Write("Self-hosted runner registration", ConsoleColor.Cyan);
-            _term.WriteLine("                        |", ConsoleColor.White);
-            _term.WriteLine("|                                                                              |", ConsoleColor.White);
-            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
+            _term.WriteLine("                        |");
+            _term.WriteLine("|                                                                              |");
+            _term.WriteLine("--------------------------------------------------------------------------------");
 
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
@@ -195,6 +196,7 @@ namespace GitHub.Runner.Listener.Configuration
             TaskAgent agent;
             while (true)
             {
+                runnerSettings.Ephemeral = command.Ephemeral;
                 runnerSettings.AgentName = command.GetRunnerName();
 
                 _term.WriteLine();
@@ -211,7 +213,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey, userLabels);
+                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral);
 
                         try
                         {
@@ -234,7 +236,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral);
 
                     try
                     {
@@ -328,6 +330,38 @@ namespace GitHub.Runner.Listener.Configuration
 #endif
         }
 
+        // Delete .runner and .credentials files
+        public void DeleteLocalRunnerConfig()
+        {
+            bool isConfigured = _store.IsConfigured();
+            bool hasCredentials = _store.HasCredentials();
+            //delete credential config files
+            var currentAction = "Removing .credentials";
+            if (hasCredentials)
+            {
+                _store.DeleteCredential();
+                var keyManager = HostContext.GetService<IRSAKeyManager>();
+                keyManager.DeleteKey();
+                _term.WriteSuccessMessage("Removed .credentials");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+
+            //delete settings config file
+            currentAction = "Removing .runner";
+            if (isConfigured)
+            {
+                _store.DeleteSettings();
+                _term.WriteSuccessMessage("Removed .runner");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+        }
+
         public async Task UnconfigureAsync(CommandSettings command)
         {
             string currentAction = string.Empty;
@@ -401,31 +435,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine("Cannot connect to server, because config files are missing. Skipping removing runner from the server.");
                 }
 
-                //delete credential config files
-                currentAction = "Removing .credentials";
-                if (hasCredentials)
-                {
-                    _store.DeleteCredential();
-                    var keyManager = HostContext.GetService<IRSAKeyManager>();
-                    keyManager.DeleteKey();
-                    _term.WriteSuccessMessage("Removed .credentials");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
-
-                //delete settings config file
-                currentAction = "Removing .runner";
-                if (isConfigured)
-                {
-                    _store.DeleteSettings();
-                    _term.WriteSuccessMessage("Removed .runner");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
+                DeleteLocalRunnerConfig();
             }
             catch (Exception)
             {
@@ -456,7 +466,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -467,6 +477,8 @@ namespace GitHub.Runner.Listener.Configuration
             // update should replace the existing labels
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
+            agent.Ephemeral = ephemeral;
+            agent.MaxParallelism = 1;
 
             agent.Labels.Clear();
 
@@ -482,7 +494,7 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
         {
             TaskAgent agent = new TaskAgent(agentName)
             {
@@ -493,6 +505,7 @@ namespace GitHub.Runner.Listener.Configuration
                 MaxParallelism = 1,
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
+                Ephemeral = ephemeral,
             };
 
             agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));

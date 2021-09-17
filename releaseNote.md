@@ -1,17 +1,20 @@
 ## Features
 
-- Allow setting default severity to "notice" (#1213)
-- Show More Step Information in composite Actions (#1279)
+- Support the `--ephemeral` flag (#660)
+  - This optional flag will configure the runner to only take one job, and let the service un-configure the runner after that job finishes.
+  - Expect to see more info in the Github API documentation soon. We'll link to those docs directly as they become generally available!
 
 ## Bugs
 
-- Temporary fix for macOS runner upgrade crash loop. (#1304)
-- Fixed an issue where GHES runners fail to download public docker images (#1199)
+- Fix a bug in `script/delete` wherein a repo with multiple runners would be unable to find the correct runner (#1268) (#1269)
+- Mitigate a race condition when requesting an OIDC `Id_token` (#1320)
+- Make client retries more resilient in JobServer (#1316)
 
 ## Misc
 
-- Update error to say 'uninstall' not 'unconfigure' (#1179)
-- Typo fixed (#1289)
+- Increase readability of colored console output (#1295) (#1319)
+- Add more network troubleshooting to the docs (#1325)
+- Bump [path-parse](https://github.com/jbgutierrez/path-parse) from 1.0.6 to 1.0.7 (#1256)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
@@ -23,7 +26,7 @@ mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
 Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip -OutFile actions-runner-win-x64-<RUNNER_VERSION>.zip
 # Extract the installer
-Add-Type -AssemblyName System.IO.Compression.FileSystem ; 
+Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
 ```
 

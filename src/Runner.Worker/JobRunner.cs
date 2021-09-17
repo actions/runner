@@ -106,6 +106,9 @@ namespace GitHub.Runner.Worker
 
                 jobContext.SetRunnerContext("os", VarUtil.OS);
 
+                var runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
+                jobContext.SetRunnerContext("name", runnerSettings.AgentName);
+
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
                 jobContext.SetRunnerContext("tool_cache", toolsDirectory);
@@ -144,6 +147,16 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Total job steps: {jobSteps.Count}.");
                 Trace.Verbose($"Job steps: '{string.Join(", ", jobSteps.Select(x => x.DisplayName))}'");
                 HostContext.WritePerfCounter($"WorkerJobInitialized_{message.RequestId.ToString()}");
+
+                if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) &&
+                    !string.IsNullOrEmpty(generateIdTokenUrl))
+                {
+                    // Server won't issue ID_TOKEN for non-inprogress job.
+                    // If the job is trying to use OIDC feature, we want the job to be marked as in-progress before running any customer's steps as much as we can.
+                    // Timeline record update background process runs every 500ms, so delay 1000ms is enough for most of the cases
+                    Trace.Info($"Waiting for job to be marked as started.");
+                    await Task.WhenAny(_jobServerQueue.JobRecordUpdated.Task, Task.Delay(1000));
+                }
 
                 // Run all job steps
                 Trace.Info("Run all job steps.");
