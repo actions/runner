@@ -669,7 +669,7 @@ namespace Runner.Server.Controllers
                     client.DefaultRequestHeaders.Add("accept", "application/json");
                     client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                     var urlBuilder = new UriBuilder(GitApiServerUrl);
-                    urlBuilder.Path += "/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                    urlBuilder.Path += $"/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
                     var res = await client.GetAsync(urlBuilder.ToString());
                     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                         var content = await res.Content.ReadAsStringAsync();
@@ -1230,7 +1230,7 @@ namespace Runner.Server.Controllers
                                     client.DefaultRequestHeaders.Add("accept", "application/json");
                                     client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                                     var urlBuilder = new UriBuilder(GitApiServerUrl);
-                                    urlBuilder.Path += "/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                                    urlBuilder.Path += $"/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
                                     var res = await client.GetAsync(urlBuilder.ToString());
                                     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                                         var content = await res.Content.ReadAsStringAsync();
@@ -1946,7 +1946,7 @@ namespace Runner.Server.Controllers
                         client.DefaultRequestHeaders.Add("accept", "application/json");
                         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                         var urlBuilder = new UriBuilder(GitApiServerUrl);
-                        urlBuilder.Path += "/repos/{hook.repository.full_name}/commits";
+                        urlBuilder.Path += $"/repos/{hook.repository.full_name}/commits";
                         urlBuilder.Query = $"?page=1&limit=1";
                         var res = await client.GetAsync(urlBuilder.ToString());
                         if(res.StatusCode == System.Net.HttpStatusCode.OK) {
@@ -1961,7 +1961,7 @@ namespace Runner.Server.Controllers
                         client.DefaultRequestHeaders.Add("accept", "application/json");
                         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                         var urlBuilder = new UriBuilder(GitApiServerUrl);
-                        urlBuilder.Path += "/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                        urlBuilder.Path += $"/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
                         urlBuilder.Query = $"?ref={Uri.EscapeDataString(em.Value)}";
                         var res = await client.GetAsync(urlBuilder.ToString());
                         // {
