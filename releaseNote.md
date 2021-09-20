@@ -3,6 +3,7 @@
 - Collect more telemetry
 - Make `runner.name` available as a runner context variable
 - Add attempt number (`run_attempt`) to GitHub context 
+- When using the `--ephemeral` flag, ensure that the runner cleans up local `.runner` and `.credentials` files after completion (#1337)
 
 ## Misc
 
