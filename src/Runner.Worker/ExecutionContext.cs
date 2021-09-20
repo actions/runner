@@ -52,6 +52,7 @@ namespace GitHub.Runner.Worker
         Dictionary<string, VariableValue> JobOutputs { get; }
         ActionsEnvironmentReference ActionsEnvironment { get; }
         List<ActionsStepTelemetry> ActionsStepsTelemetry { get; }
+        List<JobTelemetry> JobTelemetry { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -150,6 +151,7 @@ namespace GitHub.Runner.Worker
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
         public List<ActionsStepTelemetry> ActionsStepsTelemetry { get; private set; }
+        public List<JobTelemetry> JobTelemetry { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -294,6 +296,7 @@ namespace GitHub.Runner.Worker
             child.ContextName = contextName;
             child.EmbeddedId = embeddedId;
             child.SiblingScopeName = siblingScopeName;
+            child.JobTelemetry = JobTelemetry;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -649,6 +652,8 @@ namespace GitHub.Runner.Worker
 
             // ActionsStepTelemetry
             ActionsStepsTelemetry = new List<ActionsStepTelemetry>();
+
+            JobTelemetry = new List<JobTelemetry>();
 
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();

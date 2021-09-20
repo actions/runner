@@ -1,7 +1,5 @@
-﻿using GitHub.DistributedTask.Pipelines;
-using GitHub.DistributedTask.Pipelines.ContextData;
+﻿using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
 using System;
 using System.Collections.Generic;
@@ -113,6 +111,15 @@ namespace GitHub.Runner.Worker
                         context.Output(input);
                         context.Debug("Paused processing commands until '##[{actionCommand.Data}]' is received");
                         _stopToken = actionCommand.Data;
+                        if (_registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data))
+                        {
+                            var telemetry = new JobTelemetry
+                            {
+                                Message = $"Invoked ::stopCommand:: with token: [{actionCommand.Data}]",
+                                Type = JobTelemetryType.ActionCommand
+                            };
+                            context.JobTelemetry.Add(telemetry);
+                        }
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
                         return true;
