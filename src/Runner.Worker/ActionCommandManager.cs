@@ -111,7 +111,9 @@ namespace GitHub.Runner.Worker
                         context.Output(input);
                         context.Debug("Paused processing commands until '##[{actionCommand.Data}]' is received");
                         _stopToken = actionCommand.Data;
-                        if (_registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data))
+                        if (_registeredCommands.Contains(actionCommand.Data)
+                            || string.IsNullOrEmpty(actionCommand.Data)
+                            || string.Equals(actionCommand.Data, "pause-logging", StringComparison.OrdinalIgnoreCase))
                         {
                             var telemetry = new JobTelemetry
                             {
@@ -155,7 +157,8 @@ namespace GitHub.Runner.Worker
             return true;
         }
 
-        internal static bool EnhancedAnnotationsEnabled(IExecutionContext context) {
+        internal static bool EnhancedAnnotationsEnabled(IExecutionContext context)
+        {
             return context.Global.Variables.GetBoolean("DistributedTask.EnhancedAnnotations") ?? false;
         }
     }
@@ -259,7 +262,7 @@ namespace GitHub.Runner.Worker
             public const String Name = "name";
         }
 
-        private string[] _setEnvBlockList = 
+        private string[] _setEnvBlockList =
         {
             "NODE_OPTIONS"
         };
@@ -360,7 +363,7 @@ namespace GitHub.Runner.Worker
         public Type ExtensionType => typeof(IActionCommandExtension);
 
         public void ProcessCommand(IExecutionContext context, string line, ActionCommand command, ContainerInfo container)
-        {          
+        {
             var allowUnsecureCommands = false;
             bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedCommands), out allowUnsecureCommands);
 
@@ -549,11 +552,11 @@ namespace GitHub.Runner.Worker
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.Column, out string column);
 
-            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context)) 
+            if (!ActionCommandManager.EnhancedAnnotationsEnabled(context))
             {
                 context.Debug("Enhanced Annotations not enabled on the server. The 'title', 'end_line', and 'end_column' fields are unsupported.");
             }
-            
+
             Issue issue = new Issue()
             {
                 Category = "General",
@@ -605,7 +608,7 @@ namespace GitHub.Runner.Worker
             context.AddIssue(issue);
         }
 
-        public static void ValidateLinesAndColumns(ActionCommand command, IExecutionContext context) 
+        public static void ValidateLinesAndColumns(ActionCommand command, IExecutionContext context)
         {
             command.Properties.TryGetValue(IssueCommandProperties.Line, out string line);
             command.Properties.TryGetValue(IssueCommandProperties.EndLine, out string endLine);
@@ -634,28 +637,28 @@ namespace GitHub.Runner.Worker
                 column = endColumn;
             }
 
-            if (!hasStartLine && hasColumn) 
+            if (!hasStartLine && hasColumn)
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.Column}' and '{IssueCommandProperties.EndColumn}' can only be set if '{IssueCommandProperties.Line}' value is provided.");
                 command.Properties.Remove(IssueCommandProperties.Column);
                 command.Properties.Remove(IssueCommandProperties.EndColumn);
             }
 
-            if (hasEndLine && line != endLine && hasColumn) 
+            if (hasEndLine && line != endLine && hasColumn)
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.Column}' and '{IssueCommandProperties.EndColumn}' cannot be set if '{IssueCommandProperties.Line}' and '{IssueCommandProperties.EndLine}' are different values.");
                 command.Properties.Remove(IssueCommandProperties.Column);
                 command.Properties.Remove(IssueCommandProperties.EndColumn);
             }
 
-            if (hasStartLine && hasEndLine && endLineNumber < lineNumber) 
+            if (hasStartLine && hasEndLine && endLineNumber < lineNumber)
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndLine}' cannot be less than '{IssueCommandProperties.Line}'.");
                 command.Properties.Remove(IssueCommandProperties.Line);
                 command.Properties.Remove(IssueCommandProperties.EndLine);
             }
 
-            if (hasStartColumn && hasEndColumn && endColumnNumber < columnNumber) 
+            if (hasStartColumn && hasEndColumn && endColumnNumber < columnNumber)
             {
                 context.Debug($"Invalid {command.Command} command value. '{IssueCommandProperties.EndColumn}' cannot be less than '{IssueCommandProperties.Column}'.");
                 command.Properties.Remove(IssueCommandProperties.Column);
