@@ -128,7 +128,7 @@ namespace GitHub.Runner.Common
                     public static readonly string Ephemeral = "ephemeral";
                     public static readonly string Help = "help";
                     public static readonly string Replace = "replace";
-                    public static readonly string Once = "once"; // TODO: Remove in 10/2021
+                    public static readonly string Once = "once"; // Keep this around since customers still relies on it
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
                     public static readonly string Version = "version";
