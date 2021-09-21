@@ -235,7 +235,7 @@ namespace GitHub.Runner.Listener
 
                     if (command.RunOnce)
                     {
-                        _term.WriteLine("Warning: '--once' is going to be deprecated in the future, please consider to use '--ephemeral' during runner registration.", ConsoleColor.Yellow);
+                        _term.WriteLine("Warning: '--once' is going to be deprecated in the future, please consider using '--ephemeral' during runner registration.", ConsoleColor.Yellow);
                         _term.WriteLine("https://docs.github.com/en/actions/hosting-your-own-runners/autoscaling-with-self-hosted-runners#using-ephemeral-runners-for-autoscaling", ConsoleColor.Yellow);
                     }
 
