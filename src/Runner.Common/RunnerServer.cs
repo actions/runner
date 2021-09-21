@@ -257,7 +257,7 @@ namespace GitHub.Runner.Common
         public Task<List<TaskAgent>> GetAgentsAsync(string agentName)
         {
             CheckConnection(RunnerConnectionType.Generic);
-            return _genericTaskAgentClient.GetAgentsAsync(0, agentName, false); // search in all all agentPools
+            return _genericTaskAgentClient.GetAgentsAsync(-1, agentName, false); // search in all all agentPools
         }
 
         public Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent)
