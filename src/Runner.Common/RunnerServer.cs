@@ -273,7 +273,7 @@ namespace GitHub.Runner.Common
 
         public Task DeleteAgentAsync(int agentId)
         {
-            return DeleteAgentAsync(agentId); // agentPool is ignored server side
+            return DeleteAgentAsync(0, agentId); // agentPool is ignored server side
         }
 
         //-----------------------------------------------------------------
