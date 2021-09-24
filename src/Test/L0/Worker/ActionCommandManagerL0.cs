@@ -111,30 +111,18 @@ namespace GitHub.Runner.Common.Tests.Worker
         [InlineData("set-env")]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void StopProcessCommand__FailsOnInvalidStopTokens(string invalidToken)
-        {
-            using (TestHostContext hc = CreateTestContext())
-            {
-                Assert.False(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
-            }
-        }
-        [Theory]
-        [InlineData("stop-commands")]
-        [InlineData("")]
-        [InlineData("set-env")]
-        [Trait("Level", "L0")]
-        [Trait("Category", "Worker")]
         public void StopProcessCommand__AllowsInvalidStopTokens__IfEnvVarIsSet(string invalidToken)
         {
-
-            _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>
-            {
-                [Constants.Runner.UnsupportedStopCommandTokenDisabled] = "1"
-            };
-
             using (TestHostContext hc = CreateTestContext())
             {
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>
+                {
+                    [Constants.Variables.Actions.AllowUnsupportedStopCommandTokens] = "1"
+                };
+
+                _ec.Setup(x=> x.JobTelemetry).Returns(new List<JobTelemetry>());
+
+                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
             }
         }
 
