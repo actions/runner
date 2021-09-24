@@ -108,7 +108,9 @@ namespace GitHub.Runner.Worker
                     // Stop command
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
-                        bool isTokenInvalid = _registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data) || string.Equals(actionCommand.Data, "pause-logging", StringComparison.OrdinalIgnoreCase);
+                        bool isTokenInvalid = _registeredCommands.Contains(actionCommand.Data)
+                            || string.IsNullOrEmpty(actionCommand.Data) 
+                            || string.Equals(actionCommand.Data, "pause-logging", StringComparison.OrdinalIgnoreCase);
                         bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens), out var allowUnsecureStopCommandTokens);
 
                         if (isTokenInvalid)
