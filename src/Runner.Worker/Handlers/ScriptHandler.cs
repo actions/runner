@@ -41,7 +41,7 @@ namespace GitHub.Runner.Worker.Handlers
                     firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
+                ExecutionContext.Output($"##[group]Run {firstLine}");
             }
             else
             {
@@ -52,7 +52,7 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (var line in multiLines)
             {
                 // Bright Cyan color
-                ExecutionContext.WriteDetails($"\x1b[36;1m{line}\x1b[0m");
+                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
             }
 
             string argFormat;
@@ -113,23 +113,23 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (!string.IsNullOrEmpty(shellCommandPath))
             {
-                ExecutionContext.WriteDetails($"shell: {shellCommandPath} {argFormat}");
+                ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
             }
             else
             {
-                ExecutionContext.WriteDetails($"shell: {shellCommand} {argFormat}");
+                ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
             }
 
             if (this.Environment?.Count > 0)
             {
-                ExecutionContext.WriteDetails("env:");
+                ExecutionContext.Output("env:");
                 foreach (var env in this.Environment)
                 {
-                    ExecutionContext.WriteDetails($"  {env.Key}: {env.Value}");
+                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
                 }
             }
 
-            ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? "" : "##[endgroup]");
+            ExecutionContext.Output("##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)
@@ -150,7 +150,8 @@ namespace GitHub.Runner.Worker.Handlers
             // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
-                var telemetry = new ActionsStepTelemetry {
+                var telemetry = new ActionsStepTelemetry
+                {
                     IsEmbedded = ExecutionContext.IsEmbedded,
                     Type = "run",
                 };
@@ -281,6 +282,14 @@ namespace GitHub.Runner.Worker.Handlers
                     fileName = node12;
                 }
             }
+
+            var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
+            {
+                Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
+                Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            }
+
             ExecutionContext.Debug($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))

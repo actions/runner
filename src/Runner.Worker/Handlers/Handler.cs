@@ -80,7 +80,7 @@ namespace GitHub.Runner.Worker.Handlers
             
             if (stage == ActionRunStage.Post)
             {
-                ExecutionContext.WriteDetails($"Post job cleanup.");
+                ExecutionContext.Output($"Post job cleanup.");
                 return;
             }
 
@@ -116,30 +116,30 @@ namespace GitHub.Runner.Worker.Handlers
                 groupName = "Action details";
             }
 
-            ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? groupName : $"##[group]{groupName}");
+            ExecutionContext.Output($"##[group]{groupName}");
 
             if (this.Inputs?.Count > 0)
             {
-                ExecutionContext.WriteDetails("with:");
+                ExecutionContext.Output("with:");
                 foreach (var input in this.Inputs)
                 {
                     if (!string.IsNullOrEmpty(input.Value))
                     {
-                        ExecutionContext.WriteDetails($"  {input.Key}: {input.Value}");
+                        ExecutionContext.Output($"  {input.Key}: {input.Value}");
                     }
                 }
             }
 
             if (this.Environment?.Count > 0)
             {
-                ExecutionContext.WriteDetails("env:");
+                ExecutionContext.Output("env:");
                 foreach (var env in this.Environment)
                 {
-                    ExecutionContext.WriteDetails($"  {env.Key}: {env.Value}");
+                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
                 }
             }
 
-            ExecutionContext.WriteDetails(ExecutionContext.IsEmbedded ? "" : "##[endgroup]");
+            ExecutionContext.Output("##[endgroup]");
         }
 
         public override void Initialize(IHostContext hostContext)

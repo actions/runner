@@ -8,12 +8,12 @@ on:
     - gha_test
     - releases/*
     paths-ignore:
-    - '**.md'    
+    - '**.md'
   pull_request:
     branches:
     - '*'
     paths-ignore:
-    - '**.md'    
+    - '**.md'
 
 jobs:
   build:

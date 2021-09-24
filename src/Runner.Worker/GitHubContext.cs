@@ -26,6 +26,7 @@ namespace GitHub.Runner.Worker
             "repository",
             "repository_owner",
             "retention_days",
+            "run_attempt",
             "run_id",
             "run_number",
             "server_url",

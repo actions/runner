@@ -12,7 +12,7 @@ Issues in this repository should be for the runner application.  Note that the V
 
 ## Enhancements and Feature Requests
 
-We ask that before significant effort is put into code changes, that we have agreement on taking the change before time is invested in code changes. 
+We ask that before significant effort is put into code changes, that we have agreement on taking the change before time is invested in code changes.
 
 1. Create a feature request.  Once agreed we will take the enhancement
 2. Create an ADR to agree on the details of the change.
@@ -46,9 +46,9 @@ Tip: Make sure your job can run on this runner. The easiest way is to set `runs-
 
 
 ## Development Life Cycle
-If you're using VS Code, you can follow [these](contribute/vscode.md) steps instead. 
+If you're using VS Code, you can follow [these](contribute/vscode.md) steps instead.
 
-### To Build, Test, Layout 
+### To Build, Test, Layout
 
 Navigate to the `src` directory and run the following command:
 

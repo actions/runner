@@ -36,7 +36,10 @@ namespace GitHub.Runner.Listener
     {
         private readonly Lazy<Dictionary<long, TaskResult>> _localRunJobResult = new Lazy<Dictionary<long, TaskResult>>();
         private int _poolId;
-        RunnerSettings _runnerSetting;
+
+        IConfigurationStore _configurationStore;
+
+        RunnerSettings _runnerSettings;
         private static readonly string _workerProcessName = $"Runner.Worker";
 
         // this is not thread-safe
@@ -54,9 +57,9 @@ namespace GitHub.Runner.Listener
             base.Initialize(hostContext);
 
             // get pool id from config
-            var configurationStore = hostContext.GetService<IConfigurationStore>();
-            _runnerSetting = configurationStore.GetSettings();
-            _poolId = _runnerSetting.PoolId;
+            _configurationStore = hostContext.GetService<IConfigurationStore>();
+            _runnerSettings = _configurationStore.GetSettings();
+            _poolId = _runnerSettings.PoolId;
 
             int channelTimeoutSeconds;
             if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_CHANNEL_TIMEOUT") ?? string.Empty, out channelTimeoutSeconds))
@@ -672,13 +675,15 @@ namespace GitHub.Runner.Listener
                 try
                 {
                     request = await runnerServer.RenewAgentRequestAsync(poolId, requestId, lockToken, orchestrationId, token);
-
                     Trace.Info($"Successfully renew job request {requestId}, job is valid till {request.LockedUntil.Value}");
 
                     if (!firstJobRequestRenewed.Task.IsCompleted)
                     {
                         // fire first renew succeed event.
                         firstJobRequestRenewed.TrySetResult(0);
+
+                        // Update settings if the runner name has been changed server-side
+                        UpdateAgentNameIfNeeded(request.ReservedAgent?.Name);
                     }
 
                     if (encounteringError > 0)
@@ -776,6 +781,27 @@ namespace GitHub.Runner.Listener
                     }
                 }
             }
+        }
+
+        private void UpdateAgentNameIfNeeded(string agentName)
+        {
+            var isNewAgentName = !string.Equals(_runnerSettings.AgentName, agentName, StringComparison.Ordinal);
+            if (!isNewAgentName || string.IsNullOrEmpty(agentName))
+            {
+                return;
+            }
+
+            _runnerSettings.AgentName = agentName;
+            try
+            {
+                _configurationStore.SaveSettings(_runnerSettings);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error("Cannot update the settings file:");
+                Trace.Error(ex);
+            }
+
         }
 
         // Best effort upload any logs for this job.
