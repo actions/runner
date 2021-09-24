@@ -18,16 +18,16 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
 
 - DNS lookup for api.github.com or myGHES.com using dotnet
 - Ping api.github.com or myGHES.com using dotnet
-- Make HTTP GET to https://api.github.com or https://myGHES.com/api/v3 using dotnet, check response headers contains `X-GitHub-Request-Id` 
+- Make HTTP GET to https://api.github.com or https://myGHES.com/api/v3 using dotnet, check response headers contains `X-GitHub-Request-Id`
 ---
 - DNS lookup for vstoken.actions.githubusercontent.com using dotnet
 - Ping vstoken.actions.githubusercontent.com using dotnet
-- Make HTTP GET to https://vstoken.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/vstoken/_apis/health using dotnet, check response headers contains `x-vss-e2eid` 
+- Make HTTP GET to https://vstoken.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/vstoken/_apis/health using dotnet, check response headers contains `x-vss-e2eid`
 ---
 - DNS lookup for pipelines.actions.githubusercontent.com using dotnet
 - Ping pipelines.actions.githubusercontent.com using dotnet
-- Make HTTP GET to https://pipelines.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/pipelines/_apis/health using dotnet, check response headers contains `x-vss-e2eid` 
-- Make HTTP POST to https://pipelines.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/pipelines/_apis/health using dotnet, check response headers contains `x-vss-e2eid` 
+- Make HTTP GET to https://pipelines.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/pipelines/_apis/health using dotnet, check response headers contains `x-vss-e2eid`
+- Make HTTP POST to https://pipelines.actions.githubusercontent.com/_apis/health or https://myGHES.com/_services/pipelines/_apis/health using dotnet, check response headers contains `x-vss-e2eid`
 
 ## How to fix the issue?
 

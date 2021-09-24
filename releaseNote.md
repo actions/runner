@@ -1,10 +1,13 @@
 ## Features
 
-## Bugs
-
-- Fixed an issue where composite steps would not run on `failure()` or `always()` when the job failed (#1273)
+- Collect more telemetry
+- Make `runner.name` available as a runner context variable
+- Add attempt number (`run_attempt`) to GitHub context 
+- When using the `--ephemeral` flag, ensure that the runner cleans up local `.runner` and `.credentials` files after completion (#1337)
 
 ## Misc
+
+- Improved network troubleshooting docs
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
@@ -16,7 +19,7 @@ mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
 Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip -OutFile actions-runner-win-x64-<RUNNER_VERSION>.zip
 # Extract the installer
-Add-Type -AssemblyName System.IO.Compression.FileSystem ; 
+Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
 ```
 

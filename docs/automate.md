@@ -21,7 +21,7 @@ export RUNNER_CFG_PAT=yourPAT
 
 :point_right: [Sample script here](../scripts/create-latest-svc.sh) :point_left:
 
-Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+Run as a one-liner. NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level)
 ```bash
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-latest-svc.sh | bash -s yourorg/yourrepo
 ```
@@ -47,7 +47,7 @@ curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/create-lat
 
 The runner is installed as a service using `systemd` and `systemctl`. Docker does not support `systemd` for service configuration on a container.
 
-## Uninstall running as service 
+## Uninstall running as service
 
 **Scenario**: Run on a machine or VM ([not container](#why-cant-i-use-a-container)) which automates:
 
@@ -57,7 +57,7 @@ The runner is installed as a service using `systemd` and `systemctl`. Docker doe
 
 :point_right: [Sample script here](../scripts/remove-svc.sh) :point_left:
 
-Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level) 
+Repo level one liner.  NOTE: replace with yourorg/yourrepo (repo level) or just yourorg (org level)
 ```bash
 curl -s https://raw.githubusercontent.com/actions/runner/main/scripts/remove-svc.sh | bash -s yourorg/yourrepo
 ```

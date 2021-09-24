@@ -5,7 +5,7 @@
 ## Supported Versions
 
   - macOS High Sierra (10.13) and later versions
- 
+
 ## Apple Silicon M1
 
 The runner is currently not supported on devices with an Apple M1 chip.  
