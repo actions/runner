@@ -112,8 +112,7 @@ namespace GitHub.Runner.Worker
                     {
                         if(_registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data)) 
                         {
-                            context.Debug("You must use a non-empty token that is not a registered workflow command.");
-                            return false;
+                            throw new Exception("You cannot use a stoptoken that is an empty string, 'pause-logging' or another workflow command.");
                         }
                         context.Output(input);
                         context.Debug("Paused processing commands until the token you called ::stopCommands:: with is received");

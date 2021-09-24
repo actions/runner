@@ -112,14 +112,11 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::stop-commands", null));
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, "::stop-commands::stop-commands", null));
 
-                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::", null));
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, "::stop-commands::", null));
 
-                Assert.False(_commandManager.TryProcessCommand(_ec.Object, "::stop-commands::set-env", null));
-                Assert.True(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
+                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, "::stop-commands::set-env", null));
             }
         }
 
