@@ -110,10 +110,14 @@ namespace GitHub.Runner.Worker
                     // Stop command
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
-                        if(_registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data)) 
+                        bool isTokenInvalid = _registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data) || string.Equals(actionCommand.Data, "pause-logging", StringComparison.OrdinalIgnoreCase);
+                        bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens), out var allowUnsecureStopCommandTokens);
+                        
+                        if(isTokenInvalid && !allowUnsecureStopCommandTokens)
                         {
-                            throw new Exception("You cannot use a stoptoken that is an empty string, 'pause-logging' or another workflow command.");
+                            throw new Exception(Constants.Runner.UnsupportedStopCommandTokenDisabled);
                         }
+
                         context.Output(input);
                         context.Debug("Paused processing commands until the token you called ::stopCommands:: with is received");
                         _stopToken = actionCommand.Data;
