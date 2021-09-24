@@ -110,18 +110,8 @@ namespace GitHub.Runner.Worker
                     {
                         bool isTokenInvalid = _registeredCommands.Contains(actionCommand.Data) || string.IsNullOrEmpty(actionCommand.Data) || string.Equals(actionCommand.Data, "pause-logging", StringComparison.OrdinalIgnoreCase);
                         bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens), out var allowUnsecureStopCommandTokens);
-                        
-                        if(isTokenInvalid && !allowUnsecureStopCommandTokens)
-                        {
-                            throw new Exception(Constants.Runner.UnsupportedStopCommandTokenDisabled);
-                        }
 
-                        context.Output(input);
-                        context.Debug("Paused processing commands until the token you called ::stopCommands:: with is received");
-                        _stopToken = actionCommand.Data;
-                        if (_registeredCommands.Contains(actionCommand.Data)
-                            || string.IsNullOrEmpty(actionCommand.Data)
-                            || string.Equals(actionCommand.Data, "pause-logging", StringComparison.OrdinalIgnoreCase))
+                        if (isTokenInvalid)
                         {
                             var telemetry = new JobTelemetry
                             {
@@ -130,12 +120,22 @@ namespace GitHub.Runner.Worker
                             };
                             context.JobTelemetry.Add(telemetry);
                         }
+
+                        if (isTokenInvalid && !allowUnsecureStopCommandTokens)
+                        {
+                            throw new Exception(Constants.Runner.UnsupportedStopCommandTokenDisabled);
+                        }
+
+                        _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
                         _registeredCommands.Add(_stopToken);
-                        if (_stopToken.Length > 6) 
+                        if (_stopToken.Length > 6)
                         {
                             HostContext.SecretMasker.AddValue(_stopToken);
                         }
+
+                        context.Output(input);
+                        context.Debug("Paused processing commands until the token you called ::stopCommands:: with is received");
                         return true;
                     }
                     // Found command
