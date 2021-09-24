@@ -105,18 +105,36 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
-        [Fact]
+        [Theory]
+        [InlineData("stop-commands")]
+        [InlineData("")]
+        [InlineData("set-env")]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void StopProcessCommandRejectsBannedStopTokens()
+        public void StopProcessCommand__FailsOnInvalidStopTokens(string invalidToken)
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, "::stop-commands::stop-commands", null));
+                Assert.False(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
+            }
+        }
+        [Theory]
+        [InlineData("stop-commands")]
+        [InlineData("")]
+        [InlineData("set-env")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommand__AllowsInvalidStopTokens__IfEnvVarIsSet(string invalidToken)
+        {
 
-                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, "::stop-commands::", null));
+            _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>
+            {
+                [Constants.Runner.UnsupportedStopCommandTokenDisabled] = "1"
+            };
 
-                Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, "::stop-commands::set-env", null));
+            using (TestHostContext hc = CreateTestContext())
+            {
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
             }
         }
 

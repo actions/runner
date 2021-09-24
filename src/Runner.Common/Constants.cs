@@ -213,7 +213,7 @@ namespace GitHub.Runner.Common
                 // Keep alphabetical
                 //
                 public static readonly string AllowUnsupportedCommands = "ACTIONS_ALLOW_UNSECURE_COMMANDS";
-                public static readonly string llowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
+                public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
