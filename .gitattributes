@@ -85,3 +85,7 @@
 *.PDF   diff=astextplain
 *.rtf   diff=astextplain
 *.RTF   diff=astextplain
+*.set   solution=extensions
+*.driver   automatically=normalize
+*.save   all=builds
+*.end   command=

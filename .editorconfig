@@ -6,3 +6,8 @@ trim_trailing_whitespace = true # attempt to remove trailing whitespace on save
 
 [*.md]
 trim_trailing_whitespace = false # in markdown, "two trailing spaces" is unfortunately meaningful; it means `<br>`
+
+
+*.editorconfig   =https=trailing
+*.markdown   =files=save
+*.end=
