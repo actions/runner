@@ -118,38 +118,47 @@ then
     exit 1
 fi
 
-# fix upgrade issue with macOS
+# fix upgrade issue with macOS when running as a service
 currentplatform=$(uname | awk '{print tolower($0)}')
-if [[ "$currentplatform" == 'darwin' ]]; then
+if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     # We needed a fix for https://github.com/actions/runner/issues/743
     # We will recreate the ./externals/node12/bin/node of the past runner version that launched the runnerlistener service
     # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
 
     # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
-    if [ $? -eq 0 ]
+    # assumption here is only one process is invoking rootfolder/runsvc.sh
+    procgroup=$(ps x -o pgid,command | grep $rootfolder/runsvc.sh | grep -v grep | awk '{print $1}')
+    if [ $? -ne 0 ]
     then
-        # inspect its open file handles to find the node process
-        # we can't actually inspect the process because it uses relative paths and doesn't follow symlinks
-        path=$(lsof -a -p $parentpid -F n | grep node12/bin/node | grep externals. | tail -1 | cut -c2-)
-        if [ $? -eq 0 ]
-        then
-            # trim the last 5 characters the path '/node'
-            trimmedpath=$(echo ${path::$((${#path} - 5))})
-            if [ $? -eq 0 ]
-            then
-                if [[ ! -e "$path" ]]
-                then
-                    mkdir -p "$trimmedpath"
-                    cp "$rootfolder/externals/node12/bin/node" "$path"
-                fi
-            else
-                date "+[%F %T-%4N] Failed to trim runner path" >> "$logfile" 2>&1
-            fi
-        else
-            date "+[%F %T-%4N] Failed to find runner path" >> "$logfile" 2>&1
-        fi
-    else
-        date "+[%F %T-%4N] Failed to find runner parent pid" >> "$logfile" 2>&1 
+        date "+[%F %T-%4N] Failed to find runner pgid" >> "$logfile" 2>&1
+        mv -fv "$logfile" "$logfile.failed"
+        exit 1
+    fi
+
+    # inspect the open file handles to find the node process
+    # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
+    path=$(lsof -a -g $procgroup -F n | grep node12/bin/node | grep externals. | tail -1 | cut -c2-)
+    if [ $? -ne 0 ]
+    then
+        date "+[%F %T-%4N] Failed to find runner path" >> "$logfile" 2>&1
+        mv -fv "$logfile" "$logfile.failed"
+        exit 1
+    fi
+
+    # trim the last 5 characters of the path '/node'
+    trimmedpath=$(echo ${path::$((${#path} - 5))})
+    if [ $? -ne 0 ]
+    then
+        date "+[%F %T-%4N] Failed to trim runner path" >> "$logfile" 2>&1
+        mv -fv "$logfile" "$logfile.failed"
+        exit 1
+    fi
+
+    # Create the path if it does not exist
+    if [[ ! -e "$path" ]]
+    then
+        mkdir -p "$trimmedpath"
+        cp "$rootfolder/externals/node12/bin/node" "$path"
     fi
 fi
 
