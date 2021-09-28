@@ -316,6 +316,9 @@ namespace GitHub.Runner.Listener
 
                 IJobDispatcher jobDispatcher = null;
                 CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
+                
+                // Should we try to cleanup ephemeral runners
+                bool runOnceJobCompleted = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -377,6 +380,7 @@ namespace GitHub.Runner.Listener
                                 Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
                                 if (completeTask == jobDispatcher.RunOnceJobCompleted.Task)
                                 {
+                                    runOnceJobCompleted = true;
                                     Trace.Info("Job has finished at backend, the runner will exit since it is running under onetime use mode.");
                                     Trace.Info("Stop message queue looping.");
                                     messageQueueLoopTokenSource.Cancel();
@@ -485,7 +489,7 @@ namespace GitHub.Runner.Listener
 
                     messageQueueLoopTokenSource.Dispose();
 
-                    if (settings.Ephemeral)
+                    if (settings.Ephemeral && runOnceJobCompleted)
                     {
                         var configManager = HostContext.GetService<IConfigurationManager>();
                         configManager.DeleteLocalRunnerConfig();
