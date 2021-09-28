@@ -137,7 +137,7 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
 
     # inspect the open file handles to find the node process
     # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-    path=$(lsof -a -g $procgroup -F n | grep node12/bin/node | grep externals. | tail -1 | cut -c2-)
+    path=$(lsof -a -g $procgroup -F n | grep node12/bin/node | grep externals | tail -1 | cut -c2-)
     if [ $? -ne 0 ]
     then
         date "+[%F %T-%4N] Failed to find runner path" >> "$logfile" 2>&1
