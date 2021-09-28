@@ -124,30 +124,33 @@ if [[ "$currentplatform" == 'darwin' ]]; then
     # We need a fix https://github.com/actions/runner/issues/743
     # we will recreate the ./externals/node12/bin/node of the past version that launched the runnerlistener service
     # otherwise mac gatekeeper kills the processes we spawn on creation
+
+    # We need the pid for the nodejs loop, get that here, not the runner C# pid
     parentpid=$(ps -o ppid= $runnerpid)
-    if [ $? -ne 0 ]
+    if [ $? -eq 0 ]
     then
-        date "+[%F %T-%4N] Failed to find runner parent pid" >> "$logfile" 2>&1
-    else
-        path=$(lsof -a -p $parentpid -F n | grep /bin/node | grep externals. | tail -1 | cut -c2-)
-        if [ $? -ne 0 ]
+        # inspect its open file handles to find the node process
+        path=$(lsof -a -p $parentpid -F n | grep node12/bin/node | grep externals. | tail -1 | cut -c2-)
+        if [ $? -eq 0 ]
         then
-            date "+[%F %T-%4N] Failed to find runner path" >> "$logfile" 2>&1
-        else
             # trim the last 5 characters the path /node
             # evaluates the length of $path - 5
             trimmedpath=$(echo ${path::$((${#path} - 5))})
-            if [ $? -ne 0 ]
+            if [ $? -eq 0 ]
             then
-                date "+[%F %T-%4N] Failed to trim runner path" >> "$logfile" 2>&1
-            else
                 if [[ ! -e "$path" ]]
                 then
                     mkdir -p "$trimmedpath"
                     cp "$rootfolder/externals/node12/bin/node" "$path"
                 fi
+            else
+                date "+[%F %T-%4N] Failed to trim runner path" >> "$logfile" 2>&1
             fi
+        else
+            date "+[%F %T-%4N] Failed to find runner path" >> "$logfile" 2>&1
         fi
+    else
+        date "+[%F %T-%4N] Failed to find runner parent pid" >> "$logfile" 2>&1 
     fi
 fi
 
