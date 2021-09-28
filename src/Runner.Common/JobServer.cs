@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Services.Health.Client;
 using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Common
@@ -40,12 +41,25 @@ namespace GitHub.Runner.Common
             {
                 try
                 {
+                    try
+                    {
+                        Trace.Info("Requesting Actions health endpoint status");
+                        // Construct the HttpClient object directly, without going through GetClient<T>
+                        // as we haven't properly connected to the server at this point
+                        var client = new HealthHttpClient(_connection.Uri, _connection.InnerHandler, false);
+                    }
+                    catch (Exception)
+                    {
+                        // Log error, but continue as it's best-effort
+                        Trace.Error("Health endpoint failed due to exception, proceeding with connection anyway...");
+                    }
+
                     await _connection.ConnectAsync();
                     break;
                 }
                 catch (Exception ex) when (attemptCount > 0)
                 {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attemp left.");
+                    Trace.Info($"Catch exception during connect. {attemptCount} attempts left.");
                     Trace.Error(ex);
                 }
 
@@ -53,6 +67,7 @@ namespace GitHub.Runner.Common
             }
 
             _taskClient = _connection.GetClient<TaskHttpClient>();
+
             _hasConnection = true;
         }
 
