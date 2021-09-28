@@ -146,7 +146,7 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     fi
 
     # trim the last 5 characters of the path '/node'
-    trimmedpath=$(echo ${path::$((${#path} - 5))})
+    trimmedpath=$(dirname "$path")
     if [ $? -ne 0 ]
     then
         date "+[%F %T-%4N] Failed to trim runner path" >> "$logfile" 2>&1
