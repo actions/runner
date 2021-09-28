@@ -41,6 +41,14 @@ namespace GitHub.Runner.Common
             {
                 try
                 {
+                    await _connection.ConnectAsync();
+                    break;
+                }
+                catch (Exception ex) when (attemptCount > 0)
+                {
+                    Trace.Info($"Catch exception during connect. {attemptCount} attempts left.");
+                    Trace.Error(ex);
+
                     try
                     {
                         Trace.Info("Requesting Actions health endpoint status");
@@ -50,17 +58,10 @@ namespace GitHub.Runner.Common
                     }
                     catch (Exception)
                     {
-                        // Log error, but continue as it's best-effort
-                        Trace.Error("Health endpoint failed due to exception, proceeding with connection anyway...");
+                        // Log error, but continue as this call is best-effort
+                        Trace.Info($"Health endpoint failed due to {ex.GetType().Name}");
+                        Trace.Error(ex);
                     }
-
-                    await _connection.ConnectAsync();
-                    break;
-                }
-                catch (Exception ex) when (attemptCount > 0)
-                {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attempts left.");
-                    Trace.Error(ex);
                 }
 
                 await Task.Delay(100);
