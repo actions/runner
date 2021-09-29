@@ -18,6 +18,8 @@ downloadrunnerversion=_DOWNLOAD_RUNNER_VERSION_
 logfile="_UPDATE_LOG_"
 restartinteractiverunner=_RESTART_INTERACTIVE_RUNNER_
 
+telemetryfile=".telemetry"
+
 # log user who run the script
 date "+[%F %T-%4N] --------whoami--------" >> "$logfile" 2>&1
 whoami >> "$logfile" 2>&1
@@ -119,6 +121,8 @@ then
 fi
 
 # fix upgrade issue with macOS when running as a service
+attemptedtargetedfix=0
+currentversion=$(defaults read loginwindow SystemVersionStampAsString)
 currentplatform=$(uname | awk '{print tolower($0)}')
 if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     # We needed a fix for https://github.com/actions/runner/issues/743
@@ -128,37 +132,87 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
     # assumption here is only one process is invoking rootfolder/runsvc.sh
     procgroup=$(ps x -o pgid,command | grep $rootfolder/runsvc.sh | grep -v grep | awk '{print $1}')
-    if [ $? -ne 0 ]
+    if [[ $? -eq 0 && -n "$procgroup" ]]
     then
-        date "+[%F %T-%4N] Failed to find runner pgid" >> "$logfile" 2>&1
-        mv -fv "$logfile" "$logfile.failed"
-        exit 1
+        # inspect the open file handles to find the node process
+        # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
+        path=$(lsof -a -g $procgroup -F n | grep node12/bin/node | grep externals | tail -1 | cut -c2-)
+        if [[ $? -eq 0 && -n "$path" ]]
+        then
+            # trim the last 5 characters of the path '/node'
+            trimmedpath=$(dirname "$path")
+            if [[ $? -eq 0 && -n "trimmedpath" ]]
+            then
+                attemptedtargetedfix=1
+                # Create the path if it does not exist
+                if [[ ! -e "$path" ]]
+                then
+                    mkdir -p "$trimmedpath"
+                    cp "$rootfolder/externals/node12/bin/node" "$path"
+                fi
+            else
+                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$logfile" 2>&1
+                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$telemetryfile" 2>&1
+            fi
+        else
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$logfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$telemetryfile" 2>&1
+        fi
+    else
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$logfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$telemetryfile" 2>&1
     fi
 
-    # inspect the open file handles to find the node process
-    # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-    path=$(lsof -a -g $procgroup -F n | grep node12/bin/node | grep externals | tail -1 | cut -c2-)
-    if [ $? -ne 0 ]
+    if [ $attemptedtargetedfix -eq 0 ]
     then
-        date "+[%F %T-%4N] Failed to find runner path" >> "$logfile" 2>&1
-        mv -fv "$logfile" "$logfile.failed"
-        exit 1
-    fi
 
-    # trim the last 5 characters of the path '/node'
-    trimmedpath=$(dirname "$path")
-    if [ $? -ne 0 ]
-    then
-        date "+[%F %T-%4N] Failed to trim runner path" >> "$logfile" 2>&1
-        mv -fv "$logfile" "$logfile.failed"
-        exit 1
-    fi
+        date "+[%F %T-%4N] DarwinRunnerUpgrade: Defaulting to old macOS service fix" >> "$logfile" 2>&1
+        date "+[%F %T-%4N] DarwinRunnerUpgrade: Defaulting to old macOS service fix" >> "$telemetryfile" 2>&1
+        if [[ ! -e "$rootfolder/externals.2.280.3/node12/bin/node" ]]
+        then
+            mkdir -p "$rootfolder/externals.2.280.3/node12/bin"
+            cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.280.3/node12/bin/node"
+        fi
 
-    # Create the path if it does not exist
-    if [[ ! -e "$path" ]]
-    then
-        mkdir -p "$trimmedpath"
-        cp "$rootfolder/externals/node12/bin/node" "$path"
+        if [[ ! -e "$rootfolder/externals.2.280.2/node12/bin/node" ]]
+        then
+            mkdir -p "$rootfolder/externals.2.280.2/node12/bin"
+            cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.280.2/node12/bin/node"
+        fi
+
+        if [[ ! -e "$rootfolder/externals.2.280.1/node12/bin/node" ]]
+        then
+            mkdir -p "$rootfolder/externals.2.280.1/node12/bin"
+            cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.280.1/node12/bin/node"
+        fi
+
+        # GHES 3.2
+        if [[ ! -e "$rootfolder/externals.2.279.0/node12/bin/node" ]]
+        then
+            mkdir -p "$rootfolder/externals.2.279.0/node12/bin"
+            cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.279.0/node12/bin/node"
+        fi
+
+        # GHES 3.1.2 or later
+        if [[ ! -e "$rootfolder/externals.2.278.0/node12/bin/node" ]]
+        then
+            mkdir -p "$rootfolder/externals.2.278.0/node12/bin"
+            cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.278.0/node12/bin/node"
+        fi
+
+        # GHES 3.1.0
+        if [[ ! -e "$rootfolder/externals.2.276.1/node12/bin/node" ]]
+        then
+            mkdir -p "$rootfolder/externals.2.276.1/node12/bin"
+            cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.276.1/node12/bin/node"
+        fi
+
+        # GHES 3.0
+        if [[ ! -e "$rootfolder/externals.2.273.5/node12/bin/node" ]]
+        then
+            mkdir -p "$rootfolder/externals.2.273.5/node12/bin"
+            cp "$rootfolder/externals/node12/bin/node" "$rootfolder/externals.2.273.5/node12/bin/node"
+        fi
     fi
 fi
 

@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -228,6 +229,9 @@ namespace GitHub.Runner.Worker
                 return result;
             }
 
+            // Load any upgrade telemetry
+            LoadFromTelemetryFile(jobContext.JobTelemetry);
+
             // Make sure we don't submit secrets as telemetry
             MaskTelemetrySecrets(jobContext.JobTelemetry);
 
@@ -282,6 +286,30 @@ namespace GitHub.Runner.Worker
             foreach (var telemetryItem in jobTelemetry)
             {
                 telemetryItem.Message = HostContext.SecretMasker.MaskSecrets(telemetryItem.Message);
+            }
+        }
+
+        private void LoadFromTelemetryFile(List<JobTelemetry> jobTelemetry)
+        {
+            try
+            {
+                var telemetryFilePath = HostContext.GetConfigFile(WellKnownConfigFile.Telemetry);
+                if (File.Exists(telemetryFilePath))
+                {
+                    var telemetryData = File.ReadAllText(telemetryFilePath, Encoding.UTF8);
+                    var telemetry = new JobTelemetry
+                    {
+                        Message = $"Runner File Telemetry:\n{telemetryData}",
+                        Type = JobTelemetryType.General
+                    };
+                    jobTelemetry.Add(telemetry);
+                    File.Delete(telemetryFilePath);
+                }
+            }
+            catch (Exception e)
+            {
+                Trace.Error("Error when trying to load telemetry from telemetry file");
+                Trace.Error(e);
             }
         }
 
