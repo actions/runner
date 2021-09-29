@@ -141,7 +141,7 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
         then
             # trim the last 5 characters of the path '/node'
             trimmedpath=$(dirname "$path")
-            if [[ $? -eq 0 && -n "trimmedpath" ]]
+            if [[ $? -eq 0 && -n "$trimmedpath" ]]
             then
                 attemptedtargetedfix=1
                 # Create the path if it does not exist
