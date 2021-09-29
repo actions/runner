@@ -26,6 +26,7 @@ namespace GitHub.Runner.Common
         Certificates,
         Options,
         SetupInfo,
+        Telemetry
     }
 
     public static class Constants
