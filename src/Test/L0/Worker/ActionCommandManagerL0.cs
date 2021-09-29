@@ -120,12 +120,17 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>
-                {
-                    {Constants.Variables.Actions.AllowUnsupportedStopCommandTokens, allowUnsupportedStopCommandTokens},
-                };
-
-                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                var expressionValues = new DictionaryContextData
+            {
+                ["env"] =
+#if OS_WINDOWS
+                        new DictionaryContextData{ { Constants.Variables.Actions.AllowUnsupportedStopCommandTokens, new StringContextData(allowUnsupportedStopCommandTokens) }}
+#else
+                        new CaseSensitiveDictionaryContextData{ { Constants.Variables.Actions.AllowUnsupportedStopCommandTokens, new StringContextData(allowUnsupportedStopCommandTokens) }}
+#endif
+            };
+                _ec.Setup(x => x.ExpressionValues).Returns(expressionValues);
                 _ec.Setup(x => x.JobTelemetry).Returns(new List<JobTelemetry>());
 
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
