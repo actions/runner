@@ -84,10 +84,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
-                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
-                {
-                    ["env"] = new CaseSensitiveDictionaryContextData()
-                });
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
@@ -111,25 +108,43 @@ namespace GitHub.Runner.Common.Tests.Worker
         }
 
         [Theory]
-        [InlineData("stop-commands")]
-        [InlineData("")]
-        [InlineData("set-env")]
+        [InlineData("stop-commands", "1")]
+        [InlineData("", "1")]
+        [InlineData("set-env", "1")]
+        [InlineData("stop-commands", "true")]
+        [InlineData("", "true")]
+        [InlineData("set-env", "true")]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void StopProcessCommand__AllowsInvalidStopTokens__IfEnvVarIsSet(string invalidToken)
+        public void StopProcessCommand__AllowsInvalidStopTokens__IfEnvVarIsSet(string invalidToken, string allowUnsupportedStopCommandTokens)
         {
             using (TestHostContext hc = CreateTestContext())
             {
                 _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>
                 {
-                    [Constants.Variables.Actions.AllowUnsupportedStopCommandTokens] = "1"
+                    {Constants.Variables.Actions.AllowUnsupportedStopCommandTokens, allowUnsupportedStopCommandTokens},
                 };
-                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
-                {
-                    ["env"] = new CaseSensitiveDictionaryContextData()
-                });
+
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
                 _ec.Setup(x => x.JobTelemetry).Returns(new List<JobTelemetry>());
 
+                Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
+            }
+        }
+
+        [Theory]
+        [InlineData("stop-commands")]
+        [InlineData("")]
+        [InlineData("set-env")]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void StopProcessCommand__FailOnInvalidStopTokens(string invalidToken)
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
+                _ec.Setup(x => x.JobTelemetry).Returns(new List<JobTelemetry>());
                 Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
             }
         }
@@ -142,10 +157,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var validToken = "randomToken";
             using (TestHostContext hc = CreateTestContext())
             {
-                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
-                {
-                    ["env"] = new CaseSensitiveDictionaryContextData()
-                });
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::{validToken}::", null));
@@ -161,10 +173,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var validToken = "randomToken";
             using (TestHostContext hc = CreateTestContext())
             {
-                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
-                {
-                    ["env"] = new CaseSensitiveDictionaryContextData()
-                });
+                _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
                 Assert.Equal("***", hc.SecretMasker.MaskSecrets(validToken));
@@ -445,5 +454,19 @@ namespace GitHub.Runner.Common.Tests.Worker
 
             return hostContext;
         }
+
+        private DictionaryContextData GetExpressionValues()
+        {
+            return new DictionaryContextData
+            {
+                ["env"] =
+#if OS_WINDOWS
+                        new DictionaryContextData()
+#else
+                        new CaseSensitiveDictionaryContextData()
+#endif
+            };
+        }
+
     }
 }
