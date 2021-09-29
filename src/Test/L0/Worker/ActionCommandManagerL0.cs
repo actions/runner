@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Container;
@@ -83,6 +84,10 @@ namespace GitHub.Runner.Common.Tests.Worker
         {
             using (TestHostContext hc = CreateTestContext())
             {
+                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
+                {
+                    ["env"] = new CaseSensitiveDictionaryContextData()
+                });
                 _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>()))
                    .Returns((string tag, string line) =>
                             {
@@ -119,8 +124,11 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     [Constants.Variables.Actions.AllowUnsupportedStopCommandTokens] = "1"
                 };
-
-                _ec.Setup(x=> x.JobTelemetry).Returns(new List<JobTelemetry>());
+                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
+                {
+                    ["env"] = new CaseSensitiveDictionaryContextData()
+                });
+                _ec.Setup(x => x.JobTelemetry).Returns(new List<JobTelemetry>());
 
                 Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
             }
@@ -134,6 +142,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             var validToken = "randomToken";
             using (TestHostContext hc = CreateTestContext())
             {
+                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
+                {
+                    ["env"] = new CaseSensitiveDictionaryContextData()
+                });
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::{validToken}::", null));
@@ -149,6 +161,10 @@ namespace GitHub.Runner.Common.Tests.Worker
             var validToken = "randomToken";
             using (TestHostContext hc = CreateTestContext())
             {
+                _ec.Setup(x => x.ExpressionValues).Returns(new DictionaryContextData
+                {
+                    ["env"] = new CaseSensitiveDictionaryContextData()
+                });
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{validToken}", null));
                 Assert.False(_commandManager.TryProcessCommand(_ec.Object, "##[set-env name=foo]bar", null));
                 Assert.Equal("***", hc.SecretMasker.MaskSecrets(validToken));
