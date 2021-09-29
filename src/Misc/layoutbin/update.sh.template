@@ -147,9 +147,11 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
                 # Create the path if it does not exist
                 if [[ ! -e "$path" ]]
                 then
-                    date "+[%F %T-%4N] Creating fallback node at path $trimmedpath" >> "$logfile" 2>&1
+                    date "+[%F %T-%4N] Creating fallback node at path $path" >> "$logfile" 2>&1
                     mkdir -p "$trimmedpath"
                     cp "$rootfolder/externals/node12/bin/node" "$path"
+                else
+                    date "+[%F %T-%4N] Path for fallback node exists, skipping creating $path" >> "$logfile" 2>&1
                 fi
             else
                 date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$logfile" 2>&1
