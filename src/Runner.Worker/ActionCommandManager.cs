@@ -108,25 +108,7 @@ namespace GitHub.Runner.Worker
                     // Stop command
                     if (string.Equals(actionCommand.Command, _stopCommand, StringComparison.OrdinalIgnoreCase))
                     {
-                        bool isTokenInvalid = _registeredCommands.Contains(actionCommand.Data)
-                            || string.IsNullOrEmpty(actionCommand.Data) 
-                            || string.Equals(actionCommand.Data, "pause-logging", StringComparison.OrdinalIgnoreCase);
-                        bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens), out var allowUnsecureStopCommandTokens);
-
-                        if (isTokenInvalid)
-                        {
-                            var telemetry = new JobTelemetry
-                            {
-                                Message = $"Invoked ::stopCommand:: with token: [{actionCommand.Data}]",
-                                Type = JobTelemetryType.ActionCommand
-                            };
-                            context.JobTelemetry.Add(telemetry);
-                        }
-
-                        if (isTokenInvalid && !allowUnsecureStopCommandTokens)
-                        {
-                            throw new Exception(Constants.Runner.UnsupportedStopCommandTokenDisabled);
-                        }
+                        ValidateStopToken(context, actionCommand.Data);
 
                         _stopToken = actionCommand.Data;
                         _stopProcessCommand = true;
@@ -169,6 +151,40 @@ namespace GitHub.Runner.Worker
             }
 
             return true;
+        }
+
+        private void ValidateStopToken(IExecutionContext context, string stopToken)
+        {
+#if OS_WINDOWS
+            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
+#else
+            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
+#endif
+            var allowUnsecureStopCommandTokens = false;
+            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens), out allowUnsecureStopCommandTokens);
+            if (!allowUnsecureStopCommandTokens && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens))
+            {
+                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedStopCommandTokens].ToString(), out allowUnsecureStopCommandTokens);
+            }
+
+            bool isTokenInvalid = _registeredCommands.Contains(stopToken)
+                || string.IsNullOrEmpty(stopToken)
+                || string.Equals(stopToken, "pause-logging", StringComparison.OrdinalIgnoreCase);
+
+            if (isTokenInvalid)
+            {
+                var telemetry = new JobTelemetry
+                {
+                    Message = $"Invoked ::stopCommand:: with token: [{stopToken}]",
+                    Type = JobTelemetryType.ActionCommand
+                };
+                context.JobTelemetry.Add(telemetry);
+            }
+
+            if (isTokenInvalid && !allowUnsecureStopCommandTokens)
+            {
+                throw new Exception(Constants.Runner.UnsupportedStopCommandTokenDisabled);
+            }
         }
 
         internal static bool EnhancedAnnotationsEnabled(IExecutionContext context)
