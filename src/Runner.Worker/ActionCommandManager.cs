@@ -161,10 +161,10 @@ namespace GitHub.Runner.Worker
             var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
 #endif
             var allowUnsecureStopCommandTokens = false;
-            bool.TryParse(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens), out allowUnsecureStopCommandTokens);
+            allowUnsecureStopCommandTokens = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens));
             if (!allowUnsecureStopCommandTokens && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens))
             {
-                bool.TryParse(envContext[Constants.Variables.Actions.AllowUnsupportedStopCommandTokens].ToString(), out allowUnsecureStopCommandTokens);
+                allowUnsecureStopCommandTokens = StringUtil.ConvertToBoolean(envContext[Constants.Variables.Actions.AllowUnsupportedStopCommandTokens].ToString());
             }
 
             bool isTokenInvalid = _registeredCommands.Contains(stopToken)
