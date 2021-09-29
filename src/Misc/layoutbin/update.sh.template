@@ -122,12 +122,14 @@ fi
 
 # fix upgrade issue with macOS when running as a service
 attemptedtargetedfix=0
-currentversion=$(defaults read loginwindow SystemVersionStampAsString)
 currentplatform=$(uname | awk '{print tolower($0)}')
 if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     # We needed a fix for https://github.com/actions/runner/issues/743
     # We will recreate the ./externals/node12/bin/node of the past runner version that launched the runnerlistener service
     # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
+
+    # get version for telemetry
+    currentversion=$(defaults read loginwindow SystemVersionStampAsString)
 
     # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
     # assumption here is only one process is invoking rootfolder/runsvc.sh
