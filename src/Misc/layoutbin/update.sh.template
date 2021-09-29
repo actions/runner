@@ -131,12 +131,12 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
 
     # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
     # assumption here is only one process is invoking rootfolder/runsvc.sh
-    procgroup=$(ps x -o pgid,command | grep $rootfolder/runsvc.sh | grep -v grep | awk '{print $1}')
+    procgroup=$(ps x -o pgid,command | grep "$rootfolder/runsvc.sh" | grep -v grep | awk '{print $1}')
     if [[ $? -eq 0 && -n "$procgroup" ]]
     then
         # inspect the open file handles to find the node process
         # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        path=$(lsof -a -g $procgroup -F n | grep node12/bin/node | grep externals | tail -1 | cut -c2-)
+        path=$(lsof -a -g "$procgroup" -F n | grep node12/bin/node | grep externals | tail -1 | cut -c2-)
         if [[ $? -eq 0 && -n "$path" ]]
         then
             # trim the last 5 characters of the path '/node'
