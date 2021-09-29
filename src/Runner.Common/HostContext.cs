@@ -345,7 +345,7 @@ namespace GitHub.Runner.Common
                 
                 case WellKnownConfigFile.Telemetry:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Diag),
                         ".telemetry");
                     break;
 

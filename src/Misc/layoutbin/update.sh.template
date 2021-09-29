@@ -18,7 +18,7 @@ downloadrunnerversion=_DOWNLOAD_RUNNER_VERSION_
 logfile="_UPDATE_LOG_"
 restartinteractiverunner=_RESTART_INTERACTIVE_RUNNER_
 
-telemetryfile=".telemetry"
+telemetryfile="_diag/.telemetry"
 
 # log user who run the script
 date "+[%F %T-%4N] --------whoami--------" >> "$logfile" 2>&1
@@ -128,9 +128,6 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     # We will recreate the ./externals/node12/bin/node of the past runner version that launched the runnerlistener service
     # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
 
-    # get version for telemetry
-    currentversion=$(defaults read loginwindow SystemVersionStampAsString)
-
     # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
     # assumption here is only one process is invoking rootfolder/runsvc.sh
     procgroup=$(ps x -o pgid,command | grep "$rootfolder/runsvc.sh" | grep -v grep | awk '{print $1}')
@@ -156,16 +153,16 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
                     date "+[%F %T-%4N] Path for fallback node exists, skipping creating $path" >> "$logfile" 2>&1
                 fi
             else
-                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$logfile" 2>&1
-                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$telemetryfile" 2>&1
+                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
+                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
             fi
         else
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$logfile" 2>&1
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$telemetryfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
         fi
     else
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$logfile" 2>&1
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder, version: $currentversion" >> "$telemetryfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
+            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
     fi
 
     if [ $attemptedtargetedfix -eq 0 ]

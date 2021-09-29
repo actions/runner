@@ -303,7 +303,7 @@ namespace GitHub.Runner.Worker
                         Type = JobTelemetryType.General
                     };
                     jobTelemetry.Add(telemetry);
-                    File.Delete(telemetryFilePath);
+                    IOUtil.DeleteFile(telemetryFilePath);
                 }
             }
             catch (Exception e)
