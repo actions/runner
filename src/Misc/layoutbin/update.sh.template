@@ -18,7 +18,7 @@ downloadrunnerversion=_DOWNLOAD_RUNNER_VERSION_
 logfile="_UPDATE_LOG_"
 restartinteractiverunner=_RESTART_INTERACTIVE_RUNNER_
 
-telemetryfile="_diag/.telemetry"
+telemetryfile="$rootfolder/_diag/.telemetry"
 
 # log user who run the script
 date "+[%F %T-%4N] --------whoami--------" >> "$logfile" 2>&1
