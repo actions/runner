@@ -2,8 +2,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Common
@@ -36,6 +39,9 @@ namespace GitHub.Runner.Common
         {
             _connection = jobConnection;
             int attemptCount = 5;
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var runnerSettings = configurationStore.GetSettings();
+ 
             while (!_connection.HasAuthenticated && attemptCount-- > 0)
             {
                 try
@@ -45,8 +51,13 @@ namespace GitHub.Runner.Common
                 }
                 catch (Exception ex) when (attemptCount > 0)
                 {
-                    Trace.Info($"Catch exception during connect. {attemptCount} attemp left.");
+                    Trace.Info($"Catch exception during connect. {attemptCount} attempts left.");
                     Trace.Error(ex);
+
+                    if (runnerSettings.IsHostedServer)
+                    {
+                        await CheckNetworkEndpointsAsync();
+                    }
                 }
 
                 await Task.Delay(100);
@@ -54,6 +65,52 @@ namespace GitHub.Runner.Common
 
             _taskClient = _connection.GetClient<TaskHttpClient>();
             _hasConnection = true;
+        }
+
+        private async Task CheckNetworkEndpointsAsync()
+        {
+            try
+            {
+                Trace.Info("Requesting Actions Service health endpoint status");
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                using (var actionsClient = new HttpClient(httpClientHandler))
+                {
+                    var baseUri = new Uri(_connection.Uri.GetLeftPart(UriPartial.Authority));
+
+                    actionsClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+
+                    // Call the _apis/health endpoint
+                    var response = await actionsClient.GetAsync(new Uri(baseUri, "_apis/health"));
+                    Trace.Info($"Actions health status code: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error, but continue as this call is best-effort
+                Trace.Info($"Actions Service health endpoint failed due to {ex.GetType().Name}");
+                Trace.Error(ex);
+            }
+
+            try
+            {
+                Trace.Info("Requesting Github API endpoint status");
+                // This is a dotcom public API... just call it directly
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                using (var gitHubClient = new HttpClient(httpClientHandler))
+                {
+                    gitHubClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+
+                    // Call the api.github.com endpoint
+                    var response = await gitHubClient.GetAsync("https://api.github.com");
+                    Trace.Info($"api.github.com status code: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error, but continue as this call is best-effort
+                Trace.Info($"Github API endpoint failed due to {ex.GetType().Name}");
+                Trace.Error(ex);
+            }
         }
 
         private void CheckConnection()
