@@ -53,9 +53,8 @@ namespace GitHub.Runner.Common
 
                     var configurationStore = HostContext.GetService<IConfigurationStore>();
                     var runnerSettings = configurationStore.GetSettings();
-                    var urlBuilder = new UriBuilder(runnerSettings.GitHubUrl);
  
-                    if (UrlUtil.IsHostedServer(urlBuilder))
+                    if (runnerSettings.IsHostedServer)
                     {
                         await CheckNetworkEndpointsAsync();
                     }
