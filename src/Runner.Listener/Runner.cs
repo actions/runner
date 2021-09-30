@@ -233,8 +233,14 @@ namespace GitHub.Runner.Listener
                     Trace.Info($"Set runner startup type - {startType}");
                     HostContext.StartupType = startType;
 
+                    if (command.RunOnce)
+                    {
+                        _term.WriteLine("Warning: '--once' is going to be deprecated in the future, please consider using '--ephemeral' during runner registration.", ConsoleColor.Yellow);
+                        _term.WriteLine("https://docs.github.com/en/actions/hosting-your-own-runners/autoscaling-with-self-hosted-runners#using-ephemeral-runners-for-autoscaling", ConsoleColor.Yellow);
+                    }
+
                     // Run the runner interactively or as service
-                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);  // TODO: Remove RunOnce later.
+                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);
                 }
                 else
                 {
@@ -310,6 +316,9 @@ namespace GitHub.Runner.Listener
 
                 IJobDispatcher jobDispatcher = null;
                 CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
+                
+                // Should we try to cleanup ephemeral runners
+                bool runOnceJobCompleted = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -371,6 +380,7 @@ namespace GitHub.Runner.Listener
                                 Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
                                 if (completeTask == jobDispatcher.RunOnceJobCompleted.Task)
                                 {
+                                    runOnceJobCompleted = true;
                                     Trace.Info("Job has finished at backend, the runner will exit since it is running under onetime use mode.");
                                     Trace.Info("Stop message queue looping.");
                                     messageQueueLoopTokenSource.Cancel();
@@ -479,7 +489,7 @@ namespace GitHub.Runner.Listener
 
                     messageQueueLoopTokenSource.Dispose();
 
-                    if (settings.Ephemeral)
+                    if (settings.Ephemeral && runOnceJobCompleted)
                     {
                         var configManager = HostContext.GetService<IConfigurationManager>();
                         configManager.DeleteLocalRunnerConfig();

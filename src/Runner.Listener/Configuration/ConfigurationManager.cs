@@ -415,7 +415,7 @@ namespace GitHub.Runner.Listener.Configuration
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
-                    var agents = await _runnerServer.GetAgentsAsync(settings.PoolId, settings.AgentName);
+                    var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
                     Trace.Verbose("Returns {0} agents", agents.Count);
                     TaskAgent agent = agents.FirstOrDefault();
                     if (agent == null)
@@ -424,7 +424,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                     else
                     {
-                        await _runnerServer.DeleteAgentAsync(settings.PoolId, settings.AgentId);
+                        await _runnerServer.DeleteAgentAsync(settings.AgentId);
 
                         _term.WriteLine();
                         _term.WriteSuccessMessage("Runner removed successfully");
