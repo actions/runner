@@ -39,6 +39,9 @@ namespace GitHub.Runner.Common
         {
             _connection = jobConnection;
             int attemptCount = 5;
+            var configurationStore = HostContext.GetService<IConfigurationStore>();
+            var runnerSettings = configurationStore.GetSettings();
+ 
             while (!_connection.HasAuthenticated && attemptCount-- > 0)
             {
                 try
@@ -51,9 +54,6 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Catch exception during connect. {attemptCount} attempts left.");
                     Trace.Error(ex);
 
-                    var configurationStore = HostContext.GetService<IConfigurationStore>();
-                    var runnerSettings = configurationStore.GetSettings();
- 
                     if (runnerSettings.IsHostedServer)
                     {
                         await CheckNetworkEndpointsAsync();
@@ -76,6 +76,8 @@ namespace GitHub.Runner.Common
                 using (var actionsClient = new HttpClient(httpClientHandler))
                 {
                     var baseUri = new Uri(_connection.Uri.GetLeftPart(UriPartial.Authority));
+
+                    actionsClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
 
                     // Call the _apis/health endpoint
                     var response = await actionsClient.GetAsync(new Uri(baseUri, "_apis/health"));
