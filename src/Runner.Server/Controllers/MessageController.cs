@@ -662,6 +662,9 @@ namespace Runner.Server.Controllers
                                         if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
+                                        if((tags != null || tagsIgnore != null) && branches == null && branchesIgnore == null) {
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
                                     } else if(Ref2.StartsWith(rtags) == true) {
                                         var tag = Ref2.Substring(rtags.Length);
 
@@ -669,6 +672,9 @@ namespace Runner.Server.Controllers
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                         if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
+                                        if((branches != null || branchesIgnore != null) && tags == null && tagsIgnore == null) {
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                     }
