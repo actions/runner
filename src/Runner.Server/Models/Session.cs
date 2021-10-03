@@ -9,6 +9,7 @@ namespace Runner.Server.Models
 {
     public class Session
     {
+        public bool FirstJobReceived {get; private set;}
         private CancellationTokenSource source;
         private MessageController.Job job;
         public Session() {
@@ -30,6 +31,7 @@ namespace Runner.Server.Models
                     Console.WriteLine("Job finished on session xx");
                     source.Cancel();
                 } else {
+                    FirstJobReceived = true;
                     source.Cancel();
                     source.Dispose();
                     source = new CancellationTokenSource();

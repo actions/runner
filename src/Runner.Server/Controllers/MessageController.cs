@@ -49,6 +49,7 @@ namespace Runner.Server.Controllers
         private string GitApiServerUrl;
         private string GitGraphQlServerUrl;
         private IMemoryCache _cache;
+        private SqLiteDb _context;
         private string GITHUB_TOKEN;
         private List<Secret> secrets;
 
@@ -57,7 +58,7 @@ namespace Runner.Server.Controllers
             public string Value {get;set;}
         }
 
-        public MessageController(IConfiguration configuration, IMemoryCache memoryCache)
+        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context)
         {
             ServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("ServerUrl") ?? "";
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
@@ -66,6 +67,7 @@ namespace Runner.Server.Controllers
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
             secrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();
             _cache = memoryCache;
+            _context = context;
         }
 
         [HttpDelete("{poolId}/{messageId}")]
@@ -1858,6 +1860,15 @@ namespace Runner.Server.Controllers
             session.DropMessage = null;
             var ts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, new CancellationTokenSource(TimeSpan.FromSeconds(50)).Token);
             if(session.Job == null) {
+                if(session.Agent.TaskAgent.Ephemeral == true && session.FirstJobReceived) {
+                    try {
+                        new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                    } catch {
+
+                    }
+                    this.HttpContext.Response.StatusCode = 403;
+                    return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This agent has been removed by Ephemeral"), true, new Version(2, 0)));
+                }
                 var labels = session.Agent.TaskAgent.Labels.Select(l => l.Name.ToLowerInvariant()).ToArray();
                 HashSet<HashSet<String>> labelcom = labels.Select(l => new HashSet<string>{l}).ToHashSet(new EqualityComparer());
                 for(long j = 0; j < labels.LongLength; j++) {
@@ -1979,6 +1990,13 @@ namespace Runner.Server.Controllers
                             });
                         }
                     }
+                    if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+                        try {
+                            new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                        } catch {
+
+                        }
+                    }
                     // The official runner ignores the next job if we don't delay here
                     await Task.Delay(500);
                 /* } */
@@ -1988,6 +2006,13 @@ namespace Runner.Server.Controllers
                     await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token).Token);
                 } catch (TaskCanceledException) {
                     Console.WriteLine("Finished: Waiting for request abort, timeout or job finish");
+                }
+                if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+                    try {
+                        new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                    } catch {
+                        
+                    }
                 }
                 // The official runner ignores the next job if we don't delay here
                 await Task.Delay(500);
