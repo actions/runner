@@ -1,5 +1,12 @@
 ## Changes
-- Update Runner to (https://github.com/actions/runner/commit/da79ef4acbe085fe984be98e2778dc39dfb8a4a3)
+- Update Runner to (https://github.com/actions/runner/commit/0699597876209c72b602a6074ed74fa39c999c7f)
+- Implemented basic support for https://docs.github.com/en/actions/learn-github-actions/reusing-workflows
+  - Defaults, Types and Required are ignored as of now
+  - passing inputs and secrets should work fine
+  - local testing of reusable workflows, use the same repo and branch of your current git checkout otherwise fetched from github or gitea
+- commit statuses in gitea simulating github actions checks, maybe works on github too
+- remove cross platform node binaries from dist again, since the runner can fetch them on first use
+- run steps: only use crlf for the cmd, fixes bash in docker container (windows host)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

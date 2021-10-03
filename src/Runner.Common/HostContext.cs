@@ -362,6 +362,12 @@ namespace GitHub.Runner.Common
                         GetDirectory(WellKnownDirectory.ConfigRoot),
                         ".setup_info");
                     break;
+                
+                case WellKnownConfigFile.Telemetry:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Diag),
+                        ".telemetry");
+                    break;
 
                 default:
                     throw new NotSupportedException($"Unexpected well known config file: '{configFile}'");
