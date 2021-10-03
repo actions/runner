@@ -7,6 +7,12 @@
 - commit statuses in gitea simulating github actions checks, maybe works on github too
 - remove cross platform node binaries from dist again, since the runner can fetch them on first use
 - run steps: only use crlf for the cmd, fixes bash in docker container (windows host)
+- remove ephemeral runners after they received their first job
+- Parity `pull_request_target` now loads the workflow from the pull_request target branch (not the default branch)
+- Parity `success` excludes skipped jobs
+- No longer poll every 5 sec for jobs / cancellation now uses channels and cancellation tokens for faster feedback
+- Runner.Client skipped jobs no longer cause exit 1
+- Parity empty job outputs doesn't override non empty outputs of matrix jobs
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

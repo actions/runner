@@ -825,8 +825,18 @@ namespace Runner.Server.Controllers
                                     if(e != null && guids.TryGetValue(e.JobId, out job) && job != null) {
                                         NeedsTaskResult? oldstatus = null;
                                         PipelineContextData oldjobctx;
-                                        if(needsctx.TryGetValue(job.name, out oldjobctx) && oldjobctx is DictionaryContextData _ctx && _ctx.ContainsKey("result") && _ctx["result"] is StringContextData res) {
-                                            oldstatus = Enum.Parse<NeedsTaskResult>(res, true);
+                                        if(needsctx.TryGetValue(job.name, out oldjobctx) && oldjobctx is DictionaryContextData _ctx) {
+                                            if(_ctx.ContainsKey("result") && _ctx["result"] is StringContextData res) {
+                                                oldstatus = Enum.Parse<NeedsTaskResult>(res, true);
+                                            }
+                                            // Parity: empty job outputs doesn't override non empty outputs of matrix jobs
+                                            if(_ctx.ContainsKey("outputs") && _ctx["outputs"] is DictionaryContextData outputs) {
+                                                foreach(var output in outputs) {
+                                                    if(!e.Outputs.TryGetValue(output.Key, out var val) || string.IsNullOrEmpty(val?.Value)) {
+                                                        e.Outputs[output.Key] = new VariableValue(output.Value.AssertString("").Value, false);
+                                                    }
+                                                }
+                                            }
                                         }
                                         DictionaryContextData jobctx = new DictionaryContextData();
                                         needsctx[job.name] = jobctx;
