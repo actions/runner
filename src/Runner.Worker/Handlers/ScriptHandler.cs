@@ -244,7 +244,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             // Fix up and write the script
             contents = ScriptHandlerHelpers.FixUpScriptContents(shellCommand, contents);
-            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && shellCommand == "cmd") {
                 // Normalize Windows line endings
                 contents = contents.Replace("\r\n", "\n").Replace("\n", "\r\n");
             }
