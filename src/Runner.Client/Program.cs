@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text;
@@ -728,12 +729,16 @@ namespace Runner.Client
                             if(parameters.StartServer) {
                                 Console.WriteLine($"The server is listening on {parameters.server}");
                             }
-                            Console.WriteLine($"Press Enter or CTRL+C to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
+                            Console.WriteLine($"Press {(Debugger.IsAttached ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
-                                await Task.WhenAny(Task.Run(() => {
-                                    Console.In.ReadLine();
-                                }), Task.Delay(-1, token));
+                                if(Debugger.IsAttached) {
+                                    await Task.WhenAny(Task.Run(() => {
+                                        Console.In.ReadLine();
+                                    }), Task.Delay(-1, token));
+                                } else {
+                                    await Task.Delay(-1, token);
+                                }
                             } catch {
 
                             }
@@ -851,7 +856,7 @@ namespace Runner.Client
                                         try {
                                             var workflow = File.OpenRead(w);
                                             workflowsToDispose.Add(workflow);
-                                            mp.Add(new StreamContent(workflow), w, w);
+                                            mp.Add(new StreamContent(workflow), w.Replace('\\', '/'), w.Replace('\\', '/'));
                                         } catch {
                                             Console.WriteLine($"Failed to read file: {w}");
                                             return 1;

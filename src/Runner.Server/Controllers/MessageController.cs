@@ -422,7 +422,7 @@ namespace Runner.Server.Controllers
             public string TargetUrl {get;set;}
         }
 
-        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false) {
+        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null) {
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             var runid = _cache.GetOrCreate(repository_name, e => new Int64());
             _cache.Set(repository_name, runid + 1);
@@ -472,9 +472,9 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha);
+            return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, null, null, null, null, workflows);
         }
-        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentWorkflow = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null) {
+        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentWorkflow = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null, KeyValuePair<string, string>[] workflows = null) {
             string event_name = e;
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             try {
@@ -1075,7 +1075,7 @@ namespace Runner.Server.Controllers
                                                 }
                                             }
                                             next.DisplayName = _jobdisplayname;
-                                            return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, parentWorkflow, event_name, parentEvent);
+                                            return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, parentWorkflow, event_name, parentEvent, workflows);
                                         };
                                         ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                         if(keys.Length != 0 || includematrix.Count == 0) {
@@ -1440,7 +1440,7 @@ namespace Runner.Server.Controllers
             await task;
             _cache.Remove(id);
         }
-        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string parentWorkflow, string wevent, string parentEvent)
+        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string parentWorkflow, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null)
         {
             var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
             variables.Add("system.github.token", new VariableValue(GITHUB_TOKEN, true));
@@ -1502,64 +1502,75 @@ namespace Runner.Server.Controllers
                         FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                         return;
                     }
-                    var client = new HttpClient();
-                    client.DefaultRequestHeaders.Add("accept", "application/json");
-                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                    }
-                    var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
-                    url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
-                    var res = await client.GetAsync(url.ToString());
-                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                        var content = await res.Content.ReadAsStringAsync();
-                        var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
-                        {
-                            try {
-                                var fileRes = await client.GetAsync(item.download_url);
-                                var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
-                                //hook["inputs"] = rawWith?.ToContextData()?.ToJToken();
-                                var ghook = hook.ToObject<GiteaHook>();
+                    Action<string, string> workflow_call = (filename, filecontent) => {
+                        var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
+                        var ghook = hook.ToObject<GiteaHook>();
 
-                                foreach (var pair in contextData)
-                                {
-                                    templateContext.ExpressionValues[pair.Key] = pair.Value;
+                        foreach (var pair in contextData)
+                        {
+                            templateContext.ExpressionValues[pair.Key] = pair.Value;
+                        }
+                        var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
+                        var result = new DictionaryContextData();
+                        foreach (var variable in variables)
+                        {
+                            if (variable.Value.IsSecret &&
+                                !string.Equals(variable.Key, "system.github.token", StringComparison.OrdinalIgnoreCase))
+                            {
+                                result[variable.Key] = new StringContextData(variable.Value.Value);
+                            }
+                        }
+                        templateContext.ExpressionValues["secrets"] = result;
+                        var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping("") : null;
+                        List<string> _secrets = new List<string>();
+                        if(evalSec != null) {
+                            foreach(var entry in evalSec) {
+                                _secrets.Add(entry.Key.AssertString("") + "=" + entry.Value.AssertString(""));
+                            }
+                        }
+                        var resp = ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, workflowname, wevent, eval?.ToContextData(), e => {
+                            var jid = jobId;
+                            var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
+                            jobevent?.Invoke(this, _job.repo, _job);
+                            FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                        } );
+                        if(resp == null || resp.failed || resp.skipped) {
+                            var jid = jobId;
+                            var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
+                            jobevent?.Invoke(this, _job.repo, _job);
+                            FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                            return;
+                        }
+                    };
+                    if(localcheckout && reference.Name == repo && (("refs/heads/" + reference.Ref) == Ref || ("refs/tags/" + reference.Ref) == Ref) && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
+                        try {
+                            workflow_call(reference.Path, _content);
+                        } catch (Exception ex) {
+                            await Console.Error.WriteLineAsync(ex.Message);
+                            await Console.Error.WriteLineAsync(ex.StackTrace);
+                        }
+                    } else {
+                        var client = new HttpClient();
+                        client.DefaultRequestHeaders.Add("accept", "application/json");
+                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                        }
+                        var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
+                        url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
+                        var res = await client.GetAsync(url.ToString());
+                        if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                            var content = await res.Content.ReadAsStringAsync();
+                            var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
+                            {
+                                try {
+                                    var fileRes = await client.GetAsync(item.download_url);
+                                    var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                    workflow_call(item.path, filecontent);
+                                } catch (Exception ex) {
+                                    await Console.Error.WriteLineAsync(ex.Message);
+                                    await Console.Error.WriteLineAsync(ex.StackTrace);
                                 }
-                                var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
-                                var result = new DictionaryContextData();
-                                foreach (var variable in variables)
-                                {
-                                    if (variable.Value.IsSecret &&
-                                        !string.Equals(variable.Key, "system.github.token", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        result[variable.Key] = new StringContextData(variable.Value.Value);
-                                    }
-                                }
-                                templateContext.ExpressionValues["secrets"] = result;
-                                var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping("") : null;
-                                List<string> _secrets = new List<string>();
-                                if(evalSec != null) {
-                                    foreach(var entry in evalSec) {
-                                        _secrets.Add(entry.Key.AssertString("") + "=" + entry.Value.AssertString(""));
-                                    }
-                                }
-                                var resp = ConvertYaml2(item.path, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, workflowname, wevent, eval?.ToContextData(), e => {
-                                    var jid = jobId;
-                                    var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
-                                    jobevent?.Invoke(this, _job.repo, _job);
-                                    FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                                } );
-                                if(resp == null || resp.failed || resp.skipped) {
-                                    var jid = jobId;
-                                    var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
-                                    jobevent?.Invoke(this, _job.repo, _job);
-                                    FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                                    return;
-                                }
-                            } catch (Exception ex) {
-                                await Console.Error.WriteLineAsync(ex.Message);
-                                await Console.Error.WriteLineAsync(ex.StackTrace);
                             }
                         }
                     }
@@ -2195,7 +2206,7 @@ namespace Runner.Server.Controllers
                 obj = new KeyValuePair<GiteaHook, JObject>(JsonConvert.DeserializeObject<GiteaHook>(text), obj_);
             }
 
-            var workflow = from f in form.Files where f.Name != "event" select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd());
+            var workflow = (from f in form.Files where f.Name != "event" select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd())).ToArray();
 
             // Try to fix head_commit == null 
             if(obj.Key.head_commit == null) {
@@ -2213,7 +2224,7 @@ namespace Runner.Server.Controllers
             if(workflow.Any()) {
                 List<HookResponse> responses = new List<HookResponse>();
                 foreach (var w in workflow) {
-                    responses.Add(ConvertYaml(w.Key, w.Value, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true));
+                    responses.Add(ConvertYaml(w.Key, w.Value, hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow));
                 }
                 return await Ok(responses, true);
             }
