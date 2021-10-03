@@ -84,7 +84,10 @@ namespace Runner.Server.Controllers {
 
         [HttpGet("get/{filename}")]
         [AllowAnonymous]
-        public FileStreamResult GetCacheEntry(string filename) {   
+        public IActionResult GetCacheEntry(string filename) {
+            if(!new System.Text.RegularExpressions.Regex("(\\.?[^\\.\\\\/])+").IsMatch(filename)) {
+                return NotFound();
+            }
             return new FileStreamResult(System.IO.File.OpenRead(System.IO.Path.Combine(_targetFilePath, filename)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 

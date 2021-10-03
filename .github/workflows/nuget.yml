@@ -1,4 +1,6 @@
-on: push
+on:
+- push
+- workflow_dispatch
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -16,7 +18,9 @@ jobs:
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Build
-      run: dotnet build --no-restore /p:BUILD_OS=Any
+      run: |
+        $d = Get-Date
+        dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Pack
@@ -31,7 +35,7 @@ jobs:
         name: nupkg
         path: src/Runner.Client/nupkg
     - name: Push to Nuget
-      if: env.GHARUN != ''
+      if: false && env.GHARUN != ''
       run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json
       shell: pwsh
       working-directory: ./src/Runner.Client/nupkg

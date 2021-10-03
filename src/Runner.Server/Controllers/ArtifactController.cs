@@ -125,7 +125,10 @@ namespace Runner.Server.Controllers {
 
         [HttpGet("artifact/{containername}/{file}")]
         [AllowAnonymous]
-        public FileStreamResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename, [FromQuery] bool gzip) {
+        public IActionResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename, [FromQuery] bool gzip) {
+            if(!new System.Text.RegularExpressions.Regex("(\\.?[^\\.\\\\/])+").IsMatch(filename)) {
+                return NotFound();
+            }
             if(filename?.Length > 0) {
                 Response.Headers.Add("Content-Disposition", $"attachment; filename={filename}");
             }
