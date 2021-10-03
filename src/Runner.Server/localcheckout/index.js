@@ -37,7 +37,7 @@ try {
         }
         var clean = core.getInput("clean");
         if(clean === undefined || clean === "" || clean === "true") {
-            var posixdest = dest.replace("\\", "/");
+            var posixdest = dest.replace(/\\/g, "/");
             core.info("Clean folder: " + dest);
             del.sync([ posixdest + "/**", "!" + posixdest ]);
         }
