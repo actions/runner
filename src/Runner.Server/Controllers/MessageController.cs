@@ -1503,8 +1503,7 @@ namespace Runner.Server.Controllers
                     // if(url.Path.Length == 0 || url.Path.Last() != '/') {
                     //     url.Path += "/";
                     // }
-                    client.DefaultRequestHeaders.Host = url.Host;
-                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("curl", "7.55.1"));
+                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                     url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
                     var res = await client.GetAsync(url.ToString());
                     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
@@ -1512,7 +1511,6 @@ namespace Runner.Server.Controllers
                         var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
                         {
                             try {
-                                client.DefaultRequestHeaders.Host = new UriBuilder(item.download_url).Host;
                                 var fileRes = await client.GetAsync(item.download_url);
                                 var filecontent = await fileRes.Content.ReadAsStringAsync();
                                 var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
