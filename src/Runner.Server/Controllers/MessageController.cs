@@ -1053,7 +1053,7 @@ namespace Runner.Server.Controllers
                                                     var url = new UriBuilder(GitApiServerUrl);
                                                     url.Path += $"/repos/{hook.repository.full_name}/statuses/{Sha}";
                                                     var targetUrl = "";
-                                                    if(ServerUrl != null) {
+                                                    if(!string.IsNullOrEmpty(ServerUrl)) {
                                                         var targetUrlBuilder = new UriBuilder(ServerUrl);
                                                         targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.RequestId}";
                                                         targetUrl = targetUrlBuilder.ToString();
@@ -1271,7 +1271,7 @@ namespace Runner.Server.Controllers
                                             var url = new UriBuilder(GitApiServerUrl);
                                             url.Path += $"/repos/{hook.repository.full_name}/statuses/{Sha}";
                                             var targetUrl = "";
-                                            if(ServerUrl != null) {
+                                            if(!string.IsNullOrEmpty(ServerUrl)) {
                                                 var targetUrlBuilder = new UriBuilder(ServerUrl);
                                                 targetUrlBuilder.Fragment = $"/master/runner/server/detail/{ji.RequestId}";
                                                 targetUrl = targetUrlBuilder.ToString();
