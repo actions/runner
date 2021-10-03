@@ -118,7 +118,7 @@ namespace Runner.Server.Controllers {
                 var builder = new Microsoft.AspNetCore.Http.Extensions.QueryBuilder();
                 builder.Add("filename", Path.GetFileName(item.Key));
                 builder.Add("gzip", item.Value.GZip.ToString());
-                ret.Add(new DownloadInfo { path = item.Key, itemType = "file", fileLength = 1 /* TODO do we need the real filesize? this works for now */, contentLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{containername}/{item.Value.FileName}{builder.ToString()}"});
+                ret.Add(new DownloadInfo { path = item.Key, itemType = "file", fileLength = 1 /* TODO do we need the real filesize? this works for now */, contentLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{Uri.EscapeDataString(containername)}/{Uri.EscapeDataString(item.Value.FileName)}{builder.ToString()}"});
             }
             return await Ok(ret);
         }
@@ -126,7 +126,7 @@ namespace Runner.Server.Controllers {
         [HttpGet("artifact/{containername}/{file}")]
         [AllowAnonymous]
         public IActionResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename, [FromQuery] bool gzip) {
-            if(!new System.Text.RegularExpressions.Regex("(\\.?[^\\.\\\\/])+").IsMatch(filename)) {
+            if(!new System.Text.RegularExpressions.Regex("(\\.?[^\\.\\\\/])+").IsMatch(file)) {
                 return NotFound();
             }
             if(filename?.Length > 0) {
