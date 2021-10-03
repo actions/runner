@@ -698,9 +698,11 @@ namespace Runner.Server.Controllers
                 // (new Func<Task>(async () => {
                 //     var client = new HttpClient();
                 //     client.DefaultRequestHeaders.Add("accept", "application/json");
-                //     client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                //     var urlBuilder = new UriBuilder(GitApiServerUrl);
-                //     urlBuilder.Path += $"/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                //     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                //     if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                //         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                //     }
+                //     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
                 //     var res = await client.GetAsync(urlBuilder.ToString());
                 //     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                 //         var content = await res.Content.ReadAsStringAsync();
@@ -1055,9 +1057,11 @@ namespace Runner.Server.Controllers
                                                 try {
                                                     var client = new HttpClient();
                                                     client.DefaultRequestHeaders.Add("accept", "application/json");
-                                                    client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                                                    var url = new UriBuilder(GitApiServerUrl);
-                                                    url.Path += $"/repos/{hook.repository.full_name}/statuses/{Sha}";
+                                                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                                                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                                    }
+                                                    var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/statuses/{Sha}"));
                                                     var targetUrl = "";
                                                     if(!string.IsNullOrEmpty(ServerUrl)) {
                                                         var targetUrlBuilder = new UriBuilder(ServerUrl);
@@ -1273,9 +1277,11 @@ namespace Runner.Server.Controllers
                                             var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).First() ?? ja;
                                             var client = new HttpClient();
                                             client.DefaultRequestHeaders.Add("accept", "application/json");
-                                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                                            var url = new UriBuilder(GitApiServerUrl);
-                                            url.Path += $"/repos/{hook.repository.full_name}/statuses/{Sha}";
+                                            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                                            if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                                client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                            }
+                                            var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/statuses/{Sha}"));
                                             var targetUrl = "";
                                             if(!string.IsNullOrEmpty(ServerUrl)) {
                                                 var targetUrlBuilder = new UriBuilder(ServerUrl);
@@ -1317,9 +1323,11 @@ namespace Runner.Server.Controllers
                                 // (new Func<Task>(async () => {
                                 //     var client = new HttpClient();
                                 //     client.DefaultRequestHeaders.Add("accept", "application/json");
-                                //     client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                                //     var urlBuilder = new UriBuilder(GitApiServerUrl);
-                                //     urlBuilder.Path += $"/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                                //     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                                //     if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                //         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                //     }
+                                //     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
                                 //     var res = await client.GetAsync(urlBuilder.ToString());
                                 //     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                                 //         var content = await res.Content.ReadAsStringAsync();
@@ -1495,15 +1503,12 @@ namespace Runner.Server.Controllers
                         return;
                     }
                     var client = new HttpClient();
-                    //client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                     if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
                         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                     }
                     var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
-                    // if(url.Path.Length == 0 || url.Path.Last() != '/') {
-                    //     url.Path += "/";
-                    // }
-                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
                     url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
                     var res = await client.GetAsync(url.ToString());
                     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
@@ -2101,9 +2106,11 @@ namespace Runner.Server.Controllers
                     } else {
                         var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("accept", "application/json");
-                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                        var urlBuilder = new UriBuilder(GitApiServerUrl);
-                        urlBuilder.Path += $"/repos/{hook.repository.full_name}/commits";
+                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                        }
+                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/commits"));
                         urlBuilder.Query = $"?page=1&limit=1";
                         var res = await client.GetAsync(urlBuilder.ToString());
                         if(res.StatusCode == System.Net.HttpStatusCode.OK) {
@@ -2116,9 +2123,11 @@ namespace Runner.Server.Controllers
                     foreach(var em in evs) {
                         var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("accept", "application/json");
-                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                        var urlBuilder = new UriBuilder(GitApiServerUrl);
-                        urlBuilder.Path += $"/repos/{hook.repository.full_name}/contents/.github%2Fworkflows";
+                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                        }
+                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
                         urlBuilder.Query = $"?ref={Uri.EscapeDataString(em.Value)}";
                         var res = await client.GetAsync(urlBuilder.ToString());
                         // {
