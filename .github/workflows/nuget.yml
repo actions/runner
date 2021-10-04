@@ -43,7 +43,7 @@ jobs:
     - name: Test
       run: |
         gharun -W testworkflows/testlocalcheckout.yml
-        gharun -W testworkflows/cache.yml
+        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml
     - name: Push to Nuget
