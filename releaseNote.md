@@ -1,7 +1,7 @@
 ## Changes
-- Fixed localcheckout doesn't work (missing node_modules in archive)
-- Fixed hashfiles of dotnet tool, now finds node as expected
-- Added Tests for both fixes (+ now tests for the dotnet tool, not only for native runner packages)
+- Fixed incorrect order of console log
+  - e.g. Setup job was after Finish Job
+- matrix test nuget package with test workflows on linux, windows and macOS
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
