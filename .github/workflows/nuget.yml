@@ -1,3 +1,4 @@
+name: dotnet tool
 on:
 - push
 - workflow_dispatch
@@ -21,8 +22,8 @@ jobs:
       id: build
       run: |
         $d = Get-Date
-        $runnerversion = $($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
-        dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$($runnerversion)
+        $runnerversion = $($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
+        dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$runnerversion
         echo $('::set-output name=version::' + $runnerversion)
       shell: pwsh
       working-directory: ./src/Runner.Client
