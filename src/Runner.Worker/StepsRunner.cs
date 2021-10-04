@@ -75,8 +75,12 @@ namespace GitHub.Runner.Worker
                 // Start
                 step.ExecutionContext.Start();
 
-                // Prepare host nodejs version
-                HashFilesFunction.NodeTool = await ExternalToolHelper.GetNodeTool(HostContext, step.ExecutionContext, "node12", ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
+                try {
+                    // Prepare host nodejs version
+                    HashFilesFunction.NodeTool = await ExternalToolHelper.GetNodeTool(HostContext, step.ExecutionContext, "node12", ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
+                } catch {
+                    
+                }
 
                 // Expression functions
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
