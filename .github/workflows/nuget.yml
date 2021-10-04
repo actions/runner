@@ -3,8 +3,10 @@ on:
 - push
 - workflow_dispatch
 jobs:
-  publish:
+  package:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.build.outputs.version }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1
@@ -37,15 +39,6 @@ jobs:
       with:
         name: nupkg
         path: src/Runner.Client/nupkg
-    - name: Install
-      run: |
-        dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg --version ${{steps.build.outputs.version}}
-    - name: Test
-      run: |
-        gharun -W testworkflows/testlocalcheckout.yml
-        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
-        gharun -W testworkflows/testhashfiles.yml
-        gharun -W testworkflows/dumpcontexts.yml
     - name: Push to Nuget
       if: false && env.GHARUN != ''
       run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json
@@ -53,3 +46,39 @@ jobs:
       working-directory: ./src/Runner.Client/nupkg
       env:
         GHARUN: ${{secrets.GHARUN}}
+  test:
+    needs:
+    - package
+    strategy:
+      matrix:
+        os:
+        - windows-latest
+        - ubuntu-latest
+        - macos-latest
+        dotnet-version:
+        - '5.0.x'
+        - '5.0.200'
+    runs-on: ${{matrix.os}}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{matrix.dotnet-version}}
+    - run: mkdir src/Runner.Client/nupkg
+    - name: Download Artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: nupkg
+        path: src/Runner.Client/nupkg
+    - name: Install
+      run: |
+        dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg --version ${{needs.package.outputs.version}}
+    - name: Test
+      run: |
+        gharun -W testworkflows/testlocalcheckout.yml
+        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
+        gharun -W testworkflows/testhashfiles.yml
+        gharun -W testworkflows/dumpcontexts.yml
+        gharun -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
+        gharun -W testworkflows/artifact.yml
+        gharun -W testworkflows/issue70/main.yml
