@@ -1,3 +1,4 @@
+on: push
 name: update-wwwroot
 jobs:
   update-localcheckout:
