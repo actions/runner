@@ -1211,6 +1211,10 @@ namespace Runner.Client
                                                     timelineRecords[e.timelineId] = new TimeLineEntry() { Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() { e } };
                                                     col = (col + 1) % 14;
                                                     continue;
+                                                } else if(rec.Pending?.Count > 0) {
+                                                    // Fix webconsole invalid print order
+                                                    rec.Pending.Add(e);
+                                                    continue;
                                                 } else if(rec.RecordId != e.record.StepId) {
                                                     if(rec.RecordId != Guid.Empty && rec.TimeLine != null && (rec.TimeLine.Count == 0 || rec.RecordId != rec.TimeLine[0].Id)) {
                                                         var record = rec.TimeLine.Find(r => r.Id == rec.RecordId);
@@ -1574,7 +1578,7 @@ namespace Runner.Client
                                         }
                                     }
                                     if(parameters.LogOutputDir?.Length > 0) {
-                                        Regex special = new Regex("[*'\",_&#^@\\/ ]");
+                                        Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
                                         foreach(var runId in runIds) {
                                             try {
                                                 var jobquery = new QueryBuilder();
