@@ -83,6 +83,7 @@ jobs:
         name: runner-package-${{ matrix.runtime }}
         path: _package
     - name: Setup
+      if: 'false' # Disabled due to 403 of statuses api with this token and rate limit
       shell: pwsh
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -125,6 +126,7 @@ jobs:
         ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/issue70/main4.yml && exit 1 || [[ "$?" = "1" ]]
 
         ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/skippedjob.yml
+        ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/testlocalcheckout.yml
         kill $workerpid
         kill $serverpid
         popd

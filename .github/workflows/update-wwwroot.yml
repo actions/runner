@@ -1,0 +1,19 @@
+name: update-wwwroot
+jobs:
+  update-localcheckout:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+      with:
+        node-version: "16"
+    - run: |
+        npm install
+      working-directory: src/Runner.Server/localcheckout
+    - run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git add .
+        git commit -m "update localcheckout"
+        git push
+      continue-on-error: true
