@@ -42,10 +42,10 @@ jobs:
         dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg --version ${{steps.build.outputs.version}}
     - name: Test
       run: |
-        gharun -W ../../testworkflows/testlocalcheckout.yml
-        gharun -W ../../testworkflows/cache.yml
-        gharun -W ../../testworkflows/testhashfiles.yml
-        gharun -W ../../testworkflows/dumpcontexts.yml
+        gharun -W testworkflows/testlocalcheckout.yml
+        gharun -W testworkflows/cache.yml
+        gharun -W testworkflows/testhashfiles.yml
+        gharun -W testworkflows/dumpcontexts.yml
     - name: Push to Nuget
       if: false && env.GHARUN != ''
       run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json
