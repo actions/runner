@@ -1,0 +1,8 @@
+on: push
+name: testhashfiles
+jobs:
+  test-hashfiles:
+    runs-on: self-hosted
+    steps:
+    - run: echo '{"nothing"}' > test.json
+    - run: ${{hashfiles('test.json')}}

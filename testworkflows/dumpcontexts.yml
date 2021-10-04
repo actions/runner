@@ -1,0 +1,20 @@
+on: push
+name: dumpcontexts
+jobs:
+  dumpcontexts:
+    runs-on: self-hosted
+    steps:
+    - run: echo '${{toJSON(github)}}'
+      continue-on-error: true
+    - run: echo '${{toJSON(runner)}}'
+      continue-on-error: true
+    - run: echo '${{toJSON(needs)}}'
+      continue-on-error: true
+    - run: echo '${{toJSON(matrix)}}'
+      continue-on-error: true
+    - run: echo '${{toJSON(strategy)}}'
+      continue-on-error: true
+    - run: echo '${{toJSON(env)}}'
+      continue-on-error: true
+    - run: echo '${{toJSON(secrets)}}'
+      continue-on-error: true

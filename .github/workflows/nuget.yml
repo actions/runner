@@ -18,15 +18,17 @@ jobs:
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Build
+      id: build
       run: |
         $d = Get-Date
-        dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
+        $runnerversion = $($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
+        dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$runnerversion
+        echo $('::set-output name=version::' + $runnerversion)
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Pack
       run: |
-        $d = Get-Date
-        dotnet pack --no-restore --no-build /p:Version=$($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second).$($ENV:GITHUB_RUN_ID)
+        dotnet pack --no-restore --no-build /p:Version=${{steps.build.outputs.version}}
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts
@@ -34,6 +36,15 @@ jobs:
       with:
         name: nupkg
         path: src/Runner.Client/nupkg
+    - name: Install
+      run: |
+        dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg --version ${{steps.build.outputs.version}}
+    - name: Test
+      run: |
+        gharun -W ../../testworkflows/testlocalcheckout.yml
+        gharun -W ../../testworkflows/cache.yml
+        gharun -W ../../testworkflows/testhashfiles.yml
+        gharun -W ../../testworkflows/dumpcontexts.yml
     - name: Push to Nuget
       if: false && env.GHARUN != ''
       run: dotnet nuget push ./*.nupkg --api-key $($ENV:GHARUN) --source https://api.nuget.org/v3/index.json

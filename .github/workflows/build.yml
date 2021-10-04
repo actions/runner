@@ -127,6 +127,8 @@ jobs:
 
         ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/skippedjob.yml
         ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/testlocalcheckout.yml
+        ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/testhashfiles.yml
+        ./Runner.Client${{ matrix.exeSuffix }} -W ../../testworkflows/dumpcontexts.yml
         kill $workerpid
         kill $serverpid
         popd
