@@ -183,28 +183,87 @@ namespace GitHub.Runner.Worker.Handlers
 
             // [OPTIONS]
             dockerCommandArgs.Add($"-i");
-            dockerCommandArgs.Add($"--workdir {workingDirectory}");
-            foreach (var env in environment)
+
+            if (dockerManager.GetType() == typeof(DockerCommandManager))
             {
-                // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
-                // the value directly in the command
-                dockerCommandArgs.Add($"-e {env.Key}");
+                dockerCommandArgs.Add($"--workdir {workingDirectory}");
+                foreach (var env in environment)
+                {
+                    // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
+                    // the value directly in the command
+                    dockerCommandArgs.Add($"-e {env.Key}");
+                }
+                if (!string.IsNullOrEmpty(PrependPath))
+                {
+                    // Prepend tool paths to container's PATH
+                    var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
+                    dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
+                }
+
+                // CONTAINER
+                dockerCommandArgs.Add($"{Container.ContainerId}");
+
+                // COMMAND
+                dockerCommandArgs.Add(fileName);
+
+                // [ARG...]
+                dockerCommandArgs.Add(arguments);
             }
-            if (!string.IsNullOrEmpty(PrependPath))
+
+            if (dockerManager.GetType() == typeof(KubernetesCommandManager))
             {
-                // Prepend tool paths to container's PATH
+                // CONTAINER
+                dockerCommandArgs.Add($"{Container.ContainerId}");
+
+                dockerCommandArgs.Add("--");
+
+                // kubectl exec doesn't support environment variables nor workdir, so we need to create
+                // a wrapper shell script that includes the environment variables and workdir
+                var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
+                var scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}.sh");
+                var resolvedScriptPath = $"{ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
+                var contents = "#!/bin/sh\n";
+                string envContents = "";
+                foreach (var env in environment)
+                {
+                    if (env.Value != null && env.Value != "")
+                    {
+                        var value = env.Value.Replace('"', '\"');
+                        envContents += $"{env.Key}=\"{ResolvePathForStepHost(env.Value)}\" ";
+                    }
+                }
                 var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
-                dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
+                if (fullPath != null && fullPath != "") {
+                    envContents += $"PATH=\"{fullPath}:$PATH\" ";
+                }
+
+                if (workingDirectory != null && workingDirectory != "")
+                {
+                    contents += $"cd {workingDirectory}\n";
+                }
+                if (envContents != "")
+                {
+                    contents += "env " + envContents + fileName + " " + arguments;
+                }
+                else
+                {
+                    contents += fileName + " " + arguments;
+                }
+
+    #if OS_WINDOWS
+                // Normalize Windows line endings
+                var encoding = ExecutionContext.Global.Variables.Retain_Default_Encoding && Console.InputEncoding.CodePage != 65001
+                    ? Console.InputEncoding
+                    : new UTF8Encoding(false);
+    #else
+                // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
+                var encoding = new UTF8Encoding(false);
+    #endif
+                // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
+                File.WriteAllText(scriptFilePath, contents, encoding);
+                // [ARG...]
+                dockerCommandArgs.Add(resolvedScriptPath);
             }
-
-            // CONTAINER
-            dockerCommandArgs.Add($"{Container.ContainerId}");
-
-            // COMMAND
-            dockerCommandArgs.Add(fileName);
-
-            // [ARG...]
-            dockerCommandArgs.Add(arguments);
 
             string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
 

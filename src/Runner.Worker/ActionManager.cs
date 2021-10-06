@@ -81,7 +81,14 @@ namespace GitHub.Runner.Worker
             // We are running at the start of a job
             if (rootStepId == default(Guid))
             {
-                IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+                try
+                {
+                    IOUtil.DeleteDirectory(HostContext.GetDirectory(WellKnownDirectory.Actions), executionContext.CancellationToken);
+                }
+                catch
+                {
+                    executionContext.Debug($"Unable to delete {HostContext.GetDirectory(WellKnownDirectory.Actions)}.");
+                }
             }
             // We are running mid job due to a local composite action
             else

@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Diagnostics;
+using GitHub.Runner.Worker.Container;
+
 
 namespace GitHub.Runner.Worker
 {
@@ -13,7 +15,24 @@ namespace GitHub.Runner.Worker
         {
             using (HostContext context = new HostContext("Worker"))
             {
+                addDefaultServices(context);
                 return MainAsync(context, args).GetAwaiter().GetResult();
+            }
+        }
+
+        public static void addDefaultServices(HostContext context) {
+            Tracing trace = context.GetTrace(nameof(GitHub.Runner.Worker));
+            var containerProvider = Environment.GetEnvironmentVariable("RUNNER_CONTAINER_PROVIDER");
+            switch (containerProvider)
+            {
+                case "docker":
+                    trace.Info($"Registering DockerCommandManager as default IDockerCommandManager");
+                    context.RegisterService(typeof(IDockerCommandManager), typeof(DockerCommandManager));
+                    break;
+                case "kubernetes":
+                    trace.Info($"Registering KubernetesCommandManager as default IDockerCommandManager");
+                    context.RegisterService(typeof(IDockerCommandManager), typeof(KubernetesCommandManager));
+                    break;
             }
         }
 

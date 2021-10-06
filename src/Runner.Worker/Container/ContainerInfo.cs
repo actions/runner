@@ -26,7 +26,7 @@ namespace GitHub.Runner.Worker.Container
             UpdateWebProxyEnv(hostContext.WebProxy);
         }
 
-        public ContainerInfo(IHostContext hostContext, Pipelines.JobContainer container, bool isJobContainer = true, string networkAlias = null)
+        public ContainerInfo(IHostContext hostContext, Pipelines.JobContainer container, bool isJobContainer = true, string networkAlias = null, string displayName = null)
         {
             this.ContainerName = container.Alias;
 
@@ -34,7 +34,7 @@ namespace GitHub.Runner.Worker.Container
             ArgUtil.NotNullOrEmpty(containerImage, nameof(containerImage));
 
             this.ContainerImage = containerImage;
-            this.ContainerDisplayName = $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}";
+            this.ContainerDisplayName = displayName == null ? $"{container.Alias}_{Pipelines.Validation.NameValidation.Sanitize(containerImage)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}" : displayName;
             this.ContainerCreateOptions = container.Options;
             _environmentVariables = container.Environment;
             this.IsJobContainer = isJobContainer;

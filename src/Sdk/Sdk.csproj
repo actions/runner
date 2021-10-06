@@ -23,7 +23,7 @@
         <PackageReference Include="System.Security.Cryptography.Pkcs" Version="4.4.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="4.4.0" />
         <PackageReference Include="Minimatch" Version="2.0.0" />
-        <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
+        <PackageReference Include="YamlDotNet" Version="8.1.2" />
     </ItemGroup>
 
     <ItemGroup>

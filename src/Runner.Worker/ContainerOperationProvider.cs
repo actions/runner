@@ -91,31 +91,36 @@ namespace GitHub.Runner.Worker
 #endif
 
             // Check docker client/server version
-            executionContext.Output("##[group]Checking docker version");
+            executionContext.Output($"##[group]Checking {_dockerManager.Type} version");
             DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
             executionContext.Output("##[endgroup]");
 
             ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
-            ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
+
+            if (_dockerManager.GetType() == typeof(DockerCommandManager))
+            {
+                ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
 
 #if OS_WINDOWS
-            Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
+                Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
 #else
-            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
+                Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
 #endif
 
-            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
-            }
-            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
+                if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
+                {
+                    throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
+                }
+                if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
+                {
+                    throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
+                }
+
             }
 
             // Clean up containers left by previous runs
             executionContext.Output("##[group]Clean up resources from previous jobs");
-            var staleContainers = await _dockerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManager.DockerInstanceLabel}\"");
+            var staleContainers = await _dockerManager.DockerListByLabel(executionContext);
             foreach (var staleContainer in staleContainers)
             {
                 int containerRemoveExitCode = await _dockerManager.DockerRemove(executionContext, staleContainer);
@@ -279,11 +284,11 @@ namespace GitHub.Runner.Worker
             try
             {
                 // Make sure container is up and running
-                var psOutputs = await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --filter status=running --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
+                var psOutputs = await _dockerManager.DockerListByContainerId(executionContext, container.ContainerId, "Running");
                 if (psOutputs.FirstOrDefault(x => !string.IsNullOrEmpty(x))?.StartsWith(container.ContainerId) != true)
                 {
                     // container is not up and running, pull docker log for this container.
-                    await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
+                    await _dockerManager.DockerListByContainerId(executionContext, container.ContainerId);
                     int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
                     if (logsExitCode != 0)
                     {
@@ -314,12 +319,16 @@ namespace GitHub.Runner.Worker
                 {
                     (service["ports"] as DictionaryContextData)[port.ContainerPort] = new StringContextData(port.HostPort);
                 }
+                if (_dockerManager.GetType() == typeof(KubernetesCommandManager))
+                {
+                    var podIp = await (_dockerManager as KubernetesCommandManager).DockerIP(executionContext, container.ContainerId);
+                    (service as DictionaryContextData)["hostname"] = new StringContextData(podIp);
+                }
                 executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
             }
             else
             {
-                var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-                var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
+                var containerEnv = await _dockerManager.DockerGetEnv(executionContext, container.ContainerId);
                 container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
             }
@@ -420,11 +429,11 @@ namespace GitHub.Runner.Worker
 
         private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
-            string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
-            string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
+            string serviceHealth = await _dockerManager.DockerReadyStatus(context: executionContext, dockerObject: container.ContainerId);
             if (string.IsNullOrEmpty(serviceHealth))
             {
                 // Container has no HEALTHCHECK
+                executionContext.Output($"{container.ContainerNetworkAlias} service has no health check.");
                 return;
             }
             var retryCount = 0;
@@ -433,7 +442,8 @@ namespace GitHub.Runner.Worker
                 TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
                 executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
                 await Task.Delay(backoff, executionContext.CancellationToken);
-                serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
+
+                serviceHealth = await _dockerManager.DockerReadyStatus(context: executionContext, dockerObject: container.ContainerId);
                 retryCount++;
             }
             if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))

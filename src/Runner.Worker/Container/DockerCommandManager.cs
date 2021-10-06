@@ -14,6 +14,7 @@ namespace GitHub.Runner.Worker.Container
     [ServiceLocator(Default = typeof(DockerCommandManager))]
     public interface IDockerCommandManager : IRunnerService
     {
+        string Type { get; }
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
@@ -24,14 +25,16 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
         Task<int> DockerStart(IExecutionContext context, string containerId);
         Task<int> DockerLogs(IExecutionContext context, string containerId);
-        Task<List<string>> DockerPS(IExecutionContext context, string options);
+        Task<List<string>> DockerListByLabel(IExecutionContext context);
+        Task<List<string>> DockerListByContainerId(IExecutionContext context, string containerId, string status = null);
+        Task<List<string>> DockerGetEnv(IExecutionContext context, string dockerObject);
         Task<int> DockerRemove(IExecutionContext context, string containerId);
         Task<int> DockerNetworkCreate(IExecutionContext context, string network);
         Task<int> DockerNetworkRemove(IExecutionContext context, string network);
         Task<int> DockerNetworkPrune(IExecutionContext context);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs);
-        Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options);
+        Task<string> DockerReadyStatus(IExecutionContext context, string dockerObject);
         Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId);
         Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password);
     }
@@ -42,9 +45,12 @@ namespace GitHub.Runner.Worker.Container
 
         public string DockerInstanceLabel { get; private set; }
 
+        public string Type { get; private set; }
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
+            Type = "docker";
             DockerPath = WhichUtil.Which("docker", true, Trace);
             DockerInstanceLabel = IOUtil.GetSha256Hash(hostContext.GetDirectory(WellKnownDirectory.Root)).Substring(0, 6);
         }
@@ -273,6 +279,26 @@ namespace GitHub.Runner.Worker.Container
             return await ExecuteDockerCommandAsync(context, "logs", $"--details {containerId}", context.CancellationToken);
         }
 
+        public async Task<List<string>> DockerListByLabel(IExecutionContext context)
+        {
+            return await DockerPS(context, $"--all --quiet --no-trunc --filter \"label={DockerInstanceLabel}\"");
+        }
+
+        public async Task<List<string>> DockerGetEnv(IExecutionContext context, string containerID)
+        {
+            var options = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
+            return await ExecuteDockerCommandAsync(context, "inspect", $"{options} {containerID}");
+        }
+
+        public async Task<List<string>> DockerListByContainerId(IExecutionContext context, string containerId, string status = null)
+        {
+            string filter = "";
+            if (status != "") {
+                filter = $" --filter status={status.ToLower()}";
+            }
+            return await DockerPS(context, $"--all --filter id={containerId}${filter} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
+        }
+
         public async Task<List<string>> DockerPS(IExecutionContext context, string options)
         {
             return await ExecuteDockerCommandAsync(context, "ps", options);
@@ -350,6 +376,12 @@ namespace GitHub.Runner.Worker.Container
         public async Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
         {
             return await ExecuteDockerCommandAsync(context, "inspect", $"{options} {dockerObject}");
+        }
+
+        public async Task<string> DockerReadyStatus(IExecutionContext context, string dockerObject)
+        {
+            string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
+            return (await DockerInspect(context: context, dockerObject: dockerObject, options: healthCheck)).FirstOrDefault();
         }
 
         public async Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId)

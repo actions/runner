@@ -15,6 +15,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Container;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -199,7 +200,13 @@ namespace GitHub.Runner.Worker
                     var container = templateEvaluator.EvaluateJobContainer(message.JobContainer, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (container != null)
                     {
-                        jobContext.Global.Container = new Container.ContainerInfo(HostContext, container);
+                        var containerProvider = HostContext.GetService<IDockerCommandManager>();
+                        string displayName = null;
+                        if (containerProvider.GetType() == typeof(KubernetesCommandManager))
+                        {
+                            displayName = (containerProvider as KubernetesCommandManager).GetRunnerName() + "-container";
+                        }
+                        jobContext.Global.Container = new Container.ContainerInfo(HostContext, container, true, null, displayName);
                     }
 
                     // Evaluate the job service containers
@@ -207,12 +214,20 @@ namespace GitHub.Runner.Worker
                     var serviceContainers = templateEvaluator.EvaluateJobServiceContainers(message.JobServiceContainers, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
                     if (serviceContainers?.Count > 0)
                     {
+                        int svcIdx = 1;
+                        var containerProvider = HostContext.GetService<IDockerCommandManager>();
                         foreach (var pair in serviceContainers)
                         {
+                            string displayName = null;
+                            if (containerProvider.GetType() == typeof(KubernetesCommandManager))
+                            {
+                                displayName = (containerProvider as KubernetesCommandManager).GetRunnerName() + $"-service-{svcIdx}" ;
+                            }
                             var networkAlias = pair.Key;
                             var serviceContainer = pair.Value;
-                            jobContext.Global.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias));
+                            jobContext.Global.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias, displayName));
                         }
+                        svcIdx ++;
                     }
 
                     // Evaluate the job defaults
