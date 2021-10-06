@@ -25,5 +25,7 @@
     </dict>
     <key>ProcessType</key>
     <string>Interactive</string>
+    <key>SessionCreate</key>
+    <true/>
   </dict>
 </plist>
