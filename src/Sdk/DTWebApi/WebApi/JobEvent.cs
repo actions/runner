@@ -256,6 +256,9 @@ namespace GitHub.DistributedTask.WebApi
             Object existingValue,
             JsonSerializer serializer)
         {
+            if(reader.TokenType == JsonToken.Null) {
+                return null;
+            }
             var eventObject = JObject.Load(reader);
 
             JToken propertyValue;

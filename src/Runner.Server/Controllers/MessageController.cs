@@ -262,7 +262,7 @@ namespace Runner.Server.Controllers
             public bool Failure { get => Dependencies?.Any(p => p.Value.Status == TaskResult.Failed) ?? false; }
 
             public bool Completed { get; set; }
- 
+            public bool NoStatusCheck { get; set; }
 
             // public List<Task<IEnumerable<AgentJobRequestMessage>>> enum
         }
@@ -476,7 +476,9 @@ namespace Runner.Server.Controllers
             }
             return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, null, null, null, null, workflows);
         }
-        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentWorkflow = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null, KeyValuePair<string, string>[] workflows = null) {
+        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentJob = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null, KeyValuePair<string, string>[] workflows = null, string parentworkflowname= null) {
+            var fifo = new System.Threading.Tasks.Dataflow.ActionBlock<Func<Task>>(action => action().Wait());
+
             string event_name = e;
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             try {
@@ -544,11 +546,35 @@ namespace Runner.Server.Controllers
                             // Skip, not the right event
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
+                        if(e == "workflow_call") {
+                            if(inputs != null && inputs.AssertDictionary("").Any()) {
+                                throw new Exception($"This workflow doesn't define any input");
+                            }
+                            List<string> validSecrets = new List<string> { "system.github.token", "GITHUB_TOKEN" };
+                            foreach(var secret in secrets) {
+                                var name = secret.Substring(0, secret.IndexOf('='));
+                                if(!validSecrets.Contains(name)) {
+                                    throw new Exception($"This workflow doesn't define secret {name}");
+                                }
+                            }
+                        }
                         break;
                     case TokenType.Sequence:
                         if((from r in tk.AssertSequence("seq") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
                             // Skip, not the right event
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                        }
+                        if(e == "workflow_call") {
+                            if(inputs != null && inputs.AssertDictionary("").Any()) {
+                                throw new Exception($"This workflow doesn't define any input");
+                            }
+                            List<string> validSecrets = new List<string> { "system.github.token", "GITHUB_TOKEN" };
+                            foreach(var secret in secrets) {
+                                var name = secret.Substring(0, secret.IndexOf('='));
+                                if(!validSecrets.Contains(name)) {
+                                    throw new Exception($"This workflow doesn't define secret {name}");
+                                }
+                            }
                         }
                         break;
                     case TokenType.Mapping:
@@ -603,19 +629,142 @@ namespace Runner.Server.Controllers
                                 }
                                 if(e == "workflow_dispatch") {
                                     allowed.Add("inputs");
+                                    // Validate inputs and apply defaults
+                                    var workflowInputs = (from r in push where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map");
+                                    List<string> validInputs = new List<string>();
+                                    var dispatchInputs = payloadObject["inputs"] as JObject;
+                                    if(dispatchInputs == null) {
+                                        dispatchInputs = new JObject();
+                                    }
+                                    if(workflowInputs != null) {
+                                        foreach(var input in workflowInputs) {
+                                            var inputName = input.Key.AssertString("input key must be a string").Value;
+                                            validInputs.Add(inputName);
+                                            var inputInfo = input.Value?.AssertMapping("map");
+                                            if(inputInfo != null) {
+                                                bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
+                                                var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.AssertString("")?.ToContextData()?.ToJToken();
+                                                if(def == null) {
+                                                    def = "";
+                                                }
+                                                if(!dispatchInputs.TryGetValue(inputName, out _) && required) {
+                                                    throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
+                                                } else {
+                                                    dispatchInputs[inputName] = def;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    foreach(var providedInput in dispatchInputs) {
+                                        if(!validInputs.Contains(providedInput.Key)) {
+                                            throw new Exception($"This workflow doesn't define input {providedInput.Key}");
+                                        }
+                                    }
+                                }
+                                if(e == "workflow_call") {
+                                    allowed.Add("inputs");
+                                    allowed.Add("secrets");
+                                    // Validate inputs and apply defaults
+                                    var workflowInputs = (from r in push where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map");
+                                    List<string> validInputs = new List<string>();
+                                    if(inputs == null) {
+                                        inputs = new DictionaryContextData();
+                                    }
+                                    if(workflowInputs != null) {
+                                        foreach(var input in workflowInputs) {
+                                            var inputName = input.Key.AssertString("input key must be a string").Value;
+                                            validInputs.Add(inputName);
+                                            var inputInfo = input.Value?.AssertMapping("map");
+                                            if(inputInfo != null) {
+                                                bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
+                                                string type = (from r in inputInfo where r.Key.AssertString("").Value == "type" select r.Value.AssertString("").Value).First();
+                                                var assertMessage = $"This workflow requires the input: {inputName}, to have type {type}";
+                                                var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.ToContextData();
+                                                switch(type) {
+                                                case "string":
+                                                    if(def == null) {
+                                                        def = new StringContextData("");
+                                                    }
+                                                    def.AssertString(assertMessage);
+                                                break;
+                                                case "number":
+                                                    if(def == null) {
+                                                        def = new NumberContextData(0);
+                                                    }
+                                                    def.AssertNumber(assertMessage);
+                                                break;
+                                                case "boolean":
+                                                    if(def == null) {
+                                                        def = new BooleanContextData(false);
+                                                    }
+                                                    def.AssertBoolean(assertMessage);
+                                                break;
+                                                default:
+                                                    throw new Exception($"This workflow requires the type keyword for the input: {inputName}, but an invalid type: {type} was provided");
+                                                }
+                                                var inputsDict = inputs.AssertDictionary("dict");
+                                                if(inputsDict.TryGetValue(inputName, out var val)) {
+                                                    switch(type) {
+                                                    case "string":
+                                                        val.AssertString(assertMessage);
+                                                    break;
+                                                    case "number":
+                                                        val.AssertNumber(assertMessage);
+                                                    break;
+                                                    case "boolean":
+                                                        val.AssertBoolean(assertMessage);
+                                                    break;
+                                                    }
+                                                } else if(required) {
+                                                    throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
+                                                } else {
+                                                    inputsDict[inputName] = def;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    foreach(var providedInput in inputs.AssertDictionary("")) {
+                                        if(!validInputs.Contains(providedInput.Key)) {
+                                            throw new Exception($"This workflow doesn't define input {providedInput.Key}");
+                                        }
+                                    }
+                                    // Validate secrets
+                                    var workflowSecrets = (from r in push where r.Key.AssertString("secrets").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("map");
+                                    List<string> validSecrets = new List<string> { "system.github.token", "GITHUB_TOKEN" };
+                                    if(workflowSecrets != null) {
+                                        foreach(var input in workflowSecrets) {
+                                            var inputName = input.Key.AssertString("input key must be a string").Value;
+                                            var inputInfo = input.Value?.AssertMapping("map");
+                                            if(inputInfo != null) {
+                                                validSecrets.Add(inputName);
+                                                bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
+                                                
+                                                if(!secrets.Any(s => s.StartsWith(inputName + "=")) && required) {
+                                                    throw new Exception($"This workflow requires the secret: {inputName}, but no such secret were provided");
+                                                }
+                                            }
+                                        }
+                                    }
+                                    foreach(var secret in secrets) {
+                                        var name = secret.Substring(0, secret.IndexOf('='));
+                                        if(!validSecrets.Contains(name)) {
+                                            throw new Exception($"This workflow doesn't define secret {name}");
+                                        }
+                                    }
                                 }
 
-                                if(!push.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
-                                    var z = 0;
-                                    var sb = new StringBuilder();
-                                    foreach (var prop in (from p in push where !allowed.Any(s => s == p.Key.AssertString("Key").Value) select p.Key.AssertString("Key").Value)) {
-                                        if(z++ != 0) {
-                                            sb.Append(", ");
-                                        }
-                                        sb.Append(prop);
-                                    }
-                                    throw new Exception($"The following event properties are invalid: {sb.ToString()}, please remove from {e}");
-                                }
+                                // TODO renenable this check once warnings are implemented
+                                // if(!push.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
+                                //     var z = 0;
+                                //     var sb = new StringBuilder();
+                                //     foreach (var prop in (from p in push where !allowed.Any(s => s == p.Key.AssertString("Key").Value) select p.Key.AssertString("Key").Value)) {
+                                //         if(z++ != 0) {
+                                //             sb.Append(", ");
+                                //         }
+                                //         sb.Append(prop);
+                                //     }
+                                //     throw new Exception($"The following event properties are invalid: {sb.ToString()}, please remove from {e}");
+                                // }
 
                                 // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
                                 var branches = (from r in push where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq");
@@ -696,7 +845,7 @@ namespace Runner.Server.Controllers
                     default:
                         throw new Exception($"Error: Your workflow is invalid, 'on' property has an unexpected yaml Type {tk.Type}");
                 }
-                var workflowname = (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
+                var workflowname = parentworkflowname ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                 // (new Func<Task>(async () => {
                 //     var client = new HttpClient();
                 //     client.DefaultRequestHeaders.Add("accept", "application/json");
@@ -704,7 +853,7 @@ namespace Runner.Server.Controllers
                 //     if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
                 //         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                 //     }
-                //     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
+                //     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
                 //     var res = await client.GetAsync(urlBuilder.ToString());
                 //     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                 //         var content = await res.Content.ReadAsStringAsync();
@@ -790,11 +939,14 @@ namespace Runner.Server.Controllers
                             githubctx.Add("server_url", new StringContextData(GitServerUrl));
                             githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
                             githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                            githubctx.Add("workflow", new StringContextData(parentWorkflow ?? workflowname));
+                            githubctx.Add("workflow", new StringContextData(workflowname));
                             githubctx.Add("repository", new StringContextData(repository_name));
                             githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
                             githubctx.Add("repository_owner", new StringContextData(hook?.repository?.Owner?.login ?? "Unknown"));
                             githubctx.Add("ref", new StringContextData(Ref));
+                            // TODO check if it is protected
+                            githubctx.Add("ref_protected", new BooleanContextData(false));
+                            githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : "branch"));
                             githubctx.Add("job", new StringContextData(jobname));
                             githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
                             githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
@@ -804,6 +956,10 @@ namespace Runner.Server.Controllers
                             githubctx.Add("actor", new StringContextData(hook?.sender?.login));
                             githubctx.Add("run_id", new StringContextData(runid.ToString()));
                             githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                            githubctx.Add("retention_days", new StringContextData("90"));
+                            // TODO implement this with retries
+                            githubctx.Add("run_attempt", new StringContextData("1"));
+                            
                             var needsctx = new DictionaryContextData();
                             contextData.Add("needs", needsctx);
                             var strategyctx = new DictionaryContextData();
@@ -893,7 +1049,15 @@ namespace Runner.Server.Controllers
                                         if(dependentjobgroup.Any()) {
                                             jobgroup.Add(jobitem);
                                         }
-                                        FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, Outputs = new Dictionary<String, VariableValue>() });
+                                        var jid = jobitem.Id;
+                                        var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobitem.name;
+                                        if(parentJob != null) {
+                                            _jobdisplayname = parentJob + " / " + _jobdisplayname;
+                                        }
+                                        var _job = MessageController.jobs.AddOrUpdate(jid, new Job() { message = null, repo = repository_name, name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, JobCompletedEvent = new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() }}, (id, job) => job);
+                                        _cache.Set(jid, _job);
+                                        jobevent?.Invoke(this, _job.repo, _job);
+                                        FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Skipped, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                         return;
                                     }
                                     
@@ -1061,33 +1225,39 @@ namespace Runner.Server.Controllers
                                                 templateContext.ExpressionValues[pair.Key] = pair.Value;
                                             }
                                             var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
+                                            if(parentJob != null) {
+                                                _jobdisplayname = parentJob + " / " + _jobdisplayname;
+                                            }
                                             next.ContinueOnError = (from r in run where r.Key.AssertString("continue-on-error").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean("continue-on-error be a boolean").Value).FirstOrDefault();
                                             var timeoutMinutes = (from r in run where r.Key.AssertString("timeout-minutes").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("timeout-minutes be a number").Value).Append(360).First();
                                             var cancelTimeoutMinutes = (from r in run where r.Key.AssertString("cancel-timeout-minutes").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("cancel-timeout-minutes be a number").Value).Append(5).First();
+                                            var usesJob = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value != null;
+                                            next.NoStatusCheck = usesJob;
+                                            fifo.Post(async () => {
+                                                if(!string.IsNullOrEmpty(GITHUB_TOKEN) && !string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(Sha) && !usesJob) {
+                                                    try {
+                                                        var client = new HttpClient();
+                                                        client.DefaultRequestHeaders.Add("accept", "application/json");
+                                                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                                                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                                        }
+                                                        var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/statuses/{Sha}"));
+                                                        var targetUrl = "";
+                                                        if(!string.IsNullOrEmpty(ServerUrl)) {
+                                                            var targetUrlBuilder = new UriBuilder(ServerUrl);
+                                                            targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.RequestId}";
+                                                            targetUrl = targetUrlBuilder.ToString();
+                                                        }
+                                                        var ctx = string.Format("{0} / {1} ({2})", workflowname, _jobdisplayname, parentEvent ?? event_name);
+                                                        await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = JobStatus.Pending, Context = ctx, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()));
+                                                    } catch {
 
-                                            if(!string.IsNullOrEmpty(GITHUB_TOKEN) && !string.IsNullOrEmpty(hook.repository.full_name)  && !string.IsNullOrEmpty(Sha)) {
-                                                try {
-                                                    var client = new HttpClient();
-                                                    client.DefaultRequestHeaders.Add("accept", "application/json");
-                                                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                                                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                                                     }
-                                                    var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/statuses/{Sha}"));
-                                                    var targetUrl = "";
-                                                    if(!string.IsNullOrEmpty(ServerUrl)) {
-                                                        var targetUrlBuilder = new UriBuilder(ServerUrl);
-                                                        targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.RequestId}";
-                                                        targetUrl = targetUrlBuilder.ToString();
-                                                    }
-                                                    var ctx = string.Format("{0} / {1} ({2})", parentWorkflow == null ? workflowname : string.Format("{0} / {1}", parentWorkflow, workflowname), displayname ?? next.name, parentEvent ?? event_name);
-                                                    client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = JobStatus.Pending, Context = ctx, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()));
-                                                } catch {
-
                                                 }
-                                            }
+                                            });
                                             next.DisplayName = _jobdisplayname;
-                                            return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, parentWorkflow, event_name, parentEvent, workflows);
+                                            return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, event_name, parentEvent, workflows);
                                         };
                                         ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                         if(keys.Length != 0 || includematrix.Count == 0) {
@@ -1281,43 +1451,38 @@ namespace Runner.Server.Controllers
                             job.Status = e.Result;
                         };
                         if(ja != null) {
-                            if(!string.IsNullOrEmpty(GITHUB_TOKEN) && !string.IsNullOrEmpty(hook.repository.full_name)  && !string.IsNullOrEmpty(Sha)) {
-                                (new Func<Task>(async () => {
-                                    await Task.Delay(1000);
-                                    while(true) {
-                                        try {
-                                            var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).First() ?? ja;
-                                            var client = new HttpClient();
-                                            client.DefaultRequestHeaders.Add("accept", "application/json");
-                                            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                                            if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                                client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                                            }
-                                            var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/statuses/{Sha}"));
-                                            var targetUrl = "";
-                                            if(!string.IsNullOrEmpty(ServerUrl)) {
-                                                var targetUrlBuilder = new UriBuilder(ServerUrl);
-                                                targetUrlBuilder.Fragment = $"/master/runner/server/detail/{ji.RequestId}";
-                                                targetUrl = targetUrlBuilder.ToString();
-                                            }
-                                            JobStatus status = JobStatus.Failure;
-                                            var description = e.Result.ToString();
-                                            if(e.Result == TaskResult.Succeeded || e.Result == TaskResult.SucceededWithIssues) {
-                                                status = JobStatus.Success;
-                                            }
-                                            if(e.Result == TaskResult.Skipped) {
-                                                status = JobStatus.Pending;
-                                            }
-                                            var ctx = string.Format("{0} / {1} ({2})", parentWorkflow == null ? workflowname : string.Format("{0} / {1}", parentWorkflow, workflowname), ji.DisplayName ?? ji.name, parentEvent ?? event_name);
-                                            var resp = await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = status, Context = ctx, Description = description, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()));
-                                            resp.EnsureSuccessStatusCode();
-                                            break;
-                                        } catch(Exception ex) {
-                                            Console.WriteLine(ex);
-                                            await Task.Delay(1000);
+                            var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).First() ?? ja;
+                            if(!string.IsNullOrEmpty(GITHUB_TOKEN) && !string.IsNullOrEmpty(hook.repository.full_name)  && !string.IsNullOrEmpty(Sha) && !ji.NoStatusCheck) {
+                                fifo.Post(async () => {
+                                    try {
+                                        var client = new HttpClient();
+                                        client.DefaultRequestHeaders.Add("accept", "application/json");
+                                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                                         }
+                                        var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/statuses/{Sha}"));
+                                        var targetUrl = "";
+                                        if(!string.IsNullOrEmpty(ServerUrl)) {
+                                            var targetUrlBuilder = new UriBuilder(ServerUrl);
+                                            targetUrlBuilder.Fragment = $"/master/runner/server/detail/{ji.RequestId}";
+                                            targetUrl = targetUrlBuilder.ToString();
+                                        }
+                                        JobStatus status = JobStatus.Failure;
+                                        var description = e.Result.ToString();
+                                        if(e.Result == TaskResult.Succeeded || e.Result == TaskResult.SucceededWithIssues) {
+                                            status = JobStatus.Success;
+                                        }
+                                        if(e.Result == TaskResult.Skipped) {
+                                            status = JobStatus.Pending;
+                                        }
+                                        var ctx = string.Format("{0} / {1} ({2})", workflowname, ji.DisplayName ?? (parentJob == null ? ji.name : string.Format("{0} / {1}", parentJob, ji.name)), parentEvent ?? event_name);
+                                        var resp = await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = status, Context = ctx, Description = description, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()));
+                                        resp.EnsureSuccessStatusCode();
+                                    } catch(Exception ex) {
+                                        Console.WriteLine(ex);
                                     }
-                                }))();
+                                });
                             }
                             if(e.JobId != ja.Id) {
                                 var c = ja.Childs.Where(ji => e.JobId == ji.Id).First();
@@ -1329,7 +1494,7 @@ namespace Runner.Server.Controllers
                                 updateStatus(ja);
                             }
                             if(jobs.All(j => j.Completed)) {
-                                FinishJobController.OnJobCompleted -= workflowcomplete;
+                                FinishJobController.OnJobCompletedAfter -= workflowcomplete;
                                 exctx.workflow = jobs.ToList();
                                 var evargs = new WorkflowEventArgs { runid = runid, Success = exctx.Success };
                                 // (new Func<Task>(async () => {
@@ -1339,7 +1504,7 @@ namespace Runner.Server.Controllers
                                 //     if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
                                 //         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                                 //     }
-                                //     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
+                                //     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
                                 //     var res = await client.GetAsync(urlBuilder.ToString());
                                 //     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                                 //         var content = await res.Content.ReadAsStringAsync();
@@ -1402,7 +1567,7 @@ namespace Runner.Server.Controllers
                     };
                     s.Wait();
                     try {
-                        FinishJobController.OnJobCompleted += workflowcomplete;
+                        FinishJobController.OnJobCompletedAfter += workflowcomplete;
                         jobCompleted(null);
                     } finally {
                         s.Release();
@@ -1452,7 +1617,7 @@ namespace Runner.Server.Controllers
             await task;
             _cache.Remove(id);
         }
-        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string parentWorkflow, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null)
+        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null)
         {
             var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
             variables.Add("system.github.token", new VariableValue(GITHUB_TOKEN, true));
@@ -1540,17 +1705,17 @@ namespace Runner.Server.Controllers
                                 _secrets.Add(entry.Key.AssertString("") + "=" + entry.Value.AssertString(""));
                             }
                         }
-                        var resp = ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, workflowname, wevent, eval?.ToContextData(), e => {
+                        var resp = ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, displayname, wevent, eval?.ToContextData(), e => {
                             var jid = jobId;
-                            var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
-                            jobevent?.Invoke(this, _job.repo, _job);
                             FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                        } );
+                        }, null, workflowname);
                         if(resp == null || resp.failed || resp.skipped) {
                             var jid = jobId;
                             var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
-                            jobevent?.Invoke(this, _job.repo, _job);
-                            FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                            if(!resp.skipped) {
+                                _job.errors = new List<string>{"Failed to instantiate reusable workflow: " + filename};
+                            }
+                            FinishJobController.InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = resp.skipped ? TaskResult.Skipped : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                             return;
                         }
                     };
@@ -1568,7 +1733,7 @@ namespace Runner.Server.Controllers
                         if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
                             client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                         }
-                        var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
+                        var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
                         url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
                         var res = await client.GetAsync(url.ToString());
                         if(res.StatusCode == System.Net.HttpStatusCode.OK) {
@@ -1802,6 +1967,7 @@ namespace Runner.Server.Controllers
             public double CancelTimeoutMinutes {get;set;}
             public bool ContinueOnError {get;set;}
             public List<string> errors;
+            public JobCompletedEvent JobCompletedEvent {get;set;}
         }
         static ConcurrentDictionary<Guid, Job> jobs = new ConcurrentDictionary<Guid, Job>();
 
@@ -2156,7 +2322,7 @@ namespace Runner.Server.Controllers
                         if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
                             client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                         }
-                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/commits"));
+                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/commits"));
                         urlBuilder.Query = $"?page=1&limit=1";
                         var res = await client.GetAsync(urlBuilder.ToString());
                         if(res.StatusCode == System.Net.HttpStatusCode.OK) {
@@ -2173,7 +2339,7 @@ namespace Runner.Server.Controllers
                         if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
                             client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                         }
-                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
+                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
                         urlBuilder.Query = $"?ref={Uri.EscapeDataString(em.Value)}";
                         var res = await client.GetAsync(urlBuilder.ToString());
                         // {

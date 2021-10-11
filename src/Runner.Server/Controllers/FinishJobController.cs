@@ -29,11 +29,13 @@ namespace Runner.Server.Controllers
         public delegate void JobStarted(JobStartedEvent jobStartedEvent);
 
         public static event JobCompleted OnJobCompleted;
+        public static event JobCompleted OnJobCompletedAfter;
         public static event JobAssigned OnJobAssigned;
         public static event JobStarted OnJobStarted;
 
         public static void InvokeJobCompleted(JobCompletedEvent e) {
             OnJobCompleted?.Invoke(e);
+            OnJobCompletedAfter?.Invoke(e);
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
@@ -42,15 +44,19 @@ namespace Runner.Server.Controllers
         {
             var jevent = await FromBody<JobEvent>();
             if (jevent is JobCompletedEvent ev) {
-                Task.Run(() => OnJobCompleted?.Invoke(ev));
                 MessageController.Job job;
                 if(_cache.TryGetValue(ev.JobId, out job)) {
+                    job.JobCompletedEvent = ev;
                     Session session;
                     if(_cache.TryGetValue(job.SessionId, out session)) {
                         Console.Out.WriteLine("Job finished / set session job to null");
                         session.Job = null;
                     }
                 }
+                Task.Run(() => {
+                    OnJobCompleted?.Invoke(ev);
+                    OnJobCompletedAfter?.Invoke(ev);
+                });
                 Console.Out.WriteLine("Job finished");
                 return Ok();
             } else if (jevent is JobAssignedEvent a) {

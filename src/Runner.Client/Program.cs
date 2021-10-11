@@ -58,6 +58,7 @@ namespace Runner.Client
             public bool Cancelled { get; internal set; }
 
             public bool Finished  {get;set;}
+            public JobCompletedEvent JobCompletedEvent {get;set;}
         }
 
         private class TimeLineEvent {
@@ -163,6 +164,7 @@ namespace Runner.Client
             public ConsoleColor Color {get;set;}
             public Guid RecordId {get;set;}
             public List<WebConsoleEvent> Pending {get;set;}
+            public string WorkflowName {get;set;}
         }
 
         struct RepoDownload {
@@ -725,10 +727,10 @@ namespace Runner.Client
                             }
                         }
 
+                        if(!parameters.StartRunner) {
+                            Console.WriteLine($"The server is listening on {parameters.server}");
+                        }
                         if(parameters.StartServer || parameters.StartRunner) {
-                            if(parameters.StartServer) {
-                                Console.WriteLine($"The server is listening on {parameters.server}");
-                            }
                             Console.WriteLine($"Press {(Debugger.IsAttached ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
 
                             try {
@@ -1140,8 +1142,34 @@ namespace Runner.Client
                                 Dictionary<Guid, TimeLineEntry> timelineRecords = new Dictionary<Guid, TimeLineEntry>();
                                 int col = 0;
                                 bool hasErrors = false;
+                                Func<JobCompletedEvent, Task> printFinishJob = async ev => {
+                                    var rec = (from r in timelineRecords where r.Value.TimeLine[0].Id == ev.JobId select r.Value).FirstOrDefault();
+                                    try {
+                                        if(rec?.WorkflowName == null) {
+                                            var _job = (from job in jobs where job.JobId == ev.JobId select job).FirstOrDefault();
+                                            bool customrec = rec == null;
+                                            if(customrec) {
+                                                rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = ev.JobId, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                                col = (col + 1) % 14;
+                                            }
+                                            rec.WorkflowName = _job?.workflowname;
+                                            if(rec.WorkflowName == null) {
+                                                jobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
+                                                _job = (from job in jobs where job.JobId == ev.JobId select job).FirstOrDefault();
+                                                if(customrec) {
+                                                    rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = ev.JobId, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                                    col = (col + 1) % 14;
+                                                }
+                                                rec.WorkflowName = _job?.workflowname;
+                                            }
+                                        }
+                                    } catch {
+                                        
+                                    }
+                                    Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.WorkflowName ?? "???"} / {rec.TimeLine[0].Name}] \x1b[0mJob Completed with Status: {ev.Result.ToString()}");
+                                };
                                 foreach(Job j in jobs) {
-                                    Console.WriteLine($"Scheduled Job: {j.name}");
+                                    Console.WriteLine($"Scheduled Job: {j.workflowname} / {j.name}");
                                     if(j.errors?.Count > 0) {
                                         hasErrors = true;
                                         foreach (var error in j.errors) {
@@ -1150,11 +1178,13 @@ namespace Runner.Client
                                     } else if(j.Cancelled) {
                                         hasErrors = true;
                                         Console.Error.WriteLine($"Error: Cancelled");
+                                    } else if(j.JobCompletedEvent != null) {
+                                        await printFinishJob(j.JobCompletedEvent);
                                     }
                                     else if(j.TimeLineId != Guid.Empty) {
                                         try {
                                             var content = await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
-                                            timelineRecords[j.TimeLineId] = new TimeLineEntry() { TimeLine = JsonConvert.DeserializeObject<List<TimelineRecord>>(content), Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                            timelineRecords[j.TimeLineId] = new TimeLineEntry() { WorkflowName = j.workflowname, TimeLine = JsonConvert.DeserializeObject<List<TimelineRecord>>(content), Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
                                             col = (col + 1) % 14;
                                         }
                                         catch (HttpRequestException) {
@@ -1221,8 +1251,8 @@ namespace Runner.Client
                                                         if(record == null || !record.Result.HasValue) {
                                                             rec.Pending.Add(e);
                                                             continue;
-                                                        }
-                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        }                                    
+                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.WorkflowName ?? "???"} / {rec.TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                                     }
                                                     rec.RecordId = e.record.StepId;
                                                     if(rec.TimeLine != null) {
@@ -1232,7 +1262,18 @@ namespace Runner.Client
                                                             rec.RecordId = Guid.Empty;
                                                             continue;
                                                         }
-                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                        try {
+                                                            if(rec.WorkflowName == null) {
+                                                                rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                                if(rec.WorkflowName == null) {
+                                                                    jobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
+                                                                    rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                                }
+                                                            }
+                                                        } catch {
+                                                            
+                                                        }
+                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.WorkflowName ?? "???"} / {rec.TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
                                                     }
                                                 }
                                                 var old = Console.ForegroundColor;
@@ -1264,7 +1305,8 @@ namespace Runner.Client
                                                             if(record == null || !record.Result.HasValue) {
                                                                 break;
                                                             }
-                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                            var rec = timelineRecords[e.timelineId];
+                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{rec.WorkflowName ?? "???"} / {timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                                         }
                                                         timelineRecords[e.timelineId].RecordId = e2.record.StepId;
                                                         if(timelineRecords[e.timelineId].TimeLine != null) {
@@ -1273,7 +1315,19 @@ namespace Runner.Client
                                                                 timelineRecords[e.timelineId].RecordId = Guid.Empty;
                                                                 break;
                                                             }
-                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                            var rec = timelineRecords[e.timelineId];
+                                                            try {
+                                                                if(rec.WorkflowName == null) {
+                                                                    rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                                    if(rec.WorkflowName == null) {
+                                                                        jobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
+                                                                        rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                                    }
+                                                                }
+                                                            } catch {
+                                                                
+                                                            }
+                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{rec.WorkflowName ?? "???"} / {timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
                                                         }
                                                     }
                                                     var old = Console.ForegroundColor;
@@ -1293,7 +1347,8 @@ namespace Runner.Client
                                                 if(!parameters.quiet && timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords != null && e.timeline[0].State == TimelineRecordState.Completed) {
                                                     var record = e.timeline.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
                                                     if(record != null && record.Result.HasValue) {
-                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        var rec = timelineRecords[e.timelineId];
+                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{rec.WorkflowName ?? "???"} / {e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                                     }
                                                 }
                                                 // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
@@ -1423,6 +1478,10 @@ namespace Runner.Client
                                                         return hasErrors ? 1 : 0;
                                                     }
                                                 }
+                                            }
+                                            if(line == "event: finish") {
+                                                var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
+                                                await printFinishJob(ev);
                                             }
                                             // if(line == "event: finish") {
                                             //     var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);

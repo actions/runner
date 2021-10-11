@@ -1,7 +1,15 @@
 ## Changes
-- Fixed incorrect order of console log
-  - e.g. Setup job was after Finish Job
-- matrix test nuget package with test workflows on linux, windows and macOS
+- Fixed broken gitea / ghes compatibility of 3.3.0-3.3.2, `http://localhost:5000/api/v1` dropped v1 in url building after refactoring
+  - TODO add test cases
+- Improved reuseable workflow support
+  - Status checks should now match github
+  - Added input / secrets declaration support for `workflow_call`, no longer cause an error
+  - Validate `workflow_call` inputs
+- Validate and apply defaults to `workflow_dispatch` events
+- Runner.Client / gharun now prints the job status after completion, also for previously invisible skipped jobs
+- Execute status check updates sequentially for each workflow run, avoid races
+- Runner.Client / gharun now prints the workflow name in the logoutput instead of only the jobname
+- Runner.Client / gharun now prints the webpage url in watch mode, if you want to use the webui instead of a console window
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
