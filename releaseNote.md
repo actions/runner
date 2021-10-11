@@ -14,6 +14,11 @@
 - webui: hide cancel button in completed jobs
 - webui: probably show skipped jobs in job list instead of telling the job is queued
 
+## Known Issues
+- It seems commit status checks sometimes fail to update while using gitea
+- webui: joblist is truncated on job finish reload to fix
+- webui: logs disappar on job finish reload or collapse and expand to fix
+
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
 
