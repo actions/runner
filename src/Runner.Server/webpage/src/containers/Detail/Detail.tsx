@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from 'components';
-import { getJobById, IJob } from '../../state/store.selectors';
+import { getJobById, IJob, IJobCompletedEvent } from '../../state/store.selectors';
 import { Item } from '../../state/example.model';
 import styles from './Detail.module.scss';
 import Convert from 'ansi-to-html'; 
@@ -194,14 +194,15 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                 if(timeline.status === 200) {
                     var newTimeline = await timeline.json() as ITimeLine[];
                     if(newTimeline != null && newTimeline.length > 1) {
-                        setTitle(newTimeline.shift().name);
+                        newTimeline.shift()
+                        setTitle(query.job.jobCompletedEvent ? "Job " + query.job.name + " completed with result: " + query.job.jobCompletedEvent.result : query.job.name);
                         setTimeline(newTimeline);
                     } else {
-                        setTitle("Unknown");
+                        setTitle(query.job.jobCompletedEvent ? "Job " + query.job.name + " completed with result: " + query.job.jobCompletedEvent.result : query.job.name);
                         setTimeline([]);
                     }
                 } else {
-                    setTitle((query.job.errors !== null && query.job.errors.length > 0) ? "Failed to run" : "Wait for workflow to run...");
+                    setTitle((query.job.errors !== null && query.job.errors.length > 0) ? "Job " + query.job.name + " failed to run" : (query.job.jobCompletedEvent ? "Job " + query.job.name + " completed with result: " + query.job.jobCompletedEvent.result : "Wait for job " + query.job.name + " to run..."));
                     setTimeline(e => []);
                 }
             }
@@ -223,7 +224,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
     useEffect(() => {
         if(id !== undefined && id !== null && id.length > 0) {
             var item = getJobById(jobs, id).item;
-            if(item !== null && item.description && item.description != '' && item.description != "00000000-0000-0000-0000-000000000000") {
+            if(item !== null && item.description && item.description !== '' && item.description !== "00000000-0000-0000-0000-000000000000") {
                 var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
                 try {
                     var missed : ILoglineEvent[] = [];
@@ -233,7 +234,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                             newline: true,
                             escapeXML: true
                         });
-                        if(s != null && s != undefined) {
+                        if(s) {
                             if(s.log == null) {
                                 s.log = { id:-1, location: null, content: ""};
                                 if(e.record.startLine > 1) {
@@ -293,6 +294,15 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                         });
                         // console.log(ev.data)
                     });
+                    source.addEventListener("finish", (ev : MessageEvent) => {
+                        var e = JSON.parse(ev.data) as IJobCompletedEvent;
+                        if(e.requestId === Number.parseInt(id)) {
+                            (async function() {
+                                var njobs : IJob[] | null = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message", { })).json())
+                                setJobs(njobs);
+                            })()
+                        }
+                    });
                 } finally {
                     return () => {
                         source.close();
@@ -310,14 +320,14 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
             <div className={styles.text} style={{width: '100%'}}>
                 {(() => {
                     var job = getJobById(jobs, id);
-                    if(job !== undefined && job.job != null) {
+                    if(job !== undefined && job.job != null && !job.job.jobCompletedEvent) {
                         return  <button onClick={(event) => {
                             (async () => {
                                 await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.job.jobId, { method: "POST" });
                             })();
                         }}>Cancel</button>;
                     }
-                    return <div>This Job was cancelled</div>;
+                    return <div></div>;
                 })()
                 }
                 
@@ -329,7 +339,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     return <div/>;
                 })()}</div>)}
                 {timeline.map((item: ITimeLine) =>
-                    <Collapsible key={id + item.id} className={styles.Collapsible} openedClassName={styles.Collapsible} triggerClassName={styles.Collapsible__trigger} triggerOpenedClassName={styles.Collapsible__trigger + " " + styles["is-open"]} contentOuterClassName={styles.Collapsible__contentOuter} contentInnerClassName={styles.Collapsible__contentInner} trigger={(item.result == null ? item.state == null ? "Waiting" : item.state  : item.result) + " - " + item.name} onOpening={() => {
+                    <Collapsible key={id + item.id} className={styles.Collapsible} open={false} openedClassName={styles.Collapsible} triggerClassName={styles.Collapsible__trigger} triggerOpenedClassName={styles.Collapsible__trigger + " " + styles["is-open"]} contentOuterClassName={styles.Collapsible__contentOuter} contentInnerClassName={styles.Collapsible__contentInner} trigger={(item.result == null ? item.state == null ? "Waiting" : item.state  : item.result) + " - " + item.name} onOpening={() => {
                         if(!item.busy && (item.log == null || (item.log.id !== -1 && (!item.log.content || item.log.content.length === 0)))) {
                             item.busy = true;
                             (async() => {

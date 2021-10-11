@@ -1,5 +1,10 @@
 import { Item } from './example.model';
 
+export interface IJobCompletedEvent {
+    jobId: string,
+    requestId: number,
+    result: string
+}
 export interface IJob {
     jobId: string,
     requestId: number,
@@ -9,6 +14,7 @@ export interface IJob {
     workflowname: string,
     runid : number,
     errors: string[],
+    jobCompletedEvent : IJobCompletedEvent,
 }
 
 export const getJobById = (jobs : IJob[], id: number | string | undefined): { item: Item | null, job: IJob | null } => {

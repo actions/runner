@@ -10,6 +10,9 @@
 - Execute status check updates sequentially for each workflow run, avoid races
 - Runner.Client / gharun now prints the workflow name in the logoutput instead of only the jobname
 - Runner.Client / gharun now prints the webpage url in watch mode, if you want to use the webui instead of a console window
+- webui: show job status of completed jobs in the headline
+- webui: hide cancel button in completed jobs
+- webui: probably show skipped jobs in job list instead of telling the job is queued
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

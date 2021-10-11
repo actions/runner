@@ -1,7 +1,7 @@
 import React, {useState,useEffect} from 'react';
 import { useRouteMatch } from 'react-router-dom';
 import { Header, ListItemLink } from 'components';
-import { Items, Item } from 'state';
+import { Items } from 'state';
 import { ghHostApiUrl } from 'settings';
 import { useParams } from 'react-router-dom';
 
