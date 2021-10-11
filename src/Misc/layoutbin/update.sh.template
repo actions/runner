@@ -161,10 +161,10 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
             date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
         fi
     else
-            runproc=$(ps x -o pgid,command | grep "$rootfolder/run.sh" | grep -v grep | awk '{print $1}')
+            runproc=$(ps x -o pgid,command | grep "run.sh" | grep -v grep | awk '{print $1}')
             if [[ $? -eq 0 && -n "$runproc" ]]
+            then
                 date "+[%F %T-%4N] Running as ephemeral using run.sh, no need to recreate node folder" >> "$logfile" 2>&1
-            fi
             else
                 date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
                 date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
