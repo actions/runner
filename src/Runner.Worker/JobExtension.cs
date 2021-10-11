@@ -141,6 +141,17 @@ namespace GitHub.Runner.Worker
                         context.Output($"Fail to parse and display GITHUB_TOKEN permissions list: {ex.Message}");
                         Trace.Error(ex);
                     }
+                    
+                    try 
+                    {
+                        var secretSource = jobContext.Global.Variables.Get("system.secretSource");
+                        context.Output($"Using secrets from: {secretSource}");
+                    } 
+                    catch (Exception ex)
+                    {
+                        context.Output($"Fail to parse and display secretSource: {ex.Message}");
+                        Trace.Error(ex);
+                    }
 
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
