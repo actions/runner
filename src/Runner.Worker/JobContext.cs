@@ -29,8 +29,7 @@ namespace GitHub.Runner.Worker
         {
             get
             {
-                // TODO figure out what the context key is
-                if (this.TryGetValue("action-status", out var status) && status is StringContextData statusString)
+                if (this.TryGetValue("action_status", out var status) && status is StringContextData statusString)
                 {
                     return EnumUtil.TryParse<ActionResult>(statusString);
                 }
@@ -41,7 +40,7 @@ namespace GitHub.Runner.Worker
             }
             set
             {
-                this["action-status"] = new StringContextData(value.ToString().ToLowerInvariant());
+                this["action_status"] = new StringContextData(value.ToString().ToLowerInvariant());
             }
         }
 
