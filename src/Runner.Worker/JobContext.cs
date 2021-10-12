@@ -25,6 +25,26 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        public ActionResult? ActionStatus
+        {
+            get
+            {
+                // TODO figure out what the context key is
+                if (this.TryGetValue("action-status", out var status) && status is StringContextData statusString)
+                {
+                    return EnumUtil.TryParse<ActionResult>(statusString);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            set
+            {
+                this["status"] = new StringContextData(value.ToString().ToLowerInvariant());
+            }
+        }
+
         public DictionaryContextData Services
         {
             get

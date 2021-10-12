@@ -25,7 +25,8 @@ namespace GitHub.Runner.Worker.Expressions
             var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
-            return jobStatus == ActionResult.Success;
+            ActionResult actionStatus = executionContext.JobContext.ActionStatus ?? ActionResult.Success;
+            return jobStatus == ActionResult.Success && actionStatus == ActionResult.Success;
         }
     }
 }
