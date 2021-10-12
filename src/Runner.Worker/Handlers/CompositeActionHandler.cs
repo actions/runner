@@ -129,8 +129,6 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-
-                //TODO Set at top level is this actually right? 
                 if (!ExecutionContext.IsEmbedded)
                 {
                     ExecutionContext.JobContext.ActionStatus = ActionResult.Success;
@@ -192,11 +190,8 @@ namespace GitHub.Runner.Worker.Handlers
             finally
             {
 
-                // TODO: Set at top level is this actually right? 
-                // TODO: do we actually need to do this?
                 if (!ExecutionContext.IsEmbedded)
                 {
-                    // Todo chang eto success
                     ExecutionContext.JobContext.ActionStatus = null;
                 }
             }
