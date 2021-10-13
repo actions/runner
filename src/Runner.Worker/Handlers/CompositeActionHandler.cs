@@ -40,6 +40,16 @@ namespace GitHub.Runner.Worker.Handlers
 
             ExecutionContext.JobContext.StepStatus = ActionResult.Success;
 
+            var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
+            // Temporary hack until after 3.2. After 3.2 the server will never send an empty
+            // context name. Generated context names start with "__"
+            if (string.IsNullOrEmpty(childScopeName))
+            {
+                childScopeName = $"__{Guid.NewGuid()}";
+            }
+
+            ExecutionContext.Global.StepsContext.SetStatus(childScopeName, ActionResult.Success);
+
             if (stage == ActionRunStage.Pre)
             {
                 ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
@@ -105,14 +115,6 @@ namespace GitHub.Runner.Worker.Handlers
                 foreach (var i in Inputs)
                 {
                     inputsData[i.Key] = new StringContextData(i.Value);
-                }
-
-                // Temporary hack until after 3.2. After 3.2 the server will never send an empty
-                // context name. Generated context names start with "__"
-                var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
-                if (string.IsNullOrEmpty(childScopeName))
-                {
-                    childScopeName = $"__{Guid.NewGuid()}";
                 }
 
                 // Create embedded steps
@@ -309,6 +311,7 @@ namespace GitHub.Runner.Worker.Handlers
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
                             ExecutionContext.Root.JobContext.StepStatus = ExecutionContext.Root.Result?.ToActionResult();
+                            ExecutionContext.Global.StepsContext.SetStatus(step.ExecutionContext.ScopeName, ExecutionContext.Root.Result?.ToActionResult());
                             
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
@@ -348,6 +351,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Mark job as cancelled
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
+                            ExecutionContext.Global.StepsContext.SetStatus(step.ExecutionContext.ScopeName, ExecutionContext.Root.Result?.ToActionResult());
                             ExecutionContext.Root.JobContext.StepStatus = ExecutionContext.Root.Result?.ToActionResult();
                         }
                     }
@@ -411,6 +415,7 @@ namespace GitHub.Runner.Worker.Handlers
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
                     // Check continue on error?
                     ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
+                    ExecutionContext.Global.StepsContext.SetStatus(step.ExecutionContext.ScopeName, ExecutionContext.Result?.ToActionResult());
                 }
 
                 // Reset this after each step in case a child composite overwrote it.

@@ -28,7 +28,7 @@ namespace GitHub.Runner.Worker.Expressions
             // Only care about the current composite status if we are in a composite action and its a main step
             if (executionContext.IsEmbedded && !String.IsNullOrEmpty(executionContext.ContextName))
             {
-                ActionResult StepStatus = executionContext.JobContext.StepStatus ?? ActionResult.Success;
+                ActionResult StepStatus = executionContext.Global.StepsContext.GetStatus(executionContext.ScopeName) ?? ActionResult.Success;
                 return StepStatus == ActionResult.Failure;
             }
             else 

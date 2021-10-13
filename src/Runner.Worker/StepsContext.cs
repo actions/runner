@@ -98,6 +98,29 @@ namespace GitHub.Runner.Worker
             step["outcome"] = new StringContextData(outcome.ToString().ToLowerInvariant());
         }
 
+        public void SetStatus(
+            string scopeName,
+            ActionResult? outcome)
+        {
+            var scope = GetScope(scopeName);
+            scope["__status"] = new StringContextData(outcome.ToString().ToLowerInvariant());
+        }
+
+        public ActionResult? GetStatus(
+            string scopeName
+        )
+        {
+            var scope = GetScope(scopeName);
+            if (scope.TryGetValue("__status", out var status) && status is StringContextData statusString)
+            {
+                return EnumUtil.TryParse<ActionResult>(statusString);
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         private DictionaryContextData GetStep(string scopeName, string stepName)
         {
             var scope = GetScope(scopeName);
