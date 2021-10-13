@@ -38,6 +38,8 @@ namespace GitHub.Runner.Worker.Handlers
 
             List<Pipelines.ActionStep> steps;
 
+            ExecutionContext.JobContext.StepStatus = ActionResult.Success;
+
             if (stage == ActionRunStage.Pre)
             {
                 ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
@@ -129,10 +131,6 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-                if (!ExecutionContext.IsEmbedded)
-                {
-                    ExecutionContext.JobContext.ActionStatus = ActionResult.Success;
-                }
 
                 foreach (Pipelines.ActionStep stepData in steps)
                 {
@@ -186,14 +184,6 @@ namespace GitHub.Runner.Worker.Handlers
                 Trace.Error($"Caught exception from composite steps {nameof(CompositeActionHandler)}: {ex}");
                 ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
-            }
-            finally
-            {
-
-                if (!ExecutionContext.IsEmbedded)
-                {
-                    ExecutionContext.JobContext.ActionStatus = null;
-                }
             }
         }
 
@@ -318,7 +308,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Mark job as cancelled
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
-                            ExecutionContext.Root.JobContext.ActionStatus = ExecutionContext.Root.Result?.ToActionResult();
+                            ExecutionContext.Root.JobContext.StepStatus = ExecutionContext.Root.Result?.ToActionResult();
                             
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
@@ -358,7 +348,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Mark job as cancelled
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
-                            ExecutionContext.Root.JobContext.ActionStatus = ExecutionContext.Root.Result?.ToActionResult();
+                            ExecutionContext.Root.JobContext.StepStatus = ExecutionContext.Root.Result?.ToActionResult();
                         }
                     }
                     // Evaluate condition
@@ -421,8 +411,16 @@ namespace GitHub.Runner.Worker.Handlers
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
                     // Check continue on error?
                     ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
+                }
 
-                    ExecutionContext.JobContext.ActionStatus = ExecutionContext.Result?.ToActionResult();
+                // Reset this after each step in case a child composite overwrote it.
+                if (ExecutionContext.Result != null)
+                {
+                    ExecutionContext.JobContext.StepStatus = ExecutionContext.Result?.ToActionResult();
+                }
+                else 
+                {
+                    ExecutionContext.JobContext.StepStatus = ActionResult.Success;
                 }
             }
         }

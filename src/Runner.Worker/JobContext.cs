@@ -25,11 +25,11 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ActionResult? ActionStatus
+        public ActionResult? StepStatus
         {
             get
             {
-                if (this.TryGetValue("action_status", out var status) && status is StringContextData statusString)
+                if (this.TryGetValue("step_status", out var status) && status is StringContextData statusString)
                 {
                     return EnumUtil.TryParse<ActionResult>(statusString);
                 }
@@ -40,7 +40,7 @@ namespace GitHub.Runner.Worker
             }
             set
             {
-                this["action_status"] = new StringContextData(value.ToString().ToLowerInvariant());
+                this["step_status"] = new StringContextData(value.ToString().ToLowerInvariant());
             }
         }
 

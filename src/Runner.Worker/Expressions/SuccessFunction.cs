@@ -28,8 +28,8 @@ namespace GitHub.Runner.Worker.Expressions
             // Only care about the current composite status if we are in a composite action and its a main step
             if (executionContext.IsEmbedded && !String.IsNullOrEmpty(executionContext.ContextName))
             {
-                ActionResult actionStatus = executionContext.JobContext.ActionStatus ?? ActionResult.Success;
-                return actionStatus == ActionResult.Success;
+                ActionResult StepStatus = executionContext.JobContext.StepStatus ?? ActionResult.Success;
+                return StepStatus == ActionResult.Success;
             }
             else 
             {

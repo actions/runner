@@ -91,6 +91,9 @@ namespace GitHub.Runner.Worker
 #endif
                 step.ExecutionContext.ExpressionValues["env"] = envContext;
 
+                // Set current step result
+                jobContext.JobContext.StepStatus = TaskResult.Succeeded.ToActionResult();
+
                 // Merge global env
                 foreach (var pair in step.ExecutionContext.Global.EnvironmentVariables)
                 {
