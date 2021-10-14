@@ -1092,9 +1092,9 @@ function run() {
             const containerId = yield exec.getExecOutput('podman', [
                 'create',
                 // `--workdir ${jobContainer.containerWorkDirectory}`,
-                `--network ${networkName}`,
+                `--network=${networkName}`,
                 // `-v /Users/ting/Desktop/runner/_layout/_work:/__w`,
-                `--entrypoint "${jobContainer.containerEntryPoint}"`,
+                `--entrypoint="${jobContainer.containerEntryPoint}"`,
                 `${containerImage}`,
                 `${jobContainer.containerEntryPointArgs}`
             ]);
