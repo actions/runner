@@ -53,9 +53,9 @@ async function run(): Promise<void> {
     //      --entrypoint "tail" node:10.16-jessie "-f" "/dev/null"
     const containerId = await exec.getExecOutput('podman', [
       'create',
-      `--workdir ${jobContainer.containerWorkDirectory}`,
+      // `--workdir ${jobContainer.containerWorkDirectory}`,
       `--network ${networkName}`,
-      `-v /Users/ting/Desktop/runner/_layout/_work:/__w`,
+      // `-v /Users/ting/Desktop/runner/_layout/_work:/__w`,
       `--entrypoint "${jobContainer.containerEntryPoint}"`,
       `${containerImage}`,
       `${jobContainer.containerEntryPointArgs}`

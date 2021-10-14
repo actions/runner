@@ -1069,30 +1069,31 @@ function run() {
             core.debug(JSON.stringify(creationInput));
             const containers = creationInput.containers;
             const jobContainer = containers[0];
-            const networkName = "actions_podman_network";
+            const networkName = 'actions_podman_network';
             // podman network create {network}  -> track and return `network` for ${{job.container.network}}
             yield exec.exec('podman', ['network', 'create', networkName]);
             const containerImage = `docker.io/library/${jobContainer.containerImage}`;
             // podman pull docker.io/library/{image}
             yield exec.exec('podman', ['pull', containerImage]);
-            // podman create --name e088c842be1f46b394212618408aaba0_node1016jessie_6196c9 
-            //      --label fa4e14 
-            //      --workdir /__w/canary/canary 
-            //      --network github_network_f98a6e1e96e74d919d814c165641cba3  
-            //      -e "HOME=/github/home" -e GITHUB_ACTIONS=true -e CI=true 
-            //      -v "/var/run/docker.sock":"/var/run/docker.sock" 
-            //      -v "/home/runner/work":"/__w" 
-            //      -v "/home/runner/runners/2.283.2/externals":"/__e":ro 
-            //      -v "/home/runner/work/_temp":"/__w/_temp" 
-            //      -v "/home/runner/work/_actions":"/__w/_actions" 
-            //      -v "/opt/hostedtoolcache":"/__t" 
-            //      -v "/home/runner/work/_temp/_github_home":"/github/home" 
-            //      -v "/home/runner/work/_temp/_github_workflow":"/github/workflow" 
+            // podman create --name e088c842be1f46b394212618408aaba0_node1016jessie_6196c9
+            //      --label fa4e14
+            //      --workdir /__w/canary/canary
+            //      --network github_network_f98a6e1e96e74d919d814c165641cba3
+            //      -e "HOME=/github/home" -e GITHUB_ACTIONS=true -e CI=true
+            //      -v "/var/run/docker.sock":"/var/run/docker.sock"
+            //      -v "/home/runner/work":"/__w"
+            //      -v "/home/runner/runners/2.283.2/externals":"/__e":ro
+            //      -v "/home/runner/work/_temp":"/__w/_temp"
+            //      -v "/home/runner/work/_actions":"/__w/_actions"
+            //      -v "/opt/hostedtoolcache":"/__t"
+            //      -v "/home/runner/work/_temp/_github_home":"/github/home"
+            //      -v "/home/runner/work/_temp/_github_workflow":"/github/workflow"
             //      --entrypoint "tail" node:10.16-jessie "-f" "/dev/null"
-            const containerId = yield exec.getExecOutput('podman', ['create',
-                `--workdir ${jobContainer.containerWorkDirectory}`,
+            const containerId = yield exec.getExecOutput('podman', [
+                'create',
+                // `--workdir ${jobContainer.containerWorkDirectory}`,
                 `--network ${networkName}`,
-                `-v /Users/ting/Desktop/runner/_layout/_work:/__w`,
+                // `-v /Users/ting/Desktop/runner/_layout/_work:/__w`,
                 `--entrypoint "${jobContainer.containerEntryPoint}"`,
                 `${containerImage}`,
                 `${jobContainer.containerEntryPointArgs}`
