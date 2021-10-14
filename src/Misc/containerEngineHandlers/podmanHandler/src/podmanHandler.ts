@@ -54,7 +54,6 @@ async function run(): Promise<void> {
     const creatArgs = ['create']
     creatArgs.push(`--workdir=${jobContainer.containerWorkDirectory}`)
     creatArgs.push(`--network=${networkName}`)
-    creatArgs.push(`--entrypoint=${jobContainer.containerEntryPoint}`)
 
     for (const mountVolume of jobContainer.mountVolumes) {
       creatArgs.push(
@@ -62,8 +61,10 @@ async function run(): Promise<void> {
       )
     }
 
+    creatArgs.push(`--entrypoint=tail`)
     creatArgs.push(containerImage)
-    creatArgs.push(jobContainer.containerEntryPointArgs)
+    creatArgs.push(`-f`)
+    creatArgs.push(`/dev/null`)
 
     core.debug(JSON.stringify(creatArgs))
 

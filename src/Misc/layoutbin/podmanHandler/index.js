@@ -1092,12 +1092,13 @@ function run() {
             const creatArgs = ['create'];
             creatArgs.push(`--workdir=${jobContainer.containerWorkDirectory}`);
             creatArgs.push(`--network=${networkName}`);
-            creatArgs.push(`--entrypoint=${jobContainer.containerEntryPoint}`);
             for (const mountVolume of jobContainer.mountVolumes) {
                 creatArgs.push(`-v=${mountVolume.sourceVolumePath}:${mountVolume.targetVolumePath}`);
             }
+            creatArgs.push(`--entrypoint=tail`);
             creatArgs.push(containerImage);
-            creatArgs.push(jobContainer.containerEntryPointArgs);
+            creatArgs.push(`-f`);
+            creatArgs.push(`/dev/null`);
             core.debug(JSON.stringify(creatArgs));
             // const containerId = await exec.getExecOutput('podman', [
             //   'create',
