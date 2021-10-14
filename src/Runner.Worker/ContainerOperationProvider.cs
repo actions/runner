@@ -12,9 +12,61 @@ using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using Microsoft.Win32;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using System.Threading.Channels;
+using GitHub.Services.WebApi;
+using System.Text;
+using System.Runtime.Serialization;
 
 namespace GitHub.Runner.Worker
 {
+    [DataContract]
+    public class ContainerEngineHandlerInput
+    {
+        [DataMember]
+        public string Command { get; set; }
+
+        [DataMember]
+        public ContainersCreationInput CreationInput { get; set; }
+
+        [DataMember]
+        public object JobContainerExecInput { get; set; }
+
+        [DataMember]
+        public ContainersRemoveInput RemoveInput { get; set; }
+    }
+
+    [DataContract]
+    public class ContainersCreationInput
+    {
+        [DataMember]
+        public List<ContainerInfo> Containers { get; set; }
+    }
+
+    [DataContract]
+    public class ContainersRemoveInput
+    {
+        [DataMember]
+        public string Network { get; set; }
+        [DataMember]
+        public string JobContainerId { get; set; }
+    }
+
+    [DataContract]
+    public class ContainersCreationOutput
+    {
+        [DataMember]
+        public string Network { get; set; }
+        [DataMember]
+        public string JobContainerId { get; set; }
+    }
+
+    [DataContract]
+    public class ContainerEngineHandlerOutput
+    {
+        [DataMember]
+        public ContainersCreationOutput CreationOutput { get; set; }
+    }
+
     [ServiceLocator(Default = typeof(ContainerOperationProvider))]
     public interface IContainerOperationProvider : IRunnerService
     {
@@ -35,13 +87,45 @@ namespace GitHub.Runner.Worker
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
         {
             Trace.Entering();
-            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
-            {
-                throw new NotSupportedException("Container operations are only supported on Linux runners");
-            }
+            // if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            // {
+            //     throw new NotSupportedException("Container operations are only supported on Linux runners");
+            // }
             ArgUtil.NotNull(executionContext, nameof(executionContext));
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
+
+            foreach (var container in containers)
+            {
+                if (container.IsJobContainer)
+                {
+                    // Configure job container - Mount workspace and tools, set up environment, and start long running process
+                    var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
+                    ArgUtil.NotNull(githubContext, nameof(githubContext));
+                    var workingDirectory = githubContext["workspace"] as StringContextData;
+                    ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
+                    container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
+
+                    var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
+                    Directory.CreateDirectory(tempHomeDirectory);
+                    container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
+                    container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
+                    container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
+
+                    var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
+                    Directory.CreateDirectory(tempWorkflowDirectory);
+                    container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
+                    container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
+
+                    container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
+                    container.ContainerEntryPoint = "tail";
+                    container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+                }
+            }
 
             var postJobStep = new JobExtensionRunner(runAsync: this.StopContainersAsync,
                                                 condition: $"{PipelineTemplateConstants.Always}()",
@@ -51,9 +135,70 @@ namespace GitHub.Runner.Worker
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
 
-            // Check whether we are inside a container.
-            // Our container feature requires to map working directory from host to the container.
-            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
+            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "podmanHandler", "index.js");
+            if (File.Exists(podManHandler))
+            {
+                var podmanInput = new ContainerEngineHandlerInput()
+                {
+                    Command = "Create",
+                    CreationInput = new ContainersCreationInput()
+                    {
+                        Containers = containers
+                    }
+                };
+
+                ContainerEngineHandlerOutput podmanOutput = null;
+                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+                {
+                    var redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
+                    redirectStandardIn.Writer.TryWrite(JsonUtility.ToString(podmanInput));
+
+                    processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    {
+                        executionContext.Output(message.Data);
+                    };
+
+                    processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    {
+                        executionContext.Output(message.Data);
+                        if (podmanOutput == null)
+                        {
+                            try
+                            {
+                                podmanOutput = JsonUtility.FromString<ContainerEngineHandlerOutput>(message.Data);
+                            }
+                            catch (Exception ex)
+                            {
+                                executionContext.Error(ex);
+                            }
+                        }
+                    };
+
+                    // Execute the process. Exit code 0 should always be returned.
+                    // A non-zero exit code indicates infrastructural failure.
+                    // Task failure should be communicated over STDOUT using ## commands.
+                    await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                                      fileName: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}"),
+                                                      arguments: podManHandler,
+                                                      environment: null,
+                                                      requireExitCodeZero: false,
+                                                      outputEncoding: Encoding.UTF8,
+                                                      killProcessOnCancel: false,
+                                                      redirectStandardIn: redirectStandardIn,
+                                                      cancellationToken: executionContext.CancellationToken);
+                }
+
+                if (podmanOutput != null)
+                {
+                    executionContext.JobContext.Container["network"] = new StringContextData(podmanOutput.CreationOutput.Network);
+                    executionContext.JobContext.Container["id"] = new StringContextData(podmanOutput.CreationOutput.JobContainerId);
+                }
+            }
+            else
+            {
+                // Check whether we are inside a container.
+                // Our container feature requires to map working directory from host to the container.
+                // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
 #if OS_WINDOWS
             // service CExecSvc is Container Execution Agent.
             ServiceController[] scServices = ServiceController.GetServices();
@@ -62,11 +207,11 @@ namespace GitHub.Runner.Worker
                 throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
 #else
-            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
-            {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-            }
+                var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+                if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+                }
 #endif
 
 #if OS_WINDOWS
@@ -90,68 +235,69 @@ namespace GitHub.Runner.Worker
             }
 #endif
 
-            // Check docker client/server version
-            executionContext.Output("##[group]Checking docker version");
-            DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
-            executionContext.Output("##[endgroup]");
+                // Check docker client/server version
+                executionContext.Output("##[group]Checking docker version");
+                DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
+                executionContext.Output("##[endgroup]");
 
-            ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
-            ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
+                ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
+                ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
 
 #if OS_WINDOWS
             Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
 #else
-            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
+                Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
 #endif
 
-            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
-            }
-            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
-            }
-
-            // Clean up containers left by previous runs
-            executionContext.Output("##[group]Clean up resources from previous jobs");
-            var staleContainers = await _dockerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManager.DockerInstanceLabel}\"");
-            foreach (var staleContainer in staleContainers)
-            {
-                int containerRemoveExitCode = await _dockerManager.DockerRemove(executionContext, staleContainer);
-                if (containerRemoveExitCode != 0)
+                if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
                 {
-                    executionContext.Warning($"Delete stale containers failed, docker rm fail with exit code {containerRemoveExitCode} for container {staleContainer}");
+                    throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
                 }
-            }
+                if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
+                {
+                    throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
+                }
 
-            int networkPruneExitCode = await _dockerManager.DockerNetworkPrune(executionContext);
-            if (networkPruneExitCode != 0)
-            {
-                executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
-            }
-            executionContext.Output("##[endgroup]");
+                // Clean up containers left by previous runs
+                executionContext.Output("##[group]Clean up resources from previous jobs");
+                var staleContainers = await _dockerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManager.DockerInstanceLabel}\"");
+                foreach (var staleContainer in staleContainers)
+                {
+                    int containerRemoveExitCode = await _dockerManager.DockerRemove(executionContext, staleContainer);
+                    if (containerRemoveExitCode != 0)
+                    {
+                        executionContext.Warning($"Delete stale containers failed, docker rm fail with exit code {containerRemoveExitCode} for container {staleContainer}");
+                    }
+                }
 
-            // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
-            // All containers within a job join the same network
-            executionContext.Output("##[group]Create local container network");
-            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
-            await CreateContainerNetworkAsync(executionContext, containerNetwork);
-            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
-            executionContext.Output("##[endgroup]");
+                int networkPruneExitCode = await _dockerManager.DockerNetworkPrune(executionContext);
+                if (networkPruneExitCode != 0)
+                {
+                    executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
+                }
+                executionContext.Output("##[endgroup]");
 
-            foreach (var container in containers)
-            {
-                container.ContainerNetwork = containerNetwork;
-                await StartContainerAsync(executionContext, container);
-            }
+                // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
+                // All containers within a job join the same network
+                executionContext.Output("##[group]Create local container network");
+                var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
+                await CreateContainerNetworkAsync(executionContext, containerNetwork);
+                executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
+                executionContext.Output("##[endgroup]");
 
-            executionContext.Output("##[group]Waiting for all services to be ready");
-            foreach (var container in containers.Where(c => !c.IsJobContainer))
-            {
-                await ContainerHealthcheck(executionContext, container);
+                foreach (var container in containers)
+                {
+                    container.ContainerNetwork = containerNetwork;
+                    await StartContainerAsync(executionContext, container);
+                }
+
+                executionContext.Output("##[group]Waiting for all services to be ready");
+                foreach (var container in containers.Where(c => !c.IsJobContainer))
+                {
+                    await ContainerHealthcheck(executionContext, container);
+                }
+                executionContext.Output("##[endgroup]");
             }
-            executionContext.Output("##[endgroup]");
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
@@ -162,12 +308,69 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
-            foreach (var container in containers)
+            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "podmanHandler", "index.js");
+            if (File.Exists(podManHandler))
             {
-                await StopContainerAsync(executionContext, container);
+                var podmanInput = new ContainerEngineHandlerInput()
+                {
+                    Command = "Remove",
+                    RemoveInput = new ContainersRemoveInput()
+                    {
+                        Network = executionContext.JobContext.Container["network"].ToString(),
+                        JobContainerId = executionContext.JobContext.Container["id"].ToString()
+                    }
+                };
+
+                ContainerEngineHandlerOutput podmanOutput = null;
+                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+                {
+                    var redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
+                    redirectStandardIn.Writer.TryWrite(JsonUtility.ToString(podmanInput));
+
+                    processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    {
+                        executionContext.Output(message.Data);
+                    };
+
+                    processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    {
+                        executionContext.Output(message.Data);
+                        if (podmanOutput == null)
+                        {
+                            try
+                            {
+                                podmanOutput = JsonUtility.FromString<ContainerEngineHandlerOutput>(message.Data);
+                            }
+                            catch (Exception ex)
+                            {
+                                executionContext.Error(ex);
+                            }
+                        }
+                    };
+
+                    // Execute the process. Exit code 0 should always be returned.
+                    // A non-zero exit code indicates infrastructural failure.
+                    // Task failure should be communicated over STDOUT using ## commands.
+                    await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                                      fileName: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}"),
+                                                      arguments: podManHandler,
+                                                      environment: null,
+                                                      requireExitCodeZero: false,
+                                                      outputEncoding: Encoding.UTF8,
+                                                      killProcessOnCancel: false,
+                                                      redirectStandardIn: redirectStandardIn,
+                                                      cancellationToken: executionContext.CancellationToken);
+                }
             }
-            // Remove the container network
-            await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+            else
+            {
+                foreach (var container in containers)
+                {
+                    await StopContainerAsync(executionContext, container);
+                }
+                // Remove the container network
+                await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+            }
         }
 
         private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
