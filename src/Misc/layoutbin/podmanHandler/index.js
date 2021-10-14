@@ -1153,7 +1153,9 @@ function run() {
             }
             execArgs.push(execInput.jobContainer.containerId);
             execArgs.push(execInput.fileName);
-            execArgs.push(execInput.arguments);
+            const args = JSON.stringify(execInput.arguments).split(' ');
+            core.debug(JSON.stringify(args));
+            execArgs.push(...args);
             core.debug(JSON.stringify(execArgs));
             yield exec.exec('podman', execArgs);
         }
