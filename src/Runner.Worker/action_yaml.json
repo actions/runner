@@ -222,7 +222,6 @@
             "context": [
               "github",
               "inputs",
-              "needs",
               "strategy",
               "matrix",
               "steps",

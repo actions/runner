@@ -129,7 +129,6 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-
                 foreach (Pipelines.ActionStep stepData in steps)
                 {
                     // Compute child sibling scope names for post steps
@@ -409,7 +408,6 @@ namespace GitHub.Runner.Worker.Handlers
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
-                    // Check continue on error?
                     ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
                 }
             }
