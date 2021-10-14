@@ -125,7 +125,7 @@ async function run(): Promise<void> {
 
     const execArgs = ['exec']
     execArgs.push('-i')
-    execArgs.push(`--wordir=${execInput.workingDirectory}`)
+    execArgs.push(`--workdir=${execInput.workingDirectory}`)
     for (const envKey of execInput.environmentKeys) {
       execArgs.push(`-e=${envKey}`)
     }
