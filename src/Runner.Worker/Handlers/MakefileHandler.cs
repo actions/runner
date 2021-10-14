@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker.Handlers
                 handler.Environment = Environment;
                 handler.RuntimeVariables = RuntimeVariables;
                 handler.ExecutionContext = ExecutionContext;
-                handler.StepHost = StepHost;
+                handler.StepHost = HostContext.CreateService<IDefaultStepHost>();;
                 handler.Inputs = new Dictionary<string, string>
                 {
                     ["script"] = $"make {target}"
