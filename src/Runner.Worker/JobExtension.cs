@@ -266,7 +266,7 @@ namespace GitHub.Runner.Worker
                         {
                             var action = step as Pipelines.ActionStep;
 
-                            void EmitStep()
+                            void EmitStep(Pipelines.ActionStep action)
                             {
                                 Trace.Info($"Adding {action.DisplayName}.");
                                 var actionRunner = HostContext.CreateService<IActionRunner>();
@@ -295,48 +295,61 @@ namespace GitHub.Runner.Worker
                             }
 
                             // HACK: if the step is "run: make," parse the Makefile and emit $"make dependency {target}"
-                            if (action.DisplayName == "Run make")
+                            // Only works for the default target right now.
+                            bool isRunMake = false;
+                            if (action.Reference?.Type == Pipelines.ActionSourceType.Script)
                             {
-                                // Load the inputs.
-                                jobContext.Debug("Loading inputs");
-                                var inputs = templateEvaluator.EvaluateStepInputs(action.Inputs, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
-
-                                // Check if we are running a Makefile.
-                                // Only works for the default target right now.
-                                if (inputs["script"] == "make")
+                                var inputs = action.Inputs.AssertMapping(null);
+                                foreach (var pair in inputs)
                                 {
-                                    // Get the path of the Makefile in the repository root.
-                                    var githubContext = jobContext.ExpressionValues["github"] as GitHubContext;
-                                    var workspaceDir = githubContext["workspace"] as StringContextData;
-                                    var makefile = Path.Combine(workspaceDir, "Makefile");
-                                    if (!File.Exists(makefile))
+                                    var propertyName = pair.Key.AssertString($"{PipelineTemplateConstants.Steps}");
+                                    if (string.Equals(propertyName.Value, "script", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        var tokenToParse = pair.Value.AssertScalar($"{PipelineTemplateConstants.Steps} item {PipelineTemplateConstants.Run}");
+                                        if (tokenToParse.ToString() == "make")
+                                        {
+                                            isRunMake = true;
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (isRunMake)
+                            {
+                                // Get the path of the Makefile in the repository root.
+                                var githubContext = jobContext.ExpressionValues["github"] as GitHubContext;
+                                var workspaceDir = githubContext["workspace"] as StringContextData;
+                                var makefile = Path.Combine(workspaceDir, "Makefile");
+                                if (!File.Exists(makefile))
+                                {
+                                    // Forget about trying to be smart. Just do the normal thing.
+                                    EmitStep(action);
+                                }
+                                else
+                                {
+                                    // Assume the default target is named `all`.
+                                    var targetDependencies = MakefileManager.ReadTargetDependencies(jobContext, makefile, target: "all");
+                                    if (targetDependencies.Count == 0)
                                     {
                                         // Forget about trying to be smart. Just do the normal thing.
-                                        EmitStep();
+                                        EmitStep(action);
                                     }
                                     else
                                     {
-                                        // Assume the default target is named `all`.
-                                        var targetDependencies = MakefileManager.ReadTargetDependencies(jobContext, makefile, target: "all");
-                                        if (targetDependencies.Count == 0)
+                                        foreach (var target in targetDependencies)
                                         {
-                                            // Forget about trying to be smart. Just do the normal thing.
-                                            EmitStep();
-                                        }
-                                        else
-                                        {
-                                            foreach (var target in targetDependencies)
-                                            {
-                                                action.DisplayName = $"make dependency {target}";
-                                                EmitStep();
-                                            }
+                                            action = (Pipelines.ActionStep)action.Clone();
+                                            action.Id = Guid.NewGuid();
+                                            action.DisplayName = $"make dependency {target}";
+                                            EmitStep(action);
                                         }
                                     }
                                 }
                             }
                             else
                             {
-                                EmitStep();
+                                EmitStep(action);
                             }
                         }
                     }
