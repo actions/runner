@@ -1153,8 +1153,7 @@ function run() {
             }
             execArgs.push(execInput.jobContainer.containerId);
             execArgs.push(execInput.fileName);
-            core.debug(JSON.stringify(execInput.arguments));
-            const args = JSON.stringify(execInput.arguments).replace('"', "").split(' ');
+            const args = execInput.arguments.split(' ');
             core.debug(JSON.stringify(args));
             execArgs.push(...args);
             core.debug(JSON.stringify(execArgs));
