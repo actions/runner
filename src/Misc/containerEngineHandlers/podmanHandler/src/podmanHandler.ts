@@ -51,15 +51,33 @@ async function run(): Promise<void> {
     //      -v "/home/runner/work/_temp/_github_home":"/github/home"
     //      -v "/home/runner/work/_temp/_github_workflow":"/github/workflow"
     //      --entrypoint "tail" node:10.16-jessie "-f" "/dev/null"
-    const containerId = await exec.getExecOutput('podman', [
-      'create',
-      // `--workdir ${jobContainer.containerWorkDirectory}`,
-      `--network=${networkName}`,
-      // `-v /Users/ting/Desktop/runner/_layout/_work:/__w`,
-      `--entrypoint=${jobContainer.containerEntryPoint}`,
-      `${containerImage}`,
-      `${jobContainer.containerEntryPointArgs}`
-    ])
+    const creatArgs = ['create']
+    creatArgs.push(`--workdir=${jobContainer.containerWorkDirectory}`)
+    creatArgs.push(`--network=${networkName}`)
+    creatArgs.push(`--entrypoint=${jobContainer.containerEntryPoint}`)
+
+    for (const mountVolume of jobContainer.mountVolumes) {
+      creatArgs.push(
+        `-v=${mountVolume.sourceVolumePath}:${mountVolume.targetVolumePath}`
+      )
+    }
+
+    creatArgs.push(containerImage)
+    creatArgs.push(jobContainer.containerEntryPointArgs)
+
+    core.debug(JSON.stringify(creatArgs))
+
+    // const containerId = await exec.getExecOutput('podman', [
+    //   'create',
+    //   // `--workdir ${jobContainer.containerWorkDirectory}`,
+    //   `--network=${networkName}`,
+    //   // `-v=/Users/ting/Desktop/runner/_layout/_work:/__w`,
+    //   `--entrypoint=${jobContainer.containerEntryPoint}`,
+    //   `${containerImage}`,
+    //   `${jobContainer.containerEntryPointArgs}`
+    // ])
+
+    const containerId = await exec.getExecOutput('podman', creatArgs)
 
     core.debug(JSON.stringify(containerId))
 
@@ -78,7 +96,9 @@ async function run(): Promise<void> {
     const output = JSON.stringify({CreationOutput: creationOutput})
     core.debug(output)
 
-    process.stderr.write(output)
+    process.stderr.write(
+      `___CONTAINER_ENGINE_HANDLER_OUTPUT___${output}___CONTAINER_ENGINE_HANDLER_OUTPUT___`
+    )
   } else if (command === 'Remove') {
     const removeInput = inputJson.removeInput
     core.debug(JSON.stringify(removeInput))
@@ -91,7 +111,7 @@ async function run(): Promise<void> {
   // else if (command === 'Exec') {
   // }
   await exec.exec('podman', ['network', 'ls'])
-  await exec.exec('podman', ['network', 'ps', '-a'])
+  await exec.exec('podman', ['ps', '-a'])
 }
 
 run()

@@ -161,11 +161,11 @@ namespace GitHub.Runner.Worker
                     processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
                     {
                         executionContext.Output(message.Data);
-                        if (podmanOutput == null)
+                        if (podmanOutput == null && message.Data.IndexOf("___CONTAINER_ENGINE_HANDLER_OUTPUT___") >= 0)
                         {
                             try
                             {
-                                podmanOutput = JsonUtility.FromString<ContainerEngineHandlerOutput>(message.Data);
+                                podmanOutput = JsonUtility.FromString<ContainerEngineHandlerOutput>(message.Data.Replace("___CONTAINER_ENGINE_HANDLER_OUTPUT___", ""));
                             }
                             catch (Exception ex)
                             {
@@ -335,11 +335,11 @@ namespace GitHub.Runner.Worker
                     processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
                     {
                         executionContext.Output(message.Data);
-                        if (podmanOutput == null)
+                        if (podmanOutput == null && message.Data.IndexOf("___CONTAINER_ENGINE_HANDLER_OUTPUT___") >= 0)
                         {
                             try
                             {
-                                podmanOutput = JsonUtility.FromString<ContainerEngineHandlerOutput>(message.Data);
+                                podmanOutput = JsonUtility.FromString<ContainerEngineHandlerOutput>(message.Data.Replace("___CONTAINER_ENGINE_HANDLER_OUTPUT___", ""));
                             }
                             catch (Exception ex)
                             {
