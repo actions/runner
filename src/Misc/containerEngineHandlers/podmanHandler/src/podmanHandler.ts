@@ -79,11 +79,19 @@ async function run(): Promise<void> {
     core.debug(output)
 
     process.stderr.write(output)
+  } else if (command === 'Remove') {
+    const removeInput = inputJson.removeInput
+    core.debug(JSON.stringify(removeInput))
+    const jobContainerId = removeInput.jobContainerId
+    const network = removeInput.network
+
+    await exec.exec('podman', ['rm', '-f', jobContainerId])
+    await exec.exec('podman', ['network', 'rm', '-f', network])
   }
-  // else if (command === 'Remove') {
-  // } else if (command === 'Exec') {
+  // else if (command === 'Exec') {
   // }
   await exec.exec('podman', ['network', 'ls'])
+  await exec.exec('podman', ['network', 'ps', '-a'])
 }
 
 run()

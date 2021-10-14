@@ -123,7 +123,7 @@ namespace GitHub.Runner.Worker
 
                     container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
                     container.ContainerEntryPoint = "tail";
-                    container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+                    container.ContainerEntryPointArgs = "-f /dev/null";
                 }
             }
 

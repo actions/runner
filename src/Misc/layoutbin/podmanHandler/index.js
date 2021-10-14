@@ -1111,10 +1111,18 @@ function run() {
             core.debug(output);
             process.stderr.write(output);
         }
-        // else if (command === 'Remove') {
-        // } else if (command === 'Exec') {
+        else if (command === 'Remove') {
+            const removeInput = inputJson.removeInput;
+            core.debug(JSON.stringify(removeInput));
+            const jobContainerId = removeInput.jobContainerId;
+            const network = removeInput.network;
+            yield exec.exec('podman', ['rm', '-f', jobContainerId]);
+            yield exec.exec('podman', ['network', 'rm', '-f', network]);
+        }
+        // else if (command === 'Exec') {
         // }
         yield exec.exec('podman', ['network', 'ls']);
+        yield exec.exec('podman', ['network', 'ps', '-a']);
     });
 }
 run();
