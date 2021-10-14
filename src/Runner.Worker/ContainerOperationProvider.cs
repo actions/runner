@@ -29,10 +29,32 @@ namespace GitHub.Runner.Worker
         public ContainersCreationInput CreationInput { get; set; }
 
         [DataMember]
-        public object JobContainerExecInput { get; set; }
+        public JobContainerExecInput ExecInput { get; set; }
 
         [DataMember]
         public ContainersRemoveInput RemoveInput { get; set; }
+    }
+
+    [DataContract]
+    public class JobContainerExecInput
+    {
+        [DataMember]
+        public ContainerInfo JobContainer { get; set; }
+
+        [DataMember]
+        public string WorkingDirectory { get; set; }
+
+
+        [DataMember]
+        public string FileName { get; set; }
+
+
+        [DataMember]
+        public string Arguments { get; set; }
+
+
+        [DataMember]
+        public List<string> EnvironmentKeys { get; set; }
     }
 
     [DataContract]
@@ -192,6 +214,7 @@ namespace GitHub.Runner.Worker
                 {
                     executionContext.JobContext.Container["network"] = new StringContextData(podmanOutput.CreationOutput.Network);
                     executionContext.JobContext.Container["id"] = new StringContextData(podmanOutput.CreationOutput.JobContainerId);
+                    executionContext.Global.Container.ContainerId = podmanOutput.CreationOutput.JobContainerId;
                 }
             }
             else

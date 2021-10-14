@@ -107,9 +107,37 @@ async function run(): Promise<void> {
 
     await exec.exec('podman', ['rm', '-f', jobContainerId])
     await exec.exec('podman', ['network', 'rm', '-f', network])
+  } else if (command === 'Exec') {
+    const execInput = inputJson.execInput
+    core.debug(JSON.stringify(execInput))
+
+    // podman exec -i --workdir /__w/canary/canary
+    // -e GITHUB_JOB -e GITHUB_REF -e GITHUB_SHA -e GITHUB_REPOSITORY
+    // -e GITHUB_REPOSITORY_OWNER -e GITHUB_RUN_ID -e GITHUB_RUN_NUMBER
+    // -e GITHUB_RETENTION_DAYS -e GITHUB_RUN_ATTEMPT -e GITHUB_ACTOR
+    // -e GITHUB_WORKFLOW -e GITHUB_HEAD_REF -e GITHUB_BASE_REF -e GITHUB_EVENT_NAME
+    // -e GITHUB_SERVER_URL -e GITHUB_API_URL -e GITHUB_GRAPHQL_URL
+    // -e GITHUB_WORKSPACE -e GITHUB_ACTION -e GITHUB_EVENT_PATH -e GITHUB_ACTION_REPOSITORY
+    // -e GITHUB_ACTION_REF -e GITHUB_PATH -e GITHUB_ENV -e RUNNER_DEBUG
+    // -e RUNNER_OS -e RUNNER_NAME -e RUNNER_TOOL_CACHE
+    // -e RUNNER_TEMP -e RUNNER_WORKSPACE
+    //   eccdf520697a035599d6e8c8dc801f004fdd3797cdce88f590aba3669a88d9bc sh -e /__w/_temp/d3b30383-719c-4e76-a16f-8f85443352be.sh
+
+    const execArgs = ['exec']
+    execArgs.push('-i')
+    execArgs.push(`--wordir=${execInput.workingDirectory}`)
+    for (const envKey of execInput.environmentKeys) {
+      execArgs.push(`-e=${envKey}`)
+    }
+    execArgs.push(execInput.jobContainer.containerId)
+    execArgs.push(execInput.fileName)
+    execArgs.push(execInput.arguments)
+
+    core.debug(JSON.stringify(execArgs))
+
+    await exec.exec('podman', execArgs)
   }
-  // else if (command === 'Exec') {
-  // }
+
   await exec.exec('podman', ['network', 'ls'])
   await exec.exec('podman', ['ps', '-a'])
 }

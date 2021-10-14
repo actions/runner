@@ -21,6 +21,8 @@ namespace GitHub.Runner.Worker.Handlers
         event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
 
+        IExecutionContext ExecutionContext { get; set; }
+
         string ResolvePathForStepHost(string path);
 
         Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext);
@@ -52,6 +54,8 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
+
+        public IExecutionContext ExecutionContext { get; set; }
 
         public string ResolvePathForStepHost(string path)
         {
@@ -98,6 +102,8 @@ namespace GitHub.Runner.Worker.Handlers
         public string PrependPath { get; set; }
         public event EventHandler<ProcessDataReceivedEventArgs> OutputDataReceived;
         public event EventHandler<ProcessDataReceivedEventArgs> ErrorDataReceived;
+
+        public IExecutionContext ExecutionContext { get; set; }
 
         public string ResolvePathForStepHost(string path)
         {
@@ -174,69 +180,137 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Container, nameof(Container));
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
 
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
-            string dockerClientPath = dockerManager.DockerPath;
-
-            // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
-            IList<string> dockerCommandArgs = new List<string>();
-            dockerCommandArgs.Add($"exec");
-
-            // [OPTIONS]
-            dockerCommandArgs.Add($"-i");
-            dockerCommandArgs.Add($"--workdir {workingDirectory}");
-            foreach (var env in environment)
+            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "podmanHandler", "index.js");
+            if (File.Exists(podManHandler))
             {
-                // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
-                // the value directly in the command
-                dockerCommandArgs.Add($"-e {env.Key}");
+                var podmanInput = new ContainerEngineHandlerInput()
+                {
+                    Command = "Exec",
+                    ExecInput = new JobContainerExecInput()
+                    {
+                        JobContainer = this.Container,
+                        WorkingDirectory = workingDirectory,
+                        FileName = fileName,
+                        Arguments = arguments,
+                        EnvironmentKeys = environment.Keys.ToList()
+                    }
+                };
+
+                // make sure all env are using container path
+                foreach (var envKey in environment.Keys.ToList())
+                {
+                    environment[envKey] = this.Container.TranslateToContainerPath(environment[envKey]);
+                }
+
+                // ContainerEngineHandlerOutput podmanOutput = null;
+                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+                {
+                    var redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
+                    redirectStandardIn.Writer.TryWrite(JsonUtility.ToString(podmanInput));
+
+                    // processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    // {
+                    //     ExecutionContext.Output(message.Data);
+                    // };
+
+                    // processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                    // {
+                    //     executionContext.Output(message.Data);
+                    //     if (podmanOutput == null && message.Data.IndexOf("___CONTAINER_ENGINE_HANDLER_OUTPUT___") >= 0)
+                    //     {
+                    //         try
+                    //         {
+                    //             podmanOutput = JsonUtility.FromString<ContainerEngineHandlerOutput>(message.Data.Replace("___CONTAINER_ENGINE_HANDLER_OUTPUT___", ""));
+                    //         }
+                    //         catch (Exception ex)
+                    //         {
+                    //             executionContext.Error(ex);
+                    //         }
+                    //     }
+                    // };
+                    processInvoker.OutputDataReceived += OutputDataReceived;
+                    processInvoker.ErrorDataReceived += ErrorDataReceived;
+
+                    // Execute the process. Exit code 0 should always be returned.
+                    // A non-zero exit code indicates infrastructural failure.
+                    // Task failure should be communicated over STDOUT using ## commands.
+                    return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                                      fileName: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}"),
+                                                      arguments: podManHandler,
+                                                      environment: environment,
+                                                      requireExitCodeZero: requireExitCodeZero,
+                                                      outputEncoding: Encoding.UTF8,
+                                                      killProcessOnCancel: killProcessOnCancel,
+                                                      redirectStandardIn: redirectStandardIn,
+                                                      cancellationToken: cancellationToken);
+                }
             }
-            if (!string.IsNullOrEmpty(PrependPath))
+            else
             {
-                // Prepend tool paths to container's PATH
-                var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
-                dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
-            }
+                var dockerManager = HostContext.GetService<IDockerCommandManager>();
+                string dockerClientPath = dockerManager.DockerPath;
 
-            // CONTAINER
-            dockerCommandArgs.Add($"{Container.ContainerId}");
+                // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
+                IList<string> dockerCommandArgs = new List<string>();
+                dockerCommandArgs.Add($"exec");
 
-            // COMMAND
-            dockerCommandArgs.Add(fileName);
+                // [OPTIONS]
+                dockerCommandArgs.Add($"-i");
+                dockerCommandArgs.Add($"--workdir {workingDirectory}");
+                foreach (var env in environment)
+                {
+                    // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
+                    // the value directly in the command
+                    dockerCommandArgs.Add($"-e {env.Key}");
+                }
+                if (!string.IsNullOrEmpty(PrependPath))
+                {
+                    // Prepend tool paths to container's PATH
+                    var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
+                    dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
+                }
 
-            // [ARG...]
-            dockerCommandArgs.Add(arguments);
+                // CONTAINER
+                dockerCommandArgs.Add($"{Container.ContainerId}");
 
-            string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
+                // COMMAND
+                dockerCommandArgs.Add(fileName);
 
-            // make sure all env are using container path
-            foreach (var envKey in environment.Keys.ToList())
-            {
-                environment[envKey] = this.Container.TranslateToContainerPath(environment[envKey]);
-            }
+                // [ARG...]
+                dockerCommandArgs.Add(arguments);
 
-            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-            {
-                processInvoker.OutputDataReceived += OutputDataReceived;
-                processInvoker.ErrorDataReceived += ErrorDataReceived;
+                string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
+
+                // make sure all env are using container path
+                foreach (var envKey in environment.Keys.ToList())
+                {
+                    environment[envKey] = this.Container.TranslateToContainerPath(environment[envKey]);
+                }
+
+                using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+                {
+                    processInvoker.OutputDataReceived += OutputDataReceived;
+                    processInvoker.ErrorDataReceived += ErrorDataReceived;
 
 #if OS_WINDOWS
                 // It appears that node.exe outputs UTF8 when not in TTY mode.
                 outputEncoding = Encoding.UTF8;
 #else
-                // Let .NET choose the default.
-                outputEncoding = null;
+                    // Let .NET choose the default.
+                    outputEncoding = null;
 #endif
 
-                return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                                                         fileName: dockerClientPath,
-                                                         arguments: dockerCommandArgstring,
-                                                         environment: environment,
-                                                         requireExitCodeZero: requireExitCodeZero,
-                                                         outputEncoding: outputEncoding,
-                                                         killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: null,
-                                                         inheritConsoleHandler: inheritConsoleHandler,
-                                                         cancellationToken: cancellationToken);
+                    return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                                             fileName: dockerClientPath,
+                                                             arguments: dockerCommandArgstring,
+                                                             environment: environment,
+                                                             requireExitCodeZero: requireExitCodeZero,
+                                                             outputEncoding: outputEncoding,
+                                                             killProcessOnCancel: killProcessOnCancel,
+                                                             redirectStandardIn: null,
+                                                             inheritConsoleHandler: inheritConsoleHandler,
+                                                             cancellationToken: cancellationToken);
+                }
             }
         }
     }
