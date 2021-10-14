@@ -56,7 +56,7 @@ async function run(): Promise<void> {
       // `--workdir ${jobContainer.containerWorkDirectory}`,
       `--network=${networkName}`,
       // `-v /Users/ting/Desktop/runner/_layout/_work:/__w`,
-      `--entrypoint="${jobContainer.containerEntryPoint}"`,
+      `--entrypoint=${jobContainer.containerEntryPoint}`,
       `${containerImage}`,
       `${jobContainer.containerEntryPointArgs}`
     ])
