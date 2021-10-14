@@ -133,6 +133,7 @@ async function run(): Promise<void> {
     execArgs.push(execInput.jobContainer.containerId)
     execArgs.push(execInput.fileName)
 
+    core.debug(JSON.stringify(execInput.arguments))
     const args = JSON.stringify(execInput.arguments).split(' ')
     core.debug(JSON.stringify(args))
 
