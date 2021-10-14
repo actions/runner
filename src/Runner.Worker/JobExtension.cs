@@ -329,7 +329,7 @@ namespace GitHub.Runner.Worker
                                 else
                                 {
                                     // Assume the default target is named `all`.
-                                    var targetDependencies = MakefileManager.ReadTargetDependencies(jobContext, makefile, target: "all");
+                                    var targetDependencies = MakefileReader.ReadTargetDependencies(jobContext, makefile, target: "all");
                                     if (targetDependencies.Count == 0)
                                     {
                                         // Forget about trying to be smart. Just do the normal thing.

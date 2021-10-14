@@ -10,7 +10,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
-using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
@@ -487,49 +486,9 @@ namespace GitHub.Runner.Worker
             }
             else if (action.Reference.Type == Pipelines.ActionSourceType.Script)
             {
-                // Load the inputs.
-                // executionContext.Debug("Loading inputs");
-                // var templateEvaluator = executionContext.ToPipelineTemplateEvaluator();
-                // var inputs = templateEvaluator.EvaluateStepInputs(action.Inputs, executionContext.ExpressionValues, executionContext.ExpressionFunctions);
-
-                // Check if we are running a Makefile.
-                // Only works for the default target right now.
-                // if (inputs["script"] == "make")
-                // {
-                //     // Get the path of the Makefile in the repository root.
-                //     var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
-                //     var workspaceDir = githubContext["workspace"] as StringContextData;
-                //     var makefile = Path.Combine(workspaceDir, "Makefile");
-                //     if (!File.Exists(makefile))
-                //     {
-                //         // Forget about trying to be smart. Just do the normal thing.
-                //         definition.Data.Execution = new ScriptActionExecutionData();
-                //         definition.Data.Name = "Run";
-                //         definition.Data.Description = "Execute a script";
-                //     }
-                //     else
-                //     {
-                //         // Assume the default target is named `all`.
-                //         var definitionData = MakefileManager.Load(executionContext, makefile, target: "all");
-                //         if (definitionData is null)
-                //         {
-                //             // Forget about trying to be smart. Just do the normal thing.
-                //             definition.Data.Execution = new ScriptActionExecutionData();
-                //             definition.Data.Name = "Run";
-                //             definition.Data.Description = "Execute a script";
-                //         }
-                //         else
-                //         {
-                //             definition.Data = definitionData;
-                //         }
-                //     }
-                // }
-                // else
-                // {
-                    definition.Data.Execution = new ScriptActionExecutionData();
-                    definition.Data.Name = "Run";
-                    definition.Data.Description = "Execute a script";
-                // }
+                definition.Data.Execution = new ScriptActionExecutionData();
+                definition.Data.Name = "Run";
+                definition.Data.Description = "Execute a script";
             }
             else
             {
@@ -1184,7 +1143,6 @@ namespace GitHub.Runner.Worker
         Plugin,
         Script,
         Composite,
-        Makefile,
     }
 
     public sealed class ContainerActionExecutionData : ActionExecutionData
@@ -1250,14 +1208,6 @@ namespace GitHub.Runner.Worker
         public List<Pipelines.ActionStep> Steps { get; set; }
         public Stack<Pipelines.ActionStep> PostSteps { get; set; }
         public MappingToken Outputs { get; set; }
-    }
-
-    public sealed class MakefileExecutionData : ActionExecutionData
-    {
-        public override ActionExecutionType ExecutionType => ActionExecutionType.Makefile;
-        public override bool HasPre => false;
-        public override bool HasPost => false;
-        public List<string> Targets { get; set; }
     }
 
     public abstract class ActionExecutionData
