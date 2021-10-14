@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _dockerManager = HostContext.GetService<IDockerCommandManager>();
+            // _dockerManager = HostContext.GetService<IDockerCommandManager>();
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
