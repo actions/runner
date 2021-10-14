@@ -76,7 +76,7 @@ namespace GitHub.Runner.Worker
 
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
-        private IDockerCommandManager _dockerManager;
+        private IDockerCommandManager _dockerManager = null;
 
         public override void Initialize(IHostContext hostContext)
         {
