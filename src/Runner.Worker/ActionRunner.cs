@@ -262,6 +262,16 @@ namespace GitHub.Runner.Worker
                 environment[$"STATE_{state.Key}"] = state.Value ?? string.Empty;
             }
 
+            // HACK
+            if (Action.DisplayName != null && Action.DisplayName.StartsWith("make dependency"))
+            {
+                var target = Action.DisplayName.Split()[2];
+                inputs = new Dictionary<string, string>
+                {
+                    ["script"] = $"make {target}"
+                };
+            }
+
             // Create the handler.
             IHandler handler = handlerFactory.Create(
                             ExecutionContext,

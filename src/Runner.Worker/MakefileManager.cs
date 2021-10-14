@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -9,15 +10,7 @@ namespace GitHub.Runner.Worker
         // Does not recurse into the dependencies of those steps.
         public static ActionDefinitionData Load(IExecutionContext executionContext, string makefile, string target)
         {
-            var targetToFind = target + ":";
-            var lines = File.ReadLines(makefile);
-            string targetLine = lines.FirstOrDefault(line => line.TrimStart().StartsWith(targetToFind));
-            if (targetLine is null)
-            {
-                return null;
-            }
-
-            var dependencies = targetLine.Split().Skip(1).ToList();
+            var dependencies = ReadTargetDependencies(executionContext, makefile, target);
             if (dependencies.Count == 0)
             {
                 return null;
@@ -34,6 +27,19 @@ namespace GitHub.Runner.Worker
                     CleanupCondition = "always()",
                 }
             };
+        }
+
+        public static List<string> ReadTargetDependencies(IExecutionContext executionContext, string makefile, string target)
+        {
+            var targetToFind = target + ":";
+            var lines = File.ReadLines(makefile);
+            string targetLine = lines.FirstOrDefault(line => line.TrimStart().StartsWith(targetToFind));
+            if (targetLine is null)
+            {
+                return null;
+            }
+
+            return targetLine.Split().Skip(1).ToList();
         }
     }
 }

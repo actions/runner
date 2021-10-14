@@ -265,29 +265,78 @@ namespace GitHub.Runner.Worker
                         if (step.Type == Pipelines.StepType.Action)
                         {
                             var action = step as Pipelines.ActionStep;
-                            Trace.Info($"Adding {action.DisplayName}.");
-                            var actionRunner = HostContext.CreateService<IActionRunner>();
-                            actionRunner.Action = action;
-                            actionRunner.Stage = ActionRunStage.Main;
-                            actionRunner.Condition = step.Condition;
-                            var contextData = new Pipelines.ContextData.DictionaryContextData();
-                            if (message.ContextData?.Count > 0)
+
+                            void EmitStep()
                             {
-                                foreach (var pair in message.ContextData)
+                                Trace.Info($"Adding {action.DisplayName}.");
+                                var actionRunner = HostContext.CreateService<IActionRunner>();
+                                actionRunner.Action = action;
+                                actionRunner.Stage = ActionRunStage.Main;
+                                actionRunner.Condition = step.Condition;
+                                var contextData = new Pipelines.ContextData.DictionaryContextData();
+                                if (message.ContextData?.Count > 0)
                                 {
-                                    contextData[pair.Key] = pair.Value;
+                                    foreach (var pair in message.ContextData)
+                                    {
+                                        contextData[pair.Key] = pair.Value;
+                                    }
+                                }
+
+                                actionRunner.TryEvaluateDisplayName(contextData, context);
+                                jobSteps.Add(actionRunner);
+
+                                if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
+                                {
+                                    Trace.Info($"Adding pre-{action.DisplayName}.");
+                                    preStep.TryEvaluateDisplayName(contextData, context);
+                                    preStep.DisplayName = $"Pre {preStep.DisplayName}";
+                                    preJobSteps.Add(preStep);
                                 }
                             }
 
-                            actionRunner.TryEvaluateDisplayName(contextData, context);
-                            jobSteps.Add(actionRunner);
-
-                            if (prepareResult.PreStepTracker.TryGetValue(step.Id, out var preStep))
+                            // HACK: if the step is "run: make," parse the Makefile and emit $"make dependency {target}"
+                            if (action.DisplayName == "Run make")
                             {
-                                Trace.Info($"Adding pre-{action.DisplayName}.");
-                                preStep.TryEvaluateDisplayName(contextData, context);
-                                preStep.DisplayName = $"Pre {preStep.DisplayName}";
-                                preJobSteps.Add(preStep);
+                                // Load the inputs.
+                                jobContext.Debug("Loading inputs");
+                                var inputs = templateEvaluator.EvaluateStepInputs(action.Inputs, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
+
+                                // Check if we are running a Makefile.
+                                // Only works for the default target right now.
+                                if (inputs["script"] == "make")
+                                {
+                                    // Get the path of the Makefile in the repository root.
+                                    var githubContext = jobContext.ExpressionValues["github"] as GitHubContext;
+                                    var workspaceDir = githubContext["workspace"] as StringContextData;
+                                    var makefile = Path.Combine(workspaceDir, "Makefile");
+                                    if (!File.Exists(makefile))
+                                    {
+                                        // Forget about trying to be smart. Just do the normal thing.
+                                        EmitStep();
+                                    }
+                                    else
+                                    {
+                                        // Assume the default target is named `all`.
+                                        var targetDependencies = MakefileManager.ReadTargetDependencies(jobContext, makefile, target: "all");
+                                        if (targetDependencies.Count == 0)
+                                        {
+                                            // Forget about trying to be smart. Just do the normal thing.
+                                            EmitStep();
+                                        }
+                                        else
+                                        {
+                                            foreach (var target in targetDependencies)
+                                            {
+                                                action.DisplayName = $"make dependency {target}";
+                                                EmitStep();
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                EmitStep();
                             }
                         }
                     }
