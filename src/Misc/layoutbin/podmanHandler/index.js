@@ -1100,11 +1100,11 @@ function run() {
             ]);
             core.debug(JSON.stringify(containerId));
             // podman start {containerId}
-            yield exec.exec('podman', ['start', containerId.stdout]);
+            yield exec.exec('podman', ['start', containerId.stdout.trim()]);
             // get PATH inside the container
             // output containerId for ${{job.container.id}}
             const creationOutput = {
-                JobContainerId: containerId.stdout,
+                JobContainerId: containerId.stdout.trim(),
                 Network: networkName
             };
             const output = JSON.stringify({ CreationOutput: creationOutput });

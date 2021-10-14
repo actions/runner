@@ -64,14 +64,14 @@ async function run(): Promise<void> {
     core.debug(JSON.stringify(containerId))
 
     // podman start {containerId}
-    await exec.exec('podman', ['start', containerId.stdout])
+    await exec.exec('podman', ['start', containerId.stdout.trim()])
 
     // get PATH inside the container
 
     // output containerId for ${{job.container.id}}
 
     const creationOutput = {
-      JobContainerId: containerId.stdout,
+      JobContainerId: containerId.stdout.trim(),
       Network: networkName
     }
 
