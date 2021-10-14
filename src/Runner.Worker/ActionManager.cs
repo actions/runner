@@ -267,6 +267,19 @@ namespace GitHub.Runner.Worker
                             _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
                         }
                     }
+                    else if (depth > 0)
+                    {
+                        // if we're in a composite action and haven't loaded the local action yet
+                        // we assume it has a post step
+                        if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
+                        {
+                            // If we haven't done so already, add the parent to the post steps
+                            _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
+                        }
+                        // Clone action so we can modify the condition without affecting the original
+                        var clonedAction = action.Clone() as Pipelines.ActionStep;
+                        _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);                        
+                    }
                 }
             }
 
@@ -1203,7 +1216,7 @@ namespace GitHub.Runner.Worker
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
         public override bool HasPre => PreSteps.Count > 0;
-        public override bool HasPost => PostSteps.Count > 0;
+        public override bool HasPost => true || PostSteps.Count > 0;
         public List<Pipelines.ActionStep> PreSteps { get; set; }
         public List<Pipelines.ActionStep> Steps { get; set; }
         public Stack<Pipelines.ActionStep> PostSteps { get; set; }
