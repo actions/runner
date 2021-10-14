@@ -31,8 +31,8 @@ namespace GitHub.Runner.Worker.Handlers
 
             Inputs.TryGetValue("script", out string contents);
             contents = contents ?? string.Empty;
-            if (Action.Type == Pipelines.ActionSourceType.Script)
-            {
+            // if (Action.Type == Pipelines.ActionSourceType.Script)
+            // {
                 var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
                 var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
                 if (firstNewLine >= 0)
@@ -41,11 +41,11 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 ExecutionContext.Output($"##[group]Run {firstLine}");
-            }
-            else
-            {
-                throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
-            }
+            // }
+            // else
+            // {
+            //     throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
+            // }
 
             var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
             foreach (var line in multiLines)
