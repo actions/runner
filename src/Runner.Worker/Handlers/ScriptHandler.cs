@@ -289,8 +289,6 @@ namespace GitHub.Runner.Worker.Handlers
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
-                var makeManager = new GNUMakeManager(ExecutionContext);
-                StepHost.OutputDataReceived += makeManager.OnDataReceived;
                 StepHost.OutputDataReceived += stdoutManager.OnDataReceived;
                 StepHost.ErrorDataReceived += stderrManager.OnDataReceived;
 
