@@ -25,25 +25,6 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public ActionResult? StepStatus
-        {
-            get
-            {
-                if (this.TryGetValue("step_status", out var status) && status is StringContextData statusString)
-                {
-                    return EnumUtil.TryParse<ActionResult>(statusString);
-                }
-                else
-                {
-                    return null;
-                }
-            }
-            set
-            {
-                this["step_status"] = new StringContextData(value.ToString().ToLowerInvariant());
-            }
-        }
-
         public DictionaryContextData Services
         {
             get
