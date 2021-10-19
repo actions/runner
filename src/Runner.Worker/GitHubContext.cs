@@ -23,6 +23,9 @@ namespace GitHub.Runner.Worker
             "job",
             "path",
             "ref",
+            "ref_name",
+            "ref_protected",
+            "ref_type",
             "repository",
             "repository_owner",
             "retention_days",
@@ -39,9 +42,16 @@ namespace GitHub.Runner.Worker
         {
             foreach (var data in this)
             {
-                if (_contextEnvAllowlist.Contains(data.Key) && data.Value is StringContextData value)
+                if (_contextEnvAllowlist.Contains(data.Key))
                 {
-                    yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", value);
+                    if (data.Value is StringContextData value)
+                    {
+                        yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", value);
+                    }
+                    else if (data.Value is BooleanContextData booleanValue)
+                    {
+                        yield return new KeyValuePair<string, string>($"GITHUB_{data.Key.ToUpperInvariant()}", booleanValue.ToString());
+                    }
                 }
             }
         }
