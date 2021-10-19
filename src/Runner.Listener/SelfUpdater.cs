@@ -75,11 +75,9 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"All running job has exited.");
 
                 // We need to keep runner backup around for macOS until we fixed https://github.com/actions/runner/issues/743
-#if !OS_OSX
                 // delete runner backup
                 DeletePreviousVersionRunnerBackup(token);
                 Trace.Info($"Delete old version runner backup.");
-#endif
                 // generate update script from template
                 await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
 
