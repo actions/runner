@@ -15,6 +15,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -241,6 +242,16 @@ namespace GitHub.Runner.Worker
                                 }
                             }
                         }
+                    }
+
+                    // Add pre-execution hook if requested
+                    string preExecuteHook = Environment.GetEnvironmentVariable("RUNNER_HOOK_PREEXECUTE");
+                    if (!string.IsNullOrEmpty(preExecuteHook))
+                    {
+                        preJobSteps.Add(new JobExtensionRunner(runAsync: this.PreExecuteHook,
+                                                            condition: $"{PipelineTemplateConstants.Success}()",
+                                                            displayName: "Run pre-execute hook",
+                                                            data: preExecuteHook));
                     }
 
                     // Build up 2 lists of steps, pre-job, job
@@ -586,6 +597,61 @@ namespace GitHub.Runner.Worker
                 {
                     context.Debug("Finishing: Complete job");
                     context.Complete();
+                }
+            }
+        }
+
+        private async Task PreExecuteHook(IExecutionContext executionContext, object data)
+        {
+            var hookCommand = data as String;
+            ArgUtil.NotNullOrEmpty(hookCommand, nameof(hookCommand));
+
+            executionContext.Output($"Running: '{hookCommand}'");
+
+            if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
+            {
+                throw new NotSupportedException("Pre execution hook only supported on Linux runners");
+            }
+
+            string commandPath = WhichUtil.Which("bash", false, Trace) ?? WhichUtil.Which("sh", true, Trace);
+            string arg = $"-c \"{hookCommand}\"";
+            executionContext.Command($"{commandPath} {arg}");
+
+            // expose context to environment
+            var environment = new Dictionary<string, string>(executionContext.Global.EnvironmentVariables);
+            foreach (var context in executionContext.ExpressionValues)
+            {
+                if (context.Value is IEnvironmentContextData runtimeContext && runtimeContext != null)
+                {
+                    foreach (var env in runtimeContext.GetRuntimeEnvironmentVariables())
+                    {
+                        environment[env.Key] = env.Value;
+                    }
+                }
+            }
+
+            var actionCommandManager = HostContext.CreateService<IActionCommandManager>();
+            using (var stdoutManager = new OutputManager(executionContext, actionCommandManager))
+            using (var stderrManager = new OutputManager(executionContext, actionCommandManager))
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.OutputDataReceived += stdoutManager.OnDataReceived;
+                processInvoker.ErrorDataReceived += stderrManager.OnDataReceived;
+
+                int exitCode = await processInvoker.ExecuteAsync(
+                    workingDirectory: executionContext.GetGitHubContext("workspace"),
+                    fileName: commandPath,
+                    arguments: arg,
+                    environment: environment,
+                    requireExitCodeZero: false,
+                    outputEncoding: null,
+                    killProcessOnCancel: false,
+                    cancellationToken: CancellationToken.None);
+
+                if (exitCode != 0)
+                {
+                    executionContext.Error($"Process completed with exit code {exitCode}.");
+                    executionContext.Result = TaskResult.Failed;
                 }
             }
         }
