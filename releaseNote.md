@@ -1,13 +1,10 @@
 ## Features
 
-- Collect more telemetry
-- Make `runner.name` available as a runner context variable
-- Add attempt number (`run_attempt`) to GitHub context 
-- When using the `--ephemeral` flag, ensure that the runner cleans up local `.runner` and `.credentials` files after completion (#1337)
+## Bugs
+
+- Fixed an issue where ephemeral runners did not restart after upgrading (#1396)
 
 ## Misc
-
-- Improved network troubleshooting docs
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.

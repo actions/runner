@@ -26,6 +26,7 @@ namespace GitHub.Runner.Common
         Certificates,
         Options,
         SetupInfo,
+        Telemetry
     }
 
     public static class Constants
@@ -154,6 +155,7 @@ namespace GitHub.Runner.Common
             public static readonly string LowDiskSpace = "LOW_DISK_SPACE";
             public static readonly string UnsupportedCommand = "UNSUPPORTED_COMMAND";
             public static readonly string UnsupportedCommandMessageDisabled = "The `{0}` command is disabled. Please upgrade to using Environment Files or opt into unsecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_COMMANDS` environment variable to `true`. For more information see: https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/";
+            public static readonly string UnsupportedStopCommandTokenDisabled = "You cannot use a endToken that is an empty string, the string 'pause-logging', or another workflow command. For more information see:  https://docs.github.com/en/actions/learn-github-actions/workflow-commands-for-github-actions#example-stopping-and-starting-workflow-commands or opt into insecure command execution by setting the `ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS` environment variable to `true`.";
         }
 
         public static class RunnerEvent
@@ -213,6 +215,7 @@ namespace GitHub.Runner.Common
                 // Keep alphabetical
                 //
                 public static readonly string AllowUnsupportedCommands = "ACTIONS_ALLOW_UNSECURE_COMMANDS";
+                public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
             }
