@@ -1216,7 +1216,7 @@ namespace GitHub.Runner.Worker
     {
         public override ActionExecutionType ExecutionType => ActionExecutionType.Composite;
         public override bool HasPre => PreSteps.Count > 0;
-        public override bool HasPost => true || PostSteps.Count > 0;
+        public override bool HasPost => PostSteps.Count > 0;
         public List<Pipelines.ActionStep> PreSteps { get; set; }
         public List<Pipelines.ActionStep> Steps { get; set; }
         public Stack<Pipelines.ActionStep> PostSteps { get; set; }
