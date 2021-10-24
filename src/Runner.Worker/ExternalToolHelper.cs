@@ -43,7 +43,7 @@ namespace GitHub.Runner.Worker
 
         private static async Task DownloadTool(IHostContext hostContext, IExecutionContext executionContext, string link, string destDirectory, string tarextraopts = "", bool unwrap = false) {
             executionContext.Write("", $"Downloading from {link} to {destDirectory}");
-            string tempDirectory = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "runner.server", "temp" + System.Guid.NewGuid().ToString());
+            string tempDirectory = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "temp" + System.Guid.NewGuid().ToString());
             var stagingDirectory = Path.Combine(tempDirectory, "_staging");
             var stagingDirectory2 = Path.Combine(tempDirectory, "_staging2");
             try {

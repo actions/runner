@@ -45,7 +45,7 @@ namespace Runner.Server.Controllers {
         public CacheController(IMemoryCache memoryCache, IWebHostEnvironment environment)
         {
             _cache = memoryCache;
-            _targetFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "gharun", "cache");
+            _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
             Directory.CreateDirectory(_targetFilePath);
         }
 
