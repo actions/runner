@@ -376,7 +376,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                             })();
                         }
                     }}>
-                        <div style={{ textAlign: 'left', whiteSpace: 'nowrap', maxHeight: '100%', overflow: 'auto', fontFamily: "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" }} dangerouslySetInnerHTML={{ __html: item.log != null ? item.log.content : "Nothing here" }}></div>
+                        <div style={{ textAlign: 'left', whiteSpace: 'pre', maxHeight: '100%', overflow: 'auto', fontFamily: "SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace" }} dangerouslySetInnerHTML={{ __html: item.log != null ? item.log.content : "Nothing here" }}></div>
                     </Collapsible>
                 )}
             </div>
