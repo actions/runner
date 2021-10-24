@@ -1,0 +1,17 @@
+on:
+  workflow_dispatch:
+    inputs:
+      x:
+        default: 'Hello World'
+  workflow_call:
+    inputs:
+      x:
+        type: string
+        default: 'Hello World'
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+    - run: |
+        echo '${{(inputs || github.event.inputs).x}}'
+        exit ${{((inputs || github.event.inputs).x == env.input_x) && '0' || '1' }}

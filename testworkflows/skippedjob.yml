@@ -1,6 +1,8 @@
 on: push
+name: test if skipped jobs are working
 jobs:
   skipped:
+    name: skipped-${{ github.event_name }}
     if: 'false'
     runs-on: self-hosted
     steps:

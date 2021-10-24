@@ -1,0 +1,11 @@
+on:
+  workflow_call:
+    inputs:
+      runs-on:
+        type: string
+        default: '["self-hosted"]'
+jobs:
+  myjoba:
+    runs-on: ${{fromJSON(inputs.runs-on)}}
+    steps:
+    - run: "echo Hello World: ${{inputs.runs-on}}"

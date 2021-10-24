@@ -123,6 +123,11 @@ namespace Runner.Server.Controllers
                     var chreader = queue2.Reader;
                     var ping = Task.Run(async () => {
                         try {
+                            // Needed to fix a freeze in HttpClient.GetStreamAsync of Runner.Client
+                            await writer.WriteLineAsync("event: ping");
+                            await writer.WriteLineAsync("data: {}");
+                            await writer.WriteLineAsync();
+                            await writer.FlushAsync();
                             while(!requestAborted.IsCancellationRequested) {
                                 KeyValuePair<string, string> p = await chreader.ReadAsync(requestAborted);
                                 await writer.WriteLineAsync($"event: {p.Key}");

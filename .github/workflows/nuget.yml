@@ -82,3 +82,11 @@ jobs:
         gharun -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
         gharun -W testworkflows/artifact.yml
         gharun -W testworkflows/issue70/main.yml
+        gharun -W testworkflows/called.yml -e testworkflows/called_workflow_dispatch_event.json --env "input_x=Hello World 2" workflow_dispatch
+        gharun -W testworkflows/called.yml --env "input_x=Hello World" workflow_dispatch
+        gharun -W testworkflows/multiline_secrets.yml --secret-file testworkflows/multiline_secrets.secrets
+        gharun -W testworkflows/multiline_env.yml --env-file testworkflows/multiline_secrets.secrets
+        gharun --workflow testworkflows/test_template_runs_on.yml --workflow testworkflows/called_template_runs_on.yml
+        gharun --workflow testworkflows/test_template_runs_on2.yml --workflow testworkflows/called_template_runs_on.yml -P self-hosted,testsystem=-self-hosted
+        gharun --workflow testworkflows/test_template_runs_on3.yml --workflow testworkflows/called_template_runs_on.yml -P testsystem2,self-hosted,testsystem=-self-hosted
+        gharun -W testworkflows/skippedjob.yml

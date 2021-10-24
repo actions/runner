@@ -1,0 +1,4 @@
+on: push
+jobs:
+  test1:
+    uses: ./testworkflows/called_template_runs_on.yml
