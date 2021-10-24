@@ -40,12 +40,19 @@ export const MasterContainer: React.FC<MasterProps> = (props) => {
         (async () => {
             var newjobs = JSON.parse((await (await fetch(apiUrl, { })).text())) as IJob[];
             var sjobs = newjobs.sort((a, b) => b.requestId - a.requestId);
+            var njobs : IJob[] = [];
             setJobs(jobs => {
                 if(jobs.length > 0) {
                     var x = jobs[jobs.length - 1];
-                    sjobs = sjobs.filter((j) => j.requestId < x.requestId);
+                    var ji = sjobs.findIndex((j) => j.requestId >= x.requestId);
+                    njobs = sjobs.splice(ji);
+                    if(njobs[0] && njobs[0].requestId === x.requestId) {
+                        njobs.shift();
+                    } else {
+                        njobs = sjobs.splice(ji);
+                    }
                 }
-                return [...sjobs, ...jobs];
+                return [...sjobs, ...jobs, ...njobs];
             });
         })();
     }, [owner, repo])
@@ -54,9 +61,9 @@ export const MasterContainer: React.FC<MasterProps> = (props) => {
             <Header title="Jobs" hideBackButton={true}/>
             <ul>
                 {jobs.map((x: IJob) =>
-                    <li key={x.requestId}>
+                    <li key={x.jobId}>
                         <ListItemLink 
-                            to={`${url}/detail/${x.requestId}`} item={{ id:  x.requestId, title: x.name, description: x.workflowname + " - " + x.repo + " - " + x.requestId }} />
+                            to={`${url}/detail/${encodeURIComponent(x.jobId)}`} item={{ id:  x.requestId, title: x.name, description: x.workflowname + " - " + x.repo + " - " + x.requestId }} />
                     </li>
                 )}
             </ul>

@@ -1247,7 +1247,7 @@ namespace Runner.Server.Controllers
                                                         var targetUrl = "";
                                                         if(!string.IsNullOrEmpty(ServerUrl)) {
                                                             var targetUrlBuilder = new UriBuilder(ServerUrl);
-                                                            targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.RequestId}";
+                                                            targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
                                                             targetUrl = targetUrlBuilder.ToString();
                                                         }
                                                         var ctx = string.Format("{0} / {1} ({2})", workflowname, _jobdisplayname, parentEvent ?? event_name);
@@ -1466,7 +1466,7 @@ namespace Runner.Server.Controllers
                                         var targetUrl = "";
                                         if(!string.IsNullOrEmpty(ServerUrl)) {
                                             var targetUrlBuilder = new UriBuilder(ServerUrl);
-                                            targetUrlBuilder.Fragment = $"/master/runner/server/detail/{ji.RequestId}";
+                                            targetUrlBuilder.Fragment = $"/master/runner/server/detail/{ji.Id}";
                                             targetUrl = targetUrlBuilder.ToString();
                                         }
                                         JobStatus status = JobStatus.Failure;
@@ -2442,7 +2442,14 @@ namespace Runner.Server.Controllers
         }
 
         [HttpGet]
-        public Task<FileStreamResult> GetJobs([FromQuery] string repo, [FromQuery] long[] runid, [FromQuery] int? depending) {
+        public async Task<IActionResult> GetJobs([FromQuery] string repo, [FromQuery] long[] runid, [FromQuery] int? depending, [FromQuery] Guid? jobid) {
+            if(jobid != null) {
+                if(jobs.TryGetValue(jobid.Value, out Job j)) {
+                    return await Ok(j, true);
+                } else {
+                    return NotFound("No such job found on this server");
+                }
+            }
             if(runid != null && depending >= 1) {
                 IEnumerable<Job> ret = new Job[0];
                 foreach (var id in runid) {
@@ -2451,9 +2458,9 @@ namespace Runner.Server.Controllers
                         ret = ret.Concat(from v in value select new Job { JobId = v.Id, TimeLineId = v.TimelineId, name = v.name });
                     }
                 }
-                return Ok(ret, true);
+                return await Ok(ret, true);
             }
-            return Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid.Length == 0 || runid.Contains(j.runid)) select j, true);
+            return await Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid.Length == 0 || runid.Contains(j.runid)) select j, true);
         }
 
         [HttpPost("cancel/{id}")]

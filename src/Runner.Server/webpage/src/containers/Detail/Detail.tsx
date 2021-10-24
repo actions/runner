@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Header } from 'components';
-import { getJobById, IJob, IJobCompletedEvent } from '../../state/store.selectors';
+import { IJob, IJobCompletedEvent } from '../../state/store.selectors';
 import { Item } from '../../state/example.model';
 import styles from './Detail.module.scss';
 import Convert from 'ansi-to-html'; 
@@ -160,70 +160,74 @@ return JSON.parse(body)
 
 
 export const DetailContainer : React.FC<DetailProps> = (props) => {
-    const [ jobs, setJobs ] = useState<IJob[] | null>([]);
+    const [ job, setJob ] = useState<IJob | null>(null);
     const [ timeline, setTimeline ] = useState<ITimeLine[]>([]);
     const [ artifacts, setArtifacts ] = useState<ArtifactResponse[]>([]);
     const [ title, setTitle] = useState<string>("Loading...");
-    const { id } = useParams();
-    const { owner, repo } = useParams();
+    const { id } = useParams<{id: string}>();
+    const { owner, repo } = useParams<{owner: string, repo: string}>();
     const [ errors, setErrors] = useState<string[]>([]);
-
-
+    var updateTitle = (job: IJob) => {
+        setTitle(job.jobCompletedEvent ? "Job " + job.name + " completed with result: " + job.jobCompletedEvent.result : job.name);
+    }
+    var jobToItem = (job: IJob) : { item: Item | null, job: IJob | null } => { return { item: { id: job.requestId, title: job.name, description: job.timeLineId },job: job}};
     useEffect(() => {
         (async () => {
-            setArtifacts(_ => []);
-            if(id === undefined) {
-                return;
-            }
-            var njobs : IJob[] | null;
-            var _id = Number.parseInt(id);
-            if(jobs.length === 0 || jobs.find(x => x.requestId === _id) == null) {
-                njobs = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message", { })).json())
-                setJobs(njobs);
-            }
-            var query = getJobById(njobs || jobs, id);
-            if(query.job.errors !== null && query.job.errors.length > 0) {
-                setErrors(query.job.errors);
-            } else {
+            try {
+                setArtifacts(_ => []);
+                if(id === undefined) {
+                    throw new Error("Invalid job guid");
+                }
+                var job : IJob | null = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message?jobid=" + encodeURIComponent(id), { })).json());
+                setJob(job);
+                updateTitle(job);
+                var query = jobToItem(job);
+                if(query.job.errors !== null && query.job.errors.length > 0) {
+                    setErrors(query.job.errors);
+                } else {
+                    setErrors([]);
+                }
+                const item = query.item;
+                const timelineId = item ? item.description : null;
+                if(timelineId != null) {
+                    var timeline = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Timeline/" + timelineId, { });
+                    if(timeline.status === 200) {
+                        var newTimeline = await timeline.json() as ITimeLine[];
+                        if(newTimeline != null && newTimeline.length > 1) {
+                            newTimeline.shift()
+                            setTimeline(newTimeline);
+                        } else {
+                            setTimeline([]);
+                        }
+                    } else {
+                        setTitle((query.job.errors !== null && query.job.errors.length > 0) ? "Job " + query.job.name + " failed to run" : (query.job.jobCompletedEvent ? "Job " + query.job.name + " completed with result: " + query.job.jobCompletedEvent.result : "Wait for job " + query.job.name + " to run..."));
+                        setTimeline(e => []);
+                    }
+                }
+                if(query.job.runid !== -1) {
+                    var artifacts = await listArtifacts(query.job.runid);
+                    if(artifacts.value !== undefined) {
+                        for (let i = 0; i < artifacts.count; i++) {
+                            const element = artifacts.value[i];
+                            var items = await getContainerItems(element.name, element.fileContainerResourceUrl)
+                            if(items !== undefined) {
+                                element.files = items.value 
+                            }
+                        }
+                        setArtifacts(_ => artifacts.value);
+                    }
+                }
+            } catch(err) {
+                setJob(null);
+                setTitle("Error: " + err);
+                setTimeline(e => []);
                 setErrors([]);
             }
-            const item = query.item;
-            const timelineId = item ? item.description : null;
-            if(timelineId != null) {
-                var timeline = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Timeline/" + timelineId, { });
-                if(timeline.status === 200) {
-                    var newTimeline = await timeline.json() as ITimeLine[];
-                    if(newTimeline != null && newTimeline.length > 1) {
-                        newTimeline.shift()
-                        setTitle(query.job.jobCompletedEvent ? "Job " + query.job.name + " completed with result: " + query.job.jobCompletedEvent.result : query.job.name);
-                        setTimeline(newTimeline);
-                    } else {
-                        setTitle(query.job.jobCompletedEvent ? "Job " + query.job.name + " completed with result: " + query.job.jobCompletedEvent.result : query.job.name);
-                        setTimeline([]);
-                    }
-                } else {
-                    setTitle((query.job.errors !== null && query.job.errors.length > 0) ? "Job " + query.job.name + " failed to run" : (query.job.jobCompletedEvent ? "Job " + query.job.name + " completed with result: " + query.job.jobCompletedEvent.result : "Wait for job " + query.job.name + " to run..."));
-                    setTimeline(e => []);
-                }
-            }
-            if(query.job.runid !== -1) {
-                var artifacts = await listArtifacts(query.job.runid);
-                if(artifacts.value !== undefined) {
-                    for (let i = 0; i < artifacts.count; i++) {
-                        const element = artifacts.value[i];
-                        var items = await getContainerItems(element.name, element.fileContainerResourceUrl)
-                        if(items !== undefined) {
-                            element.files = items.value 
-                        }
-                    }
-                    setArtifacts(_ => artifacts.value);
-                }
-            }
         })();
-    }, [id, jobs, owner, repo])
+    }, [id, owner, repo])
     useEffect(() => {
-        if(id !== undefined && id !== null && id.length > 0) {
-            var item = getJobById(jobs, id).item;
+        if(job != null) {
+            var item = jobToItem(job).item;
             if(item !== null && item.description && item.description !== '' && item.description !== "00000000-0000-0000-0000-000000000000") {
                 var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
                 try {
@@ -296,10 +300,10 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     });
                     source.addEventListener("finish", (ev : MessageEvent) => {
                         var e = JSON.parse(ev.data) as IJobCompletedEvent;
-                        if(e.requestId === Number.parseInt(id)) {
+                        if(e.jobId === id) {
                             (async function() {
-                                var njobs : IJob[] | null = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message", { })).json())
-                                setJobs(njobs);
+                                job.jobCompletedEvent = e;
+                                updateTitle(job);
                             })()
                         }
                     });
@@ -311,7 +315,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
             }
         }
         return () => {}
-    }, [id, jobs, owner, repo]);
+    }, [id, job, owner, repo]);
 
     return (
         <section className={styles.component}>
@@ -319,11 +323,10 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
         <main className={styles.main}>
             <div className={styles.text} style={{width: '100%'}}>
                 {(() => {
-                    var job = getJobById(jobs, id);
-                    if(job !== undefined && job.job != null && !job.job.jobCompletedEvent) {
+                    if(job !== undefined && job != null && !job.jobCompletedEvent) {
                         return  <button onClick={(event) => {
                             (async () => {
-                                await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.job.jobId, { method: "POST" });
+                                await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
                             })();
                         }}>Cancel</button>;
                     }
@@ -350,7 +353,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                     });
                                     if(item.log == null) {
                                         console.log("Downloading previous log lines of this step...");
-                                        const item2 = getJobById(jobs, id).item;
+                                        const item2 = jobToItem(job).item;
                                         var logs = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item2.description + "/" + item.id, { });
                                         if(logs.status === 200) {
                                             var missingLines = await logs.json() as ILogline[];
