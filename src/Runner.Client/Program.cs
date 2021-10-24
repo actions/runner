@@ -1169,18 +1169,17 @@ namespace Runner.Client
                                 var timeLineWebConsoleLog = new UriBuilder(parameters.server + "/runner/server/_apis/v1/TimeLineWebConsoleLog");
                                 var timeLineWebConsoleLogQuery = new QueryBuilder();
                                 timeLineWebConsoleLogQuery.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                var pendingWorkflows = new List<long>();
+                                var pendingWorkflows = (from h in hr where !h.skipped && !h.failed select h.run_id).ToList();
                                 timeLineWebConsoleLog.Query = timeLineWebConsoleLogQuery.ToString().TrimStart('?');
-                                var eventstream = await client.GetStreamAsync(timeLineWebConsoleLog.ToString());
-                                foreach(var h in hr) {
-                                    if(!h.skipped && !h.failed) {
+                                var eventstream = client.GetStreamAsync(timeLineWebConsoleLog.ToString());
+                                while(!source.IsCancellationRequested && pendingWorkflows.Count > 0) {
+                                    bool lastRun = eventstream.IsCompleted;
+                                    foreach(var run_id in pendingWorkflows.ToArray()) {
                                         var workflowstat = new UriBuilder(b.ToString());
-                                        workflowstat.Path = "runner/host/_apis/v1/Message/WorkflowStatus/" + h.run_id;
+                                        workflowstat.Path = "runner/host/_apis/v1/Message/WorkflowStatus/" + run_id;
                                         var workflowres = await client.GetStringAsync(workflowstat.ToString());
-                                        if(workflowres == "") {
-                                            pendingWorkflows.Add(h.run_id);
-                                        }
-                                        else {
+                                        if(workflowres != "") {
+                                            pendingWorkflows.Remove(run_id);
                                             var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(workflowres);
                                             Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
                                             if(!_workflow.Success) {
@@ -1188,6 +1187,10 @@ namespace Runner.Client
                                             }
                                         }
                                     }
+                                    if(lastRun) {
+                                        break;
+                                    }
+                                    await Task.WhenAny(eventstream, Task.Delay(1000, source.Token));
                                 }
                                 if(pendingWorkflows.Count == 0) {
                                     if(hasErrors) {
@@ -1199,7 +1202,7 @@ namespace Runner.Client
                                 }
                                 var runIds = new List<long>(pendingWorkflows);
                                 try {
-                                    using(TextReader reader = new StreamReader(eventstream)) {
+                                    using(TextReader reader = new StreamReader(await eventstream)) {
                                         while(!source.IsCancellationRequested) {
                                             var line = await reader.ReadLineAsync();
                                             if(line == null) {
