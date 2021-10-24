@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
@@ -59,6 +59,7 @@ namespace Runner.Server.Controllers
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
+                    new Claim("Agent", "management")
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),
                 Issuer = myIssuer,

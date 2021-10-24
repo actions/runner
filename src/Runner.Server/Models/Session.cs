@@ -11,7 +11,7 @@ namespace Runner.Server.Models
     {
         public bool FirstJobReceived {get; private set;}
         private CancellationTokenSource source;
-        private MessageController.Job job;
+        private Job job;
         public Session() {
             source = new CancellationTokenSource();
             job = null;
@@ -25,7 +25,10 @@ namespace Runner.Server.Models
         public Aes Key {get;set;}
 
         public CancellationToken JobRunningToken { get => source.Token; }
-        public MessageController.Job Job { get => job; set {
+        public Job Job { get => job; set {
+                if(job != null) {
+                    job.SessionId = Guid.Empty;
+                }
                 job = value;
                 if(job == null) {
                     Console.WriteLine("Job finished on session xx");

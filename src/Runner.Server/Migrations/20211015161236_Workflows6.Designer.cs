@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Runner.Server.Models;
 
 namespace Runner.Server.Migrations
 {
     [DbContext(typeof(SqLiteDb))]
-    partial class SqLiteDbModelSnapshot : ModelSnapshot
+    [Migration("20211015161236_Workflows6")]
+    partial class Workflows6
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

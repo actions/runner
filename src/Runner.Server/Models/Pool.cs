@@ -26,5 +26,6 @@ namespace Runner.Server.Models
         public static Pool GetPoolById(IMemoryCache cache, SqLiteDb db, int id) {
             return db.Pools.Find(id) ?? cache.Get<Pool>(CachePrefix + id);
         }
+        public List<Owner> Owners {get;set;}
     }
 }

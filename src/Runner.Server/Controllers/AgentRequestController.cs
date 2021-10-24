@@ -14,7 +14,7 @@ namespace Runner.Server.Controllers
 {
     [ApiController]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "Agent")]
     public class AgentRequestController : VssControllerBase
     {
         private IMemoryCache _cache;

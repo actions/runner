@@ -15,7 +15,7 @@ namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/pipelines/workflows/{run}/artifacts")]
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
     public class ArtifactController : VssControllerBase{
 
         private struct ArtifactRecord {

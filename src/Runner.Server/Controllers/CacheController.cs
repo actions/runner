@@ -15,7 +15,7 @@ namespace Runner.Server.Controllers {
 
     [ApiController]
     [Route("{owner}/{repo}/_apis/artifactcache")]
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
     public class CacheController : VssControllerBase{
         
         private string _targetFilePath;

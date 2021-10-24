@@ -93,6 +93,9 @@ namespace Runner.Server
                     .AddRequirements(new DevModeOrAuthenticatedUserRequirement()).Build();
                 // options.AddPolicy("DevModeOrAuthenticatedUser", builder => builder
                 //     .AddRequirements(new DevModeOrAuthenticatedUserRequirement()));
+                options.AddPolicy("AgentManagement", policy => policy.RequireClaim("Agent", "management"));
+                options.AddPolicy("Agent", policy => policy.RequireClaim("Agent", "oauth"));
+                options.AddPolicy("AgentJob", policy => policy.RequireClaim("Agent", "oauth", "job"));
             });
             var rsa = RSA.Create();
             AccessTokenParameter = rsa.ExportParameters(true);

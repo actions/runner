@@ -1,6 +1,8 @@
 ﻿{
   "version": "workflow-v1.0",
+
   "definitions": {
+
     "workflow-root": {
       "description": "Workflow file",
       "mapping": {
@@ -15,6 +17,7 @@
         }
       }
     },
+
     "workflow-defaults": {
       "mapping": {
         "properties": {
@@ -22,6 +25,7 @@
         }
       }
     },
+
     "workflow-defaults-run": {
       "mapping": {
         "properties": {
@@ -30,9 +34,11 @@
         }
       }
     },
+
     "workflow-env": {
       "context": [
         "github",
+        "inputs",
         "secrets"
       ],
       "mapping": {
@@ -40,18 +46,21 @@
         "loose-value-type": "string"
       }
     },
+
     "jobs": {
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "job"
       }
     },
+
     "job": {
       "one-of": [
         "regular-job",
         "uses-job"
       ]
     },
+
     "regular-job": {
       "mapping": {
         "properties": {
@@ -78,6 +87,7 @@
         }
       }
     },
+
     "uses-job": {
       "mapping": {
         "properties": {
@@ -94,6 +104,7 @@
         }
       }
     },
+
     "job-with": {
       "context": [
         "github",
@@ -104,6 +115,7 @@
         "loose-value-type": "string"
       }
     },
+
     "job-secrets": {
       "context": [
         "github",
@@ -115,15 +127,18 @@
         "loose-value-type": "string"
       }
     },
+
     "needs": {
       "one-of": [
         "sequence-of-non-empty-string",
         "non-empty-string"
       ]
     },
+
     "job-if": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "always(0,0)",
         "failure(0,MAX)",
@@ -132,9 +147,11 @@
       ],
       "string": {}
     },
+
     "job-if-result": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "always(0,0)",
         "failure(0,MAX)",
@@ -150,9 +167,11 @@
         "mapping"
       ]
     },
+
     "strategy": {
       "context": [
         "github",
+        "inputs",
         "needs"
       ],
       "mapping": {
@@ -163,6 +182,7 @@
         }
       }
     },
+
     "matrix": {
       "mapping": {
         "properties": {
@@ -173,20 +193,24 @@
         "loose-value-type": "sequence"
       }
     },
+
     "matrix-filter": {
       "sequence": {
         "item-type": "matrix-filter-item"
       }
     },
+
     "matrix-filter-item": {
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "any"
       }
     },
+
     "runs-on": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix"
@@ -197,6 +221,7 @@
         "runs-on-mapping"
       ]
     },
+
     "runs-on-mapping": {
       "mapping": {
         "properties": {
@@ -207,9 +232,11 @@
         }
       }
     },
+
     "job-env": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -220,6 +247,7 @@
         "loose-value-type": "string"
       }
     },
+
     "job-defaults": {
       "mapping": {
         "properties": {
@@ -227,15 +255,15 @@
         }
       }
     },
+
     "job-defaults-run": {
       "context": [
         "github",
+        "inputs",
         "strategy",
         "matrix",
         "needs",
-        "env",
-        "inputs",
-        "inputs"
+        "env"
       ],
       "mapping": {
         "properties": {
@@ -244,31 +272,28 @@
         }
       }
     },
+
     "job-outputs": {
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "string-runner-context"
       }
     },
+
     "environment": {
-      "one-of": [
-        "non-empty-string",
-        "environment-mapping"
-      ]
+      "one-of": ["non-empty-string", "environment-mapping" ]
     },
     "environment-mapping": {
       "mapping": {
-        "properties": {
+        "properties":{
           "name": "non-empty-string",
           "url": "string-runner-context-no-secrets"
         }
       }
     },
+
     "permissions": {
-      "one-of": [
-        "non-empty-string",
-        "permissions-mapping"
-      ]
+      "one-of": ["non-empty-string", "permissions-mapping" ]
     },
     "permissions-mapping": {
       "mapping": {
@@ -286,14 +311,13 @@
         }
       }
     },
+
     "concurrency": {
-      "context": [
-        "github"
+      "context":[
+        "github",
+        "inputs"
       ],
-      "one-of": [
-        "non-empty-string",
-        "concurrency-mapping"
-      ]
+      "one-of": ["non-empty-string", "concurrency-mapping" ]
     },
     "concurrency-mapping": {
       "mapping": {
@@ -303,17 +327,20 @@
         }
       }
     },
+
     "steps": {
       "sequence": {
         "item-type": "steps-item"
       }
     },
+
     "steps-item": {
       "one-of": [
         "run-step",
         "regular-step"
       ]
     },
+
     "run-step": {
       "mapping": {
         "properties": {
@@ -332,6 +359,7 @@
         }
       }
     },
+
     "regular-step": {
       "mapping": {
         "properties": {
@@ -349,9 +377,11 @@
         }
       }
     },
+
     "step-if": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -359,7 +389,6 @@
         "job",
         "runner",
         "env",
-        "inputs",
         "always(0,0)",
         "failure(0,0)",
         "cancelled(0,0)",
@@ -368,16 +397,17 @@
       ],
       "string": {}
     },
+
     "step-if-result": {
       "context": [
         "github",
+        "inputs",
         "strategy",
         "matrix",
         "steps",
         "job",
         "runner",
         "env",
-        "inputs",
         "always(0,0)",
         "failure(0,0)",
         "cancelled(0,0)",
@@ -393,9 +423,11 @@
         "mapping"
       ]
     },
+
     "step-env": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -404,7 +436,6 @@
         "job",
         "runner",
         "env",
-        "inputs",
         "hashFiles(1,255)"
       ],
       "mapping": {
@@ -412,9 +443,11 @@
         "loose-value-type": "string"
       }
     },
+
     "step-with": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -423,7 +456,6 @@
         "job",
         "runner",
         "env",
-        "inputs",
         "hashFiles(1,255)"
       ],
       "mapping": {
@@ -431,9 +463,11 @@
         "loose-value-type": "string"
       }
     },
+
     "container": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix"
@@ -443,6 +477,7 @@
         "container-mapping"
       ]
     },
+
     "container-mapping": {
       "mapping": {
         "properties": {
@@ -455,9 +490,11 @@
         }
       }
     },
+
     "services": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix"
@@ -467,9 +504,11 @@
         "loose-value-type": "services-container"
       }
     },
+
     "services-container": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix"
@@ -479,12 +518,13 @@
         "container-mapping"
       ]
     },
+
     "container-registry-credentials": {
       "context": [
         "secrets",
         "env",
-        "inputs",
-        "github"
+        "github",
+        "inputs"
       ],
       "mapping": {
         "properties": {
@@ -493,52 +533,63 @@
         }
       }
     },
+
     "container-env": {
       "mapping": {
         "loose-key-type": "non-empty-string",
         "loose-value-type": "string-runner-context"
       }
     },
+
     "non-empty-string": {
       "string": {
         "require-non-empty": true
       }
     },
+
     "sequence-of-non-empty-string": {
       "sequence": {
         "item-type": "non-empty-string"
       }
     },
+
     "boolean-strategy-context": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix"
       ],
       "boolean": {}
     },
+
     "number-strategy-context": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix"
       ],
       "number": {}
     },
+
     "string-strategy-context": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix"
       ],
       "string": {}
     },
+
     "boolean-steps-context": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -547,14 +598,15 @@
         "job",
         "runner",
         "env",
-        "inputs",
         "hashFiles(1,255)"
       ],
       "boolean": {}
     },
+
     "number-steps-context": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -563,14 +615,15 @@
         "job",
         "runner",
         "env",
-        "inputs",
         "hashFiles(1,255)"
       ],
       "number": {}
     },
+
     "string-runner-context": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -578,30 +631,30 @@
         "steps",
         "job",
         "runner",
-        "env",
-        "inputs",
-        "inputs"
+        "env"
       ],
       "string": {}
     },
+
     "string-runner-context-no-secrets": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
         "steps",
         "job",
         "runner",
-        "env",
-        "inputs",
-        "inputs"
+        "env"
       ],
       "string": {}
     },
+
     "string-steps-context": {
       "context": [
         "github",
+        "inputs",
         "needs",
         "strategy",
         "matrix",
@@ -610,7 +663,6 @@
         "job",
         "runner",
         "env",
-        "inputs",
         "hashFiles(1,255)"
       ],
       "string": {}

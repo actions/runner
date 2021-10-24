@@ -22,33 +22,28 @@ namespace Runner.Server.Controllers
 
         private IMemoryCache _cache;
 
-        private List<Pool> pools;
-
         private SqLiteDb db;
 
         public AgentPoolsController(IMemoryCache cache, SqLiteDb db)
         {
             this.db = db;
             _cache = cache;
-            if(!db.Pools.Any() && !_cache.TryGetValue(Pool.CachePools, out pools)) {
-                pools = new List<Pool> {
-                    new Pool() { 
-                        TaskAgentPool = new TaskAgentPool("Agents") {
-                            Id = 1,
-                            IsHosted = false,
-                            IsInternal = true
-                        }
+            if(!db.Pools.Any()) {
+                db.Pools.Add(new Pool() { 
+                    TaskAgentPool = new TaskAgentPool("Agents") {
+                        IsHosted = false,
+                        IsInternal = true
                     }
-                };
-                _cache.Set(Pool.CachePrefix + 1, pools[0]);
-                _cache.Set(Pool.CachePools, pools);
+                });
+                db.SaveChanges();
             }
         }
 
         [HttpGet]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public Task<FileStreamResult> Get(string poolName = "", string properties = "", string poolType = "")
         {
-            return Ok((from pool in pools ?? db.Pools.Include(a => a.TaskAgentPool).AsEnumerable() select pool.TaskAgentPool).ToList());
+            return Ok((from pool in db.Pools.Include(a => a.TaskAgentPool).AsEnumerable() select pool.TaskAgentPool).ToList());
         }
     }
 }

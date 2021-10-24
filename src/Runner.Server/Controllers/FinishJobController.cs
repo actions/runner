@@ -33,9 +33,22 @@ namespace Runner.Server.Controllers
         public static event JobAssigned OnJobAssigned;
         public static event JobStarted OnJobStarted;
 
-        public static void InvokeJobCompleted(JobCompletedEvent e) {
-            OnJobCompleted?.Invoke(e);
-            OnJobCompletedAfter?.Invoke(e);
+        public void InvokeJobCompleted(JobCompletedEvent ev) {
+            if(_cache.TryGetValue(ev.JobId, out Job job)) {
+                if(job.JobCompletedEvent != null) {
+                    // Prevent overriding job with a result
+                    return;
+                }
+                job.JobCompletedEvent = ev;
+                job.Result = ev.Result;
+                if(ev.Outputs != null) {
+                    job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
+                }
+            }
+            Task.Run(() => {
+                OnJobCompleted?.Invoke(ev);
+                OnJobCompletedAfter?.Invoke(ev);
+            });
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
@@ -44,19 +57,14 @@ namespace Runner.Server.Controllers
         {
             var jevent = await FromBody<JobEvent>();
             if (jevent is JobCompletedEvent ev) {
-                MessageController.Job job;
-                if(_cache.TryGetValue(ev.JobId, out job)) {
-                    job.JobCompletedEvent = ev;
+                if(_cache.TryGetValue(ev.JobId, out Job job)) {
                     Session session;
                     if(_cache.TryGetValue(job.SessionId, out session)) {
                         Console.Out.WriteLine("Job finished / set session job to null");
                         session.Job = null;
                     }
                 }
-                Task.Run(() => {
-                    OnJobCompleted?.Invoke(ev);
-                    OnJobCompletedAfter?.Invoke(ev);
-                });
+                InvokeJobCompleted(ev);
                 Console.Out.WriteLine("Job finished");
                 return Ok();
             } else if (jevent is JobAssignedEvent a) {

@@ -83,6 +83,8 @@ namespace Runner.Server.Controllers {
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
+                    new Claim("Agent", "oauth"),
+                    new Claim("Agent", "job")
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),
                 Issuer = myIssuer,

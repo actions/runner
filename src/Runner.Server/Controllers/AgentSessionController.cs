@@ -18,7 +18,7 @@ namespace Runner.Server.Controllers
 {
     [ApiController]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
-    [Authorize(AuthenticationSchemes = "Bearer")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "Agent")]
     public class AgentSessionController : VssControllerBase
     {
 
@@ -44,6 +44,7 @@ namespace Runner.Server.Controllers
             if(agent == null) {
                 return NotFound();
             }
+            await _context.Entry(agent).Reference(a => a.TaskAgent).TargetEntry.Collection(a => a.Labels).LoadAsync();
             Session _session = _cache.Set(session.SessionId, new Session() {
                 TaskAgentSession = session,
                 Agent = agent,

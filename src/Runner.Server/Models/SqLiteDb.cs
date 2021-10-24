@@ -17,6 +17,8 @@ namespace Runner.Server.Models
         public DbSet<TaskAgent> TaskAgents { get; set; }
         
         public DbSet<Pool> Pools { get; set; }
+        public DbSet<Owner> Owner { get; set; }
+        public DbSet<Workflow> Workflows { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder){
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TaskAgent>().Ignore(agent => agent.Properties);
@@ -31,6 +33,15 @@ namespace Runner.Server.Models
             // modelBuilder.Entity<GitHub.DistributedTask.WebApi.TaskAgentPublicKey>().HasKey(a => new { a.Exponent, a.Modulus });
 
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TaskAgentPool>().Ignore(agent => agent.Properties);
+            modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Ignore(agent => agent.Issues);
+            modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Ignore(agent => agent.PreviousAttempts)
+            .Ignore(agent => agent.Variables);
+            
+            
+            
+            // modelBuilder.Entity<GitHub.DistributedTask.WebApi.JobCompletedEvent>().Ignore(e => e.Outputs);
+            // modelBuilder.Entity<GitHub.DistributedTask.WebApi.JobCompletedEvent>().Ignore(e => e.ActionsEnvironment);
+            // modelBuilder.Entity<GitHub.DistributedTask.WebApi.JobCompletedEvent>().Ignore(e => e.ActionsStepsTelemetry);
 
         }
 

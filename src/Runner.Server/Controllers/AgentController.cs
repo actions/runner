@@ -27,8 +27,6 @@ namespace Runner.Server.Controllers
 
         private SqLiteDb _context;
 
-        private static Object lck = new Object();
-
         public AgentController(IMemoryCache cache, SqLiteDb context)
         {
             _cache = cache;
@@ -36,14 +34,13 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{poolId}")]
+        [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
         public async Task<IActionResult> Post(int poolId) {
             TaskAgent agent = await FromBody<TaskAgent>();
             agent.Authorization.AuthorizationUrl = new Uri($"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.LocalIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? HttpContext.Connection.LocalPort}/test/auth/v1/");
             agent.Authorization.ClientId = Guid.NewGuid();
-            lock(lck) {
-                Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
-                _context.SaveChanges();
-            }
+            Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
+            await _context.SaveChangesAsync();
             return await Ok(agent);
         }
 
@@ -54,20 +51,30 @@ namespace Runner.Server.Controllers
         }
 
         [HttpDelete("{poolId}/{agentId}")]
-        public void Delete(int poolId, int agentId)
+        [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
+        public async Task<ActionResult> Delete(int poolId, int agentId)
         {
-            lock(lck) {
-                var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
-                _context.Agents.Remove(agent);
-                _cache.Remove($"{Agent.CachePrefix}{poolId}_{agentId}");
-            }
+            var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
+            _context.Agents.Remove(agent);
+            await _context.SaveChangesAsync();
+            _cache.Remove($"{Agent.CachePrefix}{poolId}_{agentId}");
+            return NoContent();
         }
 
         [HttpGet("{poolId}")]
         public async Task<ActionResult> Get(int poolId, [FromQuery] string agentName)
         {
+            var pool = Pool.GetPoolById(_cache, _context, poolId);
+            if(pool == null) {
+                return NotFound();
+            }
+            await _context.Entry(pool).Collection(p => p.Agents).LoadAsync();
+            foreach (var item in pool.Agents)
+            {
+                await _context.Entry(item).Reference(p => p.TaskAgent).LoadAsync();
+            }
             return await Ok(new VssJsonCollectionWrapper<List<TaskAgent>> (
-                (from agent in Pool.GetPoolById(_cache, _context, poolId)?.Agents ?? new List<Agent>() where agent != null && agent.TaskAgent.Name == agentName select agent.TaskAgent).ToList()
+                (from agent in pool.Agents ?? new List<Agent>() where agent != null && agent.TaskAgent.Name == agentName select agent.TaskAgent).ToList()
             ));
         }
     }

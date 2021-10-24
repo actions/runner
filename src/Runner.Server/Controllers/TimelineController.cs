@@ -105,7 +105,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPatch("{scopeIdentifier}/{hubName}/{planId}/{timelineId}")]
-        [Authorize(AuthenticationSchemes = "Bearer")]
+        [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
         public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId)
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
