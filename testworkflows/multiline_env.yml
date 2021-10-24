@@ -12,4 +12,4 @@ jobs:
           }
       env:
         myfirstmultilinesecret: ${{env.myfirstmultilinesecret}}
-        MyLastMultilineSecret: ${{env.MyLastMultilineSecret}}
+        MyLastMultilineSecret: ${{env.mylastmultilinesecret}}
