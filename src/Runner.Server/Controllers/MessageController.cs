@@ -635,6 +635,7 @@ namespace Runner.Server.Controllers
                                     var dispatchInputs = payloadObject["inputs"] as JObject;
                                     if(dispatchInputs == null) {
                                         dispatchInputs = new JObject();
+                                        payloadObject["inputs"] = dispatchInputs;
                                     }
                                     if(workflowInputs != null) {
                                         foreach(var input in workflowInputs) {
@@ -647,9 +648,10 @@ namespace Runner.Server.Controllers
                                                 if(def == null) {
                                                     def = "";
                                                 }
-                                                if(!dispatchInputs.TryGetValue(inputName, out _) && required) {
-                                                    throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
-                                                } else {
+                                                if(!dispatchInputs.TryGetValue(inputName, out _)) {
+                                                    if(required) {
+                                                        throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
+                                                    }
                                                     dispatchInputs[inputName] = def;
                                                 }
                                             }
