@@ -1116,7 +1116,13 @@ namespace Runner.Client
                                 Dictionary<Guid, TimeLineEntry> timelineRecords = new Dictionary<Guid, TimeLineEntry>();
                                 int col = 0;
                                 bool hasErrors = false;
+                                // Track if we are receiving duplicated finish jobs
+                                List<Guid> alreadyFinished = new List<Guid>();
                                 Func<JobCompletedEvent, Task> printFinishJob = async ev => {
+                                    if(alreadyFinished.Contains(ev.JobId)) {
+                                        return;
+                                    }
+                                    alreadyFinished.Add(ev.JobId);
                                     var rec = (from r in timelineRecords where r.Value.TimeLine[0].Id == ev.JobId select r.Value).FirstOrDefault();
                                     try {
                                         if(rec?.WorkflowName == null) {
@@ -1439,8 +1445,8 @@ namespace Runner.Client
                                             if(line == "event: workflow") {
                                                 
                                                 var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(data);
-                                                Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
                                                 if(pendingWorkflows.Remove(_workflow.runid)) {
+                                                    Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
                                                     hasErrors |= !_workflow.Success;
                                                     if(pendingWorkflows.Count == 0) {
                                                         if(hasErrors) {
