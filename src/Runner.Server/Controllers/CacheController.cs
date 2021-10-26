@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
 
 namespace Runner.Server.Controllers {
 
@@ -42,11 +43,12 @@ namespace Runner.Server.Controllers {
 
         private static int id;
 
-        public CacheController(IMemoryCache memoryCache, IWebHostEnvironment environment)
+        public CacheController(IMemoryCache memoryCache, IWebHostEnvironment environment, IConfiguration configuration)
         {
             _cache = memoryCache;
             _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
             Directory.CreateDirectory(_targetFilePath);
+            ReadConfig(configuration);
         }
 
         [HttpPost("caches")]
@@ -69,13 +71,13 @@ namespace Runner.Server.Controllers {
             string val;
             var repocache = cache.GetOrAdd($"{owner}/{repo}", k => new ConcurrentDictionary<string, string>());
             if(repocache.TryGetValue(a[0], out val)) {
-                return await Ok(new ArtifactCacheEntry{ cacheKey = a[0], scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/artifactcache/get/{Uri.EscapeDataString(val)}" });
+                return await Ok(new ArtifactCacheEntry{ cacheKey = a[0], scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{Uri.EscapeDataString(val)}" });
             } else {
                 var b = repocache.ToArray();
                 foreach (var item in a) {
                     var res = (from c in b where item.StartsWith(c.Key) select c).FirstOrDefault();
                     if(res.Value != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = res.Key, scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/runner/host/_apis/artifactcache/get/{Uri.EscapeDataString(res.Value)}" });
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = res.Key, scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{Uri.EscapeDataString(res.Value)}" });
                     }
                 }
             }

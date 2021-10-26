@@ -30,6 +30,7 @@ namespace Runner.Server.Controllers
         public ActionDownloadInfoController(IConfiguration configuration)
         {
             downloadUrls = configuration.GetSection("Runner.Server:ActionDownloadUrls").Get<List<ActionDownloadUrls>>();
+            ReadConfig(configuration);
         }
 
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
@@ -40,7 +41,7 @@ namespace Runner.Server.Controllers
             foreach (var item in reflist.Actions) {
                 foreach(var downloadUrl in downloadUrls) {
                     if(item.NameWithOwner == "localcheckout") {
-                        actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/localcheckout.tar.gz", ZipballUrl = $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}/localcheckout.zip" };
+                        actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"{ServerUrl}/localcheckout.tar.gz", ZipballUrl = $"{ServerUrl}/localcheckout.zip" };
                     } else {
                         var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, item.Ref), ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, item.Ref) };
                         // TODO: How to check on github if url is valid?, maybe use GITHUB_TOKEN?

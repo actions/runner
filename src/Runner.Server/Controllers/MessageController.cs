@@ -44,13 +44,16 @@ namespace Runner.Server.Controllers
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class MessageController : VssControllerBase
     {
-        private string ServerUrl;
         private string GitServerUrl;
         private string GitApiServerUrl;
         private string GitGraphQlServerUrl;
         private IMemoryCache _cache;
         private SqLiteDb _context;
         private string GITHUB_TOKEN;
+        private string WebhookHMACAlgorithmName { get; }
+        private string WebhookSignatureHeader { get; }
+        private string WebhookSignaturePrefix { get; }
+        private string WebhookSecret { get; }
         private List<Secret> secrets;
 
         private class Secret {
@@ -60,14 +63,19 @@ namespace Runner.Server.Controllers
 
         public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context)
         {
-            ServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("ServerUrl") ?? "";
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
             GitGraphQlServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitGraphQlServerUrl") ?? "";
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
+            WebhookHMACAlgorithmName = configuration.GetSection("Runner.Server")?.GetValue<String>("WebhookHMACAlgorithmName") ?? "";
+            WebhookSignatureHeader = configuration.GetSection("Runner.Server")?.GetValue<String>("WebhookSignatureHeader") ?? "";
+            WebhookSignaturePrefix = configuration.GetSection("Runner.Server")?.GetValue<String>("WebhookSignaturePrefix") ?? "";
+            WebhookSecret = configuration.GetSection("Runner.Server")?.GetValue<String>("WebhookSecret") ?? "";
+            
             secrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();
             _cache = memoryCache;
             _context = context;
+            ReadConfig(configuration);
         }
 
         [HttpDelete("{poolId}/{messageId}")]
@@ -2304,9 +2312,18 @@ namespace Runner.Server.Controllers
         [AllowAnonymous]
         public async Task<ActionResult> OnWebhook([FromQuery] string[] workflownames, [FromQuery] string[] workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
         {
-            var hmac = new HMACSHA256(System.Text.Encoding.UTF8.GetBytes(""));
-            hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(""));
-            var obj = await FromBody2<GiteaHook>();
+            KeyValuePair<GiteaHook, JObject> obj;
+            if(WebhookHMACAlgorithmName.Length > 0 && WebhookSecret.Length > 0 && WebhookSignatureHeader.Length > 0) {
+                var hmac = HMAC.Create(WebhookHMACAlgorithmName);
+                hmac.Key = System.Text.Encoding.UTF8.GetBytes(WebhookSecret);
+                string value = HttpContext.Request.Headers[WebhookSignatureHeader];
+                if(WebhookSignaturePrefix.Length > 0 && !value.StartsWith(WebhookSignaturePrefix)) {
+                    return Forbid();
+                }
+                obj = await FromBody2<GiteaHook>(hmac, value.Substring(WebhookSignaturePrefix.Length));
+            } else {
+                obj = await FromBody2<GiteaHook>();
+            }
             // Try to fix head_commit == null 
             if(obj.Key.head_commit == null) {
                 var val = obj.Value.GetValue("commits");
@@ -2425,6 +2442,9 @@ namespace Runner.Server.Controllers
         [HttpPost("schedule")]
         public async Task<ActionResult> OnSchedule([FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix, [FromQuery] string[] platform, [FromQuery] bool? localcheckout)
         {
+            if(WebhookSecret.Length > 0) {
+                return NotFound();
+            }
             var form = await Request.ReadFormAsync();
             KeyValuePair<GiteaHook, JObject> obj;
             var eventFile = form.Files.GetFile("event");

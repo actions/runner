@@ -13,6 +13,7 @@ using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
@@ -24,9 +25,12 @@ namespace Runner.Server.Controllers
     [Route("/api/v3/actions/runner-registration")]
     public class RunnerRegistrationController : VssControllerBase
     {
+        private string RUNNER_TOKEN { get; }
 
-        public RunnerRegistrationController()
+        public RunnerRegistrationController(IConfiguration configuration)
         {
+            RUNNER_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("RUNNER_TOKEN") ?? "";
+            ReadConfig(configuration);
         }
 
         class AddRemoveRunner
@@ -43,8 +47,11 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> Get()
         {
             StringValues auth;
-            if(!Request.Headers.TryGetValue("Authorization", out auth) || auth.FirstOrDefault()?.StartsWith("RemoteAuth ") != true) {
-                return NotFound();
+            if(!Request.Headers.TryGetValue("Authorization", out auth)) {
+                return Unauthorized();
+            }
+            if(auth.FirstOrDefault()?.StartsWith("RemoteAuth ") != true || (RUNNER_TOKEN.Length > 0 && auth.First() != "RemoteAuth " + RUNNER_TOKEN) ) {
+                return Forbid();
             }
             var payload = await FromBody<AddRemoveRunner>();
             // Request.Headers.HeaderAuthorization = RemoteAuth AKWETFL3YIUV34LTWCZ5M4275R3HQ
@@ -68,9 +75,8 @@ namespace Runner.Server.Controllers
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
-
             return await Ok(new Runner.Server.Models.GitHubAuthResult() {
-                TenantUrl = payload.Url,
+                TenantUrl = new Uri(new Uri(ServerUrl), "runner/server").ToString(),
                 Token = tokenHandler.WriteToken(token),
                 TokenSchema = "OAuthAccessToken"
             });

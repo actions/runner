@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Runner.Server.Models;
@@ -27,17 +28,18 @@ namespace Runner.Server.Controllers
 
         private SqLiteDb _context;
 
-        public AgentController(IMemoryCache cache, SqLiteDb context)
+        public AgentController(IMemoryCache cache, SqLiteDb context, IConfiguration configuration = null)
         {
             _cache = cache;
             _context = context;
+            ReadConfig(configuration);
         }
 
         [HttpPost("{poolId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
         public async Task<IActionResult> Post(int poolId) {
             TaskAgent agent = await FromBody<TaskAgent>();
-            agent.Authorization.AuthorizationUrl = new Uri($"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.LocalIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? HttpContext.Connection.LocalPort}/test/auth/v1/");
+            agent.Authorization.AuthorizationUrl = new Uri($"{ServerUrl}/test/auth/v1/");
             agent.Authorization.ClientId = Guid.NewGuid();
             Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
             await _context.SaveChangesAsync();
