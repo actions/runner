@@ -40,5 +40,8 @@ namespace Runner.Server.Models {
 
         public List<TimelineRecord> TimeLine {get;set;}
 
+        [IgnoreDataMember]
+        public Action Rerun;
+
     }
 }

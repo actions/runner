@@ -176,7 +176,11 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
             try {
                 setArtifacts(_ => []);
                 if(id === undefined) {
-                    throw new Error("Invalid job guid");
+                    setJob(null);
+                    setTitle("Please select a Job");
+                    setTimeline(e => []);
+                    setErrors([]);
+                    return;
                 }
                 var job : IJob | null = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message?jobid=" + encodeURIComponent(id), { })).json());
                 setJob(job);
@@ -323,14 +327,25 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
         <main className={styles.main}>
             <div className={styles.text} style={{width: '100%'}}>
                 {(() => {
-                    if(job !== undefined && job != null && !job.jobCompletedEvent) {
-                        return  <button onClick={(event) => {
-                            (async () => {
-                                await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
-                            })();
-                        }}>Cancel</button>;
+                    if(job !== undefined && job != null) {
+                        if(!job.jobCompletedEvent) {
+                            return  <button onClick={(event) => {
+                                (async () => {
+                                    await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
+                                })();
+                            }}>Cancel</button>;
+                        } else {
+                            return  <div><button onClick={(event) => {
+                                (async () => {
+                                    await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/rerunworkflow/" + job.runid, { method: "POST" });
+                                })();
+                            }}>Rerun Workflow</button><button onClick={(event) => {
+                                (async () => {
+                                    await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/rerun/" + job.jobId, { method: "POST" });
+                                })();
+                            }}>Rerun</button></div>;
+                        }
                     }
-                    return <div></div>;
                 })()
                 }
                 

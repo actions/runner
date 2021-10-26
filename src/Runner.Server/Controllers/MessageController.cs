@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -424,6 +424,8 @@ namespace Runner.Server.Controllers
             public string TargetUrl {get;set;}
         }
 
+        private static Dictionary<long, Action> rerunWorkflows = new Dictionary<long, Action>();
+
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null) {
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             var runid = _cache.GetOrCreate(repository_name, e => new Int64());
@@ -474,9 +476,11 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, null, null, null, null, workflows);
+            long attempt = 1;
+            rerunWorkflows[runid] = () => ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: attempt++);
+            return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: attempt++);
         }
-        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentJob = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null, KeyValuePair<string, string>[] workflows = null, string parentworkflowname= null) {
+        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentJob = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null, KeyValuePair<string, string>[] workflows = null, string parentworkflowname= null, long attempt = 1) {
             var fifo = new System.Threading.Tasks.Dataflow.ActionBlock<Func<Task>>(action => action().Wait());
 
             string event_name = e;
@@ -958,7 +962,7 @@ namespace Runner.Server.Controllers
                             githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
                             githubctx.Add("retention_days", new StringContextData("90"));
                             // TODO implement this with retries
-                            githubctx.Add("run_attempt", new StringContextData("1"));
+                            githubctx.Add("run_attempt", new StringContextData(attempt.ToString()));
                             
                             var needsctx = new DictionaryContextData();
                             contextData.Add("needs", needsctx);
@@ -1720,10 +1724,16 @@ namespace Runner.Server.Controllers
                         if(variables.TryGetValue("github_token", out var ghtoken)) {
                             _secrets.Insert(0, "github_token=" + ghtoken);
                         }
+                        long attempt;
+                        try {
+                            attempt = System.Int64.Parse(((DictionaryContextData) contextData["github"])["run_attempt"].AssertString(""));
+                        } catch {
+                            attempt = 1;
+                        }
                         var resp = ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, displayname, wevent, eval?.ToContextData(), e => {
                             var jid = jobId;
                             new FinishJobController(_cache).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                        }, workflows, workflowname);
+                        }, workflows, workflowname, attempt);
                         if(resp == null || resp.failed || resp.skipped) {
                             var jid = jobId;
                             var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
@@ -1955,6 +1965,14 @@ namespace Runner.Server.Controllers
             }, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError }, (id, job) => job);
             _cache.Set(job.JobId, job);
             jobevent?.Invoke(this, job.repo, job);
+            job.Rerun = () => {
+                Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
+                job.TimeLineId = Guid.NewGuid();
+                timelineId = job.TimeLineId;
+                TimelineController.dict[job.TimeLineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = jobId } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
+                job.JobCompletedEvent = null;
+                queue.Writer.WriteAsync(job);
+            };
             return cancel => {
                 if(cancel) {
                     job.Cancelled = true;
@@ -2461,6 +2479,21 @@ namespace Runner.Server.Controllers
                 return await Ok(ret, true);
             }
             return await Ok(from j in jobs.Values where (repo == null || j.repo == repo) && (runid.Length == 0 || runid.Contains(j.runid)) select j, true);
+        }
+
+        [HttpPost("rerun/{id}")]
+        public void RerunJob(Guid id) {
+            Job job;
+            if(jobs.TryGetValue(id, out job)) {
+                job?.Rerun();
+            }
+        }
+
+        [HttpPost("rerunworkflow/{id}")]
+        public void RerunJob(long id) {
+            if(rerunWorkflows.TryGetValue(id, out var act)) {
+                act?.Invoke();
+            }
         }
 
         [HttpPost("cancel/{id}")]
