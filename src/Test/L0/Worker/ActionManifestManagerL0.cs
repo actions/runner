@@ -418,6 +418,48 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void Load_Node16Action()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                //Act
+                var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "node16action.yml"));
+
+                //Assert
+                Assert.Equal("Hello World", result.Name);
+                Assert.Equal("Greet the world and record the time", result.Description);
+                Assert.Equal(2, result.Inputs.Count);
+                Assert.Equal("greeting", result.Inputs[0].Key.AssertString("key").Value);
+                Assert.Equal("Hello", result.Inputs[0].Value.AssertString("value").Value);
+                Assert.Equal("entryPoint", result.Inputs[1].Key.AssertString("key").Value);
+                Assert.Equal("", result.Inputs[1].Value.AssertString("value").Value);
+                Assert.Equal(1, result.Deprecated.Count);
+
+                Assert.True(result.Deprecated.ContainsKey("greeting"));
+                result.Deprecated.TryGetValue("greeting", out string value);
+                Assert.Equal("This property has been deprecated", value);
+
+                Assert.Equal(ActionExecutionType.NodeJS, result.Execution.ExecutionType);
+
+                var nodeAction = result.Execution as NodeJSActionExecutionData;
+
+                Assert.Equal("main.js", nodeAction.Script);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Load_NodeAction_Pre()
         {
             try
