@@ -753,7 +753,7 @@ namespace Runner.Server.Controllers
                                                 validSecrets.Add(inputName.ToLowerInvariant());
                                                 bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
                                                 
-                                                if(!secrets.Any(s => s.StartsWith(inputName + "=")) && required) {
+                                                if(!secrets.Any(s => s.ToLowerInvariant().StartsWith(inputName.ToLowerInvariant() + "=")) && required) {
                                                     throw new Exception($"This workflow requires the secret: {inputName}, but no such secret were provided");
                                                 }
                                             }
@@ -1693,14 +1693,19 @@ namespace Runner.Server.Controllers
                         };
                     }
                 }
+                Action<bool, string> failedtoInstantiateWorkflow = (skipped, message) => {
+                    var jid = jobId;
+                    var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
+                    if(!skipped) {
+                        _job.errors = new List<string>{"Failed to instantiate reusable workflow: " + message};
+                    }
+                    new FinishJobController(_cache).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = skipped ? TaskResult.Skipped : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                };
                 //var xref = rawUses.Value.Split('@', 2);
                 //var parts = xref[0].Split('/', 3);
                 (new Func<Task>(async () => {
                     if(reference == null) {
-                        var jid = jobId;
-                        var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
-                        jobevent?.Invoke(this, _job.repo, _job);
-                        new FinishJobController(_cache).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                        failedtoInstantiateWorkflow(false, $"Invalid reference format: {uses.Value}");
                         return;
                     }
                     Action<string, string> workflow_call = (filename, filecontent) => {
@@ -1743,12 +1748,7 @@ namespace Runner.Server.Controllers
                             new FinishJobController(_cache).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                         }, workflows, workflowname, attempt);
                         if(resp == null || resp.failed || resp.skipped) {
-                            var jid = jobId;
-                            var _job = jobs.AddOrUpdate(jid, new Job() { message = null, repo = repo, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId }, (id, job) => job);
-                            if(!resp.skipped) {
-                                _job.errors = new List<string>{"Failed to instantiate reusable workflow: " + filename};
-                            }
-                            new FinishJobController(_cache).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = resp.skipped ? TaskResult.Skipped : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                            failedtoInstantiateWorkflow(resp.skipped, filename);
                             return;
                         }
                     };
@@ -1757,14 +1757,18 @@ namespace Runner.Server.Controllers
                             try {
                                 workflow_call(reference.Path, _content);
                             } catch (Exception ex) {
+                                failedtoInstantiateWorkflow(false, ex.Message);
                                 await Console.Error.WriteLineAsync(ex.Message);
                                 await Console.Error.WriteLineAsync(ex.StackTrace);
                             }
+                        } else {
+                            failedtoInstantiateWorkflow(false, $"No such callable workflow: {uses.Value}");
                         }
                     } else if(localcheckout && reference.Name == repo && (("refs/heads/" + reference.Ref) == Ref || ("refs/tags/" + reference.Ref) == Ref) && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
                         try {
                             workflow_call(reference.Path, _content);
                         } catch (Exception ex) {
+                            failedtoInstantiateWorkflow(false, ex.Message);
                             await Console.Error.WriteLineAsync(ex.Message);
                             await Console.Error.WriteLineAsync(ex.StackTrace);
                         }
@@ -1787,10 +1791,13 @@ namespace Runner.Server.Controllers
                                     var filecontent = await fileRes.Content.ReadAsStringAsync();
                                     workflow_call(item.path, filecontent);
                                 } catch (Exception ex) {
+                                    failedtoInstantiateWorkflow(false, ex.Message);
                                     await Console.Error.WriteLineAsync(ex.Message);
                                     await Console.Error.WriteLineAsync(ex.StackTrace);
                                 }
                             }
+                        } else {
+                            failedtoInstantiateWorkflow(false, $"No such callable workflow: {uses.Value}");
                         }
                     }
                 }))();
@@ -2104,24 +2111,11 @@ namespace Runner.Server.Controllers
                                 session.Job = null;
                                 session.JobTimer?.Stop();
                             };
-                            var apiUrlBuilder = new UriBuilder();
-                            apiUrlBuilder.Scheme = Request.Scheme;
-                            apiUrlBuilder.Host = Request.Host.Host ?? HttpContext.Connection.LocalIpAddress.ToString();
-                            apiUrlBuilder.Path = req.repo.Count(c => c == '/') == 1 ? req.repo : "Unknown/Unknown";
-                            if(Request.Host.Port.HasValue) {
-                                apiUrlBuilder.Port = Request.Host.Port.Value;
-                            } else {
-                                apiUrlBuilder.Port = HttpContext.Connection.LocalPort;
-                            }
-                            var apiUrl = apiUrlBuilder.ToString();
-                            if(!apiUrl.EndsWith('/')) {
-                                apiUrl += "/";
-                            }
                             if(req.message == null) {
                                 Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
                                 continue;
                             }
-                            var res = req.message.Invoke(apiUrl);
+                            var res = req.message.Invoke($"{ServerUrl}/Unknown/Unknown/");
                             if(res == null) {
                                 Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
                                 Job job;
