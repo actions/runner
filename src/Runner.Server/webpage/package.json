@@ -13,7 +13,6 @@
     "classnames": "^2.2.6",
     "enzyme": "^3.10.0",
     "enzyme-adapter-react-16": "^1.15.1",
-    "node-sass": "^5.0.0",
     "react": "^16.10.2",
     "react-collapsible": "^2.8.1",
     "react-dom": "^16.10.2",
@@ -23,6 +22,7 @@
     "react-scripts": "^4.0.3",
     "react-test-renderer": "^16.10.2",
     "redux": "^4.0.4",
+    "sass": "^1.43.3",
     "source-map-explorer": "^2.1.0",
     "typescript": "3.6.4"
   },
@@ -57,7 +57,7 @@
     "@types/deep-freeze": "^0.1.2",
     "@types/enzyme-adapter-react-16": "^1.0.5",
     "deep-freeze": "0.0.1",
-    "leasot": "^8.2.0",
+    "leasot": "^12.0.0",
     "redux-devtools-extension": "^2.13.8",
     "redux-mock-store": "^1.5.3"
   }
