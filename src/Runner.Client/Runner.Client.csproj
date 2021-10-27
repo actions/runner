@@ -14,6 +14,7 @@
     <Description>Unofficial GitHub Actions Runner Client, run your github action workflows locally. More Information https://github.com/ChristopherHX/runner.server</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ChristopherHX/runner.server</PackageProjectUrl>
+    <RuntimeFrameworkVersion>5.0.0</RuntimeFrameworkVersion>
   </PropertyGroup>
 
   <ItemGroup>
