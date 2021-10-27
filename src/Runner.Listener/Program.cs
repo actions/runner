@@ -15,7 +15,7 @@ namespace GitHub.Runner.Listener
     {
         public static int Main(string[] args)
         {
-            if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+            if(!System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && System.Environment.GetEnvironmentVariable("GHARUN_CHANGE_PROCESS_GROUP") == "1") {
                 try {
                     if (Mono.Unix.Native.Syscall.setpgid(0, 0) != 0) {
                         Console.WriteLine($"Failed to change Process Group");

@@ -264,7 +264,7 @@ namespace Runner.Client
                             inv.ErrorDataReceived += _out;
                         }
                         
-                        var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }};
+                        var runnerEnv = new Dictionary<string, string>() { {"RUNNER_SERVER_CONFIG_ROOT", tmpdir }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }};
                         if(!parameters.NoSharedToolcache && Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE") == null) {
                             runnerEnv["RUNNER_TOOL_CACHE"] = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "tool_cache");
                         }
@@ -695,7 +695,7 @@ namespace Runner.Client
                                 new AnonymousPipeServerStream(PipeDirection.In,
                                 HandleInheritability.Inheritable))
                             {
-                                var servertask = invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }}, false, null, true, token).ContinueWith(x => {
+                                var servertask = invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, token).ContinueWith(x => {
                                     Console.WriteLine("Stopped Server");
                                     File.Delete(serverconfigfileName);
                                 });
