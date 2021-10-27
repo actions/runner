@@ -25,11 +25,12 @@ namespace GitHub.Runner.Worker.Expressions
             var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
             ArgUtil.NotNull(executionContext, nameof(executionContext));
 
-            // Only care about the current composite status if we are in a composite action and its a main step
-            if (executionContext.IsEmbedded && executionContext.Stage == ActionRunStage.Main)
+            // Decide based on 'action_status' for composite MAIN steps and 'job.status' for pre, post and job-level steps
+            var isCompositeMainStep = executionContext.IsEmbedded && executionContext.Stage == ActionRunStage.Main;
+            if (isCompositeMainStep)
             {
-                ActionResult stepStatus = EnumUtil.TryParse<ActionResult>(executionContext.GetGitHubContext("action_status")) ?? ActionResult.Success;
-                return stepStatus == ActionResult.Success;
+                ActionResult actionStatus = EnumUtil.TryParse<ActionResult>(executionContext.GetGitHubContext("action_status")) ?? ActionResult.Success;
+                return actionStatus == ActionResult.Success;
             }
             else 
             {

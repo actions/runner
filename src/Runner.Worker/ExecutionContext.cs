@@ -348,7 +348,7 @@ namespace GitHub.Runner.Worker
         /// and a linked cancellation token.
         /// </summary>
         public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null)
-        {            
+        {
             return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
         }
 
@@ -940,7 +940,6 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-
             return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
         }
     }

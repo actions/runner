@@ -38,14 +38,6 @@ namespace GitHub.Runner.Worker.Handlers
 
             List<Pipelines.ActionStep> steps;
 
-            var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
-            // Temporary hack until after 3.2. After 3.2 the server will never send an empty
-            // context name. Generated context names start with "__"
-            if (string.IsNullOrEmpty(childScopeName))
-            {
-                childScopeName = $"__{Guid.NewGuid()}";
-            }
-
             if (stage == ActionRunStage.Pre)
             {
                 ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
@@ -113,6 +105,14 @@ namespace GitHub.Runner.Worker.Handlers
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
 
+                var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
+                // Temporary hack until after 3.2. After 3.2 the server will never send an empty
+                // context name. Generated context names start with "__"
+                if (string.IsNullOrEmpty(childScopeName))
+                {
+                    childScopeName = $"__{Guid.NewGuid()}";
+                }
+
                 // Create embedded steps
                 var embeddedSteps = new List<IStep>();
 
@@ -128,7 +128,6 @@ namespace GitHub.Runner.Worker.Handlers
                         embeddedSteps.Add(step);
                     }
                 }
-
                 foreach (Pipelines.ActionStep stepData in steps)
                 {
                     // Compute child sibling scope names for post steps

@@ -323,7 +323,7 @@ namespace GitHub.Runner.Worker
                         {
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
-                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, null, actionStep.Action.ContextName, ActionRunStage.Main, intraActionState); // MAIN
+                            actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, null, actionStep.Action.ContextName, ActionRunStage.Main, intraActionState);
                         }
                     }
 
