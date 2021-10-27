@@ -62,7 +62,7 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
-        HashSet<Guid> EmbeddedStepsWithPostRegistered{ get; }
+        Dictionary<Guid, string> EmbeddedStepsWithPostRegistered { get; }
 
         // Keep track of embedded steps states
         Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; }
@@ -168,7 +168,7 @@ namespace GitHub.Runner.Worker
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
         // Only job level ExecutionContext has EmbeddedStepsWithPostRegistered
-        public HashSet<Guid> EmbeddedStepsWithPostRegistered { get; private set; }
+        public Dictionary<Guid, string> EmbeddedStepsWithPostRegistered { get; private set; }
 
         public Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; private set; }
 
@@ -265,12 +265,19 @@ namespace GitHub.Runner.Worker
             string siblingScopeName = null;
             if (this.IsEmbedded)
             {
-                if (step is IActionRunner actionRunner && !Root.EmbeddedStepsWithPostRegistered.Add(actionRunner.Action.Id))
+                if (step is IActionRunner actionRunner)
                 {
-                    Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
+                    if (Root.EmbeddedStepsWithPostRegistered.ContainsKey(actionRunner.Action.Id))
+                    {
+                        Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
+                    }
+                    else 
+                    {
+                        Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;    
+                    }
+                    return;
                 }
-                return;
-            } 
+            }
             else if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
@@ -543,8 +550,8 @@ namespace GitHub.Runner.Worker
                 }
 
                 _record.WarningCount++;
-            } 
-            else if (issue.Type == IssueType.Notice) 
+            }
+            else if (issue.Type == IssueType.Notice)
             {
 
                 // tracking line number for each issue in log file
@@ -716,10 +723,10 @@ namespace GitHub.Runner.Worker
             StepsWithPostRegistered = new HashSet<Guid>();
 
             // EmbeddedStepsWithPostRegistered for job ExecutionContext
-            EmbeddedStepsWithPostRegistered = new HashSet<Guid>();
+            EmbeddedStepsWithPostRegistered = new Dictionary<Guid, string>();
 
             // EmbeddedIntraActionState for job ExecutionContext
-            EmbeddedIntraActionState = new Dictionary<Guid, Dictionary<string,string>>();
+            EmbeddedIntraActionState = new Dictionary<Guid, Dictionary<string, string>>();
 
             // Job timeline record.
             InitializeTimelineRecord(
@@ -970,7 +977,7 @@ namespace GitHub.Runner.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void InfrastructureError(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true});
+            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true });
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().

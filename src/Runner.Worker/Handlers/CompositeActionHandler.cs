@@ -50,8 +50,9 @@ namespace GitHub.Runner.Worker.Handlers
                 // Only register post steps for steps that actually ran
                 foreach (var step in Data.PostSteps.ToList())
                 {
-                    if (ExecutionContext.Root.EmbeddedStepsWithPostRegistered.Contains(step.Id))
+                    if (ExecutionContext.Root.EmbeddedStepsWithPostRegistered.ContainsKey(step.Id))
                     {
+                        step.Condition = ExecutionContext.Root.EmbeddedStepsWithPostRegistered[step.Id];
                         steps.Add(step);
                     }
                     else
