@@ -144,7 +144,7 @@ namespace GitHub.Runner.Worker.Handlers
                     step.Stage = stage;
                     step.Condition = stepData.Condition;
                     ExecutionContext.Root.EmbeddedIntraActionState.TryGetValue(step.Action.Id, out var intraActionState);
-                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, intraActionState: intraActionState, siblingScopeName: siblingScopeName, stage);
+                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, stage, intraActionState: intraActionState, siblingScopeName: siblingScopeName);
                     step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
                     if (!String.IsNullOrEmpty(ExecutionContext.SiblingScopeName))
                     {
