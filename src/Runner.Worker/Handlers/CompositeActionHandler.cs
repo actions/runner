@@ -124,7 +124,7 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         ArgUtil.NotNull(step, step.DisplayName);
                         var stepId = $"__{Guid.NewGuid()}";
-                        step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepId, Guid.NewGuid());
+                        step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepId, Guid.NewGuid(), stage);
                         embeddedSteps.Add(step);
                     }
                 }
@@ -144,7 +144,7 @@ namespace GitHub.Runner.Worker.Handlers
                     step.Stage = stage;
                     step.Condition = stepData.Condition;
                     ExecutionContext.Root.EmbeddedIntraActionState.TryGetValue(step.Action.Id, out var intraActionState);
-                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, intraActionState: intraActionState, siblingScopeName: siblingScopeName);
+                    step.ExecutionContext = ExecutionContext.CreateEmbeddedChild(childScopeName, stepData.ContextName, step.Action.Id, intraActionState: intraActionState, siblingScopeName: siblingScopeName, stage);
                     step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
                     if (!String.IsNullOrEmpty(ExecutionContext.SiblingScopeName))
                     {

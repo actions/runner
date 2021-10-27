@@ -76,8 +76,9 @@ namespace GitHub.Runner.Worker
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
+        // Arg
         IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null);
-        IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
+        IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, Dictionary<string, string> intraActionState = null, string siblingScopeName = null); // ARG
 
         // logging
         long Write(string tag, string message);
@@ -287,6 +288,7 @@ namespace GitHub.Runner.Worker
 
         public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null)
         {
+            // ARG
             Trace.Entering();
 
             var child = new ExecutionContext();
@@ -346,6 +348,7 @@ namespace GitHub.Runner.Worker
         /// </summary>
         public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, Dictionary<string, string> intraActionState = null, string siblingScopeName = null)
         {
+            // ARG
             return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
         }
 
@@ -937,6 +940,8 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
+
+            // POST
             return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
         }
     }
