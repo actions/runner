@@ -3,12 +3,14 @@ using Pipelines = GitHub.DistributedTask.Pipelines;
 using GitHub.Runner.Common.Util;
 using Newtonsoft.Json;
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Services.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Worker
 {
@@ -71,6 +73,19 @@ namespace GitHub.Runner.Worker
                     InitializeSecretMasker(jobMessage);
                     SetCulture(jobMessage);
 
+                    var message = "";
+                    if (jobMessage.ContextData?.Count > 0)
+                    {
+                        var githubDictionary = jobMessage.ContextData["github"] as DictionaryContextData;
+                        Trace.Info($"GitHub message:{Environment.NewLine} {StringUtil.ConvertToJson(githubDictionary)}");
+                        githubDictionary.TryGetValue("repository", out var repository);
+                        githubDictionary.TryGetValue("run_id", out var runId);
+                        message = $"Job {runId} - {jobMessage.JobDisplayName} from {repository}";
+                    }
+
+                    // Update status if script available
+                    UpdateRunnerStatus("Running", message);
+
                     // Start the job.
                     Trace.Info($"Job message:{Environment.NewLine} {StringUtil.ConvertToJson(jobMessage)}");
                     Task<TaskResult> jobRunnerTask = jobRunner.RunAsync(jobMessage, jobRequestCancellationToken.Token);
@@ -116,6 +131,45 @@ namespace GitHub.Runner.Worker
             {
                 HostContext.Unloading -= Worker_Unloading;
                 _completedCommand.Set();
+            }
+        }
+
+        private void UpdateRunnerStatus(string status, string message)
+        {
+            var updateScriptPath = Environment.GetEnvironmentVariable("_GITHUB_ACTION_RUNNER_STATUS_SCRIPT");
+            if (string.IsNullOrEmpty(updateScriptPath))
+            {
+                return; // Nothing to do as option is not enabled
+            }
+            if (!File.Exists(updateScriptPath))
+            {
+                Trace.Warning($"Skipping updating runner status as script {updateScriptPath} doesn't exist");
+                return;
+            }
+            Trace.Info($"Updating Runner status to: {status}");
+            try
+            {
+                var processInvoker = HostContext.CreateService<IProcessInvoker>();
+                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                {
+                    Trace.Info($"Update status output: {message.Data}");
+                };
+                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs message)
+                {
+                    Trace.Error($"Update status error: {message.Data}");
+                };
+                processInvoker.ExecuteAsync(
+                                workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Temp),
+                                fileName: updateScriptPath,
+                                arguments: $"{status} \"{message}\"",
+                                environment: null,
+                                requireExitCodeZero: true,
+                                outputEncoding: null,
+                                cancellationToken: CancellationToken.None).Wait();
+            }
+            catch (Exception e)
+            {
+                Trace.Error($"Update status error: {e.ToString()}");
             }
         }
 
