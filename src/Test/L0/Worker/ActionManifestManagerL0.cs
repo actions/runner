@@ -626,6 +626,32 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 Teardown();
             }
+        }        
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void Load_ConditionalCompositeAction()
+        {
+            try
+            {
+                //Arrange
+                Setup();
+
+                var actionManifest = new ActionManifestManager();
+                actionManifest.Initialize(_hc);
+
+                //Act
+                var result = actionManifest.Load(_ec.Object, Path.Combine(TestUtil.GetTestDataPath(), "conditional_composite_action.yml"));
+
+                //Assert
+                Assert.Equal("Conditional Composite", result.Name);
+                Assert.Equal(ActionExecutionType.Composite, result.Execution.ExecutionType);
+            }
+            finally
+            {
+                Teardown();
+            }
         }
 
         [Fact]
