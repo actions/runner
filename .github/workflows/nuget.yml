@@ -17,7 +17,7 @@ jobs:
       shell: pwsh
       working-directory: ./src
     - name: Restore
-      run: dotnet restore
+      run: dotnet restore /p:RuntimeFrameworkVersion=5.0.0
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Build
@@ -25,13 +25,13 @@ jobs:
       run: |
         $d = Get-Date
         $runnerversion = $($(Get-Content ../runnerversion) + "-preview." + $d.Year + "." + $d.Month + "." + $d.Day + "." + $d.Hour + "." + $d.Minute + "." + $d.Second + "." + $ENV:GITHUB_RUN_ID)
-        dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$runnerversion
+        dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$runnerversion /p:RuntimeFrameworkVersion=5.0.0
         echo $('::set-output name=version::' + $runnerversion)
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Pack
       run: |
-        dotnet pack --no-restore --no-build /p:Version=${{steps.build.outputs.version}}
+        dotnet pack --no-restore --no-build /p:Version=${{steps.build.outputs.version}} /p:RuntimeFrameworkVersion=5.0.0
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts
