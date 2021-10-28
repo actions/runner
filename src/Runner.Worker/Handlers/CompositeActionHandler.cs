@@ -105,9 +105,9 @@ namespace GitHub.Runner.Worker.Handlers
                     inputsData[i.Key] = new StringContextData(i.Value);
                 }
 
-                var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
                 // Temporary hack until after 3.2. After 3.2 the server will never send an empty
                 // context name. Generated context names start with "__"
+                var childScopeName = ExecutionContext.GetFullyQualifiedContextName();
                 if (string.IsNullOrEmpty(childScopeName))
                 {
                     childScopeName = $"__{Guid.NewGuid()}";
