@@ -36,6 +36,13 @@ namespace GitHub.Runner.Worker
     }
 
     [DataContract]
+    public class ContainersCreationInput
+    {
+        [DataMember]
+        public List<ContainerInfo> Containers { get; set; }
+    }
+
+    [DataContract]
     public class JobContainerExecInput
     {
         [DataMember]
@@ -57,12 +64,7 @@ namespace GitHub.Runner.Worker
         public List<string> EnvironmentKeys { get; set; }
     }
 
-    [DataContract]
-    public class ContainersCreationInput
-    {
-        [DataMember]
-        public List<ContainerInfo> Containers { get; set; }
-    }
+
 
     [DataContract]
     public class ContainersRemoveInput
@@ -157,7 +159,7 @@ namespace GitHub.Runner.Worker
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
 
-            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "podmanHandler", "index.js");
+            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "kubectlHandler", "index.js");
             if (File.Exists(podManHandler))
             {
                 var podmanInput = new ContainerEngineHandlerInput()
@@ -199,7 +201,7 @@ namespace GitHub.Runner.Worker
                     // Execute the process. Exit code 0 should always be returned.
                     // A non-zero exit code indicates infrastructural failure.
                     // Task failure should be communicated over STDOUT using ## commands.
-                    await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                    await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Bin),
                                                       fileName: Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}"),
                                                       arguments: podManHandler,
                                                       environment: null,
@@ -331,7 +333,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
-            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "podmanHandler", "index.js");
+            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "kubectlHandler", "index.js");
             if (File.Exists(podManHandler))
             {
                 var podmanInput = new ContainerEngineHandlerInput()

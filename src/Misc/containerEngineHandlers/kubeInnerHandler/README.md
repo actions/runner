@@ -1,0 +1,1 @@
+To update kubeInnerHandler under `Misc/layoutbin` run `npm install && npm run all`

@@ -2,10 +2,10 @@
 <Project ToolsVersion="14.0" DefaultTargets="Build" 
     xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <Target Name="GenerateConstant">
-        <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
+        <!-- <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true">
             <Output TaskParameter="ConsoleOutput" PropertyName="GitInfoCommitHash" />
-        </Exec>
-        <Message Text="Building $(Product): $(GitInfoCommitHash) --- $(PackageRuntime)" Importance="high"/>
+        </Exec> -->
+        <Message Text="Building $(Product): --- $(PackageRuntime)" Importance="high"/>
 
         <ItemGroup>
             <BuildConstants Include="namespace GitHub.Runner.Sdk"/>
@@ -14,7 +14,7 @@
             <BuildConstants Include="%20%20%20%20{"/>
             <BuildConstants Include="%20%20%20%20%20%20%20%20public static class Source"/>
             <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
-            <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22$(GitInfoCommitHash)%22%3B"/>
+            <BuildConstants Include="%20%20%20%20%20%20%20%20%20%20%20%20public static readonly string CommitHash = %22dfcfae49e59b6dc3c2bb5295c649b33c4b49c964%22%3B"/>
             <BuildConstants Include="%20%20%20%20%20%20%20%20}%0A"/>
             <BuildConstants Include="%20%20%20%20%20%20%20%20public static class RunnerPackage"/>
             <BuildConstants Include="%20%20%20%20%20%20%20%20{"/>
@@ -27,7 +27,6 @@
 
         <WriteLinesToFile File="Runner.Sdk/BuildConstants.cs" Lines="@(BuildConstants)" Overwrite="true" />
 
-        <Exec Command="git update-index --assume-unchanged ./Runner.Sdk/BuildConstants.cs" ConsoleToMSBuild="true" />
     </Target>
 
     <ItemGroup>

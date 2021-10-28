@@ -180,7 +180,7 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Container, nameof(Container));
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
 
-            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "podmanHandler", "index.js");
+            var podManHandler = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "kubectlHandler", "index.js");
             if (File.Exists(podManHandler))
             {
                 var podmanInput = new ContainerEngineHandlerInput()
