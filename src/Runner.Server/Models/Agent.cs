@@ -34,30 +34,10 @@ namespace Runner.Server.Models
 
         public static Agent GetAgent(IMemoryCache cache, SqLiteDb db, int poolId, int id)
         {
-            Agent ret = cache.Get<Agent>($"{CachePrefix}{poolId}_{id}");
-            if(ret == null) {
-                ret = db.Agents.Include(a => a.TaskAgent).Include(a => a.TaskAgent.Labels).Include(a => a.Pool).Where(a => a.Id == id).FirstOrDefault();
-                if(ret != null) {
-                    // if(ret.TaskAgent == null) {
-                    //     ret.TaskAgent = db.TaskAgents.Find(id);
-                    // }
-                    ret.AddToCache(cache);
-                }
-            }
+            var ret = db.Agents.Include(a => a.TaskAgent).Include(a => a.TaskAgent.Labels).Include(a => a.Pool).Where(a => a.Id == id).FirstOrDefault();
             return ret;
         }
 
-        // public static Agent CreateAgent(IMemoryCache cache, SqLiteDb db, int poolId, TaskAgent agent, int? agentId = null)
-        // {
-        //     var pool = Pool.GetPoolById(cache, poolId);
-        //     var id = agentId ?? (pool.Agents.Count > 0 ? pool.Agents[pool.Agents.Count - 1].TaskAgent.Id + 1 : 1);
-        //     agent.Id = id;
-        //     return cache.Set($"{CachePrefix}{poolId}_{id}", new Agent() { TaskAgent = agent, Pool = pool });
-        // }
-
-        public void AddToCache(IMemoryCache cache) {
-            cache.Set($"{CachePrefix}{Pool.Id}_{Id}", this);
-        }
         public static Agent CreateAgent(IMemoryCache cache, SqLiteDb db, int poolId, TaskAgent agent)
         {
             var _agent = new Agent();
