@@ -76,7 +76,7 @@ async function run(): Promise<void> {
     // copy over node.js
     const cpNodeArgs = [
       'cp',
-      '../externals/node16/bin',
+      '/actions-runner/externals/node16/bin',
       'job-container:/__runner_util/'
     ]
     await exec.exec('kubectl', cpNodeArgs)
@@ -84,14 +84,14 @@ async function run(): Promise<void> {
     // copy over innerhandler
     const cpKubeInnerArgs = [
       'cp',
-      './kubeInnerHandler',
+      '/actions-runner/bin/kubeInnerHandler',
       'job-container:/__runner_util/kubeInnerHandler'
     ]
     await exec.exec('kubectl', cpKubeInnerArgs)
 
     const creationOutput = {
-      JobContainerId: 'job-container'
-      // Network: "job-container"
+      JobContainerId: 'job-container',
+      Network: 'job-container'
     }
 
     const output = JSON.stringify({CreationOutput: creationOutput})

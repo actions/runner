@@ -3044,13 +3044,22 @@ function run() {
             // get PATH inside the container
             // output containerId for ${{job.container.id}}
             // copy over node.js
-            const cpNodeArgs = ['cp', '../externals/node16/bin', 'job-container:/__runner_util/'];
+            const cpNodeArgs = [
+                'cp',
+                '/actions-runner/externals/node16/bin',
+                'job-container:/__runner_util/'
+            ];
             yield exec.exec('kubectl', cpNodeArgs);
             // copy over innerhandler
-            const cpKubeInnerArgs = ['cp', './kubeInnerHandler', 'job-container:/__runner_util/kubeInnerHandler'];
+            const cpKubeInnerArgs = [
+                'cp',
+                '/actions-runner/bin/kubeInnerHandler',
+                'job-container:/__runner_util/kubeInnerHandler'
+            ];
             yield exec.exec('kubectl', cpKubeInnerArgs);
             const creationOutput = {
-                JobContainerId: "job-container",
+                JobContainerId: 'job-container',
+                Network: "job-container"
             };
             const output = JSON.stringify({ CreationOutput: creationOutput });
             core.debug(output);
@@ -3085,7 +3094,9 @@ function run() {
             execArgs.push('/__runner_util/node');
             execArgs.push('/__runner_util/kubeInnerHandler');
             core.debug(JSON.stringify(execArgs));
-            yield exec.exec('kubectl', execArgs, { input: Buffer.from(JSON.stringify(execInput)) });
+            yield exec.exec('kubectl', execArgs, {
+                input: Buffer.from(JSON.stringify(execInput))
+            });
         }
     });
 }
