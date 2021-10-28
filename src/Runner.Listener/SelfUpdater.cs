@@ -59,6 +59,12 @@ namespace GitHub.Runner.Listener
                     return false;
                 }
 
+                if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_SKIP_SELF_UPDATE")))
+                {
+                    Trace.Info($"An update is available, but it was chosen to skip the self-update.");
+                    return false;
+                }
+
                 Trace.Info($"An update is available.");
 
                 // Print console line that warn user not shutdown runner.
