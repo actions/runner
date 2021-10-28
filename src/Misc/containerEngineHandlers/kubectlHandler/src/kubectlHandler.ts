@@ -126,6 +126,13 @@ async function run(): Promise<void> {
     // -e RUNNER_TEMP -e RUNNER_WORKSPACE
     //   eccdf520697a035599d6e8c8dc801f004fdd3797cdce88f590aba3669a88d9bc sh -e /__w/_temp/d3b30383-719c-4e76-a16f-8f85443352be.sh
 
+    const cpTempArgs = [
+      'cp',
+      '/actions-runner/_work/_temp',
+      'job-container:/__w/_temp'
+    ]
+    await exec.exec('kubectl', cpTempArgs)
+
     const execArgs = ['exec']
     execArgs.push(execInput.jobContainer.containerId)
     execArgs.push('-i')
