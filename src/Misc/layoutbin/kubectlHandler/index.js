@@ -3046,7 +3046,7 @@ function run() {
             // copy over node.js
             const cpNodeArgs = [
                 'cp',
-                '/actions-runner/externals/node16/bin',
+                '/actions-runner/externals/node12/bin',
                 'job-container:/__runner_util/'
             ];
             yield exec.exec('kubectl', cpNodeArgs);
@@ -3059,7 +3059,7 @@ function run() {
             yield exec.exec('kubectl', cpKubeInnerArgs);
             const creationOutput = {
                 JobContainerId: 'job-container',
-                Network: "job-container"
+                Network: 'job-container'
             };
             const output = JSON.stringify({ CreationOutput: creationOutput });
             core.debug(output);
@@ -3069,7 +3069,7 @@ function run() {
             const removeInput = inputJson.removeInput;
             core.debug(JSON.stringify(removeInput));
             const jobContainerId = removeInput.jobContainerId;
-            yield exec.exec('kubectl', ['delete', 'pod', jobContainerId]);
+            yield exec.exec('kubectl', ['delete', 'pod', jobContainerId, '--force']);
             // await exec.exec('podman', ['network', 'rm', '-f', network])
         }
         else if (command === 'Exec') {

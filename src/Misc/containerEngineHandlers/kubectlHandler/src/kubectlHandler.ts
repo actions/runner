@@ -76,7 +76,7 @@ async function run(): Promise<void> {
     // copy over node.js
     const cpNodeArgs = [
       'cp',
-      '/actions-runner/externals/node16/bin',
+      '/actions-runner/externals/node12/bin',
       'job-container:/__runner_util/'
     ]
     await exec.exec('kubectl', cpNodeArgs)
@@ -105,7 +105,7 @@ async function run(): Promise<void> {
     core.debug(JSON.stringify(removeInput))
     const jobContainerId = removeInput.jobContainerId
 
-    await exec.exec('kubectl', ['delete', 'pod', jobContainerId])
+    await exec.exec('kubectl', ['delete', 'pod', jobContainerId, '--force'])
     // await exec.exec('podman', ['network', 'rm', '-f', network])
   } else if (command === 'Exec') {
     const execInput = inputJson.execInput
