@@ -32,7 +32,7 @@ namespace GitHub.Runner.Worker.Expressions
                 ActionResult actionStatus = EnumUtil.TryParse<ActionResult>(executionContext.GetGitHubContext("action_status")) ?? ActionResult.Success;
                 return actionStatus == ActionResult.Success;
             }
-            else 
+            else
             {
                 ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
                 return jobStatus == ActionResult.Success;
