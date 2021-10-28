@@ -62,6 +62,9 @@ namespace GitHub.Runner.Worker
 
         [DataMember]
         public List<string> EnvironmentKeys { get; set; }
+
+        [DataMember]
+        public Dictionary<string, string> EnvironmentVariables { get; set; }
     }
 
 

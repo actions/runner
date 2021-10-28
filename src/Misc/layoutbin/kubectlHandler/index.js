@@ -3042,6 +3042,8 @@ function run() {
             // ])
             yield exec.exec('kubectl', runArgs);
             // get PATH inside the container
+            const waitArgs = ['wait', '--for=condition=Ready', 'pod/job-container'];
+            yield exec.exec('kubectl', waitArgs);
             // output containerId for ${{job.container.id}}
             // copy over node.js
             const cpNodeArgs = [

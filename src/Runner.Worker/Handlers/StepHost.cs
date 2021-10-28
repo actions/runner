@@ -192,7 +192,8 @@ namespace GitHub.Runner.Worker.Handlers
                         WorkingDirectory = workingDirectory,
                         FileName = fileName,
                         Arguments = arguments,
-                        EnvironmentKeys = environment.Keys.ToList()
+                        EnvironmentKeys = environment.Keys.ToList(),
+                        EnvironmentVariables = environment.ToDictionary(x => x.Key, y => y.Value)
                     }
                 };
 

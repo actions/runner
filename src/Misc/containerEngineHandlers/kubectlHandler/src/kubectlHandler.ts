@@ -71,6 +71,9 @@ async function run(): Promise<void> {
 
     // get PATH inside the container
 
+    const waitArgs = ['wait', '--for=condition=Ready', 'pod/job-container']
+    await exec.exec('kubectl', waitArgs)
+
     // output containerId for ${{job.container.id}}
 
     // copy over node.js
