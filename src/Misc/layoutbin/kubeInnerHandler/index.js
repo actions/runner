@@ -1562,7 +1562,9 @@ function run() {
         core.debug(JSON.stringify(args));
         execArgs.push(...args);
         core.debug(JSON.stringify(execArgs));
-        yield exec.exec(execInput.fileName, execArgs, { cwd: execInput.workingDirectory, env: execInput.environmentVariables });
+        yield exec.exec(execInput.fileName, execArgs, {
+            env: execInput.environmentVariables
+        });
     });
 }
 run();

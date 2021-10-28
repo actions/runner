@@ -42,7 +42,6 @@ async function run(): Promise<void> {
   core.debug(JSON.stringify(execArgs))
 
   await exec.exec(execInput.fileName, execArgs, {
-    cwd: execInput.workingDirectory,
     env: execInput.environmentVariables
   })
 }
