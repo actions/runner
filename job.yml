@@ -1,0 +1,74 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pod-admin
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/attach", "pods/exec"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: default-pod-admin
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pod-admin
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: default
+  name: actions-runners
+spec:
+  template:
+    spec:
+      # hostNetwork: true
+      volumes:
+        - name: runner-working
+          emptyDir: {}
+      containers:
+        - name: k8srunner
+          image: huangtingluo/kube-runner:v0
+          imagePullPolicy: Always
+          volumeMounts:
+            - mountPath: /actions-runner/_work
+              name: runner-working
+          env:
+            - name: GITHUB_PAT
+              value: ghp_
+            - name: RUNNER_CONFIG_URL
+              value: https://github.com/bbq-beets/ting-test
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: K8S_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: K8S_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: K8S_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: K8S_POD_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+      restartPolicy: Never
+  backoffLimit: 1
+  completions: 1
+  parallelism: 1
