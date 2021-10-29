@@ -84,7 +84,7 @@ namespace GitHub.Runner.Common
                     actionsClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
 
                     // Call the _apis/health endpoint, and include how many attempts are left as a URL query for easy tracking
-                    var response = await actionsClient.GetAsync(new Uri(baseUri, $"_apis/health?runnerAttemptsLeft={attemptsLeft}"));
+                    var response = await actionsClient.GetAsync(new Uri(baseUri, $"_apis/health?_internalRunnerAttemptsLeft={attemptsLeft}"));
                     Trace.Info($"Actions health status code: {response.StatusCode}");
                 }
             }
@@ -105,7 +105,7 @@ namespace GitHub.Runner.Common
                     gitHubClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
 
                     // Call the api.github.com endpoint, and include how many attempts are left as a URL query for easy tracking
-                    var response = await gitHubClient.GetAsync($"https://api.github.com?runnerAttemptsLeft={attemptsLeft}");
+                    var response = await gitHubClient.GetAsync($"https://api.github.com?_internalRunnerAttemptsLeft={attemptsLeft}");
                     Trace.Info($"api.github.com status code: {response.StatusCode}");
                 }
             }
