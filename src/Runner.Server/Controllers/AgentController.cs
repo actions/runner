@@ -36,6 +36,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("{poolId}")]
+        [HttpPatch("{poolId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
         public async Task<IActionResult> Post(int poolId) {
             TaskAgent agent = await FromBody<TaskAgent>();
