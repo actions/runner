@@ -1,10 +1,19 @@
 ## Features
 
+- Expose GITHUB_REF_* as environment variable (#1314)
+- Add arch to runner context (#1372)
+- Support Conditional Steps in Composite Actions (#1438)
+- Log current runner version in terminal (#1441)
+
 ## Bugs
 
-- Fixed an issue where ephemeral runners did not restart after upgrading (#1396)
+- Makes the user keychains available to the service (#847)
+- Use Actions Service health and api.github.com endpoints after connection failure on Actions Server and Hosted (#1385)
+- Fix an issue where nested local composite actions did not correctly register post steps (#1433)
 
 ## Misc
+
+- Cleanup Older versions on MacOS now that we recreate node versions as needed (#1410)
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
