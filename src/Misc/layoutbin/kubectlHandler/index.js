@@ -3094,7 +3094,7 @@ function run() {
             const cpTempArgs = [
                 'cp',
                 '/actions-runner/_work/_temp',
-                'job-container:/__w/_temp/'
+                'job-container:/__w/'
             ];
             yield exec.exec('kubectl', cpTempArgs);
             const execArgs = ['exec'];

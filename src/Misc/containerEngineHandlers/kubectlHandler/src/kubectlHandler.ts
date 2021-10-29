@@ -133,7 +133,7 @@ async function run(): Promise<void> {
     const cpTempArgs = [
       'cp',
       '/actions-runner/_work/_temp',
-      'job-container:/__w/_temp/'
+      'job-container:/__w/'
     ]
     await exec.exec('kubectl', cpTempArgs)
 
