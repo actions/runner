@@ -110,9 +110,9 @@ async function run(): Promise<void> {
   } else if (command === 'Remove') {
     const removeInput = inputJson.removeInput
     core.debug(JSON.stringify(removeInput))
-    const jobContainerId = removeInput.jobContainerId
+    // const jobContainerId = removeInput.jobContainerId
 
-    await exec.exec('kubectl', ['delete', 'pod', jobContainerId, '--force'])
+    // await exec.exec('kubectl', ['delete', 'pod', jobContainerId, '--force'])
     // await exec.exec('podman', ['network', 'rm', '-f', network])
   } else if (command === 'Exec') {
     const execInput = inputJson.execInput
