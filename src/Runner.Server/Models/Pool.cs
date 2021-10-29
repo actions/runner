@@ -19,12 +19,10 @@ namespace Runner.Server.Models
                 TaskAgentPool.Id = value;
             }
         } }
-        public static readonly String CachePools = "AgentPools";
-        public static readonly String CachePrefix = "AgentPool_";
         public TaskAgentPool TaskAgentPool {get;set;}
         public List<Agent> Agents {get;set;}
         public static Pool GetPoolById(IMemoryCache cache, SqLiteDb db, int id) {
-            return db.Pools.Find(id) ?? cache.Get<Pool>(CachePrefix + id);
+            return db.Pools.Find(id);
         }
         public List<Owner> Owners {get;set;}
     }
