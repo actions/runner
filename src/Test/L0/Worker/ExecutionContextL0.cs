@@ -193,9 +193,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act.
                 jobContext.InitializeJob(jobRequest, CancellationToken.None);
 
-                var action1 = jobContext.CreateChild(Guid.NewGuid(), "action_1", "action_1", null, null);
+                var action1 = jobContext.CreateChild(Guid.NewGuid(), "action_1", "action_1", null, null, 0);
                 action1.IntraActionState["state"] = "1";
-                var action2 = jobContext.CreateChild(Guid.NewGuid(), "action_2", "action_2", null, null);
+                var action2 = jobContext.CreateChild(Guid.NewGuid(), "action_2", "action_2", null, null, 0);
                 action2.IntraActionState["state"] = "2";
 
 
@@ -291,8 +291,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Act.
                 jobContext.InitializeJob(jobRequest, CancellationToken.None);
 
-                var action1 = jobContext.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null);
-                var action2 = jobContext.CreateChild(Guid.NewGuid(), "action_1_main", "action_1_main", null, null);
+                var action1 = jobContext.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, 0);
+                var action2 = jobContext.CreateChild(Guid.NewGuid(), "action_1_main", "action_1_main", null, null, 0);
 
                 var actionId = Guid.NewGuid();
                 var postRunner1 = hc.CreateService<IActionRunner>();

@@ -24,8 +24,19 @@ namespace GitHub.Runner.Worker.Expressions
             ArgUtil.NotNull(templateContext, nameof(templateContext));
             var executionContext = templateContext.State[nameof(IExecutionContext)] as IExecutionContext;
             ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
-            return jobStatus == ActionResult.Failure;
+
+            // Decide based on 'action_status' for composite MAIN steps and 'job.status' for pre, post and job-level steps
+            var isCompositeMainStep = executionContext.IsEmbedded && executionContext.Stage == ActionRunStage.Main;
+            if (isCompositeMainStep)
+            {
+                ActionResult actionStatus = EnumUtil.TryParse<ActionResult>(executionContext.GetGitHubContext("action_status")) ?? ActionResult.Success;
+                return actionStatus == ActionResult.Failure;
+            }
+            else
+            {
+                ActionResult jobStatus = executionContext.JobContext.Status ?? ActionResult.Success;
+                return jobStatus == ActionResult.Failure;
+            }
         }
     }
 }
