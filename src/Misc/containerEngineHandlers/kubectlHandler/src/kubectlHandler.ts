@@ -92,6 +92,10 @@ async function run(): Promise<void> {
     ]
     await exec.exec('kubectl', cpKubeInnerArgs)
 
+    // copy over _work
+    const cpWorkArgs = ['cp', '/actions-runner/_work', 'job-container:/__w/']
+    await exec.exec('kubectl', cpWorkArgs)
+
     const creationOutput = {
       JobContainerId: 'job-container',
       Network: 'job-container'

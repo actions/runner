@@ -3059,6 +3059,13 @@ function run() {
                 'job-container:/__runner_util/kubeInnerHandler'
             ];
             yield exec.exec('kubectl', cpKubeInnerArgs);
+            // copy over _work
+            const cpWorkArgs = [
+                'cp',
+                '/actions-runner/_work',
+                'job-container:/__w/'
+            ];
+            yield exec.exec('kubectl', cpWorkArgs);
             const creationOutput = {
                 JobContainerId: 'job-container',
                 Network: 'job-container'
