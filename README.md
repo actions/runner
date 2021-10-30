@@ -113,7 +113,7 @@ Windows:
 ```
 
 ### Schedule one or more job's
-You have to remove any leading `/` or you will see an error.
+You will have to remove any leading `/` from your server url.
 
 Linux or macOS:
 ```
@@ -171,7 +171,7 @@ For Gitea this should work, if you add `youNeedToEnterThisTokenToAuthorizeWebhoo
 ```
 
 ### Change the public url of the Server
-If this doesn't match with the you configuration url, you cannot configure any runner.
+If this doesn't match with the your configuration url, you cannot configure any runner.
 ```json
 {
   "Runner.Server": {
