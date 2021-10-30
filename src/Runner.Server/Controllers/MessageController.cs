@@ -2304,7 +2304,7 @@ namespace Runner.Server.Controllers
         }
         [HttpPost]
         [AllowAnonymous]
-        public async Task<ActionResult> OnWebhook([FromQuery] string[] workflownames, [FromQuery] string[] workflow, [FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix)
+        public async Task<ActionResult> OnWebhook()
         {
             KeyValuePair<GiteaHook, JObject> obj;
             if(WebhookHMACAlgorithmName.Length > 0 && WebhookSecret.Length > 0 && WebhookSignatureHeader.Length > 0) {
@@ -2332,103 +2332,94 @@ namespace Runner.Server.Controllers
                 e = ev.First();
             }
             var hook = obj.Key;
-            if(workflow?.Length > 0) {
-                List<HookResponse> responses = new List<HookResponse>();
-                for (int i = 0; i < workflow.Length; i++) {
-                    responses.Add(ConvertYaml(workflownames?.Length > i ? workflownames[i] : "workflow_{i}.yml", workflow[i], hook?.repository?.full_name ?? "Unknown/Unknown", GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix));
-                }
-                
-                return await Ok(responses, true);
-            } else {
-                try {
-                    Dictionary<string, string> evs = new Dictionary<string, string>();
-                    if(hook?.After != null) {
-                        evs.Add(e, hook?.After);
-                    } else if(e == "pull_request") {
-                        evs.Add("pull_request_target", hook?.pull_request?.Base?.Sha);
-                        evs.Add("pull_request", hook?.pull_request?.head?.Sha);
-                    } else if(e.StartsWith("pull_request_")) {
-                        evs.Add(e, hook?.pull_request?.head?.Sha);
-                    } else if(e == "create" && hook?.ref_type != null) {
-                        evs.Add(e, hook?.Sha);
-                    } else if(e == "release" && hook?.ref_type != null) {
-                        evs.Add(e, hook?.tag_name);
-                    } else {
-                        var client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("accept", "application/json");
-                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                        }
-                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/commits"));
-                        urlBuilder.Query = $"?page=1&limit=1";
-                        var res = await client.GetAsync(urlBuilder.ToString());
-                        if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                            var content = await res.Content.ReadAsStringAsync();
-                            var o = JsonConvert.DeserializeObject<GitCommit[]>(content)[0];
-                            hook.After = o.Sha;
-                        }
-                        evs.Add(e, "");
+            try {
+                Dictionary<string, string> evs = new Dictionary<string, string>();
+                if(hook?.After != null) {
+                    evs.Add(e, hook?.After);
+                } else if(e == "pull_request") {
+                    evs.Add("pull_request_target", hook?.pull_request?.Base?.Sha);
+                    evs.Add("pull_request", hook?.pull_request?.head?.Sha);
+                } else if(e.StartsWith("pull_request_")) {
+                    evs.Add(e, hook?.pull_request?.head?.Sha);
+                } else if(e == "create" && hook?.ref_type != null) {
+                    evs.Add(e, hook?.Sha);
+                } else if(e == "release" && hook?.ref_type != null) {
+                    evs.Add(e, hook?.tag_name);
+                } else {
+                    var client = new HttpClient();
+                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                     }
-                    foreach(var em in evs) {
-                        var client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("accept", "application/json");
-                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                        }
-                        var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
-                        urlBuilder.Query = $"?ref={Uri.EscapeDataString(em.Value)}";
-                        var res = await client.GetAsync(urlBuilder.ToString());
-                        // {
-                        //     "type": "gitea",
-                        //     "config": {
-                        //     "content_type": "json",
-                        //     "url": "http://ubuntu.fritz.box/runner/host/_apis/v1/Message"
-                        //     },
-                        //     "events": [
-                        //     "create",
-                        //     "delete",
-                        //     "fork",
-                        //     "push",
-                        //     "issues",
-                        //     "issue_assign",
-                        //     "issue_label",
-                        //     "issue_milestone",
-                        //     "issue_comment",
-                        //     "pull_request",
-                        //     "pull_request_assign",
-                        //     "pull_request_label",
-                        //     "pull_request_milestone",
-                        //     "pull_request_comment",
-                        //     "pull_request_review_approved",
-                        //     "pull_request_review_rejected",
-                        //     "pull_request_review_comment",
-                        //     "pull_request_sync",
-                        //     "repository",
-                        //     "release"
-                        //     ],
-                        //     "active": true
-                        // }
-                        if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                            var content = await res.Content.ReadAsStringAsync();
-                            foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
-                            {
-                                try {
-                                    var fileRes = await client.GetAsync(item.download_url);
-                                    var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                    ConvertYaml(item.path, filecontent, hook.repository.full_name, GitServerUrl, hook, obj.Value, em.Key);
-                                } catch (Exception ex) {
-                                    await Console.Error.WriteLineAsync(ex.Message);
-                                    await Console.Error.WriteLineAsync(ex.StackTrace);
-                                }
+                    var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/commits"));
+                    urlBuilder.Query = $"?page=1&limit=1";
+                    var res = await client.GetAsync(urlBuilder.ToString());
+                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                        var content = await res.Content.ReadAsStringAsync();
+                        var o = JsonConvert.DeserializeObject<GitCommit[]>(content)[0];
+                        hook.After = o.Sha;
+                    }
+                    evs.Add(e, "");
+                }
+                foreach(var em in evs) {
+                    var client = new HttpClient();
+                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                    }
+                    var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
+                    urlBuilder.Query = $"?ref={Uri.EscapeDataString(em.Value)}";
+                    var res = await client.GetAsync(urlBuilder.ToString());
+                    // {
+                    //     "type": "gitea",
+                    //     "config": {
+                    //     "content_type": "json",
+                    //     "url": "http://ubuntu.fritz.box/runner/host/_apis/v1/Message"
+                    //     },
+                    //     "events": [
+                    //     "create",
+                    //     "delete",
+                    //     "fork",
+                    //     "push",
+                    //     "issues",
+                    //     "issue_assign",
+                    //     "issue_label",
+                    //     "issue_milestone",
+                    //     "issue_comment",
+                    //     "pull_request",
+                    //     "pull_request_assign",
+                    //     "pull_request_label",
+                    //     "pull_request_milestone",
+                    //     "pull_request_comment",
+                    //     "pull_request_review_approved",
+                    //     "pull_request_review_rejected",
+                    //     "pull_request_review_comment",
+                    //     "pull_request_sync",
+                    //     "repository",
+                    //     "release"
+                    //     ],
+                    //     "active": true
+                    // }
+                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                        var content = await res.Content.ReadAsStringAsync();
+                        foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
+                        {
+                            try {
+                                var fileRes = await client.GetAsync(item.download_url);
+                                var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                ConvertYaml(item.path, filecontent, hook.repository.full_name, GitServerUrl, hook, obj.Value, em.Key);
+                            } catch (Exception ex) {
+                                await Console.Error.WriteLineAsync(ex.Message);
+                                await Console.Error.WriteLineAsync(ex.StackTrace);
                             }
                         }
                     }
-                } catch (Exception ex) {
-                    await Console.Error.WriteLineAsync(ex.Message);
-                    await Console.Error.WriteLineAsync(ex.StackTrace);
                 }
+            } catch (Exception ex) {
+                await Console.Error.WriteLineAsync(ex.Message);
+                await Console.Error.WriteLineAsync(ex.StackTrace);
             }
             return Ok();
         }

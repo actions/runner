@@ -42,44 +42,62 @@ This Software reads [act configuration files](https://github.com/nektos/act#conf
 ## Building
 
 ```
-cd src/
-dotnet msbuild ./dir.proj -t:GenerateConstant
-cd Runner.Client
-dotnet build
+dotnet msbuild src/dir.proj -t:GenerateConstant
+dotnet build src/Runner.Client
 ```
 
-This builds both `Runner.Client` and `Runner.Server`.
+This builds `Runner.Client`, `Runner.Server` and a modifed github actions runner `Runner.Listener`.
 
+### Building a framework dependent and os independent executable
+```
+dotnet msbuild src/dir.proj -t:GenerateConstant
+dotnet publish -c Release --no-self-contained -p:BUILD_OS=Any src/Runner.Client
+```
+
+#### To run the package on a different Operating System
+```
+dotnet Runner.Client.dll
+```
+```
+dotnet Runner.Server.dll
+```
+```
+dotnet Runner.Listener.dll
+```
+### Building a self-contained executable
+Replace `win-x64` with any supported platform of .net5: https://docs.microsoft.com/en-us/dotnet/core/rid-catalog.
+```
+dotnet msbuild src/dir.proj -t:GenerateConstant
+dotnet publish -c Release src/Runner.Client -r win-x64
+```
+#### To run the package
+```
+./Runner.Client
+```
+```
+./Runner.Server
+```
+```
+./Runner.Listener
+```
 ## Advanced Usage
 
-Create a Github Personal Access token (PAT) and replace the GITHUB_TOKEN property in `src\Runner.Server\appsettings.json` and `src\Runner.Server\appsettings.Development.json`.
+You may need to allow non root processes to bind port 80 on Linux https://superuser.com/questions/710253/allow-non-root-process-to-bind-to-port-80-and-443 otherwise you cannot register official runners. If you configure the runner of this project any port is fine, e.g. port 5000 will work too.
+```
+./bin/Runner.Server --urls http://localhost
+```
 
-[Download an unofficial Runner](https://github.com/ChristopherHX/runner/releases/latest).
-
-Using port 5000 prevents offical unmodified runners to connect to the server, because the runner drops the port of the repository during configure. This fork has a patch applied to allow a random port.
+### Setup a runner
+You can type anything you want for registration and removal token authentication isn't implemented yet.
 
 Linux or macOS:
 ```
-./bin/Runner.Server
-```
-
-Windows
-```
-.\bin\Runner.Server.exe
-```
-
-Open a 2nd Terminal
-
-Setup the unofficial runner, you can type anything for registration and removal token authentication isn't implemented yet.
-
-Linux or macOS:
-```
-./config.sh --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
+./config.sh --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
 ```
 
 Windows:
 ```
-.\config.cmd --unattended --url http://localhost:5000/runner/server --token "ThisIsIgnored"
+.\config.cmd --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
 ```
 
 Run the unofficial runner
@@ -94,9 +112,7 @@ Windows:
 .\run.cmd
 ```
 
-Open a 3rd Terminal
-
-Schedule one or more job's
+### Schedule one or more job's
 
 Linux or macOS:
 ```
@@ -109,6 +125,105 @@ Windows
 ```
 
 Open http://localhost:5000 to see the progress.
+
+### Sample appsetting.json for [try.gitea.io](http://try.gitea.io/)
+With this config you are no longer allowed
+- to register a runner with any token, you need to specify `--token youNeedToEnterThisTokenToRegisterAnRunner` during configure
+- to send anyonymous webhook events and to use `Runner.Client` 
+
+```json
+{
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "sqlite": "Data Source=Agents.db;"
+  },
+  "Runner.Server": {
+    "ServerUrl": "https://actions-service.azurewebsites.net",
+    "GitServerUrl": "https://try.gitea.io",
+    "GitApiServerUrl": "https://try.gitea.io/api/v1",
+    "GitGraphQlServerUrl": null,
+    "GITHUB_TOKEN": "",
+    "WebhookHMACAlgorithmName": "HMACSHA256",
+    "WebhookSignatureHeader": "X-Gitea-Signature",
+    "WebhookSecret": "youNeedToEnterThisTokenToAuthorizeWebhooks",
+    "ActionDownloadUrls": [
+      {
+        "TarballUrl": "https://try.gitea.io/{0}/archive/{1}.tar.gz",
+        "ZipballUrl": "https://try.gitea.io/{0}/archive/{1}.zip"
+      }
+    ]
+  }
+}
+```
+
+### Secure the runner registration endpoint
+With this config you are no longer allowed to register a runner with any token, you need to specify `--token youNeedToEnterThisTokenToRegisterAnRunner` during configure
+```json
+{
+  "Runner.Server": {
+    "RUNNER_TOKEN": "youNeedToEnterThisTokenToRegisterAnRunner"
+  }
+}
+```
+
+### Secure Webhook endpoint with a shared secret
+For Gitea this should work, if you add `youNeedToEnterThisTokenToAuthorizeWebhooks` as a secret in the configuration page.
+```json
+{
+  "Runner.Server": {
+    "WebhookHMACAlgorithmName": "HMACSHA256",
+    "WebhookSignatureHeader": "X-Gitea-Signature",
+    "WebhookSecret": "youNeedToEnterThisTokenToAuthorizeWebhooks"
+  }
+}
+```
+
+### Change the public url of the Server
+If this doesn't match with the you configuration url, you cannot configure any runner.
+```json
+{
+  "Runner.Server": {
+    "ServerUrl": "https://actions-service.azurewebsites.net",
+  }
+}
+```
+
+### Configure insecure Secrets or feature toggles on the Server
+```json
+{
+  "Runner.Server": {
+    "Secrets": [
+      {"Name": "mysecret1", "Value": "test"},
+      {"Name": "myothersecret", "Value": "other"}
+    ]
+  }
+}
+```
+
+### The `.actrc` File
+Put every parameter pair into a single line, here just a sample
+```
+-e event.json
+--env-file myenvs
+--secret-file mysecrets
+-P self-hosted,linux=-self-hosted
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+-P ubuntu-20.04=node:12.20.1-buster-slim
+-P ubuntu-18.04=node:12.20.1-buster-slim
+-P ubuntu-16.04=node:12.20.1-stretch-slim
+```
+
+### The env-file and secret-file
+The multiline syntax doesn't work with nektos/act
+```
+name=value
+multilinename<<EOF
+First line
+Second line
+EOF
+othername=value2
+othername2=value3
+```
 
 ## Notes
 This Software contains reimplementations of some parts of the github server which aren't open source (yet?). 

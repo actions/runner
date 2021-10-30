@@ -232,7 +232,7 @@ jobs:
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Build
-      run: dotnet build --no-restore /p:BUILD_OS=Any /p:Version=$(Get-Content ../runnerversion) /p:RuntimeFrameworkVersion=5.0.0
+      run: dotnet build --no-restore -c Release /p:BUILD_OS=Any /p:Version=$(Get-Content ../runnerversion) /p:RuntimeFrameworkVersion=5.0.0
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Pack
