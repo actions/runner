@@ -96,7 +96,7 @@ jobs:
       if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
       run: |
         pushd _layout/bin
-        ./Runner.Server${{ matrix.exeSuffix }} &
+        ./Runner.Server${{ matrix.exeSuffix }} --urls http://localhost:5000 &
         serverpid=$!
         sleep 20
         # Test run job without a runner
