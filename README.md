@@ -33,8 +33,8 @@ Error: No runner is registered for the requested runs-on labels: [ubuntu-latest]
 ```
 
 Then you will need to add one of the following cli options, replace `ubuntu-latest` with the content between `runs-on labels: [` The labels here without spaces `]`
-- to run it on your local machine `-P ubuntu-latest=-self-hosted`
-- to run it in a docker container `-P ubuntu-latest=catthehacker/ubuntu:act-latest`
+- to run it on your local machine e.g. `-P ubuntu-latest=-self-hosted`, `-P self-hosted,linux,mylabel=-self-hosted`
+- to run it in a docker container e.g. `-P ubuntu-latest=catthehacker/ubuntu:act-latest`, `-P self-hosted,linux,mylabel=catthehacker/ubuntu:act-latest`
   For more docker images refer to https://github.com/nektos/act#runners
 
 This Software reads [act configuration files](https://github.com/nektos/act#configuration), you can save this inside a `.actrc` in your current or home folder to avoid typing it in your commandline.
@@ -113,20 +113,21 @@ Windows:
 ```
 
 ### Schedule one or more job's
+You have to remove any leading `/` or you will see an error.
 
 Linux or macOS:
 ```
-./bin/Runner.Client --workflow workflow.yml --event push --payload payload.json --server http://localhost:5000
+./bin/Runner.Client --workflow workflow.yml --event push --payload payload.json --server http://localhost
 ```
 
 Windows
 ```
-.\bin\Runner.Client.exe --workflow workflow.yml --event push --payload payload.json --server http://localhost:5000
+.\bin\Runner.Client.exe --workflow workflow.yml --event push --payload payload.json --server http://localhost
 ```
 
-Open http://localhost:5000 to see the progress.
+Open http://localhost to see the progress.
 
-### Sample appsetting.json for [try.gitea.io](http://try.gitea.io/)
+### Sample appsettings.json for [try.gitea.io](http://try.gitea.io/)
 With this config you are no longer allowed
 - to register a runner with any token, you need to specify `--token youNeedToEnterThisTokenToRegisterAnRunner` during configure
 - to send anyonymous webhook events and to use `Runner.Client` 
@@ -200,6 +201,30 @@ If this doesn't match with the you configuration url, you cannot configure any r
 }
 ```
 
+### OpenId Connect for gitea
+Currently only requires login if configured.
+You will need a pem certificate pair or choose another aspnetcore https configuration
+- cert.pem: only a single certificate will work, no cert chain
+- key.pem
+
+Add `<url of Runner.Server>/signin-oidc` (https://localhost:5001/signin-oidc) as redirect url for the OAuth app in gitea.
+```json
+{
+  "Kestrel": {
+    "HttpsFromPem": {
+      "Url": "https://*:5001",
+      "Certificate": {
+        "Path": "./cert.pem",
+        "KeyPath": "./key.pem"
+      }
+    }
+  },
+  "ClientId": "ClientId of your Oauth app",
+  "ClientSecret": "Client secret of your Oauth app",
+  "Authority": "https://try.gitea.io",
+}
+```
+
 ### The `.actrc` File
 Put every parameter pair into a single line, here just a sample
 ```
@@ -214,7 +239,7 @@ Put every parameter pair into a single line, here just a sample
 ```
 
 ### The env-file and secret-file
-The multiline syntax doesn't work with nektos/act
+This multiline syntax doesn't work with nektos/act and vice versa.
 ```
 name=value
 multilinename<<EOF
@@ -226,21 +251,23 @@ othername2=value3
 ```
 
 ## Notes
-This Software contains reimplementations of some parts of the github server which aren't open source (yet?). 
+This Software contains Open Source reimplementations of some parts of the proprietary github action service.
 
-- matrix parsing
-- job parsing
+- manage runners
+- job parsing and scheduling to runners
+- matrix parsing and evaluation
+- callable workflows
 - `on` parsing incl. filter
-- api server of the open source client
-- context creation
-- scheduling
+- context creation of `github`, `needs`, `matrix` and `strategy`
 - job inputs / outputs, based on documentation
+- secret management
+- cache service
+- artifact service
 
-The following things will behave as expected
+The following things will behave exactly like the original
 
 - expression evaluation
-- step evaluation on the runner
-- container actions
+- step evaluation on the runner incl. container actions
 
 ## Something not working?
 Please open an issue at this fork, to get it fixed.
