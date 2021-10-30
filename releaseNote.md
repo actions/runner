@@ -1,11 +1,10 @@
 ## Features
 
-
 ## Bugs
-  - Fixed an issue where docker containers failed to initialize (#977)
+
+- Fixed an issue where ephemeral runners did not restart after upgrading (#1396)
 
 ## Misc
-
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
@@ -17,7 +16,7 @@ mkdir \actions-runner ; cd \actions-runner
 # Download the latest runner package
 Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>/actions-runner-win-x64-<RUNNER_VERSION>.zip -OutFile actions-runner-win-x64-<RUNNER_VERSION>.zip
 # Extract the installer
-Add-Type -AssemblyName System.IO.Compression.FileSystem ; 
+Add-Type -AssemblyName System.IO.Compression.FileSystem ;
 [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD\actions-runner-win-x64-<RUNNER_VERSION>.zip", "$PWD")
 ```
 
@@ -43,7 +42,7 @@ curl -O -L https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>
 tar xzf ./actions-runner-linux-x64-<RUNNER_VERSION>.tar.gz
 ```
 
-## Linux arm64 (Pre-release)
+## Linux arm64
 
 ``` bash
 # Create a folder
@@ -54,7 +53,7 @@ curl -O -L https://github.com/actions/runner/releases/download/v<RUNNER_VERSION>
 tar xzf ./actions-runner-linux-arm64-<RUNNER_VERSION>.tar.gz
 ```
 
-## Linux arm (Pre-release)
+## Linux arm
 
 ``` bash
 # Create a folder

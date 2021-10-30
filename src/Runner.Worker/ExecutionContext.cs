@@ -36,8 +36,11 @@ namespace GitHub.Runner.Worker
     public interface IExecutionContext : IRunnerService
     {
         Guid Id { get; }
+        Guid EmbeddedId { get; }
         string ScopeName { get; }
+        string SiblingScopeName { get; }
         string ContextName { get; }
+        ActionRunStage Stage { get; }
         Task ForceCompleted { get; }
         TaskResult? Result { get; set; }
         TaskResult? Outcome { get; set; }
@@ -49,6 +52,8 @@ namespace GitHub.Runner.Worker
         Dictionary<string, string> IntraActionState { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
         ActionsEnvironmentReference ActionsEnvironment { get; }
+        List<ActionsStepTelemetry> ActionsStepsTelemetry { get; }
+        List<JobTelemetry> JobTelemetry { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -58,17 +63,22 @@ namespace GitHub.Runner.Worker
 
         // Only job level ExecutionContext has PostJobSteps
         Stack<IStep> PostJobSteps { get; }
+        Dictionary<Guid, string> EmbeddedStepsWithPostRegistered { get; }
+
+        // Keep track of embedded steps states
+        Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; }
 
         bool EchoOnActionCommand { get; set; }
 
-        bool InsideComposite { get; }
+        bool IsEmbedded { get; }
 
         ExecutionContext Root { get; }
 
         // Initialize
         void InitializeJob(Pipelines.AgentJobRequestMessage message, CancellationToken token);
         void CancelToken();
-        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null);
+        IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null);
+        IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null);
 
         // logging
         long Write(string tag, string message);
@@ -99,7 +109,6 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
-        IStep CreateCompositeStep(string scopeName, IActionRunner step, DictionaryContextData inputsData, Dictionary<string, string> envData);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -132,14 +141,19 @@ namespace GitHub.Runner.Worker
         private long _totalThrottlingDelayInMilliseconds = 0;
 
         public Guid Id => _record.Id;
+        public Guid EmbeddedId { get; private set; }
         public string ScopeName { get; private set; }
+        public string SiblingScopeName { get; private set; }
         public string ContextName { get; private set; }
+        public ActionRunStage Stage { get; private set; }
         public Task ForceCompleted => _forceCompleted.Task;
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public Dictionary<string, string> IntraActionState { get; private set; }
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
+        public List<ActionsStepTelemetry> ActionsStepsTelemetry { get; private set; }
+        public List<JobTelemetry> JobTelemetry { get; private set; }
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -155,9 +169,16 @@ namespace GitHub.Runner.Worker
         // Only job level ExecutionContext has StepsWithPostRegistered
         public HashSet<Guid> StepsWithPostRegistered { get; private set; }
 
+        // Only job level ExecutionContext has EmbeddedStepsWithPostRegistered
+        public Dictionary<Guid, string> EmbeddedStepsWithPostRegistered { get; private set; }
+
+        public Dictionary<Guid, Dictionary<string, string>> EmbeddedIntraActionState { get; private set; }
+
         public bool EchoOnActionCommand { get; set; }
 
-        public bool InsideComposite { get; private set; }
+        // An embedded execution context shares the same record ID, record name, and logger
+        // as its enclosing execution context.
+        public bool IsEmbedded { get; private set; }
 
         public TaskResult? Result
         {
@@ -243,46 +264,37 @@ namespace GitHub.Runner.Worker
 
         public void RegisterPostJobStep(IStep step)
         {
-            if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
+            string siblingScopeName = null;
+            if (this.IsEmbedded)
+            {
+                if (step is IActionRunner actionRunner)
+                {
+                    if (Root.EmbeddedStepsWithPostRegistered.ContainsKey(actionRunner.Action.Id))
+                    {
+                        Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
+                    }
+                    else 
+                    {
+                        Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;    
+                    }
+                    return;
+                }
+            }
+            else if (step is IActionRunner actionRunner && !Root.StepsWithPostRegistered.Add(actionRunner.Action.Id))
             {
                 Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to post step stack.");
                 return;
             }
+            if (step is IActionRunner runner)
+            {
+                siblingScopeName = runner.Action.ContextName;
+            }
 
-            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState);
+            step.ExecutionContext = Root.CreatePostChild(step.DisplayName, IntraActionState, siblingScopeName);
             Root.PostJobSteps.Push(step);
         }
 
-        /// <summary>
-        /// Helper function used in CompositeActionHandler::RunAsync to
-        /// add a child node, aka a step, to the current job to the Root.JobSteps based on the location.
-        /// </summary>
-        public IStep CreateCompositeStep(
-            string scopeName,
-            IActionRunner step,
-            DictionaryContextData inputsData,
-            Dictionary<string, string> envData)
-        {
-            step.ExecutionContext = Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, step.Action.ContextName, logger: _logger, insideComposite: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token));
-            step.ExecutionContext.ExpressionValues["inputs"] = inputsData;
-            step.ExecutionContext.ExpressionValues["steps"] = Global.StepsContext.GetScope(step.ExecutionContext.GetFullyQualifiedContextName());
-
-            // Add the composite action environment variables to each step.
-#if OS_WINDOWS
-            var envContext = new DictionaryContextData();
-#else
-            var envContext = new CaseSensitiveDictionaryContextData();
-#endif
-            foreach (var pair in envData)
-            {
-                envContext[pair.Key] = new StringContextData(pair.Value ?? string.Empty);
-            }
-            step.ExecutionContext.ExpressionValues["env"] = envContext;
-
-            return step;
-        }
-
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool insideComposite = false, CancellationTokenSource cancellationTokenSource = null)
+        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null)
         {
             Trace.Entering();
 
@@ -291,6 +303,10 @@ namespace GitHub.Runner.Worker
             child.Global = Global;
             child.ScopeName = scopeName;
             child.ContextName = contextName;
+            child.Stage = stage;
+            child.EmbeddedId = embeddedId;
+            child.SiblingScopeName = siblingScopeName;
+            child.JobTelemetry = JobTelemetry;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -329,9 +345,18 @@ namespace GitHub.Runner.Worker
                 child._logger.Setup(_mainTimelineId, recordId);
             }
 
-            child.InsideComposite = insideComposite;
+            child.IsEmbedded = isEmbedded;
 
             return child;
+        }
+
+        /// <summary>
+        /// An embedded execution context shares the same record ID, record name, logger,
+        /// and a linked cancellation token.
+        /// </summary>
+        public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null)
+        {
+            return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
         }
 
         public void Start(string currentOperation = null)
@@ -387,7 +412,7 @@ namespace GitHub.Runner.Worker
 
             _logger.End();
 
-            // Skip if generated context name. Generated context names start with "__". After M271-ish the server will never send an empty context name.
+            // Skip if generated context name. Generated context names start with "__". After 3.2 the server will never send an empty context name.
             if (!string.IsNullOrEmpty(ContextName) && !ContextName.StartsWith("__", StringComparison.Ordinal))
             {
                 Global.StepsContext.SetOutcome(ScopeName, ContextName, (Outcome ?? Result ?? TaskResult.Succeeded).ToActionResult());
@@ -450,7 +475,7 @@ namespace GitHub.Runner.Worker
         {
             ArgUtil.NotNullOrEmpty(name, nameof(name));
 
-            // Skip if generated context name. Generated context names start with "__". After M271-ish the server will never send an empty context name.
+            // Skip if generated context name. Generated context names start with "__". After 3.2 the server will never send an empty context name.
             if (string.IsNullOrEmpty(ContextName) || ContextName.StartsWith("__", StringComparison.Ordinal))
             {
                 reference = null;
@@ -528,6 +553,24 @@ namespace GitHub.Runner.Worker
                 }
 
                 _record.WarningCount++;
+            }
+            else if (issue.Type == IssueType.Notice)
+            {
+
+                // tracking line number for each issue in log file
+                // log UI use this to navigate from issue to log
+                if (!string.IsNullOrEmpty(logMessage))
+                {
+                    long logLineNumber = Write(WellKnownTags.Notice, logMessage);
+                    issue.Data["logFileLineNumber"] = logLineNumber.ToString();
+                }
+
+                if (_record.NoticeCount < _maxIssueCount)
+                {
+                    _record.Issues.Add(issue);
+                }
+
+                _record.NoticeCount++;
             }
 
             _jobServerQueue.QueueTimelineRecordUpdate(_mainTimelineId, _record);
@@ -617,6 +660,11 @@ namespace GitHub.Runner.Worker
             // Actions environment
             ActionsEnvironment = message.ActionsEnvironment;
 
+            // ActionsStepTelemetry
+            ActionsStepsTelemetry = new List<ActionsStepTelemetry>();
+
+            JobTelemetry = new List<JobTelemetry>();
+
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();
 
@@ -676,6 +724,12 @@ namespace GitHub.Runner.Worker
 
             // StepsWithPostRegistered for job ExecutionContext
             StepsWithPostRegistered = new HashSet<Guid>();
+
+            // EmbeddedStepsWithPostRegistered for job ExecutionContext
+            EmbeddedStepsWithPostRegistered = new Dictionary<Guid, string>();
+
+            // EmbeddedIntraActionState for job ExecutionContext
+            EmbeddedIntraActionState = new Dictionary<Guid, Dictionary<string, string>>();
 
             // Job timeline record.
             InitializeTimelineRecord(
@@ -853,6 +907,7 @@ namespace GitHub.Runner.Worker
             _record.State = TimelineRecordState.Pending;
             _record.ErrorCount = 0;
             _record.WarningCount = 0;
+            _record.NoticeCount = 0;
 
             if (parentTimelineRecordId != null && parentTimelineRecordId.Value != Guid.Empty)
             {
@@ -882,7 +937,7 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState)
+        private IExecutionContext CreatePostChild(string displayName, Dictionary<string, string> intraActionState, string siblingScopeName = null)
         {
             if (!_expandedForPostJob)
             {
@@ -892,7 +947,7 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count);
+            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
         }
     }
 
@@ -925,7 +980,7 @@ namespace GitHub.Runner.Worker
         // Do not add a format string overload. See comment on ExecutionContext.Write().
         public static void InfrastructureError(this IExecutionContext context, string message)
         {
-            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true});
+            context.AddIssue(new Issue() { Type = IssueType.Error, Message = message, IsInfrastructureIssue = true });
         }
 
         // Do not add a format string overload. See comment on ExecutionContext.Write().
@@ -979,7 +1034,10 @@ namespace GitHub.Runner.Worker
                 traceWriter = context.ToTemplateTraceWriter();
             }
             var schema = PipelineTemplateSchemaFactory.GetSchema();
-            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable);
+            return new PipelineTemplateEvaluator(traceWriter, schema, context.Global.FileTable)
+            {
+                MaxErrorMessageLength = int.MaxValue, // Don't truncate error messages otherwise we might not scrub secrets correctly
+            };
         }
 
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)
@@ -1021,6 +1079,7 @@ namespace GitHub.Runner.Worker
         public static readonly string Command = "##[command]";
         public static readonly string Error = "##[error]";
         public static readonly string Warning = "##[warning]";
+        public static readonly string Notice = "##[notice]";
         public static readonly string Debug = "##[debug]";
     }
 }

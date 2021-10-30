@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Common
 {
@@ -68,6 +69,7 @@ namespace GitHub.Runner.Common
 
         public async Task SendAsync(MessageType messageType, string body, CancellationToken cancellationToken)
         {
+            Trace.Info($"Sending message of length {body.Length}, with hash '{IOUtil.GetSha256Hash(body)}'");
             await _writeStream.WriteInt32Async((int)messageType, cancellationToken);
             await _writeStream.WriteStringAsync(body, cancellationToken);
         }
@@ -77,6 +79,7 @@ namespace GitHub.Runner.Common
             WorkerMessage result = new WorkerMessage(MessageType.NotInitialized, string.Empty);
             result.MessageType = (MessageType)await _readStream.ReadInt32Async(cancellationToken);
             result.Body = await _readStream.ReadStringAsync(cancellationToken);
+            Trace.Info($"Receiving message of length {result.Body.Length}, with hash '{IOUtil.GetSha256Hash(result.Body)}'");
             return result;
         }
 

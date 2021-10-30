@@ -164,9 +164,8 @@ namespace GitHub.Runner.Common
             if (!Silent)
             {
                 Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"# {message}");
                 Console.ResetColor();
+                Console.WriteLine($"# {message}");
                 Console.WriteLine();
             }
         }
@@ -177,9 +176,8 @@ namespace GitHub.Runner.Common
             {
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.Write("√ ");
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine(message);
                 Console.ResetColor();
+                Console.WriteLine(message);
             }
         }
 

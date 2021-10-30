@@ -74,10 +74,10 @@ namespace GitHub.Runner.Listener
                 await jobDispatcher.WaitAsync(token);
                 Trace.Info($"All running job has exited.");
 
+                // We need to keep runner backup around for macOS until we fixed https://github.com/actions/runner/issues/743
                 // delete runner backup
                 DeletePreviousVersionRunnerBackup(token);
                 Trace.Info($"Delete old version runner backup.");
-
                 // generate update script from template
                 await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
 
@@ -96,7 +96,7 @@ namespace GitHub.Runner.Listener
                 invokeScript.Start();
                 Trace.Info($"Update script start running");
 
-                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should back online within 10 seconds.");
+                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.");
 
                 return true;
             }

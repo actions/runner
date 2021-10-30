@@ -85,7 +85,7 @@ namespace GitHub.Runner.Listener.Configuration
             while (true)
             {
                 // Write the message prompt.
-                _terminal.Write($"{description} ", ConsoleColor.White);
+                _terminal.Write($"{description} ");
 
                 if(!string.IsNullOrEmpty(defaultValue))
                 {

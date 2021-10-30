@@ -27,7 +27,7 @@ Dependencies is missing for Dotnet Core 3.0
 Execute ./bin/installdependencies.sh to install any missing Dotnet Core 3.0 dependencies.
 ```
 You can easily correct the problem by executing `./bin/installdependencies.sh`.  
-The `installdependencies.sh` script should install all required dependencies on all supported Linux versions   
+The `installdependencies.sh` script should install all required dependencies on all supported Linux versions  
 > Note: The `installdependencies.sh` script will try to use the default package management mechanism on your Linux flavor (ex. `yum`/`apt-get`/`apt`).
 
 ### Full dependencies list
@@ -35,15 +35,15 @@ The `installdependencies.sh` script should install all required dependencies on 
 Debian based OS (Debian, Ubuntu, Linux Mint)
 
 - liblttng-ust0
-- libkrb5-3 
+- libkrb5-3
 - zlib1g
 - libssl1.1, libssl1.0.2 or libssl1.0.0
 - libicu63, libicu60, libicu57 or libicu55
 
 Fedora based OS (Fedora, Red Hat Enterprise Linux, CentOS, Oracle Linux 7)
 
-- lttng-ust 
-- openssl-libs 
+- lttng-ust
+- openssl-libs
 - krb5-libs
 - zlib
 - libicu

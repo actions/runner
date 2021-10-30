@@ -53,6 +53,11 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Environment["ACTIONS_CACHE_URL"] = cacheUrl;
             }
+            if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
+            {
+                Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
+                Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            }
 
             // Resolve the target script.
             string target = null;
@@ -67,6 +72,20 @@ namespace GitHub.Runner.Worker.Handlers
             else if (stage == ActionRunStage.Post)
             {
                 target = Data.Post;
+            }
+
+            // Add Telemetry to JobContext to send with JobCompleteMessage
+            if (stage == ActionRunStage.Main)
+            {
+                var telemetry = new ActionsStepTelemetry
+                {
+                    Ref = GetActionRef(),
+                    HasPreStep = Data.HasPre,
+                    HasPostStep = Data.HasPost,
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = "node12"
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));
@@ -96,6 +115,9 @@ namespace GitHub.Runner.Worker.Handlers
             // Let .NET choose the default.
             Encoding outputEncoding = null;
 #endif
+
+            // Remove environment variable that may cause conflicts with the node within the runner.
+            Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))

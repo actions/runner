@@ -214,7 +214,7 @@ namespace GitHub.Runner.Listener
                     var startupTypeAsString = command.GetStartupType();
                     if (string.IsNullOrEmpty(startupTypeAsString) && configuredAsService)
                     {
-                        // We need try our best to make the startup type accurate 
+                        // We need try our best to make the startup type accurate
                         // The problem is coming from runner autoupgrade, which result an old version service host binary but a newer version runner binary
                         // At that time the servicehost won't pass --startuptype to Runner.Listener while the runner is actually running as service.
                         // We will guess the startup type only when the runner is configured as service and the guess will based on whether STDOUT/STDERR/STDIN been redirect or not
@@ -233,8 +233,14 @@ namespace GitHub.Runner.Listener
                     Trace.Info($"Set runner startup type - {startType}");
                     HostContext.StartupType = startType;
 
+                    if (command.RunOnce)
+                    {
+                        _term.WriteLine("Warning: '--once' is going to be deprecated in the future, please consider using '--ephemeral' during runner registration.", ConsoleColor.Yellow);
+                        _term.WriteLine("https://docs.github.com/en/actions/hosting-your-own-runners/autoscaling-with-self-hosted-runners#using-ephemeral-runners-for-autoscaling", ConsoleColor.Yellow);
+                    }
+
                     // Run the runner interactively or as service
-                    return await RunAsync(settings, command.RunOnce);
+                    return await RunAsync(settings, command.RunOnce || settings.Ephemeral);
                 }
                 else
                 {
@@ -306,10 +312,15 @@ namespace GitHub.Runner.Listener
                 }
 
                 HostContext.WritePerfCounter("SessionCreated");
+
+                _term.WriteLine($"Current runner version: '{BuildConstants.RunnerPackage.Version}'");
                 _term.WriteLine($"{DateTime.UtcNow:u}: Listening for Jobs");
 
                 IJobDispatcher jobDispatcher = null;
                 CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
+                
+                // Should we try to cleanup ephemeral runners
+                bool runOnceJobCompleted = false;
                 try
                 {
                     var notification = HostContext.GetService<IJobNotification>();
@@ -371,6 +382,7 @@ namespace GitHub.Runner.Listener
                                 Task completeTask = await Task.WhenAny(getNextMessage, jobDispatcher.RunOnceJobCompleted.Task);
                                 if (completeTask == jobDispatcher.RunOnceJobCompleted.Task)
                                 {
+                                    runOnceJobCompleted = true;
                                     Trace.Info("Job has finished at backend, the runner will exit since it is running under onetime use mode.");
                                     Trace.Info("Stop message queue looping.");
                                     messageQueueLoopTokenSource.Cancel();
@@ -466,10 +478,24 @@ namespace GitHub.Runner.Listener
                         await jobDispatcher.ShutdownAsync();
                     }
 
-                    //TODO: make sure we don't mask more important exception
-                    await _listener.DeleteSessionAsync();
+                    try
+                    {
+                        await _listener.DeleteSessionAsync();
+                    }
+                    catch (Exception ex) when (runOnce)
+                    {
+                        // ignore exception during delete session for ephemeral runner since the runner might already be deleted from the server side
+                        // and the delete session call will ends up with 401.
+                        Trace.Info($"Ignore any exception during DeleteSession for an ephemeral runner. {ex}");
+                    }
 
                     messageQueueLoopTokenSource.Dispose();
+
+                    if (settings.Ephemeral && runOnceJobCompleted)
+                    {
+                        var configManager = HostContext.GetService<IConfigurationManager>();
+                        configManager.DeleteLocalRunnerConfig();
+                    }
                 }
             }
             catch (TaskAgentAccessTokenExpiredException)
@@ -512,7 +538,9 @@ Config Options:
  --labels string        Extra labels in addition to the default: 'self-hosted,{Constants.Runner.Platform},{Constants.Runner.PlatformArchitecture}'
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
- --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`");
+ --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`
+ --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
+
 #if OS_WINDOWS
     _term.WriteLine($@" --runasservice   Run the runner as a service");
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");

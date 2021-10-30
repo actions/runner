@@ -29,10 +29,11 @@ namespace GitHub.Runner.Listener
         {
             Constants.Runner.CommandLine.Flags.Check,
             Constants.Runner.CommandLine.Flags.Commit,
+            Constants.Runner.CommandLine.Flags.Ephemeral,
             Constants.Runner.CommandLine.Flags.Help,
+            Constants.Runner.CommandLine.Flags.Once,
             Constants.Runner.CommandLine.Flags.Replace,
             Constants.Runner.CommandLine.Flags.RunAsService,
-            Constants.Runner.CommandLine.Flags.Once,
             Constants.Runner.CommandLine.Flags.Unattended,
             Constants.Runner.CommandLine.Flags.Version
         };
@@ -66,7 +67,9 @@ namespace GitHub.Runner.Listener
         public bool Help => TestFlag(Constants.Runner.CommandLine.Flags.Help);
         public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
+        public bool Ephemeral => TestFlag(Constants.Runner.CommandLine.Flags.Ephemeral);
 
+        // Keep this around since customers still relies on it
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
 
         // Constructor.

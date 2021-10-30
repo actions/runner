@@ -82,7 +82,8 @@ var gracefulShutdown = function (code) {
         console.log('Sending SIGINT to runner listener to stop');
         listener.kill('SIGINT');
 
-        // TODO wait for 30 seconds and send a SIGKILL
+        console.log('Sending SIGKILL to runner listener');
+        setTimeout(() => listener.kill('SIGKILL'), 30000);
     }
 }
 

@@ -19,7 +19,8 @@ namespace GitHub.Runner.Worker.Handlers
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
-            string actionDirectory);
+            string actionDirectory,
+            List<JobExtensionRunner> localActionContainerSetupSteps);
     }
 
     public sealed class HandlerFactory : RunnerService, IHandlerFactory
@@ -32,7 +33,8 @@ namespace GitHub.Runner.Worker.Handlers
             Dictionary<string, string> inputs,
             Dictionary<string, string> environment,
             Variables runtimeVariables,
-            string actionDirectory)
+            string actionDirectory,
+            List<JobExtensionRunner> localActionContainerSetupSteps)
         {
             // Validate args.
             Trace.Entering();
@@ -84,6 +86,7 @@ namespace GitHub.Runner.Worker.Handlers
             handler.StepHost = stepHost;
             handler.Inputs = inputs;
             handler.ActionDirectory = actionDirectory;
+            handler.LocalActionContainerSetupSteps = localActionContainerSetupSteps;
             return handler;
         }
     }

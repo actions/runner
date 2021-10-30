@@ -1,9 +1,9 @@
-﻿using GitHub.Runner.Common.Util;
-using System;
+﻿using System;
 using System.Globalization;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Diagnostics;
 
 namespace GitHub.Runner.Worker
 {
@@ -19,11 +19,16 @@ namespace GitHub.Runner.Worker
 
         public static async Task<int> MainAsync(IHostContext context, string[] args)
         {
+            Tracing trace = context.GetTrace(nameof(GitHub.Runner.Worker));
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER")))
+            {
+                await WaitForDebugger(trace);
+            }
+
             // We may want to consider registering this handler in Worker.cs, similiar to the unloading/SIGTERM handler
             //ITerminal registers a CTRL-C handler, which keeps the Runner.Worker process running
             //and lets the Runner.Listener handle gracefully the exit.
             var term = context.GetService<ITerminal>();
-            Tracing trace = context.GetTrace(nameof(GitHub.Runner.Worker));
             try
             {
                 trace.Info($"Version: {BuildConstants.RunnerPackage.Version}");
@@ -63,6 +68,26 @@ namespace GitHub.Runner.Worker
             }
 
             return 1;
+        }
+
+
+
+        /// <summary>
+        /// Runner.Worker is started by Runner.Listener in a separate process,
+        /// so the two can't be debugged in the same session.
+        /// This method halts the Runner.Worker process until a debugger is attached,
+        /// allowing a developer to debug Runner.Worker from start to finish.
+        /// </summary>
+        private static async Task WaitForDebugger(Tracing trace)
+        {
+            trace.Info($"Waiting for a debugger to be attached. Edit the 'GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER' environment variable to toggle this feature.");
+            int waitInSeconds = 20;
+            while (!Debugger.IsAttached && waitInSeconds-- > 0)
+            {
+                trace.Info($"Waiting for a debugger to be attached. {waitInSeconds} seconds left.");
+                await Task.Delay(1000);
+            }
+            Debugger.Break();
         }
     }
 }

@@ -5,7 +5,7 @@ on:
   push:
     paths:
     - releaseVersion
-  
+
 jobs:
   check:
     if: startsWith(github.ref, 'refs/heads/releases/') || github.ref == 'refs/heads/main'
@@ -13,8 +13,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    # Make sure ./releaseVersion match ./src/runnerversion 
-    # Query GitHub release ensure version is not used 
+    # Make sure ./releaseVersion match ./src/runnerversion
+    # Query GitHub release ensure version is not used
     - name: Check version
       uses: actions/github-script@0.3.0
       with:
@@ -42,7 +42,7 @@ jobs:
               throw e
             }
           }
-  
+
   build:
     needs: check
     outputs:
@@ -152,7 +152,7 @@ jobs:
           releaseNote = releaseNote.replace(/<LINUX_ARM64_SHA>/g, '${{needs.build.outputs.linux-arm64-sha}}')
           console.log(releaseNote)
           core.setOutput('version', runnerVersion);
-          core.setOutput('note', releaseNote);  
+          core.setOutput('note', releaseNote);
     # Create GitHub release
     - uses: actions/create-release@master
       id: createRelease
@@ -164,7 +164,6 @@ jobs:
         release_name: "v${{ steps.releaseNote.outputs.version }}"
         body: |
           ${{ steps.releaseNote.outputs.note }}
-        prerelease: true
 
     # Upload release assets
     - name: Upload Release Asset (win-x64)

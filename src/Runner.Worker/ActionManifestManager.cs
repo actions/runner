@@ -311,7 +311,7 @@ namespace GitHub.Runner.Worker
             var result = new TemplateContext
             {
                 CancellationToken = CancellationToken.None,
-                Errors = new TemplateValidationErrors(10, 500),
+                Errors = new TemplateValidationErrors(10, int.MaxValue), // Don't truncate error messages otherwise we might not scrub secrets correctly
                 Memory = new TemplateMemory(
                     maxDepth: 100,
                     maxEvents: 1000000,
@@ -480,6 +480,10 @@ namespace GitHub.Runner.Worker
                         return new CompositeActionExecutionData()
                         {
                             Steps = steps.Cast<Pipelines.ActionStep>().ToList(),
+                            PreSteps = new List<Pipelines.ActionStep>(),
+                            PostSteps = new Stack<Pipelines.ActionStep>(),
+                            InitCondition = "always()",
+                            CleanupCondition = "always()",
                             Outputs = outputs
                         };
                     }

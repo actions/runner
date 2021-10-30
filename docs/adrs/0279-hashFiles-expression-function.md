@@ -5,7 +5,7 @@
 **Status**: Accepted
 
 ## Context
-First party action `actions/cache` needs a input which is an explicit `key` used for restoring and saving the cache. For packages caching, the most comment `key` might be the hash result of contents from all `package-lock.json` under `node_modules` folder.
+First party action `actions/cache` needs a input which is an explicit `key` used for restoring and saving the cache. For packages caching, the most common `key` might be the hash result of contents from all `package-lock.json` under `node_modules` folder.
   
 There are serval different ways to get the hash `key` input for `actions/cache` action.
 
@@ -38,7 +38,7 @@ There are serval different ways to get the hash `key` input for `actions/cache` 
 `hashFiles()` will only support hashing files under the `$GITHUB_WORKSPACE` since the expression evaluated on the runner, if customer use job container or container action, the runner won't have access to file system inside the container.
 
 `hashFiles()` will only take 1 parameters:
- - `hashFiles('**/package-lock.json')`  // Search files under $GITHUB_WORKSPACE and calculate a hash for them
+ - `hashFiles('**/package-lock.json')`  // Search files under `$GITHUB_WORKSPACE` and calculate a hash for them
 
 **Question: Do we need to support more than one match patterns?**  
 Ex: `hashFiles('**/package-lock.json', '!toolkit/core/package-lock.json', '!toolkit/io/package-lock.json')`  
@@ -52,7 +52,7 @@ This will help customer has better experience with the `actions/cache` action's 
       key: ${{hashFiles('**/package-lock.json')}}-${{github.ref}}-${{runner.os}}
 ```
 
-For search pattern, we will use basic globbing (`*` `?` and `[]`) and globstar (`**`).
+For search pattern, we will use basic globbing (`*`, `?`, and `[]`) and globstar (`**`).
 
 Additional pattern details:
 - Root relative paths with `github.workspace` (the main repo)

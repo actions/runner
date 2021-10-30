@@ -161,7 +161,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "--work", _expectedWorkFolder,
                        "--auth", _expectedAuthType,
                        "--token", _expectedToken,
-                       "--labels", userLabels
+                       "--labels", userLabels,
+                       "--ephemeral",
                     });
                 trace.Info("Constructed.");
                 _store.Setup(x => x.IsConfigured()).Returns(false);
@@ -179,6 +180,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 Assert.True(s.AgentName.Equals(_expectedAgentName));
                 Assert.True(s.PoolId.Equals(_secondRunnerGroupId));
                 Assert.True(s.WorkFolder.Equals(_expectedWorkFolder));
+                Assert.True(s.Ephemeral.Equals(true));
 
                 // validate GetAgentPoolsAsync gets called twice with automation pool type
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));
@@ -187,6 +189,49 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 expectedLabels.AddRange(userLabels.Split(",").ToList());
 
                 _runnerServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Select(x => x.Name).ToHashSet().SetEquals(expectedLabels))), Times.Once);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "ConfigurationManagement")]
+        public async Task ConfigureErrorOnMissingRunnerGroup()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            {
+                var expectedPools = new List<TaskAgentPool>() { new TaskAgentPool(_defaultRunnerGroupName) { Id = _defaultRunnerGroupId, IsInternal = true } };
+                _runnerServer.Setup(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.IsAny<TaskAgentPoolType>())).Returns(Task.FromResult(expectedPools));
+
+                Tracing trace = tc.GetTrace();
+
+                trace.Info("Creating config manager");
+                IConfigurationManager configManager = new ConfigurationManager();
+                configManager.Initialize(tc);
+
+
+                trace.Info("Preparing command line arguments");
+                var command = new CommandSettings(
+                    tc,
+                    new[]
+                    {
+                       "configure",
+                       "--url", _expectedServerUrl,
+                       "--name", _expectedAgentName,
+                       "--runnergroup", "notexists",
+                       "--work", _expectedWorkFolder,
+                       "--auth", _expectedAuthType,
+                       "--token", _expectedToken,
+                    });
+                trace.Info("Constructed.");
+                _store.Setup(x => x.IsConfigured()).Returns(false);
+                _configMgrAgentSettings = null;
+
+                trace.Info("Ensuring all the required parameters are available in the command line parameter");
+                var ex = await Assert.ThrowsAsync<TaskAgentPoolNotFoundException>(() => configManager.ConfigureAsync(command));
+
+                Assert.Contains("notexists", ex.Message);
+
+                _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(1));
             }
         }
     }

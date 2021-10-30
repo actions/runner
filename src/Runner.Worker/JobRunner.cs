@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -105,6 +106,10 @@ namespace GitHub.Runner.Worker
                 }
 
                 jobContext.SetRunnerContext("os", VarUtil.OS);
+                jobContext.SetRunnerContext("arch", VarUtil.OSArchitecture);
+
+                var runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
+                jobContext.SetRunnerContext("name", runnerSettings.AgentName);
 
                 string toolsDirectory = HostContext.GetDirectory(WellKnownDirectory.Tools);
                 Directory.CreateDirectory(toolsDirectory);
@@ -144,6 +149,16 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Total job steps: {jobSteps.Count}.");
                 Trace.Verbose($"Job steps: '{string.Join(", ", jobSteps.Select(x => x.DisplayName))}'");
                 HostContext.WritePerfCounter($"WorkerJobInitialized_{message.RequestId.ToString()}");
+
+                if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) &&
+                    !string.IsNullOrEmpty(generateIdTokenUrl))
+                {
+                    // Server won't issue ID_TOKEN for non-inprogress job.
+                    // If the job is trying to use OIDC feature, we want the job to be marked as in-progress before running any customer's steps as much as we can.
+                    // Timeline record update background process runs every 500ms, so delay 1000ms is enough for most of the cases
+                    Trace.Info($"Waiting for job to be marked as started.");
+                    await Task.WhenAny(_jobServerQueue.JobRecordUpdated.Task, Task.Delay(1000));
+                }
 
                 // Run all job steps
                 Trace.Info("Run all job steps.");
@@ -215,8 +230,15 @@ namespace GitHub.Runner.Worker
                 return result;
             }
 
+            // Load any upgrade telemetry
+            LoadFromTelemetryFile(jobContext.JobTelemetry);
+
+            // Make sure we don't submit secrets as telemetry
+            MaskTelemetrySecrets(jobContext.JobTelemetry);
+
             Trace.Info("Raising job completed event.");
-            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment);
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.ActionsStepsTelemetry, jobContext.JobTelemetry);
+
 
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();
@@ -258,6 +280,38 @@ namespace GitHub.Runner.Worker
 
             // rethrow exceptions from all attempts.
             throw new AggregateException(exceptions);
+        }
+
+        private void MaskTelemetrySecrets(List<JobTelemetry> jobTelemetry)
+        {
+            foreach (var telemetryItem in jobTelemetry)
+            {
+                telemetryItem.Message = HostContext.SecretMasker.MaskSecrets(telemetryItem.Message);
+            }
+        }
+
+        private void LoadFromTelemetryFile(List<JobTelemetry> jobTelemetry)
+        {
+            try
+            {
+                var telemetryFilePath = HostContext.GetConfigFile(WellKnownConfigFile.Telemetry);
+                if (File.Exists(telemetryFilePath))
+                {
+                    var telemetryData = File.ReadAllText(telemetryFilePath, Encoding.UTF8);
+                    var telemetry = new JobTelemetry
+                    {
+                        Message = $"Runner File Telemetry:\n{telemetryData}",
+                        Type = JobTelemetryType.General
+                    };
+                    jobTelemetry.Add(telemetry);
+                    IOUtil.DeleteFile(telemetryFilePath);
+                }
+            }
+            catch (Exception e)
+            {
+                Trace.Error("Error when trying to load telemetry from telemetry file");
+                Trace.Error(e);
+            }
         }
 
         private async Task ShutdownQueue(bool throwOnFailure)

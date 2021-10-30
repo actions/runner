@@ -22,6 +22,7 @@ namespace GitHub.Runner.Listener.Configuration
         bool IsConfigured();
         Task ConfigureAsync(CommandSettings command);
         Task UnconfigureAsync(CommandSettings command);
+        void DeleteLocalRunnerConfig();
         RunnerSettings LoadSettings();
     }
 
@@ -53,7 +54,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Info(nameof(LoadSettings));
             if (!IsConfigured())
             {
-                throw new InvalidOperationException("Not configured");
+                throw new InvalidOperationException("Not configured. Run config.(sh/cmd) to configure the runner.");
             }
 
             RunnerSettings settings = _store.GetSettings();
@@ -65,18 +66,18 @@ namespace GitHub.Runner.Listener.Configuration
         public async Task ConfigureAsync(CommandSettings command)
         {
             _term.WriteLine();
-            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
-            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |", ConsoleColor.White);
-            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |", ConsoleColor.White);
-            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |", ConsoleColor.White);
-            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |", ConsoleColor.White);
-            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |", ConsoleColor.White);
-            _term.WriteLine("|                                                                              |", ConsoleColor.White);
-            _term.Write("|                       ", ConsoleColor.White);
+            _term.WriteLine("--------------------------------------------------------------------------------");
+            _term.WriteLine("|        ____ _ _   _   _       _          _        _   _                      |");
+            _term.WriteLine("|       / ___(_) |_| | | |_   _| |__      / \\   ___| |_(_) ___  _ __  ___      |");
+            _term.WriteLine("|      | |  _| | __| |_| | | | | '_ \\    / _ \\ / __| __| |/ _ \\| '_ \\/ __|     |");
+            _term.WriteLine("|      | |_| | | |_|  _  | |_| | |_) |  / ___ \\ (__| |_| | (_) | | | \\__ \\     |");
+            _term.WriteLine("|       \\____|_|\\__|_| |_|\\__,_|_.__/  /_/   \\_\\___|\\__|_|\\___/|_| |_|___/     |");
+            _term.WriteLine("|                                                                              |");
+            _term.Write("|                       ");
             _term.Write("Self-hosted runner registration", ConsoleColor.Cyan);
-            _term.WriteLine("                        |", ConsoleColor.White);
-            _term.WriteLine("|                                                                              |", ConsoleColor.White);
-            _term.WriteLine("--------------------------------------------------------------------------------", ConsoleColor.White);
+            _term.WriteLine("                        |");
+            _term.WriteLine("|                                                                              |");
+            _term.WriteLine("--------------------------------------------------------------------------------");
 
             Trace.Info(nameof(ConfigureAsync));
             if (IsConfigured())
@@ -117,6 +118,7 @@ namespace GitHub.Runner.Listener.Configuration
                 try
                 {
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
+                    // Hosted usually means github.com or localhost, while OnPremises means GHES or GHAE
                     runnerSettings.IsHostedServer = runnerSettings.GitHubUrl == null || UrlUtil.IsHostedServer(new UriBuilder(runnerSettings.GitHubUrl));
 
                     // Warn if the Actions server url and GHES server url has different Host
@@ -165,7 +167,7 @@ namespace GitHub.Runner.Listener.Configuration
             List<TaskAgentPool> agentPools = await _runnerServer.GetAgentPoolsAsync();
             TaskAgentPool defaultPool = agentPools?.Where(x => x.IsInternal).FirstOrDefault();
 
-            if (agentPools?.Where(x => !x.IsHosted).Count() > 1)
+            if (agentPools?.Where(x => !x.IsHosted).Count() > 0)
             {
                 poolName = command.GetRunnerGroupName(defaultPool?.Name);
                 _term.WriteLine();
@@ -186,7 +188,7 @@ namespace GitHub.Runner.Listener.Configuration
             }
             else
             {
-                Trace.Info("Found a self-hosted runner group with id {1} and name {2}", agentPool.Id, agentPool.Name);
+                Trace.Info($"Found a self-hosted runner group with id {agentPool.Id} and name {agentPool.Name}");
                 runnerSettings.PoolId = agentPool.Id;
                 runnerSettings.PoolName = agentPool.Name;
             }
@@ -194,6 +196,7 @@ namespace GitHub.Runner.Listener.Configuration
             TaskAgent agent;
             while (true)
             {
+                runnerSettings.Ephemeral = command.Ephemeral;
                 runnerSettings.AgentName = command.GetRunnerName();
 
                 _term.WriteLine();
@@ -210,7 +213,7 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey, userLabels);
+                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral);
 
                         try
                         {
@@ -233,7 +236,7 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral);
 
                     try
                     {
@@ -327,6 +330,38 @@ namespace GitHub.Runner.Listener.Configuration
 #endif
         }
 
+        // Delete .runner and .credentials files
+        public void DeleteLocalRunnerConfig()
+        {
+            bool isConfigured = _store.IsConfigured();
+            bool hasCredentials = _store.HasCredentials();
+            //delete credential config files
+            var currentAction = "Removing .credentials";
+            if (hasCredentials)
+            {
+                _store.DeleteCredential();
+                var keyManager = HostContext.GetService<IRSAKeyManager>();
+                keyManager.DeleteKey();
+                _term.WriteSuccessMessage("Removed .credentials");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+
+            //delete settings config file
+            currentAction = "Removing .runner";
+            if (isConfigured)
+            {
+                _store.DeleteSettings();
+                _term.WriteSuccessMessage("Removed .runner");
+            }
+            else
+            {
+                _term.WriteLine("Does not exist. Skipping " + currentAction);
+            }
+        }
+
         public async Task UnconfigureAsync(CommandSettings command)
         {
             string currentAction = string.Empty;
@@ -346,12 +381,9 @@ namespace GitHub.Runner.Listener.Configuration
 
                     _term.WriteLine();
                     _term.WriteSuccessMessage("Runner service removed");
-#elif OS_LINUX
-                    // unconfig system D service first
-                    throw new Exception("Unconfigure service first");
-#elif OS_OSX
-                    // unconfig osx service first
-                    throw new Exception("Unconfigure service first");
+#else
+                    // unconfig systemd or osx service first
+                    throw new Exception("Uninstall service first");
 #endif
                 }
 
@@ -383,7 +415,7 @@ namespace GitHub.Runner.Listener.Configuration
                     // Determine the service deployment type based on connection data. (Hosted/OnPremises)
                     await _runnerServer.ConnectAsync(new Uri(settings.ServerUrl), creds);
 
-                    var agents = await _runnerServer.GetAgentsAsync(settings.PoolId, settings.AgentName);
+                    var agents = await _runnerServer.GetAgentsAsync(settings.AgentName);
                     Trace.Verbose("Returns {0} agents", agents.Count);
                     TaskAgent agent = agents.FirstOrDefault();
                     if (agent == null)
@@ -392,7 +424,7 @@ namespace GitHub.Runner.Listener.Configuration
                     }
                     else
                     {
-                        await _runnerServer.DeleteAgentAsync(settings.PoolId, settings.AgentId);
+                        await _runnerServer.DeleteAgentAsync(settings.AgentId);
 
                         _term.WriteLine();
                         _term.WriteSuccessMessage("Runner removed successfully");
@@ -403,31 +435,7 @@ namespace GitHub.Runner.Listener.Configuration
                     _term.WriteLine("Cannot connect to server, because config files are missing. Skipping removing runner from the server.");
                 }
 
-                //delete credential config files
-                currentAction = "Removing .credentials";
-                if (hasCredentials)
-                {
-                    _store.DeleteCredential();
-                    var keyManager = HostContext.GetService<IRSAKeyManager>();
-                    keyManager.DeleteKey();
-                    _term.WriteSuccessMessage("Removed .credentials");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
-
-                //delete settings config file
-                currentAction = "Removing .runner";
-                if (isConfigured)
-                {
-                    _store.DeleteSettings();
-                    _term.WriteSuccessMessage("Removed .runner");
-                }
-                else
-                {
-                    _term.WriteLine("Does not exist. Skipping " + currentAction);
-                }
+                DeleteLocalRunnerConfig();
             }
             catch (Exception)
             {
@@ -458,7 +466,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -469,6 +477,8 @@ namespace GitHub.Runner.Listener.Configuration
             // update should replace the existing labels
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
+            agent.Ephemeral = ephemeral;
+            agent.MaxParallelism = 1;
 
             agent.Labels.Clear();
 
@@ -484,7 +494,7 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
         {
             TaskAgent agent = new TaskAgent(agentName)
             {
@@ -495,6 +505,7 @@ namespace GitHub.Runner.Listener.Configuration
                 MaxParallelism = 1,
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
+                Ephemeral = ephemeral,
             };
 
             agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));

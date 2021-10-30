@@ -28,7 +28,7 @@ jobs:
       #   languages: go, javascript, csharp, python, cpp, java
 
     - name: Manual build
-      run : | 
+      run : |
         ./dev.sh layout Release linux-x64
       working-directory: src
 

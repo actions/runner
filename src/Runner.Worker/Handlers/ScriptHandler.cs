@@ -23,18 +23,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         public override void PrintActionDetails(ActionRunStage stage)
         {
-            // We don't want to display the internal workings if composite (similar/equivalent information can be found in debug)
-            void writeDetails(string message)
-            {
-                if (ExecutionContext.InsideComposite)
-                {
-                    ExecutionContext.Debug(message);
-                }
-                else
-                {
-                    ExecutionContext.Output(message);
-                }
-            }
 
             if (stage == ActionRunStage.Post)
             {
@@ -52,7 +40,7 @@ namespace GitHub.Runner.Worker.Handlers
                     firstLine = firstLine.Substring(0, firstNewLine);
                 }
 
-                writeDetails(ExecutionContext.InsideComposite ? $"Run {firstLine}" : $"##[group]Run {firstLine}");
+                ExecutionContext.Output($"##[group]Run {firstLine}");
             }
             else
             {
@@ -63,7 +51,7 @@ namespace GitHub.Runner.Worker.Handlers
             foreach (var line in multiLines)
             {
                 // Bright Cyan color
-                writeDetails($"\x1b[36;1m{line}\x1b[0m");
+                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
             }
 
             string argFormat;
@@ -122,23 +110,23 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (!string.IsNullOrEmpty(shellCommandPath))
             {
-                writeDetails($"shell: {shellCommandPath} {argFormat}");
+                ExecutionContext.Output($"shell: {shellCommandPath} {argFormat}");
             }
             else
             {
-                writeDetails($"shell: {shellCommand} {argFormat}");
+                ExecutionContext.Output($"shell: {shellCommand} {argFormat}");
             }
 
             if (this.Environment?.Count > 0)
             {
-                writeDetails("env:");
+                ExecutionContext.Output("env:");
                 foreach (var env in this.Environment)
                 {
-                    writeDetails($"  {env.Key}: {env.Value}");
+                    ExecutionContext.Output($"  {env.Key}: {env.Value}");
                 }
             }
 
-            writeDetails(ExecutionContext.InsideComposite ? "" : "##[endgroup]");
+            ExecutionContext.Output("##[endgroup]");
         }
 
         public async Task RunAsync(ActionRunStage stage)
@@ -155,6 +143,17 @@ namespace GitHub.Runner.Worker.Handlers
 
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
+
+            // Add Telemetry to JobContext to send with JobCompleteMessage
+            if (stage == ActionRunStage.Main)
+            {
+                var telemetry = new ActionsStepTelemetry
+                {
+                    IsEmbedded = ExecutionContext.IsEmbedded,
+                    Type = "run",
+                };
+                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+            }
 
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
@@ -278,6 +277,13 @@ namespace GitHub.Runner.Worker.Handlers
                 fileName = node12;
             }
 #endif
+            var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+            if (systemConnection.Data.TryGetValue("GenerateIdTokenUrl", out var generateIdTokenUrl) && !string.IsNullOrEmpty(generateIdTokenUrl))
+            {
+                Environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = generateIdTokenUrl;
+                Environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = systemConnection.Authorization.Parameters[EndpointAuthorizationParameters.AccessToken];
+            }
+
             ExecutionContext.Debug($"{fileName} {arguments}");
 
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))

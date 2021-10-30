@@ -15,6 +15,7 @@ namespace GitHub.Runner.Common
     [ServiceLocator(Default = typeof(JobServerQueue))]
     public interface IJobServerQueue : IRunnerService, IThrottlingReporter
     {
+        TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
         void Start(Pipelines.AgentJobRequestMessage jobRequest);
@@ -62,7 +63,10 @@ namespace GitHub.Runner.Common
         private IJobServer _jobServer;
         private Task[] _allDequeueTasks;
         private readonly TaskCompletionSource<int> _jobCompletionSource = new TaskCompletionSource<int>();
+        private readonly TaskCompletionSource<int> _jobRecordUpdated = new TaskCompletionSource<int>();
         private bool _queueInProcess = false;
+
+        public TaskCompletionSource<int> JobRecordUpdated => _jobRecordUpdated;
 
         public event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
 
@@ -287,11 +291,11 @@ namespace GitHub.Runner.Common
                                 {
                                     await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value, default(CancellationToken));
                                 }
-                                else 
+                                else
                                 {
                                     await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), default(CancellationToken));
                                 }
-                                
+
                                 if (_firstConsoleOutputs)
                                 {
                                     HostContext.WritePerfCounter($"WorkerJobServerQueueAppendFirstConsoleOutput_{_planId.ToString()}");
@@ -455,6 +459,14 @@ namespace GitHub.Runner.Common
                             {
                                 Trace.Verbose("Cleanup buffered timeline record for timeline: {0}.", update.TimelineId);
                             }
+
+                            if (!_jobRecordUpdated.Task.IsCompleted &&
+                                update.PendingRecords.Any(x => x.Id == _jobTimelineRecordId && x.State != null))
+                            {
+                                // We have changed the state of the job
+                                Trace.Info("Job timeline record has been updated for the first time.");
+                                _jobRecordUpdated.TrySetResult(0);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -542,6 +554,11 @@ namespace GitHub.Runner.Common
                     if (rec.WarningCount != null && rec.WarningCount > 0)
                     {
                         timelineRecord.WarningCount = rec.WarningCount;
+                    }
+
+                    if (rec.NoticeCount != null && rec.NoticeCount > 0)
+                    {
+                        timelineRecord.NoticeCount = rec.NoticeCount;
                     }
 
                     if (rec.Issues.Count > 0)

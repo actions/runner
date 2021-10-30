@@ -12,7 +12,7 @@ As long as your certificate is generated properly, most of the issues should be 
 > !!! DO NOT SKIP SSL CERT VALIDATION !!!  
 > !!! IT IS A BAD SECURITY PRACTICE !!!  
 
-### Download SSL certificate chain 
+### Download SSL certificate chain
 
 Depends on how your SSL server certificate gets configured, you might need to download the whole certificate chain from a machine that has trusted the SSL certificate's CA.
 
@@ -28,7 +28,7 @@ The actions runner is a dotnet core application which will follow how dotnet loa
 
 You can get full details documentation at [here](https://docs.microsoft.com/en-us/dotnet/standard/security/cross-platform-cryptography#x509store)
 
-In short: 
+In short:
 - Windows: Load from Windows certificate store.
 - Linux: Load from OpenSSL CA cert bundle.
 - macOS: Load from macOS KeyChain.
@@ -43,13 +43,13 @@ To let the runner trusts your CA certificate, you will need to:
       1. RedHat: https://www.redhat.com/sysadmin/ca-certificates-cli
       2. Ubuntu: http://manpages.ubuntu.com/manpages/focal/man8/update-ca-certificates.8.html
       3. Google search: "trust ca certificate on [linux distribution]"
-      4. If all approaches failed, set environment variable `SSL_CERT_FILE` to the CA bundle `.pem` file we get. 
-    > To verity cert gets installed properly on Linux, you can try use `curl -v https://sitewithsslissue.com` and `pwsh -Command \"Invoke-WebRequest -Uri https://sitewithsslissue.com\"`
+      4. If all approaches failed, set environment variable `SSL_CERT_FILE` to the CA bundle `.pem` file we get.
+    > To verify cert gets installed properly on Linux, you can try use `curl -v https://sitewithsslissue.com` and `pwsh -Command \"Invoke-WebRequest -Uri https://sitewithsslissue.com\"`
 
 ### Trust CA certificate for Git CLI
 
 Git uses various CA bundle file depends on your operation system.
-- Git packaged the CA bundle file within the Git installation on Windows 
+- Git packaged the CA bundle file within the Git installation on Windows
 - Git use OpenSSL certificate CA bundle file on Linux and macOS
 
 You can check where Git check CA file by running:

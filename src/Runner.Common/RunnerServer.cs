@@ -29,8 +29,10 @@ namespace GitHub.Runner.Common
         // Configuration
         Task<TaskAgent> AddAgentAsync(Int32 agentPoolId, TaskAgent agent);
         Task DeleteAgentAsync(int agentPoolId, int agentId);
+        Task DeleteAgentAsync(int agentId);
         Task<List<TaskAgentPool>> GetAgentPoolsAsync(string agentPoolName = null, TaskAgentPoolType poolType = TaskAgentPoolType.Automation);
         Task<List<TaskAgent>> GetAgentsAsync(int agentPoolId, string agentName = null);
+        Task<List<TaskAgent>> GetAgentsAsync(string agentName);
         Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent);
 
         // messagequeue
@@ -252,6 +254,11 @@ namespace GitHub.Runner.Common
             return _genericTaskAgentClient.GetAgentsAsync(agentPoolId, agentName, false);
         }
 
+        public Task<List<TaskAgent>> GetAgentsAsync(string agentName)
+        {
+            return GetAgentsAsync(0, agentName); // search in all all agentPools
+        }
+
         public Task<TaskAgent> ReplaceAgentAsync(int agentPoolId, TaskAgent agent)
         {
             CheckConnection(RunnerConnectionType.Generic);
@@ -262,6 +269,11 @@ namespace GitHub.Runner.Common
         {
             CheckConnection(RunnerConnectionType.Generic);
             return _genericTaskAgentClient.DeleteAgentAsync(agentPoolId, agentId);
+        }
+
+        public Task DeleteAgentAsync(int agentId)
+        {
+            return DeleteAgentAsync(0, agentId); // agentPool is ignored server side
         }
 
         //-----------------------------------------------------------------

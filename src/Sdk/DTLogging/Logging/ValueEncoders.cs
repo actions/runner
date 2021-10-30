@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Security;
 using System.Text;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
 namespace GitHub.DistributedTask.Logging
@@ -75,6 +76,65 @@ namespace GitHub.DistributedTask.Logging
                 value.EndsWith('"'))
             {
                 trimmed = value.Substring(1, value.Length - 2);
+            }
+
+            return trimmed;
+        }
+
+        public static String PowerShellPreAmpersandEscape(String value)
+        {
+            // if the secret is passed to PS as a command and it causes an error, sections of it can be surrounded by color codes
+            // or printed individually. 
+            
+            // The secret secretpart1&secretpart2&secretpart3 would be split into 2 sections:
+            // 'secretpart1&secretpart2&' and 'secretpart3'. This method masks for the first section.
+            
+            // The secret secretpart1&+secretpart2&secretpart3 would be split into 2 sections:
+            // 'secretpart1&+' and (no 's') 'ecretpart2&secretpart3'. This method masks for the first section.
+
+            var trimmed = string.Empty;
+            if (!string.IsNullOrEmpty(value) && value.Contains("&"))
+            {
+                var secretSection = string.Empty;
+                if (value.Contains("&+"))
+                {
+                    secretSection = value.Substring(0, value.IndexOf("&+") + "&+".Length);
+                }
+                else
+                {
+                    secretSection = value.Substring(0, value.LastIndexOf("&") + "&".Length);
+                }
+
+                // Don't mask short secrets
+                if (secretSection.Length >= 6)
+                {
+                    trimmed = secretSection;
+                }
+            }
+
+            return trimmed;
+        }
+
+        public static String PowerShellPostAmpersandEscape(String value)
+        {
+            var trimmed = string.Empty;
+            if (!string.IsNullOrEmpty(value) && value.Contains("&"))
+            {
+                var secretSection = string.Empty;
+                if (value.Contains("&+"))
+                {
+                    // +1 to skip the letter that got colored
+                    secretSection = value.Substring(value.IndexOf("&+") + "&+".Length + 1);
+                }
+                else
+                {
+                    secretSection = value.Substring(value.LastIndexOf("&") + "&".Length);
+                }
+
+                if (secretSection.Length >= 6)
+                {
+                    trimmed = secretSection;
+                }
             }
 
             return trimmed;
