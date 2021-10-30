@@ -76,15 +76,25 @@ namespace Runner.Server
 
             });
             var sqlitecon = Configuration.GetConnectionString("sqlite");
-            services.AddDbContext<SqLiteDb>(conf => {
+            Action<DbContextOptionsBuilder> optionsAction = conf => {
                 if(sqlitecon?.Length > 0) {
                     conf.UseSqlite(sqlitecon);
                 }
                 else {
                     conf.UseInMemoryDatabase("Agents");
                 }
-            });
+            };
+            services.AddDbContext<SqLiteDb>(optionsAction);
             
+            try {
+                var b = new DbContextOptionsBuilder<SqLiteDb>();
+                optionsAction(b);
+                new SqLiteDb(b.Options).Database.Migrate();
+            } catch (Exception ex) {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ex.StackTrace);
+                // This always throws, if using the InMemory Database
+            }
             var sessionCookieLifetime = Configuration.GetValue("SessionCookieLifetimeMinutes", 60);
             services.AddSingleton<IAuthorizationHandler, DevModeOrAuthenticatedUser>();
             services.AddAuthorization(options => {

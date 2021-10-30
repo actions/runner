@@ -6,11 +6,7 @@ namespace Runner.Server.Models
 {
     public class SqLiteDb : DbContext {
         public SqLiteDb(DbContextOptions<SqLiteDb> opt) : base(opt) {
-            try {
-                Database.Migrate();
-            } catch {
-                // This allways throws, if using the InMemory Database
-            }
+
         }
 
         public DbSet<Agent> Agents { get; set; }
