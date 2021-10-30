@@ -128,25 +128,16 @@ Windows
 Open http://localhost to see the progress.
 
 ### Sample appsettings.json for [try.gitea.io](http://try.gitea.io/)
-With this config you are no longer allowed
-- to register a runner with any token, you need to specify `--token youNeedToEnterThisTokenToRegisterAnRunner` during configure
-- to send anyonymous webhook events and to use `Runner.Client` 
 
 ```json
 {
   "AllowedHosts": "*",
-  "ConnectionStrings": {
-    "sqlite": "Data Source=Agents.db;"
-  },
   "Runner.Server": {
     "ServerUrl": "https://actions-service.azurewebsites.net",
     "GitServerUrl": "https://try.gitea.io",
     "GitApiServerUrl": "https://try.gitea.io/api/v1",
     "GitGraphQlServerUrl": null,
     "GITHUB_TOKEN": "",
-    "WebhookHMACAlgorithmName": "HMACSHA256",
-    "WebhookSignatureHeader": "X-Gitea-Signature",
-    "WebhookSecret": "youNeedToEnterThisTokenToAuthorizeWebhooks",
     "ActionDownloadUrls": [
       {
         "TarballUrl": "https://try.gitea.io/{0}/archive/{1}.tar.gz",
@@ -198,6 +189,15 @@ If this doesn't match with the you configuration url, you cannot configure any r
       {"Name": "myothersecret", "Value": "other"}
     ]
   }
+}
+```
+
+### Configure to use sqlite instead of an in Memory DB
+```json
+{
+  "ConnectionStrings": {
+    "sqlite": "Data Source=Agents.db;"
+  },
 }
 ```
 
