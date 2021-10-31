@@ -106,6 +106,7 @@ namespace GitHub.Runner.Worker
                 }
 
                 jobContext.SetRunnerContext("os", VarUtil.OS);
+                jobContext.SetRunnerContext("arch", VarUtil.OSArchitecture);
 
                 var runnerSettings = HostContext.GetService<IConfigurationStore>().GetSettings();
                 jobContext.SetRunnerContext("name", runnerSettings.AgentName);

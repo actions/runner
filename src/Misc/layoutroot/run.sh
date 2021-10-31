@@ -43,6 +43,21 @@ else
         else
             sleep 5
         fi
+    elif [[ $returnCode == 4 ]]; then
+        if [ ! -x "$(command -v sleep)" ]; then
+            if [ ! -x "$(command -v ping)" ]; then
+                COUNT="0"
+                while [[ $COUNT != 5000 ]]; do
+                    echo "SLEEP" > /dev/null
+                    COUNT=$[$COUNT+1]
+                done
+            else
+                ping -c 5 127.0.0.1 > /dev/null
+            fi
+        else
+            sleep 5
+        fi
+        "$DIR"/bin/Runner.Listener run $*
     else
         exit $returnCode
     fi

@@ -646,6 +646,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Matrix),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Steps),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
+            new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Inputs),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Job),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Runner),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Env),
