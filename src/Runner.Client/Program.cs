@@ -153,6 +153,7 @@ namespace Runner.Client
             public string ArtifactOutputDir { get; set; }
             public string LogOutputDir { get; set; }
             public bool NoDefaultPayload  { get; set; }
+            public string Token { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -281,7 +282,7 @@ namespace Runner.Client
                             runnerEnv["RUNNER_CONTAINER_KEEP"] = "1";
                         }
 
-                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token empty --labels container-host";
+                        var arguments = $"Configure --name {agentname} --unattended --url {parameters.server}/runner/server --token {parameters.Token ?? "empty"} --labels container-host";
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
                         arguments = $"\"{runner}\" {arguments}";
 #endif
@@ -1728,6 +1729,9 @@ namespace Runner.Client
                     startrunner.AddOption(opt);
                 }
             }
+            startrunner.AddOption(new Option<string>(
+                "--token",
+                description: "custom runner token to use"));
 
             rootCommand.Handler = CommandHandler.Create(handler);
 
