@@ -92,3 +92,7 @@ jobs:
         gharun -W testworkflows/skippedjob.yml
         gharun --workflow testworkflows/test_with_required_secret.yml --workflow testworkflows/called_with_required_secret.yml
         gharun -W testworkflows/job-continue-on-error.yml
+    - name: Test Windows Container
+      if: contains(matrix.os, 'windows')
+      run: |
+        gharun -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore
