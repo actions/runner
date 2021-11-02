@@ -52,12 +52,18 @@ jobs:
     strategy:
       matrix:
         os:
-        - windows-latest
+        - windows-2019
+        - windows-2022
         - ubuntu-latest
         - macos-latest
         dotnet-version:
         - '5.0.x'
         - '5.0.200'
+        include:
+        - os: windows-2019
+          tag: ltsc2019
+        - os: windows-2022
+          tag: ltsc2022
     runs-on: ${{matrix.os}}
     steps:
     - uses: actions/checkout@v2
@@ -95,4 +101,4 @@ jobs:
     - name: Test Windows Container
       if: contains(matrix.os, 'windows')
       run: |
-        gharun -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore
+        gharun -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore:${{matrix.tag}}

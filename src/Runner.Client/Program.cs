@@ -436,7 +436,7 @@ namespace Runner.Client
 
             var platformOption = new Option<string>(
                 new[] { "-P", "--platform" },
-                description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job, the container property of a job will take precedence over your specified docker image) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine) or with multiple labels `-P self-hosted,testmachine,anotherlabel=-self-hosted` (Local Machine).") {
+                description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job, the container property of a job will take precedence over your specified docker image) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore:ltsc2022` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine) or with multiple labels `-P self-hosted,testmachine,anotherlabel=-self-hosted` (Local Machine).") {
                     AllowMultipleArgumentsPerToken = false
                 };
             platformOption.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
