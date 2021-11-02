@@ -102,3 +102,15 @@ jobs:
       if: contains(matrix.os, 'windows')
       run: |
         gharun -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        New-NetFirewallRule -Name gharun -DisplayName gharun -Enabled True -Action Allow -Direction Inbound -Program ($env:USERPROFILE + '\.dotnet\tools\gharun.exe') -Protocol tcp
+        gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        gharun -W testworkflows/artifact.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        gharun -W testworkflows/cache.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+      shell: pwsh
+    - name: Test Linux Container
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=ubuntu:latest
+        gharun -W testworkflows/artifact.yml -P self-hosted=ubuntu:latest
+        gharun -W testworkflows/cache.yml -P ubuntu-latest=ubuntu:latest
+      shell: bash
