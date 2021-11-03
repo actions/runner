@@ -1,0 +1,35 @@
+on: push
+defaults:
+    run:
+        shell: pwsh
+jobs:
+    createcache:
+        runs-on: windows-latest
+        steps:
+        -   uses: actions/cache@v2
+            id: cache
+            with:
+                path: |
+                    ./.cache
+                key: ${{ runner.os }}-test
+        -   run: |
+                mkdir ./.cache
+                echo Test > ./.cache/Test
+            if: steps.cache.outputs.cache-hit != 'true'
+        -   run: exit 1
+            if: steps.cache.outputs.cache-hit == 'true'
+    hitcache:
+        needs: createcache
+        runs-on: windows-latest
+        steps:
+        -   uses: actions/cache@v2
+            id: cache
+            with:
+                path: |
+                    ./.cache
+                key: ${{ runner.os }}-test
+        -   run: 'ls -l ./.cache'
+        -   run: exit 1
+            if: steps.cache.outputs.cache-hit != 'true'
+        -   run: echo We hit the cache!
+            if: steps.cache.outputs.cache-hit == 'true'
