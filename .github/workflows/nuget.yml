@@ -53,7 +53,6 @@ jobs:
       fail-fast: false
       matrix:
         os:
-        - windows-2019
         - windows-2022
         - ubuntu-latest
         - macos-latest
@@ -61,8 +60,6 @@ jobs:
         - '5.0.x'
         - '5.0.200'
         include:
-        - os: windows-2019
-          tag: ltsc2019
         - os: windows-2022
           tag: ltsc2022
     runs-on: ${{matrix.os}}
