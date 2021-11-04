@@ -130,9 +130,7 @@ namespace Runner.Server.Controllers
                             var key = keyLiteral.Value;
                             var value = pair.Value;
                             TemplateToken otherv;
-                            if(dictionary.TryGetValue(key, out otherv)) {
-                                Equals(value, otherv);
-                            } else {
+                            if(!dictionary.TryGetValue(key, out otherv) || !TemplateTokenEqual(value, otherv)) {
                                 return false;
                             }
                         }
