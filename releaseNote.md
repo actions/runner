@@ -1,23 +1,32 @@
 ## Changes
-- Fixed broken gitea / ghes compatibility of 3.3.0-3.3.2, `http://localhost:5000/api/v1` dropped v1 in url building after refactoring
-  - TODO add test cases
-- Improved reuseable workflow support
-  - Status checks should now match github
-  - Added input / secrets declaration support for `workflow_call`, no longer cause an error
-  - Validate `workflow_call` inputs
-- Validate and apply defaults to `workflow_dispatch` events
-- Runner.Client / gharun now prints the job status after completion, also for previously invisible skipped jobs
-- Execute status check updates sequentially for each workflow run, avoid races
-- Runner.Client / gharun now prints the workflow name in the logoutput instead of only the jobname
-- Runner.Client / gharun now prints the webpage url in watch mode, if you want to use the webui instead of a console window
-- webui: show job status of completed jobs in the headline
-- webui: hide cancel button in completed jobs
-- webui: probably show skipped jobs in job list instead of telling the job is queued
+- Fixed Skipping jobs with a name using expression syntax leads to job failure. bug
+- Fixed [PARITY] Runs-on key allows the inputs context bug
+- Fixed [WEBUI] leading spaces in log are truncated bug
+- Fixed Cannot call workflow_dispatch with custom inputs, always uses default if specified in event.json bug
+- Allow calling reuseable workflows in the .github/workflows dir via `uses: ./.github/workflows/workflow1.yml`, however github may don't support it
+- Fixed [WEBUI] joblist is truncated on job finish reload to fix
+- Fixed [WEBUI] logs disappar on job finish reload or collapse and expand to fix
+- Fixed commit sha for `pull_request_target` to be the head commit, to show in PR's
+- Fixed including and excluding of maps and sequences in matrix strategy
+- Fixed default Jobname if you specify maps or sequences as matrix keys, now traverse the values depth-first like github
+- Fixed workflow_call: ignore case of secret for required
+- Fixed cannot cancel Runner.Server from unix Terminal
+- Status Checks are now queued per job and no longer per workflow
+- Rerun workflow
+- Rerun a single job, this won't update status checks or trigger other jobs
+- Fix sample windows container of description to include a tag
+- Added CI Tests for windows and linux container
+- Updated runner to [v2.284.0](https://github.com/actions/runner/releases/tag/v2.284.0)
+- Allow to configure a runner registration token, to restrict runner registrations
+- No longer trigger `pull_request` events by default only `pull_request_target`, configure Runner.Server to override
+- Updated ReadMe with more instructions
+- Allow to successfuly replace runners, while this Server won't remove the old one
+- No longer set runtimeframeworkversion to 5.0.0 in projects, releases might now correctly use the current sdk
+- Added webhook secret validation
+- Added `--no-default-payload` option, use with caution
+- Security: More fine grained jwt access tokens in api server, based on the official github actions service
 
 ## Known Issues
-- It seems commit status checks sometimes fail to update while using gitea
-- webui: joblist is truncated on job finish reload to fix
-- webui: logs disappar on job finish reload or collapse and expand to fix
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
