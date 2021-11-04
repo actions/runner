@@ -51,7 +51,7 @@ This builds `Runner.Client`, `Runner.Server` and a modifed github actions runner
 ### Building a framework dependent and os independent executable
 ```
 dotnet msbuild src/dir.proj -t:GenerateConstant
-dotnet publish -c Release --no-self-contained -p:BUILD_OS=Any src/Runner.Client
+dotnet publish src/Runner.Client -c Release --no-self-contained -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=5.0.0
 ```
 
 #### To run the package on a different Operating System
@@ -68,7 +68,7 @@ dotnet Runner.Listener.dll
 Replace `win-x64` with any supported platform of .net5: https://docs.microsoft.com/en-us/dotnet/core/rid-catalog.
 ```
 dotnet msbuild src/dir.proj -t:GenerateConstant
-dotnet publish -c Release src/Runner.Client -r win-x64
+dotnet publish src/Runner.Client -c Release -r win-x64
 ```
 #### To run the package
 ```
@@ -80,6 +80,21 @@ dotnet publish -c Release src/Runner.Client -r win-x64
 ```
 ./Runner.Listener
 ```
+
+### Building a dotnet tool
+```
+dotnet msbuild src/dir.proj -t:GenerateConstant
+dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=5.0.0
+```
+#### To install the package
+```
+dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg
+```
+#### To run the package
+```
+gharun
+```
+
 ## Advanced Usage
 
 You may need to allow non root processes to bind port 80 on Linux https://superuser.com/questions/710253/allow-non-root-process-to-bind-to-port-80-and-443 otherwise you cannot register official runners. If you configure the runner of this project any port is fine, e.g. port 5000 will work too.
@@ -125,6 +140,8 @@ Windows
 .\bin\Runner.Client.exe --workflow workflow.yml --event push --payload payload.json --server http://localhost
 ```
 
+Or send github / gitea webhooks to http://localhost/runner/server/_apis/v1/Message.
+
 Open http://localhost to see the progress.
 
 ### Sample appsettings.json for [try.gitea.io](http://try.gitea.io/)
@@ -158,13 +175,36 @@ With this config you are no longer allowed to register a runner with any token, 
 }
 ```
 
+### Allow PullRequest events
+Process the `pull_request` action trigger, if disabled only `pull_request_target` from the target branch are processed. Enabling this make it possible to leak secrets and run arbitary code on your self-hosted runners. Proper secret and self-hosted runner protection needs to be implemented, to make this save to enable.
+```json
+{
+  "Runner.Server": {
+    "AllowPullRequests": true
+  }
+}
+```
+
 ### Secure Webhook endpoint with a shared secret
-For Gitea this should work, if you add `youNeedToEnterThisTokenToAuthorizeWebhooks` as a secret in the configuration page.
+Add `youNeedToEnterThisTokenToAuthorizeWebhooks` as a secret in the configuration page.
+
+#### For Gitea this should work
 ```json
 {
   "Runner.Server": {
     "WebhookHMACAlgorithmName": "HMACSHA256",
     "WebhookSignatureHeader": "X-Gitea-Signature",
+    "WebhookSecret": "youNeedToEnterThisTokenToAuthorizeWebhooks"
+  }
+}
+```
+#### For GitHub this should work
+```json
+{
+  "Runner.Server": {
+    "WebhookHMACAlgorithmName": "HMACSHA256",
+    "WebhookSignatureHeader": "X-Hub-Signature-256",
+    "WebhookSignaturePrefix": "sha256=",
     "WebhookSecret": "youNeedToEnterThisTokenToAuthorizeWebhooks"
   }
 }
