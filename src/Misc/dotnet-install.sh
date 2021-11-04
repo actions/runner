@@ -24,7 +24,7 @@ exec 3>&1
 # See if stdout is a terminal
 if [ -t 1 ] && command -v tput > /dev/null; then
     # see if it supports colors
-    ncolors=$(tput colors)
+    ncolors=$(tput colors || echo 0)
     if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
         bold="$(tput bold       || echo)"
         normal="$(tput sgr0     || echo)"
@@ -224,7 +224,7 @@ get_legacy_os_name() {
 machine_has() {
     eval $invocation
 
-    hash "$1" > /dev/null 2>&1
+    command -v "$1" > /dev/null 2>&1
     return $?
 }
 
@@ -365,6 +365,75 @@ get_normalized_os() {
         osname="$(get_current_os_name)" || return 1
     fi
     echo "$osname"
+    return 0
+}
+
+# args:
+# quality - $1
+get_normalized_quality() {
+    eval $invocation
+
+    local quality="$(to_lowercase "$1")"
+    if [ ! -z "$quality" ]; then
+        case "$quality" in
+            daily | signed | validated | preview)
+                echo "$quality"
+                return 0
+                ;;
+            ga)
+                #ga quality is available without specifying quality, so normalizing it to empty
+                return 0
+                ;;
+            *)
+                say_err "'$quality' is not a supported value for --quality option. Supported values are: daily, signed, validated, preview, ga. If you think this is a bug, report it at https://github.com/dotnet/install-scripts/issues."
+                return 1
+                ;;
+        esac
+    fi
+    return 0
+}
+
+# args:
+# channel - $1
+get_normalized_channel() {
+    eval $invocation
+
+    local channel="$(to_lowercase "$1")"
+
+    if [[ $channel == release/* ]]; then
+        say_warning 'Using branch name with -Channel option is no longer supported with newer releases. Use -Quality option with a channel in X.Y format instead.';
+    fi
+
+    if [ ! -z "$channel" ]; then
+        case "$channel" in
+            lts)
+                echo "LTS"
+                return 0
+                ;;
+            *)
+                echo "$channel"
+                return 0
+                ;;
+        esac
+    fi
+
+    return 0
+}
+
+# args:
+# runtime - $1
+get_normalized_product() {
+    eval $invocation
+
+    local runtime="$(to_lowercase "$1")"
+    if [[ "$runtime" == "dotnet" ]]; then
+        product="dotnet-runtime"
+    elif [[ "$runtime" == "aspnetcore" ]]; then
+        product="aspnetcore-runtime"
+    elif [ -z "$runtime" ]; then
+        product="dotnet-sdk"
+    fi
+    echo "$product"
     return 0
 }
 
@@ -541,43 +610,131 @@ construct_download_link() {
 # args:
 # azure_feed - $1
 # specific_version - $2
+# download link - $3 (optional)
 get_specific_product_version() {
     # If we find a 'productVersion.txt' at the root of any folder, we'll use its contents
     # to resolve the version of what's in the folder, superseding the specified version.
+    # if 'productVersion.txt' is missing but download link is already available, product version will be taken from download link
     eval $invocation
 
     local azure_feed="$1"
     local specific_version="${2//[$'\t\r\n']}"
-    local specific_product_version=$specific_version
+    local package_download_link=""
+    if [ $# -gt 2  ]; then
+        local package_download_link="$3"
+    fi
+    local specific_product_version=null
+
+    # Try to get the version number, using the productVersion.txt file located next to the installer file.
+    local download_links=($(get_specific_product_version_url "$azure_feed" "$specific_version" true "$package_download_link")
+        $(get_specific_product_version_url "$azure_feed" "$specific_version" false "$package_download_link"))
+
+    for download_link in "${download_links[@]}"
+    do
+        say_verbose "Checking for the existence of $download_link"
+
+        if machine_has "curl"
+        then
+            specific_product_version=$(curl -s --fail "${download_link}${feed_credential}")
+            if [ $? = 0 ]; then
+                echo "${specific_product_version//[$'\t\r\n']}"
+                return 0
+            fi
+        elif machine_has "wget"
+        then
+            specific_product_version=$(wget -qO- "${download_link}${feed_credential}")
+            if [ $? = 0 ]; then
+                echo "${specific_product_version//[$'\t\r\n']}"
+                return 0
+            fi
+        fi
+    done
+    
+    # Getting the version number with productVersion.txt has failed. Try parsing the download link for a version number.
+    say_verbose "Failed to get the version using productVersion.txt file. Download link will be parsed instead."
+    specific_product_version="$(get_product_specific_version_from_download_link "$package_download_link" "$specific_version")"
+    echo "${specific_product_version//[$'\t\r\n']}"
+    return 0
+}
+
+# args:
+# azure_feed - $1
+# specific_version - $2
+# is_flattened - $3
+# download link - $4 (optional)
+get_specific_product_version_url() {
+    eval $invocation
+
+    local azure_feed="$1"
+    local specific_version="$2"
+    local is_flattened="$3"
+    local package_download_link=""
+    if [ $# -gt 3  ]; then
+        local package_download_link="$4"
+    fi
+
+    local pvFileName="productVersion.txt"
+    if [ "$is_flattened" = true ]; then
+        if [ -z "$runtime" ]; then
+            pvFileName="sdk-productVersion.txt"
+        elif [[ "$runtime" == "dotnet" ]]; then
+            pvFileName="runtime-productVersion.txt"
+        else
+            pvFileName="$runtime-productVersion.txt"
+        fi
+    fi
 
     local download_link=null
-    if [[ "$runtime" == "dotnet" ]]; then
-        download_link="$azure_feed/Runtime/$specific_version/productVersion.txt${feed_credential}"
-    elif [[ "$runtime" == "aspnetcore" ]]; then
-        download_link="$azure_feed/aspnetcore/Runtime/$specific_version/productVersion.txt${feed_credential}"
-    elif [ -z "$runtime" ]; then
-        download_link="$azure_feed/Sdk/$specific_version/productVersion.txt${feed_credential}"
+
+    if [ -z "$package_download_link" ]; then
+        if [[ "$runtime" == "dotnet" ]]; then
+            download_link="$azure_feed/Runtime/$specific_version/${pvFileName}"
+        elif [[ "$runtime" == "aspnetcore" ]]; then
+            download_link="$azure_feed/aspnetcore/Runtime/$specific_version/${pvFileName}"
+        elif [ -z "$runtime" ]; then
+            download_link="$azure_feed/Sdk/$specific_version/${pvFileName}"
+        else
+            return 1
+        fi
     else
-        return 1
+        download_link="${package_download_link%/*}/${pvFileName}"
     fi
 
-    if machine_has "curl"
-    then
-        specific_product_version=$(curl -s --fail "$download_link")
-        if [ $? -ne 0 ]
-        then
-            specific_product_version=$specific_version
-        fi
-    elif machine_has "wget"
-    then
-        specific_product_version=$(wget -qO- "$download_link")
-        if [ $? -ne 0 ]
-        then
-            specific_product_version=$specific_version
-        fi
-    fi
-    specific_product_version="${specific_product_version//[$'\t\r\n']}"
+    say_verbose "Constructed productVersion link: $download_link"
+    echo "$download_link"
+    return 0
+}
 
+# args:
+# download link - $1
+# specific version - $2
+get_product_specific_version_from_download_link()
+{
+    eval $invocation
+
+    local download_link="$1"
+    local specific_version="$2"
+    local specific_product_version="" 
+
+    if [ -z "$download_link" ]; then
+        echo "$specific_version"
+        return 0
+    fi
+
+    #get filename
+    filename="${download_link##*/}"
+
+    #product specific version follows the product name
+    #for filename 'dotnet-sdk-3.1.404-linux-x64.tar.gz': the product version is 3.1.404
+    IFS='-'
+    read -ra filename_elems <<< "$filename"
+    count=${#filename_elems[@]}
+    if [[ "$count" -gt 2 ]]; then
+        specific_product_version="${filename_elems[2]}"
+    else
+        specific_product_version=$specific_version
+    fi
+    unset IFS;
     echo "$specific_product_version"
     return 0
 }
@@ -711,19 +868,62 @@ extract_dotnet_package() {
     return 0
 }
 
+# args:
+# remote_path - $1
+# disable_feed_credential - $2
+get_http_header()
+{
+    eval $invocation
+    local remote_path="$1"
+    local disable_feed_credential="$2"
+
+    local failed=false
+    local response
+    if machine_has "curl"; then
+        get_http_header_curl $remote_path $disable_feed_credential || failed=true
+    elif machine_has "wget"; then
+        get_http_header_wget $remote_path $disable_feed_credential || failed=true
+    else
+        failed=true
+    fi
+    if [ "$failed" = true ]; then
+        say_verbose "Failed to get HTTP header: '$remote_path'."
+        return 1
+    fi
+    return 0
+}
+
+# args:
+# remote_path - $1
+# disable_feed_credential - $2
 get_http_header_curl() {
     eval $invocation
     local remote_path="$1"
-    remote_path_with_credential="${remote_path}${feed_credential}"
+    local disable_feed_credential="$2"
+
+    remote_path_with_credential="$remote_path"
+    if [ "$disable_feed_credential" = false ]; then
+        remote_path_with_credential+="$feed_credential"
+    fi
+
     curl_options="-I -sSL --retry 5 --retry-delay 2 --connect-timeout 15 "
     curl $curl_options "$remote_path_with_credential" || return 1
     return 0
 }
 
+# args:
+# remote_path - $1
+# disable_feed_credential - $2
 get_http_header_wget() {
     eval $invocation
     local remote_path="$1"
-    remote_path_with_credential="${remote_path}${feed_credential}"
+    local disable_feed_credential="$2"
+
+    remote_path_with_credential="$remote_path"
+    if [ "$disable_feed_credential" = false ]; then
+        remote_path_with_credential+="$feed_credential"
+    fi
+
     wget_options="-q -S --spider --tries 5 --waitretry 2 --connect-timeout 15 "
     wget $wget_options "$remote_path_with_credential" 2>&1 || return 1
     return 0
@@ -763,7 +963,7 @@ download() {
 
         say "Download attempt #$attempts has failed: $http_code $download_error_msg"
         say "Attempt #$((attempts+1)) will start in $((attempts*10)) seconds."
-        sleep $((attempts*20))
+        sleep $((attempts*10))
     done
 
 
@@ -783,6 +983,7 @@ downloadcurl() {
     local remote_path="$1"
     local out_path="${2:-}"
     # Append feed_credential as late as possible before calling curl to avoid logging feed_credential
+    # Avoid passing URI with credentials to functions: note, most of them echoing parameters of invocation in verbose output.
     local remote_path_with_credential="${remote_path}${feed_credential}"
     local curl_options="--retry 20 --retry-delay 2 --connect-timeout 15 -sSL -f --create-dirs "
     local failed=false
@@ -792,7 +993,8 @@ downloadcurl() {
         curl $curl_options -o "$out_path" "$remote_path_with_credential" || failed=true
     fi
     if [ "$failed" = true ]; then
-        local response=$(get_http_header_curl $remote_path_with_credential)
+        local disable_feed_credential=false
+        local response=$(get_http_header_curl $remote_path $disable_feed_credential)
         http_code=$( echo "$response" | awk '/^HTTP/{print $2}' | tail -1 )
         download_error_msg="Unable to download $remote_path."
         if  [[ $http_code != 2* ]]; then
@@ -822,7 +1024,8 @@ downloadwget() {
         wget $wget_options -O "$out_path" "$remote_path_with_credential" || failed=true
     fi
     if [ "$failed" = true ]; then
-        local response=$(get_http_header_wget $remote_path_with_credential)
+        local disable_feed_credential=false
+        local response=$(get_http_header_wget $remote_path $disable_feed_credential)
         http_code=$( echo "$response" | awk '/^  HTTP/{print $2}' | tail -1 )
         download_error_msg="Unable to download $remote_path."
         if  [[ $http_code != 2* ]]; then
@@ -834,15 +1037,115 @@ downloadwget() {
     return 0
 }
 
+get_download_link_from_aka_ms() {    
+    eval $invocation
+
+    #quality is not supported for LTS or current channel
+    if [[ ! -z "$normalized_quality"  && ("$normalized_channel" == "LTS" || "$normalized_channel" == "current") ]]; then
+        normalized_quality=""
+        say_warning "Specifying quality for current or LTS channel is not supported, the quality will be ignored."
+    fi
+
+    say_verbose "Retrieving primary payload URL from aka.ms for channel: '$normalized_channel', quality: '$normalized_quality', product: '$normalized_product', os: '$normalized_os', architecture: '$normalized_architecture'." 
+
+    #construct aka.ms link
+    aka_ms_link="https://aka.ms/dotnet"
+    if  [ "$internal" = true ]; then
+        aka_ms_link="$aka_ms_link/internal"
+    fi
+    aka_ms_link="$aka_ms_link/$normalized_channel"
+    if [[ ! -z "$normalized_quality" ]]; then
+        aka_ms_link="$aka_ms_link/$normalized_quality"
+    fi
+    aka_ms_link="$aka_ms_link/$normalized_product-$normalized_os-$normalized_architecture.tar.gz"
+    say_verbose "Constructed aka.ms link: '$aka_ms_link'."
+
+    #get HTTP response
+    #do not pass credentials as a part of the $aka_ms_link and do not apply credentials in the get_http_header function
+    #otherwise the redirect link would have credentials as well
+    #it would result in applying credentials twice to the resulting link and thus breaking it, and in echoing credentials to the output as a part of redirect link
+    disable_feed_credential=true
+    response="$(get_http_header $aka_ms_link $disable_feed_credential)"
+
+    say_verbose "Received response: $response"
+    # Get results of all the redirects.
+    http_codes=$( echo "$response" | awk '$1 ~ /^HTTP/ {print $2}' )
+    # They all need to be 301, otherwise some links are broken (except for the last, which is not a redirect but 200 or 404).
+    broken_redirects=$( echo "$http_codes" | sed '$d' | grep -v '301' )
+
+    # All HTTP codes are 301 (Moved Permanently), the redirect link exists.
+    if [[ -z "$broken_redirects" ]]; then
+        aka_ms_download_link=$( echo "$response" | awk '$1 ~ /^Location/{print $2}' | tail -1 | tr -d '\r')
+
+        if [[ -z "$aka_ms_download_link" ]]; then
+            say_verbose "The aka.ms link '$aka_ms_link' is not valid: failed to get redirect location."
+            return 1
+        fi
+
+        say_verbose "The redirect location retrieved: '$aka_ms_download_link'."
+        return 0
+    else
+        say_verbose "The aka.ms link '$aka_ms_link' is not valid: received HTTP code: $(echo "$broken_redirects" | paste -sd "," -)."
+        return 1
+    fi
+}
+
 calculate_vars() {
     eval $invocation
     valid_legacy_download_link=true
 
+    #normalize input variables
     normalized_architecture="$(get_normalized_architecture_from_architecture "$architecture")"
-    say_verbose "normalized_architecture=$normalized_architecture"
-
+    say_verbose "Normalized architecture: '$normalized_architecture'."
     normalized_os="$(get_normalized_os "$user_defined_os")"
-    say_verbose "normalized_os=$normalized_os"
+    say_verbose "Normalized OS: '$normalized_os'."
+    normalized_quality="$(get_normalized_quality "$quality")"
+    say_verbose "Normalized quality: '$normalized_quality'."
+    normalized_channel="$(get_normalized_channel "$channel")"
+    say_verbose "Normalized channel: '$normalized_channel'."
+    normalized_product="$(get_normalized_product "$runtime")"
+    say_verbose "Normalized product: '$normalized_product'."
+
+    #try to get download location from aka.ms link
+    #not applicable when exact version is specified via command or json file
+    normalized_version="$(to_lowercase "$version")"
+    if [[ -z "$json_file" && "$normalized_version" == "latest" ]]; then
+
+            valid_aka_ms_link=true;
+            get_download_link_from_aka_ms || valid_aka_ms_link=false
+            
+            if [ "$valid_aka_ms_link" == false ]; then
+                # if quality is specified - exit with error - there is no fallback approach
+                if [ ! -z "$normalized_quality" ]; then
+                    say_err "Failed to locate the latest version in the channel '$normalized_channel' with '$normalized_quality' quality for '$normalized_product', os: '$normalized_os', architecture: '$normalized_architecture'."
+                    say_err "Refer to: https://aka.ms/dotnet-os-lifecycle for information on .NET Core support."
+                    return 1
+                fi
+                say_verbose "Falling back to latest.version file approach."
+            else
+                say_verbose "Retrieved primary payload URL from aka.ms link: '$aka_ms_download_link'."
+                download_link=$aka_ms_download_link
+
+                say_verbose "Downloading using legacy url will not be attempted."
+                valid_legacy_download_link=false
+
+                #get version from the path
+                IFS='/'
+                read -ra pathElems <<< "$download_link"
+                count=${#pathElems[@]}
+                specific_version="${pathElems[count-2]}"
+                unset IFS;
+                say_verbose "Version: '$specific_version'."
+
+                #Retrieve product specific version
+                specific_product_version="$(get_specific_product_version "$azure_feed" "$specific_version" "$download_link")"
+                say_verbose "Product specific version: '$specific_product_version'."
+  
+                install_root="$(resolve_installation_path "$install_dir")"
+                say_verbose "InstallRoot: '$install_root'."
+                return 
+            fi
+    fi
 
     specific_version="$(get_specific_version_from_version "$azure_feed" "$channel" "$normalized_architecture" "$version" "$json_file")"
     specific_product_version="$(get_specific_product_version "$azure_feed" "$specific_version")"
@@ -1011,6 +1314,8 @@ feed_credential=""
 verbose=false
 runtime=""
 runtime_id=""
+quality=""
+internal=false
 override_non_versioned_files=true
 non_dynamic_parameters=""
 user_defined_os=""
@@ -1026,6 +1331,14 @@ do
         -v|--version|-[Vv]ersion)
             shift
             version="$1"
+            ;;
+        -q|--quality|-[Qq]uality)
+            shift
+            quality="$1"
+            ;;
+        --internal|-[Ii]nternal)
+            internal=true
+            non_dynamic_parameters+=" $name"
             ;;
         -i|--install-dir|-[Ii]nstall[Dd]ir)
             shift
@@ -1084,7 +1397,9 @@ do
         --feed-credential|-[Ff]eed[Cc]redential)
             shift
             feed_credential="$1"
-            non_dynamic_parameters+=" $name "\""$1"\"""
+            #feed_credential should start with "?", for it to be added to the end of the link.
+            #adding "?" at the beginning of the feed_credential if needed.
+            [[ -z "$(echo $feed_credential)" ]] || [[ $feed_credential == \?* ]] || feed_credential="?$feed_credential"
             ;;
         --runtime-id|-[Rr]untime[Ii]d)
             shift
@@ -1116,15 +1431,26 @@ do
             echo "          - LTS - most current supported release"
             echo "          - 2-part version in a format A.B - represents a specific release"
             echo "              examples: 2.0; 1.0"
-            echo "          - Branch name"
-            echo "              examples: release/2.0.0; Master"
-            echo "          Note: The version parameter overrides the channel parameter."
+            echo "          - 3-part version in a format A.B.Cxx - represents a specific SDK release"
+            echo "              examples: 5.0.1xx, 5.0.2xx."
+            echo "              Supported since 5.0 release"
+            echo "          Note: The version parameter overrides the channel parameter when any version other than `latest` is used."
             echo "  -v,--version <VERSION>         Use specific VERSION, Defaults to \`$version\`."
             echo "      -Version"
             echo "          Possible values:"
             echo "          - latest - most latest build on specific channel"
             echo "          - 3-part version in a format A.B.C - represents specific version of build"
             echo "              examples: 2.0.0-preview2-006120; 1.1.0"
+            echo "  -q,--quality <quality>         Download the latest build of specified quality in the channel."
+            echo "      -Quality"
+            echo "          The possible values are: daily, signed, validated, preview, GA."
+            echo "          Works only in combination with channel. Not applicable for current and LTS channels and will be ignored if those channels are used." 
+            echo "          For SDK use channel in A.B.Cxx format. Using quality for SDK together with channel in A.B format is not supported." 
+            echo "          Supported since 5.0 release." 
+            echo "          Note: The version parameter overrides the channel parameter when any version other than `latest` is used, and therefore overrides the quality."
+            echo "  --internal,-Internal               Download internal builds. Requires providing credentials via --feed-credential parameter."
+            echo "  --feed-credential <FEEDCREDENTIAL> Token to access Azure feed. Used as a query string to append to the Azure feed."
+            echo "      -FeedCredential                This parameter typically is not specified."
             echo "  -i,--install-dir <DIR>             Install under specified location (see Install Location below)"
             echo "      -InstallDir"
             echo "  --architecture <ARCHITECTURE>      Architecture of dotnet binaries to be installed, Defaults to \`$architecture\`."
@@ -1145,7 +1471,6 @@ do
             echo "  --verbose,-Verbose                 Display diagnostics information."
             echo "  --azure-feed,-AzureFeed            Azure feed location. Defaults to $azure_feed, This parameter typically is not changed by the user."
             echo "  --uncached-feed,-UncachedFeed      Uncached feed location. This parameter typically is not changed by the user."
-            echo "  --feed-credential,-FeedCredential  Azure feed shared access token. This parameter typically is not specified."
             echo "  --skip-non-versioned-files         Skips non-versioned files if they already exist, such as the dotnet executable."
             echo "      -SkipNonVersionedFiles"
             echo "  --no-cdn,-NoCdn                    Disable downloading from the Azure CDN, and use the uncached feed directly."
@@ -1186,23 +1511,44 @@ say "- The SDK needs to be installed without user interaction and without admin 
 say "- The SDK installation doesn't need to persist across multiple CI runs."
 say "To set up a development environment or to run apps, use installers rather than this script. Visit https://dotnet.microsoft.com/download to get the installer.\n"
 
+if [ "$internal" = true ] && [ -z "$(echo $feed_credential)" ]; then
+    message="Provide credentials via --feed-credential parameter."
+    if [ "$dry_run" = true ]; then
+        say_warning "$message"
+    else
+        say_err "$message"
+        exit 1
+    fi
+fi
+
 check_min_reqs
 calculate_vars
 script_name=$(basename "$0")
 
 if [ "$dry_run" = true ]; then
     say "Payload URLs:"
-    say "Primary named payload URL: $download_link"
+    say "Primary named payload URL: ${download_link}"
     if [ "$valid_legacy_download_link" = true ]; then
-        say "Legacy named payload URL: $legacy_download_link"
+        say "Legacy named payload URL: ${legacy_download_link}"
     fi
     repeatable_command="./$script_name --version "\""$specific_version"\"" --install-dir "\""$install_root"\"" --architecture "\""$normalized_architecture"\"" --os "\""$normalized_os"\"""
+    
+    if [ ! -z "$normalized_quality" ]; then
+        repeatable_command+=" --quality "\""$normalized_quality"\"""
+    fi
+
     if [[ "$runtime" == "dotnet" ]]; then
         repeatable_command+=" --runtime "\""dotnet"\"""
     elif [[ "$runtime" == "aspnetcore" ]]; then
         repeatable_command+=" --runtime "\""aspnetcore"\"""
     fi
+
     repeatable_command+="$non_dynamic_parameters"
+
+    if [ -n "$feed_credential" ]; then
+        repeatable_command+=" --feed-credential "\""<feed_credential>"\"""
+    fi
+
     say "Repeatable invocation: $repeatable_command"
     exit 0
 fi
