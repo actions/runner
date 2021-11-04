@@ -9,7 +9,6 @@
     <NoWarn>NU1701;NU1603</NoWarn>
     <Version>$(Version)</Version>
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
-    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>
