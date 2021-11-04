@@ -47,6 +47,10 @@ elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
             aarch64) RUNTIME_ID="linux-arm64";;
         esac
     fi
+
+    if [ -f "/lib/ld-musl-x86_64.so.1" ]; then
+        RUNTIME_ID="linux-musl-x64"
+    fi
 elif [[ "$CURRENT_PLATFORM" == 'darwin' ]]; then
     RUNTIME_ID='osx-x64'
 fi
@@ -57,7 +61,7 @@ fi
 
 # Make sure current platform support publish the dotnet runtime
 # Windows can publish win-x86/x64
-# Linux can publish linux-x64/arm/arm64
+# Linux can publish linux-x64/arm/arm64/musl-x64
 # OSX can publish osx-x64
 if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
     if [[ ("$RUNTIME_ID" != 'win-x86') && ("$RUNTIME_ID" != 'win-x64') ]]; then
@@ -65,7 +69,7 @@ if [[ "$CURRENT_PLATFORM" == 'windows' ]]; then
         exit 1
     fi
 elif [[ "$CURRENT_PLATFORM" == 'linux' ]]; then
-    if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-x86') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') ]]; then
+    if [[ ("$RUNTIME_ID" != 'linux-x64') && ("$RUNTIME_ID" != 'linux-musl-x64') && ("$RUNTIME_ID" != 'linux-arm64') && ("$RUNTIME_ID" != 'linux-arm') ]]; then
        echo "Failed: Can't build $RUNTIME_ID package $CURRENT_PLATFORM" >&2
        exit 1
     fi

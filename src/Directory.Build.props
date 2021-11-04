@@ -29,7 +29,7 @@
     <DefineConstants>$(DefineConstants);X64</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND ('$(PackageRuntime)' == 'linux-x64' OR '$(PackageRuntime)' == '')">
+  <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND ('$(PackageRuntime)' == 'linux-x64' OR '$(PackageRuntime)' == 'linux-musl-x64' OR '$(PackageRuntime)' == '')">
     <DefineConstants>$(DefineConstants);X64</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(BUILD_OS)' == 'Linux' AND '$(PackageRuntime)' == 'linux-arm'">
