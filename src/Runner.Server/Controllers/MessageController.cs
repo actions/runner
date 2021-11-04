@@ -1273,14 +1273,14 @@ namespace Runner.Server.Controllers
                                         ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                         if(keys.Length != 0 || includematrix.Count == 0) {
                                             foreach (var item in flatmatrix) {
-                                                var j = act(defaultDisplayName(from key in keys select item[key].ToString()), item);
+                                                var j = act(defaultDisplayName(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                                                 if(j != null) {
                                                     jobs.Enqueue(j);
                                                 }
                                             }
                                         }
                                         foreach (var item in includematrix) {
-                                            var j = act(defaultDisplayName(from it in item select it.Value.ToString()), item);
+                                            var j = act(defaultDisplayName(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
                                             if(j != null) {
                                                 jobs.Enqueue(j);
                                             }
