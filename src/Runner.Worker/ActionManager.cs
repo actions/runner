@@ -1047,7 +1047,6 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // TODO: remove once we remove the DistributedTask.EnableCompositeActions FF
                     foreach (var step in compositeAction.Steps)
                     {
                         if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
