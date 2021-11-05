@@ -2,68 +2,32 @@
 
 set -e
 
+#
+# Downloads latest releases (not pre-release) runner
+# Configures as a service
+#
+# Examples:
+# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo
+# RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myorg
+#
+# Usage:
+#     export RUNNER_CFG_PAT=<yourPAT>
+#     ./create-latest-svc scope [name] [user]
+#
+#      scope required  repo (:owner/:repo) or org (:organization)
+#      name  optional  defaults to hostname
+#      user  optional  user svc will run as. defaults to current
+# 
 # Notes:
 # PATS over envvars are more secure
-# Downloads latest runner release (not pre-release)
-# Configures it as a service more secure
 # Should be used on VMs and not containers
-# Works on OSX and Linux
+# Works on OSX and Linux 
 # Assumes x64 arch
-# See EXAMPLES below
+#
 
-flags_found=false
-
-while getopts 's:g:n:u:l:' opt; do
-    flags_found=true
-
-    case $opt in
-    s)
-        runner_scope=$OPTARG
-        ;;
-    g)
-        ghe_hostname=$OPTARG
-        ;;
-    n)
-        runner_name=$OPTARG
-        ;;
-    u)
-        svc_user=$OPTARG
-        ;;
-    l)
-        labels=$OPTARG
-        ;;
-    *)
-        echo "
-Runner Service Installer
-Examples:
-RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
-RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh -s myorg -u user_name -l label1,label2
-Usage:
-    export RUNNER_CFG_PAT=<yourPAT>
-    ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
-    -s          required  scope: repo (:owner/:repo) or org (:organization)
-    -g          optional  ghe_hostname: the fully qualified domain name of your GitHub Enterprise Server deployment
-    -n          optional  name of the runner, defaults to hostname
-    -u          optional  user svc will run as, defaults to current
-    -l          optional  list of labels (split by comma) applied on the runner"
-        exit 0
-        ;;
-    esac
-done
-
-shift "$((OPTIND - 1))"
-
-if ! "$flags_found"; then
-    runner_scope=${1}
-    ghe_hostname=${2}
-    runner_name=${3:-$(hostname)}
-    svc_user=${4:-$USER}
-    labels=${5}
-fi
-
-# apply defaults
-runner_name=${runner_name:-$(hostname)}
-svc_user=${svc_user:-$USER}
+runner_scope=${1}
+runner_name=${2:-$(hostname)}
+svc_user=${3:-$USER}
 
 echo "Configuring runner @ ${runner_scope}"
 sudo echo
@@ -87,9 +51,9 @@ which curl || fatal "curl required.  Please install in PATH with apt-get, brew, 
 which jq || fatal "jq required.  Please install in PATH with apt-get, brew, etc"
 
 # bail early if there's already a runner there. also sudo early
-if [ -d ./runner ]; then
+if [ -d ./runner ]; then 
     fatal "Runner already exists.  Use a different directory or delete ./runner"
-fi
+fi 
 
 sudo -u ${svc_user} mkdir runner
 
@@ -102,20 +66,15 @@ sudo -u ${svc_user} mkdir runner
 echo
 echo "Generating a registration token..."
 
-base_api_url="https://api.github.com"
-if [ -n "${ghe_hostname}" ]; then
-    base_api_url="https://${ghe_hostname}/api/v3"
-fi
-
-# if the scope has a slash, it's a repo runner
-orgs_or_repos="orgs"
+# if the scope has a slash, it's an repo runner
+base_api_url="https://api.github.com/orgs"
 if [[ "$runner_scope" == *\/* ]]; then
-    orgs_or_repos="repos"
+    base_api_url="https://api.github.com/repos"
 fi
 
-export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/${orgs_or_repos}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
+export RUNNER_TOKEN=$(curl -s -X POST ${base_api_url}/${runner_scope}/actions/runners/registration-token -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" | jq -r '.token')
 
-if [ "null" == "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi
+if [ -z "$RUNNER_TOKEN" ]; then fatal "Failed to get a token"; fi 
 
 #---------------------------------------
 # Download latest released and extract
@@ -123,7 +82,6 @@ if [ "null" == "$RUNNER_TOKEN" -o -z "$RUNNER_TOKEN" ]; then fatal "Failed to ge
 echo
 echo "Downloading latest runner ..."
 
-# For the GHES Alpha, download the runner from github.com
 latest_version_label=$(curl -s -X GET 'https://api.github.com/repos/actions/runner/releases/latest' | jq -r '.tag_name')
 latest_version=$(echo ${latest_version_label:1})
 runner_file="actions-runner-${runner_plat}-x64-${latest_version}.tar.gz"
@@ -158,14 +116,10 @@ pushd ./runner
 # Unattend config
 #---------------------------------------
 runner_url="https://github.com/${runner_scope}"
-if [ -n "${ghe_hostname}" ]; then
-    runner_url="https://${ghe_hostname}/${runner_scope}"
-fi
-
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name --labels $labels"
-sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name --labels $labels
+echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name"
+sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name
 
 #---------------------------------------
 # Configuring as a service
@@ -173,9 +127,9 @@ sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNE
 echo
 echo "Configuring as a service ..."
 prefix=""
-if [ "${runner_plat}" == "linux" ]; then
+if [ "${runner_plat}" == "linux" ]; then 
     prefix="sudo "
-fi
+fi 
 
 ${prefix}./svc.sh install ${svc_user}
 ${prefix}./svc.sh start

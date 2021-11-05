@@ -51,7 +51,7 @@ fi
 # Ensure offline
 #--------------------------------------
 runner_status=$(curl -s -X GET ${base_api_url}/${runner_scope}/actions/runners?per_page=100  -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" \
-        | jq -M -j ".runners | .[] | select(.name == \"${runner_name}\") | .status")
+        | jq -M -j ".runners | .[] | [select(.name == \"${runner_name}\")] | .[0].status")
 
 if [ -z "${runner_status}" ]; then 
     fatal "Could not find runner with name ${runner_name}"
@@ -67,7 +67,7 @@ fi
 # Get id of runner to remove
 #--------------------------------------
 runner_id=$(curl -s -X GET ${base_api_url}/${runner_scope}/actions/runners?per_page=100  -H "accept: application/vnd.github.everest-preview+json" -H "authorization: token ${RUNNER_CFG_PAT}" \
-        | jq -M -j ".runners | .[] | select(.name == \"${runner_name}\") | .id")
+        | jq -M -j ".runners | .[] | [select(.name == \"${runner_name}\")] | .[0].id")
 
 if [ -z "${runner_id}" ]; then 
     fatal "Could not find runner with name ${runner_name}"
