@@ -243,6 +243,7 @@ namespace GitHub.Runner.Listener
                 validator: Validators.ServerUrlValidator);
         }
 
+#if OS_WINDOWS
         public string GetWindowsLogonAccount(string defaultValue, string descriptionMsg)
         {
             return GetArgOrPrompt(
@@ -260,7 +261,7 @@ namespace GitHub.Runner.Listener
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
-
+#endif
         public string GetWork()
         {
             return GetArgOrPrompt(

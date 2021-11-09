@@ -32,7 +32,7 @@ namespace GitHub.Services.Common
         {
             get
             {
-                return m_request.Properties;
+                return m_request.Options;
             }
         }
 
