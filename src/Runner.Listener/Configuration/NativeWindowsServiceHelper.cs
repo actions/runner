@@ -1,4 +1,5 @@
 #if OS_WINDOWS
+#pragma warning disable CA1416
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -1327,4 +1328,5 @@ namespace GitHub.Runner.Listener.Configuration
         public IntPtr hProfile;
     }
 }
+#pragma warning restore CA1416
 #endif
