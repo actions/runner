@@ -476,17 +476,17 @@ namespace Runner.Server.Controllers
             if(Ref == null && hook?.repository?.default_branch != null) {
                 Ref = "refs/heads/" + hook?.repository?.default_branch;
             }
-            var Sha = hook.After;
-            if(Sha == null || Sha.Length == 0) {
-                if(e == "pull_request_target" && hook?.pull_request?.Base?.Sha != null) {
-                    Sha = hook?.pull_request?.Base?.Sha;
-                } else if(e == "pull_request" && hook?.pull_request?.head?.Sha != null) {
-                    if(hook?.merge_commit_sha == null) {
-                        Sha = hook?.pull_request?.head?.Sha;
-                    } else {
-                        Sha = hook.merge_commit_sha;
-                    }
+            string Sha;
+            if(e == "pull_request_target") {
+                Sha = hook?.pull_request?.Base?.Sha;
+            } else if(e == "pull_request") {
+                if(hook?.merge_commit_sha == null) {
+                    Sha = hook?.pull_request?.head?.Sha;
+                } else {
+                    Sha = hook.merge_commit_sha;
                 }
+            } else {
+                Sha = hook.After;
             }
             long attempt = 1;
             rerunWorkflows[runid] = () => ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: attempt++);
@@ -1272,7 +1272,7 @@ namespace Runner.Server.Controllers
                                                 }
                                             });
                                             next.DisplayName = _jobdisplayname;
-                                            return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, event_name, parentEvent, workflows, statusSha);
+                                            return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, $"{jobname}_{c}", workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, parentEvent ?? event_name, parentEvent, workflows, statusSha);
                                         };
                                         ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                         if(keys.Length != 0 || includematrix.Count == 0) {
@@ -1976,7 +1976,7 @@ namespace Runner.Server.Controllers
                     req.RequestId = requestId;
                     return req;
                 } catch(Exception ex) {
-                    Console.WriteLine($"Internal Error: {ex.Message}, {ex.StackTrace}"); 
+                    Console.WriteLine($"Internal Error: {ex.Message}, {ex.StackTrace}");
                     return null;
                 }
             }, repo = repo, name = displayname, workflowname = workflowname, runid = runid, /* SessionId = sessionId,  */JobId = jobId, RequestId = requestId, TimeLineId = timelineId, TimeoutMinutes = timeoutMinutes, CancelTimeoutMinutes = cancelTimeoutMinutes, ContinueOnError = continueOnError }, (id, job) => job);
@@ -2336,21 +2336,19 @@ namespace Runner.Server.Controllers
             var hook = obj.Key;
             try {
                 Dictionary<string, string> evs = new Dictionary<string, string>();
-                if(hook?.After != null) {
-                    evs.Add(e, hook?.After);
-                } else if(e == "pull_request") {
+                if(e == "pull_request") {
                     evs.Add("pull_request_target", hook?.pull_request?.Base?.Sha);
                     if(AllowPullRequests) {
                         evs.Add("pull_request", hook?.pull_request?.head?.Sha);
                     }
-                } else if(e.StartsWith("pull_request_")) {
-                    if(AllowPullRequests) {
-                        evs.Add(e, hook?.pull_request?.head?.Sha);
-                    }
+                } else if(e.StartsWith("pull_request_") && AllowPullRequests) {
+                    evs.Add(e, hook?.pull_request?.head?.Sha);
                 } else if(e == "create" && hook?.ref_type != null) {
                     evs.Add(e, hook?.Sha);
                 } else if(e == "release" && hook?.ref_type != null) {
                     evs.Add(e, hook?.tag_name);
+                } else if(hook?.After != null) {
+                    evs.Add(e, hook?.After);
                 } else {
                     var client = new HttpClient();
                     client.DefaultRequestHeaders.Add("accept", "application/json");
