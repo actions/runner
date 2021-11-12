@@ -20,12 +20,11 @@ namespace GitHub.Services.Common.Diagnostics
 
         public static VssTraceActivity GetActivity(this HttpRequestMessage message)
         {
-            Object traceActivity;
-            if (!message.Properties.TryGetValue(VssTraceActivity.PropertyName, out traceActivity))
+            if (!message.Options.TryGetValue(VssTraceActivity.PropertyName, out VssTraceActivity traceActivity))
             {
                 return VssTraceActivity.Empty;
             }
-            return (VssTraceActivity)traceActivity;
+            return traceActivity;
         }
     }
 }

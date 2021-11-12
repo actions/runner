@@ -833,7 +833,7 @@ namespace GitHub.Services.WebApi
             {
                 if (userState != null)
                 {
-                    message.Properties[UserStatePropertyName] = userState;
+                    message.Options.Set(UserStatePropertyName, userState);
                 }
                 
                 if (!message.Headers.Contains(Common.Internal.HttpHeaders.VssE2EID))
@@ -842,11 +842,11 @@ namespace GitHub.Services.WebApi
                 }
                 VssHttpEventSource.Log.HttpRequestStart(traceActivity, message);
                 message.Trace();
-                message.Properties[VssTraceActivity.PropertyName] = traceActivity;
+                message.Options.Set(VssTraceActivity.PropertyName, traceActivity);
 
                 // Send the completion option to the inner handler stack so we know when it's safe to buffer
                 // and when we should avoid buffering.
-                message.Properties[VssHttpRequestSettings.HttpCompletionOptionPropertyName] = completionOption;
+                message.Options.Set(VssHttpRequestSettings.HttpCompletionOptionPropertyName, completionOption);
 
                 //ConfigureAwait(false) enables the continuation to be run outside
                 //any captured SyncronizationContext (such as ASP.NET's) which keeps things
@@ -1154,7 +1154,9 @@ namespace GitHub.Services.WebApi
         {
             if (BaseAddress != null)
             {
+#pragma warning disable SYSLIB0014
                 ServicePoint servicePoint = ServicePointManager.FindServicePoint(BaseAddress);
+#pragma warning restore SYSLIB0014
                 servicePoint.UseNagleAlgorithm = false;
                 servicePoint.SetTcpKeepAlive(
                     enabled: true,
@@ -1272,7 +1274,7 @@ namespace GitHub.Services.WebApi
 
         private const String c_jsonMediaType = "application/json";
 
-        public readonly static String UserStatePropertyName = "VssClientBaseUserState";
+        public static readonly HttpRequestOptionsKey<object> UserStatePropertyName = new HttpRequestOptionsKey<object>("VssClientBaseUserState");
 
         protected sealed class OperationScope : IDisposable
         {

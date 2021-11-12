@@ -95,7 +95,7 @@ namespace GitHub.Runner.PluginHost
             string assemblyFilename = assembly.Name + ".dll";
             if (string.IsNullOrEmpty(executingAssemblyLocation))
             {
-                executingAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                executingAssemblyLocation = Path.GetDirectoryName(AppContext.BaseDirectory);
             }
             return context.LoadFromAssemblyPath(Path.Combine(executingAssemblyLocation, assemblyFilename));
         }

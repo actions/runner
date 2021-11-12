@@ -243,6 +243,7 @@ namespace GitHub.Runner.Listener
                 validator: Validators.ServerUrlValidator);
         }
 
+#if OS_WINDOWS
         public string GetWindowsLogonAccount(string defaultValue, string descriptionMsg)
         {
             return GetArgOrPrompt(
@@ -251,6 +252,7 @@ namespace GitHub.Runner.Listener
                 defaultValue: defaultValue,
                 validator: Validators.NTAccountValidator);
         }
+#endif
 
         public string GetWindowsLogonPassword(string accountName)
         {

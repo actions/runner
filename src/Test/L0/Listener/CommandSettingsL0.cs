@@ -547,6 +547,7 @@ namespace GitHub.Runner.Common.Tests
             }
         }
 
+#if OS_WINDOWS
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", nameof(CommandSettings))]
@@ -574,6 +575,7 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("some windows logon account", actual);
             }
         }
+#endif
 
         [Fact]
         [Trait("Level", "L0")]

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Runtime.Serialization;
+using System.Net.Http;
 
 namespace GitHub.Services.Common.Diagnostics
 {
@@ -98,7 +99,7 @@ namespace GitHub.Services.Common.Diagnostics
         /// <summary>
         /// Gets the property name used to cache this object on extensible objects.
         /// </summary>
-        public const String PropertyName = "MS.VSS.Diagnostics.TraceActivity";
+        public static readonly HttpRequestOptionsKey<VssTraceActivity> PropertyName = new HttpRequestOptionsKey<VssTraceActivity>("MS.VSS.Diagnostics.TraceActivity");      
         private static Lazy<VssTraceActivity> s_empty = new Lazy<VssTraceActivity>(() => new VssTraceActivity(Guid.Empty));
 
         private sealed class CorrelationScope : IDisposable

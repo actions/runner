@@ -59,7 +59,7 @@ namespace GitHub.Runner.Worker.Expressions
             context.Trace.Info($"Search root directory: '{githubWorkspace}'");
             context.Trace.Info($"Search pattern: '{string.Join(", ", patterns)}'");
 
-            string binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            string binDir = Path.GetDirectoryName(AppContext.BaseDirectory);
             string runnerRoot = new DirectoryInfo(binDir).Parent.FullName;
 
             string node = Path.Combine(runnerRoot, "externals", "node12", "bin", $"node{IOUtil.ExeExtension}");

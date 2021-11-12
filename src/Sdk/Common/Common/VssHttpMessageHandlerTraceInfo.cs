@@ -11,7 +11,7 @@ namespace GitHub.Services.Common
     {
         DateTime _lastTime;
 
-        static readonly String TfsTraceInfoKey = "TFS_TraceInfo";
+        private static readonly HttpRequestOptionsKey<VssHttpMessageHandlerTraceInfo> TfsTraceInfoKey = new HttpRequestOptionsKey<VssHttpMessageHandlerTraceInfo>("TFS_TraceInfo");
 
         public int TokenRetries { get; internal set; }
 
@@ -76,10 +76,9 @@ namespace GitHub.Services.Common
         /// <param name="traceInfo"></param>
         public static void SetTraceInfo(HttpRequestMessage message, VssHttpMessageHandlerTraceInfo traceInfo)
         {
-            object existingTraceInfo;
-            if (!message.Properties.TryGetValue(TfsTraceInfoKey, out existingTraceInfo))
+            if (!message.Options.TryGetValue(TfsTraceInfoKey, out var _))
             {
-                message.Properties.Add(TfsTraceInfoKey, traceInfo);
+                message.Options.Set(TfsTraceInfoKey, traceInfo);
             }
         }
 
@@ -90,13 +89,8 @@ namespace GitHub.Services.Common
         /// <returns></returns>
         public static VssHttpMessageHandlerTraceInfo GetTraceInfo(HttpRequestMessage message)
         {
-            VssHttpMessageHandlerTraceInfo traceInfo = null;
-
-            if (message.Properties.TryGetValue(TfsTraceInfoKey, out object traceInfoObject))
-            {
-                traceInfo = traceInfoObject as VssHttpMessageHandlerTraceInfo;
-            }
-
+            VssHttpMessageHandlerTraceInfo traceInfo;
+            message.Options.TryGetValue(TfsTraceInfoKey, out traceInfo);
             return traceInfo;
         }
 

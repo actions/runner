@@ -53,23 +53,14 @@ namespace GitHub.Services.Common
             VssTraceActivity traceActivity = VssTraceActivity.Current;
 
             // Allow overriding default retry options per request
-            VssHttpRetryOptions retryOptions = m_retryOptions;
-            object retryOptionsObject;
-            if (request.Properties.TryGetValue(HttpRetryOptionsKey, out retryOptionsObject)) // NETSTANDARD compliant, TryGetValue<T> is not
-            {
-                // Fallback to default options if object of unexpected type was passed
-                retryOptions = retryOptionsObject as VssHttpRetryOptions ?? m_retryOptions;
-            }
-
-            TimeSpan minBackoff = retryOptions.MinBackoff;
-            Int32 maxAttempts = retryOptions.MaxRetries + 1;
+            VssHttpRetryOptions retryOptions;
+            request.Options.TryGetValue(HttpRetryOptionsKey, out retryOptions);
+ 
+            TimeSpan minBackoff = (retryOptions ?? m_retryOptions).MinBackoff;
+            Int32 maxAttempts = (retryOptions ?? m_retryOptions).MaxRetries + 1;
 
             IVssHttpRetryInfo retryInfo = null;
-            object retryInfoObject;
-            if (request.Properties.TryGetValue(HttpRetryInfoKey, out retryInfoObject)) // NETSTANDARD compliant, TryGetValue<T> is not
-            {
-                retryInfo = retryInfoObject as IVssHttpRetryInfo;
-            }
+            request.Options.TryGetValue(HttpRetryInfoKey, out retryInfo);
 
             if (IsLowPriority(request))
             {
@@ -225,8 +216,8 @@ namespace GitHub.Services.Common
         }
 
         private VssHttpRetryOptions m_retryOptions;
-        public const string HttpRetryInfoKey = "HttpRetryInfo";
-        public const string HttpRetryOptionsKey = "VssHttpRetryOptions";
+        public static readonly HttpRequestOptionsKey<IVssHttpRetryInfo> HttpRetryInfoKey = new HttpRequestOptionsKey<IVssHttpRetryInfo>("HttpRetryInfo");
+        public static readonly HttpRequestOptionsKey<VssHttpRetryOptions> HttpRetryOptionsKey = new HttpRequestOptionsKey<VssHttpRetryOptions>("VssHttpRetryOptions");
         private string m_clientName = "";
     }
 }

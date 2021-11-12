@@ -110,7 +110,7 @@ namespace GitHub.Services.Common
             }
         }
 
-        internal static readonly String PropertyName = "MS.VS.MessageHandler";
+        internal static readonly HttpRequestOptionsKey<VssHttpMessageHandler> PropertyName = new HttpRequestOptionsKey<VssHttpMessageHandler>("MS.VS.MessageHandler");
 
         /// <summary>
         /// Handles the authentication hand-shake for a Visual Studio service.
@@ -169,7 +169,7 @@ namespace GitHub.Services.Common
             }
 
             // Add ourselves to the message so the underlying token issuers may use it if necessary
-            request.Properties[VssHttpMessageHandler.PropertyName] = this;
+            request.Options.Set(VssHttpMessageHandler.PropertyName, this);
 
             Boolean succeeded = false;
             Boolean lastResponseDemandedProxyAuth = false;
@@ -409,7 +409,7 @@ namespace GitHub.Services.Common
             // Read the completion option provided by the caller. If we don't find the property then we
             // assume it is OK to buffer by default.
             HttpCompletionOption completionOption;
-            if (!request.Properties.TryGetValue(VssHttpRequestSettings.HttpCompletionOptionPropertyName, out completionOption))
+            if (!request.Options.TryGetValue(VssHttpRequestSettings.HttpCompletionOptionPropertyName, out completionOption))
             {
                 completionOption = HttpCompletionOption.ResponseContentRead;
             }

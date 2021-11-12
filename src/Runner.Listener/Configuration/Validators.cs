@@ -67,6 +67,7 @@ namespace GitHub.Runner.Listener.Configuration
             return !string.IsNullOrEmpty(value);
         }
 
+#if OS_WINDOWS
         public static bool NTAccountValidator(string arg)
         {
             if (string.IsNullOrEmpty(arg) || String.IsNullOrEmpty(arg.TrimStart('.', '\\')))
@@ -87,5 +88,6 @@ namespace GitHub.Runner.Listener.Configuration
 
             return true;
         }
+#endif
     }
 }

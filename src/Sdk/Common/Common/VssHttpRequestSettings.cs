@@ -291,12 +291,12 @@ namespace GitHub.Services.Common
         protected internal virtual Boolean ApplyTo(HttpRequestMessage request)
         {
             // Make sure we only apply the settings to the request once
-            if (request.Properties.ContainsKey(PropertyName))
+            if (request.Options.TryGetValue(PropertyName, out var _))
             {
                 return false;
             }
 
-            request.Properties.Add(PropertyName, this);
+            request.Options.Set(PropertyName, this);
 
             if (this.AcceptLanguages != null && this.AcceptLanguages.Count > 0)
             {
@@ -366,12 +366,12 @@ namespace GitHub.Services.Common
         /// <summary>
         /// Gets the property name used to reference this object.
         /// </summary>
-        public const String PropertyName = "MS.VS.RequestSettings";
+        public static readonly HttpRequestOptionsKey<VssHttpRequestSettings> PropertyName = new HttpRequestOptionsKey<VssHttpRequestSettings>("MS.VS.RequestSettings");
 
         /// <summary>
         /// Gets the property name used to reference the completion option for a specific request.
         /// </summary>
-        public const String HttpCompletionOptionPropertyName = "MS.VS.HttpCompletionOption";
+        public static readonly HttpRequestOptionsKey<HttpCompletionOption> HttpCompletionOptionPropertyName = new HttpRequestOptionsKey<HttpCompletionOption>("MS.VS.HttpCompletionOption");
 
         /// <summary>
         /// Header to include the light weight response client option.
