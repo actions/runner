@@ -10,9 +10,6 @@
             "args": [
                 "run"
             ],
-            "env": {
-                "GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER": "1"
-            },
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
@@ -25,9 +22,6 @@
             "args": [
                 "run"
             ],
-            "env": {
-                "GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER": "1"
-            },
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
