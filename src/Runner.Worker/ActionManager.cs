@@ -269,19 +269,16 @@ namespace GitHub.Runner.Worker
                     }
                     else if (depth > 0)
                     {
-                        var definition = LoadAction(executionContext, action);
-                        if (definition.Data.Execution.HasPost) {
-                            // if we're in a composite action and haven't loaded the local action yet
-                            // we assume it has a post step
-                            if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
-                            {
-                                // If we haven't done so already, add the parent to the post steps
-                                _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
-                            }
-                            // Clone action so we can modify the condition without affecting the original
-                            var clonedAction = action.Clone() as Pipelines.ActionStep;
-                            _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
-                        }
+                    // if we're in a composite action and haven't loaded the local action yet
+                    // we assume it has a post step
+                    if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
+                    {
+                        // If we haven't done so already, add the parent to the post steps
+                        _cachedEmbeddedPostSteps[parentStepId] = new Stack<Pipelines.ActionStep>();
+                    }
+                    // Clone action so we can modify the condition without affecting the original
+                    var clonedAction = action.Clone() as Pipelines.ActionStep;
+                    _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
                     }
                 }
             }
@@ -446,7 +443,7 @@ namespace GitHub.Runner.Worker
                         {
                             for (var i = 0; i < compositeAction.Steps.Count; i++)
                             {
-                                // Store Id's for later load actions
+                                // Load stored Ids for later load actions
                                 compositeAction.Steps[i].Id = _cachedEmbeddedStepIds[action.Id][i];
                                 if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && compositeAction.Steps[i].Reference.Type != Pipelines.ActionSourceType.Script)
                                 {
@@ -454,6 +451,17 @@ namespace GitHub.Runner.Worker
                                 }
                             }
                         }
+                        else
+                        {
+                            _cachedEmbeddedStepIds[action.Id] = new List<Guid>();
+                            foreach (var compositeStep in compositeAction.Steps)
+                            {
+                                var guid = Guid.NewGuid();
+                                compositeStep.Id = guid;
+                                _cachedEmbeddedStepIds[action.Id].Add(guid);
+                            }
+                        }
+                        // else create IDs and cache them
                     }
                     else
                     {
