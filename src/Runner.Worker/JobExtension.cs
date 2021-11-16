@@ -142,16 +142,9 @@ namespace GitHub.Runner.Worker
                         Trace.Error(ex);
                     }
                     
-                    try 
-                    {
-                        var secretSource = jobContext.Global.Variables.Get("system.secretSource");
-                        context.Output($"Using secrets from: {secretSource}");
-                    } 
-                    catch (Exception ex)
-                    {
-                        context.Output($"Fail to parse and display secretSource: {ex.Message}");
-                        Trace.Error(ex);
-                    }
+                    var secretSource = context.GetGitHubContext("secret_source");
+                    ArgUtil.NotNull(secretSource, nameof(secretSource));
+                    context.Output($"Secret source: {secretSource}");
 
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
