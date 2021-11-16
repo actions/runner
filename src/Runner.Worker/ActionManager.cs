@@ -461,7 +461,6 @@ namespace GitHub.Runner.Worker
                                 _cachedEmbeddedStepIds[action.Id].Add(guid);
                             }
                         }
-                        // else create IDs and cache them
                     }
                     else
                     {
