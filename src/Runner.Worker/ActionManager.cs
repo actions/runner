@@ -269,8 +269,8 @@ namespace GitHub.Runner.Worker
                     }
                     else if (depth > 0)
                     {
-                    // if we're in a composite action and haven't loaded the local action yet
-                    // we assume it has a post step
+                        // if we're in a composite action and haven't loaded the local action yet
+                        // we assume it has a post step
                         if (!_cachedEmbeddedPostSteps.ContainsKey(parentStepId))
                         {
                             // If we haven't done so already, add the parent to the post steps
