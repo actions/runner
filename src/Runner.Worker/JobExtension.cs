@@ -141,10 +141,11 @@ namespace GitHub.Runner.Worker
                         context.Output($"Fail to parse and display GITHUB_TOKEN permissions list: {ex.Message}");
                         Trace.Error(ex);
                     }
-                    
-                    var secretSource = context.GetGitHubContext("secret_source");
-                    ArgUtil.NotNull(secretSource, nameof(secretSource));
-                    context.Output($"Secret source: {secretSource}");
+
+                    if (!string.IsNullOrEmpty(context.GetGitHubContext("secret_source")))
+                    {
+                        context.Output($"Secret source: {context.GetGitHubContext("secret_source")}");
+                    }
 
                     var repoFullName = context.GetGitHubContext("repository");
                     ArgUtil.NotNull(repoFullName, nameof(repoFullName));
