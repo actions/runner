@@ -102,6 +102,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _message = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, "test", "test", null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), steps, null, null, null, null);
             GitHubContext github = new GitHubContext();
             github["repository"] = new Pipelines.ContextData.StringContextData("actions/runner");
+            github["secret_source"] = new Pipelines.ContextData.StringContextData("Actions");
             _message.ContextData.Add("github", github);
 
             hc.SetSingleton(_actionManager.Object);
