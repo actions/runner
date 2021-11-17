@@ -1,0 +1,548 @@
+﻿{
+  "version": "workflow-v1.0",
+
+  "definitions": {
+
+    "workflow-root": {
+      "description": "Workflow file",
+      "mapping": {
+        "properties": {
+          "on": "any",
+          "name": "string",
+          "defaults": "workflow-defaults",
+          "env": "workflow-env",
+          "jobs": "jobs"
+        }
+      }
+    },
+
+    "workflow-defaults": {
+      "mapping": {
+        "properties": {
+          "run": "workflow-defaults-run"
+        }
+      }
+    },
+
+    "workflow-defaults-run": {
+      "mapping": {
+        "properties": {
+          "shell": "non-empty-string",
+          "working-directory": "non-empty-string"
+        }
+      }
+    },
+
+    "workflow-env": {
+      "context": [
+        "github",
+        "secrets"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "jobs": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "job"
+      }
+    },
+
+    "job": {
+      "mapping": {
+        "properties": {
+          "needs": "needs",
+          "if": "job-if",
+          "strategy": "strategy",
+          "name": "string-strategy-context",
+          "runs-on": {
+            "type": "runs-on",
+            "required": true
+          },
+          "timeout-minutes": "number-strategy-context",
+          "cancel-timeout-minutes": "number-strategy-context",
+          "continue-on-error": "boolean-strategy-context",
+          "container": "container",
+          "services": "services",
+          "env": "job-env",
+          "outputs": "job-outputs",
+          "defaults": "job-defaults",
+          "steps": "steps"
+        }
+      }
+    },
+
+    "needs": {
+      "one-of": [
+        "sequence-of-non-empty-string",
+        "non-empty-string"
+      ]
+    },
+
+    "job-if": {
+      "context": [
+        "github",
+        "needs",
+        "always(0,0)",
+        "failure(0,MAX)",
+        "cancelled(0,0)",
+        "success(0,MAX)"
+      ],
+      "string": {}
+    },
+
+    "job-if-result": {
+      "context": [
+        "github",
+        "needs",
+        "always(0,0)",
+        "failure(0,MAX)",
+        "cancelled(0,0)",
+        "success(0,MAX)"
+      ],
+      "one-of": [
+        "null",
+        "boolean",
+        "number",
+        "string",
+        "sequence",
+        "mapping"
+      ]
+    },
+
+    "strategy": {
+      "context": [
+        "github",
+        "needs"
+      ],
+      "mapping": {
+        "properties": {
+          "fail-fast": "boolean",
+          "max-parallel": "number",
+          "matrix": "matrix"
+        }
+      }
+    },
+
+    "matrix": {
+      "mapping": {
+        "properties": {
+          "include": "matrix-filter",
+          "exclude": "matrix-filter"
+        },
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "sequence"
+      }
+    },
+
+    "matrix-filter": {
+      "sequence": {
+        "item-type": "matrix-filter-item"
+      }
+    },
+
+    "matrix-filter-item": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "any"
+      }
+    },
+
+    "runs-on": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "one-of": [
+        "non-empty-string",
+        "sequence-of-non-empty-string",
+        "runs-on-mapping"
+      ]
+    },
+
+    "runs-on-mapping": {
+      "mapping": {
+        "properties": {
+          "pool": {
+            "type": "non-empty-string",
+            "required": true
+          }
+        }
+      }
+    },
+
+    "job-env": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "job-defaults": {
+      "mapping": {
+        "properties": {
+          "run": "job-defaults-run"
+        }
+      }
+    },
+
+    "job-defaults-run": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "needs",
+        "env"
+      ],
+      "mapping": {
+        "properties": {
+          "shell": "non-empty-string",
+          "working-directory": "non-empty-string"
+        }
+      }
+    },
+
+    "job-outputs": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string-runner-context"
+      }
+    },
+
+    "steps": {
+      "sequence": {
+        "item-type": "steps-item"
+      }
+    },
+
+    "steps-item": {
+      "one-of": [
+        "run-step",
+        "regular-step"
+      ]
+    },
+
+    "run-step": {
+      "mapping": {
+        "properties": {
+          "name": "string-steps-context",
+          "id": "non-empty-string",
+          "if": "step-if",
+          "timeout-minutes": "number-steps-context",
+          "run": {
+            "type": "string-steps-context",
+            "required": true
+          },
+          "continue-on-error": "boolean-steps-context",
+          "env": "step-env",
+          "working-directory": "string-steps-context",
+          "shell": "non-empty-string"
+        }
+      }
+    },
+
+    "regular-step": {
+      "mapping": {
+        "properties": {
+          "name": "string-steps-context",
+          "id": "non-empty-string",
+          "if": "step-if",
+          "continue-on-error": "boolean-steps-context",
+          "timeout-minutes": "number-steps-context",
+          "uses": {
+            "type": "non-empty-string",
+            "required": true
+          },
+          "with": "step-with",
+          "env": "step-env"
+        }
+      }
+    },
+
+    "step-if": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "always(0,0)",
+        "failure(0,0)",
+        "cancelled(0,0)",
+        "success(0,0)",
+        "hashFiles(1,255)"
+      ],
+      "string": {}
+    },
+
+    "step-if-result": {
+      "context": [
+        "github",
+        "strategy",
+        "matrix",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "always(0,0)",
+        "failure(0,0)",
+        "cancelled(0,0)",
+        "success(0,0)",
+        "hashFiles(1,255)"
+      ],
+      "one-of": [
+        "null",
+        "boolean",
+        "number",
+        "string",
+        "sequence",
+        "mapping"
+      ]
+    },
+
+    "step-env": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "hashFiles(1,255)"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "step-with": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "hashFiles(1,255)"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string"
+      }
+    },
+
+    "container": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "one-of": [
+        "string",
+        "container-mapping"
+      ]
+    },
+
+    "container-mapping": {
+      "mapping": {
+        "properties": {
+          "image": "non-empty-string",
+          "options": "non-empty-string",
+          "env": "container-env",
+          "ports": "sequence-of-non-empty-string",
+          "volumes": "sequence-of-non-empty-string",
+          "credentials": "container-registry-credentials"
+        }
+      }
+    },
+
+    "services": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "services-container"
+      }
+    },
+
+    "services-container": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "one-of": [
+        "non-empty-string",
+        "container-mapping"
+      ]
+    },
+
+    "container-registry-credentials": {
+      "context": [
+        "secrets",
+        "env",
+        "github"
+      ],
+      "mapping": {
+        "properties": {
+          "username": "non-empty-string",
+          "password": "non-empty-string"
+        }
+      }
+    },
+
+    "container-env": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "string-runner-context"
+      }
+    },
+
+    "non-empty-string": {
+      "string": {
+        "require-non-empty": true
+      }
+    },
+
+    "sequence-of-non-empty-string": {
+      "sequence": {
+        "item-type": "non-empty-string"
+      }
+    },
+
+    "boolean-strategy-context": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "boolean": {}
+    },
+
+    "number-strategy-context": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "number": {}
+    },
+
+    "string-strategy-context": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
+      "string": {}
+    },
+
+    "boolean-steps-context": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "hashFiles(1,255)"
+      ],
+      "boolean": {}
+    },
+
+    "number-steps-context": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "hashFiles(1,255)"
+      ],
+      "number": {}
+    },
+
+    "string-runner-context": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
+    },
+
+    "string-runner-context-no-secrets": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "steps",
+        "job",
+        "runner",
+        "env"
+      ],
+      "string": {}
+    },
+
+    "string-steps-context": {
+      "context": [
+        "github",
+        "needs",
+        "strategy",
+        "matrix",
+        "secrets",
+        "steps",
+        "job",
+        "runner",
+        "env",
+        "hashFiles(1,255)"
+      ],
+      "string": {}
+    }
+  }
+}
