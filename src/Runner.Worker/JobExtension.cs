@@ -142,9 +142,10 @@ namespace GitHub.Runner.Worker
                         Trace.Error(ex);
                     }
 
-                    if (!string.IsNullOrEmpty(context.GetGitHubContext("secret_source")))
+                    var secretSource = context.GetGitHubContext("secret_source");
+                    if (!string.IsNullOrEmpty(secretSource))
                     {
-                        context.Output($"Secret source: {context.GetGitHubContext("secret_source")}");
+                        context.Output($"Secret source: {secretSource}");
                     }
 
                     var repoFullName = context.GetGitHubContext("repository");
