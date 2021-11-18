@@ -214,6 +214,7 @@ namespace GitHub.Runner.Listener
                         try
                         {
                             Trace.Info($"Download runner: begin download");
+                            long downloadSize = 0;
 
                             //open zip stream in async mode
                             using (HttpClient httpClient = new HttpClient(HostContext.CreateHttpClientHandler()))
@@ -232,13 +233,14 @@ namespace GitHub.Runner.Listener
                                     //81920 is the default used by System.IO.Stream.CopyTo and is under the large object heap threshold (85k).
                                     await result.CopyToAsync(fs, 81920, downloadCts.Token);
                                     await fs.FlushAsync(downloadCts.Token);
+                                    downloadSize = fs.Length;
                                 }
                             }
 
                             Trace.Info($"Download runner: finished download");
                             downloadSucceeded = true;
                             stopWatch.Stop();
-                            trace = $"{trace}--PackageDownloadTime({stopWatch.ElapsedMilliseconds}ms)--Attempts({attempt})";
+                            trace = $"{trace}--PackageDownloadTime({stopWatch.ElapsedMilliseconds}ms)--Attempts({attempt}--PackageSize({downloadSize}))";
                             break;
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
