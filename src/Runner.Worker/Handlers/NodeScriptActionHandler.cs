@@ -83,7 +83,7 @@ namespace GitHub.Runner.Worker.Handlers
                     HasPreStep = Data.HasPre,
                     HasPostStep = Data.HasPost,
                     IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = "node12"
+                    Type = Data.NodeVersion
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
@@ -99,7 +99,7 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
+            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 
             // Format the arguments passed to node.
