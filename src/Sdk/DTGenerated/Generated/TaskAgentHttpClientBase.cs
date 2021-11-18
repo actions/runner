@@ -768,6 +768,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="poolId"></param>
         /// <param name="agentId"></param>
         /// <param name="currentState"></param>
+        /// <param name="updateTrace"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -775,6 +776,7 @@ namespace GitHub.DistributedTask.WebApi
             int poolId,
             int agentId,
             string currentState,
+            string updateTrace,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -784,6 +786,7 @@ namespace GitHub.DistributedTask.WebApi
 
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
             queryParams.Add("currentState", currentState);
+            queryParams.Add("updateTrace", updateTrace);
 
             return SendAsync<TaskAgent>(
                 httpMethod,
@@ -793,66 +796,6 @@ namespace GitHub.DistributedTask.WebApi
                 queryParameters: queryParams,
                 userState: userState,
                 cancellationToken: cancellationToken);
-        }
-
-        /// <summary>
-        /// [Preview API]
-        /// </summary>
-        /// <param name="poolId"></param>
-        /// <param name="agentId"></param>
-        /// <param name="userState"></param>
-        /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
-        public Task<String> GetAgentAuthUrlAsync(
-            int poolId,
-            int agentId,
-            object userState = null,
-            CancellationToken cancellationToken = default)
-        {
-            HttpMethod httpMethod = new HttpMethod("GET");
-            Guid locationId = new Guid("a82a119c-1e46-44b6-8d75-c82a79cf975b");
-            object routeValues = new { poolId = poolId, agentId = agentId };
-
-            return SendAsync<String>(
-                httpMethod,
-                locationId,
-                routeValues: routeValues,
-                version: new ApiResourceVersion(6.0, 1),
-                userState: userState,
-                cancellationToken: cancellationToken);
-        }
-
-        /// <summary>
-        /// [Preview API]
-        /// </summary>
-        /// <param name="poolId"></param>
-        /// <param name="agentId"></param>
-        /// <param name="error"></param>
-        /// <param name="userState"></param>
-        /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
-        [EditorBrowsable(EditorBrowsableState.Never)]
-        public virtual async Task ReportAgentAuthUrlMigrationErrorAsync(
-            int poolId,
-            int agentId,
-            string error,
-            object userState = null,
-            CancellationToken cancellationToken = default)
-        {
-            HttpMethod httpMethod = new HttpMethod("POST");
-            Guid locationId = new Guid("a82a119c-1e46-44b6-8d75-c82a79cf975b");
-            object routeValues = new { poolId = poolId, agentId = agentId };
-            HttpContent content = new ObjectContent<string>(error, new VssJsonMediaTypeFormatter(true));
-
-            using (HttpResponseMessage response = await SendAsync(
-                httpMethod,
-                locationId,
-                routeValues: routeValues,
-                version: new ApiResourceVersion(6.0, 1),
-                userState: userState,
-                cancellationToken: cancellationToken,
-                content: content).ConfigureAwait(false))
-            {
-                return;
-            }
         }
     }
 }

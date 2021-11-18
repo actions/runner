@@ -63,23 +63,25 @@ namespace GitHub.Runner.Listener
 
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
-                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
+                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner", $"Update {_targetPackage.Platform} from {BuildConstants.RunnerPackage.Version} to {_targetPackage.Version}");
 
-                await DownloadLatestRunner(token);
+                var downloadTrace = await DownloadLatestRunner(token);
                 Trace.Info($"Download latest runner and unzip into runner root.");
 
                 // wait till all running job finish
-                await UpdateRunnerUpdateStateAsync("Waiting for current job finish running.");
+                await UpdateRunnerUpdateStateAsync("Waiting for current job finish running.", downloadTrace);
 
                 await jobDispatcher.WaitAsync(token);
                 Trace.Info($"All running job has exited.");
 
                 // We need to keep runner backup around for macOS until we fixed https://github.com/actions/runner/issues/743
                 // delete runner backup
+                var stopWatch = Stopwatch.StartNew();
                 DeletePreviousVersionRunnerBackup(token);
                 Trace.Info($"Delete old version runner backup.");
+                stopWatch.Stop();
                 // generate update script from template
-                await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
+                await UpdateRunnerUpdateStateAsync("Generate and execute update script.", $"DeleteRunnerBackupTime({stopWatch.ElapsedMilliseconds}ms)");
 
                 string updateScript = GenerateUpdateScript(restartInteractiveRunner);
                 Trace.Info($"Generate update script into: {updateScript}");
@@ -96,7 +98,7 @@ namespace GitHub.Runner.Listener
                 invokeScript.Start();
                 Trace.Info($"Update script start running");
 
-                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.");
+                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.", $"RestartInteractiveRunner({restartInteractiveRunner})");
 
                 return true;
             }
@@ -150,8 +152,9 @@ namespace GitHub.Runner.Listener
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        private async Task DownloadLatestRunner(CancellationToken token)
+        private async Task<string> DownloadLatestRunner(CancellationToken token)
         {
+            string trace = $"DownloadUrl({_targetPackage.DownloadUrl})";
             string latestRunnerDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.UpdateDirectory);
             IOUtil.DeleteDirectory(latestRunnerDirectory, token);
             Directory.CreateDirectory(latestRunnerDirectory);
@@ -160,6 +163,7 @@ namespace GitHub.Runner.Listener
             string archiveFile = null;
             bool downloadSucceeded = false;
 
+            var stopWatch = Stopwatch.StartNew();
             try
             {
                 // Download the runner, using multiple attempts in order to be resilient against any networking/CDN issues
@@ -233,6 +237,8 @@ namespace GitHub.Runner.Listener
 
                             Trace.Info($"Download runner: finished download");
                             downloadSucceeded = true;
+                            stopWatch.Stop();
+                            trace = $"{trace}--PackageDownloadTime({stopWatch.ElapsedMilliseconds}ms)--Attempts({attempt})";
                             break;
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -257,6 +263,7 @@ namespace GitHub.Runner.Listener
                     throw new TaskCanceledException($"Runner package '{archiveFile}' failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts");
                 }
 
+                stopWatch.Restart();
                 // If we got this far, we know that we've successfully downloaded the runner package
                 // Validate Hash Matches if it is provided
                 using (FileStream stream = File.OpenRead(archiveFile))
@@ -320,7 +327,9 @@ namespace GitHub.Runner.Listener
                     throw new NotSupportedException($"{archiveFile}");
                 }
 
+                stopWatch.Stop();
                 Trace.Info($"Finished getting latest runner package at: {latestRunnerDirectory}.");
+                trace = $"{trace}--PackageExtractTime({stopWatch.ElapsedMilliseconds}ms)";
             }
             finally
             {
@@ -340,6 +349,7 @@ namespace GitHub.Runner.Listener
                 }
             }
 
+            stopWatch.Restart();
             // copy latest runner into runner root folder
             // copy bin from _work/_update -> bin.version under root
             string binVersionDir = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"{Constants.Path.BinDirectory}.{_targetPackage.Version}");
@@ -365,6 +375,11 @@ namespace GitHub.Runner.Listener
                 IOUtil.DeleteFile(destination);
                 file.CopyTo(destination, true);
             }
+
+            stopWatch.Stop();
+            trace = $"{trace}--CopyRunnerToRootTime({stopWatch.ElapsedMilliseconds}ms)";
+
+            return trace;
         }
 
         private void DeletePreviousVersionRunnerBackup(CancellationToken token)
@@ -484,13 +499,18 @@ namespace GitHub.Runner.Listener
             return updateScript;
         }
 
-        private async Task UpdateRunnerUpdateStateAsync(string currentState)
+        private async Task UpdateRunnerUpdateStateAsync(string currentState, string trace = "")
         {
             _terminal.WriteLine(currentState);
 
+            if (!string.IsNullOrEmpty(trace))
+            {
+                Trace.Info(trace);
+            }
+
             try
             {
-                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState);
+                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState, trace);
             }
             catch (VssResourceNotFoundException)
             {
