@@ -13,6 +13,7 @@ using GitHub.Services.WebApi;
 using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Text;
 
 namespace GitHub.Runner.Listener
 {
@@ -63,7 +64,7 @@ namespace GitHub.Runner.Listener
 
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
-                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner", $"Update {_targetPackage.Platform} runner from {BuildConstants.RunnerPackage.Version} to {_targetPackage.Version}");
+                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner", $"RunnerPlatform: {_targetPackage.Platform}");
 
                 var downloadTrace = await DownloadLatestRunner(token);
                 Trace.Info($"Download latest runner and unzip into runner root.");
@@ -81,7 +82,7 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Delete old version runner backup.");
                 stopWatch.Stop();
                 // generate update script from template
-                await UpdateRunnerUpdateStateAsync("Generate and execute update script.", $"DeleteRunnerBackupTime({stopWatch.ElapsedMilliseconds}ms)");
+                await UpdateRunnerUpdateStateAsync("Generate and execute update script.", $"DeleteRunnerBackupTime: {stopWatch.ElapsedMilliseconds}ms");
 
                 string updateScript = GenerateUpdateScript(restartInteractiveRunner);
                 Trace.Info($"Generate update script into: {updateScript}");
@@ -98,7 +99,7 @@ namespace GitHub.Runner.Listener
                 invokeScript.Start();
                 Trace.Info($"Update script start running");
 
-                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.", $"RestartInteractiveRunner({restartInteractiveRunner})");
+                await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.", $"RestartInteractiveRunner: {restartInteractiveRunner}");
 
                 return true;
             }
@@ -154,7 +155,8 @@ namespace GitHub.Runner.Listener
         /// <returns></returns>
         private async Task<string> DownloadLatestRunner(CancellationToken token)
         {
-            string trace = $"DownloadUrl({_targetPackage.DownloadUrl})";
+            var traceStringBuilder = new StringBuilder();
+            traceStringBuilder.AppendLine($"DownloadUrl: {_targetPackage.DownloadUrl}");
             string latestRunnerDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.UpdateDirectory);
             IOUtil.DeleteDirectory(latestRunnerDirectory, token);
             Directory.CreateDirectory(latestRunnerDirectory);
@@ -240,7 +242,9 @@ namespace GitHub.Runner.Listener
                             Trace.Info($"Download runner: finished download");
                             downloadSucceeded = true;
                             stopWatch.Stop();
-                            trace = $"{trace} -- PackageDownloadTime({stopWatch.ElapsedMilliseconds}ms) -- Attempts({attempt}) -- PackageSize({downloadSize})";
+                            traceStringBuilder.AppendLine($"PackageDownloadTime: {stopWatch.ElapsedMilliseconds}ms");
+                            traceStringBuilder.AppendLine($"Attempts: {attempt}");
+                            traceStringBuilder.AppendLine($"PackageSize: {downloadSize / 1024 / 1024}MB");
                             break;
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -331,7 +335,7 @@ namespace GitHub.Runner.Listener
 
                 stopWatch.Stop();
                 Trace.Info($"Finished getting latest runner package at: {latestRunnerDirectory}.");
-                trace = $"{trace}--PackageExtractTime({stopWatch.ElapsedMilliseconds}ms)";
+                traceStringBuilder.AppendLine($"PackageExtractTime: {stopWatch.ElapsedMilliseconds}ms");
             }
             finally
             {
@@ -379,9 +383,9 @@ namespace GitHub.Runner.Listener
             }
 
             stopWatch.Stop();
-            trace = $"{trace}--CopyRunnerToRootTime({stopWatch.ElapsedMilliseconds}ms)";
+            traceStringBuilder.AppendLine($"CopyRunnerToRootTime: {stopWatch.ElapsedMilliseconds}ms");
 
-            return trace;
+            return traceStringBuilder.ToString();
         }
 
         private void DeletePreviousVersionRunnerBackup(CancellationToken token)
