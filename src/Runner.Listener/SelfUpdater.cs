@@ -63,7 +63,7 @@ namespace GitHub.Runner.Listener
 
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
-                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner", $"Update {_targetPackage.Platform} from {BuildConstants.RunnerPackage.Version} to {_targetPackage.Version}");
+                await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner", $"Update {_targetPackage.Platform} runner from {BuildConstants.RunnerPackage.Version} to {_targetPackage.Version}");
 
                 var downloadTrace = await DownloadLatestRunner(token);
                 Trace.Info($"Download latest runner and unzip into runner root.");
@@ -240,7 +240,7 @@ namespace GitHub.Runner.Listener
                             Trace.Info($"Download runner: finished download");
                             downloadSucceeded = true;
                             stopWatch.Stop();
-                            trace = $"{trace}--PackageDownloadTime({stopWatch.ElapsedMilliseconds}ms)--Attempts({attempt}--PackageSize({downloadSize}))";
+                            trace = $"{trace} -- PackageDownloadTime({stopWatch.ElapsedMilliseconds}ms) -- Attempts({attempt}) -- PackageSize({downloadSize})";
                             break;
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
