@@ -9,6 +9,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,8 +26,8 @@ namespace GitHub.Runner.Common
         ISecretMasker SecretMasker { get; }
         List<ProductInfoHeaderValue> UserAgents { get; }
         RunnerWebProxy WebProxy { get; }
-        string GetDirectory(WellKnownDirectory directory);
-        string GetConfigFile(WellKnownConfigFile configFile);
+        string GetDirectory(WellKnownDirectory directory, string rootCaller = "", [CallerMemberName] string caller = "");
+        string GetConfigFile(WellKnownConfigFile configFile, string rootCaller = "", [CallerMemberName] string caller = "");
         Tracing GetTrace(string name);
         Task Delay(TimeSpan delay, CancellationToken cancellationToken);
         T CreateService<T>() where T : class, IRunnerService;
@@ -213,8 +214,13 @@ namespace GitHub.Runner.Common
             }
         }
 
-        public string GetDirectory(WellKnownDirectory directory)
+        public string GetDirectory(WellKnownDirectory directory, string rootCaller = "", [CallerMemberName] string caller = "")
         {
+            if (string.IsNullOrEmpty(rootCaller))
+            {
+                rootCaller = caller;
+            }
+
             string path;
             switch (directory)
             {
@@ -224,29 +230,29 @@ namespace GitHub.Runner.Common
 
                 case WellKnownDirectory.Diag:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         Constants.Path.DiagDirectory);
                     break;
 
                 case WellKnownDirectory.Externals:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         Constants.Path.ExternalsDirectory);
                     break;
 
                 case WellKnownDirectory.Root:
-                    path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
+                    path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin, rootCaller)).Parent.FullName;
                     break;
 
                 case WellKnownDirectory.Temp:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Work),
+                        GetDirectory(WellKnownDirectory.Work, rootCaller),
                         Constants.Path.TempDirectory);
                     break;
 
                 case WellKnownDirectory.Actions:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Work),
+                        GetDirectory(WellKnownDirectory.Work, rootCaller),
                         Constants.Path.ActionsDirectory);
                     break;
 
@@ -257,14 +263,14 @@ namespace GitHub.Runner.Common
                     if (string.IsNullOrEmpty(path))
                     {
                         path = Path.Combine(
-                            GetDirectory(WellKnownDirectory.Work),
+                            GetDirectory(WellKnownDirectory.Work, rootCaller),
                             Constants.Path.ToolDirectory);
                     }
                     break;
 
                 case WellKnownDirectory.Update:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Work),
+                        GetDirectory(WellKnownDirectory.Work, rootCaller),
                         Constants.Path.UpdateDirectory);
                     break;
 
@@ -274,94 +280,99 @@ namespace GitHub.Runner.Common
                     ArgUtil.NotNull(settings, nameof(settings));
                     ArgUtil.NotNullOrEmpty(settings.WorkFolder, nameof(settings.WorkFolder));
                     path = Path.GetFullPath(Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         settings.WorkFolder));
                     break;
 
                 default:
-                    throw new NotSupportedException($"Unexpected well known directory: '{directory}'");
+                    throw new NotSupportedException($"Unexpected well known directory: '{directory}' ({rootCaller})");
             }
 
-            _trace.Info($"Well known directory '{directory}': '{path}'");
+            _trace.Info($"Well known directory '{directory}': '{path}' ({rootCaller})");
             return path;
         }
 
-        public string GetConfigFile(WellKnownConfigFile configFile)
+        public string GetConfigFile(WellKnownConfigFile configFile, string rootCaller = "", [CallerMemberName] string caller = "")
         {
+            if (string.IsNullOrEmpty(rootCaller))
+            {
+                rootCaller = caller;
+            }
+
             string path;
             switch (configFile)
             {
                 case WellKnownConfigFile.Runner:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".runner");
                     break;
 
                 case WellKnownConfigFile.Credentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credentials");
                     break;
 
                 case WellKnownConfigFile.MigratedCredentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credentials_migrated");
                     break;
 
                 case WellKnownConfigFile.RSACredentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credentials_rsaparams");
                     break;
 
                 case WellKnownConfigFile.Service:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".service");
                     break;
 
                 case WellKnownConfigFile.CredentialStore:
 #if OS_OSX
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credential_store.keychain");
 #else
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credential_store");
 #endif
                     break;
 
                 case WellKnownConfigFile.Certificates:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".certificates");
                     break;
 
                 case WellKnownConfigFile.Options:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".options");
                     break;
 
                 case WellKnownConfigFile.SetupInfo:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".setup_info");
                     break;
-                
+
                 case WellKnownConfigFile.Telemetry:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Diag),
+                        GetDirectory(WellKnownDirectory.Diag, rootCaller),
                         ".telemetry");
                     break;
 
                 default:
-                    throw new NotSupportedException($"Unexpected well known config file: '{configFile}'");
+                    throw new NotSupportedException($"Unexpected well known config file: '{configFile}' ({rootCaller})");
             }
 
-            _trace.Info($"Well known config file '{configFile}': '{path}'");
+            _trace.Info($"Well known config file '{configFile}': '{path}' ({rootCaller})");
             return path;
         }
 

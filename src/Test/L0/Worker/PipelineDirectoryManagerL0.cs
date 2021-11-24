@@ -153,7 +153,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 // Assert.
                 _trackingManager.Verify(x => x.LoadIfExists(_ec.Object, _trackingFile));
                 _trackingManager.Verify(x => x.Update(_ec.Object, _existingConfig, _trackingFile));
-                _ec.Verify(x => x.SetGitHubContext("workspace", Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), _existingConfig.PipelineDirectory, "my_new_path")));
+                _ec.Verify(x => x.SetGitHubContext("workspace", Path.Combine(hc.GetDirectory(WellKnownDirectory.Work, "", ""), _existingConfig.PipelineDirectory, "my_new_path")));
             }
         }
 
@@ -190,7 +190,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 _trackingManager.Setup(x => x.LoadIfExists(_ec.Object, _trackingFile)).Returns(_existingConfig);
 
                 // Act.
-                Assert.ThrowsAny<ArgumentException>(()=> _pipelineDirectoryManager.UpdateRepositoryDirectory(_ec.Object, "actions/notrunner", Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), "not_under_pipeline_directory"), false));
+                Assert.ThrowsAny<ArgumentException>(() => _pipelineDirectoryManager.UpdateRepositoryDirectory(_ec.Object, "actions/notrunner", Path.Combine(hc.GetDirectory(WellKnownDirectory.Work), "not_under_pipeline_directory"), false));
             }
         }
 

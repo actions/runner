@@ -118,7 +118,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             await _actionRunner.RunAsync();
 
             //Assert
-            _ec.Verify(x => x.SetGitHubContext("event_path", Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp), "_github_workflow", "event.json")), Times.Once);
+            _ec.Verify(x => x.SetGitHubContext("event_path", Path.Combine(_hc.GetDirectory(WellKnownDirectory.Temp, "", ""), "_github_workflow", "event.json")), Times.Once);
         }
 
         [Fact]

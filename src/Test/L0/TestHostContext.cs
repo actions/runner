@@ -159,8 +159,13 @@ namespace GitHub.Runner.Common.Tests
             _serviceSingletons[typeof(T)] = singleton;
         }
 
-        public string GetDirectory(WellKnownDirectory directory)
+        public string GetDirectory(WellKnownDirectory directory, string rootCaller = "", [CallerMemberName] string caller = "")
         {
+            if (string.IsNullOrEmpty(rootCaller))
+            {
+                rootCaller = caller;
+            }
+
             string path;
             switch (directory)
             {
@@ -170,13 +175,13 @@ namespace GitHub.Runner.Common.Tests
 
                 case WellKnownDirectory.Diag:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         Constants.Path.DiagDirectory);
                     break;
 
                 case WellKnownDirectory.Externals:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         Constants.Path.ExternalsDirectory);
                     break;
 
@@ -186,13 +191,13 @@ namespace GitHub.Runner.Common.Tests
 
                 case WellKnownDirectory.Temp:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Work),
+                        GetDirectory(WellKnownDirectory.Work, rootCaller),
                         Constants.Path.TempDirectory);
                     break;
 
                 case WellKnownDirectory.Actions:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Work),
+                        GetDirectory(WellKnownDirectory.Work, rootCaller),
                         Constants.Path.ActionsDirectory);
                     break;
 
@@ -202,14 +207,14 @@ namespace GitHub.Runner.Common.Tests
                     if (string.IsNullOrEmpty(path))
                     {
                         path = Path.Combine(
-                            GetDirectory(WellKnownDirectory.Work),
+                            GetDirectory(WellKnownDirectory.Work, rootCaller),
                             Constants.Path.ToolDirectory);
                     }
                     break;
 
                 case WellKnownDirectory.Update:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Work),
+                        GetDirectory(WellKnownDirectory.Work, rootCaller),
                         Constants.Path.UpdateDirectory);
                     break;
 
@@ -223,66 +228,71 @@ namespace GitHub.Runner.Common.Tests
                     throw new NotSupportedException($"Unexpected well known directory: '{directory}'");
             }
 
-            _trace.Info($"Well known directory '{directory}': '{path}'");
+            _trace.Info($"Well known directory '{directory}': '{path}' ({rootCaller})");
             return path;
         }
 
-        public string GetConfigFile(WellKnownConfigFile configFile)
+        public string GetConfigFile(WellKnownConfigFile configFile, string rootCaller = "", [CallerMemberName] string caller = "")
         {
+            if (string.IsNullOrEmpty(rootCaller))
+            {
+                rootCaller = caller;
+            }
+
             string path;
             switch (configFile)
             {
                 case WellKnownConfigFile.Runner:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".agent");
                     break;
 
                 case WellKnownConfigFile.Credentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credentials");
                     break;
 
                 case WellKnownConfigFile.RSACredentials:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credentials_rsaparams");
                     break;
 
                 case WellKnownConfigFile.Service:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".service");
                     break;
 
                 case WellKnownConfigFile.CredentialStore:
 #if OS_OSX
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credential_store.keychain");
 #else
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".credential_store");
 #endif
                     break;
 
                 case WellKnownConfigFile.Certificates:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".certificates");
                     break;
 
                 case WellKnownConfigFile.Options:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".options");
                     break;
 
                 case WellKnownConfigFile.SetupInfo:
                     path = Path.Combine(
-                        GetDirectory(WellKnownDirectory.Root),
+                        GetDirectory(WellKnownDirectory.Root, rootCaller),
                         ".setup_info");
                     break;
 
@@ -290,7 +300,7 @@ namespace GitHub.Runner.Common.Tests
                     throw new NotSupportedException($"Unexpected well known config file: '{configFile}'");
             }
 
-            _trace.Info($"Well known config file '{configFile}': '{path}'");
+            _trace.Info($"Well known config file '{configFile}': '{path}' ({rootCaller})");
             return path;
         }
 
