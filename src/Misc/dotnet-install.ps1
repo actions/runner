@@ -16,15 +16,27 @@
     - LTS - most current supported release
     - 2-part version in a format A.B - represents a specific release
           examples: 2.0, 1.0
-    - Branch name
-          examples: release/2.0.0, Master
-    Note: The version parameter overrides the channel parameter.
+    - 3-part version in a format A.B.Cxx - represents a specific SDK release
+          examples: 5.0.1xx, 5.0.2xx
+          Supported since 5.0 release
+    Note: The version parameter overrides the channel parameter when any version other than 'latest' is used.
+.PARAMETER Quality
+    Download the latest build of specified quality in the channel. The possible values are: daily, signed, validated, preview, GA.
+    Works only in combination with channel. Not applicable for current and LTS channels and will be ignored if those channels are used. 
+    For SDK use channel in A.B.Cxx format: using quality together with channel in A.B format is not supported.
+    Supported since 5.0 release.
+    Note: The version parameter overrides the channel parameter when any version other than 'latest' is used, and therefore overrides the quality.     
 .PARAMETER Version
     Default: latest
     Represents a build version on specific channel. Possible values:
     - latest - most latest build on specific channel
     - 3-part version in a format A.B.C - represents specific version of build
           examples: 2.0.0-preview2-006120, 1.1.0
+.PARAMETER Internal
+    Download internal builds. Requires providing credentials via -FeedCredential parameter.
+.PARAMETER FeedCredential
+    Token to access Azure feed. Used as a query string to append to the Azure feed.
+    This parameter typically is not specified.
 .PARAMETER InstallDir
     Default: %LocalAppData%\Microsoft\dotnet
     Path to where to install dotnet. Note that binaries will be placed directly in a given directory.
@@ -59,9 +71,6 @@
 .PARAMETER UncachedFeed
     This parameter typically is not changed by the user.
     It allows changing the URL for the Uncached feed used by this installer.
-.PARAMETER FeedCredential
-    Used as a query string to append to the Azure feed.
-    It allows changing the URL to use non-public blob storage accounts.
 .PARAMETER ProxyAddress
     If set, the installer will use the proxy when making web requests
 .PARAMETER ProxyUseDefaultCredentials
@@ -77,15 +86,19 @@
 .PARAMETER JSonFile
     Determines the SDK version from a user specified global.json file
     Note: global.json must have a value for 'SDK:Version'
+.PARAMETER DownloadTimeout
+    Determines timeout duration in seconds for dowloading of the SDK file
+    Default: 1200 seconds (20 minutes)
 #>
 [cmdletbinding()]
 param(
    [string]$Channel="LTS",
+   [string]$Quality,
    [string]$Version="Latest",
+   [switch]$Internal,
    [string]$JSonFile,
-   [string]$InstallDir="<auto>",
+   [Alias('i')][string]$InstallDir="<auto>",
    [string]$Architecture="<auto>",
-   [ValidateSet("dotnet", "aspnetcore", "windowsdesktop", IgnoreCase = $false)]
    [string]$Runtime,
    [Obsolete("This parameter may be removed in a future version of this script. The recommended alternative is '-Runtime dotnet'.")]
    [switch]$SharedRuntime,
@@ -98,7 +111,8 @@ param(
    [switch]$ProxyUseDefaultCredentials,
    [string[]]$ProxyBypassList=@(),
    [switch]$SkipNonVersionedFiles,
-   [switch]$NoCdn
+   [switch]$NoCdn,
+   [int]$DownloadTimeout=1200
 )
 
 Set-StrictMode -Version Latest
@@ -167,7 +181,7 @@ function Say-Invocation($Invocation) {
     Say-Verbose "$command $args"
 }
 
-function Invoke-With-Retry([ScriptBlock]$ScriptBlock, [int]$MaxAttempts = 3, [int]$SecondsBetweenAttempts = 1) {
+function Invoke-With-Retry([ScriptBlock]$ScriptBlock, [System.Threading.CancellationToken]$cancellationToken = [System.Threading.CancellationToken]::None, [int]$MaxAttempts = 3, [int]$SecondsBetweenAttempts = 1) {
     $Attempts = 0
 
     while ($true) {
@@ -176,7 +190,7 @@ function Invoke-With-Retry([ScriptBlock]$ScriptBlock, [int]$MaxAttempts = 3, [in
         }
         catch {
             $Attempts++
-            if ($Attempts -lt $MaxAttempts) {
+            if (($Attempts -lt $MaxAttempts) -and -not $cancellationToken.IsCancellationRequested) {
                 Start-Sleep $SecondsBetweenAttempts
             }
             else {
@@ -205,7 +219,7 @@ function Get-Machine-Architecture() {
 function Get-CLIArchitecture-From-Architecture([string]$Architecture) {
     Say-Invocation $MyInvocation
 
-    switch ($Architecture.ToLower()) {
+    switch ($Architecture.ToLowerInvariant()) {
         { $_ -eq "<auto>" } { return Get-CLIArchitecture-From-Architecture $(Get-Machine-Architecture) }
         { ($_ -eq "amd64") -or ($_ -eq "x64") } { return "x64" }
         { $_ -eq "x86" } { return "x86" }
@@ -214,6 +228,53 @@ function Get-CLIArchitecture-From-Architecture([string]$Architecture) {
         default { throw "Architecture '$Architecture' not supported. If you think this is a bug, report it at https://github.com/dotnet/install-scripts/issues" }
     }
 }
+
+
+function Get-NormalizedQuality([string]$Quality) {
+    Say-Invocation $MyInvocation
+
+    if ([string]::IsNullOrEmpty($Quality)) {
+        return ""
+    }
+
+    switch ($Quality) {
+        { @("daily", "signed", "validated", "preview") -contains $_ } { return $Quality.ToLowerInvariant() }
+        #ga quality is available without specifying quality, so normalizing it to empty
+        { $_ -eq "ga" } { return "" }
+        default { throw "'$Quality' is not a supported value for -Quality option. Supported values are: daily, signed, validated, preview, ga. If you think this is a bug, report it at https://github.com/dotnet/install-scripts/issues." }
+    }
+}
+
+function Get-NormalizedChannel([string]$Channel) {
+    Say-Invocation $MyInvocation
+
+    if ([string]::IsNullOrEmpty($Channel)) {
+        return ""
+    }
+
+    if ($Channel.StartsWith('release/')) {
+        Say-Warning 'Using branch name with -Channel option is no longer supported with newer releases. Use -Quality option with a channel in X.Y format instead, such as "-Channel 5.0 -Quality Daily."'
+    }
+
+    switch ($Channel) {
+        { $_ -eq "lts" } { return "LTS" }
+        { $_ -eq "current" } { return "current" }
+        default { return $Channel.ToLowerInvariant() }
+    }
+}
+
+function Get-NormalizedProduct([string]$Runtime) {
+    Say-Invocation $MyInvocation
+
+    switch ($Runtime) {
+        { $_ -eq "dotnet" } { return "dotnet-runtime" }
+        { $_ -eq "aspnetcore" } { return "aspnetcore-runtime" }
+        { $_ -eq "windowsdesktop" } { return "windowsdesktop-runtime" }
+        { [string]::IsNullOrEmpty($_) } { return "dotnet-sdk" }
+        default { throw "'$Runtime' is not a supported value for -Runtime option, supported values are: dotnet, aspnetcore, windowsdesktop. If you think this is a bug, report it at https://github.com/dotnet/install-scripts/issues." }
+    }
+}
+
 
 # The version text returned from the feeds is a 1-line or 2-line string:
 # For the SDK and the dotnet runtime (2 lines):
@@ -243,10 +304,11 @@ function Load-Assembly([string] $Assembly) {
     }
 }
 
-function GetHTTPResponse([Uri] $Uri)
+function GetHTTPResponse([Uri] $Uri, [bool]$HeaderOnly, [bool]$DisableRedirect, [bool]$DisableFeedCredential)
 {
-    Invoke-With-Retry(
-    {
+    $cts = New-Object System.Threading.CancellationTokenSource
+
+    $downloadScript = {
 
         $HttpClient = $null
 
@@ -270,32 +332,53 @@ function GetHTTPResponse([Uri] $Uri)
                 }
             }
 
+            $HttpClientHandler = New-Object System.Net.Http.HttpClientHandler
             if($ProxyAddress) {
-                $HttpClientHandler = New-Object System.Net.Http.HttpClientHandler
                 $HttpClientHandler.Proxy =  New-Object System.Net.WebProxy -Property @{
                     Address=$ProxyAddress;
                     UseDefaultCredentials=$ProxyUseDefaultCredentials;
                     BypassList = $ProxyBypassList;
                 }
-                $HttpClient = New-Object System.Net.Http.HttpClient -ArgumentList $HttpClientHandler
+            }       
+            if ($DisableRedirect)
+            {
+                $HttpClientHandler.AllowAutoRedirect = $false
+            }
+            $HttpClient = New-Object System.Net.Http.HttpClient -ArgumentList $HttpClientHandler
+
+            # Default timeout for HttpClient is 100s.  For a 50 MB download this assumes 500 KB/s average, any less will time out
+            # Defaulting to 20 minutes allows it to work over much slower connections.
+            $HttpClient.Timeout = New-TimeSpan -Seconds $DownloadTimeout
+
+            if ($HeaderOnly){
+                $completionOption = [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead
             }
             else {
-
-                $HttpClient = New-Object System.Net.Http.HttpClient
+                $completionOption = [System.Net.Http.HttpCompletionOption]::ResponseContentRead
             }
-            # Default timeout for HttpClient is 100s.  For a 50 MB download this assumes 500 KB/s average, any less will time out
-            # 20 minutes allows it to work over much slower connections.
-            $HttpClient.Timeout = New-TimeSpan -Minutes 20
-            $Task = $HttpClient.GetAsync("${Uri}${FeedCredential}").ConfigureAwait("false");
+
+            if ($DisableFeedCredential) {
+                $UriWithCredential = $Uri
+            }
+            else {
+                $UriWithCredential = "${Uri}${FeedCredential}"
+            }
+
+            $Task = $HttpClient.GetAsync("$UriWithCredential", $completionOption).ConfigureAwait("false");
             $Response = $Task.GetAwaiter().GetResult();
 
-            if (($null -eq $Response) -or (-not ($Response.IsSuccessStatusCode))) {
+            if (($null -eq $Response) -or ((-not $HeaderOnly) -and (-not ($Response.IsSuccessStatusCode)))) {
                 # The feed credential is potentially sensitive info. Do not log FeedCredential to console output.
                 $DownloadException = [System.Exception] "Unable to download $Uri."
 
                 if ($null -ne $Response) {
                     $DownloadException.Data["StatusCode"] = [int] $Response.StatusCode
                     $DownloadException.Data["ErrorMessage"] = "Unable to download $Uri. Returned HTTP status code: " + $DownloadException.Data["StatusCode"]
+
+                    if (404 -eq [int] $Response.StatusCode)
+                    {
+                        $cts.Cancel()
+                    }
                 }
 
                 throw $DownloadException
@@ -323,11 +406,22 @@ function GetHTTPResponse([Uri] $Uri)
             throw $DownloadException
         }
         finally {
-             if ($HttpClient -ne $null) {
+             if ($null -ne $HttpClient) {
                 $HttpClient.Dispose()
             }
         }
-    })
+    }
+
+    try {
+        return Invoke-With-Retry $downloadScript $cts.Token
+    }
+    finally
+    {
+        if ($null -ne $cts)
+        {
+            $cts.Dispose()
+        }
+    }
 }
 
 function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel) {
@@ -349,6 +443,9 @@ function Get-Latest-Version-Info([string]$AzureFeed, [string]$Channel) {
     else {
         throw "Invalid value for `$Runtime"
     }
+
+    Say-Verbose "Constructed latest.version URL: $VersionFileUrl"
+
     try {
         $Response = GetHTTPResponse -Uri $VersionFileUrl
     }
@@ -411,7 +508,7 @@ function Get-Specific-Version-From-Version([string]$AzureFeed, [string]$Channel,
     Say-Invocation $MyInvocation
 
     if (-not $JSonFile) {
-        if ($Version.ToLower() -eq "latest") {
+        if ($Version.ToLowerInvariant() -eq "latest") {
             $LatestVersionInfo = Get-Latest-Version-Info -AzureFeed $AzureFeed -Channel $Channel
             return $LatestVersionInfo.Version
         }
@@ -478,58 +575,116 @@ function Get-LegacyDownload-Link([string]$AzureFeed, [string]$SpecificVersion, [
     return $PayloadURL
 }
 
-function Get-Product-Version([string]$AzureFeed, [string]$SpecificVersion) {
+function Get-Product-Version([string]$AzureFeed, [string]$SpecificVersion, [string]$PackageDownloadLink) {
     Say-Invocation $MyInvocation
 
-    if ($Runtime -eq "dotnet") {
-        $ProductVersionTxtURL = "$AzureFeed/Runtime/$SpecificVersion/productVersion.txt"
-    }
-    elseif ($Runtime -eq "aspnetcore") {
-        $ProductVersionTxtURL = "$AzureFeed/aspnetcore/Runtime/$SpecificVersion/productVersion.txt"
-    }
-    elseif ($Runtime -eq "windowsdesktop") {
-        # The windows desktop runtime is part of the core runtime layout prior to 5.0
-        $ProductVersionTxtURL = "$AzureFeed/Runtime/$SpecificVersion/productVersion.txt"
-        if ($SpecificVersion -match '^(\d+)\.(.*)')
-        {
-            $majorVersion = [int]$Matches[1]
-            if ($majorVersion -ge 5)
-            {
-                $ProductVersionTxtURL = "$AzureFeed/WindowsDesktop/$SpecificVersion/productVersion.txt"
+    # Try to get the version number, using the productVersion.txt file located next to the installer file.
+    $ProductVersionTxtURLs = (Get-Product-Version-Url $AzureFeed $SpecificVersion $PackageDownloadLink -Flattened $true),
+                             (Get-Product-Version-Url $AzureFeed $SpecificVersion $PackageDownloadLink -Flattened $false)
+    
+    Foreach ($ProductVersionTxtURL in $ProductVersionTxtURLs) {
+        Say-Verbose "Checking for the existence of $ProductVersionTxtURL"
+
+        try {
+            $productVersionResponse = GetHTTPResponse($productVersionTxtUrl)
+
+            if ($productVersionResponse.StatusCode -eq 200) {
+                $productVersion = $productVersionResponse.Content.ReadAsStringAsync().Result.Trim()
+                if ($productVersion -ne $SpecificVersion)
+                {
+                    Say "Using alternate version $productVersion found in $ProductVersionTxtURL"
+                }
+                return $productVersion
             }
+            else {
+                Say-Verbose "Got StatusCode $($productVersionResponse.StatusCode) when trying to get productVersion.txt at $productVersionTxtUrl."
+            }
+        } 
+        catch {
+            Say-Verbose "Could not read productVersion.txt at $productVersionTxtUrl (Exception: '$($_.Exception.Message)'. )"
         }
     }
-    elseif (-not $Runtime) {
-        $ProductVersionTxtURL = "$AzureFeed/Sdk/$SpecificVersion/productVersion.txt"
+
+    # Getting the version number with productVersion.txt has failed. Try parsing the download link for a version number.
+    if ([string]::IsNullOrEmpty($PackageDownloadLink))
+    {
+        Say-Verbose "Using the default value '$SpecificVersion' as the product version."
+        return $SpecificVersion
     }
-    else {
-        throw "Invalid value '$Runtime' specified for `$Runtime"
+
+    $productVersion = Get-ProductVersionFromDownloadLink $PackageDownloadLink $SpecificVersion
+    return $productVersion
+}
+
+function Get-Product-Version-Url([string]$AzureFeed, [string]$SpecificVersion, [string]$PackageDownloadLink, [bool]$Flattened) {
+    Say-Invocation $MyInvocation
+
+    $majorVersion=$null
+    if ($SpecificVersion -match '^(\d+)\.(.*)') {
+        $majorVersion = $Matches[1] -as[int]
     }
 
-    Say-Verbose "Checking for existence of $ProductVersionTxtURL"
-
-    try {
-        $productVersionResponse = GetHTTPResponse($productVersionTxtUrl)
-
-        if ($productVersionResponse.StatusCode -eq 200) {
-            $productVersion = $productVersionResponse.Content.ReadAsStringAsync().Result.Trim()
-            if ($productVersion -ne $SpecificVersion)
-            {
-                Say "Using alternate version $productVersion found in $ProductVersionTxtURL"
-            }
-
-            return $productVersion
+    $pvFileName='productVersion.txt'
+    if($Flattened) {
+        if(-not $Runtime) {
+            $pvFileName='sdk-productVersion.txt'
+        }
+        elseif($Runtime -eq "dotnet") {
+            $pvFileName='runtime-productVersion.txt'
         }
         else {
-            Say-Verbose "Got StatusCode $($productVersionResponse.StatusCode) trying to get productVersion.txt at $productVersionTxtUrl, so using default value of $SpecificVersion"
-            $productVersion = $SpecificVersion
+            $pvFileName="$Runtime-productVersion.txt"
         }
-    } catch {
-        Say-Verbose "Could not read productVersion.txt at $productVersionTxtUrl, so using default value of $SpecificVersion (Exception: '$($_.Exception.Message)' )"
-        $productVersion = $SpecificVersion
     }
 
-    return $productVersion
+    if ([string]::IsNullOrEmpty($PackageDownloadLink)) {
+        if ($Runtime -eq "dotnet") {
+            $ProductVersionTxtURL = "$AzureFeed/Runtime/$SpecificVersion/$pvFileName"
+        }
+        elseif ($Runtime -eq "aspnetcore") {
+            $ProductVersionTxtURL = "$AzureFeed/aspnetcore/Runtime/$SpecificVersion/$pvFileName"
+        }
+        elseif ($Runtime -eq "windowsdesktop") {
+            # The windows desktop runtime is part of the core runtime layout prior to 5.0
+            $ProductVersionTxtURL = "$AzureFeed/Runtime/$SpecificVersion/$pvFileName"
+            if ($majorVersion -ne $null -and $majorVersion -ge 5) {
+                $ProductVersionTxtURL = "$AzureFeed/WindowsDesktop/$SpecificVersion/$pvFileName"
+            }
+        }
+        elseif (-not $Runtime) {
+            $ProductVersionTxtURL = "$AzureFeed/Sdk/$SpecificVersion/$pvFileName"
+        }
+        else {
+            throw "Invalid value '$Runtime' specified for `$Runtime"
+        }
+    }
+    else {
+        $ProductVersionTxtURL = $PackageDownloadLink.Substring(0, $PackageDownloadLink.LastIndexOf("/"))  + "/$pvFileName"
+    }
+
+    Say-Verbose "Constructed productVersion link: $ProductVersionTxtURL"
+
+    return $ProductVersionTxtURL
+}
+
+function Get-ProductVersionFromDownloadLink([string]$PackageDownloadLink, [string]$SpecificVersion)
+{
+    Say-Invocation $MyInvocation
+
+    #product specific version follows the product name
+    #for filename 'dotnet-sdk-3.1.404-win-x64.zip': the product version is 3.1.400
+    $filename = $PackageDownloadLink.Substring($PackageDownloadLink.LastIndexOf("/") + 1)
+    $filenameParts = $filename.Split('-')
+    if ($filenameParts.Length -gt 2)
+    {
+        $productVersion = $filenameParts[2]
+        Say-Verbose "Extracted product version '$productVersion' from download link '$PackageDownloadLink'."
+    }
+    else {
+        Say-Verbose "Using the default value '$SpecificVersion' as the product version."
+        $productVersion = $SpecificVersion
+    }
+    return $productVersion 
 }
 
 function Get-User-Share-Path() {
@@ -702,15 +857,150 @@ function Prepend-Sdk-InstallRoot-To-Path([string]$InstallRoot, [string]$BinFolde
     }
 }
 
+function Get-AkaMSDownloadLink([string]$Channel, [string]$Quality, [bool]$Internal, [string]$Product, [string]$Architecture) {
+    Say-Invocation $MyInvocation 
+
+    #quality is not supported for LTS or current channel
+    if (![string]::IsNullOrEmpty($Quality) -and (@("LTS", "current") -contains $Channel)) {
+        $Quality = ""
+        Say-Warning "Specifying quality for current or LTS channel is not supported, the quality will be ignored."
+    }
+    Say-Verbose "Retrieving primary payload URL from aka.ms link for channel: '$Channel', quality: '$Quality' product: '$Product', os: 'win', architecture: '$Architecture'." 
+   
+    #construct aka.ms link
+    $akaMsLink = "https://aka.ms/dotnet"
+    if ($Internal) {
+        $akaMsLink += "/internal"
+    }
+    $akaMsLink += "/$Channel"
+    if (-not [string]::IsNullOrEmpty($Quality)) {
+        $akaMsLink +="/$Quality"
+    }
+    $akaMsLink +="/$Product-win-$Architecture.zip"
+    Say-Verbose  "Constructed aka.ms link: '$akaMsLink'."
+    $akaMsDownloadLink=$null
+
+    for ($maxRedirections = 9; $maxRedirections -ge 0; $maxRedirections--)
+    {
+        #get HTTP response
+        #do not pass credentials as a part of the $akaMsLink and do not apply credentials in the GetHTTPResponse function
+        #otherwise the redirect link would have credentials as well
+        #it would result in applying credentials twice to the resulting link and thus breaking it, and in echoing credentials to the output as a part of redirect link
+        $Response= GetHTTPResponse -Uri $akaMsLink -HeaderOnly $true -DisableRedirect $true -DisableFeedCredential $true
+        Say-Verbose "Received response:`n$Response"
+
+        if ([string]::IsNullOrEmpty($Response)) {
+            Say-Verbose "The link '$akaMsLink' is not valid: failed to get redirect location. The resource is not available."
+            return $null
+        }
+
+        #if HTTP code is 301 (Moved Permanently), the redirect link exists
+        if  ($Response.StatusCode -eq 301)
+        {
+            try {
+                $akaMsDownloadLink = $Response.Headers.GetValues("Location")[0]
+
+                if ([string]::IsNullOrEmpty($akaMsDownloadLink)) {
+                    Say-Verbose "The link '$akaMsLink' is not valid: server returned 301 (Moved Permanently), but the headers do not contain the redirect location."
+                    return $null
+                }
+
+                Say-Verbose "The redirect location retrieved: '$akaMsDownloadLink'."
+                # This may yet be a link to another redirection. Attempt to retrieve the page again.
+                $akaMsLink = $akaMsDownloadLink
+                continue
+            }
+            catch {
+                Say-Verbose "The link '$akaMsLink' is not valid: failed to get redirect location."
+                return $null
+            }
+        }
+        elseif ((($Response.StatusCode -lt 300) -or ($Response.StatusCode -ge 400)) -and (-not [string]::IsNullOrEmpty($akaMsDownloadLink)))
+        {
+            # Redirections have ended.
+            return $akaMsDownloadLink
+        }
+
+        Say-Verbose "The link '$akaMsLink' is not valid: failed to retrieve the redirection location."
+        return $null
+    }
+
+    Say-Verbose "Aka.ms links have redirected more than the maximum allowed redirections. This may be caused by a cyclic redirection of aka.ms links."
+    return $null
+
+}
+
 Say "Note that the intended use of this script is for Continuous Integration (CI) scenarios, where:"
 Say "- The SDK needs to be installed without user interaction and without admin rights."
 Say "- The SDK installation doesn't need to persist across multiple CI runs."
 Say "To set up a development environment or to run apps, use installers rather than this script. Visit https://dotnet.microsoft.com/download to get the installer.`r`n"
 
+if ($Internal -and [string]::IsNullOrWhitespace($FeedCredential)) {
+    $message = "Provide credentials via -FeedCredential parameter."
+    if ($DryRun) {
+        Say-Warning "$message"
+    } else {
+        throw "$message"
+    }
+}
+
+#FeedCredential should start with "?", for it to be added to the end of the link.
+#adding "?" at the beginning of the FeedCredential if needed.
+if ((![string]::IsNullOrWhitespace($FeedCredential)) -and ($FeedCredential[0] -ne '?')) {
+    $FeedCredential = "?" + $FeedCredential
+}
+
 $CLIArchitecture = Get-CLIArchitecture-From-Architecture $Architecture
-$SpecificVersion = Get-Specific-Version-From-Version -AzureFeed $AzureFeed -Channel $Channel -Version $Version -JSonFile $JSonFile
-$DownloadLink, $EffectiveVersion = Get-Download-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
-$LegacyDownloadLink = Get-LegacyDownload-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+$NormalizedQuality = Get-NormalizedQuality $Quality
+Say-Verbose "Normalized quality: '$NormalizedQuality'"
+$NormalizedChannel = Get-NormalizedChannel $Channel
+Say-Verbose "Normalized channel: '$NormalizedChannel'"
+$NormalizedProduct = Get-NormalizedProduct $Runtime
+Say-Verbose "Normalized product: '$NormalizedProduct'"
+$DownloadLink = $null
+
+#try to get download location from aka.ms link
+#not applicable when exact version is specified via command or json file
+if ([string]::IsNullOrEmpty($JSonFile) -and ($Version -eq "latest")) {
+    $AkaMsDownloadLink = Get-AkaMSDownloadLink -Channel $NormalizedChannel -Quality $NormalizedQuality -Internal $Internal -Product $NormalizedProduct -Architecture $CLIArchitecture
+   
+    if ([string]::IsNullOrEmpty($AkaMsDownloadLink)){
+        if (-not [string]::IsNullOrEmpty($NormalizedQuality)) {
+            # if quality is specified - exit with error - there is no fallback approach
+            Say-Error "Failed to locate the latest version in the channel '$NormalizedChannel' with '$NormalizedQuality' quality for '$NormalizedProduct', os: 'win', architecture: '$CLIArchitecture'."
+            Say-Error "Refer to: https://aka.ms/dotnet-os-lifecycle for information on .NET Core support."
+            throw "aka.ms link resolution failure"
+        }
+        Say-Verbose "Falling back to latest.version file approach."
+    }
+    else {
+        Say-Verbose "Retrieved primary named payload URL from aka.ms link: '$AkaMsDownloadLink'."
+        $DownloadLink = $AkaMsDownloadLink
+        Say-Verbose  "Downloading using legacy url will not be attempted."
+        $LegacyDownloadLink = $null
+
+        #get version from the path
+        $pathParts = $DownloadLink.Split('/')
+        if ($pathParts.Length -ge 2) { 
+            $SpecificVersion = $pathParts[$pathParts.Length - 2]
+            Say-Verbose "Version: '$SpecificVersion'."
+        }
+        else {
+            Say-Error "Failed to extract the version from download link '$DownloadLink'."
+        }
+
+        #retrieve effective (product) version
+        $EffectiveVersion = Get-Product-Version -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -PackageDownloadLink $DownloadLink
+        Say-Verbose "Product version: '$EffectiveVersion'."
+    }
+}
+
+if ([string]::IsNullOrEmpty($DownloadLink)) {
+    $SpecificVersion = Get-Specific-Version-From-Version -AzureFeed $AzureFeed -Channel $Channel -Version $Version -JSonFile $JSonFile
+    $DownloadLink, $EffectiveVersion = Get-Download-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+    $LegacyDownloadLink = Get-LegacyDownload-Link -AzureFeed $AzureFeed -SpecificVersion $SpecificVersion -CLIArchitecture $CLIArchitecture
+}
+
 
 $InstallRoot = Resolve-Installation-Path $InstallDir
 Say-Verbose "InstallRoot: $InstallRoot"
@@ -718,9 +1008,9 @@ $ScriptName = $MyInvocation.MyCommand.Name
 
 if ($DryRun) {
     Say "Payload URLs:"
-    Say "Primary named payload URL: $DownloadLink"
+    Say "Primary named payload URL: ${DownloadLink}"
     if ($LegacyDownloadLink) {
-        Say "Legacy named payload URL: $LegacyDownloadLink"
+        Say "Legacy named payload URL: ${LegacyDownloadLink}"
     }
     $RepeatableCommand = ".\$ScriptName -Version `"$SpecificVersion`" -InstallDir `"$InstallRoot`" -Architecture `"$CLIArchitecture`""
     if ($Runtime -eq "dotnet") {
@@ -729,10 +1019,19 @@ if ($DryRun) {
     elseif ($Runtime -eq "aspnetcore") {
        $RepeatableCommand+=" -Runtime `"aspnetcore`""
     }
+
+    if (-not [string]::IsNullOrEmpty($NormalizedQuality))
+    {
+        $RepeatableCommand+=" -Quality `"$NormalizedQuality`""
+    }
+
     foreach ($key in $MyInvocation.BoundParameters.Keys) {
-        if (-not (@("Architecture","Channel","DryRun","InstallDir","Runtime","SharedRuntime","Version") -contains $key)) {
+        if (-not (@("Architecture","Channel","DryRun","InstallDir","Runtime","SharedRuntime","Version","Quality","FeedCredential") -contains $key)) {
             $RepeatableCommand+=" -$key `"$($MyInvocation.BoundParameters[$key])`""
         }
+    }
+    if ($MyInvocation.BoundParameters.Keys -contains "FeedCredential") {
+        $RepeatableCommand+=" -FeedCredential `"<feedCredential>`""
     }
     Say "Repeatable invocation: $RepeatableCommand"
     if ($SpecificVersion -ne $EffectiveVersion)
@@ -779,9 +1078,16 @@ if ($isAssetInstalled) {
 
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
 
-$installDrive = $((Get-Item $InstallRoot).PSDrive.Name);
-$diskInfo = Get-PSDrive -Name $installDrive
-if ($diskInfo.Free / 1MB -le 100) {
+$installDrive = $((Get-Item $InstallRoot -Force).PSDrive.Name);
+$diskInfo = $null
+try{
+    $diskInfo = Get-PSDrive -Name $installDrive
+}
+catch{
+    Say-Warning "Failed to check the disk space. Installation will continue, but it may fail if you do not have enough disk space."
+}
+
+if ( ($diskInfo -ne $null) -and ($diskInfo.Free / 1MB -le 100)) {
     throw "There is not enough disk space on drive ${installDrive}:"
 }
 
@@ -901,43 +1207,44 @@ Prepend-Sdk-InstallRoot-To-Path -InstallRoot $InstallRoot -BinFolderRelativePath
 Say "Note that the script does not resolve dependencies during installation."
 Say "To check the list of dependencies, go to https://docs.microsoft.com/dotnet/core/install/windows#dependencies"
 Say "Installation finished"
+
 # SIG # Begin signature block
-# MIIjjwYJKoZIhvcNAQcCoIIjgDCCI3wCAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# MIIjhgYJKoZIhvcNAQcCoIIjdzCCI3MCAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCCNsnhcJvx/hXmM
-# w8KjuvvIMDBFonhg9XJFc1QwfTyH4aCCDYEwggX/MIID56ADAgECAhMzAAABh3IX
-# chVZQMcJAAAAAAGHMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNVBAYTAlVTMRMwEQYD
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDO8obeUp97UA1H
+# qy3NSLDwxxLLlEbGxeCzMOcKVT/3eKCCDYEwggX/MIID56ADAgECAhMzAAAB32vw
+# LpKnSrTQAAAAAAHfMA0GCSqGSIb3DQEBCwUAMH4xCzAJBgNVBAYTAlVTMRMwEQYD
 # VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
 # b3NvZnQgQ29ycG9yYXRpb24xKDAmBgNVBAMTH01pY3Jvc29mdCBDb2RlIFNpZ25p
-# bmcgUENBIDIwMTEwHhcNMjAwMzA0MTgzOTQ3WhcNMjEwMzAzMTgzOTQ3WjB0MQsw
+# bmcgUENBIDIwMTEwHhcNMjAxMjE1MjEzMTQ1WhcNMjExMjAyMjEzMTQ1WjB0MQsw
 # CQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9u
 # ZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMR4wHAYDVQQDExVNaWNy
 # b3NvZnQgQ29ycG9yYXRpb24wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB
-# AQDOt8kLc7P3T7MKIhouYHewMFmnq8Ayu7FOhZCQabVwBp2VS4WyB2Qe4TQBT8aB
-# znANDEPjHKNdPT8Xz5cNali6XHefS8i/WXtF0vSsP8NEv6mBHuA2p1fw2wB/F0dH
-# sJ3GfZ5c0sPJjklsiYqPw59xJ54kM91IOgiO2OUzjNAljPibjCWfH7UzQ1TPHc4d
-# weils8GEIrbBRb7IWwiObL12jWT4Yh71NQgvJ9Fn6+UhD9x2uk3dLj84vwt1NuFQ
-# itKJxIV0fVsRNR3abQVOLqpDugbr0SzNL6o8xzOHL5OXiGGwg6ekiXA1/2XXY7yV
-# Fc39tledDtZjSjNbex1zzwSXAgMBAAGjggF+MIIBejAfBgNVHSUEGDAWBgorBgEE
-# AYI3TAgBBggrBgEFBQcDAzAdBgNVHQ4EFgQUhov4ZyO96axkJdMjpzu2zVXOJcsw
+# AQC2uxlZEACjqfHkuFyoCwfL25ofI9DZWKt4wEj3JBQ48GPt1UsDv834CcoUUPMn
+# s/6CtPoaQ4Thy/kbOOg/zJAnrJeiMQqRe2Lsdb/NSI2gXXX9lad1/yPUDOXo4GNw
+# PjXq1JZi+HZV91bUr6ZjzePj1g+bepsqd/HC1XScj0fT3aAxLRykJSzExEBmU9eS
+# yuOwUuq+CriudQtWGMdJU650v/KmzfM46Y6lo/MCnnpvz3zEL7PMdUdwqj/nYhGG
+# 3UVILxX7tAdMbz7LN+6WOIpT1A41rwaoOVnv+8Ua94HwhjZmu1S73yeV7RZZNxoh
+# EegJi9YYssXa7UZUUkCCA+KnAgMBAAGjggF+MIIBejAfBgNVHSUEGDAWBgorBgEE
+# AYI3TAgBBggrBgEFBQcDAzAdBgNVHQ4EFgQUOPbML8IdkNGtCfMmVPtvI6VZ8+Mw
 # UAYDVR0RBEkwR6RFMEMxKTAnBgNVBAsTIE1pY3Jvc29mdCBPcGVyYXRpb25zIFB1
-# ZXJ0byBSaWNvMRYwFAYDVQQFEw0yMzAwMTIrNDU4Mzg1MB8GA1UdIwQYMBaAFEhu
+# ZXJ0byBSaWNvMRYwFAYDVQQFEw0yMzAwMTIrNDYzMDA5MB8GA1UdIwQYMBaAFEhu
 # ZOVQBdOCqhc3NyK1bajKdQKVMFQGA1UdHwRNMEswSaBHoEWGQ2h0dHA6Ly93d3cu
 # bWljcm9zb2Z0LmNvbS9wa2lvcHMvY3JsL01pY0NvZFNpZ1BDQTIwMTFfMjAxMS0w
 # Ny0wOC5jcmwwYQYIKwYBBQUHAQEEVTBTMFEGCCsGAQUFBzAChkVodHRwOi8vd3d3
 # Lm1pY3Jvc29mdC5jb20vcGtpb3BzL2NlcnRzL01pY0NvZFNpZ1BDQTIwMTFfMjAx
-# MS0wNy0wOC5jcnQwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQsFAAOCAgEAixmy
-# S6E6vprWD9KFNIB9G5zyMuIjZAOuUJ1EK/Vlg6Fb3ZHXjjUwATKIcXbFuFC6Wr4K
-# NrU4DY/sBVqmab5AC/je3bpUpjtxpEyqUqtPc30wEg/rO9vmKmqKoLPT37svc2NV
-# BmGNl+85qO4fV/w7Cx7J0Bbqk19KcRNdjt6eKoTnTPHBHlVHQIHZpMxacbFOAkJr
-# qAVkYZdz7ikNXTxV+GRb36tC4ByMNxE2DF7vFdvaiZP0CVZ5ByJ2gAhXMdK9+usx
-# zVk913qKde1OAuWdv+rndqkAIm8fUlRnr4saSCg7cIbUwCCf116wUJ7EuJDg0vHe
-# yhnCeHnBbyH3RZkHEi2ofmfgnFISJZDdMAeVZGVOh20Jp50XBzqokpPzeZ6zc1/g
-# yILNyiVgE+RPkjnUQshd1f1PMgn3tns2Cz7bJiVUaqEO3n9qRFgy5JuLae6UweGf
-# AeOo3dgLZxikKzYs3hDMaEtJq8IP71cX7QXe6lnMmXU/Hdfz2p897Zd+kU+vZvKI
-# 3cwLfuVQgK2RZ2z+Kc3K3dRPz2rXycK5XCuRZmvGab/WbrZiC7wJQapgBodltMI5
-# GMdFrBg9IeF7/rP4EqVQXeKtevTlZXjpuNhhjuR+2DMt/dWufjXpiW91bo3aH6Ea
-# jOALXmoxgltCp1K7hrS6gmsvj94cLRf50QQ4U8Qwggd6MIIFYqADAgECAgphDpDS
+# MS0wNy0wOC5jcnQwDAYDVR0TAQH/BAIwADANBgkqhkiG9w0BAQsFAAOCAgEAnnqH
+# tDyYUFaVAkvAK0eqq6nhoL95SZQu3RnpZ7tdQ89QR3++7A+4hrr7V4xxmkB5BObS
+# 0YK+MALE02atjwWgPdpYQ68WdLGroJZHkbZdgERG+7tETFl3aKF4KpoSaGOskZXp
+# TPnCaMo2PXoAMVMGpsQEQswimZq3IQ3nRQfBlJ0PoMMcN/+Pks8ZTL1BoPYsJpok
+# t6cql59q6CypZYIwgyJ892HpttybHKg1ZtQLUlSXccRMlugPgEcNZJagPEgPYni4
+# b11snjRAgf0dyQ0zI9aLXqTxWUU5pCIFiPT0b2wsxzRqCtyGqpkGM8P9GazO8eao
+# mVItCYBcJSByBx/pS0cSYwBBHAZxJODUqxSXoSGDvmTfqUJXntnWkL4okok1FiCD
+# Z4jpyXOQunb6egIXvkgQ7jb2uO26Ow0m8RwleDvhOMrnHsupiOPbozKroSa6paFt
+# VSh89abUSooR8QdZciemmoFhcWkEwFg4spzvYNP4nIs193261WyTaRMZoceGun7G
+# CT2Rl653uUj+F+g94c63AhzSq4khdL4HlFIP2ePv29smfUnHtGq6yYFDLnT0q/Y+
+# Di3jwloF8EWkkHRtSuXlFUbTmwr/lDDgbpZiKhLS7CBTDj32I0L5i532+uHczw82
+# oZDmYmYmIUSMbZOgS65h797rj5JJ6OkeEUJoAVwwggd6MIIFYqADAgECAgphDpDS
 # AAAAAAADMA0GCSqGSIb3DQEBCwUAMIGIMQswCQYDVQQGEwJVUzETMBEGA1UECBMK
 # V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
 # IENvcnBvcmF0aW9uMTIwMAYDVQQDEylNaWNyb3NvZnQgUm9vdCBDZXJ0aWZpY2F0
@@ -977,119 +1284,119 @@ Say "Installation finished"
 # xw4o7t5lL+yX9qFcltgA1qFGvVnzl6UJS0gQmYAf0AApxbGbpT9Fdx41xtKiop96
 # eiL6SJUfq/tHI4D1nvi/a7dLl+LrdXga7Oo3mXkYS//WsyNodeav+vyL6wuA6mk7
 # r/ww7QRMjt/fdW1jkT3RnVZOT7+AVyKheBEyIXrvQQqxP/uozKRdwaGIm1dxVk5I
-# RcBCyZt2WwqASGv9eZ/BvW1taslScxMNelDNMYIVZDCCFWACAQEwgZUwfjELMAkG
+# RcBCyZt2WwqASGv9eZ/BvW1taslScxMNelDNMYIVWzCCFVcCAQEwgZUwfjELMAkG
 # A1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQx
 # HjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEoMCYGA1UEAxMfTWljcm9z
-# b2Z0IENvZGUgU2lnbmluZyBQQ0EgMjAxMQITMwAAAYdyF3IVWUDHCQAAAAABhzAN
+# b2Z0IENvZGUgU2lnbmluZyBQQ0EgMjAxMQITMwAAAd9r8C6Sp0q00AAAAAAB3zAN
 # BglghkgBZQMEAgEFAKCBrjAZBgkqhkiG9w0BCQMxDAYKKwYBBAGCNwIBBDAcBgor
-# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQgpT/bxWwe
-# aW0EinKMWCAzDXUjwXkIHldYzR6lw4/1Pc0wQgYKKwYBBAGCNwIBDDE0MDKgFIAS
+# BgEEAYI3AgELMQ4wDAYKKwYBBAGCNwIBFTAvBgkqhkiG9w0BCQQxIgQg7EExOCvj
+# ZDkub0Fc7HAVivJIlz+Omt11fROkTFKR+KQwQgYKKwYBBAGCNwIBDDE0MDKgFIAS
 # AE0AaQBjAHIAbwBzAG8AZgB0oRqAGGh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbTAN
-# BgkqhkiG9w0BAQEFAASCAQCHd7sSQVq0YDg8QDx6/kLWn3s6jtvvIDCCgsO9spHM
-# quPd4FPbG67DCsKDClekQs52qrtRO3Zo+JMnCw4j3bS+gZHzeJr2shbftOrpsFoD
-# l7OPcUmtrqul9dkQCOp8t0MP3ls0n96/YyNy6lz4BAlTdkdDx957uAxalKaCIBzb
-# R9QyppOKIfNFvwD4EI5KI6tpmSy/uH8SrRg7ZExAYZl6J6R18WkL7KHn649lPoAQ
-# ujwrIXH10xOJops45ILGzKWQcHmCzLJGYapL4VHUuK+73nT+9ZROGHdk/PyvIcdw
-# iERa+C06v305t3DA+CuHFy1tvyw7IFF6RVbLZPwxrJjToYIS7jCCEuoGCisGAQQB
-# gjcDAwExghLaMIIS1gYJKoZIhvcNAQcCoIISxzCCEsMCAQMxDzANBglghkgBZQME
-# AgEFADCCAVUGCyqGSIb3DQEJEAEEoIIBRASCAUAwggE8AgEBBgorBgEEAYRZCgMB
-# MDEwDQYJYIZIAWUDBAIBBQAEIOCaTmvM1AP0WaEVqzKaaCu/R+bTlR4kCrM/ZXsb
-# /eNOAgZgGeLsMwsYEzIwMjEwMjAzMjExNzQ5LjU5MVowBIACAfSggdSkgdEwgc4x
+# BgkqhkiG9w0BAQEFAASCAQBPvflyU+HQEIM4XvImAK2eQp74ABDaxeWVbl21ZF0L
+# cKf5GkIzdvlCoKxforXBkRIBtLxU9Sb4ff+AO3jiw2M36ZLwZQRYcn003FTR3BAY
+# 3XVGdxb64vCEMUb6Dzh9Hb1lmJjyn2NHsB514ZuUez4v/UIsV9e3TV731kY6gcQV
+# 3ridn3IKj3RMJGtPD5qxVMZohvVIy1Xiz4n/9BpBkk4HHsSuGPmBj08jWnIcI5TF
+# eXYC4LonTOFZLcsKiW4eMRaDt0fXxJjhQF8DSJX3PAxCC73YkPrJJyXAkGNHcXCg
+# 2Lyi9Yd6oV0nbJlCSLWK7jcn5lxUIgsrb+U6F8yXoNsXoYIS5TCCEuEGCisGAQQB
+# gjcDAwExghLRMIISzQYJKoZIhvcNAQcCoIISvjCCEroCAQMxDzANBglghkgBZQME
+# AgEFADCCAVEGCyqGSIb3DQEJEAEEoIIBQASCATwwggE4AgEBBgorBgEEAYRZCgMB
+# MDEwDQYJYIZIAWUDBAIBBQAEIEwFz8qgqbYKKOXyaZMOTE0/ve/rpdJjnq1eyDVG
+# mWB6AgZhHpsDT9wYEzIwMjEwODIzMTUxNzA2LjAyMVowBIACAfSggdCkgc0wgcox
 # CzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRt
-# b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xKTAnBgNVBAsTIE1p
-# Y3Jvc29mdCBPcGVyYXRpb25zIFB1ZXJ0byBSaWNvMSYwJAYDVQQLEx1UaGFsZXMg
-# VFNTIEVTTjo4OTdBLUUzNTYtMTcwMTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgU2VydmljZaCCDkEwggT1MIID3aADAgECAhMzAAABLCKvRZd1+RvuAAAA
-# AAEsMA0GCSqGSIb3DQEBCwUAMHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNo
-# aW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29y
-# cG9yYXRpb24xJjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEw
-# MB4XDTE5MTIxOTAxMTUwM1oXDTIxMDMxNzAxMTUwM1owgc4xCzAJBgNVBAYTAlVT
-# MRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQK
-# ExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xKTAnBgNVBAsTIE1pY3Jvc29mdCBPcGVy
-# YXRpb25zIFB1ZXJ0byBSaWNvMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo4OTdB
-# LUUzNTYtMTcwMTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2Vydmlj
-# ZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAPK1zgSSq+MxAYo3qpCt
-# QDxSMPPJy6mm/wfEJNjNUnYtLFBwl1BUS5trEk/t41ldxITKehs+ABxYqo4Qxsg3
-# Gy1ugKiwHAnYiiekfC+ZhptNFgtnDZIn45zC0AlVr/6UfLtsLcHCh1XElLUHfEC0
-# nBuQcM/SpYo9e3l1qY5NdMgDGxCsmCKdiZfYXIu+U0UYIBhdzmSHnB3fxZOBVcr5
-# htFHEBBNt/rFJlm/A4yb8oBsp+Uf0p5QwmO/bCcdqB15JpylOhZmWs0sUfJKlK9E
-# rAhBwGki2eIRFKsQBdkXS9PWpF1w2gIJRvSkDEaCf+lbGTPdSzHSbfREWOF9wY3i
-# Yj8CAwEAAaOCARswggEXMB0GA1UdDgQWBBRRahZSGfrCQhCyIyGH9DkiaW7L0zAf
-# BgNVHSMEGDAWgBTVYzpcijGQ80N7fEYbxTNoWoVtVTBWBgNVHR8ETzBNMEugSaBH
-# hkVodHRwOi8vY3JsLm1pY3Jvc29mdC5jb20vcGtpL2NybC9wcm9kdWN0cy9NaWNU
-# aW1TdGFQQ0FfMjAxMC0wNy0wMS5jcmwwWgYIKwYBBQUHAQEETjBMMEoGCCsGAQUF
-# BzAChj5odHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vcGtpL2NlcnRzL01pY1RpbVN0
-# YVBDQV8yMDEwLTA3LTAxLmNydDAMBgNVHRMBAf8EAjAAMBMGA1UdJQQMMAoGCCsG
-# AQUFBwMIMA0GCSqGSIb3DQEBCwUAA4IBAQBPFxHIwi4vAH49w9Svmz6K3tM55RlW
-# 5pPeULXdut2Rqy6Ys0+VpZsbuaEoxs6Z1C3hMbkiqZFxxyltxJpuHTyGTg61zfNI
-# F5n6RsYF3s7IElDXNfZznF1/2iWc6uRPZK8rxxUJ/7emYXZCYwuUY0XjsCpP9pbR
-# RKeJi6r5arSyI+NfKxvgoM21JNt1BcdlXuAecdd/k8UjxCscffanoK2n6LFw1PcZ
-# lEO7NId7o+soM2C0QY5BYdghpn7uqopB6ixyFIIkDXFub+1E7GmAEwfU6VwEHL7y
-# 9rNE8bd+JrQs+yAtkkHy9FmXg/PsGq1daVzX1So7CJ6nyphpuHSN3VfTMIIGcTCC
-# BFmgAwIBAgIKYQmBKgAAAAAAAjANBgkqhkiG9w0BAQsFADCBiDELMAkGA1UEBhMC
-# VVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNV
-# BAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEyMDAGA1UEAxMpTWljcm9zb2Z0IFJv
-# b3QgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IDIwMTAwHhcNMTAwNzAxMjEzNjU1WhcN
-# MjUwNzAxMjE0NjU1WjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3Rv
-# bjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0
-# aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDCCASIw
-# DQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKkdDbx3EYo6IOz8E5f1+n9plGt0
-# VBDVpQoAgoX77XxoSyxfxcPlYcJ2tz5mK1vwFVMnBDEfQRsalR3OCROOfGEwWbEw
-# RA/xYIiEVEMM1024OAizQt2TrNZzMFcmgqNFDdDq9UeBzb8kYDJYYEbyWEeGMoQe
-# dGFnkV+BVLHPk0ySwcSmXdFhE24oxhr5hoC732H8RsEnHSRnEnIaIYqvS2SJUGKx
-# Xf13Hz3wV3WsvYpCTUBR0Q+cBj5nf/VmwAOWRH7v0Ev9buWayrGo8noqCjHw2k4G
-# kbaICDXoeByw6ZnNPOcvRLqn9NxkvaQBwSAJk3jN/LzAyURdXhacAQVPIk0CAwEA
-# AaOCAeYwggHiMBAGCSsGAQQBgjcVAQQDAgEAMB0GA1UdDgQWBBTVYzpcijGQ80N7
-# fEYbxTNoWoVtVTAZBgkrBgEEAYI3FAIEDB4KAFMAdQBiAEMAQTALBgNVHQ8EBAMC
-# AYYwDwYDVR0TAQH/BAUwAwEB/zAfBgNVHSMEGDAWgBTV9lbLj+iiXGJo0T2UkFvX
-# zpoYxDBWBgNVHR8ETzBNMEugSaBHhkVodHRwOi8vY3JsLm1pY3Jvc29mdC5jb20v
-# cGtpL2NybC9wcm9kdWN0cy9NaWNSb29DZXJBdXRfMjAxMC0wNi0yMy5jcmwwWgYI
-# KwYBBQUHAQEETjBMMEoGCCsGAQUFBzAChj5odHRwOi8vd3d3Lm1pY3Jvc29mdC5j
-# b20vcGtpL2NlcnRzL01pY1Jvb0NlckF1dF8yMDEwLTA2LTIzLmNydDCBoAYDVR0g
-# AQH/BIGVMIGSMIGPBgkrBgEEAYI3LgMwgYEwPQYIKwYBBQUHAgEWMWh0dHA6Ly93
-# d3cubWljcm9zb2Z0LmNvbS9QS0kvZG9jcy9DUFMvZGVmYXVsdC5odG0wQAYIKwYB
-# BQUHAgIwNB4yIB0ATABlAGcAYQBsAF8AUABvAGwAaQBjAHkAXwBTAHQAYQB0AGUA
-# bQBlAG4AdAAuIB0wDQYJKoZIhvcNAQELBQADggIBAAfmiFEN4sbgmD+BcQM9naOh
-# IW+z66bM9TG+zwXiqf76V20ZMLPCxWbJat/15/B4vceoniXj+bzta1RXCCtRgkQS
-# +7lTjMz0YBKKdsxAQEGb3FwX/1z5Xhc1mCRWS3TvQhDIr79/xn/yN31aPxzymXlK
-# kVIArzgPF/UveYFl2am1a+THzvbKegBvSzBEJCI8z+0DpZaPWSm8tv0E4XCfMkon
-# /VWvL/625Y4zu2JfmttXQOnxzplmkIz/amJ/3cVKC5Em4jnsGUpxY517IW3DnKOi
-# PPp/fZZqkHimbdLhnPkd/DjYlPTGpQqWhqS9nhquBEKDuLWAmyI4ILUl5WTs9/S/
-# fmNZJQ96LjlXdqJxqgaKD4kWumGnEcua2A5HmoDF0M2n0O99g/DhO3EJ3110mCII
-# YdqwUB5vvfHhAN/nMQekkzr3ZUd46PioSKv33nJ+YWtvd6mBy6cJrDm77MbL2IK0
-# cs0d9LiFAR6A+xuJKlQ5slvayA1VmXqHczsI5pgt6o3gMy4SKfXAL1QnIffIrE7a
-# KLixqduWsqdCosnPGUFN4Ib5KpqjEWYw07t0MkvfY3v1mYovG8chr1m1rtxEPJdQ
-# cdeh0sVV42neV8HR3jDA/czmTfsNv11P6Z0eGTgvvM9YBS7vDaBQNdrvCScc1bN+
-# NR4Iuto229Nfj950iEkSoYICzzCCAjgCAQEwgfyhgdSkgdEwgc4xCzAJBgNVBAYT
-# AlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYD
-# VQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xKTAnBgNVBAsTIE1pY3Jvc29mdCBP
-# cGVyYXRpb25zIFB1ZXJ0byBSaWNvMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo4
-# OTdBLUUzNTYtMTcwMTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2Vy
-# dmljZaIjCgEBMAcGBSsOAwIaAxUADE5OKSMoNx/mYxYWap1RTOohbJ2ggYMwgYCk
-# fjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
-# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQD
-# Ex1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG9w0BAQUFAAIF
-# AOPFChkwIhgPMjAyMTAyMDMxNTQwMDlaGA8yMDIxMDIwNDE1NDAwOVowdDA6Bgor
-# BgEEAYRZCgQBMSwwKjAKAgUA48UKGQIBADAHAgEAAgIXmDAHAgEAAgIRyTAKAgUA
-# 48ZbmQIBADA2BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMCoAowCAIBAAID
-# B6EgoQowCAIBAAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBAHeeznL2n6HWCjHH94Fl
-# hcdW6TEXzq4XNgp1Gx1W9F8gJ4x+SwoV7elJZkwgGffcpHomLvIY/VSuzsl1NgtJ
-# TWM2UxoqSv58BBOrl4eGhH6kkg8Ucy2tdeK5T8cHa8pMkq2j9pFd2mRG/6VMk0dl
-# Xz7Uy3Z6bZqkcABMyAfuAaGbMYIDDTCCAwkCAQEwgZMwfDELMAkGA1UEBhMCVVMx
-# EzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoT
-# FU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUt
-# U3RhbXAgUENBIDIwMTACEzMAAAEsIq9Fl3X5G+4AAAAAASwwDQYJYIZIAWUDBAIB
-# BQCgggFKMBoGCSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkqhkiG9w0BCQQx
-# IgQg/QYv7yp+354WTjWUIsXWndTEzXjaYjqwYjcBxCJKjdUwgfoGCyqGSIb3DQEJ
-# EAIvMYHqMIHnMIHkMIG9BCBbn/0uFFh42hTM5XOoKdXevBaiSxmYK9Ilcn9nu5ZH
-# 4TCBmDCBgKR+MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAw
-# DgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24x
-# JjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABLCKv
-# RZd1+RvuAAAAAAEsMCIEIIfIM3YbzHswb/Kj/qq1l1cHA6QBl+gEXYanUNJomrpT
-# MA0GCSqGSIb3DQEBCwUABIIBAAwdcXssUZGO7ho5+NHLjIxLtQk543aKGo+lrRMY
-# Q9abE1h/AaaNJl0iGxX4IihNWyfovSfYL3L4eODUBAu68tWSxeceRfWNsb/ZZfUi
-# v89hpLssI/Gf1BEgNMA4zCuIGQiC8okusVumEpAhhvCEbSiTTTtBdolTnU/CAKui
-# oxaU3R9XkKh1F4oAM26+dJ1J2BLQXPs5afNvvedDsZWNQUPK1sFF3JRfzxiTrwBW
-# EJRyflev9gyDoqCHzippgb+6+eti1WTkcA9Q49GIT11S6LOAVqkSC9N7Nqf8ksh8
-# ARdwT8jigpsm+mj7lrVU9upDkhVYhKeO8oiZq95Q53Zkteo=
+# b25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJTAjBgNVBAsTHE1p
+# Y3Jvc29mdCBBbWVyaWNhIE9wZXJhdGlvbnMxJjAkBgNVBAsTHVRoYWxlcyBUU1Mg
+# RVNOOjhBODItRTM0Ri05RERBMSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFt
+# cCBTZXJ2aWNloIIOPDCCBPEwggPZoAMCAQICEzMAAAFLT7KmSNXkwlEAAAAAAUsw
+# DQYJKoZIhvcNAQELBQAwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0
+# b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3Jh
+# dGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwHhcN
+# MjAxMTEyMTgyNTU5WhcNMjIwMjExMTgyNTU5WjCByjELMAkGA1UEBhMCVVMxEzAR
+# BgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1p
+# Y3Jvc29mdCBDb3Jwb3JhdGlvbjElMCMGA1UECxMcTWljcm9zb2Z0IEFtZXJpY2Eg
+# T3BlcmF0aW9uczEmMCQGA1UECxMdVGhhbGVzIFRTUyBFU046OEE4Mi1FMzRGLTlE
+# REExJTAjBgNVBAMTHE1pY3Jvc29mdCBUaW1lLVN0YW1wIFNlcnZpY2UwggEiMA0G
+# CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQChNnpQx3YuJr/ivobPoLtpQ9egUFl8
+# THdWZ6SAKIJdtP3L24D3/d63ommmjZjCyrQm+j/1tHDAwjQGuOwYvn79ecPCQfAB
+# 91JnEp/wP4BMF2SXyMf8k9R84RthIdfGHPXTWqzpCCfNWolVEcUVm8Ad/r1LrikR
+# O+4KKo6slDQJKsgKApfBU/9J7Rudvhw1rEQw0Nk1BRGWjrIp7/uWoUIfR4rcl6U1
+# utOiYIonC87PPpAJQXGRsDdKnVFF4NpWvMiyeuksn5t/Otwz82sGlne/HNQpmMzi
+# gR8cZ8eXEDJJNIZxov9WAHHj28gUE29D8ivAT706ihxvTv50ZY8W51uxAgMBAAGj
+# ggEbMIIBFzAdBgNVHQ4EFgQUUqpqftASlue6K3LePlTTn01K68YwHwYDVR0jBBgw
+# FoAU1WM6XIoxkPNDe3xGG8UzaFqFbVUwVgYDVR0fBE8wTTBLoEmgR4ZFaHR0cDov
+# L2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMvTWljVGltU3RhUENB
+# XzIwMTAtMDctMDEuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggrBgEFBQcwAoY+aHR0
+# cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNUaW1TdGFQQ0FfMjAx
+# MC0wNy0wMS5jcnQwDAYDVR0TAQH/BAIwADATBgNVHSUEDDAKBggrBgEFBQcDCDAN
+# BgkqhkiG9w0BAQsFAAOCAQEAFtq51Zc/O1AfJK4tEB2Nr8bGEVD5qQ8l8gXIQMrM
+# ZYtddHH+cGiqgF/4GmvmPfl5FAYh+gf/8Yd3q4/iD2+K4LtJbs/3v6mpyBl1mQ4v
+# usK65dAypWmiT1W3FiXjsmCIkjSDDsKLFBYH5yGFnNFOEMgL+O7u4osH42f80nc2
+# WdnZV6+OvW035XPV6ZttUBfFWHdIbUkdOG1O2n4yJm10OfacItZ08fzgMMqE+f/S
+# TgVWNCHbR2EYqTWayrGP69jMwtVD9BGGTWti1XjpvE6yKdO8H9nuRi3L+C6jYntf
+# aEmBTbnTFEV+kRx1CNcpSb9os86CAUehZU1aRzQ6CQ/pjzCCBnEwggRZoAMCAQIC
+# CmEJgSoAAAAAAAIwDQYJKoZIhvcNAQELBQAwgYgxCzAJBgNVBAYTAlVTMRMwEQYD
+# VQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNy
+# b3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMTKU1pY3Jvc29mdCBSb290IENlcnRp
+# ZmljYXRlIEF1dGhvcml0eSAyMDEwMB4XDTEwMDcwMTIxMzY1NVoXDTI1MDcwMTIx
+# NDY1NVowfDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNV
+# BAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQG
+# A1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTAwggEiMA0GCSqGSIb3
+# DQEBAQUAA4IBDwAwggEKAoIBAQCpHQ28dxGKOiDs/BOX9fp/aZRrdFQQ1aUKAIKF
+# ++18aEssX8XD5WHCdrc+Zitb8BVTJwQxH0EbGpUdzgkTjnxhMFmxMEQP8WCIhFRD
+# DNdNuDgIs0Ldk6zWczBXJoKjRQ3Q6vVHgc2/JGAyWGBG8lhHhjKEHnRhZ5FfgVSx
+# z5NMksHEpl3RYRNuKMYa+YaAu99h/EbBJx0kZxJyGiGKr0tkiVBisV39dx898Fd1
+# rL2KQk1AUdEPnAY+Z3/1ZsADlkR+79BL/W7lmsqxqPJ6Kgox8NpOBpG2iAg16Hgc
+# sOmZzTznL0S6p/TcZL2kAcEgCZN4zfy8wMlEXV4WnAEFTyJNAgMBAAGjggHmMIIB
+# 4jAQBgkrBgEEAYI3FQEEAwIBADAdBgNVHQ4EFgQU1WM6XIoxkPNDe3xGG8UzaFqF
+# bVUwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBDAEEwCwYDVR0PBAQDAgGGMA8GA1Ud
+# EwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAU1fZWy4/oolxiaNE9lJBb186aGMQwVgYD
+# VR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwv
+# cHJvZHVjdHMvTWljUm9vQ2VyQXV0XzIwMTAtMDYtMjMuY3JsMFoGCCsGAQUFBwEB
+# BE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraS9j
+# ZXJ0cy9NaWNSb29DZXJBdXRfMjAxMC0wNi0yMy5jcnQwgaAGA1UdIAEB/wSBlTCB
+# kjCBjwYJKwYBBAGCNy4DMIGBMD0GCCsGAQUFBwIBFjFodHRwOi8vd3d3Lm1pY3Jv
+# c29mdC5jb20vUEtJL2RvY3MvQ1BTL2RlZmF1bHQuaHRtMEAGCCsGAQUFBwICMDQe
+# MiAdAEwAZQBnAGEAbABfAFAAbwBsAGkAYwB5AF8AUwB0AGEAdABlAG0AZQBuAHQA
+# LiAdMA0GCSqGSIb3DQEBCwUAA4ICAQAH5ohRDeLG4Jg/gXEDPZ2joSFvs+umzPUx
+# vs8F4qn++ldtGTCzwsVmyWrf9efweL3HqJ4l4/m87WtUVwgrUYJEEvu5U4zM9GAS
+# inbMQEBBm9xcF/9c+V4XNZgkVkt070IQyK+/f8Z/8jd9Wj8c8pl5SpFSAK84Dxf1
+# L3mBZdmptWvkx872ynoAb0swRCQiPM/tA6WWj1kpvLb9BOFwnzJKJ/1Vry/+tuWO
+# M7tiX5rbV0Dp8c6ZZpCM/2pif93FSguRJuI57BlKcWOdeyFtw5yjojz6f32WapB4
+# pm3S4Zz5Hfw42JT0xqUKloakvZ4argRCg7i1gJsiOCC1JeVk7Pf0v35jWSUPei45
+# V3aicaoGig+JFrphpxHLmtgOR5qAxdDNp9DvfYPw4TtxCd9ddJgiCGHasFAeb73x
+# 4QDf5zEHpJM692VHeOj4qEir995yfmFrb3epgcunCaw5u+zGy9iCtHLNHfS4hQEe
+# gPsbiSpUObJb2sgNVZl6h3M7COaYLeqN4DMuEin1wC9UJyH3yKxO2ii4sanblrKn
+# QqLJzxlBTeCG+SqaoxFmMNO7dDJL32N79ZmKLxvHIa9Zta7cRDyXUHHXodLFVeNp
+# 3lfB0d4wwP3M5k37Db9dT+mdHhk4L7zPWAUu7w2gUDXa7wknHNWzfjUeCLraNtvT
+# X4/edIhJEqGCAs4wggI3AgEBMIH4oYHQpIHNMIHKMQswCQYDVQQGEwJVUzETMBEG
+# A1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWlj
+# cm9zb2Z0IENvcnBvcmF0aW9uMSUwIwYDVQQLExxNaWNyb3NvZnQgQW1lcmljYSBP
+# cGVyYXRpb25zMSYwJAYDVQQLEx1UaGFsZXMgVFNTIEVTTjo4QTgyLUUzNEYtOURE
+# QTElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2VydmljZaIjCgEBMAcG
+# BSsOAwIaAxUAkToz97fseHxNOUSQ5O/bBVSF+e6ggYMwgYCkfjB8MQswCQYDVQQG
+# EwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwG
+# A1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQg
+# VGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG9w0BAQUFAAIFAOTNtrcwIhgPMjAy
+# MTA4MjMxMzU1MDNaGA8yMDIxMDgyNDEzNTUwM1owdzA9BgorBgEEAYRZCgQBMS8w
+# LTAKAgUA5M22twIBADAKAgEAAgIcfAIB/zAHAgEAAgIQOTAKAgUA5M8INwIBADA2
+# BgorBgEEAYRZCgQCMSgwJjAMBgorBgEEAYRZCgMCoAowCAIBAAIDB6EgoQowCAIB
+# AAIDAYagMA0GCSqGSIb3DQEBBQUAA4GBADrUnASEIEovjIFdqxhyYsyiBSfNeD7e
+# W4qeRl1B4DTAY8Z/U1SpnK8yy7r6oZn0D8og+QJmnWEnCPqNXAreyg8tlFyTF1TV
+# K6uUlslIY4WCmrAECIFua/DuksTerny66SBw4aSEeQHtGiynnR87WcdqItBJxxRA
+# pElXzs8QzC0EMYIDDTCCAwkCAQEwgZMwfDELMAkGA1UEBhMCVVMxEzARBgNVBAgT
+# Cldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1vbmQxHjAcBgNVBAoTFU1pY3Jvc29m
+# dCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWljcm9zb2Z0IFRpbWUtU3RhbXAgUENB
+# IDIwMTACEzMAAAFLT7KmSNXkwlEAAAAAAUswDQYJYIZIAWUDBAIBBQCgggFKMBoG
+# CSqGSIb3DQEJAzENBgsqhkiG9w0BCRABBDAvBgkqhkiG9w0BCQQxIgQg87M/Jiqh
+# MlaXNWAIAn7CM9CZw6QCPgBx3voUSIH6+qUwgfoGCyqGSIb3DQEJEAIvMYHqMIHn
+# MIHkMIG9BCBr9u6EInnsZYEts/Fj/rIFv0YZW1ynhXKOP2hVPUU5IzCBmDCBgKR+
+# MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdS
+# ZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMT
+# HU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwAhMzAAABS0+ypkjV5MJRAAAA
+# AAFLMCIEIGs9Mn51TUGRleeUO5lQCRHZSu0G/8Ir92l3NgMGq1/GMA0GCSqGSIb3
+# DQEBCwUABIIBAA1oBIiM3guh89/Pvwwcn4hdZGGBsMk56MRMvOir8XQM0Je/rSwP
+# P11S2VwYUMmBjfFX1QK7r280k3k9xcDWW79ZC4Kn2UsV7jxuUwFHgdVlgDNjg6QL
+# unGuwFX5lStgNevwUH9DotoASXxgtwNNmtZNDB4NYVCxQLS7RtVSbxP+xFYXbokG
+# G4DFVHBr3CGPga3OduE/YUBpxIRxtiDF/9WHo0tJEdS95tfdnsyaGo8eHNzyfTdS
+# kjrNsAlqpJRT0Va/ooBXCV7Uny7PlCkRIQRTSJDy/kSXpsL22CTEHw6mU0jEU99k
+# OL4uwu+aVnolWFlpbiJjQxBqfT3plBLIg88=
 # SIG # End signature block

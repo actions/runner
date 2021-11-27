@@ -157,3 +157,10 @@ if [[ "$PACKAGERUNTIME" == "linux-arm" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-armv7l.tar.gz" node12 fix_nested_dir
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-armv7l.tar.gz" node16 fix_nested_dir
 fi
+
+if [[ "$PACKAGERUNTIME" == "linux-musl-x64" ]]; then
+    acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12_glib fix_nested_dir
+    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-v${NODE12_VERSION}-alpine-x64.tar.gz" node12
+    acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-x64.tar.gz" node16_glib fix_nested_dir
+    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE16_VERSION}/alpine/x64/node-v${NODE16_VERSION}-alpine-x64.tar.gz" node16
+fi
