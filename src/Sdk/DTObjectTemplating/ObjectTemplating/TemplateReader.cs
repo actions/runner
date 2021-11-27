@@ -78,7 +78,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 var scalar = ParseScalar(literal, definition.AllowedContext);
                 Validate(ref scalar, definition);
                 m_memory.AddBytes(scalar);
-                return scalar.Clone();
+                return scalar;
             }
 
             // Sequence
@@ -115,7 +115,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
 
                 m_memory.DecrementDepth();
-                return sequence.Clone();
+                return sequence;
             }
 
             // Mapping
@@ -155,7 +155,7 @@ namespace GitHub.DistributedTask.ObjectTemplating
                 }
 
                 m_memory.DecrementDepth();
-                return mapping.Clone();
+                return mapping;
             }
 
             throw new InvalidOperationException(TemplateStrings.ExpectedScalarSequenceOrMapping());

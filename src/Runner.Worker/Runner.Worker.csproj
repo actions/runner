@@ -22,7 +22,7 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="5.0.*" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="5.0.*" />
     <PackageReference Include="System.Threading.Channels" Version="5.0.*" />
-    <PackageReference Include="YamlDotNet" Version="11.2.1" />
+    <PackageReference Include="YamlDotNet.Signed" Version="5.3.0" />
   </ItemGroup>
 
   <ItemGroup>
