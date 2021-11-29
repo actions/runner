@@ -1,19 +1,19 @@
 ## Features
 
-- Expose GITHUB_REF_* as environment variable (#1314)
-- Add arch to runner context (#1372)
-- Support Conditional Steps in Composite Actions (#1438)
-- Log current runner version in terminal (#1441)
+- Print source of secret in runs (Actions/Dependabot/None) #1411
+- Support node.js 16 and bump node.js 12 version #1439
 
 ## Bugs
 
-- Makes the user keychains available to the service (#847)
-- Use Actions Service health and api.github.com endpoints after connection failure on Actions Server and Hosted (#1385)
-- Fix an issue where nested local composite actions did not correctly register post steps (#1433)
+- Fix a bug where local node action would crash in post-steps #1481
+
 
 ## Misc
 
-- Cleanup Older versions on MacOS now that we recreate node versions as needed (#1410)
+- Add telemetry around runner update process. #1497
+- Improve telemetry to better diagnose runner configuration issues #1487
+- Clean up dependencies #1470
+
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
