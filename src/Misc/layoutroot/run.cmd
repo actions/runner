@@ -18,7 +18,7 @@ rem ****************************************************************************
 rem Run.
 rem ********************************************************************************
 
-:relaunch_listener
+:launch_listener
 "%~dp0bin\Runner.Listener.exe" run %*
 
 rem using `if %ERRORLEVEL% EQU N` insterad of `if ERRORLEVEL N`
