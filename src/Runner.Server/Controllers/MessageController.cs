@@ -960,44 +960,6 @@ namespace Runner.Server.Controllers
                 }
                 var workflowname = parentworkflowname ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), attempt.TimeLineId, attempt.TimeLineId);
-                
-                // (new Func<Task>(async () => {
-                //     var client = new HttpClient();
-                //     client.DefaultRequestHeaders.Add("accept", "application/json");
-                //     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                //     if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                //         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                //     }
-                //     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
-                //     var res = await client.GetAsync(urlBuilder.ToString());
-                //     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                //         var content = await res.Content.ReadAsStringAsync();
-                //         foreach (var item in Newtonsoft.Json.JsonConvert.DeserializeObject<List<UnknownItem>>(content))
-                //         {
-                //             try {
-                //                 var fileRes = await client.GetAsync(item.download_url);
-                //                 var filecontent = await fileRes.Content.ReadAsStringAsync();
-                //                 var _event = new JObject();
-                //                 _event["action"] = "requested";
-                //                 _event["workflow"] = workflowname;
-                //                 var workflow_run = new JObject();
-                //                 _event["workflow_run"] = workflow_run;
-                //                 workflow_run["head_branch"] = Ref;
-                //                 workflow_run["head_sha"] = Sha;
-                //                 if(payloadObject["pull_request"] != null) {
-                //                     workflow_run["pull_requests"] = new JArray(payloadObject["pull_request"]);
-                //                 }
-                //                 _event["organization"] = payloadObject["organization"];
-                //                 _event["repository"] = payloadObject["repository"];
-                //                 _event["sender"] = payloadObject["sender"];
-                //                 ConvertYaml(item.path, filecontent, hook.repository.full_name, GitServerUrl, new GiteaHook(), _event, "workflow_run");
-                //             } catch (Exception ex) {
-                //                 await Console.Error.WriteLineAsync(ex.Message);
-                //                 await Console.Error.WriteLineAsync(ex.StackTrace);
-                //             }
-                //         }
-                //     }
-                // }))();
 
                 FinishJobController.JobCompleted workflowcomplete = null;
                 var jobnamebuilder = new ReferenceNameBuilder();
