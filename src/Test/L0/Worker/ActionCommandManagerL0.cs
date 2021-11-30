@@ -418,6 +418,24 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void AddMaskWithMultilineValue()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Act
+                _commandManager.TryProcessCommand(_ec.Object, $"::add-mask::abc%0Ddef%0Aghi", null);
+
+                // Assert
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("abc"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("def"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("ghi"));
+                Assert.Equal("***", hc.SecretMasker.MaskSecrets("abc\rdef\nghi"));
+            }
+        }
+
         private TestHostContext CreateTestContext([CallerMemberName] string testName = "")
         {
             var hostContext = new TestHostContext(this, testName);
@@ -431,6 +449,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 new InternalPluginSetRepoPathCommandExtension(),
                 new SetEnvCommandExtension(),
                 new WarningCommandExtension(),
+                new AddMaskCommandExtension(),
             };
             foreach (var command in commands)
             {
