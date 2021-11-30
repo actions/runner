@@ -7,7 +7,7 @@
       "description": "Workflow file",
       "mapping": {
         "properties": {
-          "on": "any",
+          "on": "workflow-on",
           "name": "string",
           "defaults": "workflow-defaults",
           "env": "workflow-env",
@@ -217,20 +217,8 @@
       ],
       "one-of": [
         "non-empty-string",
-        "sequence-of-non-empty-string",
-        "runs-on-mapping"
+        "sequence-of-non-empty-string"
       ]
-    },
-
-    "runs-on-mapping": {
-      "mapping": {
-        "properties": {
-          "pool": {
-            "type": "non-empty-string",
-            "required": true
-          }
-        }
-      }
     },
 
     "job-env": {
@@ -664,6 +652,88 @@
         "runner",
         "env",
         "hashFiles(1,255)"
+      ],
+      "string": {}
+    },
+
+    "workflow-on": {
+      "one-of":[
+        "null",
+        "boolean",
+        "number",
+        "string",
+        "sequence",
+        "workflow-on-mapping"
+      ]
+    },
+
+    "workflow-on-mapping": {
+      "mapping": {
+        "properties":{
+          "workflow_call": "workflow_call"
+        },
+        "loose-key-type": "any",
+        "loose-value-type": "any"
+      }
+    },
+
+    "workflow_call": {
+      "mapping": {
+        "properties":{
+          "inputs": "workflow_call-inputs",
+          "outputs": "workflow_call-outputs"
+        },
+        "loose-key-type": "any",
+        "loose-value-type": "any"
+      }
+    },
+
+    "workflow_call-inputs": {
+      "mapping": {
+        "loose-key-type": "any",
+        "loose-value-type": "workflow_call-input"
+      }
+    },
+
+    "workflow_call-input": {
+      "mapping": {
+        "properties":{
+          "default": "workflow_call-input-context"
+        },
+        "loose-key-type": "any",
+        "loose-value-type": "any"
+      }
+    },
+
+    "workflow_call-input-context": {
+      "context": [
+        "github"
+      ],
+      "string": {}
+    },
+
+    "workflow_call-outputs": {
+      "mapping": {
+        "loose-key-type": "any",
+        "loose-value-type": "workflow_call-output"
+      }
+    },
+
+    "workflow_call-output": {
+      "mapping": {
+        "properties":{
+          "value": "workflow_call-output-context"
+        },
+        "loose-key-type": "any",
+        "loose-value-type": "any"
+      }
+    },
+
+    "workflow_call-output-context": {
+      "context": [
+        "github",
+        "inputs",
+        "jobs"
       ],
       "string": {}
     }

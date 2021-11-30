@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.Configuration;
+using Runner.Server.Models;
 
 namespace Runner.Server.Controllers {
 
@@ -19,10 +20,6 @@ namespace Runner.Server.Controllers {
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
     public class ArtifactController : VssControllerBase{
 
-        private struct ArtifactRecord {
-            public string FileName {get;set;}
-            public bool GZip {get;set;}
-        }
 
         private string _targetFilePath;
 
@@ -50,11 +47,11 @@ namespace Runner.Server.Controllers {
             public int? size {get;set;}
         }
 
-        private IMemoryCache _cache;
+        private SqLiteDb _context;
 
-        public ArtifactController(IMemoryCache memoryCache, IWebHostEnvironment environment, IConfiguration configuration)
+        public ArtifactController(SqLiteDb context, IWebHostEnvironment environment, IConfiguration configuration)
         {
-            _cache = memoryCache;
+            _context = context;
             _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
             Directory.CreateDirectory(_targetFilePath);
             ReadConfig(configuration);
@@ -63,81 +60,75 @@ namespace Runner.Server.Controllers {
         [HttpPost]
         public async Task<FileStreamResult> CreateContainer(int run) {
             var req = await FromBody<CreateContainerRequest>();
-            var c = _cache.GetOrCreate("artifact_run_" + run, e => new ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>());
-            c.AddOrUpdate(req.Name, s => new ConcurrentDictionary<string, ArtifactRecord>(), (a,b) => {
-                return b;
-            });
-            return await Ok(new ArtifactResponse { name = req.Name, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{req.Name}" } );
+            var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
+            var artifactContainer = (from artifact in _context.Artifacts where artifact.Attempt.Attempt == attempt && artifact.Attempt.WorkflowRun.Id == run select artifact).First();
+            var filecontainer = new ArtifactFileContainer() { Name = req.Name, Container = artifactContainer };
+            _context.ArtifactFileContainer.Add(filecontainer);
+            await _context.SaveChangesAsync();
+            return await Ok(new ArtifactResponse { name = req.Name, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{filecontainer.Id}" } );
         }
 
         [HttpPatch]
         public async Task<FileStreamResult> PatchContainer(int run, [FromQuery] string artifactName) {
             var req = await FromBody<CreateContainerRequest>();
+            var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
+            var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt == attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Name == artifactName select fileContainer).First();
+            container.Size = req.size;
+            await _context.SaveChangesAsync();
             // This sends the size of the artifact container
-            return await Ok(new ArtifactResponse { name = artifactName, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{artifactName}" } );
+            return await Ok(new ArtifactResponse { name = artifactName, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{container.Id}" } );
         }
 
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetContainer(int run) {
-            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
-            if(c == null) {
-                return NotFound();
-            }
-            return await Ok(from e in c select new ArtifactResponse{ name = e.Key, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{e.Key}" } );
+            var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
+            var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt <= attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
+            return await Ok(from e in container select new ArtifactResponse{ name = e.Name, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{e.Id}" } );
         }
 
-        [HttpPut("container/{containername}")]
-        public async Task<IActionResult> UploadToContainer(int run, string containername, [FromQuery] string itemPath) {
-            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
-            ConcurrentDictionary<string, ArtifactRecord> val;
-            if(c == null || !c.TryGetValue(containername, out val)) {
-                return NotFound();
+        [HttpPut("container/{id}")]
+        public async Task<IActionResult> UploadToContainer(int run, int id, [FromQuery] string itemPath) {
+            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && record.FileName == itemPath select record).FirstOrDefault();
+            if(container == null) {
+                container = new ArtifactRecord() {FileName = itemPath, StoreName = Path.GetRandomFileName(), GZip = Request.Headers.TryGetValue("Content-Encoding", out StringValues v) && v.Contains("gzip"), FileContainer = _context.ArtifactFileContainer.Find(id)} ;
+                _context.ArtifactRecords.Add(container);
+                await _context.SaveChangesAsync();
             }
             var range = Request.Headers["Content-Range"].ToArray()[0];
             int i = range.IndexOf('-');
             int j = range.IndexOf('/');
             var start = Convert.ToInt64(range.Substring(6, i - 6));
             var end = Convert.ToInt64(range.Substring(i + 1, j - (i + 1)));
-            var trustedFileNameForFileStorage = val.GetOrAdd(itemPath, s => new ArtifactRecord { FileName = Path.GetRandomFileName(), GZip = Request.Headers.TryGetValue("Content-Encoding", out StringValues v) && v.Contains("gzip") });
-            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, trustedFileNameForFileStorage.FileName), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, container.StoreName), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
                 targetStream.Seek(start, SeekOrigin.Begin);
                 await Request.Body.CopyToAsync(targetStream);
             }
             return Ok();
         }
 
-        [HttpGet("container/{containername}")]
+        [HttpGet("container/{id}")]
         [AllowAnonymous]
-        public async Task<ActionResult> GetFilesFromContainer(int run, string containername, [FromQuery] string itemPath) {
-            var c = _cache.Get<ConcurrentDictionary<string, ConcurrentDictionary<string, ArtifactRecord>>>("artifact_run_" + run);
-            ConcurrentDictionary<string, ArtifactRecord> val;
-            if(c == null || !c.TryGetValue(containername, out val)) {
-                return NotFound();
-            }
+        public async Task<ActionResult> GetFilesFromContainer(int run, int id) {
+            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id select record).ToList();
             var ret = new List<DownloadInfo>();
-            foreach (var item in val) {
-                var builder = new Microsoft.AspNetCore.Http.Extensions.QueryBuilder();
-                builder.Add("filename", Path.GetFileName(item.Key));
-                builder.Add("gzip", item.Value.GZip.ToString());
-                ret.Add(new DownloadInfo { path = item.Key, itemType = "file", fileLength = 1 /* TODO do we need the real filesize? this works for now */, contentLocation = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{Uri.EscapeDataString(containername)}/{Uri.EscapeDataString(item.Value.FileName)}{builder.ToString()}"});
+            foreach (var item in container) {
+                ret.Add(new DownloadInfo { path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{id}/{Uri.EscapeDataString(item.FileName)}"});
             }
             return await Ok(ret);
         }
 
-        [HttpGet("artifact/{containername}/{file}")]
+        [HttpGet("artifact/{id}/{file}")]
         [AllowAnonymous]
-        public IActionResult GetFileFromContainer(int run, string containername, string file, [FromQuery] string filename, [FromQuery] bool gzip) {
-            if(!new System.Text.RegularExpressions.Regex("(\\.?[^\\.\\\\/])+").IsMatch(file)) {
-                return NotFound();
+        public IActionResult GetFileFromContainer(int run, int id, string file) {
+            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && record.FileName == file select record).FirstOrDefault();
+            if(container.FileName?.Length > 0) {
+                Response.Headers.Add("Content-Disposition", $"attachment; filename={container.FileName}");
             }
-            if(filename?.Length > 0) {
-                Response.Headers.Add("Content-Disposition", $"attachment; filename={filename}");
-            }
-            if(gzip) {
+            if(container.GZip) {
                 Response.Headers.Add("Content-Encoding", "gzip");
             }
-            return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, file)), "application/octet-stream") { EnableRangeProcessing = true };
+            return new FileStreamResult(System.IO.File.OpenRead(Path.Combine(_targetFilePath, container.StoreName)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 
     }

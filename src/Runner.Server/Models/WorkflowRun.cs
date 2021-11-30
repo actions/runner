@@ -11,8 +11,10 @@ namespace Runner.Server.Models
 {
     public class WorkflowRun {
 
-        public int Id { get; set; }
+        public long Id { get; set; }
         public Workflow Workflow { get; set; }
+        public String FileName { get; set; }
+        public String DisplayName { get; set; }
         public List<WorkflowRunAttempt> Attempts { get; set; }
 
     }

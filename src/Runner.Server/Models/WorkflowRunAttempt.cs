@@ -12,12 +12,16 @@ namespace Runner.Server.Models
     public class WorkflowRunAttempt {
 
         public int Id { get; set; }
+        [IgnoreDataMember]
         public WorkflowRun WorkflowRun { get; set; }
         public int Attempt { get; set; }
         public string EventName { get; set; }
         public string EventPayload { get; set; }
         public string Workflow { get; set; }
+        [IgnoreDataMember]
         public List<Job> Jobs { get; set; }
+        [IgnoreDataMember]
         public List<ArtifactContainer> Artifacts { get; set; }
+        public Guid TimeLineId { get; set; }
     }
 }

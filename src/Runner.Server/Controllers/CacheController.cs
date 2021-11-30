@@ -11,6 +11,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
+using Runner.Server.Models;
 
 namespace Runner.Server.Controllers {
 
@@ -36,16 +37,10 @@ namespace Runner.Server.Controllers {
             public string key {get;set;}
             public string version  {get;set;}
         }
-
-        private static ConcurrentDictionary<string, ConcurrentDictionary<string, string>> cache = new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>();
-
-        private IMemoryCache _cache;
-
-        private static int id;
-
-        public CacheController(IMemoryCache memoryCache, IWebHostEnvironment environment, IConfiguration configuration)
+        private SqLiteDb _context;
+        public CacheController(SqLiteDb context, IWebHostEnvironment environment, IConfiguration configuration)
         {
-            _cache = memoryCache;
+            _context = context;
             _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
             Directory.CreateDirectory(_targetFilePath);
             ReadConfig(configuration);
@@ -54,43 +49,48 @@ namespace Runner.Server.Controllers {
         [HttpPost("caches")]
         public async Task<FileStreamResult> ReserveCache(string owner, string repo) {
             var req = await FromBody<ReserveCacheRequest>();
-            int _id = Interlocked.Increment(ref id);
             var filename = Path.GetRandomFileName();
-            _cache.Set("Cache_" + _id, filename);
-            var repocache = cache.GetOrAdd($"{owner}/{repo}", k => new ConcurrentDictionary<string, string>());
-            repocache.AddOrUpdate(req.key, (a) => { return filename; }, (a, b) => {
-                System.IO.File.Delete(System.IO.Path.Combine(_targetFilePath, b));
-                return filename;
-            });
-            return await Ok(new ReserveCacheResponse { cacheId = _id });
+            var reference = User.FindFirst("ref");
+            var repository = User.FindFirst("repository");
+            var record = new CacheRecord() { Key = req.key, LastUpdated = DateTime.Now, Ref = reference.Value, Storage = filename, Repo = repository.Value };
+            _context.Caches.Add(record);
+            await _context.SaveChangesAsync();
+            return await Ok(new ReserveCacheResponse { cacheId = record.Id });
         }
 
         [HttpGet("cache")]
-        public async Task<ActionResult>/* IActionResult */ GetCacheEntry( string owner, string repo, [FromQuery] string keys, [FromQuery] string version) {
+        public async Task<IActionResult> GetCacheEntry( string owner, string repo, [FromQuery] string keys, [FromQuery] string version) {
             var a = keys.Split(',');
-            string val;
-            var repocache = cache.GetOrAdd($"{owner}/{repo}", k => new ConcurrentDictionary<string, string>());
-            if(repocache.TryGetValue(a[0], out val)) {
-                return await Ok(new ArtifactCacheEntry{ cacheKey = a[0], scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{Uri.EscapeDataString(val)}" });
-            } else {
-                var b = repocache.ToArray();
+            var defaultRef = User.FindFirst("defaultRef");
+            var reference = User.FindFirst("ref");
+            var repository = User.FindFirst("repository");
+            foreach(var cref in reference.Value != defaultRef.Value ? new [] { reference.Value, defaultRef.Value } : new [] { reference.Value }) {
                 foreach (var item in a) {
-                    var res = (from c in b where item.StartsWith(c.Key) select c).FirstOrDefault();
-                    if(res.Value != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = res.Key, scope = "*", creationTime = DateTime.UtcNow.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{Uri.EscapeDataString(res.Value)}" });
+                    var record = (from rec in _context.Caches where rec.Repo == repository.Value && rec.Ref == cref && rec.Key == item orderby rec.LastUpdated descending select rec).FirstOrDefault();
+                    if(record != null) {
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{record.Id}" });
                     }
+                }
+                CacheRecord partialMatch = null;
+                foreach (var item in a.Skip(1)) {
+                    var record = (from rec in _context.Caches where rec.Repo == repository.Value && rec.Ref == cref && rec.Key.StartsWith(item) orderby rec.LastUpdated descending select rec).FirstOrDefault();
+                    if(record != null && (partialMatch == null || record.LastUpdated > partialMatch.LastUpdated)) {
+                        partialMatch = record;
+                    }
+                }
+                if(partialMatch != null) {
+                    return await Ok(new ArtifactCacheEntry{ cacheKey = partialMatch.Key, scope = cref, creationTime = partialMatch.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{partialMatch.Id}" });
                 }
             }
             return NoContent();
         }
 
-        [HttpGet("get/{filename}")]
+        [HttpGet("get/{cacheId}")]
+        [Produces("application/octet-stream", Type = typeof(IActionResult))]
         [AllowAnonymous]
-        public IActionResult GetCacheEntry(string filename) {
-            if(!new System.Text.RegularExpressions.Regex("(\\.?[^\\.\\\\/])+").IsMatch(filename)) {
-                return NotFound();
-            }
-            return new FileStreamResult(System.IO.File.OpenRead(System.IO.Path.Combine(_targetFilePath, filename)), "application/octet-stream") { EnableRangeProcessing = true };
+        public IActionResult GetCacheEntry(int cacheId) {
+            var record = _context.Caches.Find(cacheId);
+            return new FileStreamResult(System.IO.File.OpenRead(System.IO.Path.Combine(_targetFilePath, record.Storage)), "application/octet-stream") { EnableRangeProcessing = true };
         }
 
         [HttpPatch("caches/{cacheId}")]
@@ -100,8 +100,8 @@ namespace Runner.Server.Controllers {
             int j = range.IndexOf('/');
             var start = Convert.ToInt64(range.Substring(6, i - 6));
             var end = Convert.ToInt64(range.Substring(i + 1, j - (i + 1)));
-            var trustedFileNameForFileStorage = _cache.Get<string>("Cache_" + cacheId);
-            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, trustedFileNameForFileStorage), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+            var record = _context.Caches.Find(cacheId);
+            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, record.Storage), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
                 targetStream.Seek(start, SeekOrigin.Begin);
                 await Request.Body.CopyToAsync(targetStream);
             }
@@ -112,7 +112,6 @@ namespace Runner.Server.Controllers {
 
         [HttpPost("caches/{cacheId}")]
         public IActionResult CommitCache(int cacheId) {
-            _cache.Remove("Cache_" + cacheId);
             return Ok();
         }
     }

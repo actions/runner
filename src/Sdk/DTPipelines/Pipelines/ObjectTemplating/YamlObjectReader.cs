@@ -19,7 +19,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TextReader input)
         {
             m_fileId = fileId;
-            m_parser = new Parser(input);
+            m_parser = new YamlAnchorParser(new Parser(input));
         }
 
         public Boolean AllowLiteral(out LiteralToken value)
@@ -27,10 +27,10 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             if (EvaluateCurrent() is Scalar scalar)
             {
                 // Tag specified
-                if (!String.IsNullOrEmpty(scalar.Tag))
+                if (scalar.Tag != null)
                 {
                     // String tag
-                    if (String.Equals(scalar.Tag, c_stringTag, StringComparison.Ordinal))
+                    if (String.Equals(scalar.Tag.Value, c_stringTag, StringComparison.Ordinal))
                     {
                         value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
                         MoveNext();
@@ -44,7 +44,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
 
                     // Boolean, Float, Integer, or Null
-                    switch (scalar.Tag)
+                    switch (scalar.Tag.Value)
                     {
                         case c_booleanTag:
                             value = ParseBoolean(scalar);
@@ -566,7 +566,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         private const String c_nullTag = "tag:yaml.org,2002:null";
         private const String c_stringTag = "tag:yaml.org,2002:string";
         private readonly Int32? m_fileId;
-        private readonly Parser m_parser;
+        private readonly IParser m_parser;
         private ParsingEvent m_current;
     }
 }

@@ -18,10 +18,12 @@ namespace Runner.Server.Controllers
     public class FinishJobController : VssControllerBase
     {
         private IMemoryCache _cache;
+        private SqLiteDb _context;
 
-        public FinishJobController(IMemoryCache memoryCache)
+        public FinishJobController(IMemoryCache cache, SqLiteDb context)
         {
-            _cache = memoryCache;
+            _cache = cache;
+            _context = context;
         }
 
         public delegate void JobCompleted(JobCompletedEvent jobCompletedEvent);
@@ -34,16 +36,17 @@ namespace Runner.Server.Controllers
         public static event JobStarted OnJobStarted;
 
         public void InvokeJobCompleted(JobCompletedEvent ev) {
-            if(_cache.TryGetValue(ev.JobId, out Job job)) {
-                if(job.JobCompletedEvent != null) {
+            var job = _context.Jobs.Find(ev.JobId);
+            if(job != null) {
+                if(job.Result != null) {
                     // Prevent overriding job with a result
                     return;
                 }
-                job.JobCompletedEvent = ev;
                 job.Result = ev.Result;
                 if(ev.Outputs != null) {
                     job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
                 }
+                _context.SaveChanges();
             }
             Task.Run(() => {
                 OnJobCompleted?.Invoke(ev);
@@ -57,7 +60,9 @@ namespace Runner.Server.Controllers
         {
             var jevent = await FromBody<JobEvent>();
             if (jevent is JobCompletedEvent ev) {
-                if(_cache.TryGetValue(ev.JobId, out Job job)) {
+                var job = _cache.Get<Job>(ev.JobId);
+                if(job != null) {
+                    _cache.Remove(ev.JobId);
                     Session session;
                     if(_cache.TryGetValue(job.SessionId, out session)) {
                         Console.Out.WriteLine("Job finished / set session job to null");

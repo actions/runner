@@ -19,19 +19,21 @@ namespace Runner.Server.Controllers
     public class TimelineController : VssControllerBase
     {
         public static ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)> dict = new ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)>();
+        private SqLiteDb _context;
 
-        public TimelineController()
+        public TimelineController(SqLiteDb context)
         {
-
+            _context = context;
         }
 
         [HttpGet("{timelineId}")]
         public async Task<IActionResult> GetTimelineRecords(Guid timelineId) {
-            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) val;
-            if(!dict.TryGetValue(timelineId, out val)) {
-                return NotFound();
-            }
-            return await Ok(val.Item1, true);
+            var l = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).ToList();
+            l.Sort((a,b) => a.ParentId == null ? -1 : b.ParentId == null ? 1 : a.Order - b.Order ?? 0);
+            // if(l.Count == 0 && dict.TryGetValue(timelineId, out var val)) {
+            //     return await Ok(val.Item1, true);
+            // }
+            return await Ok(l, true);
         }
         
         public delegate void TimeLineUpdateDelegate(Guid timelineId, List<TimelineRecord> update);
@@ -101,6 +103,7 @@ namespace Runner.Server.Controllers
             }
 
             var mergedRecords = dict.Values.ToList();
+            mergedRecords.Sort((a,b) => a.ParentId == null ? -1 : b.ParentId == null ? 1 : a.Order - b.Order ?? 0);
             return mergedRecords;
         }
 
@@ -109,11 +112,25 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> Patch(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId)
         {
             var patch = await FromBody<VssJsonCollectionWrapper<List<TimelineRecord>>>();
-            var res = dict.AddOrUpdate(timelineId, id => (patch.Value, new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()), (id, old) => {
-                old.Item1.AddRange(patch.Value);
-                return (MergeTimelineRecords(old.Item1), old.Item2);
-            });
-            Task.Run(() => TimeLineUpdate?.Invoke(timelineId, res.Item1));
+            return await UpdateTimeLine(timelineId, patch);
+        }
+
+        public async Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch)
+        {
+            var old = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).ToList();
+            var records = old.ToList();
+            records.AddRange(patch.Value.Select((r, _) => {
+                r.TimelineId = timelineId;
+                if(r.Log != null) {
+                    r.Log = (from l in _context.Logs where l.Ref.Id == r.Log.Id select l).First().Ref;
+                }
+                return r;
+            }));
+            records = MergeTimelineRecords(records);
+            Task.Run(() => TimeLineUpdate?.Invoke(timelineId, records));
+            
+            await _context.AddRangeAsync(from rec in records where !old.Contains(rec) select rec);
+            await _context.SaveChangesAsync();
             return await Ok(patch);
         }
     }

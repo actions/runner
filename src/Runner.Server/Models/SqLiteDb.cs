@@ -5,8 +5,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Runner.Server.Models
 {
     public class SqLiteDb : DbContext {
+        public DbContextOptions<SqLiteDb> Options  { get; }
         public SqLiteDb(DbContextOptions<SqLiteDb> opt) : base(opt) {
-
+            Options = opt;
         }
 
         public DbSet<Agent> Agents { get; set; }
@@ -15,7 +16,23 @@ namespace Runner.Server.Models
         public DbSet<Pool> Pools { get; set; }
         public DbSet<Owner> Owner { get; set; }
         public DbSet<Workflow> Workflows { get; set; }
+        public DbSet<Job> Jobs { get; set; }
 
+        public DbSet<ArtifactContainer> Artifacts { get; set; }
+        public DbSet<ArtifactFileContainer> ArtifactFileContainer { get; set; }
+        public DbSet<ArtifactRecord> ArtifactRecords { get; set; }
+        
+        public DbSet<CacheRecord> Caches { get; set; }
+
+        public class LogStorage {
+            public int Id {get;set;}
+            public string Content {get;set;}
+            public TaskLog Ref {get;set;}
+        }
+        public DbSet<LogStorage> Logs { get; set; }
+
+        public DbSet<TimelineRecord> TimeLineRecords { get; set; }
+        
         protected override void OnModelCreating(ModelBuilder modelBuilder){
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TaskAgent>().Ignore(agent => agent.Properties);
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TaskAgent>().Ignore(agent => agent.AssignedRequest);
@@ -31,7 +48,8 @@ namespace Runner.Server.Models
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TaskAgentPool>().Ignore(agent => agent.Properties);
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Ignore(agent => agent.Issues);
             modelBuilder.Entity<GitHub.DistributedTask.WebApi.TimelineRecord>().Ignore(agent => agent.PreviousAttempts)
-            .Ignore(agent => agent.Variables);
+            .Ignore(agent => agent.Variables).Property(e => e.Id).ValueGeneratedNever();
+
             
             
             

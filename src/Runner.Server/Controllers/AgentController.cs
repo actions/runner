@@ -35,15 +35,20 @@ namespace Runner.Server.Controllers
             ReadConfig(configuration);
         }
 
+        private static object lok = new object();
+
         [HttpPost("{poolId}")]
         [HttpPatch("{poolId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
         public async Task<IActionResult> Post(int poolId) {
             TaskAgent agent = await FromBody<TaskAgent>();
-            agent.Authorization.AuthorizationUrl = new Uri($"{ServerUrl}/test/auth/v1/");
-            agent.Authorization.ClientId = Guid.NewGuid();
-            Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
-            await _context.SaveChangesAsync();
+            lock(lok) {
+                // Without a lock we get rsa message exchange problems, decryption error of rsa encrypted session aes key
+                agent.Authorization.AuthorizationUrl = new Uri($"{ServerUrl}/test/auth/v1/");
+                agent.Authorization.ClientId = Guid.NewGuid();
+                Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
+                _context.SaveChanges();
+            }
             return await Ok(agent);
         }
 

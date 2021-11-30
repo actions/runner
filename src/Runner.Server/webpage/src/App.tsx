@@ -12,6 +12,11 @@ export const App = () => {
             <MasterDetail MasterType={MasterContainer} masterProps={{}} 
                           DetailType={DetailContainer} detailProps={{}}/>
           )} />
+        <Route path="/:page/:owner/:repo"
+          render={props => (
+            <MasterDetail MasterType={MasterContainer} masterProps={{}} 
+                          DetailType={DetailContainer} detailProps={{}}/>
+          )} />
         <Redirect exact from="/" to="/master/runner/server" />
       </Switch>
     </Router>

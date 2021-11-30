@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import Media from 'react-media';
 import { mediaQueries } from 'utils';
 import styles from './Header.module.scss';
+import { JsxElement } from 'typescript';
 
 export interface HeaderProps {
     title: string,
-    hideBackButton?: boolean
+    hideBackButton?: boolean,
+    content?: ReactElement<any, any>
 }
 
 export const headerEmptyTitle = 'No Title';
@@ -28,9 +30,9 @@ export const Header: React.FC<HeaderProps> = (props) => {
             </Media>
 
             <h1 data-test="HeaderTitle">
-                { props.title || headerEmptyTitle } 
+                { props.title || headerEmptyTitle }
+                { props.content }
             </h1>
-
         </div> 
     );
 }

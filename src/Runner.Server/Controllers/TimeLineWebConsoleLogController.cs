@@ -37,7 +37,7 @@ namespace Runner.Server.Controllers
             if(TimelineController.dict.TryGetValue(timelineId, out rec)) {
                 List<TimelineRecordLogLine> value;
                 if(rec.Item2.TryGetValue(recordId, out value)) {
-                    return value;
+                    return from line in value where line != null select line;
                 }
             }
             return null;
@@ -72,8 +72,8 @@ namespace Runner.Server.Controllers
             }
         }
 
-        private delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
-        private static event LogFeedEvent logfeed;
+        public delegate void LogFeedEvent(object sender, Guid timelineId, Guid recordId, TimelineRecordFeedLinesWrapper record);
+        public static event LogFeedEvent logfeed;
 
         [HttpGet]
         public IActionResult Message([FromQuery] Guid timelineId, [FromQuery] long[] runid)
@@ -156,23 +156,23 @@ namespace Runner.Server.Controllers
             }, "text/event-stream");
         }
 
+        public static void AppendTimelineRecordFeed(TimelineRecordFeedLinesWrapper record, Guid timelineId, Guid recordId) {
+            logfeed?.Invoke(null, timelineId, recordId, record);
+            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) timeline;
+            timeline = TimelineController.dict.GetOrAdd(timelineId, g => (new List<TimelineRecord>(), new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()));
+            timeline.Item2.AddOrUpdate(record.StepId, t => record.Value.Select((s, i) => new TimelineRecordLogLine(s, null)).ToList(), (g, t) => {
+                t.AddRange(record.Value.Select((s) => new TimelineRecordLogLine(s, null)));
+                return t;
+            });
+        }
+
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/{recordId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
         public async Task<IActionResult> AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId)
         {
             var record = await FromBody<TimelineRecordFeedLinesWrapper>();
-            Task.Run(() => {
-                (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) timeline;
-                timeline = TimelineController.dict.GetOrAdd(timelineId, g => (new List<TimelineRecord>(), new ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>()));
-                timeline.Item2.AddOrUpdate(record.StepId, t => record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)).ToList(), (g, t) => {
-                    t.AddRange(record.Value.Select((s, i) => new TimelineRecordLogLine(s, record.StartLine + i)));
-                    return t;
-                });
-                logfeed?.Invoke(this, timelineId, recordId, record);
-            });
+            Task.Run(() => AppendTimelineRecordFeed(record, timelineId, recordId));
             return Ok();
         }
-
-        
     }
 }

@@ -364,6 +364,21 @@ namespace Runner.Client
             return 0;
         }
 
+        private static string GetJobUrl(string baseUrl, Guid id) {
+            var b2 = new UriBuilder(baseUrl);
+            var query = new QueryBuilder();
+            query.Add("jobid", id.ToString());
+            b2.Query = query.ToString().TrimStart('?');
+            b2.Path = "runner/host/_apis/v1/Message";
+            return b2.ToString();
+        }
+
+        private static string GetCancelWorkflowUrl(string baseUrl, long runid) {
+            var b2 = new UriBuilder(baseUrl);
+            b2.Path = $"runner/host/_apis/v1/Message/cancelWorkflow/{runid}";
+            return b2.ToString();
+        }
+
         static int Main(string[] args)
         {
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
@@ -803,19 +818,19 @@ namespace Runner.Client
                                     }
                                     while(addedFile != null || added.TryDequeue(out addedFile)) {
                                         if(!await IsIgnored(parameters.directory ?? ".", addedFile)) {
-                                            addedFiles.Add(addedFile);
+                                            addedFiles.Add(addedFile.Replace('\\', '/'));
                                         }
                                         addedFile = null;
                                     }
                                     while(changedFile != null || changed.TryDequeue(out changedFile)) {
                                         if(!await IsIgnored(parameters.directory ?? ".", changedFile)) {
-                                            changedFiles.Add(changedFile);
+                                            changedFiles.Add(changedFile.Replace('\\', '/'));
                                         }
                                         changedFile = null;
                                     }
                                     while(removedFile != null || removed.TryDequeue(out removedFile)) {
                                         if(!await IsIgnored(parameters.directory ?? ".", removedFile)) {
-                                            removedFiles.Add(removedFile);
+                                            removedFiles.Add(removedFile.Replace('\\', '/'));
                                         }
                                         removedFile = null;
                                     }
@@ -854,7 +869,7 @@ namespace Runner.Client
                                 client.DefaultRequestHeaders.Add("X-GitHub-Event", parameters.Event);
                                 var b = new UriBuilder(parameters.server);
                                 var query = new QueryBuilder();
-                                b.Path = "runner/host/_apis/v1/Message/schedule";
+                                b.Path = "runner/host/_apis/v1/Message/schedule2";
                                 var mp = new MultipartFormDataContent();
                                 List<Stream> workflowsToDispose = new List<Stream>();
                                 HttpResponseMessage resp = null;
@@ -1046,85 +1061,35 @@ namespace Runner.Client
                                     }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
 
-                                    // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                    // string stashcommitRef = null;
-                                    // EventHandler<ProcessDataReceivedEventArgs> createStash = (s, e) => {
-                                    //     stashcommitRef = e.Data;
-                                    // };
-                                    // invoker.OutputDataReceived += createStash;
-                                    // var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                                    // var git = WhichUtil.Which("git", true);
-                                    // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "stash create", new Dictionary<string, string>(), CancellationToken.None);
-                                    // invoker.OutputDataReceived -= createStash;
-
-                                    // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"stash store {stashcommitRef} -m Runner", new Dictionary<string, string>(), CancellationToken.None);
-                                    resp = await client.PostAsync(b.Uri.ToString(), mp);
+                                    resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, b.Uri.ToString()) { Content = mp }, HttpCompletionOption.ResponseHeadersRead);
                                     resp.EnsureSuccessStatusCode();
                                 } finally {
                                     foreach(var fstream in workflowsToDispose) {
                                         await fstream.DisposeAsync();
                                     }
                                 }
-                                var s = await resp.Content.ReadAsStringAsync();
-                                var hr = JsonConvert.DeserializeObject<HookResponse[]>(s);
-                                if(hr.All(h => h.skipped)) {
-                                    Console.WriteLine("All workflow were skipped, due to filters");
-                                    return  0;
-                                }
-                                if(parameters.list) {
-                                    bool ok = false;
-                                    for(int workflowNo = 0; workflowNo < hr.Length; workflowNo++) {
-                                        if(hr[workflowNo].jobList != null) {
-                                            Console.WriteLine($"Found {hr[workflowNo].jobList.Count} matched Job(s) in {(workflows?.Length > workflowNo ? workflows[workflowNo] : ("workflow " + workflowNo))}");
-                                            foreach(var j in hr[workflowNo].jobList) {
-                                                Console.WriteLine(j.Name);
-                                            }
-                                            ok = true;
-                                        }
-                                    }
-                                    if(ok) {
-                                        return 0;
-                                    } else {
-                                        Console.WriteLine("Failed to enumerate jobs");
-                                        return 1;
-                                    }
-                                }
-
-                                var b2 = new UriBuilder(b.ToString());
-                                query = new QueryBuilder();
-                                query.Add("repo", hr.First().repo);
-                                query.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                b2.Query = query.ToString().TrimStart('?');
-                                b2.Path = "runner/host/_apis/v1/Message";
-                                var jobsUrl = b2.ToString();
-                                cancelWorkflow = async () => {
-                                    try {
-                                        cancelWorkflow = null;
-                                        var sr = await client.GetStringAsync(jobsUrl);
-                                        List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
-                                        var b2 = new UriBuilder(b.ToString());
-                                        foreach(Job j in jobs) {
-                                            b2.Path = "runner/host/_apis/v1/Message/Cancel/" + j.JobId;
-                                            await client.PostAsync(b2.ToString(), null);
-                                        }
-                                    } catch {
-                                        Console.WriteLine($"Failed to cancel pending or active jobs");
-                                    }
-                                };
-
-                                var sr = await client.GetStringAsync(jobsUrl);
-                                List<Job> jobs = JsonConvert.DeserializeObject<List<Job>>(sr);
+                                
                                 Dictionary<Guid, TimeLineEntry> timelineRecords = new Dictionary<Guid, TimeLineEntry>();
                                 int col = 0;
                                 bool hasErrors = false;
+                                bool hasAny = false;
                                 // Track if we are receiving duplicated finish jobs
+                                List<Job> jobs = new List<Job>();
+                                cancelWorkflow = () => {
+                                    cancelWorkflow = null;
+                                    var runIds = (from j in jobs select j.runid).ToHashSet();
+                                    foreach(var runId in runIds) {
+                                        client.PostAsync(GetCancelWorkflowUrl(b.ToString(), runId), null, CancellationToken.None);
+                                    }
+                                };
+                                
                                 List<Guid> alreadyFinished = new List<Guid>();
                                 Func<JobCompletedEvent, Task> printFinishJob = async ev => {
                                     if(alreadyFinished.Contains(ev.JobId)) {
                                         return;
                                     }
                                     alreadyFinished.Add(ev.JobId);
-                                    var rec = (from r in timelineRecords where r.Value.TimeLine[0].Id == ev.JobId select r.Value).FirstOrDefault();
+                                    var rec = (from r in timelineRecords where r.Value.TimeLine?[0]?.Id == ev.JobId select r.Value).FirstOrDefault();
                                     try {
                                         if(rec?.WorkflowName == null) {
                                             var _job = (from job in jobs where job.JobId == ev.JobId select job).FirstOrDefault();
@@ -1135,8 +1100,10 @@ namespace Runner.Client
                                             }
                                             rec.WorkflowName = _job?.workflowname;
                                             if(rec.WorkflowName == null) {
-                                                jobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
-                                                _job = (from job in jobs where job.JobId == ev.JobId select job).FirstOrDefault();
+                                                _job = JsonConvert.DeserializeObject<Job>(await client.GetStringAsync(GetJobUrl(b.ToString(), ev.JobId)));
+                                                if(_job != null) {
+                                                    jobs.Add(_job);
+                                                }
                                                 if(customrec) {
                                                     rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = ev.JobId, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
                                                     col = (col + 1) % 14;
@@ -1147,69 +1114,12 @@ namespace Runner.Client
                                     } catch {
                                         
                                     }
-                                    Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.WorkflowName ?? "???"} / {rec.TimeLine[0].Name}] \x1b[0mJob Completed with Status: {ev.Result.ToString()}");
+                                    Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}] \x1b[0mJob Completed with Status: {ev.Result.ToString()}");
                                 };
-                                foreach(Job j in jobs) {
-                                    Console.WriteLine($"Scheduled Job: {j.workflowname} / {j.name}");
-                                    if(j.errors?.Count > 0) {
-                                        hasErrors = true;
-                                        foreach (var error in j.errors) {
-                                            Console.Error.WriteLine($"Error: {error}");
-                                        }
-                                    } else if(j.Cancelled) {
-                                        hasErrors = true;
-                                        Console.Error.WriteLine($"Error: Cancelled");
-                                    } else if(j.JobCompletedEvent != null) {
-                                        await printFinishJob(j.JobCompletedEvent);
-                                    }
-                                    else if(j.TimeLineId != Guid.Empty) {
-                                        try {
-                                            var content = await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{j.TimeLineId.ToString()}");
-                                            timelineRecords[j.TimeLineId] = new TimeLineEntry() { WorkflowName = j.workflowname, TimeLine = JsonConvert.DeserializeObject<List<TimelineRecord>>(content), Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
-                                            col = (col + 1) % 14;
-                                        }
-                                        catch (HttpRequestException) {
-                                        }
-                                    }
-                                }
-
-                                var timeLineWebConsoleLog = new UriBuilder(parameters.server + "/runner/server/_apis/v1/TimeLineWebConsoleLog");
-                                var timeLineWebConsoleLogQuery = new QueryBuilder();
-                                timeLineWebConsoleLogQuery.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                var pendingWorkflows = (from h in hr where !h.skipped && !h.failed select h.run_id).ToList();
-                                timeLineWebConsoleLog.Query = timeLineWebConsoleLogQuery.ToString().TrimStart('?');
-                                var eventstream = client.GetStreamAsync(timeLineWebConsoleLog.ToString());
-                                while(!source.IsCancellationRequested && pendingWorkflows.Count > 0) {
-                                    bool lastRun = eventstream.IsCompleted;
-                                    foreach(var run_id in pendingWorkflows.ToArray()) {
-                                        var workflowstat = new UriBuilder(b.ToString());
-                                        workflowstat.Path = "runner/host/_apis/v1/Message/WorkflowStatus/" + run_id;
-                                        var workflowres = await client.GetStringAsync(workflowstat.ToString());
-                                        if(workflowres != "") {
-                                            pendingWorkflows.Remove(run_id);
-                                            var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(workflowres);
-                                            Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
-                                            if(!_workflow.Success) {
-                                                hasErrors = true;
-                                            }
-                                        }
-                                    }
-                                    if(lastRun) {
-                                        break;
-                                    }
-                                    await Task.WhenAny(eventstream, Task.Delay(1000, source.Token));
-                                }
-                                if(pendingWorkflows.Count == 0) {
-                                    if(hasErrors) {
-                                        Console.WriteLine("All Workflows finished, at least one workflow failed");
-                                    } else {
-                                        Console.WriteLine("All Workflows finished successfully");
-                                    }
-                                    return hasErrors ? 1 : 0;
-                                }
-                                var runIds = new List<long>(pendingWorkflows);
+                                var eventstream = resp.Content.ReadAsStream();
+                            
                                 try {
-                                    using(TextReader reader = new StreamReader(await eventstream)) {
+                                    using(TextReader reader = new StreamReader(eventstream)) {
                                         while(!source.IsCancellationRequested) {
                                             var line = await reader.ReadLineAsync();
                                             if(line == null) {
@@ -1218,6 +1128,9 @@ namespace Runner.Client
                                             var data = await reader.ReadLineAsync();
                                             data = data.Substring("data: ".Length);
                                             await reader.ReadLineAsync();
+                                            if(line == "event: ") {
+                                                break;
+                                            }
                                             if(!parameters.quiet && line == "event: log") {
                                                 var e = JsonConvert.DeserializeObject<WebConsoleEvent>(data);
                                                 TimeLineEntry rec;
@@ -1236,7 +1149,7 @@ namespace Runner.Client
                                                             rec.Pending.Add(e);
                                                             continue;
                                                         }                                    
-                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.WorkflowName ?? "???"} / {rec.TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                                     }
                                                     rec.RecordId = e.record.StepId;
                                                     if(rec.TimeLine != null) {
@@ -1247,17 +1160,30 @@ namespace Runner.Client
                                                             continue;
                                                         }
                                                         try {
-                                                            if(rec.WorkflowName == null) {
-                                                                rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                            if(rec?.WorkflowName == null) {
+                                                                var _job = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job).FirstOrDefault();
+                                                                bool customrec = rec == null;
+                                                                if(customrec) {
+                                                                    rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                                                    col = (col + 1) % 14;
+                                                                }
+                                                                rec.WorkflowName = _job?.workflowname;
                                                                 if(rec.WorkflowName == null) {
-                                                                    jobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
-                                                                    rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                                    _job = JsonConvert.DeserializeObject<Job>(await client.GetStringAsync(GetJobUrl(b.ToString(), rec.TimeLine[0].Id)));
+                                                                    if(_job != null) {
+                                                                        jobs.Add(_job);
+                                                                    }
+                                                                    if(customrec) {
+                                                                        rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                                                        col = (col + 1) % 14;
+                                                                    }
+                                                                    rec.WorkflowName = _job?.workflowname;
                                                                 }
                                                             }
                                                         } catch {
                                                             
                                                         }
-                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{rec.WorkflowName ?? "???"} / {rec.TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
                                                     }
                                                 }
                                                 var old = Console.ForegroundColor;
@@ -1290,7 +1216,7 @@ namespace Runner.Client
                                                                 break;
                                                             }
                                                             var rec = timelineRecords[e.timelineId];
-                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{rec.WorkflowName ?? "???"} / {timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                                         }
                                                         timelineRecords[e.timelineId].RecordId = e2.record.StepId;
                                                         if(timelineRecords[e.timelineId].TimeLine != null) {
@@ -1301,17 +1227,30 @@ namespace Runner.Client
                                                             }
                                                             var rec = timelineRecords[e.timelineId];
                                                             try {
-                                                                if(rec.WorkflowName == null) {
-                                                                    rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                                if(rec?.WorkflowName == null) {
+                                                                    var _job = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job).FirstOrDefault();
+                                                                    bool customrec = rec == null;
+                                                                    if(customrec) {
+                                                                        rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                                                        col = (col + 1) % 14;
+                                                                    }
+                                                                    rec.WorkflowName = _job?.workflowname;
                                                                     if(rec.WorkflowName == null) {
-                                                                        jobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(jobsUrl));
-                                                                        rec.WorkflowName = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job.workflowname).FirstOrDefault();
+                                                                        _job = JsonConvert.DeserializeObject<Job>(await client.GetStringAsync(GetJobUrl(b.ToString(), rec.TimeLine[0].Id)));
+                                                                        if(_job != null) {
+                                                                            jobs.Add(_job);
+                                                                        }
+                                                                        if(customrec) {
+                                                                            rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                                                            col = (col + 1) % 14;
+                                                                        }
+                                                                        rec.WorkflowName = _job?.workflowname;
                                                                     }
                                                                 }
                                                             } catch {
                                                                 
                                                             }
-                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{rec.WorkflowName ?? "???"} / {timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
                                                         }
                                                     }
                                                     var old = Console.ForegroundColor;
@@ -1332,55 +1271,9 @@ namespace Runner.Client
                                                     var record = e.timeline.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
                                                     if(record != null && record.Result.HasValue) {
                                                         var rec = timelineRecords[e.timelineId];
-                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{rec.WorkflowName ?? "???"} / {e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
                                                     }
                                                 }
-                                                // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
-                                                //     var b3 = new UriBuilder(b.ToString());
-                                                //     query = new QueryBuilder();
-                                                //     query.Add("repo", hr.First().repo);
-                                                //     query.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                                //     query.Add("depending", "1");
-                                                //     b3.Query = query.ToString().TrimStart('?');
-                                                //     b3.Path = "runner/host/_apis/v1/Message";
-                                                //     var sr2 = await client.GetStringAsync(b3.ToString());
-                                                //     List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                                //     if(jobs2?.Count > 0) {
-                                                //         continue;
-                                                //     }
-                                                //     sr2 = await client.GetStringAsync(b2.ToString());
-                                                //     jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                                //     if(jobs2.Count > jobs.Count) {
-                                                //         foreach(var j in jobs2) {
-                                                //             if(j.errors == null || j.errors.Count == 0) {
-                                                //                 continue;
-                                                //             }
-                                                //             bool cont = false;
-                                                //             foreach(var j2 in jobs) {
-                                                //                 if(j.JobId == j2.JobId) {
-                                                //                     cont = true;
-                                                //                     break;
-                                                //                 }
-                                                //             }
-                                                //             if(cont) {
-                                                //                 continue;
-                                                //             }
-                                                //             hasErrors = true;
-                                                //             foreach(var error in j.errors) {
-                                                //                 Console.Error.WriteLine($"Error: {error}");
-                                                //             }
-                                                //         }
-                                                //         jobs = jobs2;
-                                                //     }
-                                                //     var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
-                                                //     if(nc > rj) {
-                                                //         rj = nc;
-                                                //         if(timelineRecords.Count < rj) {
-                                                //             continue;
-                                                //         }
-                                                //     }
-                                                //     return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
-                                                // }
                                             }
                                             if(line == "event: repodownload") {
                                                 var endpoint = JsonConvert.DeserializeObject<RepoDownload>(data);
@@ -1444,148 +1337,20 @@ namespace Runner.Client
                                                 });
                                             }
                                             if(line == "event: workflow") {
-                                                
                                                 var _workflow = JsonConvert.DeserializeObject<WorkflowEventArgs>(data);
-                                                if(pendingWorkflows.Remove(_workflow.runid)) {
-                                                    Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
-                                                    hasErrors |= !_workflow.Success;
-                                                    if(pendingWorkflows.Count == 0) {
-                                                        if(hasErrors) {
-                                                            Console.WriteLine("All Workflows finished, at least one workflow failed");
-                                                        } else {
-                                                            Console.WriteLine("All Workflows finished successfully");
-                                                        }
-                                                        if(parameters.watch) {
-                                                            Console.WriteLine("Waiting for file changes");
-                                                            break;
-                                                        }
-                                                        return hasErrors ? 1 : 0;
-                                                    }
-                                                }
+                                                Console.WriteLine($"Workflow {_workflow.runid} finished with status {(_workflow.Success ? "Success" : "Failure")}");
+                                                hasErrors |= !_workflow.Success;
+                                                hasAny = true;
                                             }
                                             if(line == "event: finish") {
                                                 var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
                                                 await printFinishJob(ev);
                                             }
-                                            // if(line == "event: finish") {
-                                            //     var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
-                                            //     if(ev.Result == TaskResult.Canceled || ev.Result == TaskResult.Abandoned || ev.Result == TaskResult.Failed) {
-                                            //         hasErrors = true;
-                                            //     }
-                                            // }
-                                        //     if(line == "event: finish") {
-                                        //         var ev = JsonConvert.DeserializeObject<JobCompletedEvent>(data);
-                                        //         // if(job.Result == TaskResult.Abandoned)
-                                        //         foreach(var j in jobs) {
-                                        //             if(j.JobId == ev.JobId) {
-                                        //                 j.Finished = true;
-                                        //                 Console.WriteLine($"Job {j.workflowname} - {j.name} Finished {ev.Result}");
-                                        //                 if(ev.Result == TaskResult.Canceled || ev.Result == TaskResult.Abandoned || ev.Result == TaskResult.Failed) {
-                                        //                     hasErrors = true;
-                                        //                 }
-                                        //                 if(j.TimeLineId != Guid.Empty) {
-                                        //                     timelineRecords.Remove(j.TimeLineId);
-                                        //                     rj--;
-                                        //                     jf++;
-                                        //                 }
-
-                                        //                 break;
-                                        //             }
-                                        //         }
-
-                                        //         if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
-                                        //             var b3 = new UriBuilder(b.ToString());
-                                        //             query = new QueryBuilder();
-                                        //             query.Add("repo", hr.First().repo);
-                                        //             query.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                        //             query.Add("depending", "1");
-                                        //             b3.Query = query.ToString().TrimStart('?');
-                                        //             b3.Path = "runner/host/_apis/v1/Message";
-                                        //             var sr2 = await client.GetStringAsync(b3.ToString());
-                                        //             List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                        //             if(jobs2?.Count > 0) {
-                                        //                 continue;
-                                        //             }
-                                        //             sr2 = await client.GetStringAsync(b2.ToString());
-                                        //             jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                        //             if(jobs2.Count > jobs.Count) {
-                                        //                 foreach(var j in jobs2) {
-                                        //                     if(j.errors == null || j.errors.Count == 0) {
-                                        //                         continue;
-                                        //                     }
-                                        //                     bool cont = false;
-                                        //                     foreach(var j2 in jobs) {
-                                        //                         if(j.JobId == j2.JobId) {
-                                        //                             cont = true;
-                                        //                             break;
-                                        //                         }
-                                        //                     }
-                                        //                     if(cont) {
-                                        //                         continue;
-                                        //                     }
-                                        //                     hasErrors = true;
-                                        //                     foreach(var error in j.errors) {
-                                        //                         Console.Error.WriteLine($"Error: {error}");
-                                        //                     }
-                                        //                 }
-                                        //                 jobs = jobs2;
-                                        //             }
-                                        //             var nc = jobs2.Count(j => !(j.errors?.Count > 0)) - jf;
-                                        //             if(nc > rj) {
-                                        //                 rj = nc;
-                                        //                 if(timelineRecords.Count < rj) {
-                                        //                     continue;
-                                        //                 }
-                                        //             }
-                                        //             return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
-                                        //         }
-                                        //         // var b3 = new UriBuilder(b.ToString());
-                                        //         // query = new QueryBuilder();
-                                        //         // query.Add("repo", hr.First().repo);
-                                        //         // query.Add("runid", hr.Select(h => h.run_id.ToString()));
-                                        //         // query.Add("depending", "1");
-                                        //         // b3.Query = query.ToString().TrimStart('?');
-                                        //         // b3.Path = "runner/host/_apis/v1/Message";
-                                        //         // var sr2 = await client.GetStringAsync(b3.ToString());
-                                        //         // List<Job> jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                        //         // bool cont2 = jobs2?.Count > 0;
-                                        //         // sr2 = await client.GetStringAsync(b2.ToString());
-                                        //         // jobs2 = JsonConvert.DeserializeObject<List<Job>>(sr2);
-                                        //         // if(jobs2.Count > jobs.Count) {
-                                        //         //     foreach(var j in jobs2) {
-                                        //         //         if(j.errors == null || j.errors.Count == 0) {
-                                        //         //             continue;
-                                        //         //         }
-                                        //         //         bool cont = false;
-                                        //         //         foreach(var j2 in jobs) {
-                                        //         //             if(j.JobId == j2.JobId) {
-                                        //         //                 cont = true;
-                                        //         //                 break;
-                                        //         //             }
-                                        //         //         }
-                                        //         //         if(cont) {
-                                        //         //             continue;
-                                        //         //         }
-                                        //         //         hasErrors = true;
-                                        //         //         foreach(var error in j.errors) {
-                                        //         //             Console.Error.WriteLine($"Error: {error}");
-                                        //         //         }
-                                        //         //     }
-                                        //         //     jobs = jobs2;
-                                        //         // }
-                                        //         // var nc = jobs2.Count(j => !(j.errors?.Count > 0) && !j.Cancelled);
-                                        //         // rj = nc;
-                                        //         // if(cont2) {
-                                        //         //     continue;
-                                        //         // }
-                                        //         // if(timelineRecords.Count >= rj && timelineRecords.Values.All(r => r[0].State == TimelineRecordState.Completed)) {
-                                        //         //     return !hasErrors && timelineRecords.Values.All(r => r[0].Result == TaskResult.Succeeded || r[0].Result == TaskResult.SucceededWithIssues || r[0].Result == TaskResult.Skipped || (jobs.Find(j => j.JobId == r[0].Id)?.ContinueOnError ?? false) ) ? 0 : 1;
-                                        //         // }
-                                        //     }
                                         }
                                     }
                                 } finally {
                                     if(parameters.ArtifactOutputDir?.Length > 0) {
+                                        var runIds = (from j in jobs select j.runid).ToHashSet();
                                         foreach(var runId in runIds) {
                                             try {
                                                 var artifactUri = new UriBuilder(parameters.server);
@@ -1622,61 +1387,49 @@ namespace Runner.Client
                                     }
                                     if(parameters.LogOutputDir?.Length > 0) {
                                         Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
-                                        foreach(var runId in runIds) {
+                                        foreach(var job in jobs) {
                                             try {
-                                                var jobquery = new QueryBuilder();
-                                                jobquery.Add("repo", hr.First().repo);
-                                                jobquery.Add("runid", runId.ToString());
-                                                var joburib = new UriBuilder(jobsUrl);
-                                                joburib.Query = jobquery.ToString().TrimStart('?');
-                                                List<Job> ljobs = JsonConvert.DeserializeObject<List<Job>>(await client.GetStringAsync(joburib.ToString()));
-                                                foreach(var job in ljobs) {
+                                                var logBasePath = Path.Combine(parameters.LogOutputDir, job.runid.ToString(), special.Replace(job.name, "-"));
+                                                Directory.CreateDirectory(logBasePath);
+                                                Console.WriteLine($"Downloading Logs {job.runid}/{special.Replace(job.name, "-")}");
+                                                var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
+                                                foreach(var timeLineRecord in timeLineRecords) {
                                                     try {
-                                                        var logBasePath = Path.Combine(parameters.LogOutputDir, runId.ToString(), special.Replace(job.name, "-"));
-                                                        Directory.CreateDirectory(logBasePath);
-                                                        Console.WriteLine($"Downloading Logs {runId}/{special.Replace(job.name, "-")}");
-                                                        var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
-                                                        foreach(var timeLineRecord in timeLineRecords) {
-                                                            try {
-                                                                if(timeLineRecord?.Log?.Id != null) {
-
-                                                                    var destpath = Path.Combine(logBasePath, timeLineRecord.Log.Id + "-" + special.Replace(timeLineRecord.Name, "-"));
-                                                                    Directory.CreateDirectory(Path.GetDirectoryName(destpath));
-                                                                    var logFileUri = new UriBuilder(parameters.server);
-                                                                    logFileUri.Path = $"/runner/server/_apis/v1/Logfiles/{timeLineRecord.Log.Id}";
-                                                                    using(var content = await client.GetStreamAsync(logFileUri.ToString()))
-                                                                    using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
-                                                                        targetStream.Seek(0, SeekOrigin.Begin);
-                                                                        await content.CopyToAsync(targetStream);
-                                                                    }
-                                                                }
-                                                                
-                                                            } catch {
-
+                                                        if(timeLineRecord?.Log?.Id != null) {
+                                                            var destpath = Path.Combine(logBasePath, timeLineRecord.Log.Id + "-" + special.Replace(timeLineRecord.Name, "-"));
+                                                            Directory.CreateDirectory(Path.GetDirectoryName(destpath));
+                                                            var logFileUri = new UriBuilder(parameters.server);
+                                                            logFileUri.Path = $"/runner/server/_apis/v1/Logfiles/{timeLineRecord.Log.Id}";
+                                                            using(var content = await client.GetStreamAsync(logFileUri.ToString()))
+                                                            using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+                                                                targetStream.Seek(0, SeekOrigin.Begin);
+                                                                await content.CopyToAsync(targetStream);
                                                             }
                                                         }
                                                     } catch {
 
                                                     }
                                                 }
-                                                
                                             } catch {
 
                                             }
                                         }
                                     }
                                 }
+                                if(hasErrors) {
+                                    Console.WriteLine("All Workflows finished, at least one workflow failed");
+                                } else if(!hasAny) {
+                                    Console.WriteLine("All workflow were skipped, due to filters");
+                                } else {
+                                    Console.WriteLine("All Workflows finished successfully");
+                                }
+                                return hasErrors ? 1 : 0;
                             } catch (Exception except) {
-                                // System.Diagnostics.Process.Start()
-                                // GitHub.Runner.Sdk.ProcessInvoker invoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                // var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-                                // await invoker.ExecuteAsync(binpath, Path.Join(binpath, $"Runner.Server{IOUtil.ExeExtension}"), "", new Dictionary<string, string>(), CancellationToken.None);
                                 Console.WriteLine($"Exception: {except.Message}, {except.StackTrace}");
                                 return 1;
                             } finally {
                                 cancelWorkflow = null;
                             }
-                            return 0;
                         });
                         if(!parameters.watch) {
                             return ret;
@@ -1686,7 +1439,6 @@ namespace Runner.Client
                     source.Cancel();
                     await Task.WhenAll(listener);
                 }
-                // await invoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"stash drop {stashcommitRef}", new Dictionary<string, string>(), CancellationToken.None);
                 return 0;
             };
 

@@ -14,7 +14,7 @@ export interface IJob {
     workflowname: string,
     runid : number,
     errors: string[],
-    jobCompletedEvent : IJobCompletedEvent,
+    result: string,
 }
 
 export const getJobById = (jobs : IJob[], id: number | string | undefined): { item: Item | null, job: IJob | null } => {

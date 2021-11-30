@@ -8,10 +8,9 @@
   background: transparent;
 
   h1, h2, p {
-    text-overflow: inherit;
     overflow: inherit;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: wrap;
     overflow: hidden;
     box-sizing: border-box;
   }

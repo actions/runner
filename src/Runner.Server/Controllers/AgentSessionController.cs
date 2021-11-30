@@ -51,6 +51,10 @@ namespace Runner.Server.Controllers
                 Key = aes
                 
             });
+            // session.EncryptionKey = new TaskAgentSessionKey() {
+            //     Encrypted = false,
+            //     Value = aes.Key
+            // };
             session.EncryptionKey = new TaskAgentSessionKey() {
                 Encrypted = true,
                 Value = _session.Agent.PublicKey.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA256)
