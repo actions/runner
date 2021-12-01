@@ -379,6 +379,22 @@ namespace Runner.Client
             return b2.ToString();
         }
 
+        private static void WriteLogLine(int color, string tag, string message) {
+            Console.ResetColor();
+            Console.ForegroundColor = (ConsoleColor)color;
+            Console.Write("[" + tag + "] ");
+            Console.ResetColor();
+            Console.WriteLine(message);
+        }
+
+        private static void WriteLogLine(int color, string message) {
+            Console.ResetColor();
+            Console.ForegroundColor = (ConsoleColor)color;
+            Console.Write("|");
+            Console.ResetColor();
+            Console.WriteLine(message);
+        }
+
         static int Main(string[] args)
         {
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
@@ -1114,7 +1130,7 @@ namespace Runner.Client
                                     } catch {
                                         
                                     }
-                                    Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}] \x1b[0mJob Completed with Status: {ev.Result.ToString()}");
+                                    WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Job Completed with Status: {ev.Result.ToString()}");
                                 };
                                 var eventstream = resp.Content.ReadAsStream();
                             
@@ -1149,7 +1165,7 @@ namespace Runner.Client
                                                             rec.Pending.Add(e);
                                                             continue;
                                                         }                                    
-                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"{record.Result.Value.ToString()}: {record.Name}");
                                                     }
                                                     rec.RecordId = e.record.StepId;
                                                     if(rec.TimeLine != null) {
@@ -1183,21 +1199,18 @@ namespace Runner.Client
                                                         } catch {
                                                             
                                                         }
-                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                        WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Running: {record.Name}");
                                                     }
                                                 }
-                                                var old = Console.ForegroundColor;
-                                                Console.ForegroundColor = rec.Color;
                                                 foreach (var webconsoleline in e.record.Value) {
                                                     if(webconsoleline.StartsWith("##[section]")) {
                                                         Console.WriteLine("******************************************************************************");
                                                         Console.WriteLine(webconsoleline.Substring("##[section]".Length));
                                                         Console.WriteLine("******************************************************************************");
                                                     } else {
-                                                        Console.WriteLine($"\x1b[{(int)rec.Color + 30}m|\x1b[0m {webconsoleline}");
+                                                        WriteLogLine((int)rec.Color, webconsoleline);
                                                     }
                                                 }
-                                                Console.ForegroundColor = old;
                                             }
                                             if(line == "event: timeline") {
                                                 var e = JsonConvert.DeserializeObject<TimeLineEvent>(data);
@@ -1216,7 +1229,7 @@ namespace Runner.Client
                                                                 break;
                                                             }
                                                             var rec = timelineRecords[e.timelineId];
-                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                            WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"{record.Result.Value.ToString()}: {record.Name}");
                                                         }
                                                         timelineRecords[e.timelineId].RecordId = e2.record.StepId;
                                                         if(timelineRecords[e.timelineId].TimeLine != null) {
@@ -1250,28 +1263,25 @@ namespace Runner.Client
                                                             } catch {
                                                                 
                                                             }
-                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{timelineRecords[e.timelineId].TimeLine[0].Name}] \x1b[0mRunning: {record.Name}");
+                                                            WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"Running: {record.Name}");
                                                         }
                                                     }
-                                                    var old = Console.ForegroundColor;
-                                                    Console.ForegroundColor = timelineRecords[e.timelineId].Color;
                                                     foreach (var webconsoleline in e2.record.Value) {
                                                         if(webconsoleline.StartsWith("##[section]")) {
                                                             Console.WriteLine("******************************************************************************");
                                                             Console.WriteLine(webconsoleline.Substring("##[section]".Length));
                                                             Console.WriteLine("******************************************************************************");
                                                         } else {
-                                                            Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m|\x1b[0m {webconsoleline}");
+                                                            WriteLogLine((int)timelineRecords[e.timelineId].Color, webconsoleline);
                                                         }
                                                     }
-                                                    Console.ForegroundColor = old;
                                                     timelineRecords[e.timelineId].Pending.RemoveAt(0);
                                                 }
                                                 if(!parameters.quiet && timelineRecords[e.timelineId].RecordId != Guid.Empty && timelineRecords != null && e.timeline[0].State == TimelineRecordState.Completed) {
                                                     var record = e.timeline.Find(r => r.Id == timelineRecords[e.timelineId].RecordId);
                                                     if(record != null && record.Result.HasValue) {
                                                         var rec = timelineRecords[e.timelineId];
-                                                        Console.WriteLine($"\x1b[{(int)timelineRecords[e.timelineId].Color + 30}m[{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{e.timeline[0].Name}] \x1b[0m{record.Result.Value.ToString()}: {record.Name}");
+                                                        WriteLogLine((int)rec.Color, $"{(rec.WorkflowName != null ? $"{rec.WorkflowName} / " : "")}{rec.TimeLine[0].Name}", $"{record.Result.Value.ToString()}: {record.Name}");
                                                     }
                                                 }
                                             }
