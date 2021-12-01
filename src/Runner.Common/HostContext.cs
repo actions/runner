@@ -376,6 +376,14 @@ namespace GitHub.Runner.Common
         }
 
         /// <summary>
+        /// Register a default dynamic service.
+        /// </summary>
+        public void RegisterService(Type type, Type target)
+        {
+            _serviceTypes.TryAdd(type, target);
+        }
+
+        /// <summary>
         /// Creates a new instance of T.
         /// </summary>
         public T CreateService<T>() where T : class, IRunnerService

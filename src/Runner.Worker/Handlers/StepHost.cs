@@ -129,10 +129,10 @@ namespace GitHub.Runner.Worker.Handlers
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
             var osReleaseIdCmd = "sh -c \"cat /etc/*release | grep ^ID\"";
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            var containerManager = HostContext.GetService<IContainerCommandManager>();
 
             var output = new List<string>();
-            var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
+            var execExitCode = await containerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
             string nodeExternal;
             if (execExitCode == 0)
             {
@@ -174,8 +174,8 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.NotNull(Container, nameof(Container));
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
 
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
-            string dockerClientPath = dockerManager.DockerPath;
+            var containerManager = HostContext.GetService<IContainerCommandManager>();
+            string dockerClientPath = containerManager.DockerPath;
 
             // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
             IList<string> dockerCommandArgs = new List<string>();

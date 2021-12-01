@@ -13,7 +13,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class StepHostL0
     {
         private Mock<IExecutionContext> _ec;
-        private Mock<IDockerCommandManager> _dc;
+        private Mock<IContainerCommandManager> _dc;
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);
@@ -24,7 +24,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var trace = hc.GetTrace();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
 
-            _dc = new Mock<IDockerCommandManager>();
+            _dc = new Mock<IContainerCommandManager>();
             hc.SetSingleton(_dc.Object);
             return hc;
         }

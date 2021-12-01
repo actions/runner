@@ -530,12 +530,12 @@ namespace GitHub.Runner.Worker
             executionContext.Output($"##[group]Pull down action image '{setupInfo.Container.Image}'");
 
             // Pull down docker image with retry up to 3 times
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            var containerManager = HostContext.GetService<IContainerCommandManager>();
             int retryCount = 0;
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await dockerManager.DockerPull(executionContext, setupInfo.Container.Image);
+                pullExitCode = await containerManager.DockerPull(executionContext, setupInfo.Container.Image);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -574,13 +574,13 @@ namespace GitHub.Runner.Worker
             executionContext.Output($"##[group]Build container for action use: '{setupInfo.Container.Dockerfile}'.");
 
             // Build docker image with retry up to 3 times
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            var containerManager = HostContext.GetService<IContainerCommandManager>();
             int retryCount = 0;
             int buildExitCode = 0;
-            var imageName = $"{dockerManager.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+            var imageName = $"{containerManager.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
             while (retryCount < 3)
             {
-                buildExitCode = await dockerManager.DockerBuild(
+                buildExitCode = await containerManager.DockerBuild(
                     executionContext,
                     setupInfo.Container.WorkingDirectory,
                     setupInfo.Container.Dockerfile,

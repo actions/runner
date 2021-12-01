@@ -24,12 +24,12 @@ namespace GitHub.Runner.Worker
 
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
-        private IDockerCommandManager _dockerManager;
+        private IContainerCommandManager _containerManager;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _dockerManager = HostContext.GetService<IDockerCommandManager>();
+            _containerManager = HostContext.GetService<IContainerCommandManager>();
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
@@ -92,7 +92,7 @@ namespace GitHub.Runner.Worker
 
             // Check docker client/server version
             executionContext.Output("##[group]Checking docker version");
-            DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
+            DockerVersion dockerVersion = await _containerManager.DockerVersion(executionContext);
             executionContext.Output("##[endgroup]");
 
             ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
@@ -106,26 +106,26 @@ namespace GitHub.Runner.Worker
 
             if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
             {
-                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
+                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_containerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
             }
             if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
             {
-                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
+                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_containerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
             }
 
             // Clean up containers left by previous runs
             executionContext.Output("##[group]Clean up resources from previous jobs");
-            var staleContainers = await _dockerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManager.DockerInstanceLabel}\"");
+            var staleContainers = await _containerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_containerManager.DockerInstanceLabel}\"");
             foreach (var staleContainer in staleContainers)
             {
-                int containerRemoveExitCode = await _dockerManager.DockerRemove(executionContext, staleContainer);
+                int containerRemoveExitCode = await _containerManager.DockerRemove(executionContext, staleContainer);
                 if (containerRemoveExitCode != 0)
                 {
                     executionContext.Warning($"Delete stale containers failed, docker rm fail with exit code {containerRemoveExitCode} for container {staleContainer}");
                 }
             }
 
-            int networkPruneExitCode = await _dockerManager.DockerNetworkPrune(executionContext);
+            int networkPruneExitCode = await _containerManager.DockerNetworkPrune(executionContext);
             if (networkPruneExitCode != 0)
             {
                 executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
@@ -208,7 +208,7 @@ namespace GitHub.Runner.Worker
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await _dockerManager.DockerPull(executionContext, container.ContainerImage, configLocation);
+                pullExitCode = await _containerManager.DockerPull(executionContext, container.ContainerImage, configLocation);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -266,11 +266,11 @@ namespace GitHub.Runner.Worker
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
             }
 
-            container.ContainerId = await _dockerManager.DockerCreate(executionContext, container);
+            container.ContainerId = await _containerManager.DockerCreate(executionContext, container);
             ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
 
             // Start container
-            int startExitCode = await _dockerManager.DockerStart(executionContext, container.ContainerId);
+            int startExitCode = await _containerManager.DockerStart(executionContext, container.ContainerId);
             if (startExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker start fail with exit code {startExitCode}");
@@ -279,12 +279,12 @@ namespace GitHub.Runner.Worker
             try
             {
                 // Make sure container is up and running
-                var psOutputs = await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --filter status=running --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
+                var psOutputs = await _containerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --filter status=running --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
                 if (psOutputs.FirstOrDefault(x => !string.IsNullOrEmpty(x))?.StartsWith(container.ContainerId) != true)
                 {
                     // container is not up and running, pull docker log for this container.
-                    await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
-                    int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
+                    await _containerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
+                    int logsExitCode = await _containerManager.DockerLogs(executionContext, container.ContainerId);
                     if (logsExitCode != 0)
                     {
                         executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
@@ -309,7 +309,7 @@ namespace GitHub.Runner.Worker
                     ["ports"] = new DictionaryContextData(),
                     ["network"] = new StringContextData(container.ContainerNetwork)
                 };
-                container.AddPortMappings(await _dockerManager.DockerPort(executionContext, container.ContainerId));
+                container.AddPortMappings(await _containerManager.DockerPort(executionContext, container.ContainerId));
                 foreach (var port in container.PortMappings)
                 {
                     (service["ports"] as DictionaryContextData)[port.ContainerPort] = new StringContextData(port.HostPort);
@@ -319,7 +319,7 @@ namespace GitHub.Runner.Worker
             else
             {
                 var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-                var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
+                var containerEnv = await _containerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
                 container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
             }
@@ -336,7 +336,7 @@ namespace GitHub.Runner.Worker
             {
                 executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");
 
-                int rmExitCode = await _dockerManager.DockerRemove(executionContext, container.ContainerId);
+                int rmExitCode = await _containerManager.DockerRemove(executionContext, container.ContainerId);
                 if (rmExitCode != 0)
                 {
                     executionContext.Warning($"Docker rm fail with exit code {rmExitCode}");
@@ -396,7 +396,7 @@ namespace GitHub.Runner.Worker
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
-            int networkExitCode = await _dockerManager.DockerNetworkCreate(executionContext, network);
+            int networkExitCode = await _containerManager.DockerNetworkCreate(executionContext, network);
             if (networkExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker network create failed with exit code {networkExitCode}");
@@ -411,7 +411,7 @@ namespace GitHub.Runner.Worker
 
             executionContext.Output($"Remove container network: {network}");
 
-            int removeExitCode = await _dockerManager.DockerNetworkRemove(executionContext, network);
+            int removeExitCode = await _containerManager.DockerNetworkRemove(executionContext, network);
             if (removeExitCode != 0)
             {
                 executionContext.Warning($"Docker network rm failed with exit code {removeExitCode}");
@@ -421,7 +421,7 @@ namespace GitHub.Runner.Worker
         private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
-            string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
+            string serviceHealth = (await _containerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
             if (string.IsNullOrEmpty(serviceHealth))
             {
                 // Container has no HEALTHCHECK
@@ -433,7 +433,7 @@ namespace GitHub.Runner.Worker
                 TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
                 executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
                 await Task.Delay(backoff, executionContext.CancellationToken);
-                serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
+                serviceHealth = (await _containerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
                 retryCount++;
             }
             if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
@@ -462,7 +462,7 @@ namespace GitHub.Runner.Worker
             {
                 throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
             }
-            var loginExitCode = await _dockerManager.DockerLogin(
+            var loginExitCode = await _containerManager.DockerLogin(
                 executionContext,
                 configLocation,
                 container.RegistryServer,

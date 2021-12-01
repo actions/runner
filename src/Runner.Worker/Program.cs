@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Diagnostics;
+using GitHub.Runner.Worker.Container;
 
 namespace GitHub.Runner.Worker
 {
@@ -13,8 +14,28 @@ namespace GitHub.Runner.Worker
         {
             using (HostContext context = new HostContext("Worker"))
             {
+                // Enable until kubernetes support is fully enabled
+                // configureCommandManager(context);
                 return MainAsync(context, args).GetAwaiter().GetResult();
             }
+        }
+
+        public static void configureCommandManager(HostContext context) {
+            Tracing trace = context.GetTrace(nameof(GitHub.Runner.Worker));
+            var containerProvider = Environment.GetEnvironmentVariable("RUNNER_CONTAINER_PROVIDER");
+            switch (containerProvider)
+            {
+                case "docker":
+                    trace.Info($"Registering DockerCommandManager as IDockerCommandManager");
+                    context.RegisterService(typeof(IContainerCommandManager), typeof(DockerCommandManager));
+                    break;
+                case "kubernetes":
+                    trace.Info($"Registering KubernetesCommandManager as IDockerCommandManager");
+                    context.RegisterService(typeof(IContainerCommandManager), typeof(KubernetesCommandManager));
+                    break;
+            }
+            // If no environment variable is set, it will default to whatever it's defaulted in IContainerCommandManager
+            // which in this case it defaults to DockerCommandManager
         }
 
         public static async Task<int> MainAsync(IHostContext context, string[] args)
