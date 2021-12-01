@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Runner.Server.Controllers
 {
@@ -28,11 +29,8 @@ namespace Runner.Server.Controllers
 
         [HttpGet("{timelineId}")]
         public async Task<IActionResult> GetTimelineRecords(Guid timelineId) {
-            var l = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).ToList();
+            var l = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
             l.Sort((a,b) => a.ParentId == null ? -1 : b.ParentId == null ? 1 : a.Order - b.Order ?? 0);
-            // if(l.Count == 0 && dict.TryGetValue(timelineId, out var val)) {
-            //     return await Ok(val.Item1, true);
-            // }
             return await Ok(l, true);
         }
         

@@ -33,12 +33,8 @@ namespace Runner.Server.Controllers
         [HttpGet("{timelineId}/{recordId}")]
         public IEnumerable<TimelineRecordLogLine> GetLogLines(Guid timelineId, Guid recordId)
         {
-            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) rec; 
-            if(TimelineController.dict.TryGetValue(timelineId, out rec)) {
-                List<TimelineRecordLogLine> value;
-                if(rec.Item2.TryGetValue(recordId, out value)) {
-                    return from line in value where line != null select line;
-                }
+            if(TimelineController.dict.TryGetValue(timelineId, out var rec) && rec.Item2.TryGetValue(recordId, out var value)) {
+                return from line in value where line != null select line;
             }
             return null;
         }
@@ -46,8 +42,7 @@ namespace Runner.Server.Controllers
         [HttpGet("{timelineId}")]
         public ConcurrentDictionary<Guid, List<TimelineRecordLogLine>> GetLogLines(Guid timelineId)
         {
-            (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>) rec; 
-            if(TimelineController.dict.TryGetValue(timelineId, out rec)) {
+            if(TimelineController.dict.TryGetValue(timelineId, out var rec)) {
                 return rec.Item2;
             }
             return null;
