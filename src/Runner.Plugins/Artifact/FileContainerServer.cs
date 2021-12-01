@@ -444,7 +444,7 @@ namespace GitHub.Runner.Plugins.Artifact
                 {
                     // We should never
                     context.Error($"Error '{ex.Message}' when downloading file '{fileToDownload}'. (Downloader {downloaderId})");
-                    throw ex;
+                    throw;
                 }
             }
 
@@ -528,7 +528,7 @@ namespace GitHub.Runner.Plugins.Artifact
                 catch (Exception ex)
                 {
                     context.Output($"File error '{ex.Message}' when uploading file '{fileToUpload}'.");
-                    throw ex;
+                    throw;
                 }
             }
 
