@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace Runner.Server.Controllers
 {
     [ApiController]
+    [Route("_apis/[controller]")]
     [Route("{owner}/{repo}/_apis/[controller]")]
     public class ConnectionDataController : VssControllerBase
     {
@@ -32,6 +33,9 @@ namespace Runner.Server.Controllers
                         new ServiceDefinition("Timeline", Guid.Parse("8893bc5b-35b2-4be7-83cb-99e683551db4"), "Timeline", "/_apis/v1/Timeline/{scopeIdentifier}/{hubName}/{planId}/{timelineId}", RelativeToSetting.Context, "Timeline", "Timeline") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
                         new ServiceDefinition("Logfiles", Guid.Parse("46f5667d-263a-4684-91b1-dff7fdcf64e2"), "Logfiles", "/_apis/v1/Logfiles/{scopeIdentifier}/{hubName}/{planId}/{logId}", RelativeToSetting.Context, "Logfiles", "Logfiles") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
                         new ServiceDefinition("FinishJob", Guid.Parse("557624af-b29e-4c20-8ab0-0399d2204f3f"), "FinishJob", "/_apis/v1/FinishJob/{scopeIdentifier}/{hubName}/{planId}", RelativeToSetting.Context, "FinishJob", "FinishJob") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
+                        new ServiceDefinition("Artifact", Guid.Parse("85023071-bd5e-4438-89b0-2a5bf362a19d"), "Artifact", "/_apis/pipelines/workflows/{runId}/artifacts", RelativeToSetting.Context, "Artifact", "Artifact") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
+                        new ServiceDefinition("ArtifactFileContainer", Guid.Parse("E4F5C81E-E250-447B-9FEF-BD48471BEA5E"), "ArtifactFileContainer", "/_apis/pipelines/workflows/{runId}/artifacts/container/{containerId}", RelativeToSetting.Context, "ArtifactFileContainer", "ArtifactFileContainer") { ResourceVersion = 6, MinVersion = new Version(1, 0), MaxVersion = new Version(12, 0), RelativeToSetting = RelativeToSetting.FullyQualified },
+                        
                         // ToDo add "83597576-cc2c-453c-bea6-2882ae6a1653"
                     }
                 }

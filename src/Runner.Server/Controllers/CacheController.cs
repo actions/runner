@@ -16,6 +16,7 @@ using Runner.Server.Models;
 namespace Runner.Server.Controllers {
 
     [ApiController]
+    [Route("_apis/artifactcache")]
     [Route("{owner}/{repo}/_apis/artifactcache")]
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
     public class CacheController : VssControllerBase{
@@ -68,7 +69,7 @@ namespace Runner.Server.Controllers {
                 foreach (var item in a) {
                     var record = (from rec in _context.Caches where rec.Repo == repository.Value && rec.Ref == cref && rec.Key == item orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{record.Id}" });
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/_apis/artifactcache/get/{record.Id}" });
                     }
                 }
                 CacheRecord partialMatch = null;
@@ -79,7 +80,7 @@ namespace Runner.Server.Controllers {
                     }
                 }
                 if(partialMatch != null) {
-                    return await Ok(new ArtifactCacheEntry{ cacheKey = partialMatch.Key, scope = cref, creationTime = partialMatch.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/runner/host/_apis/artifactcache/get/{partialMatch.Id}" });
+                    return await Ok(new ArtifactCacheEntry{ cacheKey = partialMatch.Key, scope = cref, creationTime = partialMatch.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/_apis/artifactcache/get/{partialMatch.Id}" });
                 }
             }
             return NoContent();

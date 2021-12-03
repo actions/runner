@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace Runner.Server.Controllers
 {
     [ApiController]
+    [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "Agent")]
     public class AgentRequestController : VssControllerBase

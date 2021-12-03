@@ -20,6 +20,7 @@ using Runner.Server.Models;
 namespace Runner.Server.Controllers
 {
     [ApiController]
+    [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     [Authorize(AuthenticationSchemes = "Bearer")]
     public class AgentController : VssControllerBase
@@ -44,7 +45,7 @@ namespace Runner.Server.Controllers
             TaskAgent agent = await FromBody<TaskAgent>();
             lock(lok) {
                 // Without a lock we get rsa message exchange problems, decryption error of rsa encrypted session aes key
-                agent.Authorization.AuthorizationUrl = new Uri($"{ServerUrl}/test/auth/v1/");
+                agent.Authorization.AuthorizationUrl = new Uri($"{ServerUrl}/_apis/v1/auth/");
                 agent.Authorization.ClientId = Guid.NewGuid();
                 Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
                 _context.SaveChanges();

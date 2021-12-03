@@ -83,7 +83,10 @@
           "environment": "environment",
           "permissions": "permissions",
           "concurrency": "concurrency",
-          "steps": "steps"
+          "steps": {
+            "type": "steps",
+            "required": true
+          }
         }
       }
     },
@@ -106,26 +109,38 @@
     },
 
     "job-with": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "job-with-entry"
+      }
+    },
+
+    "job-with-entry": {
       "context": [
         "github",
         "needs"
       ],
-      "mapping": {
-        "loose-key-type": "non-empty-string",
-        "loose-value-type": "string"
-      }
+      "one-of": [
+        "boolean",
+        "number",
+        "string"
+      ]
     },
 
     "job-secrets": {
+      "mapping": {
+        "loose-key-type": "non-empty-string",
+        "loose-value-type": "job-secret-entry"
+      }
+    },
+
+    "job-secret-entry": {
       "context": [
         "github",
         "needs",
         "secrets"
       ],
-      "mapping": {
-        "loose-key-type": "non-empty-string",
-        "loose-value-type": "string"
-      }
+      "string": {}
     },
 
     "needs": {
@@ -709,7 +724,11 @@
       "context": [
         "github"
       ],
-      "string": {}
+      "one-of":[
+        "boolean",
+        "number",
+        "string"
+      ]
     },
 
     "workflow_call-outputs": {

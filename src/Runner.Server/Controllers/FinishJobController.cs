@@ -10,10 +10,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Runner.Server.Controllers
 {
     [ApiController]
+    [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class FinishJobController : VssControllerBase
     {
@@ -47,6 +49,23 @@ namespace Runner.Server.Controllers
                     job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
                 }
                 _context.SaveChanges();
+                // var context2 = new SqLiteDb(_context.Options);
+                // Task.Run(async () => {
+                //     var _context = context2;
+                    // if(TimelineController.dict.TryGetValue(job.TimeLineId, out var entry)) {
+                    //     foreach(var rec in (from record in _context.TimeLineRecords where record.TimelineId == job.TimeLineId select record).Include(r => r.Log).ToList()) {
+                    //         if(rec.Log == null)
+                    //             _context.Entry(rec).Reference(r => r.Log).Load();
+                    //         if(rec.Log == null && entry.Item2.TryGetValue(rec.Id, out var value)) {
+                    //             var log = new TaskLog() {  };
+                    //             _context.Logs.Add(new SqLiteDb.LogStorage() { Ref = log, Content = string.Join('\n', from line in value where line != null select line.Line) });
+                    //             rec.Log = log;
+                    //         }
+                    //     }
+                    //     _context.SaveChanges();
+                    //     TimelineController.dict.TryRemove(job.TimeLineId, out _);
+                    // }
+                // });
             }
             Task.Run(() => {
                 OnJobCompleted?.Invoke(ev);

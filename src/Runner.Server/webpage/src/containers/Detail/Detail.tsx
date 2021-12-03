@@ -184,7 +184,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                     setErrors([]);
                     return;
                 }
-                var job : IJob | null = await (await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message?jobid=" + encodeURIComponent(id), { })).json());
+                var job : IJob | null = await (await (await fetch(ghHostApiUrl + "/_apis/v1/Message?jobid=" + encodeURIComponent(id), { })).json());
                 setJob(job);
                 updateTitle(job);
                 var query = jobToItem(job);
@@ -196,7 +196,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                 const item = query.item;
                 const timelineId = item ? item.description : null;
                 if(timelineId != null) {
-                    var timeline = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Timeline/" + timelineId, { });
+                    var timeline = await fetch(ghHostApiUrl + "/_apis/v1/Timeline/" + timelineId, { });
                     if(timeline.status === 200) {
                         var newTimeline = await timeline.json() as ITimeLine[];
                         if(newTimeline != null && newTimeline.length > 0) {
@@ -235,7 +235,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
         if(job != null) {
             var item = jobToItem(job).item;
             if(item !== null && item.description && item.description !== '' && item.description !== "00000000-0000-0000-0000-000000000000") {
-                var source = new EventSource(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
+                var source = new EventSource(ghHostApiUrl + "/_apis/v1/TimeLineWebConsoleLog?timelineId="+ item.description);
                 try {
                     var missed : ILoglineEvent[] = [];
                     var callback = function(timeline, e:ILoglineEvent) {
@@ -250,7 +250,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                 if(e.record.startLine > 1) {
                                     (async () => {
                                         console.log("Downloading previous log lines of this step...");
-                                        var lines = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item.description + "/" + e.record.stepId, { });
+                                        var lines = await fetch(ghHostApiUrl + "/_apis/v1/TimeLineWebConsoleLog/" + item.description + "/" + e.record.stepId, { });
                                         if(lines.status === 200) {
                                             var missingLines = await lines.json() as ILogline[];
                                             missingLines.length = e.record.startLine - 1;
@@ -345,12 +345,12 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                             return <div>
                                 <button onClick={(event) => {
                                     (async () => {
-                                        await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancelWorkflow/" + job.runid, { method: "POST" });
+                                        await fetch(ghHostApiUrl + "/_apis/v1/Message/cancelWorkflow/" + job.runid, { method: "POST" });
                                     })();
                                 }}>Cancel Workflow</button>
                                 <button onClick={(event) => {
                                     (async () => {
-                                        await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
+                                        await fetch(ghHostApiUrl + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
                                     })();
                                 }}>Cancel</button>
                             </div>;
@@ -358,17 +358,17 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                             return <div>
                                 <button onClick={(event) => {
                                     (async () => {
-                                        await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/rerunworkflow/" + job.runid, { method: "POST" });
+                                        await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + job.runid, { method: "POST" });
                                     })();
                                 }}>Rerun Workflow</button>
                                 <button onClick={(event) => {
                                     (async () => {
-                                        await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/rerunFailed/" + job.runid, { method: "POST" });
+                                        await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + job.runid, { method: "POST" });
                                     })();
                                 }}>Rerun Failed Jobs</button>
                                 <button onClick={(event) => {
                                     (async () => {
-                                        await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Message/rerun/" + job.jobId, { method: "POST" });
+                                        await fetch(ghHostApiUrl + "/_apis/v1/Message/rerun/" + job.jobId, { method: "POST" });
                                     })();
                                 }}>Rerun</button>
                             </div>;
@@ -398,7 +398,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                     if(item.log == null) {
                                         console.log("Downloading previous log lines of this step...");
                                         const item2 = jobToItem(job).item;
-                                        var logs = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item2.description + "/" + item.id, { });
+                                        var logs = await fetch(ghHostApiUrl + "/_apis/v1/TimeLineWebConsoleLog/" + item2.description + "/" + item.id, { });
                                         if(logs.status === 200) {
                                             var missingLines = await logs.json() as ILogline[];
                                             item.log = { id: -1, location: null, content: missingLines.reduce((prev: string, c : ILogline) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c.line), "") };
@@ -406,7 +406,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                             console.log("No logs to download...");
                                         }
                                     } else {
-                                        const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + item.log.id, { })).text();
+                                        const log = await (await fetch(ghHostApiUrl + "/_apis/v1/Logfiles/" + item.log.id, { })).text();
                                         var lines = log.split('\n');
                                         var offset = '2021-04-02T15:50:14.6619714Z '.length;
                                         var re = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{7}Z /;
@@ -439,7 +439,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                         if(item.log == null) {
                                             console.log("Downloading previous log lines of this step...");
                                             const item2 = jobToItem(job).item;
-                                            var logs = await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/TimeLineWebConsoleLog/" + item2.description + "/" + item.id, { });
+                                            var logs = await fetch(ghHostApiUrl + "/_apis/v1/TimeLineWebConsoleLog/" + item2.description + "/" + item.id, { });
                                             if(logs.status === 200) {
                                                 var missingLines = await logs.json() as ILogline[];
                                                 item.log = { id: -1, location: null, content: missingLines.reduce((prev: string, c : ILogline) => (prev.length > 0 ? prev + "<br/>" : "") + convert.toHtml(c.line), "") };
@@ -447,7 +447,7 @@ export const DetailContainer : React.FC<DetailProps> = (props) => {
                                                 console.log("No logs to download...");
                                             }
                                         } else {
-                                            const log = await (await fetch(ghHostApiUrl + "/" + owner + "/" + repo + "/_apis/v1/Logfiles/" + item.log.id, { })).text();
+                                            const log = await (await fetch(ghHostApiUrl + "/_apis/v1/Logfiles/" + item.log.id, { })).text();
                                             var lines = log.split('\n');
                                             var offset = '2021-04-02T15:50:14.6619714Z '.length;
                                             var re = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{7}Z /;

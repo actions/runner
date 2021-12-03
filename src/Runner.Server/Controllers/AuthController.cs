@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace Runner.Server.Controllers {
     [ApiController]
     [AllowAnonymous]
+    [Route("_apis/v1/auth")]
     [Route("test/auth/v1")]
     public class AuthController : VssControllerBase {
         private SqLiteDb db;

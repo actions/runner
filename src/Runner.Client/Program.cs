@@ -369,13 +369,13 @@ namespace Runner.Client
             var query = new QueryBuilder();
             query.Add("jobid", id.ToString());
             b2.Query = query.ToString().TrimStart('?');
-            b2.Path = "runner/host/_apis/v1/Message";
+            b2.Path = "_apis/v1/Message";
             return b2.ToString();
         }
 
         private static string GetCancelWorkflowUrl(string baseUrl, long runid) {
             var b2 = new UriBuilder(baseUrl);
-            b2.Path = $"runner/host/_apis/v1/Message/cancelWorkflow/{runid}";
+            b2.Path = $"_apis/v1/Message/cancelWorkflow/{runid}";
             return b2.ToString();
         }
 
@@ -885,7 +885,7 @@ namespace Runner.Client
                                 client.DefaultRequestHeaders.Add("X-GitHub-Event", parameters.Event);
                                 var b = new UriBuilder(parameters.server);
                                 var query = new QueryBuilder();
-                                b.Path = "runner/host/_apis/v1/Message/schedule2";
+                                b.Path = "_apis/v1/Message/schedule2";
                                 var mp = new MultipartFormDataContent();
                                 List<Stream> workflowsToDispose = new List<Stream>();
                                 HttpResponseMessage resp = null;

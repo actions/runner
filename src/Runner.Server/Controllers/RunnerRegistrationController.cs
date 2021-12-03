@@ -51,11 +51,9 @@ namespace Runner.Server.Controllers
                 return Unauthorized();
             }
             if(auth.FirstOrDefault()?.StartsWith("RemoteAuth ") != true || (RUNNER_TOKEN.Length > 0 && auth.First() != "RemoteAuth " + RUNNER_TOKEN) ) {
-                return Forbid();
+                return NotFound();
             }
             var payload = await FromBody<AddRemoveRunner>();
-            // Request.Headers.HeaderAuthorization = RemoteAuth AKWETFL3YIUV34LTWCZ5M4275R3HQ
-            // HeaderUserAgent = GitHubActionsRunner-
             var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
 
             var myIssuer = "http://githubactionsserver";
@@ -68,7 +66,7 @@ namespace Runner.Server.Controllers
                 {
                     new Claim("Agent", "management")
                 }),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = myIssuer,
                 Audience = myAudience,
                 SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
@@ -76,7 +74,7 @@ namespace Runner.Server.Controllers
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return await Ok(new Runner.Server.Models.GitHubAuthResult() {
-                TenantUrl = new Uri(new Uri(ServerUrl), "runner/server").ToString(),
+                TenantUrl = ServerUrl,
                 Token = tokenHandler.WriteToken(token),
                 TokenSchema = "OAuthAccessToken"
             });

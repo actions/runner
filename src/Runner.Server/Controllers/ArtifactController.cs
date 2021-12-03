@@ -16,6 +16,7 @@ using Runner.Server.Models;
 namespace Runner.Server.Controllers {
 
     [ApiController]
+    [Route("_apis/pipelines/workflows/{run}/artifacts")]
     [Route("{owner}/{repo}/_apis/pipelines/workflows/{run}/artifacts")]
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
     public class ArtifactController : VssControllerBase{
@@ -65,7 +66,7 @@ namespace Runner.Server.Controllers {
             var filecontainer = new ArtifactFileContainer() { Name = req.Name, Container = artifactContainer };
             _context.ArtifactFileContainer.Add(filecontainer);
             await _context.SaveChangesAsync();
-            return await Ok(new ArtifactResponse { name = req.Name, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{filecontainer.Id}" } );
+            return await Ok(new ArtifactResponse { name = req.Name, type = "actions_storage", fileContainerResourceUrl = $"{ServerUrl}/_apis/pipelines/workflows/{run}/artifacts/container/{filecontainer.Id}" } );
         }
 
         [HttpPatch]
@@ -76,7 +77,7 @@ namespace Runner.Server.Controllers {
             container.Size = req.size;
             await _context.SaveChangesAsync();
             // This sends the size of the artifact container
-            return await Ok(new ArtifactResponse { name = artifactName, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{container.Id}" } );
+            return await Ok(new ArtifactResponse { name = artifactName, type = "actions_storage", fileContainerResourceUrl = $"{ServerUrl}/_apis/pipelines/workflows/{run}/artifacts/container/{container.Id}" } );
         }
 
         [HttpGet]
@@ -84,7 +85,7 @@ namespace Runner.Server.Controllers {
         public async Task<IActionResult> GetContainer(int run) {
             var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
             var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt <= attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
-            return await Ok(from e in container select new ArtifactResponse{ name = e.Name, fileContainerResourceUrl = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/container/{e.Id}" } );
+            return await Ok(from e in container select new ArtifactResponse{ name = e.Name, type = "actions_storage", fileContainerResourceUrl = $"{ServerUrl}/_apis/pipelines/workflows/{run}/artifacts/container/{e.Id}" } );
         }
 
         [HttpPut("container/{id}")]
@@ -113,7 +114,7 @@ namespace Runner.Server.Controllers {
             var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id select record).ToList();
             var ret = new List<DownloadInfo>();
             foreach (var item in container) {
-                ret.Add(new DownloadInfo { path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = $"{ServerUrl}/runner/host/_apis/pipelines/workflows/{run}/artifacts/artifact/{id}/{Uri.EscapeDataString(item.FileName)}"});
+                ret.Add(new DownloadInfo { path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = $"{ServerUrl}/_apis/pipelines/workflows/{run}/artifacts/artifact/{id}/{Uri.EscapeDataString(item.FileName)}"});
             }
             return await Ok(ret);
         }

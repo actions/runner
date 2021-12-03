@@ -18,6 +18,7 @@ using Runner.Server.Models;
 namespace Runner.Server.Controllers
 {
     [ApiController]
+    [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class LogfilesController : VssControllerBase
     {        

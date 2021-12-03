@@ -115,7 +115,7 @@ Windows:
 .\config.cmd --unattended --url http://localhost/runner/server --token "ThisIsIgnored"
 ```
 
-Run the unofficial runner
+Connect a runner
 
 Linux or macOS:
 ```
@@ -288,6 +288,14 @@ Second line
 EOF
 othername=value2
 othername2=value3
+```
+
+### Dev
+```
+dotnet build ./src/Runner.Server/ /p:EFMigration=ON
+dotnet ef migrations add --project ./src/Runner.Server/ --no-build PersistentJobs
+dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=5.0.0 -p:Version=3.4.0.3
+dotnet tool update -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg
 ```
 
 ## Notes

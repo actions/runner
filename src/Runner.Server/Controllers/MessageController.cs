@@ -38,10 +38,12 @@ using Newtonsoft.Json.Serialization;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using GitHub.Runner.Sdk;
 
 namespace Runner.Server.Controllers
 {
     [ApiController]
+    [Route("_apis/v1/[controller]")]
     [Route("{owner}/{repo}/_apis/v1/[controller]")]
     public class MessageController : VssControllerBase
     {
@@ -475,13 +477,15 @@ namespace Runner.Server.Controllers
 
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null) {
             _context = new SqLiteDb(_context.Options);
-            var run = new WorkflowRun { FileName = fileRelativePath };
+            string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
+            string owner_name = repository_name.Split('/', 2)[0];
+            string repo_name = repository_name.Split('/', 2)[1];
+            var run = new WorkflowRun { FileName = fileRelativePath, Workflow = (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault() ?? new Workflow { FileName = fileRelativePath, Repository = (from r in _context.Set<Repository>() where r.Owner.Name == owner_name && r.Name == repo_name select r).FirstOrDefault() ?? new Repository { Name = repo_name, Owner = (from o in _context.Set<Owner>() where o.Name == owner_name select o).FirstOrDefault() ?? new Owner { Name = owner_name } } } };
             long attempt = 1;
             var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content };
             _context.Artifacts.Add(new ArtifactContainer() { Attempt = _attempt } );
             _context.SaveChanges();
             workflowrun?.Invoke(run.Id);
-            string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             var runid = run.Id;
             long runnumber = run.Id;
 
@@ -561,6 +565,9 @@ namespace Runner.Server.Controllers
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             MappingToken workflowOutputs = null;
             var jobsctx = new DictionaryContextData();
+            var workflowTraceWriter = new TraceWriter2(line => {
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ line }), attempt.TimeLineId, attempt.TimeLineId);
+            });
             try {
                 List<JobItem> jobgroup = new List<JobItem>();
                 List<JobItem> dependentjobgroup = new List<JobItem>();
@@ -571,9 +578,7 @@ namespace Runner.Server.Controllers
                         maxDepth: 100,
                         maxEvents: 1000000,
                         maxBytes: 10 * 1024 * 1024),
-                    TraceWriter = new TraceWriter2(line => {
-                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ line }), attempt.TimeLineId, attempt.TimeLineId);
-                    }),
+                    TraceWriter = workflowTraceWriter,
                     Schema = PipelineTemplateSchemaFactory.GetSchema()
                 };
                 ExecutionContext exctx = new ExecutionContext();
@@ -945,7 +950,36 @@ namespace Runner.Server.Controllers
                 }
                 var workflowname = parentworkflowname ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), attempt.TimeLineId, attempt.TimeLineId);
-
+                Func<string, DictionaryContextData> createContext = jobname => {
+                    var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
+                    contextData["inputs"] = inputs;
+                    var githubctx = new DictionaryContextData();
+                    contextData.Add("github", githubctx);
+                    githubctx.Add("server_url", new StringContextData(GitServerUrl));
+                    githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
+                    githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
+                    githubctx.Add("workflow", new StringContextData(workflowname));
+                    githubctx.Add("repository", new StringContextData(repository_name));
+                    githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
+                    githubctx.Add("repository_owner", new StringContextData(hook?.repository?.Owner?.login ?? "Unknown"));
+                    githubctx.Add("ref", new StringContextData(Ref));
+                    // TODO check if it is protected
+                    githubctx.Add("ref_protected", new BooleanContextData(false));
+                    githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : Ref.StartsWith("refs/heads/") ? "branch" : ""));
+                    githubctx.Add("ref_name", new StringContextData(Ref.StartsWith("refs/tags/") ? Ref.Substring("refs/tags/".Length) : Ref.StartsWith("refs/heads/") ? Ref.Substring("refs/heads/".Length) : ""));
+                    githubctx.Add("job", new StringContextData(jobname));
+                    githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
+                    githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
+                    // event_path is filled by event
+                    githubctx.Add("event", payloadObject.ToPipelineContextData());
+                    githubctx.Add("event_name", new StringContextData(parentEvent ?? event_name));
+                    githubctx.Add("actor", new StringContextData(hook?.sender?.login));
+                    githubctx.Add("run_id", new StringContextData(runid.ToString()));
+                    githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                    githubctx.Add("retention_days", new StringContextData("90"));
+                    githubctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                    return contextData;
+                };
                 FinishJobController.JobCompleted workflowcomplete = null;
                 var jobnamebuilder = new ReferenceNameBuilder();
                 foreach (var actionPair in actionMapping)
@@ -993,34 +1027,7 @@ namespace Runner.Server.Controllers
                                 }
                             }
                             Dictionary<Guid, JobItem> guids = new Dictionary<Guid, JobItem>();
-                            var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
-                            contextData["inputs"] = inputs;
-                            var githubctx = new DictionaryContextData();
-                            contextData.Add("github", githubctx);
-                            githubctx.Add("server_url", new StringContextData(GitServerUrl));
-                            githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
-                            githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                            githubctx.Add("workflow", new StringContextData(workflowname));
-                            githubctx.Add("repository", new StringContextData(repository_name));
-                            githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
-                            githubctx.Add("repository_owner", new StringContextData(hook?.repository?.Owner?.login ?? "Unknown"));
-                            githubctx.Add("ref", new StringContextData(Ref));
-                            // TODO check if it is protected
-                            githubctx.Add("ref_protected", new BooleanContextData(false));
-                            githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : Ref.StartsWith("refs/heads/") ? "branch" : ""));
-                            githubctx.Add("ref_name", new StringContextData(Ref.StartsWith("refs/tags/") ? Ref.Substring("refs/tags/".Length) : Ref.StartsWith("refs/heads/") ? Ref.Substring("refs/heads/".Length) : ""));
-                            githubctx.Add("job", new StringContextData(jobname));
-                            githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
-                            githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
-                            // event_path is filled by event
-                            githubctx.Add("event", payloadObject.ToPipelineContextData());
-                            githubctx.Add("event_name", new StringContextData(parentEvent ?? e));
-                            githubctx.Add("actor", new StringContextData(hook?.sender?.login));
-                            githubctx.Add("run_id", new StringContextData(runid.ToString()));
-                            githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                            githubctx.Add("retention_days", new StringContextData("90"));
-                            // TODO implement this with retries
-                            githubctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                            var contextData = createContext(jobname);
                             
                             var needsctx = new DictionaryContextData();
                             contextData.Add("needs", needsctx);
@@ -1648,35 +1655,9 @@ namespace Runner.Server.Controllers
                                 exctx.workflow = jobs.ToList();
                                 var evargs = new WorkflowEventArgs { runid = runid, Success = exctx.Success };
                                 if(workflowOutputs != null) {
-                                    templateContext.TraceWriter = new TraceWriter();
-                                    var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
-                                    contextData["inputs"] = inputs;
-                                    var githubctx = new DictionaryContextData();
-                                    contextData.Add("github", githubctx);
-                                    githubctx.Add("server_url", new StringContextData(GitServerUrl));
-                                    githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
-                                    githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                                    githubctx.Add("workflow", new StringContextData(workflowname));
-                                    githubctx.Add("repository", new StringContextData(repository_name));
-                                    githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
-                                    githubctx.Add("repository_owner", new StringContextData(hook?.repository?.Owner?.login ?? "Unknown"));
-                                    githubctx.Add("ref", new StringContextData(Ref));
-                                    // TODO check if it is protected
-                                    githubctx.Add("ref_protected", new BooleanContextData(false));
-                                    githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : Ref.StartsWith("refs/heads/") ? "branch" : ""));
-                                    githubctx.Add("ref_name", new StringContextData(Ref.StartsWith("refs/tags/") ? Ref.Substring("refs/tags/".Length) : Ref.StartsWith("refs/heads/") ? Ref.Substring("refs/heads/".Length) : ""));
-                                    githubctx.Add("job", new StringContextData(""));
-                                    githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
-                                    githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
-                                    // event_path is filled by event
-                                    githubctx.Add("event", payloadObject.ToPipelineContextData());
-                                    githubctx.Add("event_name", new StringContextData(parentEvent ?? event_name));
-                                    githubctx.Add("actor", new StringContextData(hook?.sender?.login));
-                                    githubctx.Add("run_id", new StringContextData(runid.ToString()));
-                                    githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                                    githubctx.Add("retention_days", new StringContextData("90"));
-                                    githubctx.Add("run_attempt", new StringContextData(attempt.ToString()));
-                                    
+                                    templateContext.TraceWriter = workflowTraceWriter;
+                                    templateContext.TraceWriter.Info("{0}", $"Evaluate workflow_call outputs");
+                                    var contextData = createContext("");
                                     contextData.Add("jobs", jobsctx);
                                     templateContext.ExpressionValues.Clear();
                                     foreach (var pair in contextData) {
@@ -1730,9 +1711,7 @@ namespace Runner.Server.Controllers
                         }
                         if(!finished.IsCancellationRequested) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ "Workflow Cancellation Requested" }), attempt.TimeLineId, attempt.TimeLineId);
-                            templateContext.TraceWriter = new TraceWriter2(line => {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ line }), attempt.TimeLineId, attempt.TimeLineId);
-                            });
+                            templateContext.TraceWriter = workflowTraceWriter;
                             foreach(var job2 in jobs) {
                                 if(job2.Status == null && job2.EvaluateIf != null) {
                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Reevaluate Condition of {job2.DisplayName ?? job2.name}" }), attempt.TimeLineId, attempt.TimeLineId);
@@ -1812,6 +1791,9 @@ namespace Runner.Server.Controllers
             variables.Add("DistributedTask.NewActionMetadata", new VariableValue("true", false));
             variables.Add("DistributedTask.EnableCompositeActions", new VariableValue("true", false));
             variables.Add("DistributedTask.EnhancedAnnotations", new VariableValue("true", false));
+            // For actions/upload-artifact@v1, actions/download-artifact@v1
+            variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
+            variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue("1", false));
             foreach (var secret in this.secrets) {
                 variables[secret.Name] = new VariableValue(secret.Value, true);
             }
@@ -2136,7 +2118,7 @@ namespace Runner.Server.Controllers
                     var token = tokenHandler.CreateToken(tokenDescriptor);
                     var stoken = tokenHandler.WriteToken(token);
                     auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
-                    var systemVssConnection = new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl ?? "http://192.168.178.20:5000") };
+                    var systemVssConnection = new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl) };
                     systemVssConnection.Data["CacheServerUrl"] = apiUrl;
                     resources.Endpoints.Add(systemVssConnection);
                     
@@ -2263,14 +2245,14 @@ namespace Runner.Server.Controllers
                     if(poll[i].IsCompletedSuccessfully && poll[i].Result) 
                     try {
                         if(queues[i].Value.Reader.TryRead(out req)) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Read Job from Queue: {req.name} for queue {string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Read Job from Queue: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
                             if(req.CancelRequest.IsCancellationRequested) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job: {req.name} for queue {string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
                                 continue;
                             }
                             var q = queues[i].Value;
                             session.DropMessage = () => {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Requeued Job: {req.name} for queue {string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Requeued Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
                                 q.Writer.WriteAsync(req);
                                 session.Job = null;
                                 session.JobTimer?.Stop();
@@ -2313,6 +2295,7 @@ namespace Runner.Server.Controllers
                                 await new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
                                 cryptoStream.FlushFinalBlock();
                                 HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Sent Job to Runner: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
                                 return await Ok(new TaskAgentMessage() {
                                     Body = Convert.ToBase64String(body.ToArray()),
                                     MessageId = id++,
@@ -2540,7 +2523,7 @@ namespace Runner.Server.Controllers
                     //     "type": "gitea",
                     //     "config": {
                     //     "content_type": "json",
-                    //     "url": "http://ubuntu.fritz.box/runner/host/_apis/v1/Message"
+                    //     "url": "http://ubuntu.fritz.box/_apis/v1/Message"
                     //     },
                     //     "events": [
                     //     "create",
@@ -2784,6 +2767,47 @@ namespace Runner.Server.Controllers
                 }
             }
             var query = from j in _context.Jobs where (repo == null || j.repo == repo) && (runid.Length == 0 || runid.Contains(j.runid)) orderby j.runid descending, j.RequestId descending select j;
+            return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
+        }
+
+        [HttpGet("owners")]
+        public async Task<IActionResult> GetOwners([FromQuery] int? page) {
+            var query = from j in _context.Set<Owner>() orderby j.Id descending select j;
+            return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
+        }
+
+        [HttpGet("repositories")]
+        public async Task<IActionResult> GetRepositories([FromQuery] int? page, [FromQuery] string owner) {
+            var query = from j in _context.Set<Repository>() where j.Owner.Name == owner orderby j.Id descending select j;
+            return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
+        }
+
+        [HttpGet("workflow/runs")]
+        public async Task<IActionResult> GetWorkflows([FromQuery] int? page, [FromQuery] string owner, [FromQuery] string repo) {
+            var query = from j in _context.Set<WorkflowRun>() where j.Workflow.Repository.Owner.Name == owner && j.Workflow.Repository.Name == repo orderby j.Id descending select j;
+            return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
+        }
+
+        [HttpGet("workflow/run/{id}")]
+        public async Task<IActionResult> GetWorkflows(long id) {
+            return await Ok((from r in _context.Set<WorkflowRun>() where r.Id == id select r).First(), true);
+        }
+
+        [HttpGet("workflow/run/{id}/attempts")]
+        public async Task<IActionResult> GetWorkflowAttempts(long id, [FromQuery] int? page) {
+            var query = from r in _context.Set<WorkflowRunAttempt>() where r.WorkflowRun.Id == id select r;
+            return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
+        }
+
+        [HttpGet("workflow/run/{id}/attempt/{attempt}")]
+        public async Task<IActionResult> GetWorkflows(long id, int attempt) {
+            var query = from r in _context.Set<WorkflowRunAttempt>() where r.WorkflowRun.Id == id && r.Attempt == attempt select r;
+            return await Ok(query.First(), true);
+        }
+
+        [HttpGet("workflow/run/{id}/attempt/{attempt}/jobs")]
+        public async Task<IActionResult> GetWorkflowAttempts(long id, int attempt, [FromQuery] int? page) {
+            var query = from j in _context.Jobs where j.WorkflowRunAttempt.WorkflowRun.Id == id && j.WorkflowRunAttempt.Attempt == attempt select j;
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 

@@ -19,7 +19,7 @@ namespace Runner.Server.Models
     public class Owner {
         public Int64 Id { get; set; }
         public string Name { get; set; }
-        // public List<Repository> Repositories { get; set; }
+        public List<Repository> Repositories { get; set; }
         // public List<Secret> Secrets { get; set; }
         public string PrivateKey { get; set; }
         public string PublicKey { get; set; }
