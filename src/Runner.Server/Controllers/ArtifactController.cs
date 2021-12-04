@@ -122,7 +122,13 @@ namespace Runner.Server.Controllers {
         [HttpGet("artifact/{id}/{file}")]
         [AllowAnonymous]
         public IActionResult GetFileFromContainer(int run, int id, string file) {
-            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && record.FileName == file select record).FirstOrDefault();
+            // It seems like aspnetcore 5 doesn't unescape the uri component on linux and macOS, while on windows it does!
+            // Try to match both to avoid bugs
+            var unescapedFile = Uri.UnescapeDataString(file);
+            var container = (from record in _context.ArtifactRecords where record.FileContainer.Id == id && (record.FileName == file || record.FileName == unescapedFile) select record).FirstOrDefault();
+            if(container == null) {
+                throw new Exception($"container is null!, run='{run}', id='{id}', file='{file}'");
+            }
             if(container.FileName?.Length > 0) {
                 Response.Headers.Add("Content-Disposition", $"attachment; filename={container.FileName}");
             }
