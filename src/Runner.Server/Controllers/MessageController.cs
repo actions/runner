@@ -1102,6 +1102,10 @@ namespace Runner.Server.Controllers
 
                                     exctx.JobContext = jobitem;
                                     var jid = jobitem.Id;
+                                    templateContext.ExpressionValues.Clear();
+                                    foreach (var pair in contextData) {
+                                        templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                    }
                                     var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobitem.name;
                                     if(parentJob != null) {
                                         _jobdisplayname = parentJob + " / " + _jobdisplayname;
