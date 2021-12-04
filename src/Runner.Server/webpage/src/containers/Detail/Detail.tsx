@@ -133,7 +133,7 @@ export interface ArtifactResponse {
  * Gets a list of all artifacts that are in a specific container
  */
 async function listArtifacts(runid : number): Promise<ListArtifactsResponse> {
-const artifactUrl = ghHostApiUrl + "/runner/host/_apis/pipelines/workflows/" + runid + "/artifacts"
+const artifactUrl = ghHostApiUrl + "/_apis/pipelines/workflows/" + runid + "/artifacts"
 
 const response = await fetch(artifactUrl);
 const body: string = await response.text()

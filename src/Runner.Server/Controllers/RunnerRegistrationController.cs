@@ -73,8 +73,10 @@ namespace Runner.Server.Controllers
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
+            var payloadUrl = new Uri(payload.Url);
+            var components = payloadUrl.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
             return await Ok(new Runner.Server.Models.GitHubAuthResult() {
-                TenantUrl = ServerUrl,
+                TenantUrl = new Uri(new Uri(ServerUrl), components.Length == 0 ? "runner/server" : components.Length > 1 ?  $"{components[0]}/{components[1]}" : $"{components[0]}/server").ToString(),
                 Token = tokenHandler.WriteToken(token),
                 TokenSchema = "OAuthAccessToken"
             });
