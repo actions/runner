@@ -57,6 +57,11 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Trait("Category", "Worker")]
         public async Task DetermineNodeRuntimeVersionInAlpineContainerAsync()
         {
+            if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64)) {
+		// Test only works on X64.
+	        return;
+	    }
+
             using (TestHostContext hc = CreateTestContext())
             {
                 // Arrange.
