@@ -404,6 +404,7 @@ namespace GitHub.Runner.Listener
                             HostContext.WritePerfCounter($"MessageReceived_{message.MessageType}");
                             if (string.Equals(message.MessageType, AgentRefreshMessage.MessageType, StringComparison.OrdinalIgnoreCase))
                             {
+#if !(OS_OSX && ARM64)
                                 if (autoUpdateInProgress == false)
                                 {
                                     autoUpdateInProgress = true;
@@ -437,6 +438,7 @@ namespace GitHub.Runner.Listener
                                 {
                                     Trace.Info("Refresh message received, skip autoupdate since a previous autoupdate is already running.");
                                 }
+#endif
                             }
                             else if (string.Equals(message.MessageType, JobRequestMessageTypes.PipelineAgentJobRequest, StringComparison.OrdinalIgnoreCase))
                             {
