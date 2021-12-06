@@ -3,7 +3,7 @@ PACKAGERUNTIME=$1
 PRECACHE=$2
 
 NODE_URL=https://nodejs.org/dist
-NODE12_VERSION="12.22.7"
+NODE12_VERSION="12.13.1"
 NODE16_VERSION="16.13.0"
 
 get_abs_path() {
@@ -143,7 +143,7 @@ fi
 # Download the external tools for Linux PACKAGERUNTIMEs.
 if [[ "$PACKAGERUNTIME" == "linux-x64" ]]; then
     acquireExternalTool "$NODE_URL/v${NODE12_VERSION}/node-v${NODE12_VERSION}-linux-x64.tar.gz" node12 fix_nested_dir
-    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-v${NODE12_VERSION}-alpine-x64.tar.gz" node12_alpine
+    acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE12_VERSION}/alpine/x64/node-${NODE12_VERSION}-alpine-x64.tar.gz" node12_alpine
     acquireExternalTool "$NODE_URL/v${NODE16_VERSION}/node-v${NODE16_VERSION}-linux-x64.tar.gz" node16 fix_nested_dir
     acquireExternalTool "https://vstsagenttools.blob.core.windows.net/tools/nodejs/${NODE16_VERSION}/alpine/x64/node-v${NODE16_VERSION}-alpine-x64.tar.gz" node16_alpine
 fi
