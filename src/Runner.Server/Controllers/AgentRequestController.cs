@@ -33,7 +33,8 @@ namespace Runner.Server.Controllers
         [HttpGet("{poolId}/{requestId}")]
         public Task<FileStreamResult> GetAgentRequest(int poolId, long requestId, string includeStatus = null)
         {
-            return Ok(new TaskAgentJobRequest() {PlanId = Guid.NewGuid()});
+            // Set Result here to avoid the runner ignoring a request, actually that doesn't work either there is a race condition in the runner
+            return Ok(new TaskAgentJobRequest() {PlanId = Guid.NewGuid(), Result = TaskResult.Succeeded});
         }
 
         [HttpPatch("{poolId}/{requestId}")]

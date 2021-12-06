@@ -16,6 +16,7 @@ namespace Runner.Server.Models {
             CancelRequest = new CancellationTokenSource();
             Outputs = new List<JobOutput>();
         }
+        [IgnoreDataMember]
         public WorkflowRunAttempt WorkflowRunAttempt { get; set; }
         public Guid JobId { get; set; }
         public long RequestId { get; set; }
@@ -29,8 +30,10 @@ namespace Runner.Server.Models {
         public string WorkflowIdentifier { get; set; }
         public string Matrix { get; set; }
         [NotMapped]
+        [IgnoreDataMember]
         private TemplateToken _matrix;
         [NotMapped]
+        [IgnoreDataMember]
         public TemplateToken MatrixToken { get {
             if(_matrix != null) {
                 return _matrix;
@@ -55,7 +58,9 @@ namespace Runner.Server.Models {
 
         public string workflowname { get; set; }
         public long runid { get; set; }
+        [IgnoreDataMember]
         public CancellationTokenSource CancelRequest { get; }
+        [IgnoreDataMember]
         public bool Cancelled { get; internal set; }
 
         public double TimeoutMinutes {get;set;}
@@ -66,7 +71,10 @@ namespace Runner.Server.Models {
         public List<JobOutput> Outputs {get;set;}
         public TaskResult? Result {get;set;}
 
+        [IgnoreDataMember]
         public List<TimelineRecord> TimeLine {get;set;}
 
+        [NotMapped]
+        public long Attempt { get => WorkflowRunAttempt?.Attempt ?? 1; }
     }
 }

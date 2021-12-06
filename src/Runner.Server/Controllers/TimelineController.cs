@@ -121,7 +121,7 @@ namespace Runner.Server.Controllers
             records.AddRange(patch.Value.Select((r, _) => {
                 r.TimelineId = timelineId;
                 if(r.Log != null) {
-                    r.Log = (from l in _context.Logs where l.Ref.Id == r.Log.Id select l).First().Ref;
+                    r.Log = (from l in _context.Set<TaskLogReference>() where l.Id == r.Log.Id select l).First();
                 }
                 return r;
             }));
