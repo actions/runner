@@ -1,35 +1,31 @@
 ## Changes
-- Fixed Skipping jobs with a name using expression syntax leads to job failure. bug
-- Fixed [PARITY] Runs-on key allows the inputs context bug
-- Fixed [WEBUI] leading spaces in log are truncated bug
-- Fixed Cannot call workflow_dispatch with custom inputs, always uses default if specified in event.json bug
-- Allow calling reuseable workflows in the .github/workflows dir via `uses: ./.github/workflows/workflow1.yml`, however github may don't support it
-- Fixed [WEBUI] joblist is truncated on job finish reload to fix
-- Fixed [WEBUI] logs disappar on job finish reload or collapse and expand to fix
-- Fixed commit sha for `pull_request_target` to be the head commit, to show in PR's
-- Fixed including and excluding of maps and sequences in matrix strategy
-- Fixed default Jobname if you specify maps or sequences as matrix keys, now traverse the values depth-first like github
-- Fixed workflow_call: ignore case of secret for required
-- Fixed cannot cancel Runner.Server from unix Terminal
-- Status Checks are now queued per job and no longer per workflow
-- Rerun workflow
-- Rerun a single job, this won't update status checks or trigger other jobs
-- Fix sample windows container of description to include a tag
-- Added CI Tests for windows and linux container
-- Updated runner to [v2.284.0](https://github.com/actions/runner/releases/tag/v2.284.0)
-- Allow to configure a runner registration token, to restrict runner registrations
-- No longer trigger `pull_request` events by default only `pull_request_target`, configure Runner.Server to override
-- Updated ReadMe with more instructions
-- Allow to successfuly replace runners, while this Server won't remove the old one
-- No longer set runtimeframeworkversion to 5.0.0 in projects, releases might now correctly use the current sdk
-- Added webhook secret validation
-- Added `--no-default-payload` option, use with caution
-- Security: More fine grained jwt access tokens in api server, based on the official github actions service
+- Failed workflows no longer creating a fake failing job
+- Updated actions/runner to v2.285.1 + added node16 delay download
+- Yaml Anchors support, hey this won't match github :) anyway. If you only use this runner you have composite actions with yaml anchors, but github would reject your workflow.
+- Sleep 1s instead of 500ms after job finish to increase reliability.
+  The runner ignores jobs, if the worker doesn't have enough time to exit after sending the job finish message. I count it as a runner bug, because the azure devops api doesn't have such a remote race condition.
+- Fixed yaml type of workflow_call defaults and with
+- Removed the need for owner/repo prefix from api ( old style url is still valid )
+- More apis for webui WIP
+- Refactored some duplicated code
+- Cleanup TimeLine code
+- Don't wait to display Queue logs till running
+- Fix max-parallel of matrix to respect it on later batches
+- Assign session.Job to the job instance of the queue
+- Persistent Jobs, Logs, Artifacts and cache
+- Advanced Reruns, rerun workflow, single job or failed jobs
+- Artifacts and jobs from previos attempts are accessible from reruns
+- Logs of workflow parsing in Runner.Client
+- Logs of skipped jobs in Runner.Client
+- Logs of matrix parsing
+- Outputs of reusable workflows are now working
 
 ## Known Issues
 
-- n/a
-
+- **TODO** Show workflow logs in webui see `<baseUrl>/#/owner` for a preview and logs of failed workflows, only relevant for selfhosting Runner.Server
+  Runner.Client/gharun will show these logs in the Terminal
+- **TODO** Manage Verbosity in more levels ideas are welcome, please open a discussion or issue
+- **TODO** Persist workflow logs and not only job logs
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
