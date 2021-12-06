@@ -46,7 +46,7 @@
         "runs": {
             "one-of": [
                 "container-runs",
-                "node12-runs",
+                "node-runs",
                 "plugin-runs",
                 "composite-runs"
             ]
@@ -80,7 +80,7 @@
                 "loose-value-type": "string"
             }
         },
-        "node12-runs": {
+        "node-runs": {
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
@@ -112,10 +112,10 @@
                 "item-type": "composite-step"
             }
         },
-        "composite-step":{
+        "composite-step": {
             "one-of": [
                 "run-step",
-                "uses-step" 
+                "uses-step"
             ]
         },
         "run-step": {

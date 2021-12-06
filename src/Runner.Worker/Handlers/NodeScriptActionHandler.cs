@@ -88,7 +88,7 @@ namespace GitHub.Runner.Worker.Handlers
                     HasPreStep = Data.HasPre,
                     HasPostStep = Data.HasPost,
                     IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = "node12"
+                    Type = Data.NodeVersion
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
@@ -104,7 +104,7 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
+            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             var _os = ExternalToolHelper.GetHostOS();
             var _arch = ExternalToolHelper.GetHostArch();
             if(StepHost is ContainerStepHost) {
