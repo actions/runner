@@ -237,7 +237,7 @@ jobs:
       working-directory: ./src/Runner.Client
     - name: Pack
       run: |
-        dotnet pack --no-restore -c Release --no-build /p:Version=$(Get-Content ../runnerversion) /p:RuntimeFrameworkVersion=5.0.0
+        dotnet pack --no-restore -c Release --no-build /p:Version=$(Get-Content ../runnerversion) /p:RuntimeFrameworkVersion=5.0.0 /p:CHANGELOG_URL=https://github.com/ChristopherHX/runner.server/releases/tag/v$(Get-Content ../runnerversion)
       shell: pwsh
       working-directory: ./src/Runner.Client
     - name: Upload Artifacts

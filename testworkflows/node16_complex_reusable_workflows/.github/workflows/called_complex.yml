@@ -1,0 +1,30 @@
+on:
+  workflow_call:
+    inputs:
+      x:
+        type: string
+        default: 'Hello World'
+      y:
+        type: number
+        default: 235
+      z:
+        type: boolean
+        default: true
+    outputs:
+      x:
+        value: ${{inputs.x}}
+      y:
+        value: ${{fromJSON(jobs.test.outputs.y)}}
+      z:
+        value: ${{github && inputs.z}}
+jobs:
+  test:
+    outputs:
+      y: ${{inputs.y}}
+    runs-on: self-hosted
+    steps:
+    - run: |
+        echo ${{inputs.x}}
+        echo ${{inputs.y}}
+        echo ${{inputs.z}}
+        exit ${{inputs.x == 'Hello World' && inputs.y == 235 && inputs.z && '0' || '1' }}

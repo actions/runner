@@ -1,0 +1,24 @@
+on: push
+jobs:
+  test:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - uses: ./action1
+  test2:
+    uses: ./.github/workflows/called_complex.yml
+  test3:
+    uses: ./.github/workflows/called_complex.yml
+    with:
+      x: Hello World
+      y: 235
+      z: true
+  test4:
+    needs: test3
+    runs-on: self-hosted
+    steps:
+    - run: |
+        echo ${{needs.test3.outputs.x}}
+        echo ${{needs.test3.outputs.y}}
+        echo ${{needs.test3.outputs.z}}
+        exit ${{needs.test3.outputs.x == 'Hello World' && needs.test3.outputs.y == 235 && needs.test3.outputs.z && '0' || '1' }}

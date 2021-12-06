@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  <PropertyGroup>
+    <CHANGELOG_LINE Condition=" '$(CHANGELOG_URL)' != '' ">Changelog $(CHANGELOG_URL). </CHANGELOG_LINE>
+  </PropertyGroup>
   <PropertyGroup>
     <PackageId>io.github.christopherhx.gharun</PackageId>
     <PackAsTool>true</PackAsTool>
@@ -11,7 +13,7 @@
     <NoWarn>NU5118;NU5123;NU5119;NU1701;NU1603;CS4014</NoWarn>
     <Authors>Christopher Homberger</Authors>
     <PackageTags>GitHub Actions;GitHub Runner;Actions;Runner;Runner.Client;Runner.Server</PackageTags>
-    <Description>Unofficial GitHub Actions Runner Client, run your github action workflows locally. More Information https://github.com/ChristopherHX/runner.server</Description>
+    <Description>Unofficial GitHub Actions Runner Client, run your github action workflows locally. $(CHANGELOG_LINE)More Information https://github.com/ChristopherHX/runner.server.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ChristopherHX/runner.server</PackageProjectUrl>
   </PropertyGroup>

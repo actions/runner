@@ -96,6 +96,9 @@ jobs:
         gharun -W testworkflows/skippedjob.yml
         gharun --workflow testworkflows/test_with_required_secret.yml --workflow testworkflows/called_with_required_secret.yml
         gharun -W testworkflows/job-continue-on-error.yml
+        cd testworkflows/node16_complex_reusable_workflows
+        gharun
+        cd ../..
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows')
       run: |
