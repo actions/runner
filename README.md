@@ -237,7 +237,7 @@ If this doesn't match with the your configuration url, you cannot configure any 
 {
   "ConnectionStrings": {
     "sqlite": "Data Source=Agents.db;"
-  },
+  }
 }
 ```
 
