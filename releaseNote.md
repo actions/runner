@@ -1,18 +1,15 @@
 ## Features
 
-- Print source of secret in runs (Actions/Dependabot/None) #1411
-- Support node.js 16 and bump node.js 12 version #1439
+- n/a
 
 ## Bugs
 
-- Fix a bug where local node action would crash in post-steps #1481
+- Revert node12 version due to fs.copyFileSync hang #1537
 
 
 ## Misc
 
-- Add telemetry around runner update process. #1497
-- Improve telemetry to better diagnose runner configuration issues #1487
-- Clean up dependencies #1470
+- n/a
 
 
 ## Windows x64
