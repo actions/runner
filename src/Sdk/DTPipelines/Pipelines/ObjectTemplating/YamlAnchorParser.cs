@@ -53,7 +53,6 @@ namespace YamlDotNet.Core
             if (!merged)
             {
                 Merge();
-                events.CleanMarked();
                 iterator = events.GetEnumerator();
                 merged = true;
             }
@@ -69,17 +68,22 @@ namespace YamlDotNet.Core
                 events.Add(cevent);
             }
 
+            // Disable Merge Operator
+            // foreach (var node in events)
+            // {
+            //     if (IsMergeToken(node))
+            //     {
+            //         events.MarkDeleted(node);
+            //         if (!HandleMerge(node.Next))
+            //         {
+            //             throw new SemanticErrorException(node.Value.Start, node.Value.End, "Unrecognized merge key pattern");
+            //         }
+            //     }
+            // }
+            // events.CleanMarked();
             foreach (var node in events)
             {
-                if (IsMergeToken(node))
-                {
-                    events.MarkDeleted(node);
-                    if (!HandleMerge(node.Next))
-                    {
-                        throw new SemanticErrorException(node.Value.Start, node.Value.End, "Unrecognized merge key pattern");
-                    }
-                }
-                else if (node.Value is AnchorAlias anchorAlias)
+                if (node.Value is AnchorAlias anchorAlias)
                 {
                     if (!HandleAnchorAlias2(node, node, anchorAlias))
                     {
@@ -87,9 +91,9 @@ namespace YamlDotNet.Core
                     }
                 }
             }
+            events.CleanMarked();
             foreach (var node in events)
             {
-
                 var m_current = node.Value;
                 if (m_current is Scalar scalar)
                 {
@@ -270,6 +274,7 @@ namespace YamlDotNet.Core
                 {
                     events.Remove(node);
                 }
+                deleted.Clear();
             }
 
             public IEnumerable<LinkedListNode<ParsingEvent>> FromAnchor(AnchorName anchor)

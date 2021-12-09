@@ -6,6 +6,6 @@ namespace Runner.Server.Models {
         public ArtifactContainer Container { get; set; }
         public string Name {get;set;}
         public List<ArtifactRecord> Files {get;set;}
-        public int? Size { get; internal set; }
+        public long? Size { get; internal set; }
     }
 }

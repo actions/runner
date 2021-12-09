@@ -1093,7 +1093,7 @@ namespace Runner.Client
                                 List<Job> jobs = new List<Job>();
                                 cancelWorkflow = () => {
                                     cancelWorkflow = null;
-                                    var runIds = (from j in jobs select j.runid).ToHashSet();
+                                    var runIds = (from j in jobs.ToArray() select j.runid).ToHashSet();
                                     foreach(var runId in runIds) {
                                         client.PostAsync(GetCancelWorkflowUrl(b.ToString(), runId), null, CancellationToken.None);
                                     }
