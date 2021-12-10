@@ -16,7 +16,7 @@ do
     "$DIR"/bin/run-helper.sh $*
     returnCode=$?
     if [[ $returnCode -e 1 ]]; then
-        echo "Restart runner after it updated..."
+        echo "Restarting runner..."
     else
         echo "Exiting runner..."
         exit 0

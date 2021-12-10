@@ -19,13 +19,14 @@ rem Run.
 rem ********************************************************************************
 
 :launch_helper
-call "%~dp0bin\run-helper.cmd" %*
+copy run-helper.cmd.template run-helper.cmd /Y
+call "%~dp0run-helper.cmd" %*
 
 rem using `if %ERRORLEVEL% EQU N` insterad of `if ERRORLEVEL N`
 rem `if ERRORLEVEL N` means: error level is N or MORE
   
 if %ERRORLEVEL% EQU 1 (
-  echo "Restart runner after it exited with return code '%ERRORLEVEL%'"
+  echo "Restarting runner..."
   goto :launch_helper
 ) else (  
   echo "Exit runner after it exited with return code '%ERRORLEVEL%'"

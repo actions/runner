@@ -1,6 +1,6 @@
 @echo off
 
-"%~dp0Runner.Listener.exe" run %*
+"%~dp0\bin\Runner.Listener.exe" run %*
 
 rem using `if %ERRORLEVEL% EQU N` insterad of `if ERRORLEVEL N`
 rem `if ERRORLEVEL N` means: error level is N or MORE
