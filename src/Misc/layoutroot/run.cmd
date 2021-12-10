@@ -29,6 +29,5 @@ if %ERRORLEVEL% EQU 1 (
   goto :launch_helper
 ) else (  
   echo "Exit runner after it exited with return code '%ERRORLEVEL%'"
-  exit %ERRORLEVEL%
+  exit 0
 )
-exit %ERRORLEVEL%
