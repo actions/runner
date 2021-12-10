@@ -19,16 +19,21 @@ if %ERRORLEVEL% EQU 2 (
   goto :launch_listener
 )
 
-rem Return code 4 means the runner received an update message.
 if %ERRORLEVEL% EQU 3 (
   echo "Runner listener exit because of updating, re-launch runner in 5 seconds"
   timeout /t 5 /nobreak > NUL
 )
 
-rem Return code 4 means the ephemeral runner received an update message.
 if %ERRORLEVEL% EQU 4 (
   echo "Runner listener exit because of updating, re-launch ephemeral runner in 5 seconds"
   timeout /t 5 /nobreak > NUL
+)
+
+if %ERRORLEVEL% GEQ 5 (  
+  echo "Exiting with unknown error code: ${returnCode}"
+)
+if [%ERRORLEVEL%]==[] (  
+  echo "Exiting with empty error code: ${returnCode}"
 )
 
 exit /b %ERRORLEVEL%
