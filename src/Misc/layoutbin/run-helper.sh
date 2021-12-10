@@ -30,26 +30,25 @@ bin/Runner.Listener run $*
 returnCode=$?
 if [[ $returnCode == 0 ]]; then
     echo "Runner listener exit with 0 return code, stop the service, no retry needed."
-    echo "0 ORIG"
+    exit 0
 elif [[ $returnCode == 1 ]]; then
     echo "Runner listener exit with terminated error, stop the service, no retry needed."
-    echo "1 ORIG"
+    exit 0
 elif [[ $returnCode == 2 ]]; then
     echo "Runner listener exit with retryable error, re-launch runner in 5 seconds."
-    echo "2 ORIG"
     safe_sleep
+    exit 1
 elif [[ $returnCode == 3 ]]; then
     # Sleep 5 seconds to wait for the runner update process finish
     echo "Runner listener exit because of updating, re-launch runner in 5 seconds"
-    echo "3 ORIG"
     safe_sleep
+    exit 1
 elif [[ $returnCode == 4 ]]; then
     # Sleep 5 seconds to wait for the ephemeral runner update process finish
     echo "Runner listener exit because of updating, re-launch ephemeral runner in 5 seconds"
-    echo "4 ORIG"
     safe_sleep
+    exit 1
 else
     echo "Exiting with unknown error code: ${returnCode}"
+    exit 0
 fi
-
-exit $returnCode

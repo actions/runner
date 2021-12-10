@@ -15,10 +15,10 @@ while :;
 do
     "$DIR"/bin/run-helper.sh $*
     returnCode=$?
-    if [[ $returnCode -ge 2 ]]; then
-        echo "Restart runner after it exited with return code '${returnCode}'"
+    if [[ $returnCode -e 1 ]]; then
+        echo "Restart runner after it updated..."
     else
-        echo "Exit runner after it exited with return code '${returnCode}'"
-        exit $returnCode
+        echo "Exiting runner..."
+        exit 0
     fi
 done
