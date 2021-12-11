@@ -545,11 +545,15 @@ namespace Runner.Server.Controllers
         }
 
         private void AddJob(Job job) {
-            _cache.Set(job.JobId, job);
-            job.WorkflowRunAttempt = _context.Set<WorkflowRunAttempt>().Find(job.WorkflowRunAttempt.Id);
-            _context.Jobs.Add(job);
-            _context.SaveChanges();
-            Task.Run(() => jobevent?.Invoke(this, job.repo, job));
+            try {
+                _cache.Set(job.JobId, job);
+                job.WorkflowRunAttempt = _context.Set<WorkflowRunAttempt>().Find(job.WorkflowRunAttempt.Id);
+                Task.Run(() => jobevent?.Invoke(this, job.repo, job));
+                _context.Jobs.Add(job);
+                _context.SaveChanges();
+            } catch (Exception m){
+                throw new Exception("Failed to add job  " + job.name + " / " + job.WorkflowIdentifier + " / " + job.Matrix + " / " + job.JobId  + ": " + m.Message);
+            }
         }
 
         private Job GetJob(Guid id) {
@@ -1307,8 +1311,8 @@ namespace Runner.Server.Controllers
                                             if(_canBeCancelled != null) {
                                                 return _canBeCancelled.Value;
                                             }
-                                            bool ret = jobitem.EvaluateIf();
-                                            _canBeCancelled = !ret;
+                                            bool ret = !jobitem.EvaluateIf();
+                                            _canBeCancelled = ret;
                                             return ret;
                                         };
                                         if(exctx.Cancelled.IsCancellationRequested && canBeCancelled()) {
@@ -1991,19 +1995,7 @@ namespace Runner.Server.Controllers
                             return;
                         }
                     };
-                    if(reference.RepositoryType == PipelineConstants.SelfAlias) {
-                        if(workflows != null && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
-                            try {
-                                workflow_call(reference.Path, _content);
-                            } catch (Exception ex) {
-                                failedtoInstantiateWorkflow(false, ex.Message);
-                                await Console.Error.WriteLineAsync(ex.Message);
-                                await Console.Error.WriteLineAsync(ex.StackTrace);
-                            }
-                        } else {
-                            failedtoInstantiateWorkflow(false, $"No such callable workflow: {uses.Value}");
-                        }
-                    } else if(localcheckout && reference.Name == repo && (("refs/heads/" + reference.Ref) == Ref || ("refs/tags/" + reference.Ref) == Ref) && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
+                    if((reference.RepositoryType == PipelineConstants.SelfAlias || localcheckout && reference.Name == repo && (("refs/heads/" + reference.Ref) == Ref || ("refs/tags/" + reference.Ref) == Ref)) && workflows != null && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
                         try {
                             workflow_call(reference.Path, _content);
                         } catch (Exception ex) {
@@ -2012,6 +2004,11 @@ namespace Runner.Server.Controllers
                             await Console.Error.WriteLineAsync(ex.StackTrace);
                         }
                     } else {
+                        if(reference.RepositoryType == PipelineConstants.SelfAlias) {
+                            reference.RepositoryType = RepositoryTypes.GitHub;
+                            reference.Ref = ((DictionaryContextData) contextData["github"])["sha"].ToString();
+                            reference.Name = repo;
+                        }
                         var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("accept", "application/json");
                         client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
@@ -3075,28 +3072,22 @@ namespace Runner.Server.Controllers
                 try
                 {
                     writer.NewLine = "\n";
-                    ConcurrentQueue<KeyValuePair<string,Job>> queue = new ConcurrentQueue<KeyValuePair<string, Job>>();
+                    var queue2 = Channel.CreateUnbounded<KeyValuePair<string,Job>>(new UnboundedChannelOptions { SingleReader = true });
+                    var chwriter = queue2.Writer;
                     JobEvent handler = (sender, crepo, job) => {
                         if (mfilter.IsMatch(crepo)) {
-                            queue.Enqueue(new KeyValuePair<string, Job>(crepo, job));
+                            chwriter.WriteAsync(new KeyValuePair<string, Job>(crepo, job));
                         }
                     };
+                    var chreader = queue2.Reader;
                     var ping = Task.Run(async () => {
                         try {
                             while(!requestAborted.IsCancellationRequested) {
-                                KeyValuePair<string, Job> p;
-                                if(queue.TryDequeue(out p)) {
-                                    await writer.WriteLineAsync("event: job");
-                                    await writer.WriteLineAsync(string.Format("data: {0}", JsonConvert.SerializeObject(new { repo = p.Key, job = p.Value }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
-                                    await writer.WriteLineAsync();
-                                    await writer.FlushAsync();
-                                } else {
-                                    await writer.WriteLineAsync("event: ping");
-                                    await writer.WriteLineAsync("data: {}");
-                                    await writer.WriteLineAsync();
-                                    await writer.FlushAsync();
-                                    await Task.Delay(5000);
-                                }
+                                KeyValuePair<string, Job> p = await chreader.ReadAsync(requestAborted);
+                                await writer.WriteLineAsync("event: job");
+                                await writer.WriteLineAsync(string.Format("data: {0}", JsonConvert.SerializeObject(new { repo = p.Key, job = p.Value }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}})));
+                                await writer.WriteLineAsync();
+                                await writer.FlushAsync();
                             }
                         } catch (OperationCanceledException) {
 

@@ -84,7 +84,7 @@ namespace Runner.Server
                     conf.UseInMemoryDatabase("Agents");
                 }
             };
-            services.AddDbContext<SqLiteDb>(optionsAction);
+            services.AddDbContext<SqLiteDb>(optionsAction, ServiceLifetime.Scoped, ServiceLifetime.Singleton);
             
             try {
                 var b = new DbContextOptionsBuilder<SqLiteDb>();
