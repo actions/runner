@@ -7,12 +7,12 @@ rem `if ERRORLEVEL N` means: error level is N or MORE
   
 if %ERRORLEVEL% EQU 0 (
   echo "Runner listener exit with 0 return code, stop the service, no retry needed."
-exit /b 0
+  exit /b 0
 )
 
 if %ERRORLEVEL% EQU 1 (
   echo "Runner listener exit with terminated error, stop the service, no retry needed."
-exit /b 0
+  exit /b 0
 )
 
 if %ERRORLEVEL% EQU 2 (
