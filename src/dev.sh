@@ -149,7 +149,7 @@ function layout ()
 
     cat "$SCRIPT_DIR/Misc/runnercoreassets" | xargs rm -f
     find . -empty -type d -delete
-    find . -type f > "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeasserts"
+    find . -type f > "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeassets"
     popd > /dev/null
 
     heading "Create layout with externals trimmed ..."
@@ -162,7 +162,7 @@ function layout ()
     mkdir -p "$LAYOUT_TRIM_RUNTIME_DIR"
     cp -r "$LAYOUT_DIR/." "$LAYOUT_TRIM_RUNTIME_DIR/"
     pushd "$LAYOUT_TRIM_RUNTIME_DIR/bin" > /dev/null
-    cat "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeasserts" | xargs rm -f
+    cat "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeassets" | xargs rm -f
     echo "Created... $LAYOUT_TRIM_RUNTIME_DIR"
     popd > /dev/null
 
@@ -171,7 +171,7 @@ function layout ()
     cp -r "$LAYOUT_DIR/." "$LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR/"
     rm -Rf "$LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR/externals"
     pushd "$LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR/bin" > /dev/null
-    cat "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeasserts" | xargs rm -f
+    cat "$LAYOUT_TRIMS_DIR/runnerdotnetruntimeassets" | xargs rm -f
     echo "Created... $LAYOUT_TRIM_RUNTIME_EXTERNALS_DIR"
     popd > /dev/null
 }

@@ -23,13 +23,13 @@ namespace GitHub.Runner.Common.Tests
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
-                var runnerCoreAssertsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
-                var runnerDotnetRuntimeFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnerdotnetruntimeasserts");
+                var runnerCoreAssetsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
+                var runnerDotnetRuntimeFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnerdotnetruntimeassets");
                 string layoutBin = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/bin");
                 var newFiles = new List<string>();
                 if (Directory.Exists(layoutBin))
                 {
-                    var coreAssets = await File.ReadAllLinesAsync(runnerCoreAssertsFile);
+                    var coreAssets = await File.ReadAllLinesAsync(runnerCoreAssetsFile);
                     var runtimeAssets = await File.ReadAllLinesAsync(runnerDotnetRuntimeFile);
                     foreach (var file in Directory.GetFiles(layoutBin, "*", SearchOption.AllDirectories))
                     {
@@ -56,17 +56,17 @@ namespace GitHub.Runner.Common.Tests
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
-                var runnerCoreAssertsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
-                var runnerDotnetRuntimeFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnerdotnetruntimeasserts");
+                var runnerCoreAssetsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
+                var runnerDotnetRuntimeFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnerdotnetruntimeassets");
 
-                var coreAssets = await File.ReadAllLinesAsync(runnerCoreAssertsFile);
+                var coreAssets = await File.ReadAllLinesAsync(runnerCoreAssetsFile);
                 var runtimeAssets = await File.ReadAllLinesAsync(runnerDotnetRuntimeFile);
 
                 foreach (var line in coreAssets)
                 {
                     if (runtimeAssets.Contains(line, StringComparer.OrdinalIgnoreCase))
                     {
-                        Assert.True(false, $"'Misc/runnercoreassets' and 'Misc/runnerdotnetruntimeasserts' should not overlap.");
+                        Assert.True(false, $"'Misc/runnercoreassets' and 'Misc/runnerdotnetruntimeassets' should not overlap.");
                     }
                 }
             }
@@ -80,8 +80,8 @@ namespace GitHub.Runner.Common.Tests
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
-                var runnerCoreAssertsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
-                var coreAssets = await File.ReadAllLinesAsync(runnerCoreAssertsFile);
+                var runnerCoreAssetsFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnercoreassets");
+                var coreAssets = await File.ReadAllLinesAsync(runnerCoreAssetsFile);
 
                 string layoutBin = Path.Combine(TestUtil.GetSrcPath(), @"../_layout/bin");
                 var newFiles = new List<string>();
@@ -123,14 +123,14 @@ namespace GitHub.Runner.Common.Tests
             using (TestHostContext hc = new TestHostContext(this))
             {
                 Tracing trace = hc.GetTrace();
-                var runnerDotnetRuntimeFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnerdotnetruntimeasserts");
+                var runnerDotnetRuntimeFile = Path.Combine(TestUtil.GetSrcPath(), @"Misc/runnerdotnetruntimeassets");
                 var runtimeAssets = await File.ReadAllLinesAsync(runnerDotnetRuntimeFile);
 
-                string layoutTrimsRuntimeAsserts = Path.Combine(TestUtil.GetSrcPath(), @"../_layout_trims/runnerdotnetruntimeasserts");
+                string layoutTrimsRuntimeAssets = Path.Combine(TestUtil.GetSrcPath(), @"../_layout_trims/runnerdotnetruntimeassets");
                 var newFiles = new List<string>();
-                if (File.Exists(layoutTrimsRuntimeAsserts))
+                if (File.Exists(layoutTrimsRuntimeAssets))
                 {
-                    var runtimeAssetsCurrent = await File.ReadAllLinesAsync(layoutTrimsRuntimeAsserts);
+                    var runtimeAssetsCurrent = await File.ReadAllLinesAsync(layoutTrimsRuntimeAssets);
                     foreach (var runtimeFile in runtimeAssetsCurrent)
                     {
                         if (runtimeAssets.Any(x => runtimeFile.EndsWith(x, StringComparison.OrdinalIgnoreCase)))
@@ -145,7 +145,7 @@ namespace GitHub.Runner.Common.Tests
 
                     if (newFiles.Count > 0)
                     {
-                        Assert.True(false, $"Found new dotnet runtime files '{string.Join('\n', newFiles)}'. These will break runner update using trimmed packages. You might need to update `Misc/runnerdotnetruntimeasserts`.");
+                        Assert.True(false, $"Found new dotnet runtime files '{string.Join('\n', newFiles)}'. These will break runner update using trimmed packages. You might need to update `Misc/runnerdotnetruntimeassets`.");
                     }
                 }
             }
