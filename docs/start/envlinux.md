@@ -23,8 +23,8 @@ You might see something like this which indicate a dependency's missing.
 ./config.sh
     libunwind.so.8 => not found
     libunwind-x86_64.so.8 => not found
-Dependencies is missing for Dotnet Core 3.0
-Execute ./bin/installdependencies.sh to install any missing Dotnet Core 3.0 dependencies.
+Dependencies is missing for Dotnet Core 6.0
+Execute ./bin/installdependencies.sh to install any missing Dotnet Core 6.0 dependencies.
 ```
 You can easily correct the problem by executing `./bin/installdependencies.sh`.  
 The `installdependencies.sh` script should install all required dependencies on all supported Linux versions  
