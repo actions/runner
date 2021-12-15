@@ -196,6 +196,7 @@ namespace GitHub.Runner.Listener.Configuration
             TaskAgent agent;
             while (true)
             {
+                runnerSettings.DisableUpdate = command.DisableUpdate;
                 runnerSettings.Ephemeral = command.Ephemeral;
                 runnerSettings.AgentName = command.GetRunnerName();
 
@@ -213,11 +214,22 @@ namespace GitHub.Runner.Listener.Configuration
                     if (command.GetReplace())
                     {
                         // Update existing agent with new PublicKey, agent version.
-                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral);
+                        agent = UpdateExistingAgent(agent, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
 
                         try
                         {
                             agent = await _runnerServer.ReplaceAgentAsync(runnerSettings.PoolId, agent);
+                            if (command.DisableUpdate &&
+                                command.DisableUpdate != agent.DisableUpdate)
+                            {
+                                throw new NotSupportedException("The GitHub server does not support configure self-hosted runner with 'DisableUpdate' flag.");
+                            }
+                            if (command.Ephemeral &&
+                                command.Ephemeral != agent.Ephemeral)
+                            {
+                                throw new NotSupportedException("The GitHub server does not support configure self-hosted runner with 'Ephemeral' flag.");
+                            }
+
                             _term.WriteSuccessMessage("Successfully replaced the runner");
                             break;
                         }
@@ -236,11 +248,22 @@ namespace GitHub.Runner.Listener.Configuration
                 else
                 {
                     // Create a new agent.
-                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral);
+                    agent = CreateNewAgent(runnerSettings.AgentName, publicKey, userLabels, runnerSettings.Ephemeral, command.DisableUpdate);
 
                     try
                     {
                         agent = await _runnerServer.AddAgentAsync(runnerSettings.PoolId, agent);
+                        if (command.DisableUpdate &&
+                            command.DisableUpdate != agent.DisableUpdate)
+                        {
+                            throw new NotSupportedException("The GitHub server does not support configure self-hosted runner with 'DisableUpdate' flag.");
+                        }
+                        if (command.Ephemeral &&
+                            command.Ephemeral != agent.Ephemeral)
+                        {
+                            throw new NotSupportedException("The GitHub server does not support configure self-hosted runner with 'Ephemeral' flag.");
+                        }
+
                         _term.WriteSuccessMessage("Runner successfully added");
                         break;
                     }
@@ -466,7 +489,7 @@ namespace GitHub.Runner.Listener.Configuration
         }
 
 
-        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
+        private TaskAgent UpdateExistingAgent(TaskAgent agent, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
         {
             ArgUtil.NotNull(agent, nameof(agent));
             agent.Authorization = new TaskAgentAuthorization
@@ -478,6 +501,7 @@ namespace GitHub.Runner.Listener.Configuration
             agent.Version = BuildConstants.RunnerPackage.Version;
             agent.OSDescription = RuntimeInformation.OSDescription;
             agent.Ephemeral = ephemeral;
+            agent.DisableUpdate = disableUpdate;
             agent.MaxParallelism = 1;
 
             agent.Labels.Clear();
@@ -494,7 +518,7 @@ namespace GitHub.Runner.Listener.Configuration
             return agent;
         }
 
-        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral)
+        private TaskAgent CreateNewAgent(string agentName, RSAParameters publicKey, ISet<string> userLabels, bool ephemeral, bool disableUpdate)
         {
             TaskAgent agent = new TaskAgent(agentName)
             {
@@ -506,6 +530,7 @@ namespace GitHub.Runner.Listener.Configuration
                 Version = BuildConstants.RunnerPackage.Version,
                 OSDescription = RuntimeInformation.OSDescription,
                 Ephemeral = ephemeral,
+                DisableUpdate = disableUpdate
             };
 
             agent.Labels.Add(new AgentLabel("self-hosted", LabelType.System));
