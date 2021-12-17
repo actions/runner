@@ -338,12 +338,16 @@ namespace GitHub.Runner.Worker
 
             if (!string.IsNullOrEmpty(container.ContainerId))
             {
-                executionContext.Output($"Print container logs: {container.ContainerDisplayName}");
-
-                int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
-                if (logsExitCode != 0)
+                if(!container.IsJobContainer)
                 {
-                    executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
+                    // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
+                    executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
+                    
+                    int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
+                    if (logsExitCode != 0)
+                    {
+                        executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
+                    }
                 }
 
                 executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");
