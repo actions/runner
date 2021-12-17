@@ -52,6 +52,8 @@ namespace GitHub.Runner.Common.Tests.Listener
                 var p = new ProcessInvokerWrapper();
                 p.Initialize(hc);
                 hc.EnqueueInstance<IProcessInvoker>(p);
+                hc.EnqueueInstance<IProcessInvoker>(p);
+                hc.EnqueueInstance<IProcessInvoker>(p);
                 updater.Initialize(hc);
 
                 _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))

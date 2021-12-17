@@ -1,5 +1,4 @@
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -13,7 +12,7 @@ using GitHub.Services.WebApi;
 using GitHub.Services.Common;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using System.Text;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -30,13 +29,23 @@ namespace GitHub.Runner.Listener
     {
         private static string _packageType = "agent";
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
+        private static string _dotnetRuntime = "dotnetRuntime";
+        private static string _externals = "externals";
+        private readonly Dictionary<string, string> _contentHashes = new Dictionary<string, string>()
+        {
+            {_dotnetRuntime, ""},
+            {_externals, ""}
+        };
 
         private PackageMetadata _targetPackage;
         private ITerminal _terminal;
         private IRunnerServer _runnerServer;
         private int _poolId;
         private int _agentId;
-        private readonly List<string> _updateTrace = new List<string>();
+        private readonly ConcurrentQueue<string> _updateTrace = new ConcurrentQueue<string>();
+        private Task _cloneAndCalculateContentHashTask;
+        private string _dotnetRuntimeCloneDirectory;
+        private string _externalsCloneDirectory;
 
         public bool Busy { get; private set; }
 
@@ -50,6 +59,8 @@ namespace GitHub.Runner.Listener
             var settings = configStore.GetSettings();
             _poolId = settings.PoolId;
             _agentId = settings.AgentId;
+            _dotnetRuntimeCloneDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "__dotnet_runtime__");
+            _externalsCloneDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), "__externals__");
         }
 
         public async Task<bool> SelfUpdate(AgentRefreshMessage updateMessage, IJobDispatcher jobDispatcher, bool restartInteractiveRunner, CancellationToken token)
@@ -59,6 +70,12 @@ namespace GitHub.Runner.Listener
             {
                 var totalUpdateTime = Stopwatch.StartNew();
 
+                // Copy dotnet runtime and externals of current runner to a temp folder
+                // So we can re-use them with trimmed runner package, if possible.
+                // This process is best effort, if we can't use trimmed runner package, 
+                // we will just go with the full package.
+                _cloneAndCalculateContentHashTask = CloneAndCalculateAssetsHash(_dotnetRuntimeCloneDirectory, _externalsCloneDirectory);
+
                 if (!await UpdateNeeded(updateMessage.TargetVersion, token))
                 {
                     Trace.Info($"Can't find available update package.");
@@ -66,12 +83,15 @@ namespace GitHub.Runner.Listener
                 }
 
                 Trace.Info($"An update is available.");
-                _updateTrace.Add($"RunnerPlatform: {_targetPackage.Platform}");
+                _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
+                _updateTrace.Enqueue($"DotnetRuntimeHash: {_contentHashes[_dotnetRuntime]}");
+                _updateTrace.Enqueue($"ExternalsHash: {_contentHashes[_externals]}");
 
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
                 await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
 
+                await _cloneAndCalculateContentHashTask;
                 await DownloadLatestRunner(token);
                 Trace.Info($"Download latest runner and unzip into runner root.");
 
@@ -88,7 +108,7 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Delete old version runner backup.");
                 stopWatch.Stop();
                 // generate update script from template
-                _updateTrace.Add($"DeleteRunnerBackupTime: {stopWatch.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"DeleteRunnerBackupTime: {stopWatch.ElapsedMilliseconds}ms");
                 await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
 
                 string updateScript = GenerateUpdateScript(restartInteractiveRunner);
@@ -108,14 +128,14 @@ namespace GitHub.Runner.Listener
 
                 totalUpdateTime.Stop();
 
-                _updateTrace.Add($"TotalUpdateTime: {totalUpdateTime.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"TotalUpdateTime: {totalUpdateTime.ElapsedMilliseconds}ms");
                 await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.");
 
                 return true;
             }
             catch (Exception ex)
             {
-                _updateTrace.Add(ex.ToString());
+                _updateTrace.Enqueue(ex.ToString());
                 throw;
             }
             finally
@@ -178,7 +198,48 @@ namespace GitHub.Runner.Listener
             string archiveFile = null;
             var packageDownloadUrl = _targetPackage.DownloadUrl;
             var packageHashValue = _targetPackage.HashValue;
-            _updateTrace.Add($"DownloadUrl: {packageDownloadUrl}");
+            var runtimeTrimmed = false;
+            var externalsTrimmed = false;
+
+            if (_contentHashes.Count > 0 && _targetPackage.TrimmedPackages?.Count > 0)
+            {
+                Trace.Info($"Trimmed packages info: {JsonUtility.ToString(_targetPackage.TrimmedPackages)}");
+                // Try to see whether we can use any size trimmed down package to speed up runner updates.
+                foreach (var trimmedPackage in _targetPackage.TrimmedPackages)
+                {
+                    if (trimmedPackage.TrimmedContents.Count == 2 &&
+                        trimmedPackage.TrimmedContents.TryGetValue(_dotnetRuntime, out var trimmedRuntimeHash) &&
+                        trimmedRuntimeHash == _contentHashes[_dotnetRuntime] &&
+                        trimmedPackage.TrimmedContents.TryGetValue(_externals, out var trimmedExternalsHash) &&
+                        trimmedExternalsHash == _contentHashes[_externals])
+                    {
+                        Trace.Info($"Use trimmed (runtime+externals) package '{trimmedPackage.DownloadUrl}' to update runner.");
+                        packageDownloadUrl = trimmedPackage.DownloadUrl;
+                        packageHashValue = trimmedPackage.HashValue;
+                        runtimeTrimmed = true;
+                        externalsTrimmed = true;
+                        break;
+                    }
+                    else if (trimmedPackage.TrimmedContents.Count == 1 &&
+                             trimmedPackage.TrimmedContents.TryGetValue(_externals, out trimmedExternalsHash) &&
+                             trimmedExternalsHash == _contentHashes[_externals])
+                    {
+                        Trace.Info($"Use trimmed (externals) package '{trimmedPackage.DownloadUrl}' to update runner.");
+                        packageDownloadUrl = trimmedPackage.DownloadUrl;
+                        packageHashValue = trimmedPackage.HashValue;
+                        externalsTrimmed = true;
+                        break;
+                    }
+                    else
+                    {
+                        Trace.Info($"Can't use trimmed package from '{trimmedPackage.DownloadUrl}' since the current runner does not carry those trimmed content (Hash mismatch).");
+                    }
+                }
+            }
+
+            _updateTrace.Enqueue($"DownloadUrl: {packageDownloadUrl}");
+            _updateTrace.Enqueue($"RuntimeTrimmed: {runtimeTrimmed}");
+            _updateTrace.Enqueue($"ExternalsTrimmed: {externalsTrimmed}");
 
             try
             {
@@ -208,6 +269,60 @@ namespace GitHub.Runner.Listener
                 {
                     //it is not critical if we fail to delete the .zip file
                     Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
+                }
+            }
+
+            var trimmedPackageRestoreTasks = new List<Task<bool>>();
+            if (externalsTrimmed)
+            {
+                trimmedPackageRestoreTasks.Add(RestoreTrimmedExternals(latestRunnerDirectory, token));
+            }
+            if (runtimeTrimmed)
+            {
+                trimmedPackageRestoreTasks.Add(RestoreTrimmedDotnetRuntime(latestRunnerDirectory, token));
+            }
+
+            var restoreResults = await Task.WhenAll(trimmedPackageRestoreTasks);
+            if (restoreResults.Any(x => x == false))
+            {
+                Trace.Error("Something wrong with the trimmed runner package, failback to use the full package for runner updates.");
+
+                IOUtil.DeleteDirectory(latestRunnerDirectory, token);
+                Directory.CreateDirectory(latestRunnerDirectory);
+
+                packageDownloadUrl = _targetPackage.DownloadUrl;
+                packageHashValue = _targetPackage.HashValue;
+                _updateTrace.Enqueue($"DownloadUrl: {packageDownloadUrl}");
+
+                try
+                {
+                    archiveFile = await DownLoadRunner(latestRunnerDirectory, packageDownloadUrl, packageHashValue, token);
+
+                    if (string.IsNullOrEmpty(archiveFile))
+                    {
+                        throw new TaskCanceledException($"Runner package '{packageDownloadUrl}' failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts");
+                    }
+
+                    await ValidateRunnerHash(archiveFile, packageHashValue);
+
+                    await ExtractRunnerPackage(archiveFile, latestRunnerDirectory, token);
+                }
+                finally
+                {
+                    try
+                    {
+                        // delete .zip file
+                        if (!string.IsNullOrEmpty(archiveFile) && File.Exists(archiveFile))
+                        {
+                            Trace.Verbose("Deleting latest runner package zip: {0}", archiveFile);
+                            IOUtil.DeleteFile(archiveFile);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        //it is not critical if we fail to delete the .zip file
+                        Trace.Warning("Failed to delete runner package zip '{0}'. Exception: {1}", archiveFile, ex);
+                    }
                 }
             }
 
@@ -295,9 +410,9 @@ namespace GitHub.Runner.Listener
                         Trace.Info($"Download runner: finished download");
                         downloadSucceeded = true;
                         stopWatch.Stop();
-                        _updateTrace.Add($"PackageDownloadTime: {stopWatch.ElapsedMilliseconds}ms");
-                        _updateTrace.Add($"Attempts: {attempt}");
-                        _updateTrace.Add($"PackageSize: {downloadSize / 1024 / 1024}MB");
+                        _updateTrace.Enqueue($"PackageDownloadTime: {stopWatch.ElapsedMilliseconds}ms");
+                        _updateTrace.Enqueue($"Attempts: {attempt}");
+                        _updateTrace.Enqueue($"PackageSize: {downloadSize / 1024 / 1024}MB");
                         break;
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -347,7 +462,7 @@ namespace GitHub.Runner.Listener
 
                         stopWatch.Stop();
                         Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {packageHashValue}");
-                        _updateTrace.Add($"ValidateHashTime: {stopWatch.ElapsedMilliseconds}ms");
+                        _updateTrace.Enqueue($"ValidateHashTime: {stopWatch.ElapsedMilliseconds}ms");
                     }
                 }
             }
@@ -403,7 +518,7 @@ namespace GitHub.Runner.Listener
 
             stopWatch.Stop();
             Trace.Info($"Finished getting latest runner package at: {extractDirectory}.");
-            _updateTrace.Add($"PackageExtractTime: {stopWatch.ElapsedMilliseconds}ms");
+            _updateTrace.Enqueue($"PackageExtractTime: {stopWatch.ElapsedMilliseconds}ms");
         }
 
         private Task CopyLatestRunnerToRoot(string latestRunnerDirectory, CancellationToken token)
@@ -436,7 +551,7 @@ namespace GitHub.Runner.Listener
             }
 
             stopWatch.Stop();
-            _updateTrace.Add($"CopyRunnerToRootTime: {stopWatch.ElapsedMilliseconds}ms");
+            _updateTrace.Enqueue($"CopyRunnerToRootTime: {stopWatch.ElapsedMilliseconds}ms");
             return Task.CompletedTask;
         }
 
@@ -561,9 +676,15 @@ namespace GitHub.Runner.Listener
         {
             _terminal.WriteLine(currentState);
 
-            if (_updateTrace.Count > 0)
+            var traces = new List<string>();
+            while (_updateTrace.TryDequeue(out var trace))
             {
-                foreach (var trace in _updateTrace)
+                traces.Add(trace);
+            }
+
+            if (traces.Count > 0)
+            {
+                foreach (var trace in traces)
                 {
                     Trace.Info(trace);
                 }
@@ -571,7 +692,7 @@ namespace GitHub.Runner.Listener
 
             try
             {
-                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState, string.Join(Environment.NewLine, _updateTrace));
+                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState, string.Join(Environment.NewLine, traces));
                 _updateTrace.Clear();
             }
             catch (VssResourceNotFoundException)
@@ -583,6 +704,286 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Error(ex);
                 Trace.Info($"Catch exception during report update state, ignore this error and continue auto-update.");
+            }
+        }
+
+        private async Task<bool> RestoreTrimmedExternals(string downloadDirectory, CancellationToken token)
+        {
+            // Copy the current runner's externals if we are using a externals trimmed package
+            // Execute the node.js to make sure the copied externals is working.
+            var stopWatch = Stopwatch.StartNew();
+            try
+            {
+                Trace.Info($"Copy {_externalsCloneDirectory} to {Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory)}.");
+                IOUtil.CopyDirectory(_externalsCloneDirectory, Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory), token);
+
+                // try run node.js to see if current node.js works fine after copy over to new location.
+                var nodeVersions = new[] { "node12", "node16" };
+                foreach (var nodeVersion in nodeVersions)
+                {
+                    var newNodeBinary = Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory, nodeVersion, "bin", $"node{IOUtil.ExeExtension}");
+                    using (var p = HostContext.CreateService<IProcessInvoker>())
+                    {
+                        p.ErrorDataReceived += (_, data) =>
+                        {
+                            if (!string.IsNullOrEmpty(data.Data))
+                            {
+                                Trace.Error(data.Data);
+                            }
+                        };
+                        p.OutputDataReceived += (_, data) =>
+                        {
+                            if (!string.IsNullOrEmpty(data.Data))
+                            {
+                                Trace.Info(data.Data);
+                            }
+                        };
+                        var exitCode = await p.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), newNodeBinary, "--version", null, token);
+                        if (exitCode != 0)
+                        {
+                            Trace.Error($"{newNodeBinary} --version failed with exit code {exitCode}");
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Fail to restore externals for trimmed package: {ex}");
+                return false;
+            }
+            finally
+            {
+                stopWatch.Stop();
+                _updateTrace.Enqueue($"{nameof(RestoreTrimmedExternals)}Time: {stopWatch.ElapsedMilliseconds}ms");
+            }
+        }
+
+        private async Task<bool> RestoreTrimmedDotnetRuntime(string downloadDirectory, CancellationToken token)
+        {
+            // Copy the current runner's dotnet runtime if we are using a dotnet runtime trimmed package
+            // Execute the runner.listener to make sure the copied runtime is working.
+            var stopWatch = Stopwatch.StartNew();
+            try
+            {
+                Trace.Info($"Copy {_dotnetRuntimeCloneDirectory} to {Path.Combine(downloadDirectory, Constants.Path.BinDirectory)}.");
+                IOUtil.CopyDirectory(_dotnetRuntimeCloneDirectory, Path.Combine(downloadDirectory, Constants.Path.BinDirectory), token);
+
+                // try run the runner executable to see if current dotnet runtime + future runner binary works fine.
+                var newRunnerBinary = Path.Combine(downloadDirectory, Constants.Path.BinDirectory, "Runner.Listener");
+                using (var p = HostContext.CreateService<IProcessInvoker>())
+                {
+                    p.ErrorDataReceived += (_, data) =>
+                    {
+                        if (!string.IsNullOrEmpty(data.Data))
+                        {
+                            Trace.Error(data.Data);
+                        }
+                    };
+                    p.OutputDataReceived += (_, data) =>
+                    {
+                        if (!string.IsNullOrEmpty(data.Data))
+                        {
+                            Trace.Info(data.Data);
+                        }
+                    };
+                    var exitCode = await p.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), newRunnerBinary, "--version", null, token);
+                    if (exitCode != 0)
+                    {
+                        Trace.Error($"{newRunnerBinary} --version failed with exit code {exitCode}");
+                        return false;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Fail to restore dotnet runtime for trimmed package: {ex}");
+                return false;
+            }
+            finally
+            {
+                stopWatch.Stop();
+                _updateTrace.Enqueue($"{nameof(RestoreTrimmedDotnetRuntime)}Time: {stopWatch.ElapsedMilliseconds}ms");
+            }
+        }
+
+        private async Task CloneAndCalculateAssetsHash(string dotnetRuntimeCloneDirectory, string externalsCloneDirectory)
+        {
+            var runtimeCloneTask = CloneDotnetRuntime(dotnetRuntimeCloneDirectory);
+            var externalsCloneTask = CloneExternals(externalsCloneDirectory);
+
+            var waitingTasks = new List<Task>()
+            {
+                runtimeCloneTask,
+                externalsCloneTask
+            };
+
+            while (waitingTasks.Count > 0)
+            {
+                var completedTask = await Task.WhenAny(waitingTasks);
+                if (completedTask == runtimeCloneTask)
+                {
+                    try
+                    {
+                        if (await runtimeCloneTask)
+                        {
+                            var runtimeHash = await HashFiles(dotnetRuntimeCloneDirectory);
+                            Trace.Info($"Runtime content hash: {runtimeHash}");
+                            _contentHashes[_dotnetRuntime] = runtimeHash;
+                        }
+                        else
+                        {
+                            Trace.Error($"Skip compute hash since clone dotnet runtime failed.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Fail to hash runtime content: {ex.Message}");
+                    }
+                }
+                else if (completedTask == externalsCloneTask)
+                {
+                    try
+                    {
+                        if (await externalsCloneTask)
+                        {
+                            var externalsHash = await HashFiles(externalsCloneDirectory);
+                            Trace.Info($"Externals content hash: {externalsHash}");
+                            _contentHashes[_externals] = externalsHash;
+                        }
+                        else
+                        {
+                            Trace.Error($"Skip compute hash since clone externals failed.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Fail to hash externals content: {ex.Message}");
+                    }
+                }
+
+                waitingTasks.Remove(completedTask);
+            }
+        }
+
+        private async Task<bool> CloneDotnetRuntime(string runtimeDir)
+        {
+            try
+            {
+                Trace.Info($"Cloning dotnet runtime to {runtimeDir}");
+                IOUtil.DeleteDirectory(runtimeDir, CancellationToken.None);
+                Directory.CreateDirectory(runtimeDir);
+
+                var assembly = Assembly.GetExecutingAssembly();
+                var assetsContent = default(string);
+                using (var stream = assembly.GetManifestResourceStream("GitHub.Runner.Listener.runnercoreassets"))
+                using (var streamReader = new StreamReader(stream))
+                {
+                    assetsContent = await streamReader.ReadToEndAsync();
+                }
+
+                var runnerCoreAssets = assetsContent.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                if (runnerCoreAssets.Length > 0)
+                {
+                    var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
+                    IOUtil.CopyDirectory(binDir, runtimeDir, CancellationToken.None);
+
+                    var clonedFile = 0;
+                    foreach (var file in Directory.EnumerateFiles(runtimeDir, "*", SearchOption.AllDirectories))
+                    {
+                        if (runnerCoreAssets.Any(x => file.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).EndsWith(x.Trim())))
+                        {
+                            Trace.Verbose($"{file} is part of the runner core, delete from cloned runtime directory.");
+                            IOUtil.DeleteFile(file);
+                        }
+                        else
+                        {
+                            clonedFile++;
+                        }
+                    }
+
+                    Trace.Info($"Successfully cloned dotnet runtime to {runtimeDir}. Total files: {clonedFile}");
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Fail to clone dotnet runtime to {runtimeDir}");
+                Trace.Error(ex);
+            }
+
+            return false;
+        }
+
+        private Task<bool> CloneExternals(string externalsDir)
+        {
+            try
+            {
+                Trace.Info($"Cloning externals to {externalsDir}");
+                IOUtil.DeleteDirectory(externalsDir, CancellationToken.None);
+                Directory.CreateDirectory(externalsDir);
+                IOUtil.CopyDirectory(HostContext.GetDirectory(WellKnownDirectory.Externals), externalsDir, CancellationToken.None);
+                Trace.Info($"Successfully cloned externals to {externalsDir}.");
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                Trace.Error($"Fail to clone externals to {externalsDir}");
+                Trace.Error(ex);
+                return Task.FromResult(false);
+            }
+        }
+
+        private async Task<string> HashFiles(string fileFolder)
+        {
+            string binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
+            string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
+            string hashFilesScript = Path.Combine(binDir, "hashFiles");
+            var hashResult = string.Empty;
+
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.ErrorDataReceived += (_, data) =>
+                {
+                    if (!string.IsNullOrEmpty(data.Data) && data.Data.StartsWith("__OUTPUT__") && data.Data.EndsWith("__OUTPUT__"))
+                    {
+                        hashResult = data.Data.Substring(10, data.Data.Length - 20);
+                        Trace.Info($"Hash result: '{hashResult}'");
+                    }
+                    else
+                    {
+                        Trace.Info(data.Data);
+                    }
+                };
+
+                processInvoker.OutputDataReceived += (_, data) =>
+                {
+                    Trace.Verbose(data.Data);
+                };
+
+                var env = new Dictionary<string, string>();
+                env["patterns"] = "**";
+
+
+                int exitCode = await processInvoker.ExecuteAsync(workingDirectory: fileFolder,
+                                              fileName: node,
+                                              arguments: $"\"{hashFilesScript.Replace("\"", "\\\"")}\"",
+                                              environment: env,
+                                              requireExitCodeZero: false,
+                                              cancellationToken: CancellationToken.None);
+
+                if (exitCode != 0)
+                {
+                    Trace.Error($"hashFiles returns '{exitCode}' failed. Fail to hash files under directory '{fileFolder}'");
+                }
+
+                return hashResult;
             }
         }
     }
