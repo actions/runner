@@ -1,18 +1,12 @@
 ﻿using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Listener;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Listener.Configuration;
 using Moq;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using GitHub.Services.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common.Util;
 using System.IO;
-using System.Net.Http;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
@@ -24,6 +18,11 @@ namespace GitHub.Runner.Common.Tests.Listener
         private Mock<IJobDispatcher> _jobDispatcher;
         private AgentRefreshMessage _refreshMessage = new AgentRefreshMessage(1, "2.299.0");
 
+#if !OS_WINDOWS
+        private string _packageUrl = $"https://github.com/actions/runner/releases/download/v2.285.1/actions-runner-{BuildConstants.RunnerPackage.PackageName}-2.285.1.tar.gz";
+#else
+        private string _packageUrl = $"https://github.com/actions/runner/releases/download/v2.285.1/actions-runner-{BuildConstants.RunnerPackage.PackageName}-2.285.1.zip";
+#endif
         public SelfUpdaterL0()
         {
             _runnerServer = new Mock<IRunnerServer>();
@@ -33,9 +32,7 @@ namespace GitHub.Runner.Common.Tests.Listener
             _configStore.Setup(x => x.GetSettings()).Returns(new RunnerSettings() { PoolId = 1, AgentId = 1 });
 
             _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = $"https://github.com/actions/runner/releases/download/v2.285.1/actions-runner-{BuildConstants.RunnerPackage.PackageName}-2.285.1.tar.gz" }));
-
-            // Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_DOWNLOAD_TIMEOUT", "1");
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl }));
         }
 
         [Fact]
@@ -94,7 +91,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 updater.Initialize(hc);
 
                 _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.200.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.200.0"), DownloadUrl = $"https://github.com/actions/runner/releases/download/v2.285.1/actions-runner-{BuildConstants.RunnerPackage.PackageName}-2.285.1.tar.gz" }));
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.200.0"), DownloadUrl = _packageUrl }));
 
                 _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
                              .Callback((int p, int a, string s, string t) =>
@@ -158,7 +155,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                 hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
                 _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = $"https://github.com/actions/runner/releases/download/v2.285.1/actions-runner-{BuildConstants.RunnerPackage.PackageName}-2.285.1.tar.gz", HashValue = "bad_hash" }));
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" }));
 
                 var p = new ProcessInvokerWrapper();
                 p.Initialize(hc);
