@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -630,6 +630,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
         {
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.GitHub),
             new NamedValueInfo<NoOperationNamedValue>(PipelineTemplateConstants.Needs),
+            new NamedValueInfo<NoOperationNamedValue>("inputs"),
         };
 
         private static readonly IFunctionInfo[] s_jobIfConditionFunctions = new IFunctionInfo[]

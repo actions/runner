@@ -13,7 +13,7 @@
           "env": "workflow-env",
           "jobs": "jobs",
           "permissions": "permissions",
-          "concurrency": "concurrency"
+          "concurrency": "workflow-concurrency"
         }
       }
     },
@@ -82,7 +82,7 @@
           "defaults": "job-defaults",
           "environment": "environment",
           "permissions": "permissions",
-          "concurrency": "concurrency",
+          "concurrency": "job-concurrency",
           "steps": {
             "type": "steps",
             "required": true
@@ -305,7 +305,9 @@
           "checks": "non-empty-string",
           "contents": "non-empty-string",
           "deployments": "non-empty-string",
+          "id-token": "non-empty-string",
           "issues": "non-empty-string",
+          "discussions": "non-empty-string",
           "packages": "non-empty-string",
           "pull-requests": "non-empty-string",
           "repository-projects": "non-empty-string",
@@ -315,10 +317,20 @@
       }
     },
 
-    "concurrency": {
+    "workflow-concurrency": {
       "context":[
         "github",
         "inputs"
+      ],
+      "one-of": ["non-empty-string", "concurrency-mapping" ]
+    },
+    "job-concurrency": {
+      "context":[
+        "github",
+        "inputs",
+        "needs",
+        "strategy",
+        "matrix"
       ],
       "one-of": ["non-empty-string", "concurrency-mapping" ]
     },
@@ -326,7 +338,7 @@
       "mapping": {
         "properties": {
           "group": "non-empty-string",
-          "cancel": "boolean"
+          "cancel-in-progress": "boolean"
         }
       }
     },
@@ -685,11 +697,18 @@
     "workflow-on-mapping": {
       "mapping": {
         "properties":{
-          "workflow_call": "workflow_call"
+          "workflow_call": "workflow_call_wrap"
         },
         "loose-key-type": "any",
         "loose-value-type": "any"
       }
+    },
+
+    "workflow_call_wrap": {
+      "one-of":[
+        "null",
+        "workflow_call"
+      ]
     },
 
     "workflow_call": {

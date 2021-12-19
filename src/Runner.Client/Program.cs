@@ -1378,7 +1378,6 @@ namespace Runner.Client
                                                                 Directory.CreateDirectory(Path.GetDirectoryName(destpath));
                                                                 using(var content = await client.GetStreamAsync(file.contentLocation))
                                                                 using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
-                                                                    targetStream.Seek(0, SeekOrigin.Begin);
                                                                     await content.CopyToAsync(targetStream);
                                                                 }
                                                             } catch {
@@ -1412,7 +1411,6 @@ namespace Runner.Client
                                                             logFileUri.Path = $"/runner/server/_apis/v1/Logfiles/{timeLineRecord.Log.Id}";
                                                             using(var content = await client.GetStreamAsync(logFileUri.ToString()))
                                                             using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
-                                                                targetStream.Seek(0, SeekOrigin.Begin);
                                                                 await content.CopyToAsync(targetStream);
                                                             }
                                                         }

@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
+using System.Text.RegularExpressions;
 
 namespace Runner.Server.Controllers
 {
@@ -34,6 +36,33 @@ namespace Runner.Server.Controllers
             l.Sort((a,b) => a.ParentId == null ? -1 : b.ParentId == null ? 1 : a.Order - b.Order ?? 0);
             return await Ok(l, true);
         }
+
+        [HttpPost("{scopeIdentifier}/{hubName}/{planId}/timeline")]
+        public async Task<IActionResult> CreateTimeline() {
+            var timeline = await FromBody<Timeline>();
+            return await Ok(timeline);
+        }
+
+        [HttpGet("{scopeIdentifier}/{hubName}/{planId}/timeline/{timelineid}")]
+        public async Task<IActionResult> GetTimeline(Guid timelineId) {
+            var timeline = new Timeline(timelineId);
+            var l = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
+            l.Sort((a,b) => a.ParentId == null ? -1 : b.ParentId == null ? 1 : a.Order - b.Order ?? 0);
+            timeline.Records.AddRange(l);
+            return await Ok(timeline);
+        }
+
+        [HttpPut("{scopeIdentifier}/{hubName}/{planId}/{timelineId}/attachments/{recordId}/{type}/{name}")]
+        public async Task<IActionResult> PutAttachment(Guid timelineId, Guid recordId, string type, string name) {
+            var _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "diagnosticlogs");
+            Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
+            Directory.CreateDirectory(_targetFilePath);
+            using(var targetStream = new FileStream(Path.Combine(_targetFilePath, special.Replace($"{timelineId}_{recordId}_{type}_{name}.attachment", "-")), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
+                await Request.Body.CopyToAsync(targetStream);
+            }
+            return await Ok(new TaskAttachment(type, name) { RecordId = recordId, TimelineId = timelineId });
+        }
+        
         
         public delegate void TimeLineUpdateDelegate(Guid timelineId, List<TimelineRecord> update);
         public static event TimeLineUpdateDelegate TimeLineUpdate;
