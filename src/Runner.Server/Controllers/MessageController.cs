@@ -1845,10 +1845,10 @@ namespace Runner.Server.Controllers
                                     }
                                     evargs.Outputs = outputs;
                                 }
+                                finished.Cancel();
                                 if(workflowfinish != null) {
                                     workflowfinish.Invoke(evargs);
                                 } else {
-                                    finished.Cancel();
                                     cancelWorkflows.Remove(runid);
                                     workflowevent?.Invoke(evargs);
                                     _context.Dispose();
@@ -1945,11 +1945,11 @@ namespace Runner.Server.Controllers
                             cancelInprogress = (from r in cmapping where r.Key.AssertString("key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean("cancel-in-progress")?.Value ?? cancelInprogress;
                         }
                         Action cancelPendingWorkflow = () => {
+                            finished.Cancel();
                             var evargs = new WorkflowEventArgs { runid = runid, Success = false };
                             if(workflowfinish != null) {
                                 workflowfinish.Invoke(evargs);
                             } else {
-                                finished.Cancel();
                                 cancelWorkflows.Remove(runid);
                                 workflowevent?.Invoke(evargs);
                                 _context.Dispose();
