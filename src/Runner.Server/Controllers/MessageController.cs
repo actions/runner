@@ -300,6 +300,7 @@ namespace Runner.Server.Controllers
 
             public bool Completed { get; set; }
             public bool NoStatusCheck { get; set; }
+            public bool CheckRunStarted { get; set; }
 
             // public List<Task<IEnumerable<AgentJobRequestMessage>>> enum
         }
@@ -1098,17 +1099,25 @@ namespace Runner.Server.Controllers
                                     Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
                                 };
                                 var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                                var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { Actions = Octokit.InstallationPermissionLevel.Write, Checks = Octokit.InstallationPermissionLevel.Write, Contents = Octokit.InstallationPermissionLevel.Write, Deployments = Octokit.InstallationPermissionLevel.Write, Issues = Octokit.InstallationPermissionLevel.Write, Discussions = Octokit.InstallationPermissionLevel.Write, Packages = Octokit.InstallationPermissionLevel.Write, Pull_Requests = Octokit.InstallationPermissionLevel.Write, Repository_Projects = Octokit.InstallationPermissionLevel.Write, Security_Events = Octokit.InstallationPermissionLevel.Write, Statuses = Octokit.InstallationPermissionLevel.Write } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
+                                var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
+                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                                {
+                                    Credentials = new Octokit.Credentials(response.Body.Token)
+                                };
                                 try {
-                                    var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
-                                    {
-                                        Credentials = new Octokit.Credentials(response.Body.Token)
-                                    };
-                                    var repos = await appClient2.GitHubApps.Installation.GetAllRepositoriesForCurrent();
+                                    Octokit.CheckConclusion? conclusion = null;
+                                    if(status == TaskResult.Skipped) {
+                                        conclusion = Octokit.CheckConclusion.Skipped;
+                                    } else if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
+                                        conclusion = Octokit.CheckConclusion.Success;
+                                    } else if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
+                                        conclusion = Octokit.CheckConclusion.Failure;
+                                    }
                                     var checkrun = (await appClient2.Check.Run.GetAllForReference(ownerAndRepo[0], ownerAndRepo[1], statusSha, new Octokit.CheckRunRequest() { CheckName = ctx }, new Octokit.ApiOptions() { PageSize = 1 })).CheckRuns.FirstOrDefault() ?? await appClient2.Check.Run.Create(ownerAndRepo[0], ownerAndRepo[1], new Octokit.NewCheckRun(ctx, statusSha) );
-                                    var result = appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = status == null ? Octokit.CheckStatus.Queued : Octokit.CheckStatus.Completed, Conclusion = Octokit.CheckConclusion.Skipped, Output = new Octokit.NewCheckRunOutput(next.name, "<b>This is not GitHub Actions</b>") });
+                                    var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
+                                    next.CheckRunStarted = true;
                                 } finally {
-                                    await appClient.Connection.Delete(new Uri("installation/token"));
+                                    await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
                                 }
                             } catch {
 
@@ -1257,6 +1266,7 @@ namespace Runner.Server.Controllers
                                         _jobdisplayname = parentJob + " / " + _jobdisplayname;
                                     }
                                     jobrecord.Name = _jobdisplayname;
+                                    jobitem.DisplayName = _jobdisplayname;
                                     new TimelineController(_context).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
                                     templateContext.TraceWriter.Info("{0}", $"Evaluate if");
                                     var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
