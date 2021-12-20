@@ -136,7 +136,16 @@ namespace Runner.Server.Controllers {
             if(string.IsNullOrEmpty(itemPath) || !container.Any(r => r.FileName == itemPath)) {
                 var ret = new List<DownloadInfo>();
                 foreach (var item in container) {
-                    ret.Add(new DownloadInfo { ContainerId = id,  path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = $"{ServerUrl}/_apis/pipelines/workflows/artifact/{id}/{Uri.EscapeDataString(item.FileName)}"});
+                    int i = -1;
+                    while(true) {
+                        i = item.FileName.IndexOfAny(new [] { '/', '\\' }, i + 1);
+                        if(i == -1) {
+                            break;
+                        }
+                        ret.Add(new DownloadInfo { ContainerId = id, path = item.FileName.Substring(0, i), itemType = "folder"});
+                    }
+                    
+                    ret.Add(new DownloadInfo { ContainerId = id, path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = $"{ServerUrl}/_apis/pipelines/workflows/artifact/{id}/{Uri.EscapeDataString(item.FileName)}"});
                 }
                 return await Ok(ret);
             } else {
