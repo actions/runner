@@ -165,7 +165,15 @@ namespace GitHub.Runner.Common.Tests
             switch (directory)
             {
                 case WellKnownDirectory.Bin:
-                    path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                    var overwriteBinDir = Environment.GetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR");
+                    if (Directory.Exists(overwriteBinDir))
+                    {
+                        path = overwriteBinDir;
+                    }
+                    else
+                    {
+                        path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                    }
                     break;
 
                 case WellKnownDirectory.Diag:

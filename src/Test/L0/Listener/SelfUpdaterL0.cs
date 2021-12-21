@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 using System.IO;
+using System.Collections.Generic;
+using System.Reflection;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
@@ -33,6 +35,8 @@ namespace GitHub.Runner.Common.Tests.Listener
 
             _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
                          .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl }));
+
+            Environment.SetEnvironmentVariable("_GITHUB_ACTION_EXECUTE_UPDATE_SCRIPT", "1");
         }
 
         [Fact]
@@ -40,41 +44,53 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync()
         {
-            using (var hc = new TestHostContext(this))
+            try
             {
-                //Arrange
-                var updater = new Runner.Listener.SelfUpdater();
-                hc.SetSingleton<ITerminal>(_term.Object);
-                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
-
-                var p = new ProcessInvokerWrapper();
-                p.Initialize(hc);
-                hc.EnqueueInstance<IProcessInvoker>(p);
-                hc.EnqueueInstance<IProcessInvoker>(p);
-                hc.EnqueueInstance<IProcessInvoker>(p);
-                updater.Initialize(hc);
-
-                _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                             .Callback((int p, int a, string s, string t) =>
-                             {
-                                 hc.GetTrace().Info(t);
-                             })
-                             .Returns(Task.FromResult(new TaskAgent()));
-
-                try
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
                 {
-                    var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
-                    Assert.True(result);
-                    Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
-                    Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdater();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
+
+                    var p1 = new ProcessInvokerWrapper();
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();
+                    p3.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    updater.Initialize(hc);
+
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
+                                 .Callback((int p, int a, string s, string t) =>
+                                 {
+                                     hc.GetTrace().Info(t);
+                                 })
+                                 .Returns(Task.FromResult(new TaskAgent()));
+
+                    try
+                    {
+                        var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
+                        Assert.True(result);
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                    }
+                    finally
+                    {
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                    }
                 }
-                finally
-                {
-                    IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
-                    IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
-                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
             }
         }
 
@@ -83,27 +99,45 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_NoUpdateOnOldVersion()
         {
-            using (var hc = new TestHostContext(this))
+            try
             {
-                //Arrange
-                var updater = new Runner.Listener.SelfUpdater();
-                hc.SetSingleton<ITerminal>(_term.Object);
-                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                updater.Initialize(hc);
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
+                {
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdater();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
 
-                _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.200.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.200.0"), DownloadUrl = _packageUrl }));
+                    var p1 = new ProcessInvokerWrapper();
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();
+                    p3.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    updater.Initialize(hc);
 
-                _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                             .Callback((int p, int a, string s, string t) =>
-                             {
-                                 hc.GetTrace().Info(t);
-                             })
-                             .Returns(Task.FromResult(new TaskAgent()));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.200.0", true, It.IsAny<CancellationToken>()))
+                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.200.0"), DownloadUrl = _packageUrl }));
 
-                var result = await updater.SelfUpdate(new AgentRefreshMessage(1, "2.200.0"), _jobDispatcher.Object, true, hc.RunnerShutdownToken);
-                Assert.False(result);
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
+                                 .Callback((int p, int a, string s, string t) =>
+                                 {
+                                     hc.GetTrace().Info(t);
+                                 })
+                                 .Returns(Task.FromResult(new TaskAgent()));
+
+                    var result = await updater.SelfUpdate(new AgentRefreshMessage(1, "2.200.0"), _jobDispatcher.Object, true, hc.RunnerShutdownToken);
+                    Assert.False(result);
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
             }
         }
 
@@ -112,33 +146,47 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_DownloadRetry()
         {
-            using (var hc = new TestHostContext(this))
+            try
             {
-                //Arrange
-                var updater = new Runner.Listener.SelfUpdater();
-                hc.SetSingleton<ITerminal>(_term.Object);
-                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
+                {
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdater();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
-                _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = $"https://github.com/actions/runner/notexists" }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
+                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = $"https://github.com/actions/runner/notexists" }));
 
-                var p = new ProcessInvokerWrapper();
-                p.Initialize(hc);
-                hc.EnqueueInstance<IProcessInvoker>(p);
-                updater.Initialize(hc);
+                    var p1 = new ProcessInvokerWrapper();
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();
+                    p3.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    updater.Initialize(hc);
 
-                _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                             .Callback((int p, int a, string s, string t) =>
-                             {
-                                 hc.GetTrace().Info(t);
-                             })
-                             .Returns(Task.FromResult(new TaskAgent()));
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
+                                 .Callback((int p, int a, string s, string t) =>
+                                 {
+                                     hc.GetTrace().Info(t);
+                                 })
+                                 .Returns(Task.FromResult(new TaskAgent()));
 
 
-                var ex = await Assert.ThrowsAsync<TaskCanceledException>(() => updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
-                Assert.Contains($"failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts", ex.Message);
+                    var ex = await Assert.ThrowsAsync<TaskCanceledException>(() => updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
+                    Assert.Contains($"failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts", ex.Message);
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
             }
         }
 
@@ -147,33 +195,174 @@ namespace GitHub.Runner.Common.Tests.Listener
         [Trait("Category", "Runner")]
         public async void TestSelfUpdateAsync_ValidateHash()
         {
-            using (var hc = new TestHostContext(this))
+            try
             {
-                //Arrange
-                var updater = new Runner.Listener.SelfUpdater();
-                hc.SetSingleton<ITerminal>(_term.Object);
-                hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
-                hc.SetSingleton<IConfigurationStore>(_configStore.Object);
-                hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
+                {
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdater();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
 
-                _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" }));
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
+                             .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, HashValue = "bad_hash" }));
 
-                var p = new ProcessInvokerWrapper();
-                p.Initialize(hc);
-                hc.EnqueueInstance<IProcessInvoker>(p);
-                updater.Initialize(hc);
+                    var p1 = new ProcessInvokerWrapper();
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();
+                    p3.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    updater.Initialize(hc);
 
-                _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
-                             .Callback((int p, int a, string s, string t) =>
-                             {
-                                 hc.GetTrace().Info(t);
-                             })
-                             .Returns(Task.FromResult(new TaskAgent()));
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
+                                 .Callback((int p, int a, string s, string t) =>
+                                 {
+                                     hc.GetTrace().Info(t);
+                                 })
+                                 .Returns(Task.FromResult(new TaskAgent()));
 
 
-                var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
-                Assert.Contains("did not match expected Runner Hash", ex.Message);
+                    var ex = await Assert.ThrowsAsync<Exception>(() => updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken));
+                    Assert.Contains("did not match expected Runner Hash", ex.Message);
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void TestSelfUpdateAsync_CloneHash_RuntimeAndExternals()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
+                {
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdater();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
+
+                    var p1 = new ProcessInvokerWrapper();
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();
+                    p3.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    updater.Initialize(hc);
+
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = new List<TrimmedPackageMetadata>() { new TrimmedPackageMetadata() } }));
+
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
+                                 .Callback((int p, int a, string s, string t) =>
+                                 {
+                                     hc.GetTrace().Info(t);
+                                 })
+                                 .Returns(Task.FromResult(new TaskAgent()));
+
+                    try
+                    {
+                        var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
+                        Assert.True(result);
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+
+                        FieldInfo contentHashesProperty = updater.GetType().GetField("_contentHashes", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                        Assert.NotNull(contentHashesProperty);
+                        Dictionary<string, string> contentHashes = (Dictionary<string, string>)contentHashesProperty.GetValue(updater);
+                        hc.GetTrace().Info(StringUtil.ConvertToJson(contentHashes));
+
+                        var dotnetRuntimeHashFile = Path.Combine(TestUtil.GetSrcPath(), $"Misc/contentHash/dotnetRuntime/{BuildConstants.RunnerPackage.PackageName}");
+                        var externalsHashFile = Path.Combine(TestUtil.GetSrcPath(), $"Misc/contentHash/externals/{BuildConstants.RunnerPackage.PackageName}");
+
+                        Assert.Equal(File.ReadAllText(dotnetRuntimeHashFile).Trim(), contentHashes["dotnetRuntime"]);
+                        Assert.Equal(File.ReadAllText(externalsHashFile).Trim(), contentHashes["externals"]);
+                    }
+                    finally
+                    {
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                    }
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void TestSelfUpdateAsync_Cancel_CloneHashTask_WhenNotNeeded()
+        {
+            try
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
+                {
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdater();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    hc.SetSingleton<IHttpClientHandlerFactory>(new Mock<IHttpClientHandlerFactory>().Object);
+
+                    var p1 = new ProcessInvokerWrapper();
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();
+                    p3.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    updater.Initialize(hc);
+
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
+                                 .Callback((int p, int a, string s, string t) =>
+                                 {
+                                     hc.GetTrace().Info(t);
+                                 })
+                                 .Returns(Task.FromResult(new TaskAgent()));
+
+                    try
+                    {
+                        var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
+
+                        FieldInfo contentHashesProperty = updater.GetType().GetField("_contentHashes", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                        Assert.NotNull(contentHashesProperty);
+                        Dictionary<string, string> contentHashes = (Dictionary<string, string>)contentHashesProperty.GetValue(updater);
+                        hc.GetTrace().Info(StringUtil.ConvertToJson(contentHashes));
+
+                        Assert.NotEqual(2, contentHashes.Count);
+                    }
+                    catch(Exception ex)
+                    {
+                        hc.GetTrace().Error(ex);
+                    }
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
             }
         }
     }

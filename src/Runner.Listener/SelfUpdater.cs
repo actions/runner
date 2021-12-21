@@ -31,11 +31,7 @@ namespace GitHub.Runner.Listener
         private static string _platform = BuildConstants.RunnerPackage.PackageName;
         private static string _dotnetRuntime = "dotnetRuntime";
         private static string _externals = "externals";
-        private readonly Dictionary<string, string> _contentHashes = new Dictionary<string, string>()
-        {
-            {_dotnetRuntime, ""},
-            {_externals, ""}
-        };
+        private readonly Dictionary<string, string> _contentHashes = new Dictionary<string, string>();
 
         private PackageMetadata _targetPackage;
         private ITerminal _terminal;
@@ -74,7 +70,8 @@ namespace GitHub.Runner.Listener
                 // So we can re-use them with trimmed runner package, if possible.
                 // This process is best effort, if we can't use trimmed runner package, 
                 // we will just go with the full package.
-                _cloneAndCalculateContentHashTask = CloneAndCalculateAssetsHash(_dotnetRuntimeCloneDirectory, _externalsCloneDirectory);
+                var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
+                _cloneAndCalculateContentHashTask = CloneAndCalculateAssetsHash(_dotnetRuntimeCloneDirectory, _externalsCloneDirectory, linkedTokenSource.Token);
 
                 if (!await UpdateNeeded(updateMessage.TargetVersion, token))
                 {
@@ -84,14 +81,29 @@ namespace GitHub.Runner.Listener
 
                 Trace.Info($"An update is available.");
                 _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
-                _updateTrace.Enqueue($"DotnetRuntimeHash: {_contentHashes[_dotnetRuntime]}");
-                _updateTrace.Enqueue($"ExternalsHash: {_contentHashes[_externals]}");
 
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
                 await UpdateRunnerUpdateStateAsync($"Downloading {_targetPackage.Version} runner");
 
-                await _cloneAndCalculateContentHashTask;
+                if (_targetPackage.TrimmedPackages?.Count > 0)
+                {
+                    // wait for cloning assets task to finish only if we have trimmed packages
+                    await _cloneAndCalculateContentHashTask;
+                }
+                else
+                {
+                    linkedTokenSource.Cancel();
+                    try
+                    {
+                        await _cloneAndCalculateContentHashTask;
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Info($"Ingore errors after cancelling cloning assets task: {ex}");
+                    }
+                }
+
                 await DownloadLatestRunner(token);
                 Trace.Info($"Download latest runner and unzip into runner root.");
 
@@ -114,17 +126,22 @@ namespace GitHub.Runner.Listener
                 string updateScript = GenerateUpdateScript(restartInteractiveRunner);
                 Trace.Info($"Generate update script into: {updateScript}");
 
-                // kick off update script
-                Process invokeScript = new Process();
+
+                // For L0, we will skip execute update script.
+                if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("_GITHUB_ACTION_EXECUTE_UPDATE_SCRIPT")))
+                {
+                    // kick off update script
+                    Process invokeScript = new Process();
 #if OS_WINDOWS
-            invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
-            invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
+                    invokeScript.StartInfo.FileName = WhichUtil.Which("cmd.exe", trace: Trace);
+                    invokeScript.StartInfo.Arguments = $"/c \"{updateScript}\"";
 #elif (OS_OSX || OS_LINUX)
-                invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
-                invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
+                    invokeScript.StartInfo.FileName = WhichUtil.Which("bash", trace: Trace);
+                    invokeScript.StartInfo.Arguments = $"\"{updateScript}\"";
 #endif
-                invokeScript.Start();
-                Trace.Info($"Update script start running");
+                    invokeScript.Start();
+                    Trace.Info($"Update script start running");
+                }
 
                 totalUpdateTime.Stop();
 
@@ -200,10 +217,16 @@ namespace GitHub.Runner.Listener
             var packageHashValue = _targetPackage.HashValue;
             var runtimeTrimmed = false;
             var externalsTrimmed = false;
+            var fallbackToFullPackage = false;
 
-            if (_contentHashes.Count > 0 && _targetPackage.TrimmedPackages?.Count > 0)
+            // Only try trimmed package if sever sends them and we have calculated hash value of the current runtime/externals.
+            if (_contentHashes.Count == 2 &&
+                _contentHashes.ContainsKey(_dotnetRuntime) &&
+                _contentHashes.ContainsKey(_externals) &&
+                _targetPackage.TrimmedPackages?.Count > 0)
             {
-                Trace.Info($"Trimmed packages info: {JsonUtility.ToString(_targetPackage.TrimmedPackages)}");
+                Trace.Info($"Current runner content hash: {JsonUtility.ToString(_contentHashes)}");
+                Trace.Info($"Trimmed packages info from service: {JsonUtility.ToString(_targetPackage.TrimmedPackages)}");
                 // Try to see whether we can use any size trimmed down package to speed up runner updates.
                 foreach (var trimmedPackage in _targetPackage.TrimmedPackages)
                 {
@@ -254,6 +277,12 @@ namespace GitHub.Runner.Listener
 
                 await ExtractRunnerPackage(archiveFile, latestRunnerDirectory, token);
             }
+            catch (Exception ex) when (runtimeTrimmed || externalsTrimmed)
+            {
+                // if anything failed when we use trimmed package (download/validatehase/extract), try again with the full runner package.
+                Trace.Error($"Fail to download latest runner using trimmed package: {ex}");
+                fallbackToFullPackage = true;
+            }
             finally
             {
                 try
@@ -282,8 +311,17 @@ namespace GitHub.Runner.Listener
                 trimmedPackageRestoreTasks.Add(RestoreTrimmedDotnetRuntime(latestRunnerDirectory, token));
             }
 
-            var restoreResults = await Task.WhenAll(trimmedPackageRestoreTasks);
-            if (restoreResults.Any(x => x == false))
+            if (trimmedPackageRestoreTasks.Count > 0)
+            {
+                var restoreResults = await Task.WhenAll(trimmedPackageRestoreTasks);
+                if (restoreResults.Any(x => x == false))
+                {
+                    // if any of the restore failed, fallback to full package.
+                    fallbackToFullPackage = true;
+                }
+            }
+
+            if (fallbackToFullPackage)
             {
                 Trace.Error("Something wrong with the trimmed runner package, failback to use the full package for runner updates.");
 
@@ -813,67 +851,77 @@ namespace GitHub.Runner.Listener
             }
         }
 
-        private async Task CloneAndCalculateAssetsHash(string dotnetRuntimeCloneDirectory, string externalsCloneDirectory)
+        private async Task CloneAndCalculateAssetsHash(string dotnetRuntimeCloneDirectory, string externalsCloneDirectory, CancellationToken token)
         {
-            var runtimeCloneTask = CloneDotnetRuntime(dotnetRuntimeCloneDirectory);
-            var externalsCloneTask = CloneExternals(externalsCloneDirectory);
+            var runtimeCloneTask = CloneDotnetRuntime(dotnetRuntimeCloneDirectory, token);
+            var externalsCloneTask = CloneExternals(externalsCloneDirectory, token);
 
-            var waitingTasks = new List<Task>()
+            var waitingTasks = new Dictionary<string, Task>()
             {
-                runtimeCloneTask,
-                externalsCloneTask
+                {nameof(CloneDotnetRuntime), runtimeCloneTask},
+                {nameof(CloneExternals),externalsCloneTask}
             };
 
             while (waitingTasks.Count > 0)
             {
-                var completedTask = await Task.WhenAny(waitingTasks);
-                if (completedTask == runtimeCloneTask)
+                Trace.Info($"Waiting for {waitingTasks.Count} tasks to complete.");
+                var complatedTask = await Task.WhenAny(waitingTasks.Values);
+                if (waitingTasks.ContainsKey(nameof(CloneExternals)) &&
+                    complatedTask == waitingTasks[nameof(CloneExternals)])
                 {
+                    Trace.Info($"Externals clone finished.");
+                    waitingTasks.Remove(nameof(CloneExternals));
                     try
                     {
-                        if (await runtimeCloneTask)
+                        if (await externalsCloneTask && !token.IsCancellationRequested)
                         {
-                            var runtimeHash = await HashFiles(dotnetRuntimeCloneDirectory);
-                            Trace.Info($"Runtime content hash: {runtimeHash}");
-                            _contentHashes[_dotnetRuntime] = runtimeHash;
-                        }
-                        else
-                        {
-                            Trace.Error($"Skip compute hash since clone dotnet runtime failed.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Trace.Error($"Fail to hash runtime content: {ex.Message}");
-                    }
-                }
-                else if (completedTask == externalsCloneTask)
-                {
-                    try
-                    {
-                        if (await externalsCloneTask)
-                        {
-                            var externalsHash = await HashFiles(externalsCloneDirectory);
+                            var externalsHash = await HashFiles(externalsCloneDirectory, token);
                             Trace.Info($"Externals content hash: {externalsHash}");
                             _contentHashes[_externals] = externalsHash;
+                            _updateTrace.Enqueue($"ExternalsHash: {_contentHashes[_externals]}");
                         }
                         else
                         {
-                            Trace.Error($"Skip compute hash since clone externals failed.");
+                            Trace.Error($"Skip compute hash since clone externals failed/cancelled.");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Trace.Error($"Fail to hash externals content: {ex.Message}");
+                        Trace.Error($"Fail to hash externals content: {ex}");
+                    }
+                }
+                else if (waitingTasks.ContainsKey(nameof(CloneDotnetRuntime)) &&
+                         complatedTask == waitingTasks[nameof(CloneDotnetRuntime)])
+                {
+                    Trace.Info($"Dotnet runtime clone finished.");
+                    waitingTasks.Remove(nameof(CloneDotnetRuntime));
+                    try
+                    {
+                        if (await runtimeCloneTask && !token.IsCancellationRequested)
+                        {
+                            var runtimeHash = await HashFiles(dotnetRuntimeCloneDirectory, token);
+                            Trace.Info($"Runtime content hash: {runtimeHash}");
+                            _contentHashes[_dotnetRuntime] = runtimeHash;
+                            _updateTrace.Enqueue($"DotnetRuntimeHash: {_contentHashes[_dotnetRuntime]}");
+                        }
+                        else
+                        {
+                            Trace.Error($"Skip compute hash since clone dotnet runtime failed/cancelled.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Trace.Error($"Fail to hash runtime content: {ex}");
                     }
                 }
 
-                waitingTasks.Remove(completedTask);
+                Trace.Info($"Still waiting for {waitingTasks.Count} tasks to complete.");
             }
         }
 
-        private async Task<bool> CloneDotnetRuntime(string runtimeDir)
+        private async Task<bool> CloneDotnetRuntime(string runtimeDir, CancellationToken token)
         {
+            var stopWatch = Stopwatch.StartNew();
             try
             {
                 Trace.Info($"Cloning dotnet runtime to {runtimeDir}");
@@ -892,11 +940,12 @@ namespace GitHub.Runner.Listener
                 if (runnerCoreAssets.Length > 0)
                 {
                     var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
-                    IOUtil.CopyDirectory(binDir, runtimeDir, CancellationToken.None);
+                    IOUtil.CopyDirectory(binDir, runtimeDir, token);
 
                     var clonedFile = 0;
                     foreach (var file in Directory.EnumerateFiles(runtimeDir, "*", SearchOption.AllDirectories))
                     {
+                        token.ThrowIfCancellationRequested();
                         if (runnerCoreAssets.Any(x => file.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).EndsWith(x.Trim())))
                         {
                             Trace.Verbose($"{file} is part of the runner core, delete from cloned runtime directory.");
@@ -917,18 +966,24 @@ namespace GitHub.Runner.Listener
                 Trace.Error($"Fail to clone dotnet runtime to {runtimeDir}");
                 Trace.Error(ex);
             }
+            finally
+            {
+                stopWatch.Stop();
+                _updateTrace.Enqueue($"{nameof(CloneDotnetRuntime)}Time: {stopWatch.ElapsedMilliseconds}ms");
+            }
 
             return false;
         }
 
-        private Task<bool> CloneExternals(string externalsDir)
+        private Task<bool> CloneExternals(string externalsDir, CancellationToken token)
         {
+            var stopWatch = Stopwatch.StartNew();
             try
             {
                 Trace.Info($"Cloning externals to {externalsDir}");
                 IOUtil.DeleteDirectory(externalsDir, CancellationToken.None);
                 Directory.CreateDirectory(externalsDir);
-                IOUtil.CopyDirectory(HostContext.GetDirectory(WellKnownDirectory.Externals), externalsDir, CancellationToken.None);
+                IOUtil.CopyDirectory(HostContext.GetDirectory(WellKnownDirectory.Externals), externalsDir, token);
                 Trace.Info($"Successfully cloned externals to {externalsDir}.");
                 return Task.FromResult(true);
             }
@@ -936,12 +991,21 @@ namespace GitHub.Runner.Listener
             {
                 Trace.Error($"Fail to clone externals to {externalsDir}");
                 Trace.Error(ex);
-                return Task.FromResult(false);
             }
+            finally
+            {
+                stopWatch.Stop();
+                _updateTrace.Enqueue($"{nameof(CloneExternals)}Time: {stopWatch.ElapsedMilliseconds}ms");
+            }
+
+            return Task.FromResult(false);
         }
 
-        private async Task<string> HashFiles(string fileFolder)
+        private async Task<string> HashFiles(string fileFolder, CancellationToken token)
         {
+            Trace.Info($"Calculating hash for {fileFolder}");
+
+            var stopWatch = Stopwatch.StartNew();
             string binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
             string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
             string hashFilesScript = Path.Combine(binDir, "hashFiles");
@@ -967,22 +1031,25 @@ namespace GitHub.Runner.Listener
                     Trace.Verbose(data.Data);
                 };
 
-                var env = new Dictionary<string, string>();
-                env["patterns"] = "**";
-
+                var env = new Dictionary<string, string>
+                {
+                    ["patterns"] = "**"
+                };
 
                 int exitCode = await processInvoker.ExecuteAsync(workingDirectory: fileFolder,
                                               fileName: node,
                                               arguments: $"\"{hashFilesScript.Replace("\"", "\\\"")}\"",
                                               environment: env,
                                               requireExitCodeZero: false,
-                                              cancellationToken: CancellationToken.None);
+                                              cancellationToken: token);
 
                 if (exitCode != 0)
                 {
                     Trace.Error($"hashFiles returns '{exitCode}' failed. Fail to hash files under directory '{fileFolder}'");
                 }
 
+                stopWatch.Stop();
+                _updateTrace.Enqueue($"{nameof(HashFiles)}{Path.GetFileName(fileFolder)}Time: {stopWatch.ElapsedMilliseconds}ms");
                 return hashResult;
             }
         }
