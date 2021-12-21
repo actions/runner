@@ -727,9 +727,25 @@ namespace Runner.Client
                                 new AnonymousPipeServerStream(PipeDirection.In,
                                 HandleInheritability.Inheritable))
                             {
-                                var servertask = invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, token).ContinueWith(x => {
-                                    Console.WriteLine("Stopped Server");
-                                    File.Delete(serverconfigfileName);
+                                var servertask = Task.Run(async () => {
+                                    using (AnonymousPipeServerStream shutdownPipe =
+                                        new AnonymousPipeServerStream(PipeDirection.Out,
+                                        HandleInheritability.Inheritable)) {
+                                        Task.Run(async () => {
+                                            try {
+                                                await Task.Delay(-1, token);
+                                            } catch {
+
+                                            }
+                                            using (StreamWriter sr = new StreamWriter(shutdownPipe))
+                                            {
+                                                sr.WriteLine("shutdown");
+                                            }
+                                        });
+                                        var x = await invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, CancellationToken.None);
+                                        Console.WriteLine("Stopped Server");
+                                        File.Delete(serverconfigfileName);
+                                    }
                                 });
                                 listener.Add(servertask);
                                 var serveriptask = Task.Run(() => {
@@ -1359,13 +1375,20 @@ namespace Runner.Client
                                         }
                                     }
                                 } finally {
-                                    if(parameters.ArtifactOutputDir?.Length > 0) {
+                                    if(!string.IsNullOrEmpty(parameters.ArtifactOutputDir) || !(Console.IsInputRedirected || Console.IsOutputRedirected)) {
                                         var runIds = (from j in jobs select j.runid).ToHashSet();
                                         foreach(var runId in runIds) {
                                             try {
                                                 var artifactUri = new UriBuilder(parameters.server);
                                                 artifactUri.Path = $"/runner/server/_apis/pipelines/workflows/{runId}/artifacts";
                                                 var artifacts = JsonConvert.DeserializeObject<VssJsonCollectionWrapper<ArtifactResponse[]>>(await client.GetStringAsync(artifactUri.ToString()));
+                                                if(artifacts.Count > 0 && string.IsNullOrEmpty(parameters.ArtifactOutputDir)) {
+                                                    await Console.Out.WriteAsync($"Where do you want to store your generated Workflow Artifacts? ( Leave empty to discard them ): ");
+                                                    parameters.ArtifactOutputDir = await Console.In.ReadLineAsync();
+                                                    if(string.IsNullOrEmpty(parameters.ArtifactOutputDir)) {
+                                                        break;
+                                                    }
+                                                }
                                                 foreach(var artifact in artifacts.Value) {
                                                     try {
                                                         var artfactBasePath = Path.Combine(parameters.ArtifactOutputDir, runId.ToString(), artifact.name);
@@ -1445,7 +1468,13 @@ namespace Runner.Client
                     }
                 } finally {
                     source.Cancel();
-                    await Task.WhenAll(listener);
+                    foreach(var l in listener.ToArray()) {
+                        try {
+                            await l;
+                        } catch {
+
+                        }
+                    }
                 }
                 return 0;
             };

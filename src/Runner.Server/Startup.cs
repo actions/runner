@@ -29,6 +29,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Runner.Server
 {
@@ -43,6 +44,30 @@ namespace Runner.Server
 
         public IConfiguration Configuration { get; }
         readonly string MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+
+        private class CleanUpArtifactsAndCache : IHostedService
+        {
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken)
+            {
+                var b = new DbContextOptionsBuilder<SqLiteDb>();
+                b.UseInMemoryDatabase("Agents");
+                var artifactspath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
+                var cachepath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
+                var db = new SqLiteDb(b.Options);
+                foreach(var rec in db.ArtifactRecords) {
+                    File.Delete(Path.Combine(artifactspath, rec.StoreName));
+                }
+                foreach(var cache in db.Caches) {
+                    File.Delete(Path.Combine(artifactspath, cache.Storage));
+                }
+                return Task.CompletedTask;
+            }
+        }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -76,6 +101,9 @@ namespace Runner.Server
 
             });
             var sqlitecon = Configuration.GetConnectionString("sqlite");
+            if(string.IsNullOrEmpty(sqlitecon)) {
+                services.AddHostedService<CleanUpArtifactsAndCache>();
+            }
             Action<DbContextOptionsBuilder> optionsAction = conf => {
                 if(sqlitecon?.Length > 0) {
                     conf.UseSqlite(sqlitecon);
@@ -190,18 +218,25 @@ namespace Runner.Server
             if(pipe != null) {
                 lifetime.ApplicationStarted.Register(() => {
                     var addr = app.ServerFeatures.Get<IServerAddressesFeature>().Addresses.First();
-                    using (PipeStream pipeClient = new AnonymousPipeClientStream(PipeDirection.Out, pipe))
-                    {
-                        Console.WriteLine("[CLIENT] Current TransmissionMode: {0}.", pipeClient.TransmissionMode);
-
+                    using (PipeStream pipeClient = new AnonymousPipeClientStream(PipeDirection.Out, pipe)) {
                         using (StreamWriter sr = new StreamWriter(pipeClient))
                         {
                             sr.WriteLine(addr);
-                            // pipeClient.WaitForPipeDrain();
                         }
                     }
                 });
             }
+            var shutdownPipe = Environment.GetEnvironmentVariable("RUNNER_CLIENT_PIPE_IN");
+            Task.Run(() => {
+                using (PipeStream pipeClient = new AnonymousPipeClientStream(PipeDirection.In, shutdownPipe)) {
+                    using (StreamReader rd = new StreamReader(pipeClient)) {
+                        var line = rd.ReadLine();
+                        if(line == "shutdown") {
+                            lifetime.StopApplication();
+                        }
+                    }
+                }
+            });
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

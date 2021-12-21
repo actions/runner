@@ -609,6 +609,43 @@ namespace Runner.Server.Controllers
             }
         }
 
+        private async Task<string> CreateGithubAppToken(string repository_name) {
+            if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
+                try {
+                    var ownerAndRepo = repository_name.Split("/", 2);
+                    // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
+                    var generator = new GitHubJwt.GitHubJwtFactory(
+                        new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
+                        new GitHubJwt.GitHubJwtFactoryOptions
+                        {
+                            AppIntegrationId = GitHubAppId, // The GitHub App Id
+                            ExpirationSeconds = 600 // 10 minutes is the maximum time allowed
+                        }
+                    );
+                    var jwtToken = generator.CreateEncodedJwtToken();
+                    // Pass the JWT as a Bearer token to Octokit.net
+                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                    {
+                        Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
+                    };
+                    var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
+                    var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
+                    return response.Body.Token;
+                } catch {
+
+                }
+            }
+            return null;
+        }
+
+        private async Task DeleteGithubAppToken(string token) {
+            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+            {
+                Credentials = new Octokit.Credentials(token)
+            };
+            await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
+        }
+
         private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentJob = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null, KeyValuePair<string, string>[] workflows = null, string parentworkflowname= null, WorkflowRunAttempt attempt = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, CancellationToken? parentToken = null) {
             if(attempt.TimeLineId == Guid.Empty) {
                 attempt.TimeLineId = Guid.NewGuid();
@@ -767,14 +804,14 @@ namespace Runner.Server.Controllers
                                 List<string> allowed = new List<string>();
                                 allowed.Add("types");
 
-                                if(e == "push" || e == "pull_request" || e == "workflow_run") {
+                                if(e == "push" || e == "pull_request" || e == "pull_request_target" || e == "workflow_run") {
                                     allowed.Add("branches");
                                     allowed.Add("branches-ignore");
                                 }
                                 if(e == "workflow_run") {
                                     allowed.Add("workflows");
                                 }
-                                if(e == "push" || e == "pull_request") {
+                                if(e == "push" || e == "pull_request" || e == "pull_request_target") {
                                     allowed.Add("tags");
                                     allowed.Add("tags-ignore");
                                     allowed.Add("paths");
@@ -947,10 +984,17 @@ namespace Runner.Server.Controllers
                                 }
 
                                 
-                                if(types != null && hook?.Action != null) {
-                                    if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString("type").Value + "'")}" }), attempt.TimeLineId, attempt.TimeLineId);
-                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                if(hook?.Action != null) {
+                                    if(types != null) {
+                                        if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString("type").Value + "'")}" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
+                                    } else if(e == "pull_request" || e == "pull_request_target"){
+                                        if((new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                                        }
                                     }
                                 }
 
@@ -1049,9 +1093,9 @@ namespace Runner.Server.Controllers
                     githubctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
                     return contextData;
                 };
-                var eventsWithStatusChecks = new string[] { "push", "create", "pull_request", "pull_request_target" };
                 Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
-                    if(!string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && eventsWithStatusChecks.Contains(parentEvent ?? event_name) && !localcheckout) {
+                    var effective_event = parentEvent ?? event_name;
+                    if(!string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
                         var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, parentEvent ?? event_name);
                         var targetUrl = "";
                         if(!string.IsNullOrEmpty(ServerUrl)) {
@@ -1068,6 +1112,9 @@ namespace Runner.Server.Controllers
                                 }
                                 if(status == TaskResult.Skipped) {
                                     jobstatus = JobStatus.Pending;
+                                }
+                                if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
+                                    jobstatus = JobStatus.Failure;
                                 }
                                 var client = new HttpClient();
                                 client.DefaultRequestHeaders.Add("accept", "application/json");
@@ -2172,28 +2219,40 @@ namespace Runner.Server.Controllers
                         var client = new HttpClient();
                         client.DefaultRequestHeaders.Add("accept", "application/json");
                         client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                            client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                        }
-                        var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
-                        url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
-                        var res = await client.GetAsync(url.ToString());
-                        if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                            var content = await res.Content.ReadAsStringAsync();
-                            var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
-                            {
-                                try {
-                                    var fileRes = await client.GetAsync(item.download_url);
-                                    var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                    workflow_call(item.path, filecontent);
-                                } catch (Exception ex) {
-                                    failedtoInstantiateWorkflow(false, ex.Message);
-                                    await Console.Error.WriteLineAsync(ex.Message);
-                                    await Console.Error.WriteLineAsync(ex.StackTrace);
+                        string githubAppToken = null;
+                        try {
+                            if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                            } else {
+                                githubAppToken = await CreateGithubAppToken(repo);
+                                if(githubAppToken != null) {
+                                    client.DefaultRequestHeaders.Add("Authorization", $"token {githubAppToken}");
                                 }
                             }
-                        } else {
-                            failedtoInstantiateWorkflow(false, $"No such callable workflow: {uses.Value}");
+                            var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
+                            url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
+                            var res = await client.GetAsync(url.ToString());
+                            if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                                var content = await res.Content.ReadAsStringAsync();
+                                var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
+                                {
+                                    try {
+                                        var fileRes = await client.GetAsync(item.download_url);
+                                        var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                        workflow_call(item.path, filecontent);
+                                    } catch (Exception ex) {
+                                        failedtoInstantiateWorkflow(false, ex.Message);
+                                        await Console.Error.WriteLineAsync(ex.Message);
+                                        await Console.Error.WriteLineAsync(ex.StackTrace);
+                                    }
+                                }
+                            } else {
+                                failedtoInstantiateWorkflow(false, $"No such callable workflow: {uses.Value}");
+                            }
+                        } finally {
+                            if(githubAppToken != null) {
+                                await DeleteGithubAppToken(githubAppToken);
+                            }
                         }
                     }
                 }))().Wait();
@@ -2863,7 +2922,11 @@ namespace Runner.Server.Controllers
                 e = ev.First();
             }
             var hook = obj.Key;
+            string githubAppToken = null;
             try {
+                if(GITHUB_TOKEN == null) {
+                    githubAppToken = await CreateGithubAppToken(hook.repository.full_name);
+                }
                 Dictionary<string, string> evs = new Dictionary<string, string>();
                 if(e == "pull_request") {
                     evs.Add("pull_request_target", hook?.pull_request?.Base?.Sha);
@@ -2882,8 +2945,8 @@ namespace Runner.Server.Controllers
                     var client = new HttpClient();
                     client.DefaultRequestHeaders.Add("accept", "application/json");
                     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                    if(!string.IsNullOrEmpty(GITHUB_TOKEN ?? githubAppToken)) {
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN ?? githubAppToken}");
                     }
                     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/commits"));
                     urlBuilder.Query = $"?page=1&limit=1";
@@ -2899,8 +2962,8 @@ namespace Runner.Server.Controllers
                     var client = new HttpClient();
                     client.DefaultRequestHeaders.Add("accept", "application/json");
                     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                    if(!string.IsNullOrEmpty(GITHUB_TOKEN ?? githubAppToken)) {
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN ?? githubAppToken}");
                     }
                     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/contents/.github%2Fworkflows"));
                     urlBuilder.Query = $"?ref={Uri.EscapeDataString(em.Value)}";
@@ -2958,6 +3021,10 @@ namespace Runner.Server.Controllers
             } catch (Exception ex) {
                 await Console.Error.WriteLineAsync(ex.Message);
                 await Console.Error.WriteLineAsync(ex.StackTrace);
+            } finally {
+                if(githubAppToken != null) {
+                    await DeleteGithubAppToken(githubAppToken);
+                }
             }
             return Ok();
         }
