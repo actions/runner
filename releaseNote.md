@@ -1,15 +1,21 @@
 ## Features
 
-- n/a
+- Bump runtime to dotnet 6 (#1471)
+- Show service container logs on teardown (#1563)
 
 ## Bugs
 
-- Revert node12 version due to fs.copyFileSync hang #1537
+- Add masks for multiline secrets from ::add-mask:: (#1521)
+- fix Log size and retention settings not work (#1507)
+- Refactor SelfUpdater adding L0 tests. (#1564)
+- Fix test failure: /bin/sleep on Macos 11 (Monterey) does not accept the suffix s. (#1472)
 
 
 ## Misc
 
-- n/a
+- Update dependency check for dotnet 6. (#1551)
+- Produce trimmed down runner packages. (#1556)
+- Deleted extra background in github-praph.png, which is displayed in README.md (#1432)
 
 
 ## Windows x64
