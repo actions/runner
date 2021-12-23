@@ -107,7 +107,11 @@ namespace Runner.Server.Controllers
         {
             Session session;
             if(_cache.TryGetValue(sessionId, out session) && session.TaskAgentSession.SessionId == sessionId) {
+                session.MessageLock.Wait(50000);
+                session.Timer.Stop();
+                session.Timer.Start();
                 session.DropMessage = null;
+                session.MessageLock.Release();
                 return Ok();
             } else {
                 return NotFound();
@@ -1113,7 +1117,7 @@ namespace Runner.Server.Controllers
                                 if(status == TaskResult.Skipped) {
                                     jobstatus = JobStatus.Pending;
                                 }
-                                if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
+                                if(status == TaskResult.Failed || status == TaskResult.Abandoned || status == TaskResult.Canceled) {
                                     jobstatus = JobStatus.Failure;
                                 }
                                 var client = new HttpClient();
@@ -1159,6 +1163,8 @@ namespace Runner.Server.Controllers
                                         conclusion = Octokit.CheckConclusion.Success;
                                     } else if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
                                         conclusion = Octokit.CheckConclusion.Failure;
+                                    } else if(status == TaskResult.Canceled) {
+                                        conclusion = Octokit.CheckConclusion.Cancelled;
                                     }
                                     var checkrun = (await appClient2.Check.Run.GetAllForReference(ownerAndRepo[0], ownerAndRepo[1], statusSha, new Octokit.CheckRunRequest() { CheckName = ctx }, new Octokit.ApiOptions() { PageSize = 1 })).CheckRuns.FirstOrDefault() ?? await appClient2.Check.Run.Create(ownerAndRepo[0], ownerAndRepo[1], new Octokit.NewCheckRun(ctx, statusSha) );
                                     var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
@@ -1172,6 +1178,59 @@ namespace Runner.Server.Controllers
                             
                         }
                     }
+                };
+                Action<DictionaryContextData, JobItem, JobCompletedEvent> updateNeedsCtx = (needsctx, job, e) => {
+                    NeedsTaskResult? oldstatus = null;
+                    PipelineContextData oldjobctx;
+                    IDictionary<string, VariableValue> dependentOutputs = e.Outputs != null ? new Dictionary<string, VariableValue>(e.Outputs) : new Dictionary<string, VariableValue>();
+                    if(needsctx.TryGetValue(job.name, out oldjobctx) && oldjobctx is DictionaryContextData _ctx) {
+                        if(_ctx.ContainsKey("result") && _ctx["result"] is StringContextData res) {
+                            oldstatus = Enum.Parse<NeedsTaskResult>(res, true);
+                        }
+                        // Parity: empty job outputs doesn't override non empty outputs of matrix jobs
+                        if(_ctx.ContainsKey("outputs") && _ctx["outputs"] is DictionaryContextData outputs) {
+                            foreach(var output in outputs) {
+                                if(!dependentOutputs.TryGetValue(output.Key, out var val) || string.IsNullOrEmpty(val?.Value)) {
+                                    dependentOutputs[output.Key] = new VariableValue(output.Value.AssertString("").Value, false);
+                                }
+                            }
+                        }
+                    }
+                    DictionaryContextData jobctx = new DictionaryContextData();
+                    needsctx[job.name] = jobctx;
+                    var outputsctx = new DictionaryContextData();
+                    jobctx["outputs"] = outputsctx;
+                    foreach (var item in dependentOutputs) {
+                        outputsctx.Add(item.Key, new StringContextData(item.Value.Value));
+                    }
+                    NeedsTaskResult result = NeedsTaskResult.Failure;
+                    job.Status = e.Result;
+                    switch(e.Result) {
+                        case TaskResult.Failed:
+                        case TaskResult.Abandoned:
+                            result = job.ContinueOnError ? NeedsTaskResult.Success : NeedsTaskResult.Failure;
+                            break;
+                        case TaskResult.Canceled:
+                            result = job.ContinueOnError ? NeedsTaskResult.Success : NeedsTaskResult.Cancelled;
+                            break;
+                        case TaskResult.Succeeded:
+                        case TaskResult.SucceededWithIssues:
+                            result = NeedsTaskResult.Success;
+                            break;
+                        case TaskResult.Skipped:
+                            result = NeedsTaskResult.Skipped;
+                            break;
+                    }
+                    if(result != oldstatus && oldstatus != null) {
+                        if(result  == NeedsTaskResult.Cancelled || oldstatus == NeedsTaskResult.Cancelled) {
+                            result = NeedsTaskResult.Cancelled;
+                        } else if(result  == NeedsTaskResult.Failure || oldstatus == NeedsTaskResult.Failure) {
+                            result = NeedsTaskResult.Failure;
+                        } else if(result  == NeedsTaskResult.Success || oldstatus == NeedsTaskResult.Success) {
+                            result = NeedsTaskResult.Success;
+                        }
+                    }
+                    jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
                 };
                 FinishJobController.JobCompleted workflowcomplete = null;
                 TemplateToken workflowPermissions = null;
@@ -1244,49 +1303,8 @@ namespace Runner.Server.Controllers
                                             return ret;
                                         });
                                     }
-                                    JobItem job;
-                                    if(e != null && guids.TryGetValue(e.JobId, out job) && job != null) {
-                                        NeedsTaskResult? oldstatus = null;
-                                        PipelineContextData oldjobctx;
-                                        if(needsctx.TryGetValue(job.name, out oldjobctx) && oldjobctx is DictionaryContextData _ctx) {
-                                            if(_ctx.ContainsKey("result") && _ctx["result"] is StringContextData res) {
-                                                oldstatus = Enum.Parse<NeedsTaskResult>(res, true);
-                                            }
-                                            // Parity: empty job outputs doesn't override non empty outputs of matrix jobs
-                                            if(_ctx.ContainsKey("outputs") && _ctx["outputs"] is DictionaryContextData outputs) {
-                                                foreach(var output in outputs) {
-                                                    if(!e.Outputs.TryGetValue(output.Key, out var val) || string.IsNullOrEmpty(val?.Value)) {
-                                                        e.Outputs[output.Key] = new VariableValue(output.Value.AssertString("").Value, false);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        DictionaryContextData jobctx = new DictionaryContextData();
-                                        needsctx[job.name] = jobctx;
-                                        var outputsctx = new DictionaryContextData();
-                                        jobctx["outputs"] = outputsctx;
-                                        foreach (var item in e.Outputs) {
-                                            outputsctx.Add(item.Key, new StringContextData(item.Value.Value));
-                                        }
-                                        NeedsTaskResult result = NeedsTaskResult.Failure;
-                                        job.Status = e.Result;
-                                        switch(e.Result) {
-                                            case TaskResult.Failed:
-                                            case TaskResult.Abandoned:
-                                                result = job.ContinueOnError ? NeedsTaskResult.Success : NeedsTaskResult.Failure;
-                                                break;
-                                            case TaskResult.Canceled:
-                                                result = NeedsTaskResult.Cancelled;
-                                                break;
-                                            case TaskResult.Succeeded:
-                                            case TaskResult.SucceededWithIssues:
-                                                result = NeedsTaskResult.Success;
-                                                break;
-                                            case TaskResult.Skipped:
-                                                result = NeedsTaskResult.Skipped;
-                                                break;
-                                        }
-                                        jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
+                                    if(e != null && guids.TryGetValue(e.JobId, out var job) && job != null) {
+                                        updateNeedsCtx(needsctx, job, e);
                                         guids.Remove(job.Id);
                                     }
                                     if(guids.Count > 0 || neededJobs.Count > 0) {
@@ -1828,46 +1846,7 @@ namespace Runner.Server.Controllers
                         if(ja != null) {
                             var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).First() ?? ja;
                             if(workflowOutputs != null) {
-                                NeedsTaskResult? oldstatus = null;
-                                PipelineContextData oldjobctx;
-                                if(jobsctx.TryGetValue(ji.name, out oldjobctx) && oldjobctx is DictionaryContextData _ctx) {
-                                    if(_ctx.ContainsKey("result") && _ctx["result"] is StringContextData res) {
-                                        oldstatus = Enum.Parse<NeedsTaskResult>(res, true);
-                                    }
-                                    // Parity: empty job outputs doesn't override non empty outputs of matrix jobs
-                                    if(_ctx.ContainsKey("outputs") && _ctx["outputs"] is DictionaryContextData outputs) {
-                                        foreach(var output in outputs) {
-                                            if(!e.Outputs.TryGetValue(output.Key, out var val) || string.IsNullOrEmpty(val?.Value)) {
-                                                e.Outputs[output.Key] = new VariableValue(output.Value.AssertString("").Value, false);
-                                            }
-                                        }
-                                    }
-                                }
-                                DictionaryContextData jobctx = new DictionaryContextData();
-                                jobsctx[ji.name] = jobctx;
-                                var outputsctx = new DictionaryContextData();
-                                jobctx["outputs"] = outputsctx;
-                                foreach (var item in e.Outputs) {
-                                    outputsctx.Add(item.Key, new StringContextData(item.Value.Value));
-                                }
-                                NeedsTaskResult result = NeedsTaskResult.Failure;
-                                switch(e.Result) {
-                                    case TaskResult.Failed:
-                                    case TaskResult.Abandoned:
-                                        result = ji.ContinueOnError ? NeedsTaskResult.Success : NeedsTaskResult.Failure;
-                                        break;
-                                    case TaskResult.Canceled:
-                                        result = NeedsTaskResult.Cancelled;
-                                        break;
-                                    case TaskResult.Succeeded:
-                                    case TaskResult.SucceededWithIssues:
-                                        result = NeedsTaskResult.Success;
-                                        break;
-                                    case TaskResult.Skipped:
-                                        result = NeedsTaskResult.Skipped;
-                                        break;
-                                }
-                                jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
+                                updateNeedsCtx(jobsctx, ji, e);
                             }
                             ji.ActionStatusQueue.Post(() => {
                                 return updateJobStatus(ji, e.Result);
@@ -2634,175 +2613,188 @@ namespace Runner.Server.Controllers
                 this.HttpContext.Response.StatusCode = 403;
                 return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This server has been restarted"), true, new Version(2, 0)));
             }
-            sessions.AddOrUpdate(session, s => {
-                if(s.Timer == null) {
-                    s.Timer = new System.Timers.Timer();
-                }
-                s.Timer.AutoReset = false;
-                s.Timer.Interval = 60000;
-                s.Timer.Elapsed += (a,b) => {
-                    Session s2;
-                    sessions.TryRemove(session, out s2);
-                };
-                s.Timer.Start();
-                return s;
-            } , (s, v) => {
-                s.Timer.Stop();
-                s.Timer.Start();
-                return v;
-            });
-            session.DropMessage?.Invoke();
-            session.DropMessage = null;
-            var ts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, new CancellationTokenSource(TimeSpan.FromSeconds(50)).Token);
-            if(session.Job == null) {
-                if(session.Agent.TaskAgent.Ephemeral == true && session.FirstJobReceived) {
-                    try {
-                        new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
-                    } catch {
-
-                    }
-                    this.HttpContext.Response.StatusCode = 403;
-                    return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This agent has been removed by Ephemeral"), true, new Version(2, 0)));
-                }
-                var labels = session.Agent.TaskAgent.Labels.Select(l => l.Name.ToLowerInvariant()).ToArray();
-                HashSet<HashSet<String>> labelcom = labels.Select(l => new HashSet<string>{l}).ToHashSet(new EqualityComparer());
-                for(long j = 0; j < labels.LongLength; j++) {
-                    var it = labelcom.ToArray();
-                    for(long i = 0, size = it.LongLength; i < size; i++) {
-                        var res = it[i].Append(labels[j]).ToHashSet();
-                        labelcom.Add(res);
-                    }
-                }
-                foreach(var label in labelcom) {
-                    Channel<Job> queue = jobqueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
-                }
-                Job req;
-                var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant())).ToArray();
-                var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
-                await Task.WhenAny(poll);
-                if(HttpContext.RequestAborted.IsCancellationRequested) {
-                    return NoContent();
-                }
-                for(long i = 0; i < poll.LongLength; i++ ) {
-                    if(poll[i].IsCompletedSuccessfully && poll[i].Result) 
-                    try {
-                        if(queues[i].Value.Reader.TryRead(out req)) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Read Job from Queue: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                            if(req.CancelRequest.IsCancellationRequested) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                                continue;
-                            }
-                            var q = queues[i].Value;
-                            session.DropMessage = () => {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Requeued Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                                q.Writer.WriteAsync(req);
-                                session.Job = null;
-                                session.JobTimer?.Stop();
-                            };
-                            if(req.message == null) {
-                                Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
-                                continue;
-                            }
-                            var res = req.message.Invoke($"{ServerUrl}/Unknown/Unknown/");
-                            if(res == null) {
-                                Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
-                                Job job = GetJob(req.JobId);
-                                if(job != null) {
-                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
-                                }
-                                continue;
-                            }
-                            HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                            if(session.JobTimer == null) {
-                                session.JobTimer = new System.Timers.Timer();
-                                session.JobTimer.Elapsed += (a,b) => {
-                                    if(session.Job != null) {
-                                        session.Job.CancelRequest.Cancel();
-                                    }
-                                };
-                                session.JobTimer.AutoReset = false;
-                            } else {
-                                session.JobTimer.Stop();
-                            }
-                            session.Job = req;
-                            session.Job.SessionId = sessionId;                            
-                            session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
-                            session.JobTimer.Start();
-                            session.Key.GenerateIV();
-                            using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
-                            using (var body = new MemoryStream())
-                            using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                await new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
-                                cryptoStream.FlushFinalBlock();
-                                HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Sent Job to Runner: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                                return await Ok(new TaskAgentMessage() {
-                                    Body = Convert.ToBase64String(body.ToArray()),
-                                    MessageId = id++,
-                                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
-                                    IV = session.Key.IV
-                                });
-                            }
-                        }
-                    } catch {
-                        session.DropMessage?.Invoke();
-                        session.DropMessage = null;
-                    }
-                }
-            } else if(!session.Job.Cancelled) {
-                /*try {*/
-                    Console.WriteLine("Waiting for request abort, timeout, job cancellation or job finish");
-                    await Task.WhenAny(Task.Delay(-1,session.JobRunningToken), Task.Delay(-1,ts.Token), Task.Delay(-1,session.Job.CancelRequest.Token));
-                    // await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token, session.Job.CancelRequest.Token).Token);
-                /*} catch (TaskCanceledException) { */
-                    Console.WriteLine("Finished: Waiting for request abort, timeout, job cancellation or job finish");
-                    if(!session.JobRunningToken.IsCancellationRequested && session.Job.CancelRequest.IsCancellationRequested) {
-                        session.Job.Cancelled = true;
-                        session.Key.GenerateIV();
-                        // await Task.Delay(2500);
-                        using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
-                        using (var body = new MemoryStream())
-                        using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                            await new ObjectContent<JobCancelMessage>(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes)), new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
-                            cryptoStream.FlushFinalBlock();
-                            return await Ok(new TaskAgentMessage() {
-                                Body = Convert.ToBase64String(body.ToArray()),
-                                MessageId = id++,
-                                MessageType = JobCancelMessage.MessageType,
-                                IV = session.Key.IV
-                            });
-                        }
-                    }
-                    if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+            try {
+                var ts = CancellationTokenSource.CreateLinkedTokenSource(HttpContext.RequestAborted, new CancellationTokenSource(TimeSpan.FromSeconds(50)).Token);
+                await session.MessageLock.WaitAsync(ts.Token);
+                session.Timer.Stop();
+                session.Timer.Start();
+                session.DropMessage?.Invoke("Called GetMessage without deleting the old Message");
+                session.DropMessage = null;
+                if(session.Job == null) {
+                    if(session.Agent.TaskAgent.Ephemeral == true && session.FirstJobReceived) {
                         try {
                             new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
                         } catch {
 
                         }
+                        this.HttpContext.Response.StatusCode = 403;
+                        return await Ok(new WrappedException(new TaskAgentSessionExpiredException("This agent has been removed by Ephemeral"), true, new Version(2, 0)));
+                    }
+                    var labels = session.Agent.TaskAgent.Labels.Select(l => l.Name.ToLowerInvariant()).ToArray();
+                    HashSet<HashSet<String>> labelcom = labels.Select(l => new HashSet<string>{l}).ToHashSet(new EqualityComparer());
+                    for(long j = 0; j < labels.LongLength; j++) {
+                        var it = labelcom.ToArray();
+                        for(long i = 0, size = it.LongLength; i < size; i++) {
+                            var res = it[i].Append(labels[j]).ToHashSet();
+                            labelcom.Add(res);
+                        }
+                    }
+                    foreach(var label in labelcom) {
+                        Channel<Job> queue = jobqueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
+                    }
+                    Job req;
+                    var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant())).ToArray();
+                    var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
+                    await Task.WhenAny(poll.Append(Task.Delay(-1, HttpContext.RequestAborted)));
+                    if(HttpContext.RequestAborted.IsCancellationRequested) {
+                        return NoContent();
+                    }
+                    for(long i = 0; i < poll.LongLength && !HttpContext.RequestAborted.IsCancellationRequested; i++ ) {
+                        if(poll[i].IsCompletedSuccessfully && poll[i].Result) 
+                        try {
+                            if(queues[i].Value.Reader.TryRead(out req)) {
+                                try {
+                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Read Job from Queue: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)} {sessionId}" }), req.TimeLineId, req.JobId);
+                                    if(req.CancelRequest.IsCancellationRequested) {
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                                        continue;
+                                    }
+                                    var q = queues[i].Value;
+                                    session.DropMessage = reason => {
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Requeued Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}: {reason}" }), req.TimeLineId, req.JobId);
+                                        q.Writer.WriteAsync(req);
+                                        session.Job = null;
+                                        session.JobTimer?.Stop();
+                                    };
+                                    try {
+                                        if(req.message == null) {
+                                            Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
+                                            continue;
+                                        }
+                                        var res = req.message.Invoke($"{ServerUrl}/Unknown/Unknown/");
+                                        if(res == null) {
+                                            Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
+                                            Job job = GetJob(req.JobId);
+                                            if(job != null) {
+                                                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                            }
+                                            continue;
+                                        }
+                                        HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                                        if(session.JobTimer == null) {
+                                            session.JobTimer = new System.Timers.Timer();
+                                            session.JobTimer.Elapsed += (a,b) => {
+                                                if(session.Job != null) {
+                                                    session.Job.CancelRequest.Cancel();
+                                                }
+                                            };
+                                            session.JobTimer.AutoReset = false;
+                                        } else {
+                                            session.JobTimer.Stop();
+                                        }
+                                        session.Job = req;
+                                        session.Job.SessionId = sessionId;
+                                        session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
+                                        session.JobTimer.Start();
+                                        session.Key.GenerateIV();
+                                        using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                                        using (var body = new MemoryStream())
+                                        using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                                            await new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                            cryptoStream.FlushFinalBlock();
+                                            HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Sent Job to Runner: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                                            return await Ok(new TaskAgentMessage() {
+                                                Body = Convert.ToBase64String(body.ToArray()),
+                                                MessageId = id++,
+                                                MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
+                                                IV = session.Key.IV
+                                            });
+                                        }
+                                    } catch(Exception ex) {
+                                        try {
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Error while sending message (inner area): {ex.Message}" }), req.TimeLineId, req.JobId);
+                                        } catch {
+                                            
+                                        }
+                                        if(session.DropMessage != null) {
+                                            session.DropMessage?.Invoke(ex.Message);
+                                            session.DropMessage = null;
+                                        } else {
+                                            await queues[i].Value.Writer.WriteAsync(req);
+                                        }
+                                    }
+                                } catch(Exception ex) {
+                                    try {
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Error while sending message (outer area): {ex.Message}" }), req.TimeLineId, req.JobId);
+                                    } catch {
+
+                                    }
+                                    await queues[i].Value.Writer.WriteAsync(req);
+                                }
+                            }
+                        } catch(Exception ex) {
+                            session.DropMessage?.Invoke(ex.Message);
+                            session.DropMessage = null;
+                        }
+                    }
+                } else if(!session.Job.Cancelled) {
+                    /*try {*/
+                        Console.WriteLine("Waiting for request abort, timeout, job cancellation or job finish");
+                        await Task.WhenAny(Task.Delay(-1,session.JobRunningToken), Task.Delay(-1,ts.Token), Task.Delay(-1,session.Job.CancelRequest.Token));
+                        // await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token, session.Job.CancelRequest.Token).Token);
+                    /*} catch (TaskCanceledException) { */
+                        Console.WriteLine("Finished: Waiting for request abort, timeout, job cancellation or job finish");
+                        if(!session.JobRunningToken.IsCancellationRequested && session.Job.CancelRequest.IsCancellationRequested) {
+                            session.Job.Cancelled = true;
+                            session.Key.GenerateIV();
+                            // await Task.Delay(2500);
+                            using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                            using (var body = new MemoryStream())
+                            using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                                await new ObjectContent<JobCancelMessage>(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes)), new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                cryptoStream.FlushFinalBlock();
+                                return await Ok(new TaskAgentMessage() {
+                                    Body = Convert.ToBase64String(body.ToArray()),
+                                    MessageId = id++,
+                                    MessageType = JobCancelMessage.MessageType,
+                                    IV = session.Key.IV
+                                });
+                            }
+                        }
+                        if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+                            try {
+                                new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                            } catch {
+
+                            }
+                        }
+                        // The official runner ignores the next job if we don't delay here
+                        await Task.Delay(1000);
+                    /* } */
+                } else {
+                    try {
+                        Console.WriteLine("Waiting for request abort, timeout or job finish");
+                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token).Token);
+                    } catch (TaskCanceledException) {
+                        Console.WriteLine("Finished: Waiting for request abort, timeout or job finish");
+                    }
+                    if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+                        try {
+                            new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                        } catch {
+                            
+                        }
                     }
                     // The official runner ignores the next job if we don't delay here
                     await Task.Delay(1000);
-                /* } */
-            } else {
-                try {
-                    Console.WriteLine("Waiting for request abort, timeout or job finish");
-                    await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token).Token);
-                } catch (TaskCanceledException) {
-                    Console.WriteLine("Finished: Waiting for request abort, timeout or job finish");
                 }
-                if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
-                    try {
-                        new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
-                    } catch {
-                        
-                    }
-                }
-                // The official runner ignores the next job if we don't delay here
-                await Task.Delay(1000);
+                return NoContent();
+            } finally {
+                session.MessageLock.Release();
             }
-            return NoContent();
         }
 
         private void RefreshAgent(int poolId, int agentId = -1)

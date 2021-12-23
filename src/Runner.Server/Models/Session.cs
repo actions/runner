@@ -15,6 +15,7 @@ namespace Runner.Server.Models
         public Session() {
             source = new CancellationTokenSource();
             job = null;
+            MessageLock = new SemaphoreSlim(1, 1);
         }
         public TaskAgentSession TaskAgentSession {get; set;}
 
@@ -44,6 +45,7 @@ namespace Runner.Server.Models
 
         public System.Timers.Timer Timer {get; set;}
         public System.Timers.Timer JobTimer {get; set;}
-        public Action DropMessage { get; set; }
+        public Action<string> DropMessage { get; set; }
+        public SemaphoreSlim MessageLock { get; }
     }
 }

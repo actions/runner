@@ -61,37 +61,35 @@ namespace Runner.Server.Controllers
                 Value = _session.Agent.PublicKey.Encrypt(aes.Key, RSAEncryptionPadding.OaepSHA256)
             };
 
-            MessageController.sessions.AddOrUpdate(_session, s => {
-                if(s.Timer == null) {
-                    s.Timer = new System.Timers.Timer();
-                }
-                s.Timer.AutoReset = false;
-                s.Timer.Interval = 60000;
-                s.Timer.Elapsed += (a,b) => {
-                    Session s2;
-                    MessageController.sessions.TryRemove(_session, out s2);
-                };
-                s.Timer.Start();
-                return s;
-            } , (s, v) => {
-                s.Timer.Stop();
-                s.Timer.Start();
-                return v;
-            });
+            _session.Timer = new System.Timers.Timer();
+            _session.Timer.AutoReset = false;
+            _session.Timer.Interval = 60000;
+            _session.Timer.Elapsed += async (a,b) => {
+                await _session.MessageLock.WaitAsync(50000);
+                _session.DropMessage?.Invoke("Session deleted by Timeout");
+                _session.DropMessage = null;
+                _cache.Remove(session.SessionId);
+                _session.MessageLock.Dispose();
+                MessageController.sessions.TryRemove(_session, out _);
+            };
+            _session.Timer.Start();
+
+            MessageController.sessions.TryAdd(_session, _session);
             
             return await Ok(session);
         }
 
         [HttpDelete("{poolId}/{sessionId}")]
-        public void Delete(int poolId, Guid sessionId)
+        public async Task Delete(int poolId, Guid sessionId)
         {
             Session session;
             if(_cache.TryGetValue(sessionId, out session)) {
-                session.DropMessage?.Invoke();
+                await session.MessageLock.WaitAsync(50000);
+                session.DropMessage?.Invoke("Session deleted by Agent");
                 session.DropMessage = null;
                 _cache.Remove(sessionId);
-                Session s2;
-                MessageController.sessions.TryRemove(session, out s2);
+                session.MessageLock.Dispose();
+                MessageController.sessions.TryRemove(session, out _);
             }
         }
     }
