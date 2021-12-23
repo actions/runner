@@ -60,12 +60,13 @@ namespace GitHub.Runner.Listener.Configuration
 
                 string runnerNameSubstring = settings.AgentName;
 
+#if OS_WINDOWS
                 // Only trim runner name if it's really necessary
                 if (exceededCharLength > 0)
                 {
                     runnerNameSubstring = StringUtil.SubstringPrefix(settings.AgentName, settings.AgentName.Length - exceededCharLength);
                 }
-
+#endif
                 serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
             }
 
