@@ -1,0 +1,10 @@
+on: 
+  push:
+  workflow_call:
+name: has-inputs-in-concurrency
+concurrency: ${{github.run_id}}-${{inputs == null}}
+jobs:
+ a:
+  runs-on: ubuntu-latest
+  steps:
+  - run: echo Ok

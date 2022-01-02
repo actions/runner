@@ -1,0 +1,48 @@
+on: 
+  push:
+  workflow_call:
+name: has-advanced-status-functions
+jobs:
+ a:
+  runs-on: ubuntu-latest
+  steps:
+  - run: echo Ok
+ b:
+  needs:
+  - a
+  runs-on: ubuntu-latest
+  steps:
+  - run: echo Ok
+ c:
+  if: ${{ !(success('a', 'b') && !failure('a', 'b') && !cancelled()) }}
+  needs:
+  - b
+  runs-on: ubuntu-latest
+  steps:
+  - run: |
+      echo 'No advanced recursive status functions'
+      exit 1
+ d:
+  if: 'false'
+  runs-on: ubuntu-latest
+  steps:
+  - run: exit 1
+ e:
+  if: ${{ success() || failure() || success('d') || failure('d') || cancelled() }}
+  needs:
+  - d
+  - b
+  runs-on: ubuntu-latest
+  steps:
+  - run: |
+      echo 'Skipped jobs are neither success, failed or cancelled'
+      exit 1
+ f:
+  if: ${{ !(success('b') && !failure('b') && !cancelled()) }}
+  needs:
+  - b
+  runs-on: ubuntu-latest
+  steps:
+  - run: |
+      echo 'No advanced status functions'
+      exit 1

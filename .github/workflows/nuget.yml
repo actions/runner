@@ -47,6 +47,10 @@ jobs:
       env:
         GHARUN: ${{secrets.GHARUN}}
   test:
+    defaults:
+      run:
+        # It seems pwsh doesn't failfast, windows jobs succeeded with errors
+        shell: bash
     needs:
     - package
     strategy:
@@ -98,6 +102,10 @@ jobs:
         gharun -W testworkflows/job-continue-on-error.yml
         cd testworkflows/node16_complex_reusable_workflows
         gharun
+        cd ../..
+        cd testworkflows/db-disposed-issue
+        gharun
+        gharun --parallel 8
         cd ../..
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows')

@@ -1,0 +1,10 @@
+on: 
+  push:
+  workflow_call:
+name: expressions-in-environment
+jobs:
+ test:
+  runs-on: ubuntu-latest
+  environment: ${{github.ref}}
+  steps:
+  - run: echo Ok

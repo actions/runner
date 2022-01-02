@@ -1,0 +1,24 @@
+on: 
+  push:
+  workflow_call:
+name: has-recursive-needsctx
+jobs:
+ a:
+  runs-on: ubuntu-latest
+  steps:
+  - run: echo Ok
+ b:
+  needs:
+  - a
+  runs-on: ubuntu-latest
+  steps:
+  - run: echo Ok
+ c:
+  if: ${{ !needs.a }}
+  needs:
+  - b
+  runs-on: ubuntu-latest
+  steps:
+  - run: |
+      echo 'No recursive needs ctx in if'
+      exit 1

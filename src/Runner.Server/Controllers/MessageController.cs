@@ -536,7 +536,6 @@ namespace Runner.Server.Controllers
         private static ConcurrentDictionary<string, ConcurrencyGroup> concurrencyGroups = new ConcurrentDictionary<string, ConcurrencyGroup>();
 
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null) {
-            _context = new SqLiteDb(_context.Options);
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             string owner_name = repository_name.Split('/', 2)[0];
             string repo_name = repository_name.Split('/', 2)[1];
@@ -591,7 +590,7 @@ namespace Runner.Server.Controllers
             } else {
                 Sha = hook.After;
             }
-            return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha);
+            return Clone().ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha);
         }
 
         private void AddJob(Job job) {
@@ -3436,7 +3435,6 @@ namespace Runner.Server.Controllers
 
         [HttpPost("rerun/{id}")]
         public void RerunJob(Guid id) {
-            _context = new SqLiteDb(_context.Options);
             Job job = GetJob(id);
             var finishedJobs = new Dictionary<string, List<Job>>();
             foreach(var _job in (from j in _context.Jobs where j.runid == job.runid && (j.WorkflowIdentifier != job.WorkflowIdentifier || (j.Matrix != job.Matrix && job.Matrix != null)) select j).Include(z => z.Outputs).Include(z => z.WorkflowRunAttempt)) {
@@ -3455,18 +3453,16 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(job.runid, finishedJobs);
+            Clone().RerunWorkflow(job.runid, finishedJobs);
         }
 
         [HttpPost("rerunworkflow/{id}")]
         public void RerunJob(long id) {
-            _context = new SqLiteDb(_context.Options);
-            RerunWorkflow(id);
+            Clone().RerunWorkflow(id);
         }
 
         [HttpPost("rerunFailed/{id}")]
         public void RerunFailedJobs(long id) {
-            _context = new SqLiteDb(_context.Options);
             var finishedJobs = new Dictionary<string, List<Job>>();
             foreach(var _job in (from j in _context.Jobs where j.runid == id && j.Result == TaskResult.Succeeded select j).Include(z => z.Outputs).Include(z => z.WorkflowRunAttempt)) {
                 if(!finishedJobs.TryAdd(_job.WorkflowIdentifier, new List<Job> { _job })) {
@@ -3484,7 +3480,7 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(id, finishedJobs);
+            Clone().RerunWorkflow(id, finishedJobs);
         }
 
         [HttpPost("cancel/{id}")]
