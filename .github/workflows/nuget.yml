@@ -104,8 +104,8 @@ jobs:
         gharun
         cd ../..
         cd testworkflows/db-disposed-issue
-        gharun
-        gharun --parallel 8
+        gharun -P ubuntu-latest=-self-hosted
+        gharun -P ubuntu-latest=-self-hosted --parallel 8
         cd ../..
     - name: Windows Container Change Firewall Settings
       if: contains(matrix.os, 'windows')
