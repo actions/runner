@@ -30,6 +30,20 @@ namespace Runner.Server.Controllers
             _context = context;
         }
 
+        public void SyncLiveLogsToDb(Guid timelineId) {
+            if(dict.TryGetValue(timelineId, out var entry)) {
+                foreach(var rec in (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList()) {
+                    if(rec.Log == null && entry.Item2.TryGetValue(rec.Id, out var value)) {
+                        var log = new TaskLog() {  };
+                        _context.Logs.Add(new SqLiteDb.LogStorage() { Ref = log, Content = string.Join('\n', from line in value where line != null select line.Line) });
+                        rec.Log = log;
+                    }
+                }
+                _context.SaveChanges();
+                dict.TryRemove(timelineId, out _);
+            }
+        }
+
         [HttpGet("{timelineId}")]
         public async Task<IActionResult> GetTimelineRecords(Guid timelineId) {
             var l = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
@@ -145,12 +159,13 @@ namespace Runner.Server.Controllers
 
         public async Task<IActionResult> UpdateTimeLine(Guid timelineId, VssJsonCollectionWrapper<List<TimelineRecord>> patch)
         {
-            var old = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).ToList();
+            var old = (from record in _context.TimeLineRecords where record.TimelineId == timelineId select record).Include(r => r.Log).ToList();
             var records = old.ToList();
             records.AddRange(patch.Value.Select((r, _) => {
                 r.TimelineId = timelineId;
                 if(r.Log != null) {
-                    r.Log = (from l in _context.Set<TaskLogReference>() where l.Id == r.Log.Id select l).First();
+                    var logId = r.Log.Id;
+                    r.Log = (from l in _context.Set<TaskLogReference>() where l.Id == logId select l).First();
                 }
                 return r;
             }));

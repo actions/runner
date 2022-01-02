@@ -65,12 +65,16 @@ namespace Runner.Server.Controllers
             _session.Timer.AutoReset = false;
             _session.Timer.Interval = 60000;
             _session.Timer.Elapsed += async (a,b) => {
-                await _session.MessageLock.WaitAsync(50000);
-                _session.DropMessage?.Invoke("Session deleted by Timeout");
-                _session.DropMessage = null;
-                _cache.Remove(session.SessionId);
-                _session.MessageLock.Dispose();
                 MessageController.sessions.TryRemove(_session, out _);
+                _cache.Remove(session.SessionId);
+                try {
+                    await _session.MessageLock.WaitAsync(50000);
+                    _session.DropMessage?.Invoke("Session deleted by Timeout");
+                    _session.DropMessage = null;
+                    _session.MessageLock.Dispose();
+                } catch {
+                    
+                }
             };
             _session.Timer.Start();
 
@@ -84,12 +88,16 @@ namespace Runner.Server.Controllers
         {
             Session session;
             if(_cache.TryGetValue(sessionId, out session)) {
-                await session.MessageLock.WaitAsync(50000);
-                session.DropMessage?.Invoke("Session deleted by Agent");
-                session.DropMessage = null;
-                _cache.Remove(sessionId);
-                session.MessageLock.Dispose();
                 MessageController.sessions.TryRemove(session, out _);
+                _cache.Remove(sessionId);
+                try {
+                    await session.MessageLock.WaitAsync(50000);
+                    session.DropMessage?.Invoke("Session deleted by Agent");
+                    session.DropMessage = null;
+                    session.MessageLock.Dispose();
+                } catch {
+
+                }
             }
         }
     }

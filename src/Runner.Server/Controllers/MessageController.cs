@@ -505,6 +505,7 @@ namespace Runner.Server.Controllers
             public Action Run {get;set;}
         }
         private class ConcurrencyGroup {
+            public string Key {get;set;}
             public ConcurrencyEntry Running {get;set;}
             public ConcurrencyEntry Pending {get;set;}
             public void PushEntry(ConcurrencyEntry entry, bool cancelInProgress) {
@@ -525,6 +526,9 @@ namespace Runner.Server.Controllers
                         Running = Pending;
                         Pending = null;
                         Running?.Run();
+                    }
+                    if(Running == null && Pending == null) {
+                        concurrencyGroups.Remove(Key, out _);
                     }
                 }
             }
@@ -597,6 +601,7 @@ namespace Runner.Server.Controllers
                 Task.Run(() => jobevent?.Invoke(this, job.repo, job));
                 _context.Jobs.Add(job);
                 _context.SaveChanges();
+                initializingJobs.Remove(job.JobId, out _);
             } catch (Exception m){
                 throw new Exception("Failed to add job  " + job.name + " / " + job.WorkflowIdentifier + " / " + job.Matrix + " / " + job.JobId  + ": " + m.Message);
             }
@@ -650,20 +655,40 @@ namespace Runner.Server.Controllers
             await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
         }
 
-        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, string parentJob = null, string parentEvent = null, PipelineContextData inputs = null, Action<WorkflowEventArgs> workflowfinish = null, KeyValuePair<string, string>[] workflows = null, string parentworkflowname= null, WorkflowRunAttempt attempt = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, CancellationToken? parentToken = null) {
-            if(attempt.TimeLineId == Guid.Empty) {
-                attempt.TimeLineId = Guid.NewGuid();
-                var records = new List<TimelineRecord>{ new TimelineRecord{ Id = attempt.TimeLineId, Name = fileRelativePath } };
-                TimelineController.dict[attempt.TimeLineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                new TimelineController(_context).UpdateTimeLine(attempt.TimeLineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(records));
+        private class CallingJob {
+            public string Id {get;set;}
+            public Guid TimelineId {get;set;}
+            public Guid RecordId {get;set;}
+            public string WorkflowName {get;set;}
+            public string Name {get;set;}
+            public string Event {get;set;}
+            public PipelineContextData Inputs {get;set;}
+            public CancellationToken? CancellationToken {get;set;}
+            public Action<WorkflowEventArgs> Workflowfinish {get;set;}
+        }
+
+        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null) {
+            bool asyncProcessing = false;
+            Guid workflowTimelineId = callingJob?.TimelineId ?? attempt.TimeLineId;
+            if(workflowTimelineId == Guid.Empty) {
+                workflowTimelineId = Guid.NewGuid();
+                attempt.TimeLineId = workflowTimelineId;
+                var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath } };
+                TimelineController.dict[workflowTimelineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
+                new TimelineController(_context).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(records));
             }
-            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Initialize Workflow Run {runid}" }), attempt.TimeLineId, attempt.TimeLineId);
+            if(workflowTimelineId == attempt.TimeLineId) {
+                // Add workflow as dummy job, to improve early cancellation of Runner.Client
+                initializingJobs.TryAdd(workflowTimelineId, new Job() { JobId = workflowTimelineId, TimeLineId = workflowTimelineId, runid = runid } );
+            }
+            Guid workflowRecordId = callingJob?.RecordId ?? attempt.TimeLineId;
+            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Initialize Workflow Run {runid}" }), workflowTimelineId, workflowRecordId);
             string event_name = e;
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             MappingToken workflowOutputs = null;
             var jobsctx = new DictionaryContextData();
             var workflowTraceWriter = new TraceWriter2(line => {
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ line }), attempt.TimeLineId, attempt.TimeLineId);
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
             });
             try {
                 List<JobItem> jobgroup = new List<JobItem>();
@@ -693,7 +718,7 @@ namespace Runner.Server.Controllers
                 // Get the file ID
                 var fileId = templateContext.GetFileId(fileRelativePath);
 
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ "Parsing Workflow..." }), attempt.TimeLineId, attempt.TimeLineId);
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ "Parsing Workflow..." }), workflowTimelineId, workflowRecordId);
 
                 // Read the file
                 var fileContent = content ?? System.IO.File.ReadAllText(fileRelativePath);
@@ -741,11 +766,11 @@ namespace Runner.Server.Controllers
                     case TokenType.String:
                         if(tk.AssertString("str").Value != e) {
                             // Skip, not the right event
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping the Workflow, due '{tk.AssertString("str").Value}' doesn't is the requested event {e}" }), attempt.TimeLineId, attempt.TimeLineId);
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, '{tk.AssertString("str").Value}' isn't is the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         if(e == "workflow_call") {
-                            if(inputs != null && inputs.AssertDictionary("").Any()) {
+                            if(callingJob?.Inputs != null && callingJob.Inputs.AssertDictionary("").Any()) {
                                 throw new Exception($"This workflow doesn't define any input");
                             }
                             List<string> validSecrets = new List<string> { "system.github.token" };
@@ -754,17 +779,23 @@ namespace Runner.Server.Controllers
                                 if(!validSecrets.Contains(name)) {
                                     throw new Exception($"This workflow doesn't define secret {name}");
                                 }
+                            }
+                        }
+                        if(e == "pull_request" || e == "pull_request_target"){
+                            if(!(new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
                         }
                         break;
                     case TokenType.Sequence:
                         if((from r in tk.AssertSequence("seq") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
                             // Skip, not the right event
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping the Workflow, due [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event {e}" }), attempt.TimeLineId, attempt.TimeLineId);
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, due [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         if(e == "workflow_call") {
-                            if(inputs != null && inputs.AssertDictionary("").Any()) {
+                            if(callingJob?.Inputs != null && callingJob.Inputs.AssertDictionary("").Any()) {
                                 throw new Exception($"This workflow doesn't define any input");
                             }
                             List<string> validSecrets = new List<string> { "system.github.token" };
@@ -773,6 +804,12 @@ namespace Runner.Server.Controllers
                                 if(!validSecrets.Contains(name)) {
                                     throw new Exception($"This workflow doesn't define secret {name}");
                                 }
+                            }
+                        }
+                        if(e == "pull_request" || e == "pull_request_target"){
+                            if(!(new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
                         }
                         break;
@@ -780,7 +817,7 @@ namespace Runner.Server.Controllers
                         var e2 = (from r in tk.AssertMapping("seq") where r.Key.AssertString(e).Value == e select r).FirstOrDefault();
                         var rawEvent = e2.Value;
                         if(rawEvent == null) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping the Workflow, due [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event {e}" }), attempt.TimeLineId, attempt.TimeLineId);
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, due [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         if(e == "schedule") {
@@ -867,8 +904,8 @@ namespace Runner.Server.Controllers
                                     var workflowInputs = (from r in push where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map");
                                     workflowOutputs = (from r in push where r.Key.AssertString("outputs").Value == "outputs" select r).FirstOrDefault().Value?.AssertMapping("map");
                                     List<string> validInputs = new List<string>();
-                                    if(inputs == null) {
-                                        inputs = new DictionaryContextData();
+                                    if(callingJob?.Inputs == null) {
+                                        callingJob.Inputs = new DictionaryContextData();
                                     }
                                     if(workflowInputs != null) {
                                         foreach(var input in workflowInputs) {
@@ -902,7 +939,7 @@ namespace Runner.Server.Controllers
                                                 default:
                                                     throw new Exception($"This workflow requires the type keyword for the input: {inputName}, but an invalid type: {type} was provided");
                                                 }
-                                                var inputsDict = inputs.AssertDictionary("dict");
+                                                var inputsDict = callingJob?.Inputs.AssertDictionary("dict");
                                                 if(inputsDict.TryGetValue(inputName, out var val)) {
                                                     switch(type) {
                                                     case "string":
@@ -923,7 +960,7 @@ namespace Runner.Server.Controllers
                                             }
                                         }
                                     }
-                                    foreach(var providedInput in inputs.AssertDictionary("")) {
+                                    foreach(var providedInput in callingJob?.Inputs.AssertDictionary("")) {
                                         if(!validInputs.Contains(providedInput.Key)) {
                                             throw new Exception($"This workflow doesn't define input {providedInput.Key}");
                                         }
@@ -965,7 +1002,7 @@ namespace Runner.Server.Controllers
                                         }
                                         sb.Append(prop);
                                     }
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"The following event properties are invalid: {sb.ToString()}, please remove them from {e}" }), attempt.TimeLineId, attempt.TimeLineId);
+                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"The following event properties are invalid: {sb.ToString()}, please remove them from {e}" }), workflowTimelineId, workflowRecordId);
                                 }
 
                                 // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
@@ -991,12 +1028,12 @@ namespace Runner.Server.Controllers
                                 if(hook?.Action != null) {
                                     if(types != null) {
                                         if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString("type").Value + "'")}" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString("type").Value + "'")}" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                     } else if(e == "pull_request" || e == "pull_request_target"){
-                                        if((new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), attempt.TimeLineId, attempt.TimeLineId);
+                                        if(!(new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                     }
@@ -1018,30 +1055,30 @@ namespace Runner.Server.Controllers
                                         var branch = Ref2.Substring(heads.Length);
 
                                         if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                         if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to branches filter. github.ref='{Ref2}'" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                         if((tags != null || tagsIgnore != null) && branches == null && branchesIgnore == null) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to existense of tag filter. github.ref='{Ref2}'" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of tag filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                     } else if(Ref2.StartsWith(rtags) == true) {
                                         var tag = Ref2.Substring(rtags.Length);
 
                                         if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                         if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to tags filter. github.ref='{Ref2}'" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                         if((branches != null || branchesIgnore != null) && tags == null && tagsIgnore == null) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to existense of branch filter. github.ref='{Ref2}'" }), attempt.TimeLineId, attempt.TimeLineId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of branch filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                     }
@@ -1049,11 +1086,11 @@ namespace Runner.Server.Controllers
                                 if(hook.Commits != null) {
                                     var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
                                     if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter.'" }), attempt.TimeLineId, attempt.TimeLineId);
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter.'" }), workflowTimelineId, workflowRecordId);
                                         return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
                                     if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Skipping Workflow, due to paths filter." }), attempt.TimeLineId, attempt.TimeLineId);
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths filter." }), workflowTimelineId, workflowRecordId);
                                         return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                     }
                                 }
@@ -1063,11 +1100,11 @@ namespace Runner.Server.Controllers
                     default:
                         throw new Exception($"Error: Your workflow is invalid, 'on' property has an unexpected yaml Type {tk.Type}");
                 }
-                var workflowname = parentworkflowname ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), attempt.TimeLineId, attempt.TimeLineId);
+                var workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
                 Func<string, DictionaryContextData> createContext = jobname => {
                     var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
-                    contextData["inputs"] = inputs;
+                    contextData["inputs"] = callingJob?.Inputs;
                     var githubctx = new DictionaryContextData();
                     contextData.Add("github", githubctx);
                     githubctx.Add("server_url", new StringContextData(GitServerUrl));
@@ -1089,7 +1126,7 @@ namespace Runner.Server.Controllers
                     githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
                     // event_path is filled by event
                     githubctx.Add("event", payloadObject.ToPipelineContextData());
-                    githubctx.Add("event_name", new StringContextData(parentEvent ?? event_name));
+                    githubctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
                     githubctx.Add("actor", new StringContextData(hook?.sender?.login));
                     githubctx.Add("run_id", new StringContextData(runid.ToString()));
                     githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
@@ -1098,13 +1135,16 @@ namespace Runner.Server.Controllers
                     return contextData;
                 };
                 Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
-                    var effective_event = parentEvent ?? event_name;
+                    var effective_event = callingJob?.Event ?? event_name;
                     if(!string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
-                        var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, parentEvent ?? event_name);
+                        var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, callingJob?.Event ?? event_name);
                         var targetUrl = "";
+                        var ownerAndRepo = repository_name.Split("/", 2);
                         if(!string.IsNullOrEmpty(ServerUrl)) {
                             var targetUrlBuilder = new UriBuilder(ServerUrl);
-                            targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
+                            // old url
+                            // targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
+                            targetUrlBuilder.Fragment  = $"/0/{ownerAndRepo[0]}/0/{ownerAndRepo[1]}/0/{runid}/0/{next.Id}";
                             targetUrl = targetUrlBuilder.ToString();
                         }
                         if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
@@ -1133,7 +1173,6 @@ namespace Runner.Server.Controllers
                             }
                         } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
                             try {
-                                var ownerAndRepo = repository_name.Split("/", 2);
                                 // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
                                 var generator = new GitHubJwt.GitHubJwtFactory(
                                     new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
@@ -1230,7 +1269,7 @@ namespace Runner.Server.Controllers
                             result = NeedsTaskResult.Success;
                         }
                     }
-                    jobctx.Add("result", new StringContextData(result.ToString().ToLower()));
+                    jobctx.Add("result", new StringContextData(result.ToString().ToLowerInvariant()));
                 };
                 FinishJobController.JobCompleted workflowcomplete = null;
                 TemplateToken workflowPermissions = null;
@@ -1327,11 +1366,13 @@ namespace Runner.Server.Controllers
                                         templateContext.ExpressionValues[pair.Key] = pair.Value;
                                     }
                                     var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobitem.name;
-                                    if(parentJob != null) {
-                                        _jobdisplayname = parentJob + " / " + _jobdisplayname;
+                                    if(callingJob?.Name != null) {
+                                        _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
                                     jobrecord.Name = _jobdisplayname;
                                     jobitem.DisplayName = _jobdisplayname;
+                                    // For Runner.Client to show the workflowname
+                                    initializingJobs.TryAdd(jobitem.Id, new Job() { JobId = jobitem.Id, TimeLineId = jobitem.TimelineId, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, RequestId = jobitem.RequestId } );
                                     new TimelineController(_context).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
                                     templateContext.TraceWriter.Info("{0}", $"Evaluate if");
                                     var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
@@ -1358,7 +1399,7 @@ namespace Runner.Server.Controllers
                                         if(dependentjobgroup.Any()) {
                                             jobgroup.Add(jobitem);
                                         }
-                                        var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + jobitem.name : jobitem.name, name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                        var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                         AddJob(_job);
                                         new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                     };
@@ -1601,8 +1642,8 @@ namespace Runner.Server.Controllers
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
                                                 var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
-                                                if(parentJob != null) {
-                                                    _jobdisplayname = parentJob + " / " + _jobdisplayname;
+                                                if(callingJob?.Name != null) {
+                                                    _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job ContinueOnError" }), next.TimelineId, next.Id);
                                                 next.ContinueOnError = (from r in run where r.Key.AssertString("continue-on-error").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean("continue-on-error be a boolean").Value).FirstOrDefault();
@@ -1614,7 +1655,7 @@ namespace Runner.Server.Controllers
                                                 next.NoStatusCheck = usesJob;
                                                 next.DisplayName = _jobdisplayname;
                                                 next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
-                                                return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, parentEvent ?? event_name, parentEvent, workflows, statusSha, parentId, finishedJobs, attempt, next, workflowPermissions);
+                                                return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions);
                                             };
                                             ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                             if(keys.Length != 0 || includematrix.Count == 0) {
@@ -1653,7 +1694,6 @@ namespace Runner.Server.Controllers
                                                     }
                                                     _j.CancelRequest?.Cancel();
                                                     if(_j.SessionId == Guid.Empty) {
-                                                        _j.Cancelled = true;
                                                         new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = _j.JobId, Result = TaskResult.Canceled, RequestId = _j.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     }
                                                 }
@@ -1722,7 +1762,6 @@ namespace Runner.Server.Controllers
                                         if(job != null) {
                                             job.CancelRequest?.Cancel();
                                             if(job.SessionId == Guid.Empty) {
-                                                job.Cancelled = true;
                                                 new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                             }
                                         }
@@ -1882,8 +1921,8 @@ namespace Runner.Server.Controllers
                                     evargs.Outputs = outputs;
                                 }
                                 finished.Cancel();
-                                if(workflowfinish != null) {
-                                    workflowfinish.Invoke(evargs);
+                                if(callingJob?.Workflowfinish != null) {
+                                    callingJob.Workflowfinish.Invoke(evargs);
                                 } else {
                                     cancelWorkflows.Remove(runid);
                                     workflowevent?.Invoke(evargs);
@@ -1914,8 +1953,8 @@ namespace Runner.Server.Controllers
                         }
                     };
                     CancellationTokenSource cancellationToken = null;
-                    if(parentToken != null) {
-                        cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(parentToken.Value);
+                    if(callingJob?.CancellationToken != null) {
+                        cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(callingJob.CancellationToken.Value);
                         exctx.Cancelled = cancellationToken.Token;
                     } else {
                         var ctoken = new CancellationTokenSource();
@@ -1924,6 +1963,29 @@ namespace Runner.Server.Controllers
                             cancellationToken = ctoken;
                         }
                     }
+                    asyncProcessing = true;
+                    Task.Run(async () => {
+                        try {
+                            await Task.Delay(-1, finished.Token);
+                        } catch {
+                        }
+                        if(callingJob == null) {
+                            new TimelineController(_context).SyncLiveLogsToDb(workflowTimelineId);
+                        }
+                        // Cleanup dummy job for this workflow
+                        if(workflowTimelineId == attempt.TimeLineId) {
+                            initializingJobs.Remove(workflowTimelineId, out _);
+                        }
+                        // Cleanup dummy jobs, which allows Runner.Client to display the workflowname
+                        foreach(var job in jobs) {
+                            if(job.Childs != null) {
+                                foreach(var ji in job.Childs) {
+                                    initializingJobs.Remove(ji.Id, out _);
+                                }
+                            }
+                            initializingJobs.Remove(job.Id, out _);
+                        }
+                    });
                     Action runWorkflow = () => {
                         s.Wait();
                         try {
@@ -1936,11 +1998,11 @@ namespace Runner.Server.Controllers
                                 if(!finished.IsCancellationRequested) {
                                     s.Wait();
                                     try {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ "Workflow Cancellation Requested" }), attempt.TimeLineId, attempt.TimeLineId);
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ "Workflow Cancellation Requested" }), workflowTimelineId, workflowRecordId);
                                         templateContext.TraceWriter = workflowTraceWriter;
                                         foreach(var job2 in jobs) {
                                             if(job2.Status == null && job2.EvaluateIf != null) {
-                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, new List<string>{ $"Reevaluate Condition of {job2.DisplayName ?? job2.name}" }), attempt.TimeLineId, attempt.TimeLineId);
+                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Reevaluate Condition of {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
                                                 if(job2.EvaluateIf.Invoke() == false) {
                                                     foreach(var ji in job2.Childs ?? new List<MessageController.JobItem>{job2}) {
                                                         ji.Cancel.Cancel();
@@ -1948,7 +2010,6 @@ namespace Runner.Server.Controllers
                                                         if(job != null) {
                                                             job.CancelRequest.Cancel();
                                                             if(job.SessionId == Guid.Empty) {
-                                                                job.Cancelled = true;
                                                                 new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                             }
                                                         }
@@ -1981,10 +2042,11 @@ namespace Runner.Server.Controllers
                             cancelInprogress = (from r in cmapping where r.Key.AssertString("key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean("cancel-in-progress")?.Value ?? cancelInprogress;
                         }
                         Action cancelPendingWorkflow = () => {
+                            workflowTraceWriter.Info("{0}", "Workflow was cancelled by another workflow or job, while it was pending in the concurrency group");
                             finished.Cancel();
                             var evargs = new WorkflowEventArgs { runid = runid, Success = false };
-                            if(workflowfinish != null) {
-                                workflowfinish.Invoke(evargs);
+                            if(callingJob?.Workflowfinish != null) {
+                                callingJob.Workflowfinish.Invoke(evargs);
                             } else {
                                 cancelWorkflows.Remove(runid);
                                 workflowevent?.Invoke(evargs);
@@ -1992,28 +2054,48 @@ namespace Runner.Server.Controllers
                             }
                         };
 
-                        ConcurrencyGroup cgroup = concurrencyGroups.GetOrAdd($"{repository_name}/{group}", name => new ConcurrencyGroup());
-                        ConcurrencyEntry centry = new ConcurrencyEntry();
-                        centry.Run = async () => {
-                            runWorkflow();
-                            try {
-                                await Task.Delay(-1, finished.Token);
-                            } catch {
+                        var key = $"{repository_name}/{group}";
+                        while(true) {
+                            ConcurrencyGroup cgroup = concurrencyGroups.GetOrAdd(key, name => new ConcurrencyGroup() { Key = name });
+                            lock(cgroup) {
+                                if(concurrencyGroups.TryGetValue(key, out var _cgroup) && cgroup != _cgroup) {
+                                    continue;
+                                }
+                                ConcurrencyEntry centry = new ConcurrencyEntry();
+                                centry.Run = async () => {
+                                    if(exctx.Cancelled.IsCancellationRequested) {
+                                        workflowTraceWriter.Info("{0}", $"Workflow was cancelled, while it was pending in the concurrency group");
+                                    } else {
+                                        workflowTraceWriter.Info("{0}", $"Starting Workflow run by concurrency group: {group}");
+                                        runWorkflow();
+                                        try {
+                                            await Task.Delay(-1, finished.Token);
+                                        } catch {
+                                        }
+                                    }
+                                    cgroup.FinishRunning(centry);
+                                };
+                                centry.CancelPending = cancelPendingWorkflow;
+                                centry.CancelRunning = cancelInProgress => {
+                                    if(cancelInProgress) {
+                                        workflowTraceWriter.Info("{0}", $"Workflow was cancelled by another workflow or job, while it was in progress in the concurrency group: {group}");
+                                        cancellationToken.Cancel();
+                                    }
+                                };
+                                cgroup.PushEntry(centry, cancelInprogress);
+                                workflowTraceWriter.Info("{0}", $"Workflow was added to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}");
                             }
-                            cgroup.FinishRunning(centry);
-                        };
-                        centry.CancelPending = cancelPendingWorkflow;
-                        centry.CancelRunning = cancelInProgress => {
-                            if(cancelInProgress) {
-                                cancellationToken.Cancel();
-                            }
-                        };
-                        cgroup.PushEntry(centry, cancelInprogress);
+                            break;
+                        }
                     }
                 }
             } catch(Exception ex) {
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(attempt.TimeLineId, ex.Message.Split('\n').ToList()), attempt.TimeLineId, attempt.TimeLineId);
+                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, ex.Message.Split('\n').ToList()), workflowTimelineId, workflowRecordId);
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
+            } finally {
+                if(!asyncProcessing && callingJob == null) {
+                    new TimelineController(_context).SyncLiveLogsToDb(workflowTimelineId);
+                }
             }
             return new HookResponse { repo = repository_name, run_id = runid, skipped = false };
         }
@@ -2124,18 +2206,17 @@ namespace Runner.Server.Controllers
                     }
                 }
                 var traceWriter = templateContext.TraceWriter;
-                Action<bool, string> failedtoInstantiateWorkflow = (skipped, message) => {
-                    var jid = jobId;
-                    var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId };
-                    AddJob(_job);
+                var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId };
+                AddJob(_job);
+                Action<string> failedtoInstantiateWorkflow = message => {
                     traceWriter.Verbose("Failed to instantiate Workflow: {0}", message);
-                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = skipped ? TaskResult.Skipped : TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                 };
                 //var xref = rawUses.Value.Split('@', 2);
                 //var parts = xref[0].Split('/', 3);
                 (new Func<Task>(async () => {
                     if(reference == null) {
-                        failedtoInstantiateWorkflow(false, $"Invalid reference format: {uses.Value}");
+                        failedtoInstantiateWorkflow($"Invalid reference format: {uses.Value}");
                         return;
                     }
                     Action<string, string> workflow_call = (filename, filecontent) => {
@@ -2172,12 +2253,11 @@ namespace Runner.Server.Controllers
                             _secrets.Add("system.github.token=" + ghtoken);
                         }
                         var clone = Clone();
-                        var resp = clone.ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, displayname, wevent, eval?.ToContextData(), e => {
-                            var jid = jobId;
+                        var resp = clone.ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: new CallingJob() { Name = displayname, Event = wevent, Inputs = eval?.ToContextData(), Workflowfinish = e => {
                             new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                        }, workflows, workflowname, attempt, statusSha: statusSha, parentId: parentId != null ? parentId + "/" + name : name, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value), parentToken: ji.Cancel.Token );
+                        }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname}, workflows, attempt, statusSha: statusSha, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value));
                         if(resp == null || resp.failed || resp.skipped) {
-                            failedtoInstantiateWorkflow(resp.skipped, filename);
+                            failedtoInstantiateWorkflow(filename);
                             return;
                         }
                     };
@@ -2185,7 +2265,7 @@ namespace Runner.Server.Controllers
                         try {
                             workflow_call(reference.Path, _content);
                         } catch (Exception ex) {
-                            failedtoInstantiateWorkflow(false, ex.Message);
+                            failedtoInstantiateWorkflow(ex.Message);
                             await Console.Error.WriteLineAsync(ex.Message);
                             await Console.Error.WriteLineAsync(ex.StackTrace);
                         }
@@ -2220,13 +2300,13 @@ namespace Runner.Server.Controllers
                                         var filecontent = await fileRes.Content.ReadAsStringAsync();
                                         workflow_call(item.path, filecontent);
                                     } catch (Exception ex) {
-                                        failedtoInstantiateWorkflow(false, ex.Message);
+                                        failedtoInstantiateWorkflow(ex.Message);
                                         await Console.Error.WriteLineAsync(ex.Message);
                                         await Console.Error.WriteLineAsync(ex.StackTrace);
                                     }
                                 }
                             } else {
-                                failedtoInstantiateWorkflow(false, $"No such callable workflow: {uses.Value}");
+                                failedtoInstantiateWorkflow($"No such callable workflow: {uses.Value}");
                             }
                         } finally {
                             if(githubAppToken != null) {
@@ -2356,12 +2436,20 @@ namespace Runner.Server.Controllers
             TemplateToken deploymentEnvironment = (from r in run where r.Key.AssertString("environment").Value == "environment" select r).FirstOrDefault().Value;
             GitHub.DistributedTask.WebApi.ActionsEnvironmentReference deploymentEnvironmentValue = null;
             if(deploymentEnvironment != null) {
-                if(deploymentEnvironment is StringToken ename) {
-                    deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
-                } else {
-                    var mtoken = deploymentEnvironment.AssertMapping("Environment must be a mapping or string");
-                    deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString("name").Value == "name" select r.Value).First().AssertString("name").Value);
-                    deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString("url").Value == "url" select r.Value).FirstOrDefault();
+                templateContext.ExpressionValues.Clear();
+                foreach (var pair in contextData) {
+                    templateContext.ExpressionValues[pair.Key] = pair.Value;
+                }
+                templateContext.TraceWriter.Info("{0}", $"Evaluate environment");
+                deploymentEnvironment = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "environment", deploymentEnvironment, 0, null, true);
+                if(deploymentEnvironment != null) {
+                    if(deploymentEnvironment is StringToken ename) {
+                        deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
+                    } else {
+                        var mtoken = deploymentEnvironment.AssertMapping("Environment must be a mapping or string");
+                        deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString("name").Value == "name" select r.Value).First().AssertString("name").Value);
+                        deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString("url").Value == "url" select r.Value).FirstOrDefault();
+                    }
                 }
             }
             // Job permissions
@@ -2521,7 +2609,6 @@ namespace Runner.Server.Controllers
             }
             return cancel => {
                 if(cancel || job.CancelRequest.IsCancellationRequested) {
-                    job.Cancelled = true;
                     job.CancelRequest.Cancel();
                     new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                 } else {
@@ -2534,34 +2621,49 @@ namespace Runner.Server.Controllers
                     if(string.IsNullOrEmpty(group)) {
                         _queueJob();
                     } else {
-                        ConcurrencyGroup cgroup = concurrencyGroups.GetOrAdd($"{repo}/{group}", name => new ConcurrencyGroup());
-                        ConcurrencyEntry centry = new ConcurrencyEntry();
-                        centry.Run = () => {
-                            FinishJobController.OnJobCompleted += evdata => {
-                                if(evdata.JobId == job.JobId) {
-                                    cgroup.FinishRunning(centry);
+                        var key = $"{repo}/{group}";
+                        while(true) {
+                            ConcurrencyGroup cgroup = concurrencyGroups.GetOrAdd(key, name => new ConcurrencyGroup() { Key = name });
+                            lock(cgroup) {
+                                if(concurrencyGroups.TryGetValue(key, out var _cgroup) && cgroup != _cgroup) {
+                                    continue;
                                 }
-                            };
-                            _queueJob();
-                        };
-                        centry.CancelPending = () => {
-                            job.Cancelled = true;
-                            job.CancelRequest.Cancel();
-                            new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
-                        };
-                        centry.CancelRunning = cancelInProgress => {
-                            if(job.SessionId != Guid.Empty) {
-                                if(cancelInProgress) {
+                                ConcurrencyEntry centry = new ConcurrencyEntry();
+                                centry.Run = () => {
+                                    if(job.CancelRequest.IsCancellationRequested) {
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
+                                        cgroup.FinishRunning(centry);
+                                    } else {
+                                        FinishJobController.OnJobCompleted += evdata => {
+                                            if(evdata.JobId == job.JobId) {
+                                                cgroup.FinishRunning(centry);
+                                            }
+                                        };
+                                        _queueJob();
+                                    }
+                                };
+                                centry.CancelPending = () => {
+                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
                                     job.CancelRequest.Cancel();
-                                }
-                                // Keep Job running, since the cancelInProgress is false
-                            } else {
-                                job.Cancelled = true;
-                                job.CancelRequest.Cancel();
-                                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                };
+                                centry.CancelRunning = cancelInProgress => {
+                                    if(job.SessionId != Guid.Empty) {
+                                        if(cancelInProgress) {
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was in progress in the concurrency group: {group}" }), job.TimeLineId, job.JobId);
+                                            job.CancelRequest.Cancel();
+                                        }
+                                        // Keep Job running, since the cancelInProgress is false
+                                    } else {
+                                        job.CancelRequest.Cancel();
+                                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                    }
+                                };
+                                cgroup.PushEntry(centry, cancelInprogress);
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was added to the concurrency group: {group}, cancel-in-progress: {cancelInprogress}" }), job.TimeLineId, job.JobId);
                             }
-                        };
-                        cgroup.PushEntry(centry, cancelInprogress);
+                            break;
+                        }
                     }
                 }
                 return job;
@@ -2642,102 +2744,114 @@ namespace Runner.Server.Controllers
                     foreach(var label in labelcom) {
                         Channel<Job> queue = jobqueue.GetOrAdd(label, (a) => Channel.CreateUnbounded<Job>());
                     }
-                    Job req;
                     var queues = jobqueue.ToArray().Where(e => e.Key.IsSubsetOf(from l in session.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant())).ToArray();
-                    var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
-                    await Task.WhenAny(poll.Append(Task.Delay(-1, HttpContext.RequestAborted)));
-                    if(HttpContext.RequestAborted.IsCancellationRequested) {
-                        return NoContent();
-                    }
-                    for(long i = 0; i < poll.LongLength && !HttpContext.RequestAborted.IsCancellationRequested; i++ ) {
-                        if(poll[i].IsCompletedSuccessfully && poll[i].Result) 
-                        try {
-                            if(queues[i].Value.Reader.TryRead(out req)) {
-                                try {
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Read Job from Queue: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)} {sessionId}" }), req.TimeLineId, req.JobId);
-                                    if(req.CancelRequest.IsCancellationRequested) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                                        continue;
-                                    }
-                                    var q = queues[i].Value;
-                                    session.DropMessage = reason => {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Requeued Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}: {reason}" }), req.TimeLineId, req.JobId);
-                                        q.Writer.WriteAsync(req);
-                                        session.Job = null;
-                                        session.JobTimer?.Stop();
-                                    };
+                    while(!ts.IsCancellationRequested) {
+                        var poll = queues.Select(q => q.Value.Reader.WaitToReadAsync(ts.Token).AsTask()).ToArray();
+                        await Task.WhenAny(poll);
+                        if(ts.IsCancellationRequested) {
+                            return NoContent();
+                        }
+                        for(long i = 0; i < poll.LongLength && !HttpContext.RequestAborted.IsCancellationRequested; i++ ) {
+                            if(poll[i].IsCompletedSuccessfully && poll[i].Result)
+                            try {
+                                if(queues[i].Value.Reader.TryRead(out var req)) {
                                     try {
-                                        if(req.message == null) {
-                                            Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Read Job from Queue: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)} {sessionId}" }), req.TimeLineId, req.JobId);
+                                        req.SessionId = sessionId;
+                                        if(req.CancelRequest.IsCancellationRequested) {
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                                            new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                             continue;
                                         }
-                                        var res = req.message.Invoke($"{ServerUrl}/Unknown/Unknown/");
-                                        if(res == null) {
-                                            Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
-                                            Job job = GetJob(req.JobId);
-                                            if(job != null) {
-                                                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                        var q = queues[i].Value;
+                                        session.DropMessage = reason => {
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Requeued Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}: {reason}" }), req.TimeLineId, req.JobId);
+                                            q.Writer.WriteAsync(req);
+                                            session.Job = null;
+                                            session.JobTimer?.Stop();
+                                        };
+                                        try {
+                                            if(req.message == null) {
+                                                Console.WriteLine("req.message == null in GetMessage of Worker, skip invalid message");
+                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
+                                                continue;
                                             }
-                                            continue;
-                                        }
-                                        HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                                        if(session.JobTimer == null) {
-                                            session.JobTimer = new System.Timers.Timer();
-                                            session.JobTimer.Elapsed += (a,b) => {
-                                                if(session.Job != null) {
-                                                    session.Job.CancelRequest.Cancel();
+                                            var res = req.message.Invoke($"{ServerUrl}/Unknown/Unknown/");
+                                            if(res == null) {
+                                                Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
+                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
+                                                Job job = GetJob(req.JobId);
+                                                if(job != null) {
+                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                 }
-                                            };
-                                            session.JobTimer.AutoReset = false;
-                                        } else {
-                                            session.JobTimer.Stop();
-                                        }
-                                        session.Job = req;
-                                        session.Job.SessionId = sessionId;
-                                        session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
-                                        session.JobTimer.Start();
-                                        session.Key.GenerateIV();
-                                        using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
-                                        using (var body = new MemoryStream())
-                                        using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                            await new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
-                                            cryptoStream.FlushFinalBlock();
+                                                continue;
+                                            }
                                             HttpContext.RequestAborted.ThrowIfCancellationRequested();
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Sent Job to Runner: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                                            return await Ok(new TaskAgentMessage() {
-                                                Body = Convert.ToBase64String(body.ToArray()),
-                                                MessageId = id++,
-                                                MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
-                                                IV = session.Key.IV
-                                            });
+                                            if(session.JobTimer == null) {
+                                                session.JobTimer = new System.Timers.Timer();
+                                                session.JobTimer.Elapsed += (a,b) => {
+                                                    if(session.Job != null) {
+                                                        session.Job.CancelRequest.Cancel();
+                                                    }
+                                                };
+                                                session.JobTimer.AutoReset = false;
+                                            } else {
+                                                session.JobTimer.Stop();
+                                            }
+                                            session.Job = req;
+                                            session.JobTimer.Interval = session.Job.TimeoutMinutes * 60 * 1000;
+                                            session.JobTimer.Start();
+                                            session.Key.GenerateIV();
+                                            using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                                            using (var body = new MemoryStream())
+                                            using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                                                await new ObjectContent<AgentJobRequestMessage>(res, new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                                cryptoStream.FlushFinalBlock();
+                                                var msg = await Ok(new TaskAgentMessage() {
+                                                    Body = Convert.ToBase64String(body.ToArray()),
+                                                    MessageId = id++,
+                                                    MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
+                                                    IV = session.Key.IV
+                                                });
+                                                HttpContext.RequestAborted.ThrowIfCancellationRequested();
+                                                if(req.CancelRequest.IsCancellationRequested) {
+                                                    session.Job = null;
+                                                    session.DropMessage = null;
+                                                    session.JobTimer.Stop();
+                                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job (2): {req.name} for queue {string.Join(",", queues[i].Key)} unassigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                    continue;
+                                                    //return NoContent();
+                                                }
+                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Sent Job to Runner: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
+                                                return msg;
+                                            }
+                                        } catch(Exception ex) {
+                                            try {
+                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Error while sending message (inner area): {ex.Message}" }), req.TimeLineId, req.JobId);
+                                            } catch {
+                                                
+                                            }
+                                            if(session.DropMessage != null) {
+                                                session.DropMessage?.Invoke(ex.Message);
+                                                session.DropMessage = null;
+                                            } else {
+                                                await queues[i].Value.Writer.WriteAsync(req);
+                                            }
                                         }
                                     } catch(Exception ex) {
                                         try {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Error while sending message (inner area): {ex.Message}" }), req.TimeLineId, req.JobId);
+                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Error while sending message (outer area): {ex.Message}" }), req.TimeLineId, req.JobId);
                                         } catch {
-                                            
-                                        }
-                                        if(session.DropMessage != null) {
-                                            session.DropMessage?.Invoke(ex.Message);
-                                            session.DropMessage = null;
-                                        } else {
-                                            await queues[i].Value.Writer.WriteAsync(req);
-                                        }
-                                    }
-                                } catch(Exception ex) {
-                                    try {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Error while sending message (outer area): {ex.Message}" }), req.TimeLineId, req.JobId);
-                                    } catch {
 
+                                        }
+                                        await queues[i].Value.Writer.WriteAsync(req);
                                     }
-                                    await queues[i].Value.Writer.WriteAsync(req);
                                 }
+                            } catch(Exception ex) {
+                                session.DropMessage?.Invoke(ex.Message);
+                                session.DropMessage = null;
                             }
-                        } catch(Exception ex) {
-                            session.DropMessage?.Invoke(ex.Message);
-                            session.DropMessage = null;
                         }
                     }
                 } else if(!session.Job.Cancelled) {
@@ -3201,11 +3315,15 @@ namespace Runner.Server.Controllers
             }, "text/event-stream");
         }
 
+        private static ConcurrentDictionary<Guid, Job> initializingJobs = new ConcurrentDictionary<Guid, Job>();
+
         [HttpGet]
         public async Task<IActionResult> GetJobs([FromQuery] string repo, [FromQuery] long[] runid, [FromQuery] int? depending, [FromQuery] Guid? jobid, [FromQuery] int? page) {
             if(jobid != null) {
                 var j = GetJob(jobid.Value);
                 if(j != null) {
+                    return await Ok(j, true);
+                } else if(initializingJobs.TryGetValue(jobid.Value, out j)) {
                     return await Ok(j, true);
                 } else {
                     return NotFound("No such job found on this server");
@@ -3375,7 +3493,6 @@ namespace Runner.Server.Controllers
             if(job != null) {
                 job.CancelRequest.Cancel();
                 if(job.SessionId == Guid.Empty) {
-                    job.Cancelled = true;
                     new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                 }
             }
@@ -3417,7 +3534,7 @@ namespace Runner.Server.Controllers
         public static event Action<WorkflowEventArgs> workflowevent;
 
         [HttpGet("event")]
-        public IActionResult Message(string owner, string repo, [FromQuery] string filter)
+        public IActionResult Message(string owner, string repo, [FromQuery] string filter, [FromQuery] long? runid)
         {
             var mfilter = new Minimatch.Minimatcher(filter ?? (owner + "/" + repo));
             var requestAborted = HttpContext.RequestAborted;
@@ -3430,7 +3547,7 @@ namespace Runner.Server.Controllers
                     var queue2 = Channel.CreateUnbounded<KeyValuePair<string,Job>>(new UnboundedChannelOptions { SingleReader = true });
                     var chwriter = queue2.Writer;
                     JobEvent handler = (sender, crepo, job) => {
-                        if (mfilter.IsMatch(crepo)) {
+                        if (mfilter.IsMatch(crepo) && (runid == null || runid == job.runid)) {
                             chwriter.WriteAsync(new KeyValuePair<string, Job>(crepo, job));
                         }
                     };

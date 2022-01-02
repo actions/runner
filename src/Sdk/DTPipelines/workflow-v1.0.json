@@ -284,6 +284,13 @@
     },
 
     "environment": {
+      "context": [
+        "github",
+        "inputs",
+        "needs",
+        "strategy",
+        "matrix"
+      ],
       "one-of": ["non-empty-string", "environment-mapping" ]
     },
     "environment-mapping": {

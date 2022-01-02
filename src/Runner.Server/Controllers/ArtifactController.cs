@@ -97,12 +97,12 @@ namespace Runner.Server.Controllers {
         [HttpGet("{run}/artifacts")]
         [AllowAnonymous]
         public async Task<IActionResult> GetContainer(long run, [FromQuery] string artifactName) {
-            var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "1");
+            var attempt = Int64.Parse(User.FindFirst("attempt")?.Value ?? "-1");
             if(string.IsNullOrEmpty(artifactName)) {
-                var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt <= attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Files.Count > 0 orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
+                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Files.Count > 0 orderby fileContainer.Container.Attempt.Attempt descending select fileContainer).ToList();
                 return await Ok(from e in container select new ArtifactResponse{ name = e.Name, type = "actions_storage", containerId = e.Id, fileContainerResourceUrl = $"{ServerUrl}/_apis/pipelines/workflows/container/{e.Id}" } );
             } else {
-                var container = (from fileContainer in _context.ArtifactFileContainer where fileContainer.Container.Attempt.Attempt <= attempt && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Files.Count > 0 && fileContainer.Name == artifactName orderby fileContainer.Container.Attempt.Attempt descending select new ArtifactResponse{ name = fileContainer.Name, type = "actions_storage", containerId = fileContainer.Id, fileContainerResourceUrl = $"{ServerUrl}/_apis/pipelines/workflows/container/{fileContainer.Id}" }).First();
+                var container = (from fileContainer in _context.ArtifactFileContainer where (fileContainer.Container.Attempt.Attempt <= attempt || attempt == -1) && fileContainer.Container.Attempt.WorkflowRun.Id == run && fileContainer.Files.Count > 0 && fileContainer.Name == artifactName orderby fileContainer.Container.Attempt.Attempt descending select new ArtifactResponse{ name = fileContainer.Name, type = "actions_storage", containerId = fileContainer.Id, fileContainerResourceUrl = $"{ServerUrl}/_apis/pipelines/workflows/container/{fileContainer.Id}" }).First();
                 return await Ok(container);
             }
         }

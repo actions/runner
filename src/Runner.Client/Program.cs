@@ -395,6 +395,7 @@ namespace Runner.Client
             Console.WriteLine(message);
         }
 
+        private delegate Task LoadEntries(ref TimeLineEntry entry, List<Job> jobs, Guid id);
         static int Main(string[] args)
         {
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
@@ -800,6 +801,7 @@ namespace Runner.Client
                         }
                     }
                     bool first = true;
+                    bool skipAskToSaveArtifact = false;
                     while(!source.IsCancellationRequested && (parameters.watch || first)) {
                         var ret = await Task.Run<int>(async () => {
                             List<string> addedFiles = new List<string>();
@@ -1116,6 +1118,32 @@ namespace Runner.Client
                                 };
                                 
                                 List<Guid> alreadyFinished = new List<Guid>();
+                                LoadEntries loadWorkflowName = (ref TimeLineEntry rec, List<Job> jobs, Guid id) => {
+                                    if(rec?.WorkflowName == null) {
+                                        var _job = (from job in jobs where job.JobId == id select job).FirstOrDefault();
+                                        bool customrec = rec == null;
+                                        if(customrec) {
+                                            rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
+                                            col = (col + 1) % 14;
+                                        }
+                                        rec.WorkflowName = _job?.workflowname;
+                                        if(rec.WorkflowName == null) {
+                                            var _rec = rec;
+                                            return Task.Run(async () => {
+                                                var _job = JsonConvert.DeserializeObject<Job>(await client.GetStringAsync(GetJobUrl(b.ToString(), id)));
+                                                if(_job != null) {
+                                                    jobs.Add(_job);
+                                                    // Cancel Workflows started after we cancelled the whole thing
+                                                    if(cancelWorkflow == null && _job?.runid != null) {
+                                                        client.PostAsync(GetCancelWorkflowUrl(b.ToString(), _job.runid), null, CancellationToken.None);
+                                                    }
+                                                }
+                                                _rec.WorkflowName = _job?.workflowname;
+                                            });
+                                        }
+                                    }
+                                    return Task.CompletedTask;
+                                };
                                 Func<JobCompletedEvent, Task> printFinishJob = async ev => {
                                     if(alreadyFinished.Contains(ev.JobId)) {
                                         return;
@@ -1123,26 +1151,7 @@ namespace Runner.Client
                                     alreadyFinished.Add(ev.JobId);
                                     var rec = (from r in timelineRecords where r.Value.TimeLine?[0]?.Id == ev.JobId select r.Value).FirstOrDefault();
                                     try {
-                                        if(rec?.WorkflowName == null) {
-                                            var _job = (from job in jobs where job.JobId == ev.JobId select job).FirstOrDefault();
-                                            bool customrec = rec == null;
-                                            if(customrec) {
-                                                rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = ev.JobId, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
-                                                col = (col + 1) % 14;
-                                            }
-                                            rec.WorkflowName = _job?.workflowname;
-                                            if(rec.WorkflowName == null) {
-                                                _job = JsonConvert.DeserializeObject<Job>(await client.GetStringAsync(GetJobUrl(b.ToString(), ev.JobId)));
-                                                if(_job != null) {
-                                                    jobs.Add(_job);
-                                                }
-                                                if(customrec) {
-                                                    rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = ev.JobId, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
-                                                    col = (col + 1) % 14;
-                                                }
-                                                rec.WorkflowName = _job?.workflowname;
-                                            }
-                                        }
+                                        await loadWorkflowName(ref rec, jobs, ev.JobId);
                                     } catch {
                                         
                                     }
@@ -1192,26 +1201,7 @@ namespace Runner.Client
                                                             continue;
                                                         }
                                                         try {
-                                                            if(rec?.WorkflowName == null) {
-                                                                var _job = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job).FirstOrDefault();
-                                                                bool customrec = rec == null;
-                                                                if(customrec) {
-                                                                    rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
-                                                                    col = (col + 1) % 14;
-                                                                }
-                                                                rec.WorkflowName = _job?.workflowname;
-                                                                if(rec.WorkflowName == null) {
-                                                                    _job = JsonConvert.DeserializeObject<Job>(await client.GetStringAsync(GetJobUrl(b.ToString(), rec.TimeLine[0].Id)));
-                                                                    if(_job != null) {
-                                                                        jobs.Add(_job);
-                                                                    }
-                                                                    if(customrec) {
-                                                                        rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
-                                                                        col = (col + 1) % 14;
-                                                                    }
-                                                                    rec.WorkflowName = _job?.workflowname;
-                                                                }
-                                                            }
+                                                            await loadWorkflowName(ref rec, jobs, rec.TimeLine[0].Id);
                                                         } catch {
                                                             
                                                         }
@@ -1256,26 +1246,7 @@ namespace Runner.Client
                                                             }
                                                             var rec = timelineRecords[e.timelineId];
                                                             try {
-                                                                if(rec?.WorkflowName == null) {
-                                                                    var _job = (from job in jobs where job.JobId == rec.TimeLine[0].Id select job).FirstOrDefault();
-                                                                    bool customrec = rec == null;
-                                                                    if(customrec) {
-                                                                        rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
-                                                                        col = (col + 1) % 14;
-                                                                    }
-                                                                    rec.WorkflowName = _job?.workflowname;
-                                                                    if(rec.WorkflowName == null) {
-                                                                        _job = JsonConvert.DeserializeObject<Job>(await client.GetStringAsync(GetJobUrl(b.ToString(), rec.TimeLine[0].Id)));
-                                                                        if(_job != null) {
-                                                                            jobs.Add(_job);
-                                                                        }
-                                                                        if(customrec) {
-                                                                            rec = new TimeLineEntry() { TimeLine = new List<TimelineRecord>() { new TimelineRecord() { Id = rec.TimeLine[0].Id, Name = _job?.name } }, Color = (ConsoleColor) col + 1, Pending = new List<WebConsoleEvent>() };
-                                                                            col = (col + 1) % 14;
-                                                                        }
-                                                                        rec.WorkflowName = _job?.workflowname;
-                                                                    }
-                                                                }
+                                                                await loadWorkflowName(ref rec, jobs, rec.TimeLine[0].Id);
                                                             } catch {
                                                                 
                                                             }
@@ -1375,17 +1346,18 @@ namespace Runner.Client
                                         }
                                     }
                                 } finally {
-                                    if(!string.IsNullOrEmpty(parameters.ArtifactOutputDir) || !(Console.IsInputRedirected || Console.IsOutputRedirected)) {
+                                    if(!string.IsNullOrEmpty(parameters.ArtifactOutputDir) || !(Console.IsInputRedirected || Console.IsOutputRedirected || skipAskToSaveArtifact)) {
                                         var runIds = (from j in jobs select j.runid).ToHashSet();
                                         foreach(var runId in runIds) {
                                             try {
                                                 var artifactUri = new UriBuilder(parameters.server);
-                                                artifactUri.Path = $"/runner/server/_apis/pipelines/workflows/{runId}/artifacts";
+                                                artifactUri.Path = $"/_apis/pipelines/workflows/{runId}/artifacts";
                                                 var artifacts = JsonConvert.DeserializeObject<VssJsonCollectionWrapper<ArtifactResponse[]>>(await client.GetStringAsync(artifactUri.ToString()));
                                                 if(artifacts.Count > 0 && string.IsNullOrEmpty(parameters.ArtifactOutputDir)) {
                                                     await Console.Out.WriteAsync($"Where do you want to store your generated Workflow Artifacts? ( Leave empty to discard them ): ");
                                                     parameters.ArtifactOutputDir = await Console.In.ReadLineAsync();
                                                     if(string.IsNullOrEmpty(parameters.ArtifactOutputDir)) {
+                                                        skipAskToSaveArtifact = true;
                                                         break;
                                                     }
                                                 }
@@ -1424,14 +1396,14 @@ namespace Runner.Client
                                                 var logBasePath = Path.Combine(parameters.LogOutputDir, job.runid.ToString(), special.Replace(job.name, "-"));
                                                 Directory.CreateDirectory(logBasePath);
                                                 Console.WriteLine($"Downloading Logs {job.runid}/{special.Replace(job.name, "-")}");
-                                                var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.server + $"/runner/server/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
+                                                var timeLineRecords = JsonConvert.DeserializeObject<List<TimelineRecord>>(await client.GetStringAsync(parameters.server + $"/_apis/v1/Timeline/{job.TimeLineId.ToString()}"));
                                                 foreach(var timeLineRecord in timeLineRecords) {
                                                     try {
                                                         if(timeLineRecord?.Log?.Id != null) {
                                                             var destpath = Path.Combine(logBasePath, timeLineRecord.Log.Id + "-" + special.Replace(timeLineRecord.Name, "-"));
                                                             Directory.CreateDirectory(Path.GetDirectoryName(destpath));
                                                             var logFileUri = new UriBuilder(parameters.server);
-                                                            logFileUri.Path = $"/runner/server/_apis/v1/Logfiles/{timeLineRecord.Log.Id}";
+                                                            logFileUri.Path = $"/_apis/v1/Logfiles/{timeLineRecord.Log.Id}";
                                                             using(var content = await client.GetStreamAsync(logFileUri.ToString()))
                                                             using(var targetStream = new FileStream(destpath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write)) {
                                                                 await content.CopyToAsync(targetStream);
