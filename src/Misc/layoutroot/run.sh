@@ -9,11 +9,11 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
     [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-
+cp run-helper.sh.template run-helper.sh
 # run the helper process which keep the listener alive
 while :;
 do
-    "$DIR"/bin/run-helper.sh $*
+    "$DIR"/run-helper.sh $*
     returnCode=$?
     if [[ $returnCode == 1 ]]; then
         echo "Restarting runner..."
