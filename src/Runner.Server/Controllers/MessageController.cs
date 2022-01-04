@@ -783,7 +783,7 @@ namespace Runner.Server.Controllers
                             }
                         }
                         if(e == "pull_request" || e == "pull_request_target"){
-                            if(!(new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
+                            if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
                                 return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
@@ -808,7 +808,7 @@ namespace Runner.Server.Controllers
                             }
                         }
                         if(e == "pull_request" || e == "pull_request_target"){
-                            if(!(new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
+                            if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
                                 return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
@@ -1033,7 +1033,7 @@ namespace Runner.Server.Controllers
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
                                     } else if(e == "pull_request" || e == "pull_request_target"){
-                                        if(!(new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action)) {
+                                        if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
                                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
                                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                                         }
@@ -1137,7 +1137,7 @@ namespace Runner.Server.Controllers
                 };
                 Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
                     var effective_event = callingJob?.Event ?? event_name;
-                    if(!string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
+                    if(!string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
                         var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, callingJob?.Event ?? event_name);
                         var targetUrl = "";
                         var ownerAndRepo = repository_name.Split("/", 2);
