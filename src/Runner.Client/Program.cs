@@ -256,7 +256,7 @@ namespace Runner.Client
             string tmpdir = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "Agents", agentname);
             Directory.CreateDirectory(tmpdir);
             try {
-                int atempt = 1;
+                int attempt = 1;
                 while(!source.IsCancellationRequested) {
                     try {
                         var inv = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
@@ -287,31 +287,65 @@ namespace Runner.Client
                         arguments = $"\"{runner}\" {arguments}";
 #endif
                         
-                        var code = await inv.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, source.Token);
-                        var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                        if(parameters.verbose) {
-                            runnerlistener.OutputDataReceived += _out;
-                            runnerlistener.ErrorDataReceived += _out;
-                        }
-                        runnerlistener.OutputDataReceived += (s, e) => {
-                            if(e.Data.Contains("Listening for Jobs")) {
-                                workerchannel.Writer.WriteAsync(true);
+                        var code = await inv.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, CancellationTokenSource.CreateLinkedTokenSource(source.Token, new CancellationTokenSource(60 * 1000).Token).Token);
+                        int execAttempt = 1;                    
+                        while(true) {
+                            try {
+                                var runnerlistener = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                if(parameters.verbose) {
+                                    runnerlistener.OutputDataReceived += _out;
+                                    runnerlistener.ErrorDataReceived += _out;
+                                }
+                                
+                                var runToken = CancellationTokenSource.CreateLinkedTokenSource(source.Token);
+                                using(var timer = new Timer(obj => {
+                                    runToken.Cancel();
+                                }, null, 60 * 1000, -1)) {
+                                    runnerlistener.OutputDataReceived += (s, e) => {
+                                        if(e.Data.Contains("Listening for Jobs")) {
+                                            timer.Change(-1, -1);
+                                            workerchannel.Writer.WriteAsync(true);
+                                        }
+                                    };
+                                    if(source.IsCancellationRequested) {
+                                        return 1;
+                                    }
+                                    arguments = $"Run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
+    #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
+                                    arguments = $"\"{runner}\" {arguments}";
+    #endif
+                                    await runnerlistener.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, runToken.Token);
+                                    break;
+                                }
+                            } catch {
+                                if(execAttempt++ <= 3) {
+                                    await Task.Delay(500);
+                                } else {
+                                    Console.Error.WriteLine("Failed to start actions runner after 3 attempts");
+                                    int delattempt = 1;
+                                    while(true) {
+                                        try {
+                                            Directory.Delete(tmpdir, true);
+                                            break;
+                                        } catch {
+                                            if(delattempt++ >= 3) {
+                                                await Console.Error.WriteLineAsync($"Failed to cleanup {tmpdir} after 3 attempts");
+                                                break;
+                                            } else {
+                                                await Task.Delay(500);
+                                            }
+                                        }
+                                    }
+                                    return 1;
+                                }
                             }
-                        };
-                        if(source.IsCancellationRequested) {
-                            return 1;
                         }
-                        arguments = $"Run{(parameters.KeepContainer || parameters.NoReuse ? " --once" : "")}";
-#if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
-                        arguments = $"\"{runner}\" {arguments}";
-#endif
-                        await runnerlistener.ExecuteAsync(binpath, file, arguments, runnerEnv, true, null, true, source.Token);
                         break;
                     } catch {
-                        if(atempt++ <= 3) {
+                        if(attempt++ <= 3) {
                             await Task.Delay(500);
                         } else {
-                            Console.Error.WriteLine("Failed to auto-configure actions runners after 3 attempts");
+                            Console.Error.WriteLine("Failed to auto-configure actions runner after 3 attempts");
                             int delattempt = 1;
                             while(true) {
                                 try {
