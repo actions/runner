@@ -67,8 +67,6 @@ namespace GitHub.Runner.Listener.Configuration
             return !string.IsNullOrEmpty(value);
         }
 
-#if OS_WINDOWS
-#pragma warning disable CA1416
         public static bool NTAccountValidator(string arg)
         {
             if (string.IsNullOrEmpty(arg) || String.IsNullOrEmpty(arg.TrimStart('.', '\\')))
@@ -89,7 +87,5 @@ namespace GitHub.Runner.Listener.Configuration
 
             return true;
         }
-#pragma warning restore CA1416
-#endif
     }
 }

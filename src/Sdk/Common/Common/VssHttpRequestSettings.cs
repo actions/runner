@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using GitHub.Services.Common;
 
 namespace GitHub.Services.Common
 {
@@ -292,12 +291,12 @@ namespace GitHub.Services.Common
         protected internal virtual Boolean ApplyTo(HttpRequestMessage request)
         {
             // Make sure we only apply the settings to the request once
-            if (request.Options.TryGetValue<object>(PropertyName, out _))
+            if (request.Properties.ContainsKey(PropertyName))
             {
                 return false;
             }
 
-            request.Options.Set(new HttpRequestOptionsKey<VssHttpRequestSettings>(PropertyName), this);
+            request.Properties.Add(PropertyName, this);
 
             if (this.AcceptLanguages != null && this.AcceptLanguages.Count > 0)
             {

@@ -16,8 +16,9 @@ namespace GitHub.Services.WebApi
 
         internal static void Trace(this HttpRequestMessage request)
         {
-            VssRequestTimerTrace tracer;
-            if (request.Options.TryGetValue(tracerKey, out object tracerObj))
+            Object tracerObj = null;
+            VssRequestTimerTrace tracer = null;
+            if (request.Properties.TryGetValue(tracerKey, out tracerObj))
             {
                 tracer = tracerObj as VssRequestTimerTrace;
                 Debug.Assert(tracer != null, "Tracer object is the wrong type!");
@@ -25,7 +26,7 @@ namespace GitHub.Services.WebApi
             else
             {
                 tracer = new VssRequestTimerTrace();
-                request.Options.Set(new HttpRequestOptionsKey<VssRequestTimerTrace>(tracerKey), tracer);
+                request.Properties[tracerKey] = tracer;
             }
 
             if (tracer != null)
@@ -36,8 +37,9 @@ namespace GitHub.Services.WebApi
 
         internal static void Trace(this HttpResponseMessage response)
         {
+            Object tracerObj = null;
             VssRequestTimerTrace tracer = null;
-            if (response.RequestMessage.Options.TryGetValue(tracerKey, out object tracerObj))
+            if (response.RequestMessage.Properties.TryGetValue(tracerKey, out tracerObj))
             {
                 tracer = tracerObj as VssRequestTimerTrace;
                 Debug.Assert(tracer != null, "Tracer object is the wrong type!");

@@ -14,5 +14,10 @@ namespace GitHub.Services.Common
         {
             get;
         }
+
+        IDictionary<string, object> Properties
+        {
+            get;
+        }
     }
 }

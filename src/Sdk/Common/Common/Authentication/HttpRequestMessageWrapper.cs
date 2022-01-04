@@ -28,6 +28,14 @@ namespace GitHub.Services.Common
             }
         }
 
+        public IDictionary<string, object> Properties
+        {
+            get
+            {
+                return m_request.Properties;
+            }
+        }
+
         IEnumerable<String> IHttpHeaders.GetValues(String name)
         {
             IEnumerable<String> values;
