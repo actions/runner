@@ -762,39 +762,46 @@ namespace Runner.Client
                                 new AnonymousPipeServerStream(PipeDirection.In,
                                 HandleInheritability.Inheritable))
                             {
-                                var servertask = Task.Run(async () => {
-                                    using (AnonymousPipeServerStream shutdownPipe =
-                                        new AnonymousPipeServerStream(PipeDirection.Out,
-                                        HandleInheritability.Inheritable)) {
-                                        Task.Run(async () => {
-                                            try {
-                                                await Task.Delay(-1, token);
-                                            } catch {
+                                var runToken = new CancellationTokenSource();
+                                using(var timer = new Timer(obj => {
+                                    runToken.Cancel();
+                                }, null, 60 * 1000, -1)) {
+                                    var servertask = Task.Run(async () => {
+                                        using (AnonymousPipeServerStream shutdownPipe =
+                                            new AnonymousPipeServerStream(PipeDirection.Out,
+                                            HandleInheritability.Inheritable)) {
+                                            Task.Run(async () => {
+                                                try {
+                                                    await Task.Delay(-1, token);
+                                                } catch {
 
-                                            }
-                                            using (StreamWriter sr = new StreamWriter(shutdownPipe))
-                                            {
-                                                sr.WriteLine("shutdown");
-                                            }
-                                        });
-                                        var x = await invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, CancellationToken.None);
-                                        Console.WriteLine("Stopped Server");
-                                        File.Delete(serverconfigfileName);
+                                                }
+                                                using (StreamWriter sr = new StreamWriter(shutdownPipe))
+                                                {
+                                                    sr.WriteLine("shutdown");
+                                                }
+                                            });
+                                            var x = await invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, runToken);
+                                            Console.WriteLine("Stopped Server");
+                                            File.Delete(serverconfigfileName);
+                                        }
+                                    });
+                                    listener.Add(servertask);
+                                    var serveriptask = Task.Run(() => {
+                                        using (StreamReader rd = new StreamReader(pipeServer))
+                                        {
+                                            var line = rd.ReadLine();
+                                            timer.Change(-1, -1);
+                                            parameters.server = line;
+                                            Console.WriteLine($"The server is listening on {line}");
+                                        }
+                                    });
+                                    if(await Task.WhenAny(serveriptask, servertask) == servertask) {
+                                        if(!canceled) {
+                                            Console.Error.WriteLine("Failed to start server, rerun with `-v` to find out what is wrong");
+                                        }
+                                        return 1;
                                     }
-                                });
-                                listener.Add(servertask);
-                                var serveriptask = Task.Run(() => {
-                                    using (StreamReader rd = new StreamReader(pipeServer))
-                                    {
-                                        var line = rd.ReadLine();
-                                        parameters.server = line;
-                                    }
-                                });
-                                if(await Task.WhenAny(serveriptask, servertask) == servertask) {
-                                    if(!canceled) {
-                                        Console.Error.WriteLine("Failed to start server, rerun with `-v` to find out what is wrong");
-                                    }
-                                    return 1;
                                 }
                             }
                         }
@@ -812,11 +819,9 @@ namespace Runner.Client
                                 }
                                 return 1;
                             }
+                            Console.WriteLine($"First runner is listening for jobs");
                         }
 
-                        if(!parameters.StartRunner) {
-                            Console.WriteLine($"The server is listening on {parameters.server}");
-                        }
                         if(parameters.StartServer || parameters.StartRunner) {
                             Console.WriteLine($"Press {(Debugger.IsAttached ? "Enter or CTRL+C" : "CTRL+C")} to stop the {(parameters.StartServer ? "Server" : (parameters.parallel != 1 ? "Runners" : "Runner"))}");
 
