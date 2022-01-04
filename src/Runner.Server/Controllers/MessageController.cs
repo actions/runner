@@ -667,11 +667,13 @@ namespace Runner.Server.Controllers
         }
 
         private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null) {
+            attempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
             bool asyncProcessing = false;
             Guid workflowTimelineId = callingJob?.TimelineId ?? attempt.TimeLineId;
             if(workflowTimelineId == Guid.Empty) {
                 workflowTimelineId = Guid.NewGuid();
                 attempt.TimeLineId = workflowTimelineId;
+                _context.SaveChanges();
                 var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath } };
                 TimelineController.dict[workflowTimelineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                 new TimelineController(_context).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(records));
