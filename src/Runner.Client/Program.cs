@@ -781,7 +781,7 @@ namespace Runner.Client
                                                     sr.WriteLine("shutdown");
                                                 }
                                             });
-                                            var x = await invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, runToken);
+                                            var x = await invoker.ExecuteAsync(binpath, file, arguments, new Dictionary<string, string>() { {"RUNNER_SERVER_APP_JSON_SETTINGS_FILE", serverconfigfileName }, { "RUNNER_CLIENT_PIPE", pipeServer.GetClientHandleAsString() }, { "RUNNER_CLIENT_PIPE_IN", shutdownPipe.GetClientHandleAsString() }, { "GHARUN_CHANGE_PROCESS_GROUP", "1" }}, false, null, true, runToken.Token);
                                             Console.WriteLine("Stopped Server");
                                             File.Delete(serverconfigfileName);
                                         }
