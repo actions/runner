@@ -7,32 +7,32 @@ if [ $user_id -ne 0 ]; then
     exit 1
 fi
 
-# Determine OS type 
+# Determine OS type
 # Debian based OS (Debian, Ubuntu, Linux Mint) has /etc/debian_version
 # Fedora based OS (Fedora, Red Hat Enterprise Linux, CentOS, Oracle Linux 7) has /etc/redhat-release
 # SUSE based OS (OpenSUSE, SUSE Enterprise) has ID_LIKE=suse in /etc/os-release
 
-function print_errormessage() 
+function print_errormessage()
 {
     echo "Can't install dotnet core dependencies."
     echo "You can manually install all required dependencies based on following documentation"
     echo "https://docs.microsoft.com/en-us/dotnet/core/linux-prerequisites?tabs=netcore2x"
 }
 
-function print_rhel6message() 
+function print_rhel6message()
 {
     echo "We did our best effort to install dotnet core dependencies"
-    echo "However, there are some dependencies which require manual installation" 
+    echo "However, there are some dependencies which require manual installation"
     echo "You can install all remaining required dependencies based on the following documentation"
     echo "https://github.com/dotnet/core/blob/master/Documentation/build-and-install-rhel6-prerequisites.md"
 }
 
-function print_rhel6errormessage() 
+function print_rhel6errormessage()
 {
     echo "We couldn't install dotnet core dependencies"
     echo "You can manually install all required dependencies based on following documentation"
     echo "https://docs.microsoft.com/en-us/dotnet/core/linux-prerequisites?tabs=netcore2x"
-    echo "In addition, there are some dependencies which require manual installation. Please follow this documentation" 
+    echo "In addition, there are some dependencies which require manual installation. Please follow this documentation"
     echo "https://github.com/dotnet/core/blob/master/Documentation/build-and-install-rhel6-prerequisites.md"
 }
 
@@ -48,7 +48,7 @@ then
         echo "--------Debian Version--------"
         cat /etc/debian_version
         echo "------------------------------"
-        
+
         # prefer apt-get over apt
         command -v apt-get
         if [ $? -eq 0 ]
@@ -66,7 +66,12 @@ then
             fi
         fi
 
-        $apt_get update && $apt_get install -y liblttng-ust0 libkrb5-3 zlib1g
+        $apt_get update
+        ust_package=liblttng-ust0
+        if [[ $(apt-cache search -n liblttng-ust1 | awk '{print $1}') == "liblttng-ust1" ]]; then
+          ust_package=liblttng-ust1
+        fi
+        $apt_get install -y ${ust_package} libkrb5-3 zlib1g
         if [ $? -ne 0 ]
         then
             echo "'$apt_get' failed with exit code '$?'"
@@ -129,7 +134,7 @@ then
                     echo "'dnf' failed with exit code '$?'"
                     print_errormessage
                     exit 1
-                fi         
+                fi
             else
                 echo "Can not find 'dnf'"
                 print_errormessage
@@ -141,7 +146,7 @@ then
             then
                 yum install -y lttng-ust openssl-libs krb5-libs zlib libicu
                 if [ $? -ne 0 ]
-                then                    
+                then
                     echo "'yum' failed with exit code '$?'"
                     print_errormessage
                     exit 1
@@ -196,7 +201,7 @@ then
         then
             yum install -y openssl krb5-libs zlib
             if [ $? -ne 0 ]
-            then                    
+            then
                 echo "'yum' failed with exit code '$?'"
                 print_rhel6errormessage
                 exit 1
