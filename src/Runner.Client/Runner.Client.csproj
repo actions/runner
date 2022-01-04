@@ -16,6 +16,8 @@
     <Description>Unofficial GitHub Actions Runner Client, run your github action workflows locally. $(CHANGELOG_LINE)More Information https://github.com/ChristopherHX/runner.server.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ChristopherHX/runner.server</PackageProjectUrl>
+    <!-- See https://github.com/dotnet/sdk/issues/18116#issuecomment-855266314 -->
+    <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
   </PropertyGroup>
 
   <ItemGroup>
