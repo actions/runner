@@ -61,36 +61,6 @@ jobs:
         ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
       working-directory: src
 
-    # Run tests
-    - name: L0
-      run: |
-        ${{ matrix.devScript }} test
-      working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
-
-    # Check runtime/externals hash
-    - name: Compute/Compare runtime and externals Hash
-      shell: bash
-      run: |
-        echo "Current dotnet runtime hash result: $DOTNET_RUNTIME_HASH"
-        echo "Current Externals hash result: $EXTERNALS_HASH"
-
-        NeedUpdate=0
-        if [ "$EXTERNALS_HASH" != "$(cat ./src/Misc/contentHash/externals/${{ matrix.runtime }})" ] ;then
-          echo Hash mismatch, Update ./src/Misc/contentHash/externals/${{ matrix.runtime }} to $EXTERNALS_HASH
-          NeedUpdate=1
-        fi
-
-        if [ "$DOTNET_RUNTIME_HASH" != "$(cat ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }})" ] ;then
-          echo Hash mismatch, Update ./src/Misc/contentHash/dotnetRuntime/${{ matrix.runtime }} to $DOTNET_RUNTIME_HASH
-          NeedUpdate=1
-        fi
-
-        exit $NeedUpdate
-      env:
-        DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
-        EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
-
     # Create runner package tar.gz/zip
     - name: Package Release
       if: github.event_name != 'pull_request'
@@ -106,9 +76,6 @@ jobs:
         name: runner-package-${{ matrix.runtime }}
         path: | 
           _package
-          _package_trims/trim_externals
-          _package_trims/trim_runtime
-          _package_trims/trim_runtime_externals
     - name: Setup
       if: 'false' # Disabled due to 403 of statuses api with this token and rate limit
       shell: pwsh
