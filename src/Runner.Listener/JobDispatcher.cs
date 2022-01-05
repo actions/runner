@@ -2,19 +2,19 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
-using GitHub.Services.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using System.Linq;
-using GitHub.Services.Common;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 using GitHub.Services.WebApi.Jwt;
-using System.Text.RegularExpressions;
-using System.Text;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Listener
 {
@@ -969,7 +969,9 @@ namespace GitHub.Runner.Listener
 
                 try
                 {
-                    if (!string.IsNullOrEmpty(errorMessage))
+                    if (!string.IsNullOrEmpty(errorMessage) &&
+                        message.Variables.TryGetValue("DistributedTask.EnableRunnerIPCDebug", out var enableRunnerIPCDebug) &&
+                        StringUtil.ConvertToBoolean(enableRunnerIPCDebug.Value))
                     {
                         // the trace should be best effort and not affect any job result
                         var match = _invalidJsonRegex.Match(errorMessage);
