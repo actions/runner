@@ -1,14 +1,14 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common
 {
@@ -76,6 +76,7 @@ namespace GitHub.Runner.Common
         // at the same time we can cut the load to server after the build run for more than 60s
         private int _webConsoleLineAggressiveDequeueCount = 0;
         private const int _webConsoleLineAggressiveDequeueLimit = 4 * 60;
+        private const int _webConsoleLineQueueSize = 2 * 1024;
         private bool _webConsoleLineAggressiveDequeue = true;
         private bool _firstConsoleOutputs = true;
 
@@ -161,8 +162,17 @@ namespace GitHub.Runner.Common
 
         public void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber)
         {
-            Trace.Verbose("Enqueue web console line queue: {0}", line);
-            _webConsoleLineQueue.Enqueue(new ConsoleLineInfo(stepRecordId, line, lineNumber));
+            if (!string.IsNullOrEmpty(line) && _webConsoleLineQueue.Count < 1024)
+            {
+                Trace.Verbose("Enqueue web console line queue: {0}", line);
+                if (line.Length > 1024)
+                {
+                    Trace.Verbose("Web console line is more than 1024 chars, truncate to first 1024 chars");
+                    line = $"{line.Substring(0, 1024)}...";
+                }
+
+                _webConsoleLineQueue.Enqueue(new ConsoleLineInfo(stepRecordId, line, lineNumber));
+            }
         }
 
         public void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource)
@@ -228,12 +238,6 @@ namespace GitHub.Runner.Common
                     {
                         stepsConsoleLines[lineInfo.StepRecordId] = new List<TimelineRecordLogLine>();
                         stepRecordIds.Add(lineInfo.StepRecordId);
-                    }
-
-                    if (!string.IsNullOrEmpty(lineInfo.Line) && lineInfo.Line.Length > 1024)
-                    {
-                        Trace.Verbose("Web console line is more than 1024 chars, truncate to first 1024 chars");
-                        lineInfo.Line = $"{lineInfo.Line.Substring(0, 1024)}...";
                     }
 
                     stepsConsoleLines[lineInfo.StepRecordId].Add(new TimelineRecordLogLine(lineInfo.Line, lineInfo.LineNumber));
