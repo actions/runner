@@ -83,7 +83,7 @@ var gracefulShutdown = function (code) {
         listener.kill('SIGINT');
 
         console.log('Sending SIGKILL to runner listener');
-        setTimeout(() => listener.kill('SIGKILL'), 30000);
+        setTimeout(() => listener.kill('SIGKILL'), 30000).unref();
     }
 }
 
