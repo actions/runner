@@ -185,7 +185,8 @@ namespace GitHub.Runner.Listener
 #if DEBUG
                 // Much of the update process (targetVersion, archive) is server-side, this is a way to control it from here for testing specific update scenarios
                 // Add files like 'runner_v2.281.2.tar.gz' or 'runner_v2.283.0.zip' depending on your platform in your runner root folder
-                // This functionality should not be in the release build to prevent tampering with updates
+                // Note that runners still need to be behind the server's runner version in order to receive an 'AgentRefreshMessage' and trigger this update
+                // This should not be in the release build to prevent tampering with updates
                 var isMockUpdate = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE"));
                 if (isMockUpdate)
                 {
