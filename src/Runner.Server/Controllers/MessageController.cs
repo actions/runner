@@ -1367,6 +1367,7 @@ namespace Runner.Server.Controllers
                                         templateContext.ExpressionValues[pair.Key] = pair.Value;
                                     }
                                     var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobitem.name;
+                                    templateContext.Errors.Check();
                                     if(callingJob?.Name != null) {
                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
@@ -1394,6 +1395,7 @@ namespace Runner.Server.Controllers
                                         // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                         templateContext.ExpressionValues["needs"] = recusiveNeedsctx;
                                         var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, condition, 0, fileId, true);
+                                        templateContext.Errors.Check();
                                         return PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
                                     };
                                     Action<TaskResult> sendFinishJob = result => {
@@ -1420,6 +1422,7 @@ namespace Runner.Server.Controllers
                                         if (rawstrategy != null) {
                                             templateContext.TraceWriter.Info("{0}", "Evaluate strategy");
                                             var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping("strategy");
+                                            templateContext.Errors.Check();
                                             failFast = (from r in strategy where r.Key.AssertString("fail-fast").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean("fail-fast")?.Value ?? failFast;
                                             max_parallel = (from r in strategy where r.Key.AssertString("max-parallel").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber("max-parallel")?.Value;
                                             var matrix = (from r in strategy where r.Key.AssertString("matrix").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping("matrix");
@@ -1643,15 +1646,19 @@ namespace Runner.Server.Controllers
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
                                                 var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
+                                                templateContext.Errors.Check();
                                                 if(callingJob?.Name != null) {
                                                     _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job ContinueOnError" }), next.TimelineId, next.Id);
                                                 next.ContinueOnError = (from r in run where r.Key.AssertString("continue-on-error").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean("continue-on-error be a boolean").Value).FirstOrDefault();
+                                                templateContext.Errors.Check();
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job timeoutMinutes" }), next.TimelineId, next.Id);
                                                 var timeoutMinutes = (from r in run where r.Key.AssertString("timeout-minutes").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("timeout-minutes be a number").Value).Append(360).First();
+                                                templateContext.Errors.Check();
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), next.TimelineId, next.Id);
                                                 var cancelTimeoutMinutes = (from r in run where r.Key.AssertString("cancel-timeout-minutes").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("cancel-timeout-minutes be a number").Value).Append(5).First();
+                                                templateContext.Errors.Check();
                                                 var usesJob = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value != null;
                                                 next.NoStatusCheck = usesJob;
                                                 next.DisplayName = _jobdisplayname;
@@ -1794,6 +1801,7 @@ namespace Runner.Server.Controllers
                                 templateContext.ExpressionValues[pair.Key] = pair.Value;
                             }
                             workflowConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow-concurrency", actionPair.Value, 0, null, true);
+                            templateContext.Errors.Check();
                         }
                         break;
                     }
@@ -1917,6 +1925,7 @@ namespace Runner.Server.Controllers
                                     foreach(var entry in workflowOutputs) {
                                         var key = entry.Key.AssertString("").Value;
                                         var value = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping("") where kv.Key.AssertString("").Value == "value" select kv.Value).First(), 0, null, true).AssertString("").Value;
+                                        templateContext.Errors.Check();
                                         outputs[key] = new VariableValue(value, false);
                                     }
                                     evargs.Outputs = outputs;
@@ -2229,6 +2238,7 @@ namespace Runner.Server.Controllers
                             templateContext.ExpressionValues[pair.Key] = pair.Value;
                         }
                         var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
+                        templateContext.Errors.Check();
                         var result = new DictionaryContextData();
                         foreach (var variable in variables)
                         {
@@ -2243,6 +2253,7 @@ namespace Runner.Server.Controllers
                         }
                         templateContext.ExpressionValues["secrets"] = result;
                         var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping("") : null;
+                        templateContext.Errors.Check();
                         List<string> _secrets = new List<string>();
                         if(evalSec != null) {
                             foreach(var entry in evalSec) {
@@ -2327,6 +2338,7 @@ namespace Runner.Server.Controllers
                 }
                 templateContext.TraceWriter.Info("{0}", "Evaluate runs-on");
                 var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.RunsOn, runsOn, 0, null, true);
+                templateContext.Errors.Check();
                 runsOn = eval;
 
                 if(runsOn is SequenceToken seq2) {
