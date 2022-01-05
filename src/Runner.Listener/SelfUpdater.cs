@@ -185,21 +185,31 @@ namespace GitHub.Runner.Listener
 #if DEBUG
                 // Much of the update process (targetVersion, archive) is server-side, this is a way to control it from here for testing specific update scenarios
                 // Add files like 'runner_v2.281.2.tar.gz' or 'runner_v2.283.0.zip' depending on your platform in your runner root folder
+                // This functionality should not be in the release build to prevent tampering with updates
                 var isMockUpdate = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE"));
                 if (isMockUpdate)
                 {
-                    // the env var should be of format 'v2.281.2,v2.283.0,v2.283.1,v2.284.0'
+                    // the env var should be of format GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST='v2.281.2,v2.283.0,v2.283.1,v2.284.0'
                     var mockVersions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST").Split(',');
                     if (mockVersions.Any()) 
                     {
                         var targetVersion = mockVersions.First();
-                        archiveFile = "runner_" + targetVersion;
+
+                        if (_targetPackage.Platform.StartsWith("win"))
+                        {
+                            archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.zip");
+                        }
+                        else
+                        {
+                            archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.tar.gz");
+                        }
+
                         var newMockVersions = string.Join(",", mockVersions.Skip(1));
                         Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST", newMockVersions);
                         _updateTrace.Add($"Mocking update with file: {archiveFile}, nothing is downloaded");
                     }
                 }
-#else
+#endif
                 // archiveFile is not null only if we mocked it above
                 if (archiveFile == null)
                 {
@@ -211,7 +221,6 @@ namespace GitHub.Runner.Listener
                     }
                     await ValidateRunnerHash(archiveFile, packageHashValue);
                 }
-#endif
 
                 await ExtractRunnerPackage(archiveFile, latestRunnerDirectory, token);
             }
