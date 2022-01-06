@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -597,9 +597,11 @@ namespace Runner.Server.Controllers
             try {
                 _cache.Set(job.JobId, job);
                 job.WorkflowRunAttempt = _context.Set<WorkflowRunAttempt>().Find(job.WorkflowRunAttempt.Id);
-                Task.Run(() => jobevent?.Invoke(this, job.repo, job));
-                _context.Jobs.Add(job);
-                _context.SaveChanges();
+                if(_context.Jobs.Find(job.JobId) == null) {
+                    Task.Run(() => jobevent?.Invoke(this, job.repo, job));
+                    _context.Jobs.Add(job);
+                    _context.SaveChanges();
+                }
                 initializingJobs.Remove(job.JobId, out _);
             } catch (Exception m){
                 throw new Exception("Failed to add job  " + job.name + " / " + job.WorkflowIdentifier + " / " + job.Matrix + " / " + job.JobId  + ": " + m.Message);
@@ -1371,8 +1373,12 @@ namespace Runner.Server.Controllers
                                     foreach (var pair in contextData) {
                                         templateContext.ExpressionValues[pair.Key] = pair.Value;
                                     }
+                                    templateContext.Errors.Clear();
                                     var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobitem.name;
-                                    templateContext.Errors.Check();
+                                    if(templateContext.Errors.Any()) {
+                                        templateContext.Errors.Clear();
+                                        _jobdisplayname = jobitem.name;
+                                    }
                                     if(callingJob?.Name != null) {
                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
@@ -1399,6 +1405,7 @@ namespace Runner.Server.Controllers
                                         }
                                         // It seems that the offical actions service does provide a recusive needs ctx, but only for if expressions.
                                         templateContext.ExpressionValues["needs"] = recusiveNeedsctx;
+                                        templateContext.Errors.Clear();
                                         var eval = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.JobIfResult, condition, 0, fileId, true);
                                         templateContext.Errors.Check();
                                         return PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
@@ -1426,6 +1433,7 @@ namespace Runner.Server.Controllers
                                         double? max_parallel = null;
                                         if (rawstrategy != null) {
                                             templateContext.TraceWriter.Info("{0}", "Evaluate strategy");
+                                            templateContext.Errors.Clear();
                                             var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping("strategy");
                                             templateContext.Errors.Check();
                                             failFast = (from r in strategy where r.Key.AssertString("fail-fast").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean("fail-fast")?.Value ?? failFast;
@@ -1655,6 +1663,11 @@ namespace Runner.Server.Controllers
                                                 if(callingJob?.Name != null) {
                                                     _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                                 }
+                                                next.DisplayName = _jobdisplayname;
+                                                if(jobTotal > 1) {
+                                                    var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                                    AddJob(_job);
+                                                }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job ContinueOnError" }), next.TimelineId, next.Id);
                                                 next.ContinueOnError = (from r in run where r.Key.AssertString("continue-on-error").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean("continue-on-error be a boolean").Value).FirstOrDefault();
                                                 templateContext.Errors.Check();
@@ -1666,7 +1679,6 @@ namespace Runner.Server.Controllers
                                                 templateContext.Errors.Check();
                                                 var usesJob = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value != null;
                                                 next.NoStatusCheck = usesJob;
-                                                next.DisplayName = _jobdisplayname;
                                                 next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
                                                 return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions);
                                             };
@@ -1918,22 +1930,27 @@ namespace Runner.Server.Controllers
                                 exctx.workflow = jobs.ToList();
                                 var evargs = new WorkflowEventArgs { runid = runid, Success = exctx.Success };
                                 if(workflowOutputs != null) {
-                                    templateContext.TraceWriter = workflowTraceWriter;
-                                    templateContext.TraceWriter.Info("{0}", $"Evaluate workflow_call outputs");
-                                    var contextData = createContext("");
-                                    contextData.Add("jobs", jobsctx);
-                                    templateContext.ExpressionValues.Clear();
-                                    foreach (var pair in contextData) {
-                                        templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                    try {
+                                        templateContext.Errors.Clear();
+                                        templateContext.TraceWriter = workflowTraceWriter;
+                                        templateContext.TraceWriter.Info("{0}", $"Evaluate workflow_call outputs");
+                                        var contextData = createContext("");
+                                        contextData.Add("jobs", jobsctx);
+                                        templateContext.ExpressionValues.Clear();
+                                        foreach (var pair in contextData) {
+                                            templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                        }
+                                        var outputs = new Dictionary<string, VariableValue>();
+                                        foreach(var entry in workflowOutputs) {
+                                            var key = entry.Key.AssertString("").Value;
+                                            var value = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping("") where kv.Key.AssertString("").Value == "value" select kv.Value).First(), 0, null, true).AssertString("").Value;
+                                            templateContext.Errors.Check();
+                                            outputs[key] = new VariableValue(value, false);
+                                        }
+                                        evargs.Outputs = outputs;
+                                    } catch {
+                                        evargs.Success = false;
                                     }
-                                    var outputs = new Dictionary<string, VariableValue>();
-                                    foreach(var entry in workflowOutputs) {
-                                        var key = entry.Key.AssertString("").Value;
-                                        var value = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping("") where kv.Key.AssertString("").Value == "value" select kv.Value).First(), 0, null, true).AssertString("").Value;
-                                        templateContext.Errors.Check();
-                                        outputs[key] = new VariableValue(value, false);
-                                    }
-                                    evargs.Outputs = outputs;
                                 }
                                 finished.Cancel();
                                 if(callingJob?.Workflowfinish != null) {
