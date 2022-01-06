@@ -68,20 +68,16 @@ namespace Runner.Server.Controllers
                     _cache.Remove(ev.JobId);
                     Session session;
                     if(_cache.TryGetValue(job.SessionId, out session)) {
-                        Console.Out.WriteLine("Job finished / set session job to null");
                         session.Job = null;
                     }
                 }
                 InvokeJobCompleted(ev);
-                Console.Out.WriteLine("Job finished");
                 return Ok();
             } else if (jevent is JobAssignedEvent a) {
                 Task.Run(() => OnJobAssigned?.Invoke(a));
-                Console.Out.WriteLine("Job assigned");
                 return Ok();
             } else if(jevent is JobStartedEvent s) {
                 Task.Run(() => OnJobStarted?.Invoke(s));
-                Console.Out.WriteLine("Job started");
                 return Ok();
             }
             return NotFound();

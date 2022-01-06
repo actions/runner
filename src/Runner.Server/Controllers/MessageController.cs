@@ -2868,12 +2868,9 @@ namespace Runner.Server.Controllers
                         }
                     }
                 } else if(!session.Job.Cancelled) {
-                    /*try {*/
-                        Console.WriteLine("Waiting for request abort, timeout, job cancellation or job finish");
-                        await Task.WhenAny(Task.Delay(-1,session.JobRunningToken), Task.Delay(-1,ts.Token), Task.Delay(-1,session.Job.CancelRequest.Token));
-                        // await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token, session.Job.CancelRequest.Token).Token);
-                    /*} catch (TaskCanceledException) { */
-                        Console.WriteLine("Finished: Waiting for request abort, timeout, job cancellation or job finish");
+                    try {
+                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token, session.Job.CancelRequest.Token).Token);
+                    } catch (TaskCanceledException) {
                         if(!session.JobRunningToken.IsCancellationRequested && session.Job.CancelRequest.IsCancellationRequested) {
                             session.Job.Cancelled = true;
                             session.Key.GenerateIV();
@@ -2900,23 +2897,21 @@ namespace Runner.Server.Controllers
                         }
                         // The official runner ignores the next job if we don't delay here
                         await Task.Delay(1000);
-                    /* } */
+                    }
                 } else {
                     try {
-                        Console.WriteLine("Waiting for request abort, timeout or job finish");
                         await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token).Token);
                     } catch (TaskCanceledException) {
-                        Console.WriteLine("Finished: Waiting for request abort, timeout or job finish");
-                    }
-                    if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
-                        try {
-                            new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
-                        } catch {
-                            
+                        if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+                            try {
+                                new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                            } catch {
+                                
+                            }
                         }
+                        // The official runner ignores the next job if we don't delay here
+                        await Task.Delay(1000);
                     }
-                    // The official runner ignores the next job if we don't delay here
-                    await Task.Delay(1000);
                 }
                 return NoContent();
             } finally {

@@ -32,7 +32,6 @@ namespace Runner.Server.Models
                 }
                 job = value;
                 if(job == null) {
-                    Console.WriteLine("Job finished on session xx");
                     source.Cancel();
                 } else {
                     FirstJobReceived = true;
