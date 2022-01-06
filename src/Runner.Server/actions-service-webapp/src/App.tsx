@@ -535,7 +535,7 @@ interface CollapsibleProps {
 const Collapsible : React.FC<CollapsibleProps> = props => {
   const [open, setOpen] = useState<boolean>();
   const [implicitOpen, setImplicitOpen] = useState<boolean>(false);
-  return (<div style={{display: "block"}}><div tabIndex={0} onKeyPress={() => setOpen(open => !open)} onClick={() => setOpen(open => !open)} style={{display: "block", border: "1px", margin: "1px", width: "calc(100% - 4px)", borderStyle: "solid"}}>{props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" } - {props.timelineEntry.name}</div>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
+  return (<div style={{display: "block"}}><div tabIndex={0} onKeyPress={() => setOpen(open => !open)} onClick={() => setOpen(open => !open)} style={{display: "flex", border: "1px", margin: "1px", width: "calc(100% - 4px)", borderStyle: "solid"}}><span style={{width: "100%"}}>{props.timelineEntry.result ?? props.timelineEntry.state ?? "Waiting" } - {props.timelineEntry.name}</span><span style={{alignSelf: 'flex-end', flexShrink: "0"}}>{(open === undefined ? implicitOpen : open) ? (open === undefined ? "Implicit Expanded" : "Expanded"): "Collapsed"}</span></div>{(<Detail render={open === undefined ? implicitOpen : open} timeline={props.timelineEntry} registerLiveLog={(recordId, callback) => {
     props.registerLiveLog(recordId, line => {
       var impl = implicitOpen;
       setImplicitOpen(true);
