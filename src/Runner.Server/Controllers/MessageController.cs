@@ -668,6 +668,7 @@ namespace Runner.Server.Controllers
 
         private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null) {
             attempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
+            _context.Entry(attempt).Reference(a => a.WorkflowRun).Load();
             bool asyncProcessing = false;
             Guid workflowTimelineId = callingJob?.TimelineId ?? attempt.TimeLineId;
             if(workflowTimelineId == Guid.Empty) {
@@ -1103,6 +1104,10 @@ namespace Runner.Server.Controllers
                 }
                 var workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
+                if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
+                    attempt.WorkflowRun.DisplayName = workflowname;
+                    _context.SaveChanges();
+                }
                 Func<string, DictionaryContextData> createContext = jobname => {
                     var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
                     contextData["inputs"] = callingJob?.Inputs;
