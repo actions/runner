@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
@@ -16,6 +17,7 @@ namespace Runner.Server.Models
         public String FileName { get; set; }
         public String DisplayName { get; set; }
         public List<WorkflowRunAttempt> Attempts { get; set; }
-
+        [NotMapped]
+        public String EventName { get; set; }
     }
 }

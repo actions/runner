@@ -3360,7 +3360,7 @@ namespace Runner.Server.Controllers
 
         [HttpGet("workflow/runs")]
         public async Task<IActionResult> GetWorkflows([FromQuery] int? page, [FromQuery] string owner, [FromQuery] string repo) {
-            var query = from j in _context.Set<WorkflowRun>() where j.Workflow.Repository.Owner.Name == owner && j.Workflow.Repository.Name == repo orderby j.Id descending select j;
+            var query = (from j in _context.Set<WorkflowRunAttempt>() where j.Attempt == 1 && j.WorkflowRun.Workflow.Repository.Owner.Name == owner && j.WorkflowRun.Workflow.Repository.Name == repo orderby j.WorkflowRun.Id descending select j).Include(j => j.WorkflowRun).Select(j => new WorkflowRun() { EventName = j.EventName, FileName = j.WorkflowRun.FileName, DisplayName = j.WorkflowRun.DisplayName, Id = j.WorkflowRun.Id});
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
