@@ -46,7 +46,7 @@
         "runs": {
             "one-of": [
                 "container-runs",
-                "node12-runs",
+                "node-runs",
                 "plugin-runs",
                 "composite-runs"
             ]
@@ -80,7 +80,7 @@
                 "loose-value-type": "string"
             }
         },
-        "node12-runs": {
+        "node-runs": {
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
@@ -112,10 +112,10 @@
                 "item-type": "composite-step"
             }
         },
-        "composite-step":{
+        "composite-step": {
             "one-of": [
                 "run-step",
-                "uses-step" 
+                "uses-step"
             ]
         },
         "run-step": {
@@ -123,6 +123,7 @@
                 "properties": {
                     "name": "string-steps-context",
                     "id": "non-empty-string",
+                    "if": "step-if",
                     "run": {
                         "type": "string-steps-context",
                         "required": true
@@ -141,6 +142,7 @@
                 "properties": {
                     "name": "string-steps-context",
                     "id": "non-empty-string",
+                    "if": "step-if",
                     "uses": {
                         "type": "non-empty-string",
                         "required": true
@@ -215,6 +217,24 @@
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "string"
             }
+        },
+        "step-if": {
+            "context": [
+              "github",
+              "inputs",
+              "strategy",
+              "matrix",
+              "steps",
+              "job",
+              "runner",
+              "env",
+              "always(0,0)",
+              "failure(0,0)",
+              "cancelled(0,0)",
+              "success(0,0)",
+              "hashFiles(1,255)"
+            ],
+            "string": {}
         },
         "step-with": {
             "context": [

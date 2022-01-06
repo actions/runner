@@ -278,7 +278,7 @@ namespace GitHub.Runner.Worker
                         }
                         // Clone action so we can modify the condition without affecting the original
                         var clonedAction = action.Clone() as Pipelines.ActionStep;
-                        _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);                        
+                        _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
                     }
                 }
             }
@@ -443,12 +443,22 @@ namespace GitHub.Runner.Worker
                         {
                             for (var i = 0; i < compositeAction.Steps.Count; i++)
                             {
-                                // Store Id's for later load actions
+                                // Load stored Ids for later load actions
                                 compositeAction.Steps[i].Id = _cachedEmbeddedStepIds[action.Id][i];
                                 if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && compositeAction.Steps[i].Reference.Type != Pipelines.ActionSourceType.Script)
                                 {
                                     throw new Exception("`uses:` keyword is not currently supported.");
                                 }
+                            }
+                        }
+                        else
+                        {
+                            _cachedEmbeddedStepIds[action.Id] = new List<Guid>();
+                            foreach (var compositeStep in compositeAction.Steps)
+                            {
+                                var guid = Guid.NewGuid();
+                                compositeStep.Id = guid;
+                                _cachedEmbeddedStepIds[action.Id].Add(guid);
                             }
                         }
                     }
@@ -1047,7 +1057,6 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    // TODO: remove once we remove the DistributedTask.EnableCompositeActions FF
                     foreach (var step in compositeAction.Steps)
                     {
                         if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && step.Reference.Type != Pipelines.ActionSourceType.Script)
@@ -1190,6 +1199,8 @@ namespace GitHub.Runner.Worker
         public string Pre { get; set; }
 
         public string Post { get; set; }
+
+        public string NodeVersion { get; set; }
     }
 
     public sealed class PluginActionExecutionData : ActionExecutionData

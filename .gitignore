@@ -19,7 +19,9 @@
 node_modules
 _downloads
 _layout
+_layout_trims
 _package
+_package_trims
 _dotnetsdk
 TestResults
 TestLogs
