@@ -1,20 +1,20 @@
-using GitHub.DistributedTask.WebApi;
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-using GitHub.Services.WebApi;
-using GitHub.Services.Common;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Reflection;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
 
 namespace GitHub.Runner.Listener
 {
@@ -225,8 +225,8 @@ namespace GitHub.Runner.Listener
                 _contentHashes.ContainsKey(_externals) &&
                 _targetPackage.TrimmedPackages?.Count > 0)
             {
-                Trace.Info($"Current runner content hash: {JsonUtility.ToString(_contentHashes)}");
-                Trace.Info($"Trimmed packages info from service: {JsonUtility.ToString(_targetPackage.TrimmedPackages)}");
+                Trace.Info($"Current runner content hash: {StringUtil.ConvertToJson(_contentHashes)}");
+                Trace.Info($"Trimmed packages info from service: {StringUtil.ConvertToJson(_targetPackage.TrimmedPackages)}");
                 // Try to see whether we can use any size trimmed down package to speed up runner updates.
                 foreach (var trimmedPackage in _targetPackage.TrimmedPackages)
                 {
@@ -302,13 +302,17 @@ namespace GitHub.Runner.Listener
             }
 
             var trimmedPackageRestoreTasks = new List<Task<bool>>();
-            if (externalsTrimmed)
+            if (!fallbackToFullPackage)
             {
-                trimmedPackageRestoreTasks.Add(RestoreTrimmedExternals(latestRunnerDirectory, token));
-            }
-            if (runtimeTrimmed)
-            {
-                trimmedPackageRestoreTasks.Add(RestoreTrimmedDotnetRuntime(latestRunnerDirectory, token));
+                // Skip restoring externals and runtime if we are going to fullback to the full package.
+                if (externalsTrimmed)
+                {
+                    trimmedPackageRestoreTasks.Add(RestoreTrimmedExternals(latestRunnerDirectory, token));
+                }
+                if (runtimeTrimmed)
+                {
+                    trimmedPackageRestoreTasks.Add(RestoreTrimmedDotnetRuntime(latestRunnerDirectory, token));
+                }
             }
 
             if (trimmedPackageRestoreTasks.Count > 0)
@@ -324,6 +328,7 @@ namespace GitHub.Runner.Listener
             if (fallbackToFullPackage)
             {
                 Trace.Error("Something wrong with the trimmed runner package, failback to use the full package for runner updates.");
+                _updateTrace.Enqueue($"FallbackToFullPackage: {fallbackToFullPackage}");
 
                 IOUtil.DeleteDirectory(latestRunnerDirectory, token);
                 Directory.CreateDirectory(latestRunnerDirectory);
@@ -495,11 +500,11 @@ namespace GitHub.Runner.Listener
                         if (hash != packageHashValue)
                         {
                             // Hash did not match, we can't recover from this, just throw
-                            throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {packageHashValue} for {_targetPackage.Filename}");
+                            throw new Exception($"Computed runner hash {hash} did not match expected Runner Hash {packageHashValue} for {archiveFile}");
                         }
 
                         stopWatch.Stop();
-                        Trace.Info($"Validated Runner Hash matches {_targetPackage.Filename} : {packageHashValue}");
+                        Trace.Info($"Validated Runner Hash matches {archiveFile} : {packageHashValue}");
                         _updateTrace.Enqueue($"ValidateHashTime: {stopWatch.ElapsedMilliseconds}ms");
                     }
                 }
@@ -760,27 +765,30 @@ namespace GitHub.Runner.Listener
                 foreach (var nodeVersion in nodeVersions)
                 {
                     var newNodeBinary = Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory, nodeVersion, "bin", $"node{IOUtil.ExeExtension}");
-                    using (var p = HostContext.CreateService<IProcessInvoker>())
+                    if (File.Exists(newNodeBinary))
                     {
-                        p.ErrorDataReceived += (_, data) =>
+                        using (var p = HostContext.CreateService<IProcessInvoker>())
                         {
-                            if (!string.IsNullOrEmpty(data.Data))
+                            p.ErrorDataReceived += (_, data) =>
                             {
-                                Trace.Error(data.Data);
-                            }
-                        };
-                        p.OutputDataReceived += (_, data) =>
-                        {
-                            if (!string.IsNullOrEmpty(data.Data))
+                                if (!string.IsNullOrEmpty(data.Data))
+                                {
+                                    Trace.Error(data.Data);
+                                }
+                            };
+                            p.OutputDataReceived += (_, data) =>
                             {
-                                Trace.Info(data.Data);
+                                if (!string.IsNullOrEmpty(data.Data))
+                                {
+                                    Trace.Info(data.Data);
+                                }
+                            };
+                            var exitCode = await p.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), newNodeBinary, "--version", null, token);
+                            if (exitCode != 0)
+                            {
+                                Trace.Error($"{newNodeBinary} --version failed with exit code {exitCode}");
+                                return false;
                             }
-                        };
-                        var exitCode = await p.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), newNodeBinary, "--version", null, token);
-                        if (exitCode != 0)
-                        {
-                            Trace.Error($"{newNodeBinary} --version failed with exit code {exitCode}");
-                            return false;
                         }
                     }
                 }
@@ -936,29 +944,32 @@ namespace GitHub.Runner.Listener
                     assetsContent = await streamReader.ReadToEndAsync();
                 }
 
-                var runnerCoreAssets = assetsContent.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                if (runnerCoreAssets.Length > 0)
+                if (!string.IsNullOrEmpty(assetsContent))
                 {
-                    var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
-                    IOUtil.CopyDirectory(binDir, runtimeDir, token);
-
-                    var clonedFile = 0;
-                    foreach (var file in Directory.EnumerateFiles(runtimeDir, "*", SearchOption.AllDirectories))
+                    var runnerCoreAssets = assetsContent.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+                    if (runnerCoreAssets.Length > 0)
                     {
-                        token.ThrowIfCancellationRequested();
-                        if (runnerCoreAssets.Any(x => file.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).EndsWith(x.Trim())))
-                        {
-                            Trace.Verbose($"{file} is part of the runner core, delete from cloned runtime directory.");
-                            IOUtil.DeleteFile(file);
-                        }
-                        else
-                        {
-                            clonedFile++;
-                        }
-                    }
+                        var binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
+                        IOUtil.CopyDirectory(binDir, runtimeDir, token);
 
-                    Trace.Info($"Successfully cloned dotnet runtime to {runtimeDir}. Total files: {clonedFile}");
-                    return true;
+                        var clonedFile = 0;
+                        foreach (var file in Directory.EnumerateFiles(runtimeDir, "*", SearchOption.AllDirectories))
+                        {
+                            token.ThrowIfCancellationRequested();
+                            if (runnerCoreAssets.Any(x => file.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).EndsWith(x.Trim())))
+                            {
+                                Trace.Verbose($"{file} is part of the runner core, delete from cloned runtime directory.");
+                                IOUtil.DeleteFile(file);
+                            }
+                            else
+                            {
+                                clonedFile++;
+                            }
+                        }
+
+                        Trace.Info($"Successfully cloned dotnet runtime to {runtimeDir}. Total files: {clonedFile}");
+                        return true;
+                    }
                 }
             }
             catch (Exception ex)

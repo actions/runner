@@ -573,9 +573,6 @@ namespace GitHub.Runner.Common.Tests.Listener
                     _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
                          .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
 
-                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
-                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = _trimmedPackages }));
-
                     _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
                                  .Callback((int p, int a, string s, string t) =>
                                  {
@@ -701,6 +698,83 @@ namespace GitHub.Runner.Common.Tests.Listener
                     var traceFile = Path.GetTempFileName();
                     File.Copy(hc.TraceFileName, traceFile, true);
                     Assert.Contains("the current runner does not carry those trimmed content (Hash mismatch)", File.ReadAllText(traceFile));
+                }
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", null);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void TestSelfUpdateAsync_FallbackToFullPackage()
+        {
+            try
+            {
+                await FetchLatestRunner();
+                Assert.NotNull(_packageUrl);
+                Assert.NotNull(_trimmedPackages);
+                Environment.SetEnvironmentVariable("RUNNER_L0_OVERRIDEBINDIR", Path.GetFullPath(Path.Combine(TestUtil.GetSrcPath(), "..", "_layout", "bin")));
+                using (var hc = new TestHostContext(this))
+                {
+                    hc.GetTrace().Info(_packageUrl);
+                    hc.GetTrace().Info(StringUtil.ConvertToJson(_trimmedPackages));
+
+                    //Arrange
+                    var updater = new Runner.Listener.SelfUpdater();
+                    hc.SetSingleton<ITerminal>(_term.Object);
+                    hc.SetSingleton<IRunnerServer>(_runnerServer.Object);
+                    hc.SetSingleton<IConfigurationStore>(_configStore.Object);
+                    hc.SetSingleton<IHttpClientHandlerFactory>(new HttpClientHandlerFactory());
+
+                    var p1 = new ProcessInvokerWrapper();  // hashfiles
+                    p1.Initialize(hc);
+                    var p2 = new ProcessInvokerWrapper();  // hashfiles
+                    p2.Initialize(hc);
+                    var p3 = new ProcessInvokerWrapper();  // un-tar trim
+                    p3.Initialize(hc);
+                    var p4 = new ProcessInvokerWrapper();  // un-tar full
+                    p4.Initialize(hc);
+                    hc.EnqueueInstance<IProcessInvoker>(p1);
+                    hc.EnqueueInstance<IProcessInvoker>(p2);
+                    hc.EnqueueInstance<IProcessInvoker>(p3);
+                    hc.EnqueueInstance<IProcessInvoker>(p4);
+                    updater.Initialize(hc);
+
+                    var trim = _trimmedPackages.ToList();
+                    foreach (var package in trim)
+                    {
+                        package.HashValue = "mismatch";
+                    }
+
+                    _runnerServer.Setup(x => x.GetPackageAsync("agent", BuildConstants.RunnerPackage.PackageName, "2.299.0", true, It.IsAny<CancellationToken>()))
+                         .Returns(Task.FromResult(new PackageMetadata() { Platform = BuildConstants.RunnerPackage.PackageName, Version = new PackageVersion("2.299.0"), DownloadUrl = _packageUrl, TrimmedPackages = trim }));
+
+                    _runnerServer.Setup(x => x.UpdateAgentUpdateStateAsync(1, 1, It.IsAny<string>(), It.IsAny<string>()))
+                                 .Callback((int p, int a, string s, string t) =>
+                                 {
+                                     hc.GetTrace().Info(t);
+                                 })
+                                 .Returns(Task.FromResult(new TaskAgent()));
+
+                    try
+                    {
+                        var result = await updater.SelfUpdate(_refreshMessage, _jobDispatcher.Object, true, hc.RunnerShutdownToken);
+                        Assert.True(result);
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0")));
+                        Assert.True(Directory.Exists(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0")));
+                    }
+                    finally
+                    {
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "bin.2.299.0"), CancellationToken.None);
+                        IOUtil.DeleteDirectory(Path.Combine(hc.GetDirectory(WellKnownDirectory.Root), "externals.2.299.0"), CancellationToken.None);
+                    }
+
+                    var traceFile = Path.GetTempFileName();
+                    File.Copy(hc.TraceFileName, traceFile, true);
+                    Assert.Contains("Something wrong with the trimmed runner package, failback to use the full package for runner updates", File.ReadAllText(traceFile));
                 }
             }
             finally
