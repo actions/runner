@@ -142,7 +142,7 @@ namespace GitHub.Runner.Listener.Configuration
             Trace.Entering();
             LocalGroupInfo groupInfo = new LocalGroupInfo();
             groupInfo.Name = groupName;
-            groupInfo.Comment = StringUtil.Format("Built-in group used by Team Foundation Server.");
+            groupInfo.Comment = StringUtil.Format("Built-in group used by GitHub Actions Runner.");
 
             int returnCode = NetLocalGroupAdd(null,               // computer name
                                               1,                  // 1 means include comment 
