@@ -769,6 +769,7 @@ namespace GitHub.Runner.Listener
                     {
                         using (var p = HostContext.CreateService<IProcessInvoker>())
                         {
+                            var outputs = "";
                             p.ErrorDataReceived += (_, data) =>
                             {
                                 if (!string.IsNullOrEmpty(data.Data))
@@ -781,12 +782,19 @@ namespace GitHub.Runner.Listener
                                 if (!string.IsNullOrEmpty(data.Data))
                                 {
                                     Trace.Info(data.Data);
+                                    outputs = data.Data;
                                 }
                             };
-                            var exitCode = await p.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), newNodeBinary, "--version", null, token);
+                            var exitCode = await p.ExecuteAsync(HostContext.GetDirectory(WellKnownDirectory.Root), newNodeBinary, $"-e \"console.log('{nameof(RestoreTrimmedExternals)}')\"", null, token);
                             if (exitCode != 0)
                             {
-                                Trace.Error($"{newNodeBinary} --version failed with exit code {exitCode}");
+                                Trace.Error($"{newNodeBinary} -e \"console.log()\" failed with exit code {exitCode}");
+                                return false;
+                            }
+
+                            if (!string.Equals(outputs, nameof(RestoreTrimmedExternals), StringComparison.OrdinalIgnoreCase))
+                            {
+                                Trace.Error($"{newNodeBinary} -e \"console.log()\" did not output expected content.");
                                 return false;
                             }
                         }
