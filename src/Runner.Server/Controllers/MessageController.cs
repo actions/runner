@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -60,6 +60,7 @@ namespace Runner.Server.Controllers
         private string WebhookSecret { get; }
         private bool AllowPullRequests { get; }
         private bool NoRecursiveNeedsCtx { get; }
+        private bool QueueJobsWithoutRunner { get; }
         private bool WriteAccessForPullRequestsFromForks { get; }
         private bool AllowJobNameOnJobProperties { get; }
         private string GitHubAppPrivateKeyFile { get; }
@@ -90,6 +91,7 @@ namespace Runner.Server.Controllers
             WebhookSecret = configuration.GetSection("Runner.Server")?.GetValue<String>("WebhookSecret") ?? "";
             AllowPullRequests = configuration.GetSection("Runner.Server")?.GetValue<bool>("AllowPullRequests") ?? false;
             NoRecursiveNeedsCtx = configuration.GetSection("Runner.Server")?.GetValue<bool>("NoRecursiveNeedsCtx") ?? false;
+            QueueJobsWithoutRunner = configuration.GetSection("Runner.Server")?.GetValue<bool>("QueueJobsWithoutRunner") ?? false;
             WriteAccessForPullRequestsFromForks = configuration.GetSection("Runner.Server")?.GetValue<bool>("WriteAccessForPullRequestsFromForks") ?? false;
             AllowJobNameOnJobProperties = configuration.GetSection("Runner.Server")?.GetValue<bool>("AllowJobNameOnJobProperties") ?? false;
             GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
@@ -294,6 +296,7 @@ namespace Runner.Server.Controllers
             private TaskResult? stat;
 
             public bool ContinueOnError {get;set;}
+            public bool NoFailFast {get;set;}
 
             public TaskResult? Status { get => Childs?.Any() ?? false ? Childs.Any(c => c.Status == TaskResult.Failed) ? TaskResult.Failed : Childs.All(c => c.Status == TaskResult.Succeeded) ? TaskResult.Succeeded : null : stat; set => stat = ContinueOnError && value == TaskResult.Failed ? TaskResult.Succeeded : value; }
             public Dictionary<string, JobItem> Dependencies { get; set;}
@@ -367,10 +370,19 @@ namespace Runner.Server.Controllers
 
         private class TraceWriter2 : GitHub.DistributedTask.ObjectTemplating.ITraceWriter, GitHub.DistributedTask.Expressions2.ITraceWriter
         {
-            Action<string> Callback {get;}
+            private Action<string> callback;
+            private Regex regex;
             public TraceWriter2(Action<string> callback) {
-                Callback = callback;
+                this.callback = callback;
+                regex = new Regex("\r?\n");
             }
+
+            public void Callback(string lines) {
+                foreach(var line in regex.Split(lines)) {
+                    callback(line);
+                }
+            }
+
             public void Error(string format, params object[] args)
             {
                 if(args?.Length == 1 && args[0] is Exception ex) {
@@ -665,7 +677,9 @@ namespace Runner.Server.Controllers
             public string Event {get;set;}
             public PipelineContextData Inputs {get;set;}
             public CancellationToken? CancellationToken {get;set;}
-            public Action<WorkflowEventArgs> Workflowfinish {get;set;}
+            public Action<CallingJob, WorkflowEventArgs> Workflowfinish {get;set;}
+            // Set by the called workflow to indicate whether to clean cached job dependencies
+            public bool RanJob { get; set; }
         }
 
         private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null) {
@@ -766,6 +780,7 @@ namespace Runner.Server.Controllers
                 if(tk == null) {
                     throw new Exception("Your workflow is invalid, missing 'on' property");
                 }
+                MappingToken mappingEvent = null;
                 switch(tk.Type) {
                     case TokenType.String:
                         if(tk.AssertString("str").Value != e) {
@@ -773,55 +788,19 @@ namespace Runner.Server.Controllers
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, '{tk.AssertString("str").Value}' isn't is the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
-                        if(e == "workflow_call") {
-                            if(callingJob?.Inputs != null && callingJob.Inputs.AssertDictionary("").Any()) {
-                                throw new Exception($"This workflow doesn't define any input");
-                            }
-                            List<string> validSecrets = new List<string> { "system.github.token" };
-                            foreach(var secret in secrets) {
-                                var name = secret.Substring(0, secret.IndexOf('=')).ToLowerInvariant();
-                                if(!validSecrets.Contains(name)) {
-                                    throw new Exception($"This workflow doesn't define secret {name}");
-                                }
-                            }
-                        }
-                        if(e == "pull_request" || e == "pull_request_target"){
-                            if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                            }
-                        }
                         break;
                     case TokenType.Sequence:
                         if((from r in tk.AssertSequence("seq") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
                             // Skip, not the right event
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, due [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                        }
-                        if(e == "workflow_call") {
-                            if(callingJob?.Inputs != null && callingJob.Inputs.AssertDictionary("").Any()) {
-                                throw new Exception($"This workflow doesn't define any input");
-                            }
-                            List<string> validSecrets = new List<string> { "system.github.token" };
-                            foreach(var secret in secrets) {
-                                var name = secret.Substring(0, secret.IndexOf('=')).ToLowerInvariant();
-                                if(!validSecrets.Contains(name)) {
-                                    throw new Exception($"This workflow doesn't define secret {name}");
-                                }
-                            }
-                        }
-                        if(e == "pull_request" || e == "pull_request_target"){
-                            if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
-                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                            }
                         }
                         break;
                     case TokenType.Mapping:
                         var e2 = (from r in tk.AssertMapping("seq") where r.Key.AssertString(e).Value == e select r).FirstOrDefault();
                         var rawEvent = e2.Value;
                         if(rawEvent == null) {
-                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, due [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         if(e == "schedule") {
@@ -844,265 +823,264 @@ namespace Runner.Server.Controllers
                                 throw new Exception($"cron validation failed for: {sb.ToString()}");
                             }
                         } else {
-                            if(rawEvent.Type != TokenType.Null) {
-                                var push = rawEvent.AssertMapping($"expected mapping for event '{e}'");
-                                List<string> allowed = new List<string>();
-                                allowed.Add("types");
-
-                                if(e == "push" || e == "pull_request" || e == "pull_request_target" || e == "workflow_run") {
-                                    allowed.Add("branches");
-                                    allowed.Add("branches-ignore");
-                                }
-                                if(e == "workflow_run") {
-                                    allowed.Add("workflows");
-                                }
-                                if(e == "push" || e == "pull_request" || e == "pull_request_target") {
-                                    allowed.Add("tags");
-                                    allowed.Add("tags-ignore");
-                                    allowed.Add("paths");
-                                    allowed.Add("paths-ignore");
-                                }
-                                if(e == "workflow_dispatch") {
-                                    allowed.Add("inputs");
-                                    // Validate inputs and apply defaults
-                                    var workflowInputs = (from r in push where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map");
-                                    List<string> validInputs = new List<string>();
-                                    var dispatchInputs = payloadObject["inputs"] as JObject;
-                                    if(dispatchInputs == null) {
-                                        dispatchInputs = new JObject();
-                                        payloadObject["inputs"] = dispatchInputs;
-                                    }
-                                    if(workflowInputs != null) {
-                                        foreach(var input in workflowInputs) {
-                                            var inputName = input.Key.AssertString("input key must be a string").Value;
-                                            validInputs.Add(inputName);
-                                            var inputInfo = input.Value?.AssertMapping("map");
-                                            if(inputInfo != null) {
-                                                bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
-                                                string type = (from r in inputInfo where r.Key.AssertString("").Value == "type" select r.Value.AssertString("").Value).FirstOrDefault();
-                                                SequenceToken options = (from r in inputInfo where r.Key.AssertString("").Value == "options" select r.Value.AssertSequence("")).FirstOrDefault();
-                                                var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.AssertString("")?.ToContextData()?.ToJToken();
-                                                if(def == null) {
-                                                    def = "";
-                                                }
-                                                if(!dispatchInputs.TryGetValue(inputName, out _)) {
-                                                    if(required) {
-                                                        throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
-                                                    }
-                                                    dispatchInputs[inputName] = def;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    foreach(var providedInput in dispatchInputs) {
-                                        if(!validInputs.Contains(providedInput.Key)) {
-                                            throw new Exception($"This workflow doesn't define input {providedInput.Key}");
-                                        }
-                                    }
-                                }
-                                if(e == "workflow_call") {
-                                    allowed.Add("inputs");
-                                    allowed.Add("outputs");
-                                    allowed.Add("secrets");
-                                    // Validate inputs and apply defaults
-                                    var workflowInputs = (from r in push where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map");
-                                    workflowOutputs = (from r in push where r.Key.AssertString("outputs").Value == "outputs" select r).FirstOrDefault().Value?.AssertMapping("map");
-                                    List<string> validInputs = new List<string>();
-                                    if(callingJob?.Inputs == null) {
-                                        callingJob.Inputs = new DictionaryContextData();
-                                    }
-                                    if(workflowInputs != null) {
-                                        foreach(var input in workflowInputs) {
-                                            var inputName = input.Key.AssertString("input key must be a string").Value;
-                                            validInputs.Add(inputName);
-                                            var inputInfo = input.Value?.AssertMapping("map");
-                                            if(inputInfo != null) {
-                                                bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
-                                                string type = (from r in inputInfo where r.Key.AssertString("").Value == "type" select r.Value.AssertString("").Value).First();
-                                                var assertMessage = $"This workflow requires the input: {inputName}, to have type {type}";
-                                                var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.ToContextData();
-                                                switch(type) {
-                                                case "string":
-                                                    if(def == null) {
-                                                        def = new StringContextData("");
-                                                    }
-                                                    def.AssertString(assertMessage);
-                                                break;
-                                                case "number":
-                                                    if(def == null) {
-                                                        def = new NumberContextData(0);
-                                                    }
-                                                    def.AssertNumber(assertMessage);
-                                                break;
-                                                case "boolean":
-                                                    if(def == null) {
-                                                        def = new BooleanContextData(false);
-                                                    }
-                                                    def.AssertBoolean(assertMessage);
-                                                break;
-                                                default:
-                                                    throw new Exception($"This workflow requires the type keyword for the input: {inputName}, but an invalid type: {type} was provided");
-                                                }
-                                                var inputsDict = callingJob?.Inputs.AssertDictionary("dict");
-                                                if(inputsDict.TryGetValue(inputName, out var val)) {
-                                                    switch(type) {
-                                                    case "string":
-                                                        val.AssertString(assertMessage);
-                                                    break;
-                                                    case "number":
-                                                        val.AssertNumber(assertMessage);
-                                                    break;
-                                                    case "boolean":
-                                                        val.AssertBoolean(assertMessage);
-                                                    break;
-                                                    }
-                                                } else if(required) {
-                                                    throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
-                                                } else {
-                                                    inputsDict[inputName] = def;
-                                                }
-                                            }
-                                        }
-                                    }
-                                    foreach(var providedInput in callingJob?.Inputs.AssertDictionary("")) {
-                                        if(!validInputs.Contains(providedInput.Key)) {
-                                            throw new Exception($"This workflow doesn't define input {providedInput.Key}");
-                                        }
-                                    }
-                                    // Validate secrets
-                                    var workflowSecrets = (from r in push where r.Key.AssertString("secrets").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("map");
-                                    List<string> validSecrets = new List<string> { "system.github.token" };
-                                    if(workflowSecrets != null) {
-                                        foreach(var input in workflowSecrets) {
-                                            var inputName = input.Key.AssertString("input key must be a string").Value;
-                                            if(inputName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", inputName) == 0) {
-                                                throw new Exception($"This workflow defines the reserved secret {inputName}, using it can cause undefined behavior");
-                                            }
-                                            var inputInfo = input.Value?.AssertMapping("map");
-                                            if(inputInfo != null) {
-                                                validSecrets.Add(inputName.ToLowerInvariant());
-                                                bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
-                                                
-                                                if(!secrets.Any(s => s.ToLowerInvariant().StartsWith(inputName.ToLowerInvariant() + "=")) && required) {
-                                                    throw new Exception($"This workflow requires the secret: {inputName}, but no such secret were provided");
-                                                }
-                                            }
-                                        }
-                                    }
-                                    foreach(var secret in secrets) {
-                                        var name = secret.Substring(0, secret.IndexOf('=')).ToLowerInvariant();
-                                        if(!validSecrets.Contains(name)) {
-                                            throw new Exception($"This workflow doesn't define secret {name}");
-                                        }
-                                    }
-                                }
-
-                                if(!push.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
-                                    var z = 0;
-                                    var sb = new StringBuilder();
-                                    foreach (var prop in (from p in push where !allowed.Any(s => s == p.Key.AssertString("Key").Value) select p.Key.AssertString("Key").Value)) {
-                                        if(z++ != 0) {
-                                            sb.Append(", ");
-                                        }
-                                        sb.Append(prop);
-                                    }
-                                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"The following event properties are invalid: {sb.ToString()}, please remove them from {e}" }), workflowTimelineId, workflowRecordId);
-                                }
-
-                                // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
-                                var branches = (from r in push where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                                var branchesIgnore = (from r in push where r.Key.AssertString("branches-ignore").Value == "branches-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                                var tags = (from r in push where r.Key.AssertString("tags").Value == "tags" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                                var tagsIgnore = (from r in push where r.Key.AssertString("tags-ignore").Value == "tags-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                                var paths = (from r in push where r.Key.AssertString("paths").Value == "paths" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                                var pathsIgnore = (from r in push where r.Key.AssertString("paths-ignore").Value == "paths-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq");
-                                var types = (from r in push where r.Key.AssertString("types").Value == "types" select r).FirstOrDefault().Value?.AssertSequence("seq");
-
-                                if(branches != null && branchesIgnore != null) {
-                                    throw new Exception("branches and branches-ignore shall not be used at the same time");
-                                }
-                                if(tags != null && tagsIgnore != null) {
-                                    throw new Exception("tags and tags-ignore shall not be used at the same time");
-                                }
-                                if(paths != null && pathsIgnore != null) {
-                                    throw new Exception("paths and paths-ignore shall not be used at the same time");
-                                }
-
-                                
-                                if(hook?.Action != null) {
-                                    if(types != null) {
-                                        if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString("type").Value + "'")}" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                    } else if(e == "pull_request" || e == "pull_request_target"){
-                                        if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                    }
-                                }
-
-                                var heads = "refs/heads/";
-                                var rtags = "refs/tags/";
-
-                                var Ref2 = Ref;
-                                // Only evaluate base ref https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestbranchestags
-                                if(e == "pull_request_target" || e == "pull_request") {
-                                    var tmp = hook?.pull_request?.Base?.Ref;
-                                    if(tmp != null) {
-                                        Ref2 = "refs/heads/" + tmp;
-                                    }
-                                }
-                                if(Ref2 != null) {
-                                    if(Ref2.StartsWith(heads) == true) {
-                                        var branch = Ref2.Substring(heads.Length);
-
-                                        if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                        if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                        if((tags != null || tagsIgnore != null) && branches == null && branchesIgnore == null) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of tag filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                    } else if(Ref2.StartsWith(rtags) == true) {
-                                        var tag = Ref2.Substring(rtags.Length);
-
-                                        if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                        if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                        if((branches != null || branchesIgnore != null) && tags == null && tagsIgnore == null) {
-                                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of branch filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
-                                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                        }
-                                    }
-                                }
-                                if(hook.Commits != null) {
-                                    var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
-                                    if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter.'" }), workflowTimelineId, workflowRecordId);
-                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                    }
-                                    if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
-                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths filter." }), workflowTimelineId, workflowRecordId);
-                                        return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
-                                    }
-                                }
-                            }
+                            mappingEvent = rawEvent.Type != TokenType.Null ? rawEvent.AssertMapping($"expected mapping for event '{e}'") : null;
                         }
                         break;
                     default:
                         throw new Exception($"Error: Your workflow is invalid, 'on' property has an unexpected yaml Type {tk.Type}");
+                }
+                if(e != "schedule") {
+                    List<string> allowed = new List<string>();
+                    allowed.Add("types");
+
+                    if(e == "push" || e == "pull_request" || e == "pull_request_target" || e == "workflow_run") {
+                        allowed.Add("branches");
+                        allowed.Add("branches-ignore");
+                    }
+                    if(e == "workflow_run") {
+                        allowed.Add("workflows");
+                    }
+                    if(e == "push" || e == "pull_request" || e == "pull_request_target") {
+                        allowed.Add("tags");
+                        allowed.Add("tags-ignore");
+                        allowed.Add("paths");
+                        allowed.Add("paths-ignore");
+                    }
+                    if(e == "workflow_dispatch") {
+                        allowed.Add("inputs");
+                        // Validate inputs and apply defaults
+                        var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
+                        List<string> validInputs = new List<string>();
+                        var dispatchInputs = payloadObject["inputs"] as JObject;
+                        if(dispatchInputs == null) {
+                            dispatchInputs = new JObject();
+                            payloadObject["inputs"] = dispatchInputs;
+                        }
+                        if(workflowInputs != null) {
+                            foreach(var input in workflowInputs) {
+                                var inputName = input.Key.AssertString("input key must be a string").Value;
+                                validInputs.Add(inputName);
+                                var inputInfo = input.Value?.AssertMapping("map");
+                                if(inputInfo != null) {
+                                    bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
+                                    string type = (from r in inputInfo where r.Key.AssertString("").Value == "type" select r.Value.AssertString("").Value).FirstOrDefault();
+                                    SequenceToken options = (from r in inputInfo where r.Key.AssertString("").Value == "options" select r.Value.AssertSequence("")).FirstOrDefault();
+                                    var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.AssertString("")?.ToContextData()?.ToJToken();
+                                    if(def == null) {
+                                        def = "";
+                                    }
+                                    if(!dispatchInputs.TryGetValue(inputName, out _)) {
+                                        if(required) {
+                                            throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
+                                        }
+                                        dispatchInputs[inputName] = def;
+                                    }
+                                }
+                            }
+                        }
+                        foreach(var providedInput in dispatchInputs) {
+                            if(!validInputs.Contains(providedInput.Key)) {
+                                throw new Exception($"This workflow doesn't define input {providedInput.Key}");
+                            }
+                        }
+                    }
+                    if(e == "workflow_call") {
+                        allowed.Add("inputs");
+                        allowed.Add("outputs");
+                        allowed.Add("secrets");
+                        // Validate inputs and apply defaults
+                        var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
+                        workflowOutputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("outputs").Value == "outputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
+                        List<string> validInputs = new List<string>();
+                        if(callingJob?.Inputs == null) {
+                            callingJob.Inputs = new DictionaryContextData();
+                        }
+                        if(workflowInputs != null) {
+                            foreach(var input in workflowInputs) {
+                                var inputName = input.Key.AssertString("input key must be a string").Value;
+                                validInputs.Add(inputName);
+                                var inputInfo = input.Value?.AssertMapping("map");
+                                if(inputInfo != null) {
+                                    bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
+                                    string type = (from r in inputInfo where r.Key.AssertString("").Value == "type" select r.Value.AssertString("").Value).First();
+                                    var assertMessage = $"This workflow requires the input: {inputName}, to have type {type}";
+                                    var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.ToContextData();
+                                    switch(type) {
+                                    case "string":
+                                        if(def == null) {
+                                            def = new StringContextData("");
+                                        }
+                                        def.AssertString(assertMessage);
+                                    break;
+                                    case "number":
+                                        if(def == null) {
+                                            def = new NumberContextData(0);
+                                        }
+                                        def.AssertNumber(assertMessage);
+                                    break;
+                                    case "boolean":
+                                        if(def == null) {
+                                            def = new BooleanContextData(false);
+                                        }
+                                        def.AssertBoolean(assertMessage);
+                                    break;
+                                    default:
+                                        throw new Exception($"This workflow requires the type keyword for the input: {inputName}, but an invalid type: {type} was provided");
+                                    }
+                                    var inputsDict = callingJob?.Inputs.AssertDictionary("dict");
+                                    if(inputsDict.TryGetValue(inputName, out var val)) {
+                                        switch(type) {
+                                        case "string":
+                                            val.AssertString(assertMessage);
+                                        break;
+                                        case "number":
+                                            val.AssertNumber(assertMessage);
+                                        break;
+                                        case "boolean":
+                                            val.AssertBoolean(assertMessage);
+                                        break;
+                                        }
+                                    } else if(required) {
+                                        throw new Exception($"This workflow requires the input: {inputName}, but no such input were provided");
+                                    } else {
+                                        inputsDict[inputName] = def;
+                                    }
+                                }
+                            }
+                        }
+                        foreach(var providedInput in callingJob?.Inputs.AssertDictionary("")) {
+                            if(!validInputs.Contains(providedInput.Key)) {
+                                throw new Exception($"This workflow doesn't define input {providedInput.Key}");
+                            }
+                        }
+                        // Validate secrets
+                        var workflowSecrets = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("secrets").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
+                        List<string> validSecrets = new List<string> { "system.github.token" };
+                        if(workflowSecrets != null) {
+                            foreach(var input in workflowSecrets) {
+                                var inputName = input.Key.AssertString("input key must be a string").Value;
+                                if(inputName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", inputName) == 0) {
+                                    throw new Exception($"This workflow defines the reserved secret {inputName}, using it can cause undefined behavior");
+                                }
+                                var inputInfo = input.Value?.AssertMapping("map");
+                                if(inputInfo != null) {
+                                    validSecrets.Add(inputName.ToLowerInvariant());
+                                    bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
+                                    
+                                    if(!secrets.Any(s => s.ToLowerInvariant().StartsWith(inputName.ToLowerInvariant() + "=")) && required) {
+                                        throw new Exception($"This workflow requires the secret: {inputName}, but no such secret were provided");
+                                    }
+                                }
+                            }
+                        }
+                        foreach(var secret in secrets) {
+                            var name = secret.Substring(0, secret.IndexOf('=')).ToLowerInvariant();
+                            if(!validSecrets.Contains(name)) {
+                                throw new Exception($"This workflow doesn't define secret {name}");
+                            }
+                        }
+                    }
+
+                    if(mappingEvent != null && !mappingEvent.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
+                        var z = 0;
+                        var sb = new StringBuilder();
+                        foreach (var prop in (from p in mappingEvent where !allowed.Any(s => s == p.Key.AssertString("Key").Value) select p.Key.AssertString("Key").Value)) {
+                            if(z++ != 0) {
+                                sb.Append(", ");
+                            }
+                            sb.Append(prop);
+                        }
+                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"The following event properties are invalid: {sb.ToString()}, please remove them from {e}" }), workflowTimelineId, workflowRecordId);
+                    }
+
+                    // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
+                    var branches = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+                    var branchesIgnore = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("branches-ignore").Value == "branches-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+                    var tags = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("tags").Value == "tags" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+                    var tagsIgnore = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("tags-ignore").Value == "tags-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+                    var paths = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("paths").Value == "paths" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+                    var pathsIgnore = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("paths-ignore").Value == "paths-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+                    var types = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("types").Value == "types" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+
+                    if(branches != null && branchesIgnore != null) {
+                        throw new Exception("branches and branches-ignore shall not be used at the same time");
+                    }
+                    if(tags != null && tagsIgnore != null) {
+                        throw new Exception("tags and tags-ignore shall not be used at the same time");
+                    }
+                    if(paths != null && pathsIgnore != null) {
+                        throw new Exception("paths and paths-ignore shall not be used at the same time");
+                    }
+                    
+                    if(hook?.Action != null) {
+                        if(types != null) {
+                            if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString("type").Value + "'")}" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                        } else if(e == "pull_request" || e == "pull_request_target"){
+                            if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                        }
+                    }
+
+                    var heads = "refs/heads/";
+                    var rtags = "refs/tags/";
+
+                    var Ref2 = Ref;
+                    // Only evaluate base ref https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#onpushpull_requestbranchestags
+                    if(e == "pull_request_target" || e == "pull_request") {
+                        var tmp = hook?.pull_request?.Base?.Ref;
+                        if(tmp != null) {
+                            Ref2 = "refs/heads/" + tmp;
+                        }
+                    }
+                    if(Ref2 != null) {
+                        if(Ref2.StartsWith(heads) == true) {
+                            var branch = Ref2.Substring(heads.Length);
+
+                            if(branchesIgnore != null && filter(CompileMinimatch(branchesIgnore), new[] { branch })) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                            if(branches != null && skip(CompileMinimatch(branches), new[] { branch })) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to branches filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                            if((tags != null || tagsIgnore != null) && branches == null && branchesIgnore == null) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of tag filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                        } else if(Ref2.StartsWith(rtags) == true) {
+                            var tag = Ref2.Substring(rtags.Length);
+
+                            if(tagsIgnore != null && filter(CompileMinimatch(tagsIgnore), new[] { tag })) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags-ignore filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                            if(tags != null && skip(CompileMinimatch(tags), new[] { tag })) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to tags filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                            if((branches != null || branchesIgnore != null) && tags == null && tagsIgnore == null) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to existense of branch filter. github.ref='{Ref2}'" }), workflowTimelineId, workflowRecordId);
+                                return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                            }
+                        }
+                    }
+                    if(hook.Commits != null) {
+                        var changedFiles = hook.Commits.SelectMany(commit => (commit.Added ?? new List<string>()).Concat(commit.Removed ?? new List<string>()).Concat(commit.Modified ?? new List<string>()));
+                        if(pathsIgnore != null && filter(CompileMinimatch(pathsIgnore), changedFiles)) {
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths-ignore filter.'" }), workflowTimelineId, workflowRecordId);
+                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                        }
+                        if(paths != null && skip(CompileMinimatch(paths), changedFiles)) {
+                            TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to paths filter." }), workflowTimelineId, workflowRecordId);
+                            return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
+                        }
+                    }
                 }
                 var workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
@@ -1368,17 +1346,8 @@ namespace Runner.Server.Controllers
                                     var jobrecord = new TimelineRecord{ Id = jobitem.Id, Name = jobitem.name };
                                     TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                     templateContext.TraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
-                                    templateContext.TraceWriter.Info("{0}", $"Evaluate job name ( pre strategy )");
-                                    templateContext.ExpressionValues.Clear();
-                                    foreach (var pair in contextData) {
-                                        templateContext.ExpressionValues[pair.Key] = pair.Value;
-                                    }
                                     templateContext.Errors.Clear();
-                                    var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? jobitem.name;
-                                    if(templateContext.Errors.Any()) {
-                                        templateContext.Errors.Clear();
-                                        _jobdisplayname = jobitem.name;
-                                    }
+                                    var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select r.Value.ToString()).FirstOrDefault() ?? jobitem.name;
                                     if(callingJob?.Name != null) {
                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
@@ -1584,6 +1553,8 @@ namespace Runner.Server.Controllers
                                         strategyctx["job-total"] = new NumberContextData( jobTotal );
                                         if(jobTotal > 1) {
                                             jobitem.Childs = new List<JobItem>();
+                                            var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                            AddJob(_job);
                                         }
                                         {
                                             int i = 0;
@@ -1599,32 +1570,39 @@ namespace Runner.Server.Controllers
                                                 }
                                                 return displayname.ToString();
                                             };
+                                            var usesJob = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value != null;
                                             Func<string, Dictionary<string, TemplateToken>, Func<bool, Job>> act = (displayname, item) => {
                                                 int c = i++;
                                                 strategyctx["job-index"] = new NumberContextData((double)(c));
-                                                var matrixContext = new DictionaryContextData();
-                                                foreach (var mk in item) {
-                                                    PipelineContextData data = mk.Value.ToContextData();
-                                                    matrixContext.Add(mk.Key, data);
+                                                DictionaryContextData matrixContext = null;
+                                                if(item.Any()) {
+                                                    matrixContext = new DictionaryContextData();
+                                                    foreach (var mk in item) {
+                                                        PipelineContextData data = mk.Value.ToContextData();
+                                                        matrixContext.Add(mk.Key, data);
+                                                    }
                                                 }
                                                 contextData["matrix"] = matrixContext;
-                                                if(finishedJobs != null) {
+                                                if(finishedJobs != null && !usesJob) {
                                                     if(finishedJobs.TryGetValue(jobname, out var fjobs)) {
                                                         foreach(var fjob in fjobs) {
-                                                            if(TemplateTokenEqual(matrixContext.ToTemplateToken(), fjob.MatrixToken)) {
-                                                                var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId } : jobitem;
+                                                            if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null), fjob.MatrixToken)) {
+                                                                var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true } : jobitem;
                                                                 _next.TimelineId = fjob.TimeLineId;
                                                                 jobitem.Childs?.Add(_next);
                                                                 if(dependentjobgroup.Any()) {
                                                                     jobgroup.Add(_next);
                                                                 }
                                                                 return b => {
-                                                                    var jevent = new JobCompletedEvent(fjob.RequestId, fjob.JobId, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false)));
+                                                                    var jevent = new JobCompletedEvent(_next.RequestId, _next.Id, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false)));
                                                                     workflowcomplete(jevent);
                                                                     return fjob;
                                                                 };
                                                             }
                                                         }
+                                                    }
+                                                    if(callingJob != null) {
+                                                        callingJob.RanJob = true;
                                                     }
                                                     Array.ForEach(finishedJobs.ToArray(), fjobs => {
                                                         foreach(var djob in dependentjobgroup) {
@@ -1642,6 +1620,8 @@ namespace Runner.Server.Controllers
                                                 var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
                                                 if(jobTotal > 1) {
                                                     next.TimelineId = Guid.NewGuid();
+                                                    // For Runner.Client to show the workflowname
+                                                    initializingJobs.TryAdd(next.Id, new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = displayname, workflowname = workflowname, runid = runid, RequestId = next.RequestId } );
                                                     TimelineController.dict[next.TimelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = next.Id, Name = displayname } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                                     new TimelineController(_context).UpdateTimeLine(next.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[next.TimelineId].Item1));
                                                 }
@@ -1664,10 +1644,6 @@ namespace Runner.Server.Controllers
                                                     _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                                 }
                                                 next.DisplayName = _jobdisplayname;
-                                                if(jobTotal > 1) {
-                                                    var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
-                                                    AddJob(_job);
-                                                }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job ContinueOnError" }), next.TimelineId, next.Id);
                                                 next.ContinueOnError = (from r in run where r.Key.AssertString("continue-on-error").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean("continue-on-error be a boolean").Value).FirstOrDefault();
                                                 templateContext.Errors.Check();
@@ -1677,10 +1653,9 @@ namespace Runner.Server.Controllers
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), next.TimelineId, next.Id);
                                                 var cancelTimeoutMinutes = (from r in run where r.Key.AssertString("cancel-timeout-minutes").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("cancel-timeout-minutes be a number").Value).Append(5).First();
                                                 templateContext.Errors.Check();
-                                                var usesJob = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value != null;
                                                 next.NoStatusCheck = usesJob;
                                                 next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
-                                                return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions);
+                                                return queueJob(templateContext, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup);
                                             };
                                             ConcurrentQueue<Func<bool, Job>> jobs = new ConcurrentQueue<Func<bool, Job>>();
                                             if(keys.Length != 0 || includematrix.Count == 0) {
@@ -1730,7 +1705,8 @@ namespace Runner.Server.Controllers
                                             };
                                             handler2 = e => {
                                                 if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
-                                                    if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (jobitem.Childs?.Find(ji => ji.Id == e.JobId) ?? (jobitem.Id == e.JobId ? jobitem : null))?.ContinueOnError != true) {
+                                                    var currentItem = jobitem.Childs?.Find(ji => ji.Id == e.JobId) ?? (jobitem.Id == e.JobId ? jobitem : null);
+                                                    if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || (currentItem.ContinueOnError != true && currentItem.NoFailFast != true))) {
                                                         cancelAll();
                                                     } else {
                                                         while((!max_parallel.HasValue || scheduled.Count < max_parallel.Value) && jobs.TryDequeue(out var cb)) {
@@ -1954,7 +1930,7 @@ namespace Runner.Server.Controllers
                                 }
                                 finished.Cancel();
                                 if(callingJob?.Workflowfinish != null) {
-                                    callingJob.Workflowfinish.Invoke(evargs);
+                                    callingJob.Workflowfinish.Invoke(callingJob, evargs);
                                 } else {
                                     cancelWorkflows.Remove(runid);
                                     workflowevent?.Invoke(evargs);
@@ -2078,7 +2054,7 @@ namespace Runner.Server.Controllers
                             finished.Cancel();
                             var evargs = new WorkflowEventArgs { runid = runid, Success = false };
                             if(callingJob?.Workflowfinish != null) {
-                                callingJob.Workflowfinish.Invoke(evargs);
+                                callingJob.Workflowfinish.Invoke(callingJob, evargs);
                             } else {
                                 cancelWorkflows.Remove(runid);
                                 workflowevent?.Invoke(evargs);
@@ -2164,7 +2140,7 @@ namespace Runner.Server.Controllers
             await task;
             _cache.Remove(id);
         }
-        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null)
+        private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null)
         {
             var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
             variables.Add("system.github.job", new VariableValue(name, false));
@@ -2238,7 +2214,7 @@ namespace Runner.Server.Controllers
                     }
                 }
                 var traceWriter = templateContext.TraceWriter;
-                var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId };
+                var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(_job);
                 Action<string> failedtoInstantiateWorkflow = message => {
                     traceWriter.Verbose("Failed to instantiate Workflow: {0}", message);
@@ -2287,9 +2263,27 @@ namespace Runner.Server.Controllers
                             _secrets.Add("system.github.token=" + ghtoken);
                         }
                         var clone = Clone();
-                        var resp = clone.ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: new CallingJob() { Name = displayname, Event = wevent, Inputs = eval?.ToContextData(), Workflowfinish = e => {
+                        var callerJob = new CallingJob() { Name = displayname, Event = wevent, Inputs = eval?.ToContextData(), Workflowfinish = (callerJob, e) => {
+                            if(callerJob.RanJob) {
+                                if(callingJob != null) {
+                                    callingJob.RanJob = true;
+                                }
+                                Array.ForEach(finishedJobs.ToArray(), fjobs => {
+                                    foreach(var djob in dependentjobgroup) {
+                                        if(djob.Dependencies != null && (fjobs.Key == djob.name || fjobs.Key.StartsWith(djob.name + "/"))) {
+                                            foreach(var dep in djob.Dependencies) {
+                                                if(dep.Key == name) {
+                                                    finishedJobs.Remove(fjobs.Key);
+                                                    return;
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            }
                             new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                        }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname}, workflows, attempt, statusSha: statusSha, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value));
+                        }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname};
+                        var resp = clone.ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value));
                         if(resp == null || resp.failed || resp.skipped) {
                             failedtoInstantiateWorkflow(filename);
                             return;
@@ -2393,40 +2387,42 @@ namespace Runner.Server.Controllers
                 }
             }
 
-            var sessionsfreeze = sessions.ToArray();
-            var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()) select s.Key).FirstOrDefault();
-            if(x == null) {
-                StringBuilder b = new StringBuilder();
-                int i = 0;
-                foreach(var e in runsOnMap) {
-                    if(i++ != 0) {
-                        b.Append(", ");
+            if(!QueueJobsWithoutRunner) {
+                var sessionsfreeze = sessions.ToArray();
+                var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()) select s.Key).FirstOrDefault();
+                if(x == null) {
+                    StringBuilder b = new StringBuilder();
+                    int i = 0;
+                    foreach(var e in runsOnMap) {
+                        if(i++ != 0) {
+                            b.Append(", ");
+                        }
+                        b.Append(e);
                     }
-                    b.Append(e);
-                }
-                StringBuilder b2 = new StringBuilder();
-                i = 0;
-                foreach(var s in sessionsfreeze) {
-                    if(i++ != 0) {
-                        b2.Append(", ");
-                    }
-                    b2.Append($"Name: `{s.Value.TaskAgentSession.Agent.Name}` OSDescription: `{s.Value.TaskAgentSession.Agent.OSDescription}` Labels [");
-                    int j = 0;
-                    foreach(var l in s.Value.Agent.TaskAgent.Labels) {
-                        if(j++ != 0) {
+                    StringBuilder b2 = new StringBuilder();
+                    i = 0;
+                    foreach(var s in sessionsfreeze) {
+                        if(i++ != 0) {
                             b2.Append(", ");
                         }
-                        b2.Append(l.Name);
+                        b2.Append($"Name: `{s.Value.TaskAgentSession.Agent.Name}` OSDescription: `{s.Value.TaskAgentSession.Agent.OSDescription}` Labels [");
+                        int j = 0;
+                        foreach(var l in s.Value.Agent.TaskAgent.Labels) {
+                            if(j++ != 0) {
+                                b2.Append(", ");
+                            }
+                            b2.Append(l.Name);
+                        }
+                        b2.Append("]");
                     }
-                    b2.Append("]");
-                }
-                templateContext.TraceWriter.Info("{0}", $"No runner is registered for the requested runs-on labels: [{b.ToString()}], please register and run a self-hosted runner with at least these labels. Available runner: {(i == 0 ? "No Runner available!" : b2.ToString())}");
+                    templateContext.TraceWriter.Info("{0}", $"No runner is registered for the requested runs-on labels: [{b.ToString()}], please register and run a self-hosted runner with at least these labels. Available runner: {(i == 0 ? "No Runner available!" : b2.ToString())}");
 
-                var jid = jobId;
-                var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId };
-                AddJob(_job);
-                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                return null;
+                    var jid = jobId;
+                    var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
+                    AddJob(_job);
+                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                    return null;
+                }
             }
             var steps = PipelineTemplateConverter.ConvertToSteps(templateContext, rawSteps);
 
