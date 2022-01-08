@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
@@ -167,6 +168,11 @@ namespace Runner.Server.Controllers
         public async Task<IActionResult> AppendTimelineRecordFeed(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, Guid recordId)
         {
             var record = await FromBody<TimelineRecordFeedLinesWrapper>();
+            // It seems the actions/runner sends faulty lines with linebreaks
+            var regex = new Regex("\r?\n");
+            var nl = record.Value.SelectMany(lines => regex.Split(lines)).ToList();
+            record.Value.Clear();
+            record.Value.AddRange(nl);
             Task.Run(() => AppendTimelineRecordFeed(record, timelineId, recordId));
             return Ok();
         }
