@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -3141,9 +3141,11 @@ namespace Runner.Server.Controllers
                         foreach (var item in workflowList)
                         {
                             try {
-                                var fileRes = await client.GetAsync(item.download_url);
-                                var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                workflows.Add(new KeyValuePair<string, string>(item.path, filecontent));
+                                if(item.path.EndsWith(".yml") || item.path.EndsWith(".yaml")) {
+                                    var fileRes = await client.GetAsync(item.download_url);
+                                    var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                    workflows.Add(new KeyValuePair<string, string>(item.path, filecontent));
+                                }
                             } catch (Exception ex) {
                                 await Console.Error.WriteLineAsync(ex.Message);
                                 await Console.Error.WriteLineAsync(ex.StackTrace);
