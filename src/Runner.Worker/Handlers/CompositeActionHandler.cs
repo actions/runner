@@ -464,8 +464,8 @@ namespace GitHub.Runner.Worker.Handlers
             if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
             {
                 // TODO: when we support continue on error, we may need to do logic here to change conclusion based on the continue on error result
-                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Skipped).ToActionResult());
-                step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Skipped).ToActionResult());
+                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
+                step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
             }
         }
     }
