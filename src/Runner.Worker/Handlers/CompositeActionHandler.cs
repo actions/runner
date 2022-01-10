@@ -379,6 +379,7 @@ namespace GitHub.Runner.Worker.Handlers
                         // Condition is false
                         Trace.Info("Skipping step due to condition evaluation.");
                         SetStepConclusion(step, TaskResult.Skipped);
+                        continue;
                     }
                     else if (conditionEvaluateError != null)
                     {
