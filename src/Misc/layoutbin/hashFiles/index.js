@@ -43,6 +43,60 @@ module.exports =
 /************************************************************************/
 /******/ ({
 
+/***/ 16:
+/***/ (function(module) {
+
+module.exports = require("tls");
+
+/***/ }),
+
+/***/ 82:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.toCommandProperties = exports.toCommandValue = void 0;
+/**
+ * Sanitizes an input into a string so it can be passed into issueCommand safely
+ * @param input input to sanitize into a string
+ */
+function toCommandValue(input) {
+    if (input === null || input === undefined) {
+        return '';
+    }
+    else if (typeof input === 'string' || input instanceof String) {
+        return input;
+    }
+    return JSON.stringify(input);
+}
+exports.toCommandValue = toCommandValue;
+/**
+ *
+ * @param annotationProperties
+ * @returns The command properties to send with the actual annotation command
+ * See IssueCommandProperties: https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionCommandManager.cs#L646
+ */
+function toCommandProperties(annotationProperties) {
+    if (!Object.keys(annotationProperties).length) {
+        return {};
+    }
+    return {
+        title: annotationProperties.title,
+        file: annotationProperties.file,
+        line: annotationProperties.startLine,
+        endLine: annotationProperties.endLine,
+        col: annotationProperties.startColumn,
+        endColumn: annotationProperties.endColumn
+    };
+}
+exports.toCommandProperties = toCommandProperties;
+//# sourceMappingURL=utils.js.map
+
+/***/ }),
+
 /***/ 87:
 /***/ (function(module) {
 
@@ -980,6 +1034,400 @@ function regExpEscape (s) {
 
 /***/ }),
 
+/***/ 102:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+// For internal use, subject to change.
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.issueCommand = void 0;
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const fs = __importStar(__webpack_require__(747));
+const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(82);
+function issueCommand(command, message) {
+    const filePath = process.env[`GITHUB_${command}`];
+    if (!filePath) {
+        throw new Error(`Unable to find environment variable for file command ${command}`);
+    }
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`Missing file at path: ${filePath}`);
+    }
+    fs.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
+        encoding: 'utf8'
+    });
+}
+exports.issueCommand = issueCommand;
+//# sourceMappingURL=file-command.js.map
+
+/***/ }),
+
+/***/ 141:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+
+var net = __webpack_require__(631);
+var tls = __webpack_require__(16);
+var http = __webpack_require__(605);
+var https = __webpack_require__(211);
+var events = __webpack_require__(614);
+var assert = __webpack_require__(357);
+var util = __webpack_require__(669);
+
+
+exports.httpOverHttp = httpOverHttp;
+exports.httpsOverHttp = httpsOverHttp;
+exports.httpOverHttps = httpOverHttps;
+exports.httpsOverHttps = httpsOverHttps;
+
+
+function httpOverHttp(options) {
+  var agent = new TunnelingAgent(options);
+  agent.request = http.request;
+  return agent;
+}
+
+function httpsOverHttp(options) {
+  var agent = new TunnelingAgent(options);
+  agent.request = http.request;
+  agent.createSocket = createSecureSocket;
+  agent.defaultPort = 443;
+  return agent;
+}
+
+function httpOverHttps(options) {
+  var agent = new TunnelingAgent(options);
+  agent.request = https.request;
+  return agent;
+}
+
+function httpsOverHttps(options) {
+  var agent = new TunnelingAgent(options);
+  agent.request = https.request;
+  agent.createSocket = createSecureSocket;
+  agent.defaultPort = 443;
+  return agent;
+}
+
+
+function TunnelingAgent(options) {
+  var self = this;
+  self.options = options || {};
+  self.proxyOptions = self.options.proxy || {};
+  self.maxSockets = self.options.maxSockets || http.Agent.defaultMaxSockets;
+  self.requests = [];
+  self.sockets = [];
+
+  self.on('free', function onFree(socket, host, port, localAddress) {
+    var options = toOptions(host, port, localAddress);
+    for (var i = 0, len = self.requests.length; i < len; ++i) {
+      var pending = self.requests[i];
+      if (pending.host === options.host && pending.port === options.port) {
+        // Detect the request to connect same origin server,
+        // reuse the connection.
+        self.requests.splice(i, 1);
+        pending.request.onSocket(socket);
+        return;
+      }
+    }
+    socket.destroy();
+    self.removeSocket(socket);
+  });
+}
+util.inherits(TunnelingAgent, events.EventEmitter);
+
+TunnelingAgent.prototype.addRequest = function addRequest(req, host, port, localAddress) {
+  var self = this;
+  var options = mergeOptions({request: req}, self.options, toOptions(host, port, localAddress));
+
+  if (self.sockets.length >= this.maxSockets) {
+    // We are over limit so we'll add it to the queue.
+    self.requests.push(options);
+    return;
+  }
+
+  // If we are under maxSockets create a new one.
+  self.createSocket(options, function(socket) {
+    socket.on('free', onFree);
+    socket.on('close', onCloseOrRemove);
+    socket.on('agentRemove', onCloseOrRemove);
+    req.onSocket(socket);
+
+    function onFree() {
+      self.emit('free', socket, options);
+    }
+
+    function onCloseOrRemove(err) {
+      self.removeSocket(socket);
+      socket.removeListener('free', onFree);
+      socket.removeListener('close', onCloseOrRemove);
+      socket.removeListener('agentRemove', onCloseOrRemove);
+    }
+  });
+};
+
+TunnelingAgent.prototype.createSocket = function createSocket(options, cb) {
+  var self = this;
+  var placeholder = {};
+  self.sockets.push(placeholder);
+
+  var connectOptions = mergeOptions({}, self.proxyOptions, {
+    method: 'CONNECT',
+    path: options.host + ':' + options.port,
+    agent: false,
+    headers: {
+      host: options.host + ':' + options.port
+    }
+  });
+  if (options.localAddress) {
+    connectOptions.localAddress = options.localAddress;
+  }
+  if (connectOptions.proxyAuth) {
+    connectOptions.headers = connectOptions.headers || {};
+    connectOptions.headers['Proxy-Authorization'] = 'Basic ' +
+        new Buffer(connectOptions.proxyAuth).toString('base64');
+  }
+
+  debug('making CONNECT request');
+  var connectReq = self.request(connectOptions);
+  connectReq.useChunkedEncodingByDefault = false; // for v0.6
+  connectReq.once('response', onResponse); // for v0.6
+  connectReq.once('upgrade', onUpgrade);   // for v0.6
+  connectReq.once('connect', onConnect);   // for v0.7 or later
+  connectReq.once('error', onError);
+  connectReq.end();
+
+  function onResponse(res) {
+    // Very hacky. This is necessary to avoid http-parser leaks.
+    res.upgrade = true;
+  }
+
+  function onUpgrade(res, socket, head) {
+    // Hacky.
+    process.nextTick(function() {
+      onConnect(res, socket, head);
+    });
+  }
+
+  function onConnect(res, socket, head) {
+    connectReq.removeAllListeners();
+    socket.removeAllListeners();
+
+    if (res.statusCode !== 200) {
+      debug('tunneling socket could not be established, statusCode=%d',
+        res.statusCode);
+      socket.destroy();
+      var error = new Error('tunneling socket could not be established, ' +
+        'statusCode=' + res.statusCode);
+      error.code = 'ECONNRESET';
+      options.request.emit('error', error);
+      self.removeSocket(placeholder);
+      return;
+    }
+    if (head.length > 0) {
+      debug('got illegal response body from proxy');
+      socket.destroy();
+      var error = new Error('got illegal response body from proxy');
+      error.code = 'ECONNRESET';
+      options.request.emit('error', error);
+      self.removeSocket(placeholder);
+      return;
+    }
+    debug('tunneling connection has established');
+    self.sockets[self.sockets.indexOf(placeholder)] = socket;
+    return cb(socket);
+  }
+
+  function onError(cause) {
+    connectReq.removeAllListeners();
+
+    debug('tunneling socket could not be established, cause=%s\n',
+          cause.message, cause.stack);
+    var error = new Error('tunneling socket could not be established, ' +
+                          'cause=' + cause.message);
+    error.code = 'ECONNRESET';
+    options.request.emit('error', error);
+    self.removeSocket(placeholder);
+  }
+};
+
+TunnelingAgent.prototype.removeSocket = function removeSocket(socket) {
+  var pos = this.sockets.indexOf(socket)
+  if (pos === -1) {
+    return;
+  }
+  this.sockets.splice(pos, 1);
+
+  var pending = this.requests.shift();
+  if (pending) {
+    // If we have pending requests and a socket gets closed a new one
+    // needs to be created to take over in the pool for the one that closed.
+    this.createSocket(pending, function(socket) {
+      pending.request.onSocket(socket);
+    });
+  }
+};
+
+function createSecureSocket(options, cb) {
+  var self = this;
+  TunnelingAgent.prototype.createSocket.call(self, options, function(socket) {
+    var hostHeader = options.request.getHeader('host');
+    var tlsOptions = mergeOptions({}, self.options, {
+      socket: socket,
+      servername: hostHeader ? hostHeader.replace(/:.*$/, '') : options.host
+    });
+
+    // 0 is dummy port for v0.6
+    var secureSocket = tls.connect(0, tlsOptions);
+    self.sockets[self.sockets.indexOf(socket)] = secureSocket;
+    cb(secureSocket);
+  });
+}
+
+
+function toOptions(host, port, localAddress) {
+  if (typeof host === 'string') { // since v0.10
+    return {
+      host: host,
+      port: port,
+      localAddress: localAddress
+    };
+  }
+  return host; // for v0.11 or later
+}
+
+function mergeOptions(target) {
+  for (var i = 1, len = arguments.length; i < len; ++i) {
+    var overrides = arguments[i];
+    if (typeof overrides === 'object') {
+      var keys = Object.keys(overrides);
+      for (var j = 0, keyLen = keys.length; j < keyLen; ++j) {
+        var k = keys[j];
+        if (overrides[k] !== undefined) {
+          target[k] = overrides[k];
+        }
+      }
+    }
+  }
+  return target;
+}
+
+
+var debug;
+if (process.env.NODE_DEBUG && /\btunnel\b/.test(process.env.NODE_DEBUG)) {
+  debug = function() {
+    var args = Array.prototype.slice.call(arguments);
+    if (typeof args[0] === 'string') {
+      args[0] = 'TUNNEL: ' + args[0];
+    } else {
+      args.unshift('TUNNEL:');
+    }
+    console.error.apply(console, args);
+  }
+} else {
+  debug = function() {};
+}
+exports.debug = debug; // for test
+
+
+/***/ }),
+
+/***/ 211:
+/***/ (function(module) {
+
+module.exports = require("https");
+
+/***/ }),
+
+/***/ 226:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class BasicCredentialHandler {
+    constructor(username, password) {
+        this.username = username;
+        this.password = password;
+    }
+    prepareRequest(options) {
+        options.headers['Authorization'] =
+            'Basic ' +
+                Buffer.from(this.username + ':' + this.password).toString('base64');
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.BasicCredentialHandler = BasicCredentialHandler;
+class BearerCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        options.headers['Authorization'] = 'Bearer ' + this.token;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.BearerCredentialHandler = BearerCredentialHandler;
+class PersonalAccessTokenCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        options.headers['Authorization'] =
+            'Basic ' + Buffer.from('PAT:' + this.token).toString('base64');
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication(response) {
+        return false;
+    }
+    handleAuthentication(httpClient, requestInfo, objs) {
+        return null;
+    }
+}
+exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
+
+
+/***/ }),
+
 /***/ 281:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
@@ -995,7 +1443,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.hashFiles = exports.create = void 0;
 const internal_globber_1 = __webpack_require__(297);
+const internal_hash_files_1 = __webpack_require__(730);
 /**
  * Constructs a globber
  *
@@ -1008,6 +1458,23 @@ function create(patterns, options) {
     });
 }
 exports.create = create;
+/**
+ * Computes the sha256 hash of a glob
+ *
+ * @param patterns  Patterns separated by newlines
+ * @param options   Glob options
+ */
+function hashFiles(patterns, options) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let followSymbolicLinks = true;
+        if (options && typeof options.followSymbolicLinks === 'boolean') {
+            followSymbolicLinks = options.followSymbolicLinks;
+        }
+        const globber = yield create(patterns, { followSymbolicLinks });
+        return internal_hash_files_1.hashFiles(globber);
+    });
+}
+exports.hashFiles = hashFiles;
 //# sourceMappingURL=glob.js.map
 
 /***/ }),
@@ -1017,6 +1484,25 @@ exports.create = create;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -1046,11 +1532,12 @@ var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _ar
     function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const core = __webpack_require__(470);
-const fs = __webpack_require__(747);
-const globOptionsHelper = __webpack_require__(601);
-const path = __webpack_require__(622);
-const patternHelper = __webpack_require__(597);
+exports.DefaultGlobber = void 0;
+const core = __importStar(__webpack_require__(470));
+const fs = __importStar(__webpack_require__(747));
+const globOptionsHelper = __importStar(__webpack_require__(601));
+const path = __importStar(__webpack_require__(622));
+const patternHelper = __importStar(__webpack_require__(597));
 const internal_match_kind_1 = __webpack_require__(327);
 const internal_pattern_1 = __webpack_require__(923);
 const internal_search_state_1 = __webpack_require__(728);
@@ -1096,7 +1583,7 @@ class DefaultGlobber {
                 if (options.implicitDescendants &&
                     (pattern.trailingSeparator ||
                         pattern.segments[pattern.segments.length - 1] !== '**')) {
-                    patterns.push(new internal_pattern_1.Pattern(pattern.negate, pattern.segments.concat('**')));
+                    patterns.push(new internal_pattern_1.Pattern(pattern.negate, true, pattern.segments.concat('**')));
                 }
             }
             // Push the search paths
@@ -1139,7 +1626,7 @@ class DefaultGlobber {
                 // Directory
                 if (stats.isDirectory()) {
                     // Matched
-                    if (match & internal_match_kind_1.MatchKind.Directory) {
+                    if (match & internal_match_kind_1.MatchKind.Directory && options.matchDirectories) {
                         yield yield __await(item.path);
                     }
                     // Descend?
@@ -1448,6 +1935,7 @@ function expand(str, isTop) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.MatchKind = void 0;
 /**
  * Indicates whether a pattern matches a path
  */
@@ -1480,13 +1968,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __asyncValues = (this && this.__asyncValues) || function (o) {
-    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-    var m = o[Symbol.asyncIterator], i;
-    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -1496,13 +1977,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const glob = __importStar(__webpack_require__(281));
-const crypto = __importStar(__webpack_require__(417));
-const fs = __importStar(__webpack_require__(747));
-const stream = __importStar(__webpack_require__(413));
-const util = __importStar(__webpack_require__(669));
-const path = __importStar(__webpack_require__(622));
 function run() {
-    var e_1, _a;
     return __awaiter(this, void 0, void 0, function* () {
         // arg0 -> node
         // arg1 -> hashFiles.js
@@ -1515,48 +1990,8 @@ function run() {
             followSymbolicLinks = true;
         }
         console.log(`Match Pattern: ${matchPatterns}`);
-        let hasMatch = false;
-        const githubWorkspace = process.cwd();
-        const result = crypto.createHash('sha256');
-        let count = 0;
-        const globber = yield glob.create(matchPatterns, { followSymbolicLinks });
-        try {
-            for (var _b = __asyncValues(globber.globGenerator()), _c; _c = yield _b.next(), !_c.done;) {
-                const file = _c.value;
-                console.log(file);
-                if (!file.startsWith(`${githubWorkspace}${path.sep}`)) {
-                    console.log(`Ignore '${file}' since it is not under GITHUB_WORKSPACE.`);
-                    continue;
-                }
-                if (fs.statSync(file).isDirectory()) {
-                    console.log(`Skip directory '${file}'.`);
-                    continue;
-                }
-                const hash = crypto.createHash('sha256');
-                const pipeline = util.promisify(stream.pipeline);
-                yield pipeline(fs.createReadStream(file), hash);
-                result.write(hash.digest());
-                count++;
-                if (!hasMatch) {
-                    hasMatch = true;
-                }
-            }
-        }
-        catch (e_1_1) { e_1 = { error: e_1_1 }; }
-        finally {
-            try {
-                if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
-            }
-            finally { if (e_1) throw e_1.error; }
-        }
-        result.end();
-        if (hasMatch) {
-            console.log(`Find ${count} files to hash.`);
-            console.error(`__OUTPUT__${result.digest('hex')}__OUTPUT__`);
-        }
-        else {
-            console.error(`__OUTPUT____OUTPUT__`);
-        }
+        const result = glob.hashFiles(matchPatterns, { followSymbolicLinks });
+        console.error(`__OUTPUT__${result}__OUTPUT__`);
     });
 }
 run();
@@ -1576,10 +2011,33 @@ module.exports = require("assert");
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const assert = __webpack_require__(357);
-const path = __webpack_require__(622);
-const pathHelper = __webpack_require__(972);
+exports.Path = void 0;
+const path = __importStar(__webpack_require__(622));
+const pathHelper = __importStar(__webpack_require__(972));
+const assert_1 = __importDefault(__webpack_require__(357));
 const IS_WINDOWS = process.platform === 'win32';
 /**
  * Helper class for parsing paths into segments
@@ -1593,7 +2051,7 @@ class Path {
         this.segments = [];
         // String
         if (typeof itemPath === 'string') {
-            assert(itemPath, `Parameter 'itemPath' must not be empty`);
+            assert_1.default(itemPath, `Parameter 'itemPath' must not be empty`);
             // Normalize slashes and trim unnecessary trailing slash
             itemPath = pathHelper.safeTrimTrailingSeparator(itemPath);
             // Not rooted
@@ -1620,24 +2078,24 @@ class Path {
         // Array
         else {
             // Must not be empty
-            assert(itemPath.length > 0, `Parameter 'itemPath' must not be an empty array`);
+            assert_1.default(itemPath.length > 0, `Parameter 'itemPath' must not be an empty array`);
             // Each segment
             for (let i = 0; i < itemPath.length; i++) {
                 let segment = itemPath[i];
                 // Must not be empty
-                assert(segment, `Parameter 'itemPath' must not contain any empty segments`);
+                assert_1.default(segment, `Parameter 'itemPath' must not contain any empty segments`);
                 // Normalize slashes
                 segment = pathHelper.normalizeSeparators(itemPath[i]);
                 // Root segment
                 if (i === 0 && pathHelper.hasRoot(segment)) {
                     segment = pathHelper.safeTrimTrailingSeparator(segment);
-                    assert(segment === pathHelper.dirname(segment), `Parameter 'itemPath' root segment contains information for multiple segments`);
+                    assert_1.default(segment === pathHelper.dirname(segment), `Parameter 'itemPath' root segment contains information for multiple segments`);
                     this.segments.push(segment);
                 }
                 // All other segments
                 else {
                     // Must not contain slash
-                    assert(!segment.includes(path.sep), `Parameter 'itemPath' contains unexpected path separators`);
+                    assert_1.default(!segment.includes(path.sep), `Parameter 'itemPath' contains unexpected path separators`);
                     this.segments.push(segment);
                 }
             }
@@ -1669,9 +2127,10 @@ exports.Path = Path;
 /***/ }),
 
 /***/ 413:
-/***/ (function(module) {
+/***/ (function(module, __unusedexports, __webpack_require__) {
 
-module.exports = require("stream");
+module.exports = __webpack_require__(141);
+
 
 /***/ }),
 
@@ -1687,17 +2146,38 @@ module.exports = require("crypto");
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const os = __webpack_require__(87);
+exports.issue = exports.issueCommand = void 0;
+const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(82);
 /**
  * Commands
  *
  * Command Format:
- *   ##[name key=value;key=value]message
+ *   ::name key=value,key=value::message
  *
  * Examples:
- *   ##[warning]This is the user warning message
- *   ##[set-secret name=mypassword]definitelyNotAPassword!
+ *   ::warning::This is the message
+ *   ::set-env name=MY_VAR::some value
  */
 function issueCommand(command, properties, message) {
     const cmd = new Command(command, properties, message);
@@ -1722,34 +2202,39 @@ class Command {
         let cmdStr = CMD_STRING + this.command;
         if (this.properties && Object.keys(this.properties).length > 0) {
             cmdStr += ' ';
+            let first = true;
             for (const key in this.properties) {
                 if (this.properties.hasOwnProperty(key)) {
                     const val = this.properties[key];
                     if (val) {
-                        // safely append the val - avoid blowing up when attempting to
-                        // call .replace() if message is not a string for some reason
-                        cmdStr += `${key}=${escape(`${val || ''}`)},`;
+                        if (first) {
+                            first = false;
+                        }
+                        else {
+                            cmdStr += ',';
+                        }
+                        cmdStr += `${key}=${escapeProperty(val)}`;
                     }
                 }
             }
         }
-        cmdStr += CMD_STRING;
-        // safely append the message - avoid blowing up when attempting to
-        // call .replace() if message is not a string for some reason
-        const message = `${this.message || ''}`;
-        cmdStr += escapeData(message);
+        cmdStr += `${CMD_STRING}${escapeData(this.message)}`;
         return cmdStr;
     }
 }
 function escapeData(s) {
-    return s.replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    return utils_1.toCommandValue(s)
+        .replace(/%/g, '%25')
+        .replace(/\r/g, '%0D')
+        .replace(/\n/g, '%0A');
 }
-function escape(s) {
-    return s
+function escapeProperty(s) {
+    return utils_1.toCommandValue(s)
+        .replace(/%/g, '%25')
         .replace(/\r/g, '%0D')
         .replace(/\n/g, '%0A')
-        .replace(/]/g, '%5D')
-        .replace(/;/g, '%3B');
+        .replace(/:/g, '%3A')
+        .replace(/,/g, '%2C');
 }
 //# sourceMappingURL=command.js.map
 
@@ -1760,6 +2245,25 @@ function escape(s) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -1770,9 +2274,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getIDToken = exports.getState = exports.saveState = exports.group = exports.endGroup = exports.startGroup = exports.info = exports.notice = exports.warning = exports.error = exports.debug = exports.isDebug = exports.setFailed = exports.setCommandEcho = exports.setOutput = exports.getBooleanInput = exports.getMultilineInput = exports.getInput = exports.addPath = exports.setSecret = exports.exportVariable = exports.ExitCode = void 0;
 const command_1 = __webpack_require__(431);
-const os = __webpack_require__(87);
-const path = __webpack_require__(622);
+const file_command_1 = __webpack_require__(102);
+const utils_1 = __webpack_require__(82);
+const os = __importStar(__webpack_require__(87));
+const path = __importStar(__webpack_require__(622));
+const oidc_utils_1 = __webpack_require__(742);
 /**
  * The code to exit an action
  */
@@ -1793,11 +2301,21 @@ var ExitCode;
 /**
  * Sets env variable for this action and future actions in the job
  * @param name the name of the variable to set
- * @param val the value of the variable
+ * @param val the value of the variable. Non-string values will be converted to a string via JSON.stringify
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function exportVariable(name, val) {
-    process.env[name] = val;
-    command_1.issueCommand('set-env', { name }, val);
+    const convertedVal = utils_1.toCommandValue(val);
+    process.env[name] = convertedVal;
+    const filePath = process.env['GITHUB_ENV'] || '';
+    if (filePath) {
+        const delimiter = '_GitHubActionsFileCommandDelimeter_';
+        const commandValue = `${name}<<${delimiter}${os.EOL}${convertedVal}${os.EOL}${delimiter}`;
+        file_command_1.issueCommand('ENV', commandValue);
+    }
+    else {
+        command_1.issueCommand('set-env', { name }, convertedVal);
+    }
 }
 exports.exportVariable = exportVariable;
 /**
@@ -1813,12 +2331,20 @@ exports.setSecret = setSecret;
  * @param inputPath
  */
 function addPath(inputPath) {
-    command_1.issueCommand('add-path', {}, inputPath);
+    const filePath = process.env['GITHUB_PATH'] || '';
+    if (filePath) {
+        file_command_1.issueCommand('PATH', inputPath);
+    }
+    else {
+        command_1.issueCommand('add-path', {}, inputPath);
+    }
     process.env['PATH'] = `${inputPath}${path.delimiter}${process.env['PATH']}`;
 }
 exports.addPath = addPath;
 /**
- * Gets the value of an input.  The value is also trimmed.
+ * Gets the value of an input.
+ * Unless trimWhitespace is set to false in InputOptions, the value is also trimmed.
+ * Returns an empty string if the value is not defined.
  *
  * @param     name     name of the input to get
  * @param     options  optional. See InputOptions.
@@ -1829,19 +2355,70 @@ function getInput(name, options) {
     if (options && options.required && !val) {
         throw new Error(`Input required and not supplied: ${name}`);
     }
+    if (options && options.trimWhitespace === false) {
+        return val;
+    }
     return val.trim();
 }
 exports.getInput = getInput;
 /**
+ * Gets the values of an multiline input.  Each value is also trimmed.
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   string[]
+ *
+ */
+function getMultilineInput(name, options) {
+    const inputs = getInput(name, options)
+        .split('\n')
+        .filter(x => x !== '');
+    return inputs;
+}
+exports.getMultilineInput = getMultilineInput;
+/**
+ * Gets the input value of the boolean type in the YAML 1.2 "core schema" specification.
+ * Support boolean input list: `true | True | TRUE | false | False | FALSE` .
+ * The return value is also in boolean type.
+ * ref: https://yaml.org/spec/1.2/spec.html#id2804923
+ *
+ * @param     name     name of the input to get
+ * @param     options  optional. See InputOptions.
+ * @returns   boolean
+ */
+function getBooleanInput(name, options) {
+    const trueValue = ['true', 'True', 'TRUE'];
+    const falseValue = ['false', 'False', 'FALSE'];
+    const val = getInput(name, options);
+    if (trueValue.includes(val))
+        return true;
+    if (falseValue.includes(val))
+        return false;
+    throw new TypeError(`Input does not meet YAML 1.2 "Core Schema" specification: ${name}\n` +
+        `Support boolean input list: \`true | True | TRUE | false | False | FALSE\``);
+}
+exports.getBooleanInput = getBooleanInput;
+/**
  * Sets the value of an output.
  *
  * @param     name     name of the output to set
- * @param     value    value to store
+ * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function setOutput(name, value) {
+    process.stdout.write(os.EOL);
     command_1.issueCommand('set-output', { name }, value);
 }
 exports.setOutput = setOutput;
+/**
+ * Enables or disables the echoing of commands into stdout for the rest of the step.
+ * Echoing is disabled by default if ACTIONS_STEP_DEBUG is not set.
+ *
+ */
+function setCommandEcho(enabled) {
+    command_1.issue('echo', enabled ? 'on' : 'off');
+}
+exports.setCommandEcho = setCommandEcho;
 //-----------------------------------------------------------------------
 // Results
 //-----------------------------------------------------------------------
@@ -1859,6 +2436,13 @@ exports.setFailed = setFailed;
 // Logging Commands
 //-----------------------------------------------------------------------
 /**
+ * Gets whether Actions Step Debug is on or not
+ */
+function isDebug() {
+    return process.env['RUNNER_DEBUG'] === '1';
+}
+exports.isDebug = isDebug;
+/**
  * Writes debug message to user log
  * @param message debug message
  */
@@ -1868,20 +2452,31 @@ function debug(message) {
 exports.debug = debug;
 /**
  * Adds an error issue
- * @param message error issue message
+ * @param message error issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
  */
-function error(message) {
-    command_1.issue('error', message);
+function error(message, properties = {}) {
+    command_1.issueCommand('error', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 exports.error = error;
 /**
- * Adds an warning issue
- * @param message warning issue message
+ * Adds a warning issue
+ * @param message warning issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
  */
-function warning(message) {
-    command_1.issue('warning', message);
+function warning(message, properties = {}) {
+    command_1.issueCommand('warning', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
 }
 exports.warning = warning;
+/**
+ * Adds a notice issue
+ * @param message notice issue message. Errors will be converted to string via toString()
+ * @param properties optional properties to add to the annotation.
+ */
+function notice(message, properties = {}) {
+    command_1.issueCommand('notice', utils_1.toCommandProperties(properties), message instanceof Error ? message.toString() : message);
+}
+exports.notice = notice;
 /**
  * Writes info to log with console.log.
  * @param message info message
@@ -1937,8 +2532,9 @@ exports.group = group;
  * Saves state for current action, the state can only be retrieved by this action's post job execution.
  *
  * @param     name     name of the state to store
- * @param     value    value to store
+ * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function saveState(name, value) {
     command_1.issueCommand('save-state', { name }, value);
 }
@@ -1953,7 +2549,558 @@ function getState(name) {
     return process.env[`STATE_${name}`] || '';
 }
 exports.getState = getState;
+function getIDToken(aud) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield oidc_utils_1.OidcClient.getIDToken(aud);
+    });
+}
+exports.getIDToken = getIDToken;
 //# sourceMappingURL=core.js.map
+
+/***/ }),
+
+/***/ 539:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const http = __webpack_require__(605);
+const https = __webpack_require__(211);
+const pm = __webpack_require__(950);
+let tunnel;
+var HttpCodes;
+(function (HttpCodes) {
+    HttpCodes[HttpCodes["OK"] = 200] = "OK";
+    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
+    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
+    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
+    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
+    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
+    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
+    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
+    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
+    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
+    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
+    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
+    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
+    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
+    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
+    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
+    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
+    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
+    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
+    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
+    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
+    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
+    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
+    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
+    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
+    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
+    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
+var Headers;
+(function (Headers) {
+    Headers["Accept"] = "accept";
+    Headers["ContentType"] = "content-type";
+})(Headers = exports.Headers || (exports.Headers = {}));
+var MediaTypes;
+(function (MediaTypes) {
+    MediaTypes["ApplicationJson"] = "application/json";
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
+/**
+ * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
+ * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+ */
+function getProxyUrl(serverUrl) {
+    let proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+    return proxyUrl ? proxyUrl.href : '';
+}
+exports.getProxyUrl = getProxyUrl;
+const HttpRedirectCodes = [
+    HttpCodes.MovedPermanently,
+    HttpCodes.ResourceMoved,
+    HttpCodes.SeeOther,
+    HttpCodes.TemporaryRedirect,
+    HttpCodes.PermanentRedirect
+];
+const HttpResponseRetryCodes = [
+    HttpCodes.BadGateway,
+    HttpCodes.ServiceUnavailable,
+    HttpCodes.GatewayTimeout
+];
+const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
+const ExponentialBackoffCeiling = 10;
+const ExponentialBackoffTimeSlice = 5;
+class HttpClientError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.name = 'HttpClientError';
+        this.statusCode = statusCode;
+        Object.setPrototypeOf(this, HttpClientError.prototype);
+    }
+}
+exports.HttpClientError = HttpClientError;
+class HttpClientResponse {
+    constructor(message) {
+        this.message = message;
+    }
+    readBody() {
+        return new Promise(async (resolve, reject) => {
+            let output = Buffer.alloc(0);
+            this.message.on('data', (chunk) => {
+                output = Buffer.concat([output, chunk]);
+            });
+            this.message.on('end', () => {
+                resolve(output.toString());
+            });
+        });
+    }
+}
+exports.HttpClientResponse = HttpClientResponse;
+function isHttps(requestUrl) {
+    let parsedUrl = new URL(requestUrl);
+    return parsedUrl.protocol === 'https:';
+}
+exports.isHttps = isHttps;
+class HttpClient {
+    constructor(userAgent, handlers, requestOptions) {
+        this._ignoreSslError = false;
+        this._allowRedirects = true;
+        this._allowRedirectDowngrade = false;
+        this._maxRedirects = 50;
+        this._allowRetries = false;
+        this._maxRetries = 1;
+        this._keepAlive = false;
+        this._disposed = false;
+        this.userAgent = userAgent;
+        this.handlers = handlers || [];
+        this.requestOptions = requestOptions;
+        if (requestOptions) {
+            if (requestOptions.ignoreSslError != null) {
+                this._ignoreSslError = requestOptions.ignoreSslError;
+            }
+            this._socketTimeout = requestOptions.socketTimeout;
+            if (requestOptions.allowRedirects != null) {
+                this._allowRedirects = requestOptions.allowRedirects;
+            }
+            if (requestOptions.allowRedirectDowngrade != null) {
+                this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
+            }
+            if (requestOptions.maxRedirects != null) {
+                this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
+            }
+            if (requestOptions.keepAlive != null) {
+                this._keepAlive = requestOptions.keepAlive;
+            }
+            if (requestOptions.allowRetries != null) {
+                this._allowRetries = requestOptions.allowRetries;
+            }
+            if (requestOptions.maxRetries != null) {
+                this._maxRetries = requestOptions.maxRetries;
+            }
+        }
+    }
+    options(requestUrl, additionalHeaders) {
+        return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+    }
+    get(requestUrl, additionalHeaders) {
+        return this.request('GET', requestUrl, null, additionalHeaders || {});
+    }
+    del(requestUrl, additionalHeaders) {
+        return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+    }
+    post(requestUrl, data, additionalHeaders) {
+        return this.request('POST', requestUrl, data, additionalHeaders || {});
+    }
+    patch(requestUrl, data, additionalHeaders) {
+        return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+    }
+    put(requestUrl, data, additionalHeaders) {
+        return this.request('PUT', requestUrl, data, additionalHeaders || {});
+    }
+    head(requestUrl, additionalHeaders) {
+        return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+    }
+    sendStream(verb, requestUrl, stream, additionalHeaders) {
+        return this.request(verb, requestUrl, stream, additionalHeaders);
+    }
+    /**
+     * Gets a typed object from an endpoint
+     * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
+     */
+    async getJson(requestUrl, additionalHeaders = {}) {
+        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+        let res = await this.get(requestUrl, additionalHeaders);
+        return this._processResponse(res, this.requestOptions);
+    }
+    async postJson(requestUrl, obj, additionalHeaders = {}) {
+        let data = JSON.stringify(obj, null, 2);
+        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+        let res = await this.post(requestUrl, data, additionalHeaders);
+        return this._processResponse(res, this.requestOptions);
+    }
+    async putJson(requestUrl, obj, additionalHeaders = {}) {
+        let data = JSON.stringify(obj, null, 2);
+        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+        let res = await this.put(requestUrl, data, additionalHeaders);
+        return this._processResponse(res, this.requestOptions);
+    }
+    async patchJson(requestUrl, obj, additionalHeaders = {}) {
+        let data = JSON.stringify(obj, null, 2);
+        additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+        additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+        let res = await this.patch(requestUrl, data, additionalHeaders);
+        return this._processResponse(res, this.requestOptions);
+    }
+    /**
+     * Makes a raw http request.
+     * All other methods such as get, post, patch, and request ultimately call this.
+     * Prefer get, del, post and patch
+     */
+    async request(verb, requestUrl, data, headers) {
+        if (this._disposed) {
+            throw new Error('Client has already been disposed.');
+        }
+        let parsedUrl = new URL(requestUrl);
+        let info = this._prepareRequest(verb, parsedUrl, headers);
+        // Only perform retries on reads since writes may not be idempotent.
+        let maxTries = this._allowRetries && RetryableHttpVerbs.indexOf(verb) != -1
+            ? this._maxRetries + 1
+            : 1;
+        let numTries = 0;
+        let response;
+        while (numTries < maxTries) {
+            response = await this.requestRaw(info, data);
+            // Check if it's an authentication challenge
+            if (response &&
+                response.message &&
+                response.message.statusCode === HttpCodes.Unauthorized) {
+                let authenticationHandler;
+                for (let i = 0; i < this.handlers.length; i++) {
+                    if (this.handlers[i].canHandleAuthentication(response)) {
+                        authenticationHandler = this.handlers[i];
+                        break;
+                    }
+                }
+                if (authenticationHandler) {
+                    return authenticationHandler.handleAuthentication(this, info, data);
+                }
+                else {
+                    // We have received an unauthorized response but have no handlers to handle it.
+                    // Let the response return to the caller.
+                    return response;
+                }
+            }
+            let redirectsRemaining = this._maxRedirects;
+            while (HttpRedirectCodes.indexOf(response.message.statusCode) != -1 &&
+                this._allowRedirects &&
+                redirectsRemaining > 0) {
+                const redirectUrl = response.message.headers['location'];
+                if (!redirectUrl) {
+                    // if there's no location to redirect to, we won't
+                    break;
+                }
+                let parsedRedirectUrl = new URL(redirectUrl);
+                if (parsedUrl.protocol == 'https:' &&
+                    parsedUrl.protocol != parsedRedirectUrl.protocol &&
+                    !this._allowRedirectDowngrade) {
+                    throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
+                }
+                // we need to finish reading the response before reassigning response
+                // which will leak the open socket.
+                await response.readBody();
+                // strip authorization header if redirected to a different hostname
+                if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                    for (let header in headers) {
+                        // header names are case insensitive
+                        if (header.toLowerCase() === 'authorization') {
+                            delete headers[header];
+                        }
+                    }
+                }
+                // let's make the request with the new redirectUrl
+                info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+                response = await this.requestRaw(info, data);
+                redirectsRemaining--;
+            }
+            if (HttpResponseRetryCodes.indexOf(response.message.statusCode) == -1) {
+                // If not a retry code, return immediately instead of retrying
+                return response;
+            }
+            numTries += 1;
+            if (numTries < maxTries) {
+                await response.readBody();
+                await this._performExponentialBackoff(numTries);
+            }
+        }
+        return response;
+    }
+    /**
+     * Needs to be called if keepAlive is set to true in request options.
+     */
+    dispose() {
+        if (this._agent) {
+            this._agent.destroy();
+        }
+        this._disposed = true;
+    }
+    /**
+     * Raw request.
+     * @param info
+     * @param data
+     */
+    requestRaw(info, data) {
+        return new Promise((resolve, reject) => {
+            let callbackForResult = function (err, res) {
+                if (err) {
+                    reject(err);
+                }
+                resolve(res);
+            };
+            this.requestRawWithCallback(info, data, callbackForResult);
+        });
+    }
+    /**
+     * Raw request with callback.
+     * @param info
+     * @param data
+     * @param onResult
+     */
+    requestRawWithCallback(info, data, onResult) {
+        let socket;
+        if (typeof data === 'string') {
+            info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
+        }
+        let callbackCalled = false;
+        let handleResult = (err, res) => {
+            if (!callbackCalled) {
+                callbackCalled = true;
+                onResult(err, res);
+            }
+        };
+        let req = info.httpModule.request(info.options, (msg) => {
+            let res = new HttpClientResponse(msg);
+            handleResult(null, res);
+        });
+        req.on('socket', sock => {
+            socket = sock;
+        });
+        // If we ever get disconnected, we want the socket to timeout eventually
+        req.setTimeout(this._socketTimeout || 3 * 60000, () => {
+            if (socket) {
+                socket.end();
+            }
+            handleResult(new Error('Request timeout: ' + info.options.path), null);
+        });
+        req.on('error', function (err) {
+            // err has statusCode property
+            // res should have headers
+            handleResult(err, null);
+        });
+        if (data && typeof data === 'string') {
+            req.write(data, 'utf8');
+        }
+        if (data && typeof data !== 'string') {
+            data.on('close', function () {
+                req.end();
+            });
+            data.pipe(req);
+        }
+        else {
+            req.end();
+        }
+    }
+    /**
+     * Gets an http agent. This function is useful when you need an http agent that handles
+     * routing through a proxy server - depending upon the url and proxy environment variables.
+     * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+     */
+    getAgent(serverUrl) {
+        let parsedUrl = new URL(serverUrl);
+        return this._getAgent(parsedUrl);
+    }
+    _prepareRequest(method, requestUrl, headers) {
+        const info = {};
+        info.parsedUrl = requestUrl;
+        const usingSsl = info.parsedUrl.protocol === 'https:';
+        info.httpModule = usingSsl ? https : http;
+        const defaultPort = usingSsl ? 443 : 80;
+        info.options = {};
+        info.options.host = info.parsedUrl.hostname;
+        info.options.port = info.parsedUrl.port
+            ? parseInt(info.parsedUrl.port)
+            : defaultPort;
+        info.options.path =
+            (info.parsedUrl.pathname || '') + (info.parsedUrl.search || '');
+        info.options.method = method;
+        info.options.headers = this._mergeHeaders(headers);
+        if (this.userAgent != null) {
+            info.options.headers['user-agent'] = this.userAgent;
+        }
+        info.options.agent = this._getAgent(info.parsedUrl);
+        // gives handlers an opportunity to participate
+        if (this.handlers) {
+            this.handlers.forEach(handler => {
+                handler.prepareRequest(info.options);
+            });
+        }
+        return info;
+    }
+    _mergeHeaders(headers) {
+        const lowercaseKeys = obj => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+        if (this.requestOptions && this.requestOptions.headers) {
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers));
+        }
+        return lowercaseKeys(headers || {});
+    }
+    _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
+        const lowercaseKeys = obj => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+        let clientHeader;
+        if (this.requestOptions && this.requestOptions.headers) {
+            clientHeader = lowercaseKeys(this.requestOptions.headers)[header];
+        }
+        return additionalHeaders[header] || clientHeader || _default;
+    }
+    _getAgent(parsedUrl) {
+        let agent;
+        let proxyUrl = pm.getProxyUrl(parsedUrl);
+        let useProxy = proxyUrl && proxyUrl.hostname;
+        if (this._keepAlive && useProxy) {
+            agent = this._proxyAgent;
+        }
+        if (this._keepAlive && !useProxy) {
+            agent = this._agent;
+        }
+        // if agent is already assigned use that agent.
+        if (!!agent) {
+            return agent;
+        }
+        const usingSsl = parsedUrl.protocol === 'https:';
+        let maxSockets = 100;
+        if (!!this.requestOptions) {
+            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+        }
+        if (useProxy) {
+            // If using proxy, need tunnel
+            if (!tunnel) {
+                tunnel = __webpack_require__(413);
+            }
+            const agentOptions = {
+                maxSockets: maxSockets,
+                keepAlive: this._keepAlive,
+                proxy: {
+                    ...((proxyUrl.username || proxyUrl.password) && {
+                        proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+                    }),
+                    host: proxyUrl.hostname,
+                    port: proxyUrl.port
+                }
+            };
+            let tunnelAgent;
+            const overHttps = proxyUrl.protocol === 'https:';
+            if (usingSsl) {
+                tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
+            }
+            else {
+                tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
+            }
+            agent = tunnelAgent(agentOptions);
+            this._proxyAgent = agent;
+        }
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
+            const options = { keepAlive: this._keepAlive, maxSockets: maxSockets };
+            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
+            this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
+        }
+        if (usingSsl && this._ignoreSslError) {
+            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
+            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
+            // we have to cast it to any and change it directly
+            agent.options = Object.assign(agent.options || {}, {
+                rejectUnauthorized: false
+            });
+        }
+        return agent;
+    }
+    _performExponentialBackoff(retryNumber) {
+        retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+        const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+        return new Promise(resolve => setTimeout(() => resolve(), ms));
+    }
+    static dateTimeDeserializer(key, value) {
+        if (typeof value === 'string') {
+            let a = new Date(value);
+            if (!isNaN(a.valueOf())) {
+                return a;
+            }
+        }
+        return value;
+    }
+    async _processResponse(res, options) {
+        return new Promise(async (resolve, reject) => {
+            const statusCode = res.message.statusCode;
+            const response = {
+                statusCode: statusCode,
+                result: null,
+                headers: {}
+            };
+            // not found leads to null obj returned
+            if (statusCode == HttpCodes.NotFound) {
+                resolve(response);
+            }
+            let obj;
+            let contents;
+            // get the result from the body
+            try {
+                contents = await res.readBody();
+                if (contents && contents.length > 0) {
+                    if (options && options.deserializeDates) {
+                        obj = JSON.parse(contents, HttpClient.dateTimeDeserializer);
+                    }
+                    else {
+                        obj = JSON.parse(contents);
+                    }
+                    response.result = obj;
+                }
+                response.headers = res.message.headers;
+            }
+            catch (err) {
+                // Invalid resource (contents not json);  leaving result obj null
+            }
+            // note that 3xx redirects are handled by the http layer.
+            if (statusCode > 299) {
+                let msg;
+                // if exception/error in body, attempt to get better error
+                if (obj && obj.message) {
+                    msg = obj.message;
+                }
+                else if (contents && contents.length > 0) {
+                    // it may be the case that the exception is in the body message as string
+                    msg = contents;
+                }
+                else {
+                    msg = 'Failed request: (' + statusCode + ')';
+                }
+                let err = new HttpClientError(msg, statusCode);
+                err.result = response.result;
+                reject(err);
+            }
+            else {
+                resolve(response);
+            }
+        });
+    }
+}
+exports.HttpClient = HttpClient;
+
 
 /***/ }),
 
@@ -1962,8 +3109,28 @@ exports.getState = getState;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const pathHelper = __webpack_require__(972);
+exports.partialMatch = exports.match = exports.getSearchPaths = void 0;
+const pathHelper = __importStar(__webpack_require__(972));
 const internal_match_kind_1 = __webpack_require__(327);
 const IS_WINDOWS = process.platform === 'win32';
 /**
@@ -2043,8 +3210,28 @@ exports.partialMatch = partialMatch;
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const core = __webpack_require__(470);
+exports.getOptions = void 0;
+const core = __importStar(__webpack_require__(470));
 /**
  * Returns a copy with defaults filled in.
  */
@@ -2052,6 +3239,7 @@ function getOptions(copy) {
     const result = {
         followSymbolicLinks: true,
         implicitDescendants: true,
+        matchDirectories: true,
         omitBrokenSymbolicLinks: true
     };
     if (copy) {
@@ -2063,6 +3251,10 @@ function getOptions(copy) {
             result.implicitDescendants = copy.implicitDescendants;
             core.debug(`implicitDescendants '${result.implicitDescendants}'`);
         }
+        if (typeof copy.matchDirectories === 'boolean') {
+            result.matchDirectories = copy.matchDirectories;
+            core.debug(`matchDirectories '${result.matchDirectories}'`);
+        }
         if (typeof copy.omitBrokenSymbolicLinks === 'boolean') {
             result.omitBrokenSymbolicLinks = copy.omitBrokenSymbolicLinks;
             core.debug(`omitBrokenSymbolicLinks '${result.omitBrokenSymbolicLinks}'`);
@@ -2072,6 +3264,20 @@ function getOptions(copy) {
 }
 exports.getOptions = getOptions;
 //# sourceMappingURL=internal-glob-options-helper.js.map
+
+/***/ }),
+
+/***/ 605:
+/***/ (function(module) {
+
+module.exports = require("http");
+
+/***/ }),
+
+/***/ 614:
+/***/ (function(module) {
+
+module.exports = require("events");
 
 /***/ }),
 
@@ -2149,6 +3355,13 @@ module.exports = require("path");
 
 /***/ }),
 
+/***/ 631:
+/***/ (function(module) {
+
+module.exports = require("net");
+
+/***/ }),
+
 /***/ 669:
 /***/ (function(module) {
 
@@ -2162,6 +3375,7 @@ module.exports = require("util");
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SearchState = void 0;
 class SearchState {
     constructor(path, level) {
         this.path = path;
@@ -2173,10 +3387,202 @@ exports.SearchState = SearchState;
 
 /***/ }),
 
+/***/ 730:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.hashFiles = void 0;
+const crypto = __importStar(__webpack_require__(417));
+const core = __importStar(__webpack_require__(470));
+const fs = __importStar(__webpack_require__(747));
+const stream = __importStar(__webpack_require__(794));
+const util = __importStar(__webpack_require__(669));
+const path = __importStar(__webpack_require__(622));
+function hashFiles(globber) {
+    var e_1, _a;
+    var _b;
+    return __awaiter(this, void 0, void 0, function* () {
+        let hasMatch = false;
+        const githubWorkspace = (_b = process.env['GITHUB_WORKSPACE']) !== null && _b !== void 0 ? _b : process.cwd();
+        const result = crypto.createHash('sha256');
+        let count = 0;
+        try {
+            for (var _c = __asyncValues(globber.globGenerator()), _d; _d = yield _c.next(), !_d.done;) {
+                const file = _d.value;
+                core.debug(file);
+                if (!file.startsWith(`${githubWorkspace}${path.sep}`)) {
+                    core.debug(`Ignore '${file}' since it is not under GITHUB_WORKSPACE.`);
+                    continue;
+                }
+                if (fs.statSync(file).isDirectory()) {
+                    core.debug(`Skip directory '${file}'.`);
+                    continue;
+                }
+                const hash = crypto.createHash('sha256');
+                const pipeline = util.promisify(stream.pipeline);
+                yield pipeline(fs.createReadStream(file), hash);
+                result.write(hash.digest());
+                count++;
+                if (!hasMatch) {
+                    hasMatch = true;
+                }
+            }
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+        result.end();
+        if (hasMatch) {
+            core.debug(`Found ${count} files to hash.`);
+            return result.digest('hex');
+        }
+        else {
+            core.debug(`No matches found for glob`);
+            return '';
+        }
+    });
+}
+exports.hashFiles = hashFiles;
+//# sourceMappingURL=internal-hash-files.js.map
+
+/***/ }),
+
+/***/ 742:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OidcClient = void 0;
+const http_client_1 = __webpack_require__(539);
+const auth_1 = __webpack_require__(226);
+const core_1 = __webpack_require__(470);
+class OidcClient {
+    static createHttpClient(allowRetry = true, maxRetry = 10) {
+        const requestOptions = {
+            allowRetries: allowRetry,
+            maxRetries: maxRetry
+        };
+        return new http_client_1.HttpClient('actions/oidc-client', [new auth_1.BearerCredentialHandler(OidcClient.getRequestToken())], requestOptions);
+    }
+    static getRequestToken() {
+        const token = process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN'];
+        if (!token) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_TOKEN env variable');
+        }
+        return token;
+    }
+    static getIDTokenUrl() {
+        const runtimeUrl = process.env['ACTIONS_ID_TOKEN_REQUEST_URL'];
+        if (!runtimeUrl) {
+            throw new Error('Unable to get ACTIONS_ID_TOKEN_REQUEST_URL env variable');
+        }
+        return runtimeUrl;
+    }
+    static getCall(id_token_url) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            const httpclient = OidcClient.createHttpClient();
+            const res = yield httpclient
+                .getJson(id_token_url)
+                .catch(error => {
+                throw new Error(`Failed to get ID Token. \n 
+        Error Code : ${error.statusCode}\n 
+        Error Message: ${error.result.message}`);
+            });
+            const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
+            if (!id_token) {
+                throw new Error('Response json body do not have ID Token field');
+            }
+            return id_token;
+        });
+    }
+    static getIDToken(audience) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                // New ID Token is requested from action service
+                let id_token_url = OidcClient.getIDTokenUrl();
+                if (audience) {
+                    const encodedAudience = encodeURIComponent(audience);
+                    id_token_url = `${id_token_url}&audience=${encodedAudience}`;
+                }
+                core_1.debug(`ID token url is ${id_token_url}`);
+                const id_token = yield OidcClient.getCall(id_token_url);
+                core_1.setSecret(id_token);
+                return id_token;
+            }
+            catch (error) {
+                throw new Error(`Error message: ${error.message}`);
+            }
+        });
+    }
+}
+exports.OidcClient = OidcClient;
+//# sourceMappingURL=oidc-utils.js.map
+
+/***/ }),
+
 /***/ 747:
 /***/ (function(module) {
 
 module.exports = require("fs");
+
+/***/ }),
+
+/***/ 794:
+/***/ (function(module) {
+
+module.exports = require("stream");
 
 /***/ }),
 
@@ -2205,17 +3611,40 @@ var isArray = Array.isArray || function (xs) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const assert = __webpack_require__(357);
-const os = __webpack_require__(87);
-const path = __webpack_require__(622);
-const pathHelper = __webpack_require__(972);
+exports.Pattern = void 0;
+const os = __importStar(__webpack_require__(87));
+const path = __importStar(__webpack_require__(622));
+const pathHelper = __importStar(__webpack_require__(972));
+const assert_1 = __importDefault(__webpack_require__(357));
 const minimatch_1 = __webpack_require__(93);
 const internal_match_kind_1 = __webpack_require__(327);
 const internal_path_1 = __webpack_require__(383);
 const IS_WINDOWS = process.platform === 'win32';
 class Pattern {
-    constructor(patternOrNegate, segments) {
+    constructor(patternOrNegate, isImplicitPattern = false, segments, homedir) {
         /**
          * Indicates whether matches should be excluded from the result set
          */
@@ -2229,9 +3658,9 @@ class Pattern {
         else {
             // Convert to pattern
             segments = segments || [];
-            assert(segments.length, `Parameter 'segments' must not empty`);
+            assert_1.default(segments.length, `Parameter 'segments' must not empty`);
             const root = Pattern.getLiteral(segments[0]);
-            assert(root && pathHelper.hasAbsoluteRoot(root), `Parameter 'segments' first element must be a root path`);
+            assert_1.default(root && pathHelper.hasAbsoluteRoot(root), `Parameter 'segments' first element must be a root path`);
             pattern = new internal_path_1.Path(segments).toString().trim();
             if (patternOrNegate) {
                 pattern = `!${pattern}`;
@@ -2243,7 +3672,7 @@ class Pattern {
             pattern = pattern.substr(1).trim();
         }
         // Normalize slashes and ensures absolute root
-        pattern = Pattern.fixupPattern(pattern);
+        pattern = Pattern.fixupPattern(pattern, homedir);
         // Segments
         this.segments = new internal_path_1.Path(pattern).segments;
         // Trailing slash indicates the pattern should only match directories, not regular files
@@ -2259,6 +3688,7 @@ class Pattern {
         this.searchPath = new internal_path_1.Path(searchSegments).toString();
         // Root RegExp (required when determining partial match)
         this.rootRegExp = new RegExp(Pattern.regExpEscape(searchSegments[0]), IS_WINDOWS ? 'i' : '');
+        this.isImplicitPattern = isImplicitPattern;
         // Create minimatch
         const minimatchOptions = {
             dot: true,
@@ -2280,11 +3710,11 @@ class Pattern {
             // Normalize slashes
             itemPath = pathHelper.normalizeSeparators(itemPath);
             // Append a trailing slash. Otherwise Minimatch will not match the directory immediately
-            // preceeding the globstar. For example, given the pattern `/foo/**`, Minimatch returns
+            // preceding the globstar. For example, given the pattern `/foo/**`, Minimatch returns
             // false for `/foo` but returns true for `/foo/`. Append a trailing slash to handle that quirk.
-            if (!itemPath.endsWith(path.sep)) {
+            if (!itemPath.endsWith(path.sep) && this.isImplicitPattern === false) {
                 // Note, this is safe because the constructor ensures the pattern has an absolute root.
-                // For example, formats like C: and C:foo on Windows are resolved to an aboslute root.
+                // For example, formats like C: and C:foo on Windows are resolved to an absolute root.
                 itemPath = `${itemPath}${path.sep}`;
             }
         }
@@ -2322,15 +3752,15 @@ class Pattern {
     /**
      * Normalizes slashes and ensures absolute root
      */
-    static fixupPattern(pattern) {
+    static fixupPattern(pattern, homedir) {
         // Empty
-        assert(pattern, 'pattern cannot be empty');
+        assert_1.default(pattern, 'pattern cannot be empty');
         // Must not contain `.` segment, unless first segment
         // Must not contain `..` segment
         const literalSegments = new internal_path_1.Path(pattern).segments.map(x => Pattern.getLiteral(x));
-        assert(literalSegments.every((x, i) => (x !== '.' || i === 0) && x !== '..'), `Invalid pattern '${pattern}'. Relative pathing '.' and '..' is not allowed.`);
+        assert_1.default(literalSegments.every((x, i) => (x !== '.' || i === 0) && x !== '..'), `Invalid pattern '${pattern}'. Relative pathing '.' and '..' is not allowed.`);
         // Must not contain globs in root, e.g. Windows UNC path \\foo\b*r
-        assert(!pathHelper.hasRoot(pattern) || literalSegments[0], `Invalid pattern '${pattern}'. Root segment must not contain globs.`);
+        assert_1.default(!pathHelper.hasRoot(pattern) || literalSegments[0], `Invalid pattern '${pattern}'. Root segment must not contain globs.`);
         // Normalize slashes
         pattern = pathHelper.normalizeSeparators(pattern);
         // Replace leading `.` segment
@@ -2339,9 +3769,9 @@ class Pattern {
         }
         // Replace leading `~` segment
         else if (pattern === '~' || pattern.startsWith(`~${path.sep}`)) {
-            const homedir = os.homedir();
-            assert(homedir, 'Unable to determine HOME directory');
-            assert(pathHelper.hasAbsoluteRoot(homedir), `Expected HOME directory to be a rooted path. Actual '${homedir}'`);
+            homedir = homedir || os.homedir();
+            assert_1.default(homedir, 'Unable to determine HOME directory');
+            assert_1.default(pathHelper.hasAbsoluteRoot(homedir), `Expected HOME directory to be a rooted path. Actual '${homedir}'`);
             pattern = Pattern.globEscape(homedir) + pattern.substr(1);
         }
         // Replace relative drive root, e.g. pattern is C: or C:foo
@@ -2438,14 +3868,102 @@ exports.Pattern = Pattern;
 
 /***/ }),
 
+/***/ 950:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+function getProxyUrl(reqUrl) {
+    let usingSsl = reqUrl.protocol === 'https:';
+    let proxyUrl;
+    if (checkBypass(reqUrl)) {
+        return proxyUrl;
+    }
+    let proxyVar;
+    if (usingSsl) {
+        proxyVar = process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+    }
+    else {
+        proxyVar = process.env['http_proxy'] || process.env['HTTP_PROXY'];
+    }
+    if (proxyVar) {
+        proxyUrl = new URL(proxyVar);
+    }
+    return proxyUrl;
+}
+exports.getProxyUrl = getProxyUrl;
+function checkBypass(reqUrl) {
+    if (!reqUrl.hostname) {
+        return false;
+    }
+    let noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
+    if (!noProxy) {
+        return false;
+    }
+    // Determine the request port
+    let reqPort;
+    if (reqUrl.port) {
+        reqPort = Number(reqUrl.port);
+    }
+    else if (reqUrl.protocol === 'http:') {
+        reqPort = 80;
+    }
+    else if (reqUrl.protocol === 'https:') {
+        reqPort = 443;
+    }
+    // Format the request hostname and hostname with port
+    let upperReqHosts = [reqUrl.hostname.toUpperCase()];
+    if (typeof reqPort === 'number') {
+        upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
+    }
+    // Compare request host against noproxy
+    for (let upperNoProxyItem of noProxy
+        .split(',')
+        .map(x => x.trim().toUpperCase())
+        .filter(x => x)) {
+        if (upperReqHosts.some(x => x === upperNoProxyItem)) {
+            return true;
+        }
+    }
+    return false;
+}
+exports.checkBypass = checkBypass;
+
+
+/***/ }),
+
 /***/ 972:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const assert = __webpack_require__(357);
-const path = __webpack_require__(622);
+exports.safeTrimTrailingSeparator = exports.normalizeSeparators = exports.hasRoot = exports.hasAbsoluteRoot = exports.ensureAbsoluteRoot = exports.dirname = void 0;
+const path = __importStar(__webpack_require__(622));
+const assert_1 = __importDefault(__webpack_require__(357));
 const IS_WINDOWS = process.platform === 'win32';
 /**
  * Similar to path.dirname except normalizes the path separators and slightly better handling for Windows UNC paths.
@@ -2485,8 +4003,8 @@ exports.dirname = dirname;
  * or `C:` are expanded based on the current working directory.
  */
 function ensureAbsoluteRoot(root, itemPath) {
-    assert(root, `ensureAbsoluteRoot parameter 'root' must not be empty`);
-    assert(itemPath, `ensureAbsoluteRoot parameter 'itemPath' must not be empty`);
+    assert_1.default(root, `ensureAbsoluteRoot parameter 'root' must not be empty`);
+    assert_1.default(itemPath, `ensureAbsoluteRoot parameter 'itemPath' must not be empty`);
     // Already rooted
     if (hasAbsoluteRoot(itemPath)) {
         return itemPath;
@@ -2496,7 +4014,7 @@ function ensureAbsoluteRoot(root, itemPath) {
         // Check for itemPath like C: or C:foo
         if (itemPath.match(/^[A-Z]:[^\\/]|^[A-Z]:$/i)) {
             let cwd = process.cwd();
-            assert(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
+            assert_1.default(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
             // Drive letter matches cwd? Expand to cwd
             if (itemPath[0].toUpperCase() === cwd[0].toUpperCase()) {
                 // Drive only, e.g. C:
@@ -2521,11 +4039,11 @@ function ensureAbsoluteRoot(root, itemPath) {
         // Check for itemPath like \ or \foo
         else if (normalizeSeparators(itemPath).match(/^\\$|^\\[^\\]/)) {
             const cwd = process.cwd();
-            assert(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
+            assert_1.default(cwd.match(/^[A-Z]:\\/i), `Expected current directory to start with an absolute drive root. Actual '${cwd}'`);
             return `${cwd[0]}:\\${itemPath.substr(1)}`;
         }
     }
-    assert(hasAbsoluteRoot(root), `ensureAbsoluteRoot parameter 'root' must have an absolute root`);
+    assert_1.default(hasAbsoluteRoot(root), `ensureAbsoluteRoot parameter 'root' must have an absolute root`);
     // Otherwise ensure root ends with a separator
     if (root.endsWith('/') || (IS_WINDOWS && root.endsWith('\\'))) {
         // Intentionally empty
@@ -2542,7 +4060,7 @@ exports.ensureAbsoluteRoot = ensureAbsoluteRoot;
  * `\\hello\share` and `C:\hello` (and using alternate separator).
  */
 function hasAbsoluteRoot(itemPath) {
-    assert(itemPath, `hasAbsoluteRoot parameter 'itemPath' must not be empty`);
+    assert_1.default(itemPath, `hasAbsoluteRoot parameter 'itemPath' must not be empty`);
     // Normalize separators
     itemPath = normalizeSeparators(itemPath);
     // Windows
@@ -2559,7 +4077,7 @@ exports.hasAbsoluteRoot = hasAbsoluteRoot;
  * `\`, `\hello`, `\\hello\share`, `C:`, and `C:\hello` (and using alternate separator).
  */
 function hasRoot(itemPath) {
-    assert(itemPath, `isRooted parameter 'itemPath' must not be empty`);
+    assert_1.default(itemPath, `isRooted parameter 'itemPath' must not be empty`);
     // Normalize separators
     itemPath = normalizeSeparators(itemPath);
     // Windows
