@@ -122,20 +122,20 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    try 
+                    try
                     {
                         var tokenPermissions = jobContext.Global.Variables.Get("system.github.token.permissions") ?? "";
                         if (!string.IsNullOrEmpty(tokenPermissions))
                         {
                             context.Output($"##[group]GITHUB_TOKEN Permissions");
                             var permissions = StringUtil.ConvertFromJson<Dictionary<string, string>>(tokenPermissions);
-                            foreach(KeyValuePair<string, string> entry in permissions)
+                            foreach (KeyValuePair<string, string> entry in permissions)
                             {
                                 context.Output($"{entry.Key}: {entry.Value}");
                             }
                             context.Output("##[endgroup]");
                         }
-                    } 
+                    }
                     catch (Exception ex)
                     {
                         context.Output($"Fail to parse and display GITHUB_TOKEN permissions list: {ex.Message}");
@@ -312,7 +312,7 @@ namespace GitHub.Runner.Worker
                             JobExtensionRunner extensionStep = step as JobExtensionRunner;
                             ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
                             Guid stepId = Guid.NewGuid();
-                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, null, null, stepId.ToString("N"), ActionRunStage.Pre);
+                            extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, stepId.ToString("N"), null, stepId.ToString("N"), ActionRunStage.Pre);
                         }
                         else if (step is IActionRunner actionStep)
                         {
