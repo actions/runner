@@ -182,16 +182,19 @@ namespace GitHub.Runner.Listener
 
             try
             {
-#if DEBUG
                 // Much of the update process (targetVersion, archive) is server-side, this is a way to control it from here for testing specific update scenarios
                 // Add files like 'runner_v2.281.2.tar.gz' or 'runner_v2.283.0.zip' depending on your platform in your runner root folder
                 // Note that runners still need to be behind the server's runner version in order to receive an 'AgentRefreshMessage' and trigger this update
                 // This should not be in the release build to prevent tampering with updates
                 var isMockUpdate = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE"));
+
+                _terminal.WriteLine(isMockUpdate.ToString());
                 if (isMockUpdate)
                 {
                     // the env var should be of format GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST='v2.281.2,v2.283.0,v2.283.1,v2.284.0'
                     var mockVersions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST").Split(',');
+
+                    _terminal.WriteLine(string.Join(",", mockVersions));
                     if (mockVersions.Any()) 
                     {
                         var targetVersion = mockVersions.First();
@@ -205,12 +208,14 @@ namespace GitHub.Runner.Listener
                             archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.tar.gz");
                         }
 
+                        _terminal.WriteLine($"Mock target version is: {targetVersion}");
+
                         var newMockVersions = string.Join(",", mockVersions.Skip(1));
                         Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST", newMockVersions);
                         _updateTrace.Add($"Mocking update with file: {archiveFile}, nothing is downloaded");
+                        _terminal.WriteLine($"Mocking update with file: {archiveFile}, nothing is downloaded");
                     }
                 }
-#endif
                 // archiveFile is not null only if we mocked it above
                 if (archiveFile == null)
                 {
