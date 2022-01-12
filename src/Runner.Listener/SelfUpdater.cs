@@ -180,7 +180,6 @@ namespace GitHub.Runner.Listener
             var packageHashValue = _targetPackage.HashValue;
             _updateTrace.Add($"DownloadUrl: {packageDownloadUrl}");
 
-#if DEBUG
             try
             {
                 // Much of the update process (targetVersion, archive) is server-side, this is a way to control it from here for testing specific update scenarios
@@ -220,7 +219,6 @@ namespace GitHub.Runner.Listener
                         _terminal.WriteLine($"Mocking update with file: {archiveFile}, nothing is downloaded");
                     }
                 }
-#endif
                 // archiveFile is not null only if we mocked it above
                 if (archiveFile == null)
                 {
