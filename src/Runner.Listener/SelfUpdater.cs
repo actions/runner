@@ -180,6 +180,7 @@ namespace GitHub.Runner.Listener
             var packageHashValue = _targetPackage.HashValue;
             _updateTrace.Add($"DownloadUrl: {packageDownloadUrl}");
 
+#if DEBUG
             try
             {
                 // Much of the update process (targetVersion, archive) is server-side, this is a way to control it from here for testing specific update scenarios
@@ -187,10 +188,13 @@ namespace GitHub.Runner.Listener
                 // Note that runners still need to be behind the server's runner version in order to receive an 'AgentRefreshMessage' and trigger this update
                 // This should not be in the release build to prevent tampering with updates
                 var isMockUpdate = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE"));
-
-                _terminal.WriteLine(isMockUpdate.ToString());
                 if (isMockUpdate)
-                {
+    {               int waitInSeconds = 20;
+                    while (!Debugger.IsAttached && waitInSeconds-- > 0)
+                    {
+                        await Task.Delay(1000);
+                    }
+                    Debugger.Break();
                     // the env var should be of format GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST='v2.281.2,v2.283.0,v2.283.1,v2.284.0'
                     var mockVersions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST").Split(',');
 
@@ -216,6 +220,7 @@ namespace GitHub.Runner.Listener
                         _terminal.WriteLine($"Mocking update with file: {archiveFile}, nothing is downloaded");
                     }
                 }
+#endif
                 // archiveFile is not null only if we mocked it above
                 if (archiveFile == null)
                 {
