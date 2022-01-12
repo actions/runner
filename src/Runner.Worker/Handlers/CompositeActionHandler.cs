@@ -403,13 +403,15 @@ namespace GitHub.Runner.Worker.Handlers
                         jobCancelRegister = null;
                     }
                 }
-
                 // Check failed or canceled
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
                     ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
                 }
+
+                // Update context
+                SetStepsContext(step);
             }
         }
 
@@ -461,6 +463,10 @@ namespace GitHub.Runner.Worker.Handlers
         private void SetStepConclusion(IStep step, TaskResult result)
         {
             step.ExecutionContext.Result = result;
+            SetStepsContext(step);
+        }
+        private void SetStepsContext(IStep step)
+        {
             if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
             {
                 // TODO: when we support continue on error, we may need to do logic here to change conclusion based on the continue on error result
