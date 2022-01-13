@@ -160,7 +160,7 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     if (!string.IsNullOrEmpty(arg))
                     {
-                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\"", "\\\"")}\"";
+                        container.ContainerEntryPointArgs = container.ContainerEntryPointArgs + $" \"{arg.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"";
                     }
                     else
                     {
