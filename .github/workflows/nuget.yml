@@ -72,7 +72,9 @@ jobs:
       with:
         post: |
           rm -r /__w/runner.server/
+          mkdir /__w/runner.server/runner.server
           rm -r /__w/_temp/
+        post-continue-on-error: true
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1
       with:
