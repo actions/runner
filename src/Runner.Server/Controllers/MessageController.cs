@@ -2253,6 +2253,10 @@ namespace Runner.Server.Controllers
                         return;
                     }
                     Action<string, string> workflow_call = (filename, filecontent) => {
+                        // This does only work with static github tokens
+                        if(variables.TryGetValue("system.github.token", out var val)) {
+                            ((DictionaryContextData)contextData["github"])["token"] = new StringContextData(val.Value);
+                        }
                         var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
                         var ghook = hook.ToObject<GiteaHook>();
 
