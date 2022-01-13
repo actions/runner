@@ -188,35 +188,47 @@ namespace GitHub.Runner.Listener
                 // This should not be in the release build to prevent tampering with updates
                 var isMockUpdate = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE"));
                 if (isMockUpdate)
-    {               int waitInSeconds = 20;
+                {
+                    int waitInSeconds = 20;
                     while (!Debugger.IsAttached && waitInSeconds-- > 0)
                     {
                         await Task.Delay(1000);
                     }
                     Debugger.Break();
-                    // the env var should be of format GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST='v2.281.2,v2.283.0,v2.283.1,v2.284.0'
-                    var mockVersions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST").Split(',');
-
-                    _terminal.WriteLine(string.Join(",", mockVersions));
-                    if (mockVersions.Any()) 
+                    // the runner-mock-versions.txt file should be of format 
+                    // v2.281.2
+                    // v2.283.0
+                    // v2.283.1
+                    // v2.284.0
+                    var mockVersionsPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "runner-mock-versions.txt");
+                    if (File.Exists(mockVersionsPath))
                     {
-                        var targetVersion = mockVersions.First();
+                        var mockVersions = File.ReadAllLines(Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "runner-mock-versions.txt"));
 
-                        if (_targetPackage.Platform.StartsWith("win"))
+                        _terminal.WriteLine(string.Join(",", mockVersions));
+                        if (mockVersions.Any())
                         {
-                            archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.zip");
-                        }
-                        else
-                        {
-                            archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.tar.gz");
-                        }
+                            var targetVersion = mockVersions.First();
 
-                        _terminal.WriteLine($"Mock target version is: {targetVersion}");
+                            if (_targetPackage.Platform.StartsWith("win"))
+                            {
+                                archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.zip");
+                            }
+                            else
+                            {
+                                archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.tar.gz");
+                            }
 
-                        var newMockVersions = string.Join(",", mockVersions.Skip(1));
-                        Environment.SetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_MOCK_VERSION_LIST", newMockVersions);
-                        _updateTrace.Add($"Mocking update with file: {archiveFile}, nothing is downloaded");
-                        _terminal.WriteLine($"Mocking update with file: {archiveFile}, nothing is downloaded");
+                            _terminal.WriteLine($"Mock target version is: {targetVersion}");
+
+                            File.Delete(mockVersionsPath);
+                            if(mockVersions.Length > 1) 
+                            {
+                                File.WriteAllLines(mockVersionsPath, mockVersions.Skip(1));
+                            }
+                            _updateTrace.Add($"Mocking update with file: {archiveFile}, nothing is downloaded");
+                            _terminal.WriteLine($"Mocking update with file: {archiveFile}, nothing is downloaded");
+                        }
                     }
                 }
                 // archiveFile is not null only if we mocked it above
