@@ -49,6 +49,10 @@ namespace GitHub.Runner.Worker.Container
                 _pathMappings.Add(new PathMapping(Path.GetDirectoryName(hostContext.GetDirectory(WellKnownDirectory.Tools)), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
                 _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\__e"));
                 // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
+                if (this.IsJobContainer)
+                {
+                    this.MountVolumes.Add(new MountVolume(@"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
+                }
             }
             else
             {
