@@ -22,7 +22,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.2.0" />
-    <PackageReference Include="System.Commandline" Version="2.0.0-beta1.20574.7" />
+    <PackageReference Include="System.Commandline" Version="2.0.0-beta2.21617.1" />
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
   </ItemGroup>
 

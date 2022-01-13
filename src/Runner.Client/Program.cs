@@ -23,6 +23,8 @@ using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using GitHub.Services.WebApi;
+using System.CommandLine.Builder;
+using System.CommandLine.Binding;
 
 namespace Runner.Client
 {
@@ -430,6 +432,15 @@ namespace Runner.Client
         }
 
         private delegate Task LoadEntries(ref TimeLineEntry entry, List<Job> jobs, Guid id);
+
+        private class MyCustomBinder : BinderBase<Parameters>
+        {
+            private Func<BindingContext, Parameters> bind;
+            public MyCustomBinder(Func<BindingContext, Parameters> bind) {
+                this.bind = bind;
+            }
+            protected override Parameters GetBoundValue(BindingContext bindingContext) => bind.Invoke(bindingContext);
+        }
         static int Main(string[] args)
         {
             if(System.OperatingSystem.IsWindowsVersionAtLeast(10)) {
@@ -474,155 +485,184 @@ namespace Runner.Client
                 "workflow_run",
             };
 
-            var secretOpt = new Option<string>(
+            var secretOpt = new Option<string[]>(
                 new[] { "-s", "--secret" },
                 description: "Secret for your workflow, overrides keys from your secrets file. E.g. `-s Name` or `-s Name=Value`. You will be asked for a value if you add `--secret name`, but no environment variable with name `name` exists.") {
-                    AllowMultipleArgumentsPerToken = false
+                    AllowMultipleArgumentsPerToken = false,
+                    Arity = ArgumentArity.ZeroOrMore
                 };
-            secretOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
-            var envOpt = new Option<string>(
+            var envOpt = new Option<string[]>(
                 new[] { "--env" },
                 description: "Environment variable for your workflow, overrides keys from your env file. E.g. `--env Name` or `--env Name=Value`. You will be asked for a value if you add `--env name`, but no environment variable with name `name` exists.") {
-                    AllowMultipleArgumentsPerToken = false
+                    AllowMultipleArgumentsPerToken = false,
+                    Arity = ArgumentArity.ZeroOrMore
                 };
-            envOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
-            var matrixOpt = new Option<string>(
+            var envFile = new Option<string>(
+                "--env-file",
+                getDefaultValue: () => ".env",
+                description: "Environment variables for your workflow.");
+            var matrixOpt = new Option<string[]>(
                 new[] { "-m", "--matrix" },
                 description: "Matrix filter e.g. `-m Key:value`, use together with `--job <job>`. Use multiple times to filter more specifically. If you want to force a value to be a string you need to quote it, e.g. `\"-m Key:\\\"1\\\"\"` or `\"-m Key:\"\"1\"\"\"` (requires shell escaping)") {
-                    AllowMultipleArgumentsPerToken = false
+                    AllowMultipleArgumentsPerToken = false,
+                    Arity = ArgumentArity.ZeroOrMore
                 };
-            matrixOpt.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
             
-            var workflowOption = new Option<string>(
+            var workflowOption = new Option<string[]>(
                 "--workflow",
                 description: "Workflow(s) to run. Use multiple times to execute more workflows parallel.") {
-                    AllowMultipleArgumentsPerToken = false
+                    AllowMultipleArgumentsPerToken = false,
+                    Arity = ArgumentArity.ZeroOrMore
                 };
-            workflowOption.Argument.Arity = new ArgumentArity(1, ArgumentArity.MaximumArity);
 
-            var platformOption = new Option<string>(
+            var platformOption = new Option<string[]>(
                 new[] { "-P", "--platform" },
                 description: "Platform mapping to run the workflow in a docker container (similar behavior as using the container property of a workflow job, the container property of a job will take precedence over your specified docker image) or host. E.g. `-P ubuntu-latest=ubuntu:latest` (Docker Linux Container), `-P ubuntu-latest=-self-hosted` (Local Machine), `-P windows-latest=-self-hosted` (Local Machine), `-P windows-latest=mcr.microsoft.com/windows/servercore:ltsc2022` (Docker Windows container, windows only), `-P macos-latest=-self-hosted` (Local Machine) or with multiple labels `-P self-hosted,testmachine,anotherlabel=-self-hosted` (Local Machine).") {
-                    AllowMultipleArgumentsPerToken = false
+                    AllowMultipleArgumentsPerToken = false,
+                    Arity = ArgumentArity.ZeroOrMore
                 };
-            platformOption.Argument.Arity = new ArgumentArity(0, ArgumentArity.MaximumArity);
+            var serverOpt = new Option<string>(
+                "--server",
+                description: "Runner.Server address, e.g. `http://localhost:5000` or `https://localhost:5001`.");
+            var payloadOpt = new Option<string>(
+                new[] { "-e", "--payload", "--eventpath" },
+                "Webhook payload to send to the Runner.");
+            var noDefaultPayloadOpt = new Option<bool>(
+                "--no-default-payload",
+                "Do not provide or merge autogenerated payload content, will pass your unmodified payload to the runner.");
+            var eventOpt = new Option<string>(
+                "--event",
+                getDefaultValue: () => "push",
+                description: "Which event to send to a worker, ignored if you use subcommands which overriding the event.");
+            var secretFileOpt = new Option<string>(
+                "--secret-file",
+                getDefaultValue: () => ".secrets",
+                description: "Secrets for your workflow.");
+            var jobOpt = new Option<string>(
+                new[] {"-j", "--job"},
+                description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with `--workflow <workflow>` to run exact one job.");
+            var listOpt = new Option<bool>(
+                new[] { "-l", "--list"},
+                description: "List jobs for the selected event (defaults to push).");
+            var workflowsOpt = new Option<string>(
+                new[] { "-W", "--workflows"},
+                getDefaultValue: () => ".github/workflows",
+                description: "Workflow file or directory which contains workflows, only used if no `--workflow <workflow>` option is set.");
+            var actorOpt = new Option<string>(
+                new[] {"-a" , "--actor"},
+                "The login of the user who initiated the workflow run, ignored if already in your event payload.");
+            var watchOpt = new Option<bool>(
+                new[] {"-w", "--watch"},
+                "Run automatically on every file change.");
+            var quietOpt = new Option<bool>(
+                new[] {"-q", "--quiet"},
+                "Display no progress in the cli.");
+            var privilegedOpt = new Option<bool>(
+                "--privileged",
+                "Run the docker container under privileged mode, only applies to container jobs using this Runner fork.");
+            var usernsOpt = new Option<string>(
+                "--userns",
+                "Change the docker container linux user namespace, only applies to container jobs using this Runner fork.");
+            var containerPlatformOpt = new Option<string>(
+                new [] { "--container-architecture", "--container-platform" },
+                "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork.");
+            var keepContainerOpt = new Option<bool>(
+                "--keep-container",
+                "Dot not clean up docker container after job, this leaks resources.");
+            var defaultbranchOpt = new Option<string>(
+                "--defaultbranch",
+                description: "The default branch of your workflow run, ignored if already in your event payload.");
+            var DirectoryOpt = new Option<string>(
+                new[] {"-C", "--directory"},
+                "Change the directory of your local repository, provided file or directory names are still resolved relative to your current working directory.");
+            var verboseOpt = new Option<bool>(
+                new[] {"-v", "--verbose"},
+                "Print more details like server / runner logs to stdout.");
+            var parallelOpt = new Option<int>(
+                "--parallel",
+                getDefaultValue: () => 1,
+                description: "Run n parallel runners, ignored if `--server <server>` is used.");
+            var noCopyGitDirOpt = new Option<bool>(
+                "--no-copy-git-dir",
+                description: "Avoid copying the .git folder into the runner if it exists.");
+            var keepRunnerDirectoryOpt = new Option<bool>(
+                "--keep-runner-directory",
+                description: "Skip deleting temporary runner directories.");
+            var noSharedToolCacheOpt = new Option<bool>(
+                "--no-shared-toolcache",
+                description: "Do not share toolcache between runners, a shared toolcache may cause workflow failures.");
+            var noReuseOpt = new Option<bool>(
+                "--no-reuse",
+                "Do not reuse a configured self-hosted runner, creates a new instance after a job completes.");
+            var gitServerUrlOpt = new Option<string>(
+                "--git-server-url",
+                getDefaultValue: () => "https://github.com",
+                description: "Url to github or gitea instance.");
+            var gitApiServerUrlOpt = new Option<string>(
+                "--git-api-server-url",
+                description: "Url to github or gitea api. ( e.g https://api.github.com )");
+            var gitGraphQlOpt = new Option<string>(
+                "--git-graph-ql-server-url",
+                description: "Url to github graphql api. ( e.g https://api.github.com/graphql )");
+            var gitTarballUrlOpt = new Option<string>(
+                "--git-tarball-url",
+                description: "Url to github or gitea tarball api url, defaults to `<git-api-server-url>/repos/{0}/tarball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+            var gitZipballUrlOpt = new Option<string>(
+                "--git-zipball-url",
+                description: "Url to github or gitea zipball api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha.");
+            var remoteCheckoutOpt = new Option<bool>(
+                "--remote-checkout",
+                description: "Do not inject localcheckout into your workflows, always use the original actions/checkout.");
+            var artifactOutputDirOpt = new Option<string>(
+                "--artifact-output-dir",
+                description: "Output folder for all artifacts produced by this runs");
+            var logOutputDirOpt = new Option<string>(
+                "--log-output-dir",
+                description: "Output folder for all logs produced by this runs");
             var rootCommand = new RootCommand
             {
                 workflowOption,
-                new Option<string>(
-                    "--server",
-                    description: "Runner.Server address, e.g. `http://localhost:5000` or `https://localhost:5001`."),
-                new Option<string>(
-                    new[] { "-e", "--payload", "--eventpath" },
-                    "Webhook payload to send to the Runner."),
-                new Option<bool>(
-                    "--no-default-payload",
-                    "Do not provide or merge autogenerated payload content, will pass your unmodified payload to the runner."),
-                new Option<string>(
-                    "--event",
-                    getDefaultValue: () => "push",
-                    description: "Which event to send to a worker, ignored if you use subcommands which overriding the event."),
+                serverOpt,
+                payloadOpt,
+                noDefaultPayloadOpt,
+                eventOpt,
                 envOpt,
-                new Option<string>(
-                    "--env-file",
-                    getDefaultValue: () => ".env",
-                    description: "Environment variables for your workflow."),
+                envFile,
                 secretOpt,
-                new Option<string>(
-                    "--secret-file",
-                    getDefaultValue: () => ".secrets",
-                    description: "Secrets for your workflow."),
-                new Option<string>(
-                    new[] {"-j", "--job"},
-                    description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with `--workflow <workflow>` to run exact one job."),
+                secretFileOpt,
+                jobOpt,
                 matrixOpt,
-                new Option<bool>(
-                    new[] { "-l", "--list"},
-                    description: "List jobs for the selected event (defaults to push)."),
-                new Option<string>(
-                    new[] { "-W", "--workflows"},
-                    getDefaultValue: () => ".github/workflows",
-                    description: "Workflow file or directory which contains workflows, only used if no `--workflow <workflow>` option is set."),
+                listOpt,
+                workflowsOpt,
                 platformOption,
-                new Option<string>(
-                    new[] {"-a" , "--actor"},
-                    "The login of the user who initiated the workflow run, ignored if already in your event payload."),
-                new Option<bool>(
-                    new[] {"-w", "--watch"},
-                    "Run automatically on every file change."),
-                new Option<bool>(
-                    new[] {"-q", "--quiet"},
-                    "Display no progress in the cli."),
-                new Option<bool>(
-                    "--privileged",
-                    "Run the docker container under privileged mode, only applies to container jobs using this Runner fork."),
-                new Option<string>(
-                    "--userns",
-                    "Change the docker container linux user namespace, only applies to container jobs using this Runner fork."),
-                new Option<string>(
-                    new [] { "--container-architecture", "--container-platform" },
-                    "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork."),
-                new Option<bool>(
-                    "--keep-container",
-                    "Dot not clean up docker container after job, this leaks resources."),
-                new Option<string>(
-                    "--defaultbranch",
-                    description: "The default branch of your workflow run, ignored if already in your event payload."),
-                new Option<string>(
-                    new[] {"-C", "--directory"},
-                    "Change the directory of your local repository, provided file or directory names are still resolved relative to your current working directory."),
-                new Option<bool>(
-                    new[] {"-v", "--verbose"},
-                    "Print more details like server / runner logs to stdout."),
-                new Option<int>(
-                    "--parallel",
-                    getDefaultValue: () => 1,
-                    description: "Run n parallel runners, ignored if `--server <server>` is used."),
-                new Option<bool>(
-                    "--no-copy-git-dir",
-                    description: "Avoid copying the .git folder into the runner if it exists."),
-                new Option<bool>(
-                    "--keep-runner-directory",
-                    description: "Skip deleting temporary runner directories."),
-                new Option<bool>(
-                    "--no-shared-toolcache",
-                    description: "Do not share toolcache between runners, a shared toolcache may cause workflow failures."),
-                new Option<bool>(
-                    "--no-reuse",
-                    "Do not reuse a configured self-hosted runner, creates a new instance after a job completes."),
-                new Option<string>(
-                    "--git-server-url",
-                    getDefaultValue: () => "https://github.com",
-                    description: "Url to github or gitea instance."),
-                new Option<string>(
-                    "--git-api-server-url",
-                    getDefaultValue: () => "https://api.github.com",
-                    description: "Url to github or gitea api."),
-                new Option<string>(
-                    "--git-graph-ql-server-url",
-                    getDefaultValue: () => "https://api.github.com/graphql",
-                    description: "Url to github graphql api."),
-                new Option<string>(
-                    "--git-tarball-url",
-                    description: "Url to github or gitea tarball api url, defaults to `<git-api-server-url>/repos/{0}/tarball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
-                new Option<string>(
-                    "--git-zipball-url",
-                    description: "Url to github or gitea zipball api url, defaults to `<git-api-server-url>/repos/{0}/zipball/{1}`. `{0}` is replaced by `<owner>/<repo>`, `{1}` is replaced by branch, tag or sha."),
-                new Option<bool>(
-                    "--remote-checkout",
-                    description: "Do not inject localcheckout into your workflows, always use the original actions/checkout."),
-                new Option<string>(
-                    "--artifact-output-dir",
-                    description: "Output folder for all artifacts produced by this runs"),
-                new Option<string>(
-                    "--log-output-dir",
-                    description: "Output folder for all logs produced by this runs"),
+                actorOpt,
+                watchOpt,
+                quietOpt,
+                privilegedOpt,
+                usernsOpt,
+                containerPlatformOpt,
+                keepContainerOpt,
+                DirectoryOpt,
+                verboseOpt,
+                parallelOpt,
+                noCopyGitDirOpt,
+                keepRunnerDirectoryOpt,
+                noSharedToolCacheOpt,
+                noReuseOpt,
+                gitServerUrlOpt,
+                gitApiServerUrlOpt,
+                gitGraphQlOpt,
+                gitTarballUrlOpt,
+                gitZipballUrlOpt,
+                remoteCheckoutOpt,
+                artifactOutputDirOpt,
+                logOutputDirOpt
             };
 
             rootCommand.Description = "Run your workflows locally.";
 
             // Note that the parameters of the handler method are matched according to the names of the options
-            Func<Parameters, Task<int>> handler = async (parameters) =>
+            Func<Parameters , Task<int>> handler = async (parameters) =>
             {
                 if(parameters.list) {
                     parameters.parallel = 0;
@@ -1489,6 +1529,52 @@ namespace Runner.Client
                 }
                 return 0;
             };
+            var binder = new MyCustomBinder(bindingContext => {
+                var parameters = new Parameters();
+                parameters.workflow = bindingContext.ParseResult.GetValueForOption(workflowOption);
+                parameters.server = bindingContext.ParseResult.GetValueForOption(serverOpt);
+                parameters.payload = bindingContext.ParseResult.GetValueForOption(payloadOpt);
+                parameters.NoDefaultPayload = bindingContext.ParseResult.GetValueForOption(noDefaultPayloadOpt);
+                parameters.Event = bindingContext.ParseResult.GetValueForOption(eventOpt);
+                parameters.env = bindingContext.ParseResult.GetValueForOption(envOpt);
+                parameters.envFile = bindingContext.ParseResult.GetValueForOption(envFile);
+                parameters.secret = bindingContext.ParseResult.GetValueForOption(secretOpt);
+                parameters.secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
+                parameters.job = bindingContext.ParseResult.GetValueForOption(jobOpt);
+                parameters.matrix = bindingContext.ParseResult.GetValueForOption(matrixOpt);
+                parameters.list = bindingContext.ParseResult.GetValueForOption(listOpt);
+                parameters.workflows = bindingContext.ParseResult.GetValueForOption(workflowsOpt);
+                parameters.platform = bindingContext.ParseResult.GetValueForOption(platformOption);
+                parameters.actor = bindingContext.ParseResult.GetValueForOption(actorOpt);
+                parameters.watch = bindingContext.ParseResult.GetValueForOption(watchOpt);
+                parameters.quiet = bindingContext.ParseResult.GetValueForOption(quietOpt);
+                parameters.privileged = bindingContext.ParseResult.GetValueForOption(privilegedOpt);
+                parameters.userns = bindingContext.ParseResult.GetValueForOption(usernsOpt);
+                parameters.containerPlatform = bindingContext.ParseResult.GetValueForOption(containerPlatformOpt);
+                parameters.KeepContainer = bindingContext.ParseResult.GetValueForOption(keepContainerOpt);
+                parameters.directory = bindingContext.ParseResult.GetValueForOption(DirectoryOpt);
+                parameters.verbose = bindingContext.ParseResult.GetValueForOption(verboseOpt);
+                parameters.parallel = bindingContext.ParseResult.GetValueForOption(parallelOpt);
+                parameters.NoCopyGitDir = bindingContext.ParseResult.GetValueForOption(noCopyGitDirOpt);
+                parameters.KeepRunnerDirectory = bindingContext.ParseResult.GetValueForOption(keepRunnerDirectoryOpt);
+                parameters.NoSharedToolcache = bindingContext.ParseResult.GetValueForOption(noSharedToolCacheOpt);
+                parameters.NoReuse = bindingContext.ParseResult.GetValueForOption(noReuseOpt);
+                parameters.GitServerUrl = bindingContext.ParseResult.GetValueForOption(gitServerUrlOpt);
+                parameters.GitApiServerUrl = bindingContext.ParseResult.GetValueForOption(gitApiServerUrlOpt);
+                parameters.GitGraphQlServerUrl = bindingContext.ParseResult.GetValueForOption(gitGraphQlOpt);
+                if(parameters.GitApiServerUrl == null) {
+                    parameters.GitApiServerUrl = parameters.GitServerUrl == "https://github.com" ? "https://api.github.com" : $"{parameters.GitServerUrl}/api/v3";
+                }
+                if(parameters.GitGraphQlServerUrl == null) {
+                    parameters.GitGraphQlServerUrl = parameters.GitServerUrl == "https://github.com" ? "https://api.github.com/graphql" : $"{parameters.GitServerUrl}/api/graphql";
+                }
+                parameters.GitTarballUrl = bindingContext.ParseResult.GetValueForOption(gitTarballUrlOpt);
+                parameters.GitZipballUrl = bindingContext.ParseResult.GetValueForOption(gitZipballUrlOpt);
+                parameters.RemoteCheckout = bindingContext.ParseResult.GetValueForOption(remoteCheckoutOpt);
+                parameters.ArtifactOutputDir = bindingContext.ParseResult.GetValueForOption(artifactOutputDirOpt);
+                parameters.LogOutputDir = bindingContext.ParseResult.GetValueForOption(logOutputDirOpt);
+                return parameters;
+            });
 
             foreach(var ev in validevents) {
                 var cmd = new Command(ev, $"Same as adding `--event {ev}` to the cli, overrides any `--event <event>` option.");
@@ -1497,7 +1583,7 @@ namespace Runner.Client
                     parameters.Event = ev;
                     return handler(parameters);
                 };
-                cmd.Handler = CommandHandler.Create(handler2);
+                cmd.SetHandler(handler2, binder);
                 foreach(var opt in rootCommand.Options) {
                     if(!opt.Aliases.Contains("--event")) {
                         cmd.AddOption(opt);
@@ -1511,7 +1597,7 @@ namespace Runner.Client
                 p.parallel = 0;
                 return handler(p);
             };
-            startserver.Handler = CommandHandler.Create(sthandler);
+            startserver.SetHandler(sthandler, binder);
 
             var startrunner = new Command("startrunner", "Configures and runs n runner.");
             rootCommand.AddCommand(startrunner);
@@ -1519,7 +1605,7 @@ namespace Runner.Client
                 p.StartRunner = true;
                 return handler(p);
             };
-            startrunner.Handler = CommandHandler.Create(thandler);
+            startrunner.SetHandler(thandler, binder);
 
             foreach(var opt in rootCommand.Options) {
                 if(opt.Aliases.Contains("--server") || opt.Aliases.Contains("--verbose")) {
@@ -1533,7 +1619,7 @@ namespace Runner.Client
                 "--token",
                 description: "custom runner token to use"));
 
-            rootCommand.Handler = CommandHandler.Create(handler);
+            rootCommand.SetHandler(handler, binder);
 
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             List<string> configs = new List<string>();
