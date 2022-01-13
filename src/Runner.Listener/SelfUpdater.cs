@@ -189,12 +189,16 @@ namespace GitHub.Runner.Listener
                 var isMockUpdate = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE"));
                 if (isMockUpdate)
                 {
-                    int waitInSeconds = 20;
-                    while (!Debugger.IsAttached && waitInSeconds-- > 0)
+                    var waitForDebugger = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE_WAIT_FOR_DEBUGGER"));
+                    if (waitForDebugger)
                     {
-                        await Task.Delay(1000);
+                        int waitInSeconds = 20;
+                        while (!Debugger.IsAttached && waitInSeconds-- > 0)
+                        {
+                            await Task.Delay(1000);
+                        }
+                        Debugger.Break();
                     }
-                    Debugger.Break();
                     // the runner-mock-versions.txt file should be of format 
                     // v2.281.2
                     // v2.283.0
