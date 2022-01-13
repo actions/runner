@@ -130,6 +130,9 @@ namespace GitHub.Runner.Worker
             }
         }
 
+        public static Task<string> GetHostNodeTool(IHostContext hostContext, IExecutionContext executionContext, string name, string os, string arch) {
+            return GetNodeTool(hostContext, executionContext, System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("musl") ? name + "_alpine" : name, os, arch);
+        }
         public static async Task<string> GetNodeTool(IHostContext hostContext, IExecutionContext executionContext, string name, string os, string arch) {
             string platform = os + "/" + arch;
             var externalsPath = hostContext.GetDirectory(WellKnownDirectory.Externals);

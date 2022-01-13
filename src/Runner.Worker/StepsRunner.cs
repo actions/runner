@@ -77,7 +77,7 @@ namespace GitHub.Runner.Worker
 
                 try {
                     // Prepare host nodejs version
-                    HashFilesFunction.NodeTool = await ExternalToolHelper.GetNodeTool(HostContext, step.ExecutionContext, "node12", ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
+                    HashFilesFunction.NodeTool = await ExternalToolHelper.GetHostNodeTool(HostContext, step.ExecutionContext, "node12", ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
                 } catch {
                     
                 }

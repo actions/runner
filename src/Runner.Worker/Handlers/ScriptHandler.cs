@@ -276,7 +276,7 @@ namespace GitHub.Runner.Worker.Handlers
                 if (!isContainerStepHost && Environment.ContainsKey("DYLD_INSERT_LIBRARIES"))  // We don't check `isContainerStepHost` because we don't support container on macOS
                 {
                     // launch `node macOSRunInvoker.js shell args` instead of `shell args` to avoid macOS SIP remove `DYLD_INSERT_LIBRARIES` when launch process
-                    string node12 = await ExternalToolHelper.GetNodeTool(HostContext, ExecutionContext, "node12", ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
+                    string node12 = await ExternalToolHelper.GetHostNodeTool(HostContext, ExecutionContext, "node12", ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
                     string macOSRunInvoker = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "macos-run-invoker.js");
                     arguments = $"\"{macOSRunInvoker.Replace("\"", "\\\"")}\" \"{fileName.Replace("\"", "\\\"")}\" {arguments}";
                     fileName = node12;
