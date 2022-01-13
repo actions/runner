@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -708,6 +708,91 @@ namespace Runner.Server.Controllers
             var workflowTraceWriter = new TraceWriter2(line => {
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
             });
+            var workflowname = fileRelativePath;
+            Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
+                var effective_event = callingJob?.Event ?? event_name;
+                if(!string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
+                    var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, callingJob?.Event ?? event_name);
+                    var targetUrl = "";
+                    var ownerAndRepo = repository_name.Split("/", 2);
+                    if(!string.IsNullOrEmpty(ServerUrl)) {
+                        var targetUrlBuilder = new UriBuilder(ServerUrl);
+                        // old url
+                        // targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
+                        targetUrlBuilder.Fragment  = $"/0/{ownerAndRepo[0]}/0/{ownerAndRepo[1]}/0/{runid}/0/{(next.Id != Guid.Empty ? next.Id : "")}";
+                        targetUrl = targetUrlBuilder.ToString();
+                    }
+                    if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                        try {
+                            JobStatus jobstatus = JobStatus.Pending;
+                            var description = status?.ToString() ?? "Pending";
+                            if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
+                                jobstatus = JobStatus.Success;
+                            }
+                            if(status == TaskResult.Skipped) {
+                                jobstatus = JobStatus.Pending;
+                            }
+                            if(status == TaskResult.Failed || status == TaskResult.Abandoned || status == TaskResult.Canceled) {
+                                jobstatus = JobStatus.Failure;
+                            }
+                            var client = new HttpClient();
+                            client.DefaultRequestHeaders.Add("accept", "application/json");
+                            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                            if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                            }
+                            var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/statuses/{statusSha}"));
+                            (await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = jobstatus, Context = ctx, Description = description, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()))).EnsureSuccessStatusCode();
+                        } catch {
+
+                        }
+                    } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
+                        try {
+                            // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
+                            var generator = new GitHubJwt.GitHubJwtFactory(
+                                new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
+                                new GitHubJwt.GitHubJwtFactoryOptions
+                                {
+                                    AppIntegrationId = GitHubAppId, // The GitHub App Id
+                                    ExpirationSeconds = 600 // 10 minutes is the maximum time allowed
+                                }
+                            );
+                            var jwtToken = generator.CreateEncodedJwtToken();
+                            // Pass the JWT as a Bearer token to Octokit.net
+                            var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                            {
+                                Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
+                            };
+                            var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
+                            var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
+                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                            {
+                                Credentials = new Octokit.Credentials(response.Body.Token)
+                            };
+                            try {
+                                Octokit.CheckConclusion? conclusion = null;
+                                if(status == TaskResult.Skipped) {
+                                    conclusion = Octokit.CheckConclusion.Skipped;
+                                } else if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
+                                    conclusion = Octokit.CheckConclusion.Success;
+                                } else if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
+                                    conclusion = Octokit.CheckConclusion.Failure;
+                                } else if(status == TaskResult.Canceled) {
+                                    conclusion = Octokit.CheckConclusion.Cancelled;
+                                }
+                                var checkrun = (await appClient2.Check.Run.GetAllForReference(ownerAndRepo[0], ownerAndRepo[1], statusSha, new Octokit.CheckRunRequest() { CheckName = ctx }, new Octokit.ApiOptions() { PageSize = 1 })).CheckRuns.FirstOrDefault() ?? await appClient2.Check.Run.Create(ownerAndRepo[0], ownerAndRepo[1], new Octokit.NewCheckRun(ctx, statusSha) );
+                                var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
+                                next.CheckRunStarted = true;
+                            } finally {
+                                await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
+                            }
+                        } catch {
+
+                        }
+                        
+                    }
+                }
+            };
             try {
                 List<JobItem> jobgroup = new List<JobItem>();
                 List<JobItem> dependentjobgroup = new List<JobItem>();
@@ -1082,7 +1167,7 @@ namespace Runner.Server.Controllers
                         }
                     }
                 }
-                var workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
+                workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
                 if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
                     attempt.WorkflowRun.DisplayName = workflowname;
@@ -1119,90 +1204,6 @@ namespace Runner.Server.Controllers
                     githubctx.Add("retention_days", new StringContextData("90"));
                     githubctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
                     return contextData;
-                };
-                Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
-                    var effective_event = callingJob?.Event ?? event_name;
-                    if(!string.IsNullOrEmpty(hook.repository.full_name) && !string.IsNullOrEmpty(statusSha) && !next.NoStatusCheck && (effective_event == "push" || ((effective_event == "pull_request" || effective_event == "pull_request_target") && (new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action))) && !localcheckout) {
-                        var ctx = string.Format("{0} / {1} ({2})", workflowname, next.DisplayName, callingJob?.Event ?? event_name);
-                        var targetUrl = "";
-                        var ownerAndRepo = repository_name.Split("/", 2);
-                        if(!string.IsNullOrEmpty(ServerUrl)) {
-                            var targetUrlBuilder = new UriBuilder(ServerUrl);
-                            // old url
-                            // targetUrlBuilder.Fragment  = $"/master/runner/server/detail/{next.Id}";
-                            targetUrlBuilder.Fragment  = $"/0/{ownerAndRepo[0]}/0/{ownerAndRepo[1]}/0/{runid}/0/{next.Id}";
-                            targetUrl = targetUrlBuilder.ToString();
-                        }
-                        if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                            try {
-                                JobStatus jobstatus = JobStatus.Pending;
-                                var description = status?.ToString() ?? "Pending";
-                                if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
-                                    jobstatus = JobStatus.Success;
-                                }
-                                if(status == TaskResult.Skipped) {
-                                    jobstatus = JobStatus.Pending;
-                                }
-                                if(status == TaskResult.Failed || status == TaskResult.Abandoned || status == TaskResult.Canceled) {
-                                    jobstatus = JobStatus.Failure;
-                                }
-                                var client = new HttpClient();
-                                client.DefaultRequestHeaders.Add("accept", "application/json");
-                                client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                                if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                    client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                                }
-                                var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/statuses/{statusSha}"));
-                                (await client.PostAsync(url.ToString(), new ObjectContent<StatusCheck>(new StatusCheck { State = jobstatus, Context = ctx, Description = description, TargetUrl = targetUrl }, new VssJsonMediaTypeFormatter()))).EnsureSuccessStatusCode();
-                            } catch {
-
-                            }
-                        } else if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0) {
-                            try {
-                                // Use GitHubJwt library to create the GitHubApp Jwt Token using our private certificate PEM file
-                                var generator = new GitHubJwt.GitHubJwtFactory(
-                                    new GitHubJwt.FilePrivateKeySource(GitHubAppPrivateKeyFile),
-                                    new GitHubJwt.GitHubJwtFactoryOptions
-                                    {
-                                        AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                        ExpirationSeconds = 600 // 10 minutes is the maximum time allowed
-                                    }
-                                );
-                                var jwtToken = generator.CreateEncodedJwtToken();
-                                // Pass the JWT as a Bearer token to Octokit.net
-                                var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
-                                {
-                                    Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
-                                };
-                                var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                                var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                                var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
-                                {
-                                    Credentials = new Octokit.Credentials(response.Body.Token)
-                                };
-                                try {
-                                    Octokit.CheckConclusion? conclusion = null;
-                                    if(status == TaskResult.Skipped) {
-                                        conclusion = Octokit.CheckConclusion.Skipped;
-                                    } else if(status == TaskResult.Succeeded || status == TaskResult.SucceededWithIssues) {
-                                        conclusion = Octokit.CheckConclusion.Success;
-                                    } else if(status == TaskResult.Failed || status == TaskResult.Abandoned) {
-                                        conclusion = Octokit.CheckConclusion.Failure;
-                                    } else if(status == TaskResult.Canceled) {
-                                        conclusion = Octokit.CheckConclusion.Cancelled;
-                                    }
-                                    var checkrun = (await appClient2.Check.Run.GetAllForReference(ownerAndRepo[0], ownerAndRepo[1], statusSha, new Octokit.CheckRunRequest() { CheckName = ctx }, new Octokit.ApiOptions() { PageSize = 1 })).CheckRuns.FirstOrDefault() ?? await appClient2.Check.Run.Create(ownerAndRepo[0], ownerAndRepo[1], new Octokit.NewCheckRun(ctx, statusSha) );
-                                    var result = await appClient2.Check.Run.Update(ownerAndRepo[0], ownerAndRepo[1], checkrun.Id, new Octokit.CheckRunUpdate() { Status = conclusion == null ? Octokit.CheckStatus.InProgress : Octokit.CheckStatus.Completed, StartedAt = conclusion != null && next.CheckRunStarted ? checkrun.StartedAt : DateTimeOffset.UtcNow, CompletedAt = conclusion == null ? null : DateTimeOffset.UtcNow, Conclusion = conclusion, DetailsUrl = targetUrl, Output = new Octokit.NewCheckRunOutput(next.name, "") });
-                                    next.CheckRunStarted = true;
-                                } finally {
-                                    await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
-                                }
-                            } catch {
-
-                            }
-                            
-                        }
-                    }
                 };
                 Action<DictionaryContextData, JobItem, JobCompletedEvent> updateNeedsCtx = (needsctx, job, e) => {
                     NeedsTaskResult? oldstatus = null;
@@ -2099,6 +2100,7 @@ namespace Runner.Server.Controllers
                 }
             } catch(Exception ex) {
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, ex.Message.Split('\n').ToList()), workflowTimelineId, workflowRecordId);
+                updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
             } finally {
                 if(!asyncProcessing && callingJob == null) {
