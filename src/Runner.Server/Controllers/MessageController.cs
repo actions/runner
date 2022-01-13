@@ -2247,8 +2247,6 @@ namespace Runner.Server.Controllers
                     traceWriter.Verbose("Failed to instantiate Workflow: {0}", message);
                     new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                 };
-                //var xref = rawUses.Value.Split('@', 2);
-                //var parts = xref[0].Split('/', 3);
                 (new Func<Task>(async () => {
                     if(reference == null) {
                         failedtoInstantiateWorkflow($"Invalid reference format: {uses.Value}");
