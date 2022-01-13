@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -2213,6 +2213,33 @@ namespace Runner.Server.Controllers
                         };
                     }
                 }
+                SecretMasker masker = new SecretMasker();
+                var linesplitter = new Regex("\r?\n");
+                foreach(var variable in variables) {
+                    if(variable.Value.IsSecret) {
+                        masker.AddValue(variable.Value.Value);
+                        if(variable.Value.Value.Contains('\r') || variable.Value.Value.Contains('\n')) {
+                            foreach(var line in linesplitter.Split(variable.Value.Value)) {
+                                masker.AddValue(line);
+                            }
+                        }
+                    }
+                }
+                masker.AddValueEncoder(ValueEncoders.Base64StringEscape);
+                masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
+                masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
+                masker.AddValueEncoder(ValueEncoders.CommandLineArgumentEscape);
+                masker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
+                masker.AddValueEncoder(ValueEncoders.JsonStringEscape);
+                masker.AddValueEncoder(ValueEncoders.UriDataEscape);
+                masker.AddValueEncoder(ValueEncoders.XmlDataEscape);
+                masker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
+                masker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
+                masker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
+                var insecuretraceWriter = templateContext.TraceWriter;
+                templateContext.TraceWriter = new TraceWriter2(line => {
+                    insecuretraceWriter.Info("{0}", masker.MaskSecrets(line));
+                });
                 var traceWriter = templateContext.TraceWriter;
                 var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(_job);
