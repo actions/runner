@@ -68,6 +68,11 @@ jobs:
           tag: ltsc2022
     runs-on: ${{matrix.os}}
     steps:
+    - uses: Christopher/script@multiplejsfiles
+      with:
+        post: |
+          rm -r /__w/runner.server/
+          rm -r /__w/_temp/
     - uses: actions/checkout@v2
     - uses: actions/setup-dotnet@v1
       with:
