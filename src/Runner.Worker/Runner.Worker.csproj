@@ -7,6 +7,7 @@
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <NoWarn>NU1701;NU1603</NoWarn>
     <Version>$(Version)</Version>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
     <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
   </PropertyGroup>
 
