@@ -1,22 +1,14 @@
 ## Features
 
-- Bump runtime to dotnet 6 (#1471)
-- Show service container logs on teardown (#1563)
+- N/A
 
 ## Bugs
 
-- Add masks for multiline secrets from ::add-mask:: (#1521)
-- fix Log size and retention settings not work (#1507)
-- Refactor SelfUpdater adding L0 tests. (#1564)
-- Fix test failure: /bin/sleep on Macos 11 (Monterey) does not accept the suffix s. (#1472)
-
+- Fix breaking change in dotnet 6 around globalization-invariant. (#1609)
 
 ## Misc
 
-- Update dependency check for dotnet 6. (#1551)
-- Produce trimmed down runner packages. (#1556)
-- Deleted extra background in github-praph.png, which is displayed in README.md (#1432)
-
+- N/A
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
