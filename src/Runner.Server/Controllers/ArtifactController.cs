@@ -126,7 +126,7 @@ namespace Runner.Server.Controllers {
                 targetStream.Seek(start, SeekOrigin.Begin);
                 await Request.Body.CopyToAsync(targetStream);
             }
-            return created ? Created($"{ServerUrl}/_apis/pipelines/workflows/artifact/{id}/{Uri.EscapeDataString(itemPath)}", null) : Ok();
+            return created ? Created($"{ServerUrl}/_apis/pipelines/workflows/artifact/{id}?file={Uri.EscapeDataString(itemPath)}", null) : Ok();
         }
 
         [HttpGet("container/{id}")]
@@ -145,7 +145,7 @@ namespace Runner.Server.Controllers {
                         ret.Add(new DownloadInfo { ContainerId = id, path = item.FileName.Substring(0, i), itemType = "folder"});
                     }
                     
-                    ret.Add(new DownloadInfo { ContainerId = id, path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = $"{ServerUrl}/_apis/pipelines/workflows/artifact/{id}/{Uri.EscapeDataString(item.FileName)}"});
+                    ret.Add(new DownloadInfo { ContainerId = id, path = item.FileName, itemType = "file", fileLength = (int)new FileInfo(Path.Combine(_targetFilePath, item.StoreName)).Length, contentLocation = $"{ServerUrl}/_apis/pipelines/workflows/artifact/{id}?file={Uri.EscapeDataString(item.FileName)}"});
                 }
                 return await Ok(ret);
             } else {
@@ -153,9 +153,10 @@ namespace Runner.Server.Controllers {
             }
         }
 
-        [HttpGet("artifact/{id}/{file}")]
+        // Filename have to be in query, because the azure load balancer converts all %2f components to path seperator /
+        [HttpGet("artifact/{id}")]
         [AllowAnonymous]
-        public IActionResult GetFileFromContainer(int id, string file) {
+        public IActionResult GetFileFromContainer(int id, [FromQuery] string file) {
             // It seems like aspnetcore 5 doesn't unescape the uri component on linux and macOS, while on windows it does!
             // Try to match both to avoid bugs
             var unescapedFile = Uri.UnescapeDataString(file);
