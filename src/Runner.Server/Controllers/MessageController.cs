@@ -947,10 +947,11 @@ namespace Runner.Server.Controllers
                                 validInputs.Add(inputName);
                                 var inputInfo = input.Value?.AssertMapping("map");
                                 if(inputInfo != null) {
-                                    bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
-                                    string type = (from r in inputInfo where r.Key.AssertString("").Value == "type" select r.Value.AssertString("").Value).FirstOrDefault();
-                                    SequenceToken options = (from r in inputInfo where r.Key.AssertString("").Value == "options" select r.Value.AssertSequence("")).FirstOrDefault();
-                                    var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.AssertString("")?.ToContextData()?.ToJToken();
+                                    var workflowDispatchMappingKey = "on.workflow_dispatch mapping key";
+                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "required" select r.Value.AssertBoolean("on.workflow_dispatch.required").Value).FirstOrDefault();
+                                    string type = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "type" select r.Value.AssertString("on.workflow_dispatch.type").Value).FirstOrDefault();
+                                    SequenceToken options = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "options" select r.Value.AssertSequence("on.workflow_dispatch.options")).FirstOrDefault();
+                                    var def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.AssertString("on.workflow_dispatch.default")?.ToContextData()?.ToJToken();
                                     if(def == null) {
                                         def = "";
                                     }
@@ -986,33 +987,35 @@ namespace Runner.Server.Controllers
                                 validInputs.Add(inputName);
                                 var inputInfo = input.Value?.AssertMapping("map");
                                 if(inputInfo != null) {
-                                    bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
-                                    string type = (from r in inputInfo where r.Key.AssertString("").Value == "type" select r.Value.AssertString("").Value).First();
-                                    var assertMessage = $"This workflow requires the input: {inputName}, to have type {type}";
-                                    var def = (from r in inputInfo where r.Key.AssertString("").Value == "default" select r.Value).FirstOrDefault()?.ToContextData();
+                                    var workflowCallInputMappingKey = "on.workflow_call.inputs.{inputName} mapping key";
+                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "required" select r.Value.AssertBoolean("on.workflow_call.inputs.{inputName}.required").Value).FirstOrDefault();
+                                    string type = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "type" select r.Value.AssertString("on.workflow_call.inputs.{inputName}.type").Value).First();
+                                    var defassertMessage = $"on.workflow_call.inputs.{inputName}.default";
+                                    var def = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault()?.ToContextData();
                                     switch(type) {
                                     case "string":
                                         if(def == null) {
                                             def = new StringContextData("");
                                         }
-                                        def.AssertString(assertMessage);
+                                        def.AssertString(defassertMessage);
                                     break;
                                     case "number":
                                         if(def == null) {
                                             def = new NumberContextData(0);
                                         }
-                                        def.AssertNumber(assertMessage);
+                                        def.AssertNumber(defassertMessage);
                                     break;
                                     case "boolean":
                                         if(def == null) {
                                             def = new BooleanContextData(false);
                                         }
-                                        def.AssertBoolean(assertMessage);
+                                        def.AssertBoolean(defassertMessage);
                                     break;
                                     default:
-                                        throw new Exception($"This workflow requires the type keyword for the input: {inputName}, but an invalid type: {type} was provided");
+                                        throw new Exception($"on.workflow_call.inputs.{inputName}.type assigned to invalid type: {type}, expected 'string', 'number' or 'boolean'");
                                     }
                                     var inputsDict = callingJob?.Inputs.AssertDictionary("dict");
+                                    var assertMessage = $"This workflow requires that the input: {inputName}, to have type {type}";
                                     if(inputsDict.TryGetValue(inputName, out var val)) {
                                         switch(type) {
                                         case "string":
@@ -1049,8 +1052,9 @@ namespace Runner.Server.Controllers
                                 }
                                 var inputInfo = input.Value?.AssertMapping("map");
                                 if(inputInfo != null) {
+                                    var workflowCallSecretsMappingKey = "on.workflow_call.secrets.{inputName} mapping key";
                                     validSecrets.Add(inputName.ToLowerInvariant());
-                                    bool required = (from r in inputInfo where r.Key.AssertString("").Value == "required" select r.Value.AssertBoolean("").Value).FirstOrDefault();
+                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowCallSecretsMappingKey).Value == "required" select r.Value.AssertBoolean("on.workflow_call.secrets.{inputName}.required").Value).FirstOrDefault();
                                     
                                     if(!secrets.Any(s => s.ToLowerInvariant().StartsWith(inputName.ToLowerInvariant() + "=")) && required) {
                                         throw new Exception($"This workflow requires the secret: {inputName}, but no such secret were provided");
@@ -1217,7 +1221,7 @@ namespace Runner.Server.Controllers
                         if(_ctx.ContainsKey("outputs") && _ctx["outputs"] is DictionaryContextData outputs) {
                             foreach(var output in outputs) {
                                 if(!dependentOutputs.TryGetValue(output.Key, out var val) || string.IsNullOrEmpty(val?.Value)) {
-                                    dependentOutputs[output.Key] = new VariableValue(output.Value.AssertString("").Value, false);
+                                    dependentOutputs[output.Key] = new VariableValue(output.Value.AssertString($"needs.{job.name}.outputs.{output.Key}").Value, false);
                                 }
                             }
                         }
@@ -1919,8 +1923,8 @@ namespace Runner.Server.Controllers
                                         }
                                         var outputs = new Dictionary<string, VariableValue>();
                                         foreach(var entry in workflowOutputs) {
-                                            var key = entry.Key.AssertString("").Value;
-                                            var value = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping("") where kv.Key.AssertString("").Value == "value" select kv.Value).First(), 0, null, true).AssertString("").Value;
+                                            var key = entry.Key.AssertString("on.workflow_call.outputs mapping key").Value;
+                                            var value = entry.Value != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-output-context", (from kv in entry.Value.AssertMapping($"on.workflow_call.outputs.{key}") where kv.Key.AssertString($"on.workflow_call.outputs.{key} mapping key").Value == "value" select kv.Value).First(), 0, null, true).AssertString($"on.workflow_call.outputs.{key}.value").Value : null;
                                             templateContext.Errors.Check();
                                             outputs[key] = new VariableValue(value, false);
                                         }
@@ -2286,7 +2290,7 @@ namespace Runner.Server.Controllers
                         List<string> _secrets = new List<string>();
                         if(evalSec != null) {
                             foreach(var entry in evalSec) {
-                                _secrets.Add(entry.Key.AssertString("") + "=" + entry.Value.AssertString(""));
+                                _secrets.Add(entry.Key.AssertString($"jobs.{ji.name}.secrets mapping key") + "=" + entry.Value.AssertString($"jobs.{ji.name}.secrets mapping value"));
                             }
                         }
                         if(result.TryGetValue("github_token", out var ghtoken)) {
