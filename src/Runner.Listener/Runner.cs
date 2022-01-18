@@ -12,6 +12,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Listener.Check;
+using System.Collections.Generic;
 
 namespace GitHub.Runner.Listener
 {
@@ -407,6 +408,25 @@ namespace GitHub.Runner.Listener
                                 {
                                     autoUpdateInProgress = true;
                                     var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+                                    // Can mock the update for testing
+                                    if (true || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
+                                    {
+
+                                        // the runnmock_update_messages.json file should be of format [{"targetVersion":"2.284.1"}, {"targetVersion":"2.285.0"}]
+                                        var mockUpdatesPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "mock_update_messages.json");
+                                        if (File.Exists(mockUpdatesPath))
+                                        {
+                                            var mockUpdateMessages = JsonUtility.FromString<List<AgentRefreshMessage>>(File.ReadAllText(mockUpdatesPath));
+                                            if (mockUpdateMessages.Any())
+                                            {
+                                                // Mock only the version
+                                                _term.WriteLine($"Mocking update, using version {mockUpdateMessages.First().TargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockUpdateMessages.First().TargetVersion, runnerUpdateMessage.Timeout);
+                                                var temp = JsonUtility.ToString(mockUpdateMessages.Skip(1));
+                                                File.WriteAllText(mockUpdatesPath, JsonUtility.StringSerialize(mockUpdateMessages.Skip(1)));
+                                            }
+                                        }
+                                    }
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
                                     selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
