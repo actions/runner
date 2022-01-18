@@ -98,14 +98,14 @@ namespace GitHub.Runner.Common
             {
                 int logPageSize;
                 string logSizeEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGSIZE");
-                if (!string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
+                if (string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
                 {
                     logPageSize = _defaultLogPageSize;
                 }
 
                 int logRetentionDays;
                 string logRetentionDaysEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGRETENTION");
-                if (!string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
+                if (string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
                 {
                     logRetentionDays = _defaultLogRetentionDays;
                 }
@@ -200,8 +200,16 @@ namespace GitHub.Runner.Common
                 if (credData != null &&
                     credData.Data.TryGetValue("clientId", out var clientId))
                 {
-                    _userAgents.Add(new ProductInfoHeaderValue($"RunnerId", clientId));
+                    _userAgents.Add(new ProductInfoHeaderValue("ClientId", clientId));
                 }
+            }
+
+            var runnerFile = GetConfigFile(WellKnownConfigFile.Runner);
+            if (File.Exists(runnerFile))
+            {
+                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile);
+                _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
+                _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
             }
         }
 

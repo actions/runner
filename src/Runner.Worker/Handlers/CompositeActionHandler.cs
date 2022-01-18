@@ -378,14 +378,14 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         // Condition is false
                         Trace.Info("Skipping step due to condition evaluation.");
-                        step.ExecutionContext.Result = TaskResult.Skipped;
+                        SetStepConclusion(step, TaskResult.Skipped);
                         continue;
                     }
                     else if (conditionEvaluateError != null)
                     {
                         // Condition error
                         step.ExecutionContext.Error(conditionEvaluateError);
-                        step.ExecutionContext.Result = TaskResult.Failed;
+                        SetStepConclusion(step, TaskResult.Failed);
                         ExecutionContext.Result = TaskResult.Failed;
                         break;
                     }
@@ -403,13 +403,15 @@ namespace GitHub.Runner.Worker.Handlers
                         jobCancelRegister = null;
                     }
                 }
-
                 // Check failed or canceled
                 if (step.ExecutionContext.Result == TaskResult.Failed || step.ExecutionContext.Result == TaskResult.Canceled)
                 {
                     Trace.Info($"Update job result with current composite step result '{step.ExecutionContext.Result}'.");
                     ExecutionContext.Result = TaskResultUtil.MergeTaskResults(ExecutionContext.Result, step.ExecutionContext.Result.Value);
                 }
+
+                // Update context
+                SetStepsContext(step);
             }
         }
 
@@ -431,13 +433,13 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     Trace.Error($"Caught timeout exception from step: {ex.Message}");
                     step.ExecutionContext.Error("The action has timed out.");
-                    step.ExecutionContext.Result = TaskResult.Failed;
+                    SetStepConclusion(step, TaskResult.Failed);
                 }
                 else
                 {
                     Trace.Error($"Caught cancellation exception from step: {ex}");
                     step.ExecutionContext.Error(ex);
-                    step.ExecutionContext.Result = TaskResult.Canceled;
+                    SetStepConclusion(step, TaskResult.Canceled);
                 }
             }
             catch (Exception ex)
@@ -445,17 +447,32 @@ namespace GitHub.Runner.Worker.Handlers
                 // Log the error and fail the step
                 Trace.Error($"Caught exception from step: {ex}");
                 step.ExecutionContext.Error(ex);
-                step.ExecutionContext.Result = TaskResult.Failed;
+                SetStepConclusion(step, TaskResult.Failed);
             }
 
             // Merge execution context result with command result
             if (step.ExecutionContext.CommandResult != null)
             {
-                step.ExecutionContext.Result = Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value);
+                SetStepConclusion(step, Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value));
             }
 
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
             step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
+        }
+
+        private void SetStepConclusion(IStep step, TaskResult result)
+        {
+            step.ExecutionContext.Result = result;
+            SetStepsContext(step);
+        }
+        private void SetStepsContext(IStep step)
+        {
+            if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
+            {
+                // TODO: when we support continue on error, we may need to do logic here to change conclusion based on the continue on error result
+                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
+                step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
+            }
         }
     }
 }

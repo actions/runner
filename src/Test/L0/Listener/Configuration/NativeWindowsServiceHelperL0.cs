@@ -15,6 +15,7 @@ namespace Test.L0.Listener.Configuration
     {
 
 #if OS_WINDOWS
+#pragma warning disable CA1416
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "ConfigurationManagement")]
@@ -50,6 +51,7 @@ namespace Test.L0.Listener.Configuration
                 Assert.True(defaultServiceAccount.ToString().Equals(@"NT AUTHORITY\SYSTEM"), "If agent is getting configured as deployment agent, default service accout should be 'NT AUTHORITY\\SYSTEM'");
             }
         }
+#pragma warning restore CA1416
 #endif
     }
 }

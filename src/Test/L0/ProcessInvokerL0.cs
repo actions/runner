@@ -197,7 +197,7 @@ namespace GitHub.Runner.Common.Tests
 #if OS_WINDOWS
                 execTask = processInvoker.ExecuteAsync("", "cmd.exe", $"/c \"choice /T {SecondsToRun} /D y\"", null, tokenSource.Token);
 #else
-                execTask = processInvoker.ExecuteAsync("", "bash", $"-c \"sleep {SecondsToRun}s\"", null, tokenSource.Token);
+                execTask = processInvoker.ExecuteAsync("", "bash", $"-c \"sleep {SecondsToRun}\"", null, tokenSource.Token);
 #endif
                 await Task.Delay(500);
                 tokenSource.Cancel();

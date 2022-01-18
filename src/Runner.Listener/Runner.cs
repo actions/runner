@@ -318,7 +318,7 @@ namespace GitHub.Runner.Listener
 
                 IJobDispatcher jobDispatcher = null;
                 CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
-                
+
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
                 try
@@ -425,6 +425,7 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
+                                    Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
                                     var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
@@ -546,7 +547,7 @@ Config Options:
     _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
     _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
 #endif
-    _term.WriteLine($@"
+            _term.WriteLine($@"
 Examples:
  Check GitHub server network connectivity:
   .{separator}run.{ext} --check --url <url> --pat <pat>
