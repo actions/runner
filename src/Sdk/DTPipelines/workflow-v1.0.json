@@ -704,7 +704,8 @@
     "workflow-on-mapping": {
       "mapping": {
         "properties":{
-          "workflow_call": "workflow_call_wrap"
+          "workflow_call": "workflow_call_wrap",
+          "workflow_dispatch": "workflow_dispatch_wrap"
         },
         "loose-key-type": "any",
         "loose-value-type": "any"
@@ -781,6 +782,41 @@
         "jobs"
       ],
       "string": {}
+    },
+
+    "workflow_dispatch_wrap": {
+      "one-of":[
+        "null",
+        "workflow_dispatch"
+      ]
+    },
+
+    "workflow_dispatch": {
+      "mapping": {
+        "properties":{
+          "inputs": "workflow_dispatch-inputs",
+          "outputs": "workflow_dispatch-outputs"
+        },
+        "loose-key-type": "any",
+        "loose-value-type": "any"
+      }
+    },
+
+    "workflow_dispatch-inputs": {
+      "mapping": {
+        "loose-key-type": "any",
+        "loose-value-type": "workflow_dispatch-input"
+      }
+    },
+
+    "workflow_dispatch-input": {
+      "mapping": {
+        "properties":{
+          "default": "string"
+        },
+        "loose-key-type": "any",
+        "loose-value-type": "any"
+      }
     }
   }
 }
