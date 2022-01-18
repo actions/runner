@@ -795,7 +795,6 @@
       "mapping": {
         "properties":{
           "inputs": "workflow_dispatch-inputs",
-          "outputs": "workflow_dispatch-outputs"
         },
         "loose-key-type": "any",
         "loose-value-type": "any"
