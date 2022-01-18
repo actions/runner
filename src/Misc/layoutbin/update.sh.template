@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Starting update.sh"
+
 # runner will replace key words in the template and generate a batch script to run.
 # Keywords: 
 #  PROCESSID = pid
