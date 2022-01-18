@@ -18,6 +18,8 @@ downloadrunnerversion=_DOWNLOAD_RUNNER_VERSION_
 logfile="_UPDATE_LOG_"
 restartinteractiverunner=_RESTART_INTERACTIVE_RUNNER_
 
+echo "Creating bin and external folders for $existrunnerversion"
+
 telemetryfile="$rootfolder/_diag/.telemetry"
 
 # log user who run the script
