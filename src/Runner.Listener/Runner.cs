@@ -423,7 +423,7 @@ namespace GitHub.Runner.Listener
                                                 _term.WriteLine($"Mocking update, using version {mockUpdateMessages.First().TargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
                                                 runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockUpdateMessages.First().TargetVersion, runnerUpdateMessage.Timeout);
                                                 var temp = JsonUtility.ToString(mockUpdateMessages.Skip(1));
-                                                File.WriteAllText(mockUpdatesPath, JsonUtility.StringSerialize(mockUpdateMessages.Skip(1)));
+                                                File.WriteAllText(mockUpdatesPath, JsonUtility.ToString(mockUpdateMessages.Skip(1)));
                                             }
                                         }
                                     }
