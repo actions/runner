@@ -63,6 +63,7 @@ namespace Runner.Server.Controllers
         private bool QueueJobsWithoutRunner { get; }
         private bool WriteAccessForPullRequestsFromForks { get; }
         private bool AllowJobNameOnJobProperties { get; }
+        private bool HasPullRequestMergePseudoBranch { get; }
         private string GitHubAppPrivateKeyFile { get; }
         private int GitHubAppId { get; }
         private List<Secret> secrets;
@@ -94,6 +95,7 @@ namespace Runner.Server.Controllers
             QueueJobsWithoutRunner = configuration.GetSection("Runner.Server")?.GetValue<bool>("QueueJobsWithoutRunner") ?? false;
             WriteAccessForPullRequestsFromForks = configuration.GetSection("Runner.Server")?.GetValue<bool>("WriteAccessForPullRequestsFromForks") ?? false;
             AllowJobNameOnJobProperties = configuration.GetSection("Runner.Server")?.GetValue<bool>("AllowJobNameOnJobProperties") ?? false;
+            HasPullRequestMergePseudoBranch = configuration.GetSection("Runner.Server")?.GetValue<bool>("HasPullRequestMergePseudoBranch") ?? false;
             GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
             GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             
@@ -568,7 +570,7 @@ namespace Runner.Server.Controllers
                         Ref = "refs/heads/" + tmp;
                     }
                 } else if(e == "pull_request" && hook?.Number != null) {
-                    if(hook?.merge_commit_sha != null) {
+                    if(hook?.merge_commit_sha != null && HasPullRequestMergePseudoBranch) {
                         Ref = $"refs/pull/{hook.Number}/merge";
                     } else {
                         Ref = $"refs/pull/{hook.Number}/head";
@@ -594,7 +596,7 @@ namespace Runner.Server.Controllers
             if(e == "pull_request_target") {
                 Sha = hook?.pull_request?.Base?.Sha;
             } else if(e == "pull_request") {
-                if(hook?.merge_commit_sha == null) {
+                if(hook?.merge_commit_sha == null || !HasPullRequestMergePseudoBranch) {
                     Sha = hook?.pull_request?.head?.Sha;
                 } else {
                     Sha = hook.merge_commit_sha;
@@ -3462,7 +3464,7 @@ namespace Runner.Server.Controllers
                         Ref = "refs/heads/" + tmp;
                     }
                 } else if(e == "pull_request" && hook?.Number != null) {
-                    if(hook?.merge_commit_sha != null) {
+                    if(hook?.merge_commit_sha != null && HasPullRequestMergePseudoBranch) {
                         Ref = $"refs/pull/{hook.Number}/merge";
                     } else {
                         Ref = $"refs/pull/{hook.Number}/head";
@@ -3488,7 +3490,7 @@ namespace Runner.Server.Controllers
             if(e == "pull_request_target") {
                 Sha = hook?.pull_request?.Base?.Sha;
             } else if(e == "pull_request") {
-                if(hook?.merge_commit_sha == null) {
+                if(hook?.merge_commit_sha == null || !HasPullRequestMergePseudoBranch) {
                     Sha = hook?.pull_request?.head?.Sha;
                 } else {
                     Sha = hook.merge_commit_sha;
