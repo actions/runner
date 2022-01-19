@@ -1904,7 +1904,7 @@ namespace Runner.Server.Controllers
                             job.Status = e.Result;
                         };
                         if(ja != null) {
-                            var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).First() ?? ja;
+                            var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).FirstOrDefault() ?? ja;
                             if(workflowOutputs != null && ja.Childs == null) {
                                 updateNeedsCtx(jobsctx, ji, e);
                             }
