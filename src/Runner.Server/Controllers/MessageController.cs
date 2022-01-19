@@ -1339,8 +1339,6 @@ namespace Runner.Server.Controllers
                                         }) == 0 || neededJobs.Count > 0) {
                                             return;
                                         }
-                                    } else {
-                                        return;
                                     }
 
                                     dependentjobgroup.Remove(jobitem);
