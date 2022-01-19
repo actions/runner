@@ -311,6 +311,8 @@ namespace Runner.Server.Controllers
             public bool NoStatusCheck { get; set; }
             public bool CheckRunStarted { get; set; }
 
+            public JobCompletedEvent JobCompletedEvent { get; set; }
+
             // public List<Task<IEnumerable<AgentJobRequestMessage>>> enum
         }
 
@@ -1314,7 +1316,6 @@ namespace Runner.Server.Controllers
                                     neededJobs.Add(needs.AssertString("needs is invalid").Value);
                                 }
                             }
-                            Dictionary<Guid, JobItem> guids = new Dictionary<Guid, JobItem>();
                             var contextData = createContext(jobname);
                             
                             var needsctx = new DictionaryContextData();
@@ -1328,25 +1329,25 @@ namespace Runner.Server.Controllers
                                         if(e == null && !NoRecursiveNeedsCtx && jobitem.Dependencies != null) {
                                             neededJobs = jobitem.Dependencies.Keys.ToList();
                                         }
-                                        neededJobs.RemoveAll(name => {
-                                            bool ret = false;
-                                            foreach(var njb in from j in jobgroup where j.name == name select j) {
-                                                ret = true;
-                                                guids[njb.Id] = njb;
+                                        if(neededJobs.RemoveAll(name => {
+                                            var job = (from j in jobgroup where j.name == name && j.Id == e.JobId select j).FirstOrDefault();
+                                            if(job != null) {
+                                                updateNeedsCtx(needsctx, job, e);
+                                                return true;
                                             }
-                                            return ret;
-                                        });
-                                    }
-                                    if(e != null && guids.TryGetValue(e.JobId, out var job) && job != null) {
-                                        updateNeedsCtx(needsctx, job, e);
-                                        guids.Remove(job.Id);
-                                    }
-                                    if(guids.Count > 0 || neededJobs.Count > 0) {
+                                            return false;
+                                        }) == 0 || neededJobs.Count > 0) {
+                                            return;
+                                        }
+                                    } else {
                                         return;
                                     }
+
                                     dependentjobgroup.Remove(jobitem);
                                     if(!dependentjobgroup.Any()) {
                                         jobgroup.Clear();
+                                    } else {
+                                        jobgroup.Add(jobitem);
                                     }
 
                                     exctx.JobContext = jobitem;
@@ -1389,9 +1390,6 @@ namespace Runner.Server.Controllers
                                         return PipelineTemplateConverter.ConvertToIfResult(templateContext, eval);
                                     };
                                     Action<TaskResult> sendFinishJob = result => {
-                                        if(dependentjobgroup.Any()) {
-                                            jobgroup.Add(jobitem);
-                                        }
                                         var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                         AddJob(_job);
                                         new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
@@ -1599,9 +1597,6 @@ namespace Runner.Server.Controllers
                                                                 var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true } : jobitem;
                                                                 _next.TimelineId = fjob.TimeLineId;
                                                                 jobitem.Childs?.Add(_next);
-                                                                if(dependentjobgroup.Any()) {
-                                                                    jobgroup.Add(_next);
-                                                                }
                                                                 return b => {
                                                                     var jevent = new JobCompletedEvent(_next.RequestId, _next.Id, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false)));
                                                                     workflowcomplete(jevent);
@@ -1639,9 +1634,6 @@ namespace Runner.Server.Controllers
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ line }), next.TimelineId, next.Id);
                                                 });
                                                 jobitem.Childs?.Add(next);
-                                                if(dependentjobgroup.Any()) {
-                                                    jobgroup.Add(next);
-                                                }
                                                 templateContext.ExpressionValues.Clear();
                                                 foreach (var pair in contextData) {
                                                     templateContext.ExpressionValues[pair.Key] = pair.Value;
@@ -1715,6 +1707,20 @@ namespace Runner.Server.Controllers
                                             handler2 = e => {
                                                 if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
                                                     var currentItem = jobitem.Childs?.Find(ji => ji.Id == e.JobId) ?? (jobitem.Id == e.JobId ? jobitem : null);
+                                                    if(jobitem.JobCompletedEvent == null) {
+                                                        jobitem.JobCompletedEvent = new JobCompletedEvent() { JobId = jobitem.Id, Result = e.Result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>(e.Outputs)};
+                                                    } else {
+                                                        if((e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || currentItem.ContinueOnError != true)) {
+                                                            jobitem.JobCompletedEvent.Result = TaskResult.Failed;
+                                                        } else if(jobitem.JobCompletedEvent.Result == TaskResult.Succeeded || jobitem.JobCompletedEvent.Result == TaskResult.SucceededWithIssues || e.Result != TaskResult.Skipped) {
+                                                            jobitem.JobCompletedEvent.Result = TaskResult.Succeeded;
+                                                        }
+                                                        foreach(var output in e.Outputs) {
+                                                            if(!string.IsNullOrEmpty(output.Value.Value)) {
+                                                                jobitem.JobCompletedEvent.Outputs[output.Key] = output.Value;
+                                                            }
+                                                        }
+                                                    }
                                                     if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || (currentItem.ContinueOnError != true && currentItem.NoFailFast != true))) {
                                                         cancelAll();
                                                     } else {
@@ -1735,6 +1741,9 @@ namespace Runner.Server.Controllers
                                                         }
                                                         if (scheduled.Count == 0) {
                                                             localJobCompletedEvents.JobCompleted -= handler2;
+                                                            if(jobTotal > 1) {
+                                                                new FinishJobController(_cache, _context).InvokeJobCompleted(jobitem.JobCompletedEvent);
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -1895,7 +1904,7 @@ namespace Runner.Server.Controllers
                         };
                         if(ja != null) {
                             var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).First() ?? ja;
-                            if(workflowOutputs != null) {
+                            if(workflowOutputs != null && ja.Childs == null) {
                                 updateNeedsCtx(jobsctx, ji, e);
                             }
                             ji.ActionStatusQueue.Post(() => {
