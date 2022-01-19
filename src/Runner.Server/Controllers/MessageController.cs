@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1083,13 +1083,15 @@ namespace Runner.Server.Controllers
                     }
 
                     // Offical github action server ignores the filter on non push / pull_request (workflow_run) events
-                    var branches = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("branches").Value == "branches" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
-                    var branchesIgnore = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("branches-ignore").Value == "branches-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
-                    var tags = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("tags").Value == "tags" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
-                    var tagsIgnore = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("tags-ignore").Value == "tags-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
-                    var paths = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("paths").Value == "paths" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
-                    var pathsIgnore = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("paths-ignore").Value == "paths-ignore" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
-                    var types = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("types").Value == "types" select r).FirstOrDefault().Value?.AssertSequence("seq") : null;
+                    // It seems we need to accept scalars as well as sequences, branches: branchname is valid
+                    Func<string, SequenceToken> extractFilter = name => mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString($"on.{event_name} mapping key").Value == name select r).FirstOrDefault().Value?.AssertScalarOrSequence($"on.{event_name}.{name}") : null;
+                    var branches = extractFilter("branches");
+                    var branchesIgnore = extractFilter("branches-ignore");
+                    var tags = extractFilter("tags");
+                    var tagsIgnore = extractFilter("tags-ignore");
+                    var paths = extractFilter("paths");
+                    var pathsIgnore = extractFilter("paths-ignore");
+                    var types = extractFilter("types");
 
                     if(branches != null && branchesIgnore != null) {
                         throw new Exception("branches and branches-ignore shall not be used at the same time");
