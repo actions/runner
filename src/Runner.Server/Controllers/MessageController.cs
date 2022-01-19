@@ -1326,8 +1326,11 @@ namespace Runner.Server.Controllers
                             FinishJobController.JobCompleted handler = e => {
                                 try {
                                     if(neededJobs.Count > 0) {
-                                        if(e == null && !NoRecursiveNeedsCtx && jobitem.Dependencies != null) {
-                                            neededJobs = jobitem.Dependencies.Keys.ToList();
+                                        if(e == null) {
+                                            if(!NoRecursiveNeedsCtx && jobitem.Dependencies != null) {
+                                                neededJobs = jobitem.Dependencies.Keys.ToList();
+                                            }
+                                            return;
                                         }
                                         if(neededJobs.RemoveAll(name => {
                                             var job = (from j in jobgroup where j.name == name && j.Id == e.JobId select j).FirstOrDefault();
