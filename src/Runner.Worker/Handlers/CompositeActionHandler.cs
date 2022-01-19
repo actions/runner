@@ -296,6 +296,16 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.Complete(TaskResult.Failed);
                 }
 
+                // Restoring the environment set by prior steps since the runs inside the docker is giving
+                // those variables higher priority. Look at the issue: https://github.com/actions/runner/issues/1611
+                if (this.Environment?.Count > 0)
+                {
+                    foreach (var env in this.Environment)
+                    {
+                            envContext[env.Key]=new StringContextData(env.Value ?? string.Empty);
+                    }
+                }
+
                 // Register Callback
                 CancellationTokenRegistration? jobCancelRegister = null;
                 try
