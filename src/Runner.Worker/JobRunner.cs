@@ -74,7 +74,7 @@ namespace GitHub.Runner.Worker
                     switch (HostContext.RunnerShutdownReason)
                     {
                         case ShutdownReason.UserCancelled:
-                            errorMessage = "The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.";
+                            errorMessage = "The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is cancelled.";
                             break;
                         case ShutdownReason.OperatingSystemShutdown:
                             errorMessage = $"Operating system is shutting down for computer '{Environment.MachineName}'";
@@ -130,9 +130,9 @@ namespace GitHub.Runner.Worker
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
-                    // set the job to canceled
+                    // set the job to cancelled
                     // don't log error issue to job ExecutionContext, since server owns the job level issue
-                    Trace.Error($"Job is canceled during initialize.");
+                    Trace.Error($"Job is cancelled during initialize.");
                     Trace.Error($"Caught exception: {ex}");
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }

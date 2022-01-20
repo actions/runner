@@ -1440,20 +1440,20 @@ namespace GitHub.DistributedTask.WebApi
     }
 
     [Serializable]
-    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanCanceledException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanCanceledException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
-    public sealed class TaskOrchestrationPlanCanceledException : DistributedTaskException
+    [ExceptionMapping("0.0", "3.0", "TaskOrchestrationPlanCancelledException", "GitHub.DistributedTask.WebApi.TaskOrchestrationPlanCancelledException, GitHub.DistributedTask.WebApi, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+    public sealed class TaskOrchestrationPlanCancelledException : DistributedTaskException
     {
-        public TaskOrchestrationPlanCanceledException(String message)
+        public TaskOrchestrationPlanCancelledException(String message)
             : base(message)
         {
         }
 
-        public TaskOrchestrationPlanCanceledException(String message, Exception innerException)
+        public TaskOrchestrationPlanCancelledException(String message, Exception innerException)
             : base(message, innerException)
         {
         }
 
-        private TaskOrchestrationPlanCanceledException(SerializationInfo info, StreamingContext context)
+        private TaskOrchestrationPlanCancelledException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
         }
