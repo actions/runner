@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -839,7 +839,7 @@ namespace Runner.Server.Controllers
                 if(token == null) {
                     throw new Exception("token is null after parsing your workflow, this should never happen");
                 }
-                var actionMapping = token.AssertMapping("root");
+                var actionMapping = token.AssertMapping("workflow root");
 
                 TemplateToken workflowDefaults = null;
                 List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
@@ -865,35 +865,35 @@ namespace Runner.Server.Controllers
                     }
                 };
 
-                TemplateToken tk = (from r in actionMapping where r.Key.AssertString("on").Value == "on" select r).FirstOrDefault().Value;
+                TemplateToken tk = (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "on" select r).FirstOrDefault().Value;
                 if(tk == null) {
                     throw new Exception("Your workflow is invalid, missing 'on' property");
                 }
                 MappingToken mappingEvent = null;
                 switch(tk.Type) {
                     case TokenType.String:
-                        if(tk.AssertString("str").Value != e) {
+                        if(tk.AssertString("on").Value != e) {
                             // Skip, not the right event
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, '{tk.AssertString("str").Value}' isn't is the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         break;
                     case TokenType.Sequence:
-                        if((from r in tk.AssertSequence("seq") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
+                        if((from r in tk.AssertSequence("on") where r.AssertString(e).Value == e select r).FirstOrDefault() == null) {
                             // Skip, not the right event
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertSequence("seq") select "'" + r.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         break;
                     case TokenType.Mapping:
-                        var e2 = (from r in tk.AssertMapping("seq") where r.Key.AssertString(e).Value == e select r).FirstOrDefault();
+                        var e2 = (from r in tk.AssertMapping("on") where r.Key.AssertString(e).Value == e select r).FirstOrDefault();
                         var rawEvent = e2.Value;
                         if(rawEvent == null) {
                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping the Workflow, [{string.Join(',', from r in tk.AssertMapping("mao") select "'" + r.Key.AssertString(e).Value + "'")}] doesn't contain the requested event '{e}'" }), workflowTimelineId, workflowRecordId);
                             return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                         }
                         if(e == "schedule") {
-                            var crons = e2.Value.AssertSequence("cron");
+                            var crons = e2.Value.AssertSequence("on.schedule.*.cron");
                             var cm = (from cron in crons select cron.AssertMapping("cron")).ToArray();
                             if(cm.Length == 0 || !cm.All(c => c.Count == 1 && c.First().Key.AssertString("cron key").Value == "cron")) {
                                 throw new Exception("Only cron is supported!");
@@ -947,15 +947,15 @@ namespace Runner.Server.Controllers
                         }
                         if(workflowInputs != null) {
                             foreach(var input in workflowInputs) {
-                                var inputName = input.Key.AssertString("input key must be a string").Value;
+                                var inputName = input.Key.AssertString("on.workflow_dispatch.inputs mapping key").Value;
                                 validInputs.Add(inputName);
-                                var inputInfo = input.Value?.AssertMapping("map");
+                                var inputInfo = input.Value?.AssertMapping($"on.workflow_dispatch.inputs.{inputName}");
                                 if(inputInfo != null) {
-                                    var workflowDispatchMappingKey = "on.workflow_dispatch mapping key";
-                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "required" select r.Value.AssertBoolean("on.workflow_dispatch.required").Value).FirstOrDefault();
-                                    string type = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "type" select r.Value.AssertString("on.workflow_dispatch.type").Value).FirstOrDefault();
-                                    SequenceToken options = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "options" select r.Value.AssertSequence("on.workflow_dispatch.options")).FirstOrDefault();
-                                    var def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.AssertString("on.workflow_dispatch.default")?.ToContextData()?.ToJToken();
+                                    var workflowDispatchMappingKey = $"on.workflow_dispatch.inputs.{inputName} mapping key";
+                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_dispatch.{inputName}.required").Value).FirstOrDefault();
+                                    string type = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "type" select r.Value.AssertString($"on.workflow_dispatch.{inputName}.type").Value).FirstOrDefault();
+                                    SequenceToken options = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "options" select r.Value.AssertSequence($"on.workflow_dispatch.{inputName}.options")).FirstOrDefault();
+                                    var def = (from r in inputInfo where r.Key.AssertString(workflowDispatchMappingKey).Value == "default" select r.Value).FirstOrDefault()?.AssertString($"on.workflow_dispatch.{inputName}.default")?.ToContextData()?.ToJToken();
                                     if(def == null) {
                                         def = "";
                                     }
@@ -979,21 +979,21 @@ namespace Runner.Server.Controllers
                         allowed.Add("outputs");
                         allowed.Add("secrets");
                         // Validate inputs and apply defaults
-                        var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("inputs").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
-                        workflowOutputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("outputs").Value == "outputs" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
+                        var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.inputs") : null;
+                        workflowOutputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "outputs" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.outputs") : null;
                         List<string> validInputs = new List<string>();
                         if(callingJob?.Inputs == null) {
                             callingJob.Inputs = new DictionaryContextData();
                         }
                         if(workflowInputs != null) {
                             foreach(var input in workflowInputs) {
-                                var inputName = input.Key.AssertString("input key must be a string").Value;
+                                var inputName = input.Key.AssertString("on.workflow_call.inputs mapping key").Value;
                                 validInputs.Add(inputName);
-                                var inputInfo = input.Value?.AssertMapping("map");
+                                var inputInfo = input.Value?.AssertMapping($"on.workflow_call.inputs.{inputName}");
                                 if(inputInfo != null) {
-                                    var workflowCallInputMappingKey = "on.workflow_call.inputs.{inputName} mapping key";
-                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "required" select r.Value.AssertBoolean("on.workflow_call.inputs.{inputName}.required").Value).FirstOrDefault();
-                                    string type = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "type" select r.Value.AssertString("on.workflow_call.inputs.{inputName}.type").Value).First();
+                                    var workflowCallInputMappingKey = $"on.workflow_call.inputs.{inputName} mapping key";
+                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.inputs.{inputName}.required").Value).FirstOrDefault();
+                                    string type = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "type" select r.Value.AssertString($"on.workflow_call.inputs.{inputName}.type").Value).First();
                                     var defassertMessage = $"on.workflow_call.inputs.{inputName}.default";
                                     var def = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault()?.ToContextData();
                                     switch(type) {
@@ -1046,22 +1046,22 @@ namespace Runner.Server.Controllers
                             }
                         }
                         // Validate secrets
-                        var workflowSecrets = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("secrets").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("map") : null;
+                        var workflowSecrets = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.secrets") : null;
                         List<string> validSecrets = new List<string> { "system.github.token" };
                         if(workflowSecrets != null) {
-                            foreach(var input in workflowSecrets) {
-                                var inputName = input.Key.AssertString("input key must be a string").Value;
-                                if(inputName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", inputName) == 0) {
-                                    throw new Exception($"This workflow defines the reserved secret {inputName}, using it can cause undefined behavior");
+                            foreach(var secret in workflowSecrets) {
+                                var secretName = secret.Key.AssertString("on.workflow_call.secrets mapping key").Value;
+                                if(secretName.Contains(".") || StringComparer.OrdinalIgnoreCase.Compare("github_token", secretName) == 0) {
+                                    throw new Exception($"This workflow defines the reserved secret {secretName}, using it can cause undefined behavior");
                                 }
-                                var inputInfo = input.Value?.AssertMapping("map");
-                                if(inputInfo != null) {
-                                    var workflowCallSecretsMappingKey = "on.workflow_call.secrets.{inputName} mapping key";
-                                    validSecrets.Add(inputName.ToLowerInvariant());
-                                    bool required = (from r in inputInfo where r.Key.AssertString(workflowCallSecretsMappingKey).Value == "required" select r.Value.AssertBoolean("on.workflow_call.secrets.{inputName}.required").Value).FirstOrDefault();
+                                var secretMapping = secret.Value?.AssertMapping($"on.workflow_call.secrets.{secretName}");
+                                if(secretMapping != null) {
+                                    var workflowCallSecretsMappingKey = $"on.workflow_call.secrets.{secretName} mapping key";
+                                    validSecrets.Add(secretName.ToLowerInvariant());
+                                    bool required = (from r in secretMapping where r.Key.AssertString(workflowCallSecretsMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.secrets.{secretName}.required").Value).FirstOrDefault();
                                     
-                                    if(!secrets.Any(s => s.ToLowerInvariant().StartsWith(inputName.ToLowerInvariant() + "=")) && required) {
-                                        throw new Exception($"This workflow requires the secret: {inputName}, but no such secret were provided");
+                                    if(!secrets.Any(s => s.ToLowerInvariant().StartsWith(secretName.ToLowerInvariant() + "=")) && required) {
+                                        throw new Exception($"This workflow requires the secret: {secretName}, but no such secret were provided");
                                     }
                                 }
                             }
@@ -1074,10 +1074,10 @@ namespace Runner.Server.Controllers
                         }
                     }
 
-                    if(mappingEvent != null && !mappingEvent.All(p => allowed.Any(s => s == p.Key.AssertString("Key").Value))) {
+                    if(mappingEvent != null && !mappingEvent.All(p => allowed.Any(s => s == p.Key.AssertString($"on.{event_name} mapping key").Value))) {
                         var z = 0;
                         var sb = new StringBuilder();
-                        foreach (var prop in (from p in mappingEvent where !allowed.Any(s => s == p.Key.AssertString("Key").Value) select p.Key.AssertString("Key").Value)) {
+                        foreach (var prop in (from p in mappingEvent where !allowed.Any(s => s == p.Key.AssertString($"on.{event_name} mapping key").Value) select p.Key.AssertString($"on.{event_name} mapping key").Value)) {
                             if(z++ != 0) {
                                 sb.Append(", ");
                             }
@@ -1109,13 +1109,14 @@ namespace Runner.Server.Controllers
                     
                     if(hook?.Action != null) {
                         if(types != null) {
-                            if(!(from t in types select t.AssertString("type").Value).Any(t => t == hook?.Action)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString("type").Value + "'")}" }), workflowTimelineId, workflowRecordId);
+                            if(!(from t in types select t.AssertString($"on.{event_name}.type.*").Value).Any(t => t == hook?.Action)) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to types filter. Requested Action was {hook?.Action}, but require {string.Join(',', from t in types select "'" + t.AssertString($"on.{event_name}.type.*").Value + "'")}" }), workflowTimelineId, workflowRecordId);
                                 return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
                         } else if(e == "pull_request" || e == "pull_request_target"){
-                            if(!(new [] { "opened", "synchronize", "synchronized", "reopened" }).Any(t => t == hook?.Action)) {
-                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger" }), workflowTimelineId, workflowRecordId);
+                            var prdefaults = new [] { "opened", "synchronize", "synchronized", "reopened" };
+                            if(!prdefaults.Any(t => t == hook?.Action)) {
+                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Skipping Workflow, due to default types filter of the {e} trigger. Requested Action was {hook?.Action}, but require {string.Join(',', from t in prdefaults select "'" + t + "'")}" }), workflowTimelineId, workflowRecordId);
                                 return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                             }
                         }
@@ -1177,7 +1178,7 @@ namespace Runner.Server.Controllers
                         }
                     }
                 }
-                workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("name").Value == "name" select r).FirstOrDefault().Value?.AssertString("val").Value ?? fileRelativePath;
+                workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? fileRelativePath;
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
                 if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
                     attempt.WorkflowRun.DisplayName = workflowname;
@@ -1218,22 +1219,7 @@ namespace Runner.Server.Controllers
                     return contextData;
                 };
                 Action<DictionaryContextData, JobItem, JobCompletedEvent> updateNeedsCtx = (needsctx, job, e) => {
-                    NeedsTaskResult? oldstatus = null;
-                    PipelineContextData oldjobctx;
                     IDictionary<string, VariableValue> dependentOutputs = e.Outputs != null ? new Dictionary<string, VariableValue>(e.Outputs) : new Dictionary<string, VariableValue>();
-                    if(needsctx.TryGetValue(job.name, out oldjobctx) && oldjobctx is DictionaryContextData _ctx) {
-                        if(_ctx.ContainsKey("result") && _ctx["result"] is StringContextData res) {
-                            oldstatus = Enum.Parse<NeedsTaskResult>(res, true);
-                        }
-                        // Parity: empty job outputs doesn't override non empty outputs of matrix jobs
-                        if(_ctx.ContainsKey("outputs") && _ctx["outputs"] is DictionaryContextData outputs) {
-                            foreach(var output in outputs) {
-                                if(!dependentOutputs.TryGetValue(output.Key, out var val) || string.IsNullOrEmpty(val?.Value)) {
-                                    dependentOutputs[output.Key] = new VariableValue(output.Value.AssertString($"needs.{job.name}.outputs.{output.Key}").Value, false);
-                                }
-                            }
-                        }
-                    }
                     DictionaryContextData jobctx = new DictionaryContextData();
                     needsctx[job.name] = jobctx;
                     var outputsctx = new DictionaryContextData();
@@ -1259,15 +1245,6 @@ namespace Runner.Server.Controllers
                             result = NeedsTaskResult.Skipped;
                             break;
                     }
-                    if(result != oldstatus && oldstatus != null) {
-                        if(result  == NeedsTaskResult.Cancelled || oldstatus == NeedsTaskResult.Cancelled) {
-                            result = NeedsTaskResult.Cancelled;
-                        } else if(result  == NeedsTaskResult.Failure || oldstatus == NeedsTaskResult.Failure) {
-                            result = NeedsTaskResult.Failure;
-                        } else if(result  == NeedsTaskResult.Success || oldstatus == NeedsTaskResult.Success) {
-                            result = NeedsTaskResult.Success;
-                        }
-                    }
                     jobctx.Add("result", new StringContextData(result.ToString().ToLowerInvariant()));
                 };
                 FinishJobController.JobCompleted workflowcomplete = null;
@@ -1276,7 +1253,7 @@ namespace Runner.Server.Controllers
                 var jobnamebuilder = new ReferenceNameBuilder();
                 foreach (var actionPair in actionMapping)
                 {
-                    var propertyName = actionPair.Key.AssertString($"action.yml property key");
+                    var propertyName = actionPair.Key.AssertString($"workflow root mapping key");
 
                     switch (propertyName.Value)
                     {
@@ -1284,7 +1261,7 @@ namespace Runner.Server.Controllers
                         var jobs = actionPair.Value.AssertMapping("jobs");
                         List<string> errors = new List<string>();
                         foreach (var job in jobs) {
-                            var jn = job.Key.AssertString($"action.yml property key");
+                            var jn = job.Key.AssertString($"jobs mapping key");
                             var jnerror = "";
                             // Validate Jobname
                             if(!jobnamebuilder.TryAddKnownName(jn.Value, out jnerror)) {
@@ -1303,19 +1280,19 @@ namespace Runner.Server.Controllers
                             throw new Exception(b.ToString());
                         }
                         foreach (var job in jobs) {
-                            var jn = job.Key.AssertString($"action.yml property key");
+                            var jn = job.Key.AssertString($"jobs mapping key");
                             var jobname = jn.Value;
                             var run = job.Value.AssertMapping("jobs");
                             var jobitem = new JobItem() { name = jobname, Id = Guid.NewGuid() };
                             dependentjobgroup.Add(jobitem);
 
-                            var needs = (from r in run where r.Key.AssertString("needs").Value == "needs" select r).FirstOrDefault().Value;
+                            var needs = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "needs" select r).FirstOrDefault().Value;
                             List<string> neededJobs = new List<string>();
                             if (needs != null) {
                                 if(needs is SequenceToken sq) {
-                                    neededJobs.AddRange(from need in sq select need.AssertString("list of strings").Value);
+                                    neededJobs.AddRange(from need in sq select need.AssertString($"jobs.{jobname}.needs.*").Value);
                                 } else {
-                                    neededJobs.Add(needs.AssertString("needs is invalid").Value);
+                                    neededJobs.Add(needs.AssertString($"jobs.{jobname}.needs").Value);
                                 }
                             }
                             var contextData = createContext(jobname);
@@ -1360,7 +1337,7 @@ namespace Runner.Server.Controllers
                                     TimelineController.dict[jobitem.TimelineId] = ( new List<TimelineRecord>{ jobrecord }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                     templateContext.TraceWriter = new TraceWriter2(line => TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(jobitem.Id, new List<string>{ line }), jobitem.TimelineId, jobitem.Id));
                                     templateContext.Errors.Clear();
-                                    var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select r.Value.ToString()).FirstOrDefault() ?? jobitem.name;
+                                    var _jobdisplayname = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select r.Value.ToString()).FirstOrDefault() ?? jobitem.name;
                                     if(callingJob?.Name != null) {
                                         _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                     }
@@ -1370,7 +1347,7 @@ namespace Runner.Server.Controllers
                                     initializingJobs.TryAdd(jobitem.Id, new Job() { JobId = jobitem.Id, TimeLineId = jobitem.TimelineId, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, RequestId = jobitem.RequestId } );
                                     new TimelineController(_context).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
                                     templateContext.TraceWriter.Info("{0}", $"Evaluate if");
-                                    var ifexpr = (from r in run where r.Key.AssertString("str").Value == "if" select r).FirstOrDefault().Value;//?.AssertString("if")?.Value;
+                                    var ifexpr = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "if" select r).FirstOrDefault().Value;
                                     var condition = new BasicExpressionToken(null, null, null, PipelineTemplateConverter.ConvertToIfCondition(templateContext, ifexpr, true));
                                     var recusiveNeedsctx = needsctx;
                                     if(!NoRecursiveNeedsCtx) {
@@ -1403,7 +1380,7 @@ namespace Runner.Server.Controllers
                                             sendFinishJob(TaskResult.Skipped);
                                             return;
                                         }
-                                        var rawstrategy = (from r in run where r.Key.AssertString("strategy").Value == "strategy" select r).FirstOrDefault().Value;
+                                        var rawstrategy = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "strategy" select r).FirstOrDefault().Value;
                                         var flatmatrix = new List<Dictionary<string, TemplateToken>> { new Dictionary<string, TemplateToken>() };
                                         var includematrix = new List<Dictionary<string, TemplateToken>> { };
                                         SequenceToken include = null;
@@ -1413,25 +1390,25 @@ namespace Runner.Server.Controllers
                                         if (rawstrategy != null) {
                                             templateContext.TraceWriter.Info("{0}", "Evaluate strategy");
                                             templateContext.Errors.Clear();
-                                            var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping("strategy");
+                                            var strategy = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, PipelineTemplateConstants.Strategy, rawstrategy, 0, fileId, true)?.AssertMapping($"jobs.{jobname}.strategy");
                                             templateContext.Errors.Check();
-                                            failFast = (from r in strategy where r.Key.AssertString("fail-fast").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean("fail-fast")?.Value ?? failFast;
-                                            max_parallel = (from r in strategy where r.Key.AssertString("max-parallel").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber("max-parallel")?.Value;
-                                            var matrix = (from r in strategy where r.Key.AssertString("matrix").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping("matrix");
+                                            failFast = (from r in strategy where r.Key.AssertString($"jobs.{jobname}.strategy mapping key").Value == "fail-fast" select r).FirstOrDefault().Value?.AssertBoolean($"jobs.{jobname}.strategy.fail-fast")?.Value ?? failFast;
+                                            max_parallel = (from r in strategy where r.Key.AssertString($"jobs.{jobname}.strategy mapping key").Value == "max-parallel" select r).FirstOrDefault().Value?.AssertNumber($"jobs.{jobname}.strategy.max-parallel")?.Value;
+                                            var matrix = (from r in strategy where r.Key.AssertString($"jobs.{jobname}.strategy mapping key").Value == "matrix" select r).FirstOrDefault().Value?.AssertMapping($"jobs.{jobname}.strategy.matrix");
                                             if(matrix != null) {
                                                 foreach (var item in matrix)
                                                 {
-                                                    var key = item.Key.AssertString("Key").Value;
+                                                    var key = item.Key.AssertString($"jobs.{jobname}.strategy.matrix mapping key").Value;
                                                     switch (key)
                                                     {
                                                         case "include":
-                                                            include = item.Value?.AssertSequence("include");
+                                                            include = item.Value?.AssertSequence($"jobs.{jobname}.strategy.matrix.include");
                                                             break;
                                                         case "exclude":
-                                                            exclude = item.Value?.AssertSequence("exclude");
+                                                            exclude = item.Value?.AssertSequence($"jobs.{jobname}.strategy.matrix.exclude");
                                                             break;
                                                         default:
-                                                            var val = item.Value.AssertSequence("seq");
+                                                            var val = item.Value.AssertSequence($"jobs.{jobname}.strategy.matrix.{key}");
                                                             var next = new List<Dictionary<string, TemplateToken>>();
                                                             foreach (var mel in flatmatrix)
                                                             {
@@ -1450,7 +1427,7 @@ namespace Runner.Server.Controllers
                                                 {
                                                     foreach (var item in exclude)
                                                     {
-                                                        var map = item.AssertMapping("exclude item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
+                                                        var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.exclude.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.exclude.* mapping key").Value, k => k.Value);
                                                         flatmatrix.RemoveAll(dict =>
                                                         {
                                                             foreach (var item in map)
@@ -1481,7 +1458,7 @@ namespace Runner.Server.Controllers
                                         var keys = flatmatrix.First().Keys.ToArray();
                                         if (include != null) {
                                             foreach (var item in include) {
-                                                var map = item.AssertMapping("include item").ToDictionary(k => k.Key.AssertString("key").Value, k => k.Value);
+                                                var map = item.AssertMapping($"jobs.{jobname}.strategy.matrix.include.*").ToDictionary(k => k.Key.AssertString($"jobs.{jobname}.strategy.matrix.include.* mapping key").Value, k => k.Value);
                                                 bool matched = false;
                                                 if(keys.Length > 0) {
                                                     flatmatrix.ForEach(dict => {
@@ -1562,7 +1539,7 @@ namespace Runner.Server.Controllers
                                         // The official actions-service only sets it to > 1 if the matrix isn't empty
                                         // The matrix is empty if you omit matrix in strategy or exclude all entries of the matrix without including new ones
                                         strategyctx["max-parallel"] = new NumberContextData(keys.Length == 0 ? 1 : max_parallel.HasValue ? max_parallel.Value : jobTotal);
-                                        strategyctx["job-total"] = new NumberContextData( jobTotal );
+                                        strategyctx["job-total"] = new NumberContextData(jobTotal);
                                         if(jobTotal > 1) {
                                             jobitem.Childs = new List<JobItem>();
                                             var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
@@ -1582,7 +1559,7 @@ namespace Runner.Server.Controllers
                                                 }
                                                 return displayname.ToString();
                                             };
-                                            var usesJob = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value != null;
+                                            var usesJob = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "uses" select r).FirstOrDefault().Value != null;
                                             Func<string, Dictionary<string, TemplateToken>, Func<bool, Job>> act = (displayname, item) => {
                                                 int c = i++;
                                                 strategyctx["job-index"] = new NumberContextData((double)(c));
@@ -1644,20 +1621,20 @@ namespace Runner.Server.Controllers
                                                     templateContext.ExpressionValues[pair.Key] = pair.Value;
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job name" }), next.TimelineId, next.Id);
-                                                var _jobdisplayname = (from r in run where r.Key.AssertString("name").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString("job name must be a string").Value).FirstOrDefault() ?? displayname;
+                                                var _jobdisplayname = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "name" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "string-strategy-context", r.Value, 0, fileId, true).AssertString($"jobs.{jobname}.name must be a string").Value).FirstOrDefault() ?? displayname;
                                                 templateContext.Errors.Check();
                                                 if(callingJob?.Name != null) {
                                                     _jobdisplayname = callingJob.Name + " / " + _jobdisplayname;
                                                 }
                                                 next.DisplayName = _jobdisplayname;
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job ContinueOnError" }), next.TimelineId, next.Id);
-                                                next.ContinueOnError = (from r in run where r.Key.AssertString("continue-on-error").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean("continue-on-error be a boolean").Value).FirstOrDefault();
+                                                next.ContinueOnError = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "continue-on-error" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "boolean-strategy-context", r.Value, 0, fileId, true).AssertBoolean($"jobs.{jobname}.continue-on-error be a boolean").Value).FirstOrDefault();
                                                 templateContext.Errors.Check();
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job timeoutMinutes" }), next.TimelineId, next.Id);
-                                                var timeoutMinutes = (from r in run where r.Key.AssertString("timeout-minutes").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("timeout-minutes be a number").Value).Append(360).First();
+                                                var timeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber($"jobs.{jobname}.timeout-minutes be a number").Value).Append(360).First();
                                                 templateContext.Errors.Check();
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Evaluate job cancelTimeoutMinutes" }), next.TimelineId, next.Id);
-                                                var cancelTimeoutMinutes = (from r in run where r.Key.AssertString("cancel-timeout-minutes").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber("cancel-timeout-minutes be a number").Value).Append(5).First();
+                                                var cancelTimeoutMinutes = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "cancel-timeout-minutes" select GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "number-strategy-context", r.Value, 0, fileId, true).AssertNumber($"jobs.{jobname}.cancel-timeout-minutes be a number").Value).Append(5).First();
                                                 templateContext.Errors.Check();
                                                 next.NoStatusCheck = usesJob;
                                                 next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
@@ -2064,18 +2041,20 @@ namespace Runner.Server.Controllers
                         }
                         workflowcomplete(null);
                     };
-                    if(workflowConcurrency == null) {
-                        runWorkflow();
-                    } else {
-                        string group = null;
-                        bool cancelInprogress = false;
+                    string group = null;
+                    bool cancelInprogress = false;
+                    if(workflowConcurrency != null) {
                         if(workflowConcurrency is StringToken stkn) {
                             group = stkn.Value;
                         } else {
-                            var cmapping = workflowConcurrency.AssertMapping("workflowConcurrency must be a string or mapping");
-                            group = (from r in cmapping where r.Key.AssertString("key").Value == "group" select r).FirstOrDefault().Value?.AssertString("group")?.Value;
-                            cancelInprogress = (from r in cmapping where r.Key.AssertString("key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean("cancel-in-progress")?.Value ?? cancelInprogress;
+                            var cmapping = workflowConcurrency.AssertMapping("concurrency must be a string or mapping");
+                            group = (from r in cmapping where r.Key.AssertString("concurrency mapping key").Value == "group" select r).FirstOrDefault().Value?.AssertString("concurrency.group")?.Value;
+                            cancelInprogress = (from r in cmapping where r.Key.AssertString("concurrency mapping key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean("concurrency.cancel-in-progress")?.Value ?? cancelInprogress;
                         }
+                    }
+                    if(string.IsNullOrEmpty(group)) {
+                        runWorkflow();
+                    } else {
                         Action cancelPendingWorkflow = () => {
                             workflowTraceWriter.Info("{0}", "Workflow was cancelled by another workflow or job, while it was pending in the concurrency group");
                             finished.Cancel();
@@ -2198,11 +2177,11 @@ namespace Runner.Server.Controllers
                     }
                 });
             }
-            var rawSteps = (from r in run where r.Key.AssertString("str").Value == "steps" select r).FirstOrDefault().Value?.AssertSequence("seq");
+            var rawSteps = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "steps" select r).FirstOrDefault().Value?.AssertSequence($"jobs.{name}.steps");
             if(rawSteps == null) {
-                var rawUses = (from r in run where r.Key.AssertString("str").Value == "uses" select r).FirstOrDefault().Value?.AssertString("str");
-                var rawWith = (from r in run where r.Key.AssertString("str").Value == "with" select r).FirstOrDefault().Value?.AssertMapping("map");
-                var rawSecrets = (from r in run where r.Key.AssertString("str").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("map");
+                var rawUses = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "uses" select r).FirstOrDefault().Value?.AssertString($"jobs.{name}.uses");
+                var rawWith = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "with" select r).FirstOrDefault().Value?.AssertMapping($"jobs.{name}.with");
+                var rawSecrets = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping($"jobs.{name}.secrets");
                 var uses = rawUses;
                 RepositoryPathReference reference = null;
                 if (uses.Value.StartsWith("./") || uses.Value.StartsWith(".\\"))
@@ -2307,7 +2286,7 @@ namespace Runner.Server.Controllers
                             }
                         }
                         templateContext.ExpressionValues["secrets"] = result;
-                        var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping("") : null;
+                        var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping($"jobs.{name}.secrets") : null;
                         templateContext.Errors.Check();
                         List<string> _secrets = new List<string>();
                         if(evalSec != null) {
@@ -2402,7 +2381,7 @@ namespace Runner.Server.Controllers
                 }))().Wait();
                 return null;
             }
-            var runsOn = (from r in run where r.Key.AssertString("str").Value == "runs-on" select r).FirstOrDefault().Value;
+            var runsOn = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "runs-on" select r).FirstOrDefault().Value;
             HashSet<string> runsOnMap = new HashSet<string>();
             if (runsOn != null) {
                 foreach (var pair in contextData)
@@ -2416,15 +2395,15 @@ namespace Runner.Server.Controllers
 
                 if(runsOn is SequenceToken seq2) {
                     foreach(var t in seq2) {
-                        runsOnMap.Add(t.AssertString("runs-on member must be a str").Value.ToLowerInvariant());
+                        runsOnMap.Add(t.AssertString($"jobs.{name}.runs-on member must be a str").Value.ToLowerInvariant());
                     }
                 } else {
-                    runsOnMap.Add(runsOn.AssertString("runs-on must be a str or array of string").Value.ToLowerInvariant());
+                    runsOnMap.Add(runsOn.AssertString($"jobs.{name}.runs-on must be a str or array of string").Value.ToLowerInvariant());
                 }
             }
 
             // Jobcontainer
-            TemplateToken jobContainer = (from r in run where r.Key.AssertString("container").Value == "container" select r).FirstOrDefault().Value;
+            TemplateToken jobContainer = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "container" select r).FirstOrDefault().Value;
 
             foreach(var p in platform.Reverse()) {
                 var eq = p.IndexOf('=');
@@ -2505,7 +2484,7 @@ namespace Runner.Server.Controllers
                 step.Id = Guid.NewGuid();
             }
             
-            var environmentToken = (from r in run where r.Key.AssertString("env").Value == "env" select r).FirstOrDefault().Value;
+            var environmentToken = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "env" select r).FirstOrDefault().Value;
 
             List<TemplateToken> environment = new List<TemplateToken>();
             if(workflowEnvironment != null) {
@@ -2517,11 +2496,11 @@ namespace Runner.Server.Controllers
             }
 
             // Jobservicecontainer
-            TemplateToken jobServiceContainer = (from r in run where r.Key.AssertString("services").Value == "services" select r).FirstOrDefault().Value;
+            TemplateToken jobServiceContainer = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "services" select r).FirstOrDefault().Value;
             // Job outputs
-            TemplateToken outputs = (from r in run where r.Key.AssertString("outputs").Value == "outputs" select r).FirstOrDefault().Value;
+            TemplateToken outputs = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "outputs" select r).FirstOrDefault().Value;
             // Environment
-            TemplateToken deploymentEnvironment = (from r in run where r.Key.AssertString("environment").Value == "environment" select r).FirstOrDefault().Value;
+            TemplateToken deploymentEnvironment = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "environment" select r).FirstOrDefault().Value;
             GitHub.DistributedTask.WebApi.ActionsEnvironmentReference deploymentEnvironmentValue = null;
             if(deploymentEnvironment != null) {
                 templateContext.ExpressionValues.Clear();
@@ -2534,16 +2513,16 @@ namespace Runner.Server.Controllers
                     if(deploymentEnvironment is StringToken ename) {
                         deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference(ename.Value);
                     } else {
-                        var mtoken = deploymentEnvironment.AssertMapping("Environment must be a mapping or string");
-                        deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString("name").Value == "name" select r.Value).First().AssertString("name").Value);
-                        deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString("url").Value == "url" select r.Value).FirstOrDefault();
+                        var mtoken = deploymentEnvironment.AssertMapping($"jobs.{name}.environment must be a mapping or string");
+                        deploymentEnvironmentValue = new GitHub.DistributedTask.WebApi.ActionsEnvironmentReference((from r in mtoken where r.Key.AssertString($"jobs.{name}.environment mapping key").Value == "name" select r.Value).First().AssertString("name").Value);
+                        deploymentEnvironmentValue.Url = (from r in mtoken where r.Key.AssertString($"jobs.{name}.environment mapping key").Value == "url" select r.Value).FirstOrDefault();
                     }
                 }
             }
             // Job permissions
-            TemplateToken jobPermissions = (from r in run where r.Key.AssertString("permissions").Value == "permissions" select r).FirstOrDefault().Value ?? workflowPermissions;
+            TemplateToken jobPermissions = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "permissions" select r).FirstOrDefault().Value ?? workflowPermissions;
 
-            var defaultToken = (from r in run where r.Key.AssertString("defaults").Value == "defaults" select r).FirstOrDefault().Value;
+            var defaultToken = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "defaults" select r).FirstOrDefault().Value;
 
             List<TemplateToken> jobDefaults = new List<TemplateToken>();
             if(workflowDefaults != null) {
@@ -2553,7 +2532,7 @@ namespace Runner.Server.Controllers
                 jobDefaults.Add(defaultToken);
             }
 
-            var jobConcurrency = (from r in run where r.Key.AssertString("concurrency").Value == "concurrency" select r).FirstOrDefault().Value;
+            var jobConcurrency = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "concurrency" select r).FirstOrDefault().Value;
             if(jobConcurrency != null) {
                 templateContext.TraceWriter.Info("{0}", $"Evaluate job concurrency");
                 templateContext.ExpressionValues.Clear();
@@ -2648,9 +2627,9 @@ namespace Runner.Server.Controllers
                                     }
                                 }
                             } else {
-                                foreach(var kv in jobPermissions.AssertMapping("Only String or Mapping expected for permission key")) {
-                                    var keyname = kv.Key.AssertString("permission key has to be a string").Value.Replace("-", "_");
-                                    var keyvalue = kv.Value.AssertString("permission value has to be a string").Value;
+                                foreach(var kv in jobPermissions.AssertMapping($"jobs.{name}.permissions Only String or Mapping expected")) {
+                                    var keyname = kv.Key.AssertString($"jobs.{name}.permissions mapping key").Value.Replace("-", "_");
+                                    var keyvalue = kv.Value.AssertString($"jobs.{name}.permissions mapping value").Value;
                                     if(keyname != "id_token") {
                                         if(keyvalue == "none") {
                                             calculatedPermissions.Remove(keyname);
@@ -2690,9 +2669,9 @@ namespace Runner.Server.Controllers
                 if(jobConcurrency is StringToken stkn) {
                     group = stkn.Value;
                 } else {
-                    var cmapping = jobConcurrency.AssertMapping("workflowConcurrency must be a string or mapping");
-                    group = (from r in cmapping where r.Key.AssertString("key").Value == "group" select r).FirstOrDefault().Value?.AssertString("group")?.Value;
-                    cancelInprogress = (from r in cmapping where r.Key.AssertString("key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean("cancel-in-progress")?.Value ?? cancelInprogress;
+                    var cmapping = jobConcurrency.AssertMapping($"jobs.{name}.concurrency must be a string or mapping");
+                    group = (from r in cmapping where r.Key.AssertString($"jobs.{name}.concurrency mapping key").Value == "group" select r).FirstOrDefault().Value?.AssertString($"jobs.{name}.concurrency.group")?.Value;
+                    cancelInprogress = (from r in cmapping where r.Key.AssertString($"jobs.{name}.concurrency mapping key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean($"jobs.{name}.concurrency.cancel-in-progress")?.Value ?? cancelInprogress;
                 }
             }
             return cancel => {
