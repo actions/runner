@@ -1688,6 +1688,14 @@ namespace Runner.Server.Controllers
                                             }
                                             List<Job> scheduled = new List<Job>();
                                             FinishJobController.JobCompleted handler2 = null;
+                                            Action cleanupOnFinish = () => {
+                                                if (scheduled.Count == 0) {
+                                                    localJobCompletedEvents.JobCompleted -= handler2;
+                                                    if(jobTotal > 1) {
+                                                        new FinishJobController(_cache, _context).InvokeJobCompleted(jobitem.JobCompletedEvent);
+                                                    }
+                                                }
+                                            };
                                             Action cancelAll = () => {
                                                 FinishJobController.OnJobCompleted -= handler2;
                                                 foreach (var _j in scheduled) {
@@ -1703,7 +1711,7 @@ namespace Runner.Server.Controllers
                                                 while(jobs.TryDequeue(out var cb)) {
                                                     cb(true);
                                                 }
-                                                localJobCompletedEvents.JobCompleted -= handler2;
+                                                cleanupOnFinish();
                                             };
                                             handler2 = e => {
                                                 if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
@@ -1740,12 +1748,7 @@ namespace Runner.Server.Controllers
                                                                 return;
                                                             }
                                                         }
-                                                        if (scheduled.Count == 0) {
-                                                            localJobCompletedEvents.JobCompleted -= handler2;
-                                                            if(jobTotal > 1) {
-                                                                new FinishJobController(_cache, _context).InvokeJobCompleted(jobitem.JobCompletedEvent);
-                                                            }
-                                                        }
+                                                        cleanupOnFinish();
                                                     }
                                                 }
                                             };
@@ -1761,9 +1764,10 @@ namespace Runner.Server.Controllers
                                                     scheduled.Add(jret);
                                                 } else if (failFast) {
                                                     cancelAll();
-                                                    break;
+                                                    return;
                                                 }
                                             }
+                                            cleanupOnFinish();
                                         }
                                     } catch(Exception ex) {
                                         templateContext.TraceWriter.Info("{0}", $"Internal Error: {ex.Message}, {ex.StackTrace}");
