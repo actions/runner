@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1557,7 +1557,9 @@ namespace Runner.Server.Controllers
                                         var strategyctx = new DictionaryContextData();
                                         contextData["strategy"] = strategyctx;
                                         strategyctx["fail-fast"] = new BooleanContextData(failFast);
-                                        strategyctx["max-parallel"] = max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : jobTotal;
+                                        // The official actions-service only sets it to > 1 if the matrix isn't empty
+                                        // The matrix is empty if you omit matrix in strategy or exclude all entries of the matrix without including new ones
+                                        strategyctx["max-parallel"] = new NumberContextData(keys.Length == 0 ? 1 : max_parallel.HasValue ? max_parallel.Value : jobTotal);
                                         strategyctx["job-total"] = new NumberContextData( jobTotal );
                                         if(jobTotal > 1) {
                                             jobitem.Childs = new List<JobItem>();
