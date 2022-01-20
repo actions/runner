@@ -2141,7 +2141,7 @@ namespace Runner.Server.Controllers
         }
 
         [HttpPost("multipartup/{id}")]
-        public async Task UploadMulti(string id) {
+        public async Task UploadMulti(Guid id) {
             var sh = _cache.Get<shared>(id);
             var type = Request.Headers["Content-Type"].First();
             var ntype = "multipart/form-data" + type.Substring("application/octet-stream".Length);
@@ -2156,9 +2156,9 @@ namespace Runner.Server.Controllers
             var channel = Channel.CreateBounded<Task>(1);
             var sh = new shared();
             sh.Channel = channel;
-            string id = runid + "__,dfuusnd" + reqId + "_" + new Random().NextDouble();
+            Guid id = Guid.NewGuid();
             _cache.Set(id, sh);
-            OnRepoDownload?.Invoke(runid, "/test/host/_apis/v1/Message/multipartup/" + id, submodules, nestedSubmodules);
+            OnRepoDownload?.Invoke(runid, "/_apis/v1/Message/multipartup/" + id, submodules, nestedSubmodules);
             sh.response = Response;
             var task = await channel.Reader.ReadAsync(HttpContext.RequestAborted);
             await task;
