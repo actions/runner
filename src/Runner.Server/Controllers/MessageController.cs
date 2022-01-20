@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1213,6 +1213,8 @@ namespace Runner.Server.Controllers
                     githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
                     githubctx.Add("retention_days", new StringContextData("90"));
                     githubctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                    // The Git URL to the repository. For example, git://github.com/codertocat/hello-world.git.
+                    githubctx["repositoryUrl"] = new StringContextData(hook?.repository?.CloneUrl ?? "");
                     return contextData;
                 };
                 Action<DictionaryContextData, JobItem, JobCompletedEvent> updateNeedsCtx = (needsctx, job, e) => {
@@ -3026,6 +3028,9 @@ namespace Runner.Server.Controllers
             public string default_branch { get; set; }
             public Permissions Permissions { get; set; }
             public bool Fork { get; set; }
+
+            [DataMember(Name = "clone_url")]
+            public string CloneUrl { get; set; }
         }
         public class Permissions {
             public bool Admin  { get; set; }
