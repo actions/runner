@@ -1476,10 +1476,6 @@ namespace Runner.Server.Controllers
                                             sendFinishJob(TaskResult.Failed);
                                             return;
                                         }
-                                        var strategyctx = new DictionaryContextData();
-                                        contextData["strategy"] = strategyctx;
-                                        strategyctx["fail-fast"] = new BooleanContextData(failFast);
-                                        strategyctx["max-parallel"] = max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : null;
                                         var keys = flatmatrix.First().Keys.ToArray();
                                         if (include != null) {
                                             foreach (var item in include) {
@@ -1558,6 +1554,10 @@ namespace Runner.Server.Controllers
                                             sendFinishJob(TaskResult.Canceled);
                                             return;
                                         }
+                                        var strategyctx = new DictionaryContextData();
+                                        contextData["strategy"] = strategyctx;
+                                        strategyctx["fail-fast"] = new BooleanContextData(failFast);
+                                        strategyctx["max-parallel"] = max_parallel.HasValue ? new NumberContextData(max_parallel.Value) : jobTotal;
                                         strategyctx["job-total"] = new NumberContextData( jobTotal );
                                         if(jobTotal > 1) {
                                             jobitem.Childs = new List<JobItem>();
