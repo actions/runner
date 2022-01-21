@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -102,6 +103,10 @@ namespace GitHub.Runner.Worker
                 {
                     // Set GITHUB_ACTION
                     step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
+
+                    var stepSummaryFilePath = GetStepSummaryPath(step);
+                    step.ExecutionContext.SetGitHubContext("step_summary", stepSummaryFilePath);
+                    envContext["GITHUB_STEP_SUMMARY"] = new StringContextData(stepSummaryFilePath);
 
                     try
                     {
@@ -351,8 +356,29 @@ namespace GitHub.Runner.Worker
         private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
         {
             var executionContext = step.ExecutionContext;
+            var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
+
+            Trace.Info($"Reading step summary data from {stepSummaryFilePath}");
+            Trace.Info($"File exists: {stepSummaryFilePath} {File.Exists(stepSummaryFilePath)}");
+
+            var fileStream = new FileStream(stepSummaryFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using (var sr = new StreamReader(fileStream))
+            {
+                Trace.Info(sr.ReadToEnd());
+            }
 
             executionContext.Complete(result, resultCode: resultCode);
+        }
+
+        private string GetStepSummaryPath(IStep step)
+        {
+            var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
+            Trace.Info($"Using temp directory '{tempDirectory}'");
+            var stepSummaryFilePath = Path.Join(tempDirectory, $"{Guid.NewGuid().ToString()}.md");
+            Trace.Info($"Using step summary file '{stepSummaryFilePath}'");
+            File.Create(stepSummaryFilePath);
+
+            return stepSummaryFilePath;
         }
     }
 }
