@@ -125,7 +125,7 @@ attemptedtargetedfix=0
 currentplatform=$(uname | awk '{print tolower($0)}')
 if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     # We needed a fix for https://github.com/actions/runner/issues/743
-    # We will recreate the ./externals/node12/bin/node of the past runner version that launched the runnerlistener service
+    # We will recreate the ./externals/node16/bin/node of the past runner version that launched the runnerlistener service
     # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
 
     # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
@@ -135,7 +135,7 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     then
         # inspect the open file handles to find the node process
         # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        path=$(lsof -a -g "$procgroup" -F n | grep node12/bin/node | grep externals | tail -1 | cut -c2-)
+        path=$(lsof -a -g "$procgroup" -F n | grep node16/bin/node | grep externals | tail -1 | cut -c2-)
         if [[ $? -eq 0 && -n "$path" ]]
         then
             # trim the last 5 characters of the path '/node'
@@ -148,7 +148,7 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
                 then
                     date "+[%F %T-%4N] Creating fallback node at path $path" >> "$logfile" 2>&1
                     mkdir -p "$trimmedpath"
-                    cp "$rootfolder/externals/node12/bin/node" "$path"
+                    cp "$rootfolder/externals/node16/bin/node" "$path"
                 else
                     date "+[%F %T-%4N] Path for fallback node exists, skipping creating $path" >> "$logfile" 2>&1
                 fi

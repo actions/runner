@@ -1026,7 +1026,7 @@ namespace GitHub.Runner.Listener
 
             var stopWatch = Stopwatch.StartNew();
             string binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
-            string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
+            string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node16", "bin", $"node{IOUtil.ExeExtension}");
             string hashFilesScript = Path.Combine(binDir, "hashFiles");
             var hashResult = string.Empty;
 

@@ -13,7 +13,7 @@ fi
 # insert anything to setup env when running as a service
 
 # run the host process which keep the listener alive
-./externals/node12/bin/node ./bin/RunnerService.js &
+./externals/node16/bin/node ./bin/RunnerService.js &
 PID=$!
 wait $PID
 trap - TERM INT

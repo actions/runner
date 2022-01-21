@@ -4,9 +4,9 @@
 
 Make sure the built-in node.js has access to GitHub.com or GitHub Enterprise Server.
 
-The runner carries it's own copy of node.js executable under `<runner_root>/externals/node12/`.
+The runner carries it's own copy of node.js executable under `<runner_root>/externals/node12/` and `<runner_root>/externals/node16/`.
 
-All javascript base Actions will get executed by the built-in `node` at `<runner_root>/externals/node12/`.
+All javascript base Actions will get executed by the built-in `node` at `<runner_root>/externals/node16/` by default..
 
 > Not the `node` from `$PATH`
 
