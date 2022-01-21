@@ -13,6 +13,7 @@
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
+            //"targetArchitecture": "x86_64"
         },
         {
             "name": "Run",
@@ -25,6 +26,7 @@
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
+            //"targetArchitecture": "x86_64"
         },
         {
             "name": "Configure",
@@ -38,6 +40,7 @@
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
+            //"targetArchitecture": "x86_64"
         },
         {
             "name": "Debug Worker",
@@ -45,6 +48,7 @@
             "request": "attach",
             "processName": "Runner.Worker",
             "requireExactSource": false,
+            //"targetArchitecture": "x86_64"
         },
         {
             "name": "Attach Debugger",
@@ -52,6 +56,8 @@
             "request": "attach",
             "processId": "${command:pickProcess}",
             "requireExactSource": false,
+            //"targetArchitecture": "x86_64"
         },
     ],
 }
+
