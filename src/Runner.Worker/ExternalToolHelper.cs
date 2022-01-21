@@ -65,7 +65,7 @@ namespace GitHub.Runner.Worker
                 using (var httpClientHandler = hostContext.CreateHttpClientHandler())
                 using (var httpClient = new HttpClient(httpClientHandler))
                 {
-                    using (var response = await httpClient.GetAsync(link))
+                    using (var response = await httpClient.GetAsync(link, HttpCompletionOption.ResponseHeadersRead))
                     {
                         response.EnsureSuccessStatusCode();
                         using (var result = await response.Content.ReadAsStreamAsync())
