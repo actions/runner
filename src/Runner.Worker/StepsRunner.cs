@@ -359,12 +359,11 @@ namespace GitHub.Runner.Worker
             var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
 
             Trace.Info($"Reading step summary data from {stepSummaryFilePath}");
-            Trace.Info($"File exists: {stepSummaryFilePath} {File.Exists(stepSummaryFilePath)}");
 
             var fileStream = new FileStream(stepSummaryFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             using (var sr = new StreamReader(fileStream))
             {
-                Trace.Info(sr.ReadToEnd());
+                Trace.Info($"Step summary data: {sr.ReadToEnd()}");
             }
 
             executionContext.Complete(result, resultCode: resultCode);
@@ -372,11 +371,13 @@ namespace GitHub.Runner.Worker
 
         private string GetStepSummaryPath(IStep step)
         {
-            var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
-            Trace.Info($"Using temp directory '{tempDirectory}'");
-            var stepSummaryFilePath = Path.Join(tempDirectory, $"{Guid.NewGuid().ToString()}.md");
+            var stepSummaryDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_step_summary");
+            Directory.CreateDirectory(stepSummaryDirectory);
+            var stepSummaryFilePath = Path.Combine(stepSummaryDirectory, $"{Guid.NewGuid().ToString()}.md");
+
             Trace.Info($"Using step summary file '{stepSummaryFilePath}'");
-            File.Create(stepSummaryFilePath);
+            var fileStream = File.Create(stepSummaryFilePath);
+            fileStream.Close();
 
             return stepSummaryFilePath;
         }
