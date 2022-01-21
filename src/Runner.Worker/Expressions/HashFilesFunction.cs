@@ -62,7 +62,7 @@ namespace GitHub.Runner.Worker.Expressions
             string binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             string runnerRoot = new DirectoryInfo(binDir).Parent.FullName;
 
-            string node = Path.Combine(runnerRoot, "externals", "node12", "bin", $"node{IOUtil.ExeExtension}");
+            string node = Path.Combine(runnerRoot, "externals", "node16", "bin", $"node{IOUtil.ExeExtension}");
             string hashFilesScript = Path.Combine(binDir, "hashFiles");
             var hashResult = string.Empty;
             var p = new ProcessInvoker(new HashFilesTrace(context.Trace));
