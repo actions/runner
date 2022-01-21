@@ -1451,7 +1451,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'task.js'
 ";
                 Pipelines.ActionStep instance;
@@ -1730,7 +1730,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'task.js'
 ";
                 Pipelines.ActionStep instance;
@@ -1798,7 +1798,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'task.js'
   post: 'cleanup.js'
 ";
@@ -2064,7 +2064,7 @@ author: 'GitHub'
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'task.js'
 ";
             CreateAction(yamlContent: Content, instance: out _, directory: out string directory);
