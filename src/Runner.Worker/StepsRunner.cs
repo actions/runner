@@ -359,8 +359,9 @@ namespace GitHub.Runner.Worker
             var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
 
             Trace.Info($"Reading step summary data from {stepSummaryFilePath}");
+            Trace.Info($"File exists: {stepSummaryFilePath} {File.Exists(stepSummaryFilePath)}");
 
-            var fileStream = new FileStream(stepSummaryFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using (var fileStream = new FileStream(stepSummaryFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             using (var sr = new StreamReader(fileStream))
             {
                 Trace.Info($"Step summary data: {sr.ReadToEnd()}");
@@ -375,9 +376,9 @@ namespace GitHub.Runner.Worker
             Directory.CreateDirectory(stepSummaryDirectory);
             var stepSummaryFilePath = Path.Combine(stepSummaryDirectory, $"{Guid.NewGuid().ToString()}.md");
 
-            Trace.Info($"Using step summary file '{stepSummaryFilePath}'");
-            var fileStream = File.Create(stepSummaryFilePath);
-            fileStream.Close();
+            using (File.Create(stepSummaryFilePath)) {
+                Trace.Info($"Using step summary file '{stepSummaryFilePath}'");
+            }
 
             return stepSummaryFilePath;
         }
