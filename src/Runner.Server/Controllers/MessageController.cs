@@ -1890,7 +1890,7 @@ namespace Runner.Server.Controllers
                         };
                         if(ja != null) {
                             var ji = ja.Childs?.Where(ji => e.JobId == ji.Id).FirstOrDefault() ?? ja;
-                            if(workflowOutputs != null && ja.Childs == null) {
+                            if(workflowOutputs != null && ja == ji) {
                                 updateNeedsCtx(jobsctx, ji, e);
                             }
                             ji.ActionStatusQueue.Post(() => {
