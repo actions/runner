@@ -1607,8 +1607,12 @@ namespace Runner.Server.Controllers
                                                 if(jobTotal > 1) {
                                                     next.TimelineId = Guid.NewGuid();
                                                     // For Runner.Client to show the workflowname
-                                                    initializingJobs.TryAdd(next.Id, new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = displayname, workflowname = workflowname, runid = runid, RequestId = next.RequestId } );
-                                                    TimelineController.dict[next.TimelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = next.Id, Name = displayname } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
+                                                    var _prejobdisplayname = displayname;
+                                                    if(callingJob?.Name != null) {
+                                                        _prejobdisplayname = callingJob.Name + " / " + _prejobdisplayname;
+                                                    }
+                                                    initializingJobs.TryAdd(next.Id, new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, runid = runid, RequestId = next.RequestId } );
+                                                    TimelineController.dict[next.TimelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = next.Id, Name = _prejobdisplayname } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
                                                     new TimelineController(_context).UpdateTimeLine(next.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[next.TimelineId].Item1));
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Prepare Job for execution" }), next.TimelineId, next.Id);
