@@ -2250,136 +2250,138 @@ namespace Runner.Server.Controllers
                 var traceWriter = templateContext.TraceWriter;
                 var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(_job);
-                Action<string> failedtoInstantiateWorkflow = message => {
-                    traceWriter.Verbose("Failed to instantiate Workflow: {0}", message);
-                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                };
-                (new Func<Task>(async () => {
-                    if(reference == null) {
-                        failedtoInstantiateWorkflow($"Invalid reference format: {uses.Value}");
-                        return;
-                    }
-                    Action<string, string> workflow_call = (filename, filecontent) => {
-                        // This does only work with static github tokens
-                        if(variables.TryGetValue("system.github.token", out var val)) {
-                            ((DictionaryContextData)contextData["github"])["token"] = new StringContextData(val.Value);
+                return cancel => {
+                    Action<string> failedtoInstantiateWorkflow = message => {
+                        traceWriter.Verbose("Failed to instantiate Workflow: {0}", message);
+                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                    };
+                    (new Func<Task>(async () => {
+                        if(reference == null) {
+                            failedtoInstantiateWorkflow($"Invalid reference format: {uses.Value}");
+                            return;
                         }
-                        var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
-                        var ghook = hook.ToObject<GiteaHook>();
+                        Action<string, string> workflow_call = (filename, filecontent) => {
+                            // This does only work with static github tokens
+                            if(variables.TryGetValue("system.github.token", out var val)) {
+                                ((DictionaryContextData)contextData["github"])["token"] = new StringContextData(val.Value);
+                            }
+                            var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
+                            var ghook = hook.ToObject<GiteaHook>();
 
-                        foreach (var pair in contextData)
-                        {
-                            templateContext.ExpressionValues[pair.Key] = pair.Value;
-                        }
-                        var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
-                        templateContext.Errors.Check();
-                        var result = new DictionaryContextData();
-                        foreach (var variable in variables)
-                        {
-                            if (variable.Value.IsSecret)
+                            foreach (var pair in contextData)
                             {
-                                if(string.Equals(variable.Key, "system.github.token", StringComparison.OrdinalIgnoreCase)) {
-                                    result["github_token"] = new StringContextData(variable.Value.Value);
-                                } else {
-                                    result[variable.Key] = new StringContextData(variable.Value.Value);
+                                templateContext.ExpressionValues[pair.Key] = pair.Value;
+                            }
+                            var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
+                            templateContext.Errors.Check();
+                            var result = new DictionaryContextData();
+                            foreach (var variable in variables)
+                            {
+                                if (variable.Value.IsSecret)
+                                {
+                                    if(string.Equals(variable.Key, "system.github.token", StringComparison.OrdinalIgnoreCase)) {
+                                        result["github_token"] = new StringContextData(variable.Value.Value);
+                                    } else {
+                                        result[variable.Key] = new StringContextData(variable.Value.Value);
+                                    }
                                 }
                             }
-                        }
-                        templateContext.ExpressionValues["secrets"] = result;
-                        var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping($"jobs.{name}.secrets") : null;
-                        templateContext.Errors.Check();
-                        List<string> _secrets = new List<string>();
-                        if(evalSec != null) {
-                            foreach(var entry in evalSec) {
-                                _secrets.Add(entry.Key.AssertString($"jobs.{ji.name}.secrets mapping key") + "=" + entry.Value.AssertString($"jobs.{ji.name}.secrets mapping value"));
-                            }
-                        }
-                        if(result.TryGetValue("github_token", out var ghtoken)) {
-                            // Enshure to share a customized github_token secret with the called workflow
-                            _secrets.Add("system.github.token=" + ghtoken);
-                        }
-                        var clone = Clone();
-                        var callerJob = new CallingJob() { Name = displayname, Event = wevent, Inputs = eval?.ToContextData(), Workflowfinish = (callerJob, e) => {
-                            if(callerJob.RanJob) {
-                                if(callingJob != null) {
-                                    callingJob.RanJob = true;
+                            templateContext.ExpressionValues["secrets"] = result;
+                            var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping($"jobs.{name}.secrets") : null;
+                            templateContext.Errors.Check();
+                            List<string> _secrets = new List<string>();
+                            if(evalSec != null) {
+                                foreach(var entry in evalSec) {
+                                    _secrets.Add(entry.Key.AssertString($"jobs.{ji.name}.secrets mapping key") + "=" + entry.Value.AssertString($"jobs.{ji.name}.secrets mapping value"));
                                 }
-                                Array.ForEach(finishedJobs.ToArray(), fjobs => {
-                                    foreach(var djob in dependentjobgroup) {
-                                        if(djob.Dependencies != null && (fjobs.Key == djob.name || fjobs.Key.StartsWith(djob.name + "/"))) {
-                                            foreach(var dep in djob.Dependencies) {
-                                                if(dep.Key == name) {
-                                                    finishedJobs.Remove(fjobs.Key);
-                                                    return;
+                            }
+                            if(result.TryGetValue("github_token", out var ghtoken)) {
+                                // Enshure to share a customized github_token secret with the called workflow
+                                _secrets.Add("system.github.token=" + ghtoken);
+                            }
+                            var clone = Clone();
+                            var callerJob = new CallingJob() { Name = displayname, Event = wevent, Inputs = eval?.ToContextData(), Workflowfinish = (callerJob, e) => {
+                                if(callerJob.RanJob) {
+                                    if(callingJob != null) {
+                                        callingJob.RanJob = true;
+                                    }
+                                    Array.ForEach(finishedJobs.ToArray(), fjobs => {
+                                        foreach(var djob in dependentjobgroup) {
+                                            if(djob.Dependencies != null && (fjobs.Key == djob.name || fjobs.Key.StartsWith(djob.name + "/"))) {
+                                                foreach(var dep in djob.Dependencies) {
+                                                    if(dep.Key == name) {
+                                                        finishedJobs.Remove(fjobs.Key);
+                                                        return;
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                });
+                                    });
+                                }
+                                new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
+                            }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname};
+                            var resp = clone.ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value));
+                            if(resp == null || resp.failed || resp.skipped) {
+                                failedtoInstantiateWorkflow(filename);
+                                return;
                             }
-                            new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                        }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname};
-                        var resp = clone.ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value));
-                        if(resp == null || resp.failed || resp.skipped) {
-                            failedtoInstantiateWorkflow(filename);
-                            return;
-                        }
-                    };
-                    if((reference.RepositoryType == PipelineConstants.SelfAlias || localcheckout && reference.Name == repo && (("refs/heads/" + reference.Ref) == Ref || ("refs/tags/" + reference.Ref) == Ref)) && workflows != null && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
-                        try {
-                            workflow_call(reference.Path, _content);
-                        } catch (Exception ex) {
-                            failedtoInstantiateWorkflow(ex.Message);
-                            await Console.Error.WriteLineAsync(ex.Message);
-                            await Console.Error.WriteLineAsync(ex.StackTrace);
-                        }
-                    } else {
-                        if(reference.RepositoryType == PipelineConstants.SelfAlias) {
-                            reference.RepositoryType = RepositoryTypes.GitHub;
-                            reference.Ref = ((DictionaryContextData) contextData["github"])["sha"].ToString();
-                            reference.Name = repo;
-                        }
-                        var client = new HttpClient();
-                        client.DefaultRequestHeaders.Add("accept", "application/json");
-                        client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                        string githubAppToken = null;
-                        try {
-                            if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
-                                client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
-                            } else {
-                                githubAppToken = await CreateGithubAppToken(repo);
+                        };
+                        if((reference.RepositoryType == PipelineConstants.SelfAlias || localcheckout && reference.Name == repo && (("refs/heads/" + reference.Ref) == Ref || ("refs/tags/" + reference.Ref) == Ref)) && workflows != null && workflows.ToDictionary(v => v.Key, v => v.Value).TryGetValue(reference.Path, out var _content)) {
+                            try {
+                                workflow_call(reference.Path, _content);
+                            } catch (Exception ex) {
+                                failedtoInstantiateWorkflow(ex.Message);
+                                await Console.Error.WriteLineAsync(ex.Message);
+                                await Console.Error.WriteLineAsync(ex.StackTrace);
+                            }
+                        } else {
+                            if(reference.RepositoryType == PipelineConstants.SelfAlias) {
+                                reference.RepositoryType = RepositoryTypes.GitHub;
+                                reference.Ref = ((DictionaryContextData) contextData["github"])["sha"].ToString();
+                                reference.Name = repo;
+                            }
+                            var client = new HttpClient();
+                            client.DefaultRequestHeaders.Add("accept", "application/json");
+                            client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                            string githubAppToken = null;
+                            try {
+                                if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                                    client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
+                                } else {
+                                    githubAppToken = await CreateGithubAppToken(repo);
+                                    if(githubAppToken != null) {
+                                        client.DefaultRequestHeaders.Add("Authorization", $"token {githubAppToken}");
+                                    }
+                                }
+                                var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
+                                url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
+                                var res = await client.GetAsync(url.ToString());
+                                if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                                    var content = await res.Content.ReadAsStringAsync();
+                                    var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
+                                    {
+                                        try {
+                                            var fileRes = await client.GetAsync(item.download_url);
+                                            var filecontent = await fileRes.Content.ReadAsStringAsync();
+                                            workflow_call(item.path, filecontent);
+                                        } catch (Exception ex) {
+                                            failedtoInstantiateWorkflow(ex.Message);
+                                            await Console.Error.WriteLineAsync(ex.Message);
+                                            await Console.Error.WriteLineAsync(ex.StackTrace);
+                                        }
+                                    }
+                                } else {
+                                    failedtoInstantiateWorkflow($"No such callable workflow: {uses.Value}");
+                                }
+                            } finally {
                                 if(githubAppToken != null) {
-                                    client.DefaultRequestHeaders.Add("Authorization", $"token {githubAppToken}");
+                                    await DeleteGithubAppToken(githubAppToken);
                                 }
-                            }
-                            var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{reference.Name}/contents/{Uri.EscapeDataString(reference.Path)}"));
-                            url.Query = $"ref={Uri.EscapeDataString(reference.Ref)}";
-                            var res = await client.GetAsync(url.ToString());
-                            if(res.StatusCode == System.Net.HttpStatusCode.OK) {
-                                var content = await res.Content.ReadAsStringAsync();
-                                var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
-                                {
-                                    try {
-                                        var fileRes = await client.GetAsync(item.download_url);
-                                        var filecontent = await fileRes.Content.ReadAsStringAsync();
-                                        workflow_call(item.path, filecontent);
-                                    } catch (Exception ex) {
-                                        failedtoInstantiateWorkflow(ex.Message);
-                                        await Console.Error.WriteLineAsync(ex.Message);
-                                        await Console.Error.WriteLineAsync(ex.StackTrace);
-                                    }
-                                }
-                            } else {
-                                failedtoInstantiateWorkflow($"No such callable workflow: {uses.Value}");
-                            }
-                        } finally {
-                            if(githubAppToken != null) {
-                                await DeleteGithubAppToken(githubAppToken);
                             }
                         }
-                    }
-                }))().Wait();
-                return null;
+                    }))().Wait();
+                    return _job;
+                };
             }
             var runsOn = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "runs-on" select r).FirstOrDefault().Value;
             HashSet<string> runsOnMap = new HashSet<string>();
@@ -2457,7 +2459,7 @@ namespace Runner.Server.Controllers
                     var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                     AddJob(_job);
                     new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
-                    return null;
+                    return cancel => _job;
                 }
             }
             var steps = PipelineTemplateConverter.ConvertToSteps(templateContext, rawSteps);
