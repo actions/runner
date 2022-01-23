@@ -1700,7 +1700,7 @@ namespace Runner.Server.Controllers
                                                     if(jobitem.JobCompletedEvent == null) {
                                                         jobitem.JobCompletedEvent = new JobCompletedEvent() { JobId = jobitem.Id, Result = e.Result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>(e.Outputs)};
                                                     } else {
-                                                        if((e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || currentItem.ContinueOnError != true)) {
+                                                        if(jobitem.JobCompletedEvent.Result == TaskResult.Failed || jobitem.JobCompletedEvent.Result == TaskResult.Canceled || jobitem.JobCompletedEvent.Result == TaskResult.Abandoned || (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || currentItem.ContinueOnError != true)) {
                                                             jobitem.JobCompletedEvent.Result = TaskResult.Failed;
                                                         } else if(jobitem.JobCompletedEvent.Result == TaskResult.Succeeded || jobitem.JobCompletedEvent.Result == TaskResult.SucceededWithIssues || e.Result != TaskResult.Skipped) {
                                                             jobitem.JobCompletedEvent.Result = TaskResult.Succeeded;
