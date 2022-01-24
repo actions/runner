@@ -12,7 +12,6 @@ Check [Quickstart](../contribute.md#quickstart-run-a-job-from-a-real-repository)
 ## Debugging
 
 Debugging the full lifecycle of a job can be tricky, because there are multiple processes involved.
-If you're using macOS with Apple M1 chip (arm64 architecture), you need to add "targetArchitecture": "x86_64" to all configs.
 All the configs below can be found in `.vscode/launch.json`.
 
 ## Debug the Listener
@@ -29,8 +28,7 @@ All the configs below can be found in `.vscode/launch.json`.
     ],
     "cwd": "${workspaceFolder}/src",
     "console": "integratedTerminal",
-    "requireExactSource": false,
-    "targetArchitecture": "x86_64"        // for debugging on macOS M1
+    "requireExactSource": false
 }
 ```
 
