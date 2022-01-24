@@ -174,19 +174,9 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
             date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
         fi
     fi
-fi
 
-# NODE 16: DUPLICATED THE ABOVE LOGIC FOR NODE16
-# fix upgrade issue with macOS when running as a service
-attemptedtargetedfix=0
-currentplatform=$(uname | awk '{print tolower($0)}')
-if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
-    # We needed a fix for https://github.com/actions/runner/issues/743
-    # We will recreate the ./externals/node16/bin/node of the past runner version that launched the runnerlistener service
-    # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
-
-    # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
-    # assumption here is only one process is invoking rootfolder/runsvc.sh
+    # NODE 16: DUPLICATED THE ABOVE LOGIC FOR NODE16
+    # fix upgrade issue with macOS when running as a service
     procgroup=$(ps x -o pgid,command | grep "$rootfolder/runsvc.sh" | grep -v grep | awk '{print $1}')
     if [[ $? -eq 0 && -n "$procgroup" ]]
     then
