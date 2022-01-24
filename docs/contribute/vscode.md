@@ -28,7 +28,7 @@ All the configs below can be found in `.vscode/launch.json`.
     ],
     "cwd": "${workspaceFolder}/src",
     "console": "integratedTerminal",
-    "requireExactSource": false
+    "requireExactSource": false,
 }
 ```
 
@@ -50,4 +50,3 @@ All worker processes now will wait 20 seconds before they start working on their
 This gives enough time to attach a debugger by running `Debug Worker`.
 If for some reason you have multiple workers running, run the launch config `Attach` instead.
 Select `Runner.Worker` from the running processes when VS Code prompts for it.
-
