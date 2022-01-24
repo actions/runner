@@ -120,7 +120,7 @@ then
     exit 1
 fi
 
-# NODE 12: In 2.281.1 RunnerService.js was still started with node 12. In this PR (TODO:LINK) I changed it to launch with node 16. 
+# NODE 12: In 2.281.1 RunnerService.js was still started with node 12. In this PR (https://github.com/actions/runner/pull/1621) I changed it to launch with node 16. 
 # We might have to keep the logic for keeping node 12 around for a long time for all runner services that were once started with node 12
 # LOGIC DUPLICATED FOR NODE 16 BELOW
 
