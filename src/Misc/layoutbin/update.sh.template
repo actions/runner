@@ -120,16 +120,13 @@ then
     exit 1
 fi
 
-# NODE 12: In 2.281.1 RunnerService.js was still started with node 12. In this PR (https://github.com/actions/runner/pull/1621) I changed it to launch with node 16. 
-# We might have to keep the logic for keeping node 12 around for a long time for all runner services that were once started with node 12
-# LOGIC DUPLICATED FOR NODE 16 BELOW
 
 # fix upgrade issue with macOS when running as a service
 attemptedtargetedfix=0
 currentplatform=$(uname | awk '{print tolower($0)}')
 if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     # We needed a fix for https://github.com/actions/runner/issues/743
-    # We will recreate the ./externals/node12/bin/node of the past runner version that launched the runnerlistener service
+    # We will recreate the ./externals/nodeXY/bin/node of the past runner version that launched the runnerlistener service
     # Otherwise mac gatekeeper kills the processes we spawn on creation as we are running a process with no backing file
 
     # We need the pid for the nodejs loop, get that here, its the parent of the runner C# pid
@@ -139,50 +136,13 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     then
         # inspect the open file handles to find the node process
         # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        path=$(lsof -a -g "$procgroup" -F n | grep node12/bin/node | grep externals | tail -1 | cut -c2-)
-        if [[ $? -eq 0 && -n "$path" ]]
+        nodever="node12"
+        path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
+        if ! [[ $? -eq 0 && -n "$path" ]]
         then
-            # trim the last 5 characters of the path '/node'
-            trimmedpath=$(dirname "$path")
-            if [[ $? -eq 0 && -n "$trimmedpath" ]]
-            then
-                attemptedtargetedfix=1
-                # Create the path if it does not exist
-                if [[ ! -e "$path" ]]
-                then
-                    date "+[%F %T-%4N] Creating fallback node at path $path" >> "$logfile" 2>&1
-                    mkdir -p "$trimmedpath"
-                    cp "$rootfolder/externals/node12/bin/node" "$path"
-                else
-                    date "+[%F %T-%4N] Path for fallback node exists, skipping creating $path" >> "$logfile" 2>&1
-                fi
-            else
-                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
-                date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to trim runner path. TrimmedPath: $trimmedpath, path: $path, pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
-            fi
-        else
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner path. Path: $path, pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
-        fi
-    else
-        runproc=$(ps x -o pgid,command | grep "run.sh" | grep -v grep | awk '{print $1}')
-        if [[ $? -eq 0 && -n "$runproc" ]]
-        then
-            date "+[%F %T-%4N] Running as ephemeral using run.sh, no need to recreate node folder" >> "$logfile" 2>&1
-        else
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$logfile" 2>&1
-            date "+[%F %T-%4N] DarwinRunnerUpgrade: Failed to find runner pgid. pgid: $procgroup, root: $rootfolder" >> "$telemetryfile" 2>&1
-        fi
-    fi
+            nodever="node16"
+            path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
 
-    # NODE 16: DUPLICATED THE ABOVE LOGIC FOR NODE16
-    # fix upgrade issue with macOS when running as a service
-    procgroup=$(ps x -o pgid,command | grep "$rootfolder/runsvc.sh" | grep -v grep | awk '{print $1}')
-    if [[ $? -eq 0 && -n "$procgroup" ]]
-    then
-        # inspect the open file handles to find the node process
-        # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        path=$(lsof -a -g "$procgroup" -F n | grep node16/bin/node | grep externals | tail -1 | cut -c2-)
         if [[ $? -eq 0 && -n "$path" ]]
         then
             # trim the last 5 characters of the path '/node'
@@ -195,7 +155,7 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
                 then
                     date "+[%F %T-%4N] Creating fallback node at path $path" >> "$logfile" 2>&1
                     mkdir -p "$trimmedpath"
-                    cp "$rootfolder/externals/node16/bin/node" "$path"
+                    cp "$rootfolder/externals/$nodever/bin/node" "$path"
                 else
                     date "+[%F %T-%4N] Path for fallback node exists, skipping creating $path" >> "$logfile" 2>&1
                 fi
