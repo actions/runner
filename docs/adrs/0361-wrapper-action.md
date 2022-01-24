@@ -23,7 +23,7 @@ Node Action Example:
  name: 'My action with pre'
  description: 'My action with pre'
  runs:
-   using: 'node16'
+   using: 'node12'
    pre: 'setup.js'
    pre-if: 'success()' // Optional
    main: 'index.js'
