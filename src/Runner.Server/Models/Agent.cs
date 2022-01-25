@@ -18,7 +18,6 @@ namespace Runner.Server.Models
                 TaskAgent.Id = value;
             }
         } }
-        public static readonly String CachePrefix = "Agent_";
         public Pool Pool {get;set;}
 
         public TaskAgent TaskAgent {get;set;}
