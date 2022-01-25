@@ -256,7 +256,7 @@ namespace GitHub.Runner.Listener.Configuration
                         if (command.DisableUpdate &&
                             command.DisableUpdate != agent.DisableUpdate)
                         {
-                            throw new NotSupportedException("The GitHub server does not support configure self-hosted runner with 'DisableUpdate' flag.");
+                            throw new NotSupportedException("The GitHub server does not support configuring a self-hosted runner with 'DisableUpdate' flag.");
                         }
                         if (command.Ephemeral &&
                             command.Ephemeral != agent.Ephemeral)
