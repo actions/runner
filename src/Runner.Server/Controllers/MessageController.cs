@@ -66,6 +66,8 @@ namespace Runner.Server.Controllers
         private bool HasPullRequestMergePseudoBranch { get; }
         private string GitHubAppPrivateKeyFile { get; }
         private int GitHubAppId { get; }
+        private Dictionary<string, string> GitHubContext { get; }
+        private bool AllowPrivateActionAccess { get; }
         private List<Secret> secrets;
 
         private IConfiguration configuration;
@@ -98,6 +100,8 @@ namespace Runner.Server.Controllers
             HasPullRequestMergePseudoBranch = configuration.GetSection("Runner.Server")?.GetValue<bool>("HasPullRequestMergePseudoBranch") ?? false;
             GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
             GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
+            GitHubContext = configuration.GetSection("Runner.Server:GitHubContext").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
+            AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             
             secrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();
             _cache = memoryCache;
@@ -655,7 +659,7 @@ namespace Runner.Server.Controllers
                         Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
                     };
                     var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
-                    var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
+                    var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", contents = "read" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
                     return response.Body.Token;
                 } catch {
 
@@ -684,6 +688,7 @@ namespace Runner.Server.Controllers
             public Action<CallingJob, WorkflowEventArgs> Workflowfinish {get;set;}
             // Set by the called workflow to indicate whether to clean cached job dependencies
             public bool RanJob { get; set; }
+            public Dictionary<string, string> Permissions { get; set; }
         }
 
         private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null) {
@@ -796,6 +801,43 @@ namespace Runner.Server.Controllers
                         
                     }
                 }
+            };
+            Func<string, DictionaryContextData> createContext = jobname => {
+                var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
+                contextData["inputs"] = callingJob?.Inputs;
+                var githubctx = new DictionaryContextData();
+                contextData.Add("github", githubctx);
+                githubctx.Add("server_url", new StringContextData(GitServerUrl));
+                githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
+                githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
+                githubctx.Add("workflow", new StringContextData(workflowname));
+                githubctx.Add("repository", new StringContextData(repository_name));
+                githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
+                githubctx.Add("repository_owner", new StringContextData(hook?.repository?.Owner?.login ?? "Unknown"));
+                githubctx.Add("ref", new StringContextData(Ref));
+                // TODO check if it is protected
+                githubctx.Add("ref_protected", new BooleanContextData(false));
+                githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : Ref.StartsWith("refs/heads/") ? "branch" : ""));
+                githubctx.Add("ref_name", new StringContextData(Ref.StartsWith("refs/tags/") ? Ref.Substring("refs/tags/".Length) : Ref.StartsWith("refs/heads/") ? Ref.Substring("refs/heads/".Length) : ""));
+                if(AllowJobNameOnJobProperties) {
+                    githubctx.Add("job", new StringContextData(jobname));
+                }
+                githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
+                githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
+                // event_path is filled by event
+                githubctx.Add("event", payloadObject.ToPipelineContextData());
+                githubctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
+                githubctx.Add("actor", new StringContextData(hook?.sender?.login));
+                githubctx.Add("run_id", new StringContextData(runid.ToString()));
+                githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
+                githubctx.Add("retention_days", new StringContextData("90"));
+                githubctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
+                // The Git URL to the repository. For example, git://github.com/codertocat/hello-world.git.
+                githubctx["repositoryUrl"] = new StringContextData(hook?.repository?.CloneUrl ?? "");
+                foreach(var kv in GitHubContext) {
+                    githubctx[kv.Key] = new StringContextData(kv.Value);
+                }
+                return contextData;
             };
             try {
                 List<JobItem> jobgroup = new List<JobItem>();
@@ -995,7 +1037,19 @@ namespace Runner.Server.Controllers
                                     bool required = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.inputs.{inputName}.required").Value).FirstOrDefault();
                                     string type = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "type" select r.Value.AssertString($"on.workflow_call.inputs.{inputName}.type").Value).First();
                                     var defassertMessage = $"on.workflow_call.inputs.{inputName}.default";
-                                    var def = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault()?.ToContextData();
+                                    var rawdef = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault();
+                                    if(rawdef != null) {
+                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Evaluate {defassertMessage}" }), workflowTimelineId, workflowRecordId);
+                                        var contextData = createContext("");
+                                        templateContext.ExpressionValues.Clear();
+                                        templateContext.Errors.Clear();
+                                        foreach (var pair in contextData) {
+                                            templateContext.ExpressionValues[pair.Key] = pair.Value;
+                                        }
+                                        rawdef = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "workflow_call-input-context", rawdef, 0, fileId, true);
+                                        templateContext.Errors.Check();
+                                    }
+                                    var def = rawdef?.ToContextData();
                                     switch(type) {
                                     case "string":
                                         if(def == null) {
@@ -1184,40 +1238,6 @@ namespace Runner.Server.Controllers
                     attempt.WorkflowRun.DisplayName = workflowname;
                     _context.SaveChanges();
                 }
-                Func<string, DictionaryContextData> createContext = jobname => {
-                    var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
-                    contextData["inputs"] = callingJob?.Inputs;
-                    var githubctx = new DictionaryContextData();
-                    contextData.Add("github", githubctx);
-                    githubctx.Add("server_url", new StringContextData(GitServerUrl));
-                    githubctx.Add("api_url", new StringContextData(GitApiServerUrl));
-                    githubctx.Add("graphql_url", new StringContextData(GitGraphQlServerUrl));
-                    githubctx.Add("workflow", new StringContextData(workflowname));
-                    githubctx.Add("repository", new StringContextData(repository_name));
-                    githubctx.Add("sha", new StringContextData(Sha ?? "000000000000000000000000000000000"));
-                    githubctx.Add("repository_owner", new StringContextData(hook?.repository?.Owner?.login ?? "Unknown"));
-                    githubctx.Add("ref", new StringContextData(Ref));
-                    // TODO check if it is protected
-                    githubctx.Add("ref_protected", new BooleanContextData(false));
-                    githubctx.Add("ref_type", new StringContextData(Ref.StartsWith("refs/tags/") ? "tag" : Ref.StartsWith("refs/heads/") ? "branch" : ""));
-                    githubctx.Add("ref_name", new StringContextData(Ref.StartsWith("refs/tags/") ? Ref.Substring("refs/tags/".Length) : Ref.StartsWith("refs/heads/") ? Ref.Substring("refs/heads/".Length) : ""));
-                    if(AllowJobNameOnJobProperties) {
-                        githubctx.Add("job", new StringContextData(jobname));
-                    }
-                    githubctx.Add("head_ref", new StringContextData(hook?.pull_request?.head?.Ref ?? ""));// only for PR
-                    githubctx.Add("base_ref", new StringContextData(hook?.pull_request?.Base?.Ref ?? ""));// only for PR
-                    // event_path is filled by event
-                    githubctx.Add("event", payloadObject.ToPipelineContextData());
-                    githubctx.Add("event_name", new StringContextData(callingJob?.Event ?? event_name));
-                    githubctx.Add("actor", new StringContextData(hook?.sender?.login));
-                    githubctx.Add("run_id", new StringContextData(runid.ToString()));
-                    githubctx.Add("run_number", new StringContextData(runnumber.ToString()));
-                    githubctx.Add("retention_days", new StringContextData("90"));
-                    githubctx.Add("run_attempt", new StringContextData(attempt.Attempt.ToString()));
-                    // The Git URL to the repository. For example, git://github.com/codertocat/hello-world.git.
-                    githubctx["repositoryUrl"] = new StringContextData(hook?.repository?.CloneUrl ?? "");
-                    return contextData;
-                };
                 Action<DictionaryContextData, JobItem, JobCompletedEvent> updateNeedsCtx = (needsctx, job, e) => {
                     IDictionary<string, VariableValue> dependentOutputs = e.Outputs != null ? new Dictionary<string, VariableValue>(e.Outputs) : new Dictionary<string, VariableValue>();
                     DictionaryContextData jobctx = new DictionaryContextData();
@@ -1542,6 +1562,7 @@ namespace Runner.Server.Controllers
                                         strategyctx["job-total"] = new NumberContextData(jobTotal);
                                         if(jobTotal > 1) {
                                             jobitem.Childs = new List<JobItem>();
+                                            jobitem.NoStatusCheck = true;
                                             var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                             AddJob(_job);
                                         }
@@ -1578,6 +1599,7 @@ namespace Runner.Server.Controllers
                                                             if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null), fjob.MatrixToken)) {
                                                                 var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true } : jobitem;
                                                                 _next.TimelineId = fjob.TimeLineId;
+                                                                _next.NoStatusCheck = true;
                                                                 jobitem.Childs?.Add(_next);
                                                                 return b => {
                                                                     var jevent = new JobCompletedEvent(_next.RequestId, _next.Id, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false)));
@@ -1900,15 +1922,9 @@ namespace Runner.Server.Controllers
                             ji.ActionStatusQueue.Post(() => {
                                 return updateJobStatus(ji, e.Result);
                             });
-                            if(e.JobId != ja.Id) {
-                                var c = ja.Childs.Where(ji => e.JobId == ji.Id).First();
-                                c.Completed = true;
-                                updateStatus(c);
-                                ja.Completed = ja.Childs.All(ji => ji.Completed);
-                            } else {
-                                ja.Completed = true;
-                                updateStatus(ja);
-                            }
+                            ji.Status = e.Result;
+                            ji.Completed = true;
+                            updateStatus(ji);
                             if(jobs.All(j => j.Completed)) {
                                 FinishJobController.OnJobCompletedAfter -= workflowcomplete;
                                 exctx.workflow = jobs.ToList();
@@ -2109,7 +2125,7 @@ namespace Runner.Server.Controllers
                 }
             } catch(Exception ex) {
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, ex.Message.Split('\n').ToList()), workflowTimelineId, workflowRecordId);
-                updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
+                //updateJobStatus.Invoke(new JobItem() { DisplayName = "Fatal Failure", Status = TaskResult.Failed }, TaskResult.Failed);
                 return new HookResponse { repo = repository_name, run_id = runid, skipped = false, failed = true };
             } finally {
                 if(!asyncProcessing && callingJob == null) {
@@ -2181,6 +2197,66 @@ namespace Runner.Server.Controllers
                     }
                 });
             }
+            // Job permissions
+            TemplateToken jobPermissions = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "permissions" select r).FirstOrDefault().Value ?? workflowPermissions;
+            var calculatedPermissions = new Dictionary<string, string>();
+            {
+                var _hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
+                var _ghook = _hook.ToObject<GiteaHook>();
+                var isFork = !WriteAccessForPullRequestsFromForks && wevent == "pull_request" && (_ghook?.pull_request?.head?.Repo?.Fork ?? false);
+                calculatedPermissions["metadata"] = "read";
+                var stkn = jobPermissions as StringToken;
+                if(jobPermissions == null || stkn != null) {
+                    if(stkn?.Value != "none") {
+                        if(stkn?.Value == "read-all" || (isFork && stkn?.Value == "write-all")) {
+                            calculatedPermissions["actions"] = "read";
+                            calculatedPermissions["checks"] = "read";
+                            calculatedPermissions["contents"] = "read";
+                            calculatedPermissions["deployments"] = "read";
+                            calculatedPermissions["issues"] = "read";
+                            calculatedPermissions["packages"] = "read";
+                            calculatedPermissions["pull_requests"] = "read";
+                            calculatedPermissions["security_events"] = "read";
+                            calculatedPermissions["statuses"] = "read";
+                        } else if(isFork) {
+                            calculatedPermissions["contents"] = "read";
+                        } else if(jobPermissions == null || stkn?.Value == "write-all") {
+                            calculatedPermissions["actions"] = "write";
+                            calculatedPermissions["checks"] = "write";
+                            calculatedPermissions["contents"] = "write";
+                            calculatedPermissions["deployments"] = "write";
+                            calculatedPermissions["issues"] = "write";
+                            calculatedPermissions["packages"] = "write";
+                            calculatedPermissions["pull_requests"] = "write";
+                            calculatedPermissions["security_events"] = "write";
+                            calculatedPermissions["statuses"] = "write";
+                        }
+                    }
+                } else {
+                    foreach(var kv in jobPermissions.AssertMapping($"jobs.{name}.permissions Only String or Mapping expected")) {
+                        var keyname = kv.Key.AssertString($"jobs.{name}.permissions mapping key").Value.Replace("-", "_");
+                        var keyvalue = kv.Value.AssertString($"jobs.{name}.permissions mapping value").Value;
+                        if(keyname != "id_token") {
+                            if(keyvalue == "none") {
+                                calculatedPermissions.Remove(keyname);
+                            } else {
+                                calculatedPermissions[keyname] = isFork ? "read" : keyvalue;
+                            }
+                        }
+                    }
+                }
+                if(callingJob?.Permissions != null) {
+                    foreach(var kv in new Dictionary<string, string>(calculatedPermissions)) {
+                        if(callingJob.Permissions.TryGetValue(kv.Key, out var mPerm)) {
+                            if(mPerm == "read" && kv.Value == "write") {
+                                calculatedPermissions[kv.Key] = "read";
+                            }
+                        } else {
+                            calculatedPermissions.Remove(kv.Key);
+                        }
+                    }
+                }
+            }
             var rawSteps = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "steps" select r).FirstOrDefault().Value?.AssertSequence($"jobs.{name}.steps");
             if(rawSteps == null) {
                 var rawUses = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "uses" select r).FirstOrDefault().Value?.AssertString($"jobs.{name}.uses");
@@ -2207,8 +2283,14 @@ namespace Runner.Server.Controllers
                         String.IsNullOrEmpty(pathSegments[1]) ||
                         String.IsNullOrEmpty(gitRef))
                     {
-                        // todo: loc
-                        // context.Error(uses, $"Expected format {{org}}/{{repo}}[/path]@ref. Actual '{uses.Value}'");
+                        if(String.IsNullOrEmpty(gitRef) && pathSegments.Length > 0) {
+                            var directoryPath = String.Join("/", pathSegments);
+                            reference = new RepositoryPathReference
+                            {
+                                RepositoryType = PipelineConstants.SelfAlias,
+                                Path = directoryPath
+                            };
+                        }
                     }
                     else
                     {
@@ -2323,7 +2405,7 @@ namespace Runner.Server.Controllers
                                     });
                                 }
                                 new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                            }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname};
+                            }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions};
                             var resp = clone.ConvertYaml2(filename, filecontent, ghook.repository.full_name, GitServerUrl, ghook, hook, "workflow_call", null, false, null, _secrets.ToArray(), null, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value));
                             if(resp == null || resp.failed || resp.skipped) {
                                 failedtoInstantiateWorkflow(filename);
@@ -2352,7 +2434,12 @@ namespace Runner.Server.Controllers
                                 if(!string.IsNullOrEmpty(GITHUB_TOKEN)) {
                                     client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN}");
                                 } else {
-                                    githubAppToken = await CreateGithubAppToken(repo);
+                                    if(AllowPrivateActionAccess) {
+                                        githubAppToken = await CreateGithubAppToken(reference.Name);
+                                    }
+                                    if(githubAppToken == null) {
+                                        githubAppToken = await CreateGithubAppToken(repo);
+                                    }
                                     if(githubAppToken != null) {
                                         client.DefaultRequestHeaders.Add("Authorization", $"token {githubAppToken}");
                                     }
@@ -2525,9 +2612,6 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            // Job permissions
-            TemplateToken jobPermissions = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "permissions" select r).FirstOrDefault().Value ?? workflowPermissions;
-
             var defaultToken = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "defaults" select r).FirstOrDefault().Value;
 
             List<TemplateToken> jobDefaults = new List<TemplateToken>();
@@ -2600,51 +2684,6 @@ namespace Runner.Server.Controllers
                             {
                                 Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
                             };
-                            var calculatedPermissions = new Dictionary<string, string>();
-                            var _hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
-                            var _ghook = _hook.ToObject<GiteaHook>();
-                            var isFork = !WriteAccessForPullRequestsFromForks && wevent == "pull_request" && (_ghook?.pull_request?.head?.Repo?.Fork ?? false);
-                            calculatedPermissions["metadata"] = "read";
-                            var stkn = jobPermissions as StringToken;
-                            if(jobPermissions == null || stkn != null) {
-                                if(stkn?.Value != "none") {
-                                    if(stkn?.Value == "read-all" || (isFork && stkn?.Value == "write-all")) {
-                                        calculatedPermissions["actions"] = "read";
-                                        calculatedPermissions["checks"] = "read";
-                                        calculatedPermissions["contents"] = "read";
-                                        calculatedPermissions["deployments"] = "read";
-                                        calculatedPermissions["issues"] = "read";
-                                        calculatedPermissions["packages"] = "read";
-                                        calculatedPermissions["pull_requests"] = "read";
-                                        calculatedPermissions["security_events"] = "read";
-                                        calculatedPermissions["statuses"] = "read";
-                                    } else if(isFork) {
-                                        calculatedPermissions["contents"] = "read";
-                                    } else if(jobPermissions == null || stkn?.Value == "write-all") {
-                                        calculatedPermissions["actions"] = "write";
-                                        calculatedPermissions["checks"] = "write";
-                                        calculatedPermissions["contents"] = "write";
-                                        calculatedPermissions["deployments"] = "write";
-                                        calculatedPermissions["issues"] = "write";
-                                        calculatedPermissions["packages"] = "write";
-                                        calculatedPermissions["pull_requests"] = "write";
-                                        calculatedPermissions["security_events"] = "write";
-                                        calculatedPermissions["statuses"] = "write";
-                                    }
-                                }
-                            } else {
-                                foreach(var kv in jobPermissions.AssertMapping($"jobs.{name}.permissions Only String or Mapping expected")) {
-                                    var keyname = kv.Key.AssertString($"jobs.{name}.permissions mapping key").Value.Replace("-", "_");
-                                    var keyvalue = kv.Value.AssertString($"jobs.{name}.permissions mapping value").Value;
-                                    if(keyname != "id_token") {
-                                        if(keyvalue == "none") {
-                                            calculatedPermissions.Remove(keyname);
-                                        } else {
-                                            calculatedPermissions[keyname] = isFork ? "read" : keyvalue;
-                                        }
-                                    }
-                                }
-                            }
                             var installation = appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]).GetAwaiter().GetResult();
                             var response = appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = calculatedPermissions }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview).GetAwaiter().GetResult();
                             variables["system.github.token"] = new VariableValue(response.Body.Token, true);
@@ -3126,7 +3165,7 @@ namespace Runner.Server.Controllers
                         client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN ?? githubAppToken}");
                     }
                     var urlBuilder = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{hook.repository.full_name}/commits"));
-                    urlBuilder.Query = $"?page=1&limit=1";
+                    urlBuilder.Query = $"?page=1&limit=1&per_page=1";
                     var res = await client.GetAsync(urlBuilder.ToString());
                     if(res.StatusCode == System.Net.HttpStatusCode.OK) {
                         var content = await res.Content.ReadAsStringAsync();
