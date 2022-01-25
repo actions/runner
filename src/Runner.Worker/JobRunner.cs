@@ -242,11 +242,11 @@ namespace GitHub.Runner.Worker
 
                         if (result == TaskResult.Failed && warnOnFailedJob)
                         {
-                            jobContext.Warning($"This job failure may be caused by using an out of date self-hosted runner. You are currently using runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version} at {serverPackages[0].DownloadUrl}");
+                            jobContext.Warning($"This job failure may be caused by using an out of date self-hosted runner. You are currently using runner version {currentVersion}. Please update to the latest version {serverPackages[0].Version}");
                         }
                         else if (warnOnOldRunnerVersion)
                         {
-                            jobContext.Warning($"This self-hosted runner is currently using runner version {currentVersion}. This version is out of date. Please update to the latest version {serverPackages[0].Version} at {serverPackages[0].DownloadUrl}");
+                            jobContext.Warning($"This self-hosted runner is currently using runner version {currentVersion}. This version is out of date. Please update to the latest version {serverPackages[0].Version}");
                         }
                     }
                 }
