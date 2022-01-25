@@ -227,16 +227,18 @@ namespace Runner.Server
                 });
             }
             var shutdownPipe = Environment.GetEnvironmentVariable("RUNNER_CLIENT_PIPE_IN");
-            Task.Run(() => {
-                using (PipeStream pipeClient = new AnonymousPipeClientStream(PipeDirection.In, shutdownPipe)) {
-                    using (StreamReader rd = new StreamReader(pipeClient)) {
-                        var line = rd.ReadLine();
-                        if(line == "shutdown") {
-                            lifetime.StopApplication();
+            if(shutdownPipe != null) {
+                Task.Run(() => {
+                    using (PipeStream pipeClient = new AnonymousPipeClientStream(PipeDirection.In, shutdownPipe)) {
+                        using (StreamReader rd = new StreamReader(pipeClient)) {
+                            var line = rd.ReadLine();
+                            if(line == "shutdown") {
+                                lifetime.StopApplication();
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
