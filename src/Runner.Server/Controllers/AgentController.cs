@@ -39,7 +39,6 @@ namespace Runner.Server.Controllers
         private static object lok = new object();
 
         [HttpPost("{poolId}")]
-        [HttpPatch("{poolId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
         public async Task<IActionResult> Post(int poolId) {
             TaskAgent agent = await FromBody<TaskAgent>();
@@ -61,30 +60,55 @@ namespace Runner.Server.Controllers
 
         [HttpDelete("{poolId}/{agentId}")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
-        public async Task<ActionResult> Delete(int poolId, int agentId)
+        public IActionResult Delete(int poolId, int agentId)
         {
             var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
-            _context.Agents.Remove(agent);
-            await _context.SaveChangesAsync();
-            _cache.Remove($"{Agent.CachePrefix}{poolId}_{agentId}");
+            lock(lok) {
+                _context.Agents.Remove(agent);
+                _context.SaveChanges();
+            }
             return NoContent();
+        }
+
+        [HttpPut("{poolId}/{agentId}")]
+        [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentManagement")]
+        public async Task<ActionResult> Replace(int poolId, int agentId)
+        {
+            TaskAgent tagent = await FromBody<TaskAgent>();
+            lock(lok) {
+                var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
+                agent.TaskAgent.Authorization = new TaskAgentAuthorization() { ClientId = agent.ClientId, PublicKey = new TaskAgentPublicKey(agent.Exponent, agent.Modulus), AuthorizationUrl = new Uri($"{ServerUrl}/_apis/v1/auth/") };
+                agent.TaskAgent.Labels.Clear();
+                foreach(var l in tagent.Labels) {
+                    agent.TaskAgent.Labels.Add(l);
+                }
+                agent.TaskAgent.Name = tagent.Name;
+                agent.TaskAgent.Ephemeral = tagent.Ephemeral;
+                agent.TaskAgent.OSDescription = tagent.OSDescription;
+                if(tagent.Authorization != null) {
+                    if(tagent.Authorization.PublicKey?.Exponent != null && tagent.Authorization.PublicKey?.Modulus != null) {
+                        agent.TaskAgent.Authorization.PublicKey.Exponent = tagent.Authorization.PublicKey.Exponent;
+                        agent.TaskAgent.Authorization.PublicKey.Modulus = tagent.Authorization.PublicKey.Modulus;
+                    }
+                    if(tagent.Authorization.ClientId != Guid.Empty) {
+                        agent.TaskAgent.Authorization.ClientId = tagent.Authorization.ClientId;
+                    }
+                    agent.Exponent = agent.TaskAgent.Authorization.PublicKey.Exponent;
+                    agent.Modulus = agent.TaskAgent.Authorization.PublicKey.Modulus;
+                    agent.ClientId = agent.TaskAgent.Authorization.ClientId;
+                }
+                agent.TaskAgent.ProvisioningState = tagent.ProvisioningState;
+                agent.TaskAgent.Enabled = tagent.Enabled;
+                _context.SaveChanges();
+                tagent = agent.TaskAgent;
+            }
+            return await Ok(tagent);
         }
 
         [HttpGet("{poolId}")]
         public async Task<ActionResult> Get(int poolId, [FromQuery] string agentName)
         {
-            var pool = Pool.GetPoolById(_cache, _context, poolId);
-            if(pool == null) {
-                return NotFound();
-            }
-            await _context.Entry(pool).Collection(p => p.Agents).LoadAsync();
-            foreach (var item in pool.Agents)
-            {
-                await _context.Entry(item).Reference(p => p.TaskAgent).LoadAsync();
-            }
-            return await Ok(new VssJsonCollectionWrapper<List<TaskAgent>> (
-                (from agent in pool.Agents ?? new List<Agent>() where agent != null && agent.TaskAgent.Name == agentName select agent.TaskAgent).ToList()
-            ));
+            return await Ok(new VssJsonCollectionWrapper<IEnumerable<TaskAgent>>(from agent in _context.Agents where (poolId == 0 || poolId == -1 || agent.Pool.Id == poolId) && (string.IsNullOrEmpty(agentName) || agent.TaskAgent.Name == agentName) select agent.TaskAgent));
         }
     }
 }
