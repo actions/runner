@@ -261,7 +261,7 @@ namespace GitHub.Runner.Listener.Configuration
                         if (command.Ephemeral &&
                             command.Ephemeral != agent.Ephemeral)
                         {
-                            throw new NotSupportedException("The GitHub server does not support configure self-hosted runner with 'Ephemeral' flag.");
+                            throw new NotSupportedException("The GitHub server does not support configuring a self-hosted runner with 'Ephemeral' flag.");
                         }
 
                         _term.WriteSuccessMessage("Runner successfully added");
