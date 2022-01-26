@@ -84,6 +84,7 @@ namespace GitHub.Runner.Common
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
             this.SecretMasker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
+            this.SecretMasker.AddValueEncoder(ValueEncoders.BashComparand);
             this.SecretMasker.AddValueEncoder(ValueEncoders.CommandLineArgumentEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
             this.SecretMasker.AddValueEncoder(ValueEncoders.JsonStringEscape);

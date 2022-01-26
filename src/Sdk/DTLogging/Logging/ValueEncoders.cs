@@ -38,6 +38,20 @@ namespace GitHub.DistributedTask.Logging
             return Base64StringEscapeShift(value, 2);
         }
 
+        public static String BashComparand(String value)
+        {
+            var result = new StringBuilder();
+            foreach (var c in value)
+            {
+                if (!char.IsLowSurrogate(c))
+                {
+                    result.Append('\\');
+                }
+                result.Append(c);
+            }
+            return result.ToString();
+        }
+
         // Used when we pass environment variables to docker to escape " with \"
         public static String CommandLineArgumentEscape(String value)
         {
