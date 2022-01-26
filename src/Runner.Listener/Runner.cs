@@ -409,19 +409,19 @@ namespace GitHub.Runner.Listener
                                     autoUpdateInProgress = true;
                                     var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     // Can mock the update for testing
-                                    if (true || StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
+                                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
                                     {
 
-                                        // the runnmock_update_messages.json file should be of format [{"targetVersion":"2.284.1"}, {"targetVersion":"2.285.0"}]
+                                        // the mock_update_messages.json file should be of format { "2.283.2": {"targetVersion":"2.284.1"}, "2.284.1": {"targetVersion":"2.285.0"}}
                                         var mockUpdatesPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "mock_update_messages.json");
                                         if (File.Exists(mockUpdatesPath))
                                         {
-                                            var mockUpdateMessages = JsonUtility.FromString<List<AgentRefreshMessage>>(File.ReadAllText(mockUpdatesPath));
-                                            if (mockUpdateMessages.Any())
+                                            var mockUpdateMessages = JsonUtility.FromString<Dictionary<string, AgentRefreshMessage>>(File.ReadAllText(mockUpdatesPath));
+                                            if (mockUpdateMessages.ContainsKey(BuildConstants.RunnerPackage.Version))
                                             {
-                                                // Mock only the version
-                                                _term.WriteLine($"Mocking update, using version {mockUpdateMessages.First().TargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
-                                                runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockUpdateMessages.First().TargetVersion, runnerUpdateMessage.Timeout);
+                                                var mockTargetVersion = mockUpdateMessages[BuildConstants.RunnerPackage.Version].TargetVersion;
+                                                _term.WriteLine($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockTargetVersion, runnerUpdateMessage.Timeout);
                                                 var temp = JsonUtility.ToString(mockUpdateMessages.Skip(1));
                                                 File.WriteAllText(mockUpdatesPath, JsonUtility.ToString(mockUpdateMessages.Skip(1)));
                                             }
