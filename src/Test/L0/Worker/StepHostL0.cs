@@ -45,10 +45,10 @@ namespace GitHub.Runner.Common.Tests.Worker
                                .ReturnsAsync(0);
 
                 // Act.
-                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node16");
+                var nodeVersion = await sh.DetermineNodeRuntimeVersion(_ec.Object, "node12");
 
                 // Assert.
-                Assert.Equal("node16", nodeVersion);
+                Assert.Equal("node12", nodeVersion);
             }
         }
 

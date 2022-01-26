@@ -16,7 +16,7 @@ outputs:
 icon: 'hello.svg' # vector art to display in the GitHub Marketplace
 color: 'green' # optional, decorates the entry in the GitHub Marketplace
 runs:
-  using: 'node16'
+  using: 'node12'
   main: 'main.js'
   pre: 'init.js'
   pre-if: 'cancelled()'

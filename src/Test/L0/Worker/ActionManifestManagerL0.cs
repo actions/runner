@@ -408,7 +408,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var nodeAction = result.Execution as NodeJSActionExecutionData;
 
                 Assert.Equal("main.js", nodeAction.Script);
-                Assert.Equal("node16", nodeAction.NodeVersion);
+                Assert.Equal("node12", nodeAction.NodeVersion);
             }
             finally
             {
