@@ -136,11 +136,11 @@ if [[ "$currentplatform" == 'darwin'  && restartinteractiverunner -eq 0 ]]; then
     then
         # inspect the open file handles to find the node process
         # we can't actually inspect the process using ps because it uses relative paths and doesn't follow symlinks
-        nodever="node12"
+        nodever="node16"
         path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
-        if ! [[ $? -eq 0 && -n "$path" ]]
+        if [[ $? -ne  || -n "$path" ]] # Fallback if RunnerService.js was started with node12
         then
-            nodever="node16"
+            nodever="node12"
             path=$(lsof -a -g "$procgroup" -F n | grep $nodever/bin/node | grep externals | tail -1 | cut -c2-)
         fi
         if [[ $? -eq 0 && -n "$path" ]]
