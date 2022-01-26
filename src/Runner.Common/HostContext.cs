@@ -243,6 +243,12 @@ namespace GitHub.Runner.Common
                     path = new DirectoryInfo(GetDirectory(WellKnownDirectory.Bin)).Parent.FullName;
                     break;
 
+                case WellKnownDirectory.StepSummary:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Temp),
+                        Constants.Path.StepSummaryDirectory);
+                    break;
+
                 case WellKnownDirectory.Temp:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Work),

@@ -104,7 +104,7 @@ namespace GitHub.Runner.Worker
                     // Set GITHUB_ACTION
                     step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
 
-                    var stepSummaryFilePath = GetStepSummaryPath(step);
+                    var stepSummaryFilePath = CreateStepSummaryFile(step);
                     step.ExecutionContext.SetGitHubContext("step_summary", stepSummaryFilePath);
                     envContext["GITHUB_STEP_SUMMARY"] = new StringContextData(stepSummaryFilePath);
 
@@ -356,30 +356,46 @@ namespace GitHub.Runner.Worker
         private void CompleteStep(IStep step, TaskResult? result = null, string resultCode = null)
         {
             var executionContext = step.ExecutionContext;
+            var parentContext = executionContext.Root;
             var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
 
             Trace.Info($"Reading step summary data from {stepSummaryFilePath}");
-            Trace.Info($"File exists: {stepSummaryFilePath} {File.Exists(stepSummaryFilePath)}");
 
-            using (var fileStream = new FileStream(stepSummaryFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
-            using (var sr = new StreamReader(fileStream))
+            var summaryExists = File.Exists(stepSummaryFilePath);
+            if (summaryExists)
             {
-                Trace.Info($"Step summary data: {sr.ReadToEnd()}");
+              Trace.Info($"File exists: {stepSummaryFilePath}");
+
+              var summaryFileIsEmpty = new FileInfo(stepSummaryFilePath).Length == 0;
+              if (summaryFileIsEmpty)
+              {
+                Trace.Info($"Summary file ({summaryFileIsEmpty}) is empty, skipping attachment upload");
+              }
+              else
+              {
+                var stepID = executionContext.Id;
+                Trace.Info($"Queueing file ({stepSummaryFilePath}) for attachment upload ({stepID})");
+                parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, stepID.ToString(), stepSummaryFilePath);
+              }
             }
 
             executionContext.Complete(result, resultCode: resultCode);
         }
 
-        private string GetStepSummaryPath(IStep step)
+        private string CreateStepSummaryFile(IStep step)
         {
-            var stepSummaryDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_step_summary");
-            Directory.CreateDirectory(stepSummaryDirectory);
-            var stepSummaryFilePath = Path.Combine(stepSummaryDirectory, $"{Guid.NewGuid().ToString()}.md");
-
-            using (File.Create(stepSummaryFilePath)) {
-                Trace.Info($"Using step summary file '{stepSummaryFilePath}'");
+            var stepSummaryDirectory = HostContext.GetDirectory(WellKnownDirectory.StepSummary);
+            if (!Directory.Exists(stepSummaryDirectory))
+            {
+              Trace.Info($"Creating step summary directory: {stepSummaryDirectory}");
+              Directory.CreateDirectory(stepSummaryDirectory);
             }
 
+            var stepID = step.ExecutionContext.Id;
+            var stepSummaryFilePath = Path.Combine(stepSummaryDirectory, $"{stepID}.md");
+
+            Trace.Info($"Creating step summary file: {stepSummaryFilePath}");
+            File.Create(stepSummaryFilePath).Close();
             return stepSummaryFilePath;
         }
     }
