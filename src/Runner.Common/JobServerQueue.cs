@@ -78,6 +78,9 @@ namespace GitHub.Runner.Common
         private const int _webConsoleLineQueueSizeLimit = 1024;
         private bool _webConsoleLineAggressiveDequeue = true;
         private bool _firstConsoleOutputs = true;
+        private StreamingFeedRequest _consoleStream;
+        private bool _useStreamingConsoleFeed;
+        private TimeSpan _maxStreamingRequestDuration;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -104,6 +107,28 @@ namespace GitHub.Runner.Common
             _planId = jobRequest.Plan.PlanId;
             _jobTimelineId = jobRequest.Timeline.Id;
             _jobTimelineRecordId = jobRequest.JobId;
+            
+            if (jobRequest.Variables.TryGetValue("DistributedTask.UseStreamingConsoleFeed", out var useStreamingLogs))
+            {
+                if (!bool.TryParse(useStreamingLogs.Value, out _useStreamingConsoleFeed))
+                {
+                    _useStreamingConsoleFeed = false;
+                }
+
+                if (_useStreamingConsoleFeed)
+                {
+                    _maxStreamingRequestDuration = TimeSpan.FromSeconds(10);
+                    if (jobRequest.Variables.TryGetValue("DistributedTask.ConsoleFeedMaxRequestTime", out var maxRequestTime))
+                    {
+                        if (TimeSpan.TryParse(maxRequestTime.Value, out var parsedDuration))
+                        {
+                            _maxStreamingRequestDuration = parsedDuration;
+                        }
+                    }
+
+                    Trace.Info("Using streaming console feed with max request duration of {0}", _maxStreamingRequestDuration);
+                }
+            }
 
             // Server already create the job timeline
             _timelineUpdateQueue[_jobTimelineId] = new ConcurrentQueue<TimelineRecord>();
@@ -139,11 +164,23 @@ namespace GitHub.Runner.Common
             _queueInProcess = false;
             Trace.Info("All queue process task stopped.");
 
-            // Drain the queue
             // ProcessWebConsoleLinesQueueAsync() will never throw exception, live console update is always best effort.
             Trace.Verbose("Draining web console line queue.");
             await ProcessWebConsoleLinesQueueAsync(runOnce: true);
             Trace.Info("Web console line queue drained.");
+
+            // Drain the queue
+            if (_consoleStream != null)
+            {
+                try
+                {
+                    await _consoleStream.DrainAsync(); 
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error(ex);
+                }
+            }
 
             // ProcessFilesUploadQueueAsync() will never throw exception, log file upload is always best effort.
             Trace.Verbose("Draining file upload queue.");
@@ -287,19 +324,24 @@ namespace GitHub.Runner.Common
                             batchedLines = batchedLines.TakeLast(2).ToList();
                         }
 
+                        if (_useStreamingConsoleFeed && _consoleStream == null)
+                        {
+                            _consoleStream = _jobServer.CreateStreamingFeedRequest(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, _maxStreamingRequestDuration, CancellationToken.None);
+                        }
+
                         int errorCount = 0;
                         foreach (var batch in batchedLines)
                         {
                             try
                             {
                                 // we will not requeue failed batch, since the web console lines are time sensitive.
-                                if (batch[0].LineNumber.HasValue)
+                                if (_useStreamingConsoleFeed)
                                 {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value, default(CancellationToken));
+                                    await _consoleStream.Writer.WriteAsync(new TimelineRecordFeedLinesWrapper(stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber ?? 0));
                                 }
                                 else
                                 {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), default(CancellationToken));
+                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber?? 0, default(CancellationToken));
                                 }
 
                                 if (_firstConsoleOutputs)
