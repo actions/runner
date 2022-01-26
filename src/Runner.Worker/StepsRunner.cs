@@ -367,8 +367,8 @@ namespace GitHub.Runner.Worker
             var stepSummaryDirectory = HostContext.GetDirectory(WellKnownDirectory.StepSummary);
             if (!Directory.Exists(stepSummaryDirectory))
             {
-              Trace.Info($"Creating step summary directory: {stepSummaryDirectory}");
-              Directory.CreateDirectory(stepSummaryDirectory);
+                Trace.Info($"Creating step summary directory: {stepSummaryDirectory}");
+                Directory.CreateDirectory(stepSummaryDirectory);
             }
 
             var stepID = step.ExecutionContext.Id;
@@ -379,30 +379,31 @@ namespace GitHub.Runner.Worker
             return stepSummaryFilePath;
         }
 
-        private void CreateSummaryAttachment(IStep step) {
-          var executionContext = step.ExecutionContext;
-          var parentContext = executionContext.Root;
-          var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
-          var stepID = executionContext.Id;
+        private void CreateSummaryAttachment(IStep step)
+        {
+            var executionContext = step.ExecutionContext;
+            var parentContext = executionContext.Root;
+            var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
+            var stepID = executionContext.Id;
 
-          Trace.Info($"Reading step summary data from {stepSummaryFilePath}");
+            Trace.Info($"Reading step summary data from {stepSummaryFilePath}");
 
-          var summaryExists = File.Exists(stepSummaryFilePath);
-          if (summaryExists)
-          {
-            Trace.Info($"File exists: {stepSummaryFilePath}");
-
-            var summaryFileIsEmpty = new FileInfo(stepSummaryFilePath).Length == 0;
-            if (summaryFileIsEmpty)
+            var summaryExists = File.Exists(stepSummaryFilePath);
+            if (summaryExists)
             {
-              Trace.Info($"Summary file ({summaryFileIsEmpty}) is empty, skipping attachment upload");
+                Trace.Info($"File exists: {stepSummaryFilePath}");
+
+                var summaryFileIsEmpty = new FileInfo(stepSummaryFilePath).Length == 0;
+                if (summaryFileIsEmpty)
+                {
+                    Trace.Info($"Summary file ({summaryFileIsEmpty}) is empty, skipping attachment upload");
+                }
+                else
+                {
+                    Trace.Info($"Queueing file ({stepSummaryFilePath}) for attachment upload ({stepID})");
+                    parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, stepID.ToString(), stepSummaryFilePath);
+                }
             }
-            else
-            {
-              Trace.Info($"Queueing file ({stepSummaryFilePath}) for attachment upload ({stepID})");
-              parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, stepID.ToString(), stepSummaryFilePath);
-            }
-          }
         }
     }
 }
