@@ -2,14 +2,18 @@
 
 - Add Runner Configuration option to disable auto update `--disableupdate` (#1558)
 - Introduce `GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY` env variable to skip SSL Cert Verification on the Runner (#1616)
+- Adds support for downloading trimmed versions of the runner when the entire package does not need to be upgraded (#1568)
 
 ## Bugs
-
+- Set Outcome/Conclusion for composite action steps (#1600)
 
 ## Misc
 
-- Update run.sh to more gracefully handle updates (#1494)
-- Use 8Mb default chunking for FileContainer Uploads (#1626)
+- Update `run.sh` to more gracefully handle updates (#1494)
+- Use 8Mb default chunking for File Container Uploads (#1626)
+- Performance improvements in handling large amounts of live logs (#1592)
+- Allow `./svc.sh stop` to exit as soon as runner process exits (#1580)
+- Add additional tracing to help troubleshoot job message corruption (#1587)
 
 
 ## Windows x64
