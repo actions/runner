@@ -1,21 +1,15 @@
 ## Features
 
-- Bump runtime to dotnet 6 (#1471)
-- Show service container logs on teardown (#1563)
+- Add Runner Configuration option to disable auto update `--disableupdate` (#1558)
+- Introduce `GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY` env variable to skip SSL Cert Verification on the Runner (#1616)
 
 ## Bugs
-
-- Add masks for multiline secrets from ::add-mask:: (#1521)
-- fix Log size and retention settings not work (#1507)
-- Refactor SelfUpdater adding L0 tests. (#1564)
-- Fix test failure: /bin/sleep on Macos 11 (Monterey) does not accept the suffix s. (#1472)
 
 
 ## Misc
 
-- Update dependency check for dotnet 6. (#1551)
-- Produce trimmed down runner packages. (#1556)
-- Deleted extra background in github-praph.png, which is displayed in README.md (#1432)
+- Update run.sh to more gracefully handle updates (#1494)
+- Use 8Mb default chunking for FileContainer Uploads (#1626)
 
 
 ## Windows x64
