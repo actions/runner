@@ -156,6 +156,9 @@ namespace Runner.Client
             public string LogOutputDir { get; set; }
             public bool NoDefaultPayload  { get; set; }
             public string Token { get; set; }
+            public string Repository { get; set; }
+            public string Ref { get; set; }
+            public string Sha { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -619,6 +622,15 @@ namespace Runner.Client
             var logOutputDirOpt = new Option<string>(
                 "--log-output-dir",
                 description: "Output folder for all logs produced by this runs");
+            var repositoryOpt = new Option<string>(
+                "--repository",
+                description: "Custom github.repository");
+            var shaOpt = new Option<string>(
+                "--sha",
+                description: "Custom github.sha");
+            var refOpt = new Option<string>(
+                "--ref",
+                description: "Custom github.ref");
             var rootCommand = new RootCommand
             {
                 workflowOption,
@@ -656,7 +668,10 @@ namespace Runner.Client
                 gitZipballUrlOpt,
                 remoteCheckoutOpt,
                 artifactOutputDirOpt,
-                logOutputDirOpt
+                logOutputDirOpt,
+                repositoryOpt,
+                shaOpt,
+                refOpt,
             };
 
             rootCommand.Description = "Run your workflows locally.";
@@ -1063,24 +1078,19 @@ namespace Runner.Client
                                     if(parameters.RemoteCheckout) {
                                         query.Add("localcheckout", "false");
                                     }
-                                    b.Query = query.ToQueryString().ToString().TrimStart('?');
                                     JObject payloadContent = new JObject();
-                                    if(!parameters.NoDefaultPayload) {
+                                    {
                                         var acommits = new JArray();
                                         payloadContent["commits"] = acommits;
-                                        var sha = "4544205a385319fe846d5df4ed2e3b8173569d78";
+                                        var sha = parameters.Sha;
                                         var bf = "0000000000000000000000000000000000000000";
                                         var user = JObject.FromObject(new { login = parameters.actor, name = parameters.actor, email = $"{parameters.actor}@runner.server.localhost", id = 976638, type = "user" });
-                                        var commit = JObject.FromObject(new { message = "Untraced changes", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
-                                        acommits.AddFirst(commit);
-                                        payloadContent["head_commit"] = commit;
                                         payloadContent["sender"] = user;
                                         payloadContent["pusher"] = user;
                                         var repoowner = user;
                                         payloadContent["before"] = bf;
-                                        payloadContent["after"] = sha;
-                                        string reponame = "Unknown";
-                                        string repofullname = "Unknown/Unknown";
+                                        var Ref = parameters.Ref;
+                                        string repofullname = parameters.Repository;
                                         try {
                                             string line = null;
                                             EventHandler<ProcessDataReceivedEventArgs> handleoutput = (s, e) => {
@@ -1088,75 +1098,98 @@ namespace Runner.Client
                                                     line = e.Data;
                                                 }
                                             };
-                                            GitHub.Runner.Sdk.ProcessInvoker gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                            gitinvoker.OutputDataReceived += handleoutput;
-                                            var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                                             var git = WhichUtil.Which("git", true);
-                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "tag --points-at HEAD", new Dictionary<string, string>(), source.Token);
-                                            if(line != null) {
-                                                payloadContent["ref"] = "refs/tags/" + line;
-                                            }
-                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                            gitinvoker.OutputDataReceived += handleoutput;
-                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "symbolic-ref HEAD", new Dictionary<string, string>(), source.Token);
-                                            if(line != null) {
-                                                var _ref = line;
-                                                if(!payloadContent.ContainsKey("ref")) {
-                                                    payloadContent["ref"] = _ref;
-                                                }
-                                                line = null;
+                                            GitHub.Runner.Sdk.ProcessInvoker gitinvoker;
+                                            if(string.IsNullOrEmpty(Ref)) {
                                                 gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                                                 gitinvoker.OutputDataReceived += handleoutput;
-                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"for-each-ref --format=%(upstream:short) {_ref}", new Dictionary<string, string>(), source.Token);
-                                                if(line != null && line != "") {
-                                                    var remote = line.Substring(0, line.IndexOf('/'));
-                                                    if(parameters.defaultbranch == null) {
+                                                var binpath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "tag --points-at HEAD", new Dictionary<string, string>(), source.Token);
+                                                if(line != null) {
+                                                    Ref = "refs/tags/" + line;
+                                                }
+                                            }
+                                            if(string.IsNullOrEmpty(Ref) || string.IsNullOrEmpty(repofullname)) {
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                gitinvoker.OutputDataReceived += handleoutput;
+                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "symbolic-ref HEAD", new Dictionary<string, string>(), source.Token);
+                                                if(line != null) {
+                                                    var _ref = line;
+                                                    if(string.IsNullOrEmpty(Ref)) {
+                                                        Ref = _ref;
+                                                    }
+                                                    if(string.IsNullOrEmpty(repofullname)) {
                                                         line = null;
                                                         gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                                                         gitinvoker.OutputDataReceived += handleoutput;
-                                                        await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"symbolic-ref refs/remotes/{remote}/HEAD", new Dictionary<string, string>(), source.Token);
-                                                        if(line != null && line.StartsWith($"refs/remotes/{remote}/")) {
-                                                            var defbranch = line.Substring($"refs/remotes/{remote}/".Length);
-                                                            parameters.defaultbranch = defbranch;
-                                                        }
-                                                    }
-                                                    line = null;
-                                                    gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                                    gitinvoker.OutputDataReceived += handleoutput;
-                                                    await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"remote get-url {remote}", new Dictionary<string, string>(), source.Token);
-                                                    if(line != null) {
-                                                        Regex repoRegex = new Regex("^.*[:/\\\\]([^:/\\\\]+)[/\\\\]([^:/\\\\]+)(.git)?$", RegexOptions.IgnoreCase);
-                                                        var repoMatchResult = repoRegex.Match(line);
-                                                        if(repoMatchResult.Success) {
-                                                            var owner = repoMatchResult.Groups[1].Value;
-                                                            var repo = repoMatchResult.Groups[2].Value;
-                                                            if(repo.EndsWith(".git")) {
-                                                                repo = repo.Substring(0, repo.Length - 4);
+                                                        await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"for-each-ref --format=%(upstream:short) {_ref}", new Dictionary<string, string>(), source.Token);
+                                                        if(line != null && line != "") {
+                                                            var remote = line.Substring(0, line.IndexOf('/'));
+                                                            if(parameters.defaultbranch == null) {
+                                                                line = null;
+                                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                                gitinvoker.OutputDataReceived += handleoutput;
+                                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"symbolic-ref refs/remotes/{remote}/HEAD", new Dictionary<string, string>(), source.Token);
+                                                                if(line != null && line.StartsWith($"refs/remotes/{remote}/")) {
+                                                                    var defbranch = line.Substring($"refs/remotes/{remote}/".Length);
+                                                                    parameters.defaultbranch = defbranch;
+                                                                }
                                                             }
-                                                            repofullname = owner + "/" +  repo;
-                                                            reponame = repo;
+                                                            line = null;
+                                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                            gitinvoker.OutputDataReceived += handleoutput;
+                                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, $"remote get-url {remote}", new Dictionary<string, string>(), source.Token);
+                                                            if(line != null) {
+                                                                Regex repoRegex = new Regex("^.*[:/\\\\]([^:/\\\\]+)[/\\\\]([^:/\\\\]+)(.git)?$", RegexOptions.IgnoreCase);
+                                                                var repoMatchResult = repoRegex.Match(line);
+                                                                if(repoMatchResult.Success) {
+                                                                    var owner = repoMatchResult.Groups[1].Value;
+                                                                    var repo = repoMatchResult.Groups[2].Value;
+                                                                    if(repo.EndsWith(".git")) {
+                                                                        repo = repo.Substring(0, repo.Length - 4);
+                                                                    }
+                                                                    repofullname = owner + "/" +  repo;
+                                                                }
+                                                            }
                                                         }
                                                     }
+                                                } else {
+                                                    await Console.Error.WriteLineAsync("No default github.ref found");
                                                 }
-                                            } else {
-                                                await Console.Error.WriteLineAsync("No default github.ref found");
                                             }
-                                            line = null;
-                                            gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
-                                            gitinvoker.OutputDataReceived += handleoutput;
-                                            await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "rev-parse HEAD", new Dictionary<string, string>(), source.Token);
-                                            if(line != null) {
-                                                payloadContent["after"] = line;
+                                            if(string.IsNullOrEmpty(sha)) {
                                                 line = null;
-                                            } else {
-                                                await Console.Error.WriteLineAsync("Couldn't retrive github.sha");
+                                                gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
+                                                gitinvoker.OutputDataReceived += handleoutput;
+                                                await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "rev-parse HEAD", new Dictionary<string, string>(), source.Token);
+                                                if(line != null) {
+                                                    sha = line;
+                                                    line = null;
+                                                } else {
+                                                    await Console.Error.WriteLineAsync("Couldn't retrive github.sha");
+                                                }
                                             }
-
                                         } catch {
                                             await Console.Error.WriteLineAsync("Failed to detect git repo the github context may have invalid values");
                                         }
-
-                                        var repository = JObject.FromObject(new { owner = repoowner, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = reponame, full_name = repofullname });
+                                        if(string.IsNullOrEmpty(repofullname) || !repofullname.Contains('/')) {
+                                            repofullname = "Unknown/Unknown";
+                                        }
+                                        if(string.IsNullOrEmpty(Ref)) {
+                                            Ref = "refs/heads/main";
+                                        }
+                                        if(string.IsNullOrEmpty(sha)) {
+                                            sha = "4544205a385319fe846d5df4ed2e3b8173569d78";
+                                        }
+                                        query.Add("Ref", Ref);
+                                        query.Add("Sha", sha);
+                                        query.Add("Repository", repofullname);
+                                        payloadContent["ref"] = Ref;
+                                        payloadContent["after"] = sha;
+                                        var commit = JObject.FromObject(new { message = "Untraced changes", id = sha, added = addedFiles, removed = removedFiles, modified = changedFiles });
+                                        acommits.AddFirst(commit);
+                                        payloadContent["head_commit"] = commit;
+                                        var repository = JObject.FromObject(new { owner = repoowner, default_branch = parameters.defaultbranch ?? "main", master_branch = parameters.defaultbranch ?? "master", name = repofullname.Split('/', 2)[1], full_name = repofullname });
                                         payloadContent["repository"] = repository;
                                     }
                                     
@@ -1166,14 +1199,20 @@ namespace Runner.Client
                                             var filec = await File.ReadAllTextAsync(parameters.payload, Encoding.UTF8);
                                             var obj = JObject.Parse(filec);
 
-                                            payloadContent.Merge(obj, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
+                                            if(parameters.NoDefaultPayload) {  
+                                                payloadContent = obj;
+                                            } else {
+                                                payloadContent.Merge(obj, new JsonMergeSettings { MergeArrayHandling = MergeArrayHandling.Replace });
+                                            }
                                         } catch {
                                             Console.WriteLine($"Failed to read file: {parameters.payload}");
                                             return 1;
                                         }
+                                    } else if(parameters.NoDefaultPayload) {
+                                        payloadContent = new JObject();
                                     }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
-
+                                    b.Query = query.ToQueryString().ToString().TrimStart('?');
                                     resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, b.Uri.ToString()) { Content = mp }, HttpCompletionOption.ResponseHeadersRead);
                                     resp.EnsureSuccessStatusCode();
                                 } finally {
@@ -1573,6 +1612,9 @@ namespace Runner.Client
                 parameters.RemoteCheckout = bindingContext.ParseResult.GetValueForOption(remoteCheckoutOpt);
                 parameters.ArtifactOutputDir = bindingContext.ParseResult.GetValueForOption(artifactOutputDirOpt);
                 parameters.LogOutputDir = bindingContext.ParseResult.GetValueForOption(logOutputDirOpt);
+                parameters.Repository = bindingContext.ParseResult.GetValueForOption(repositoryOpt);
+                parameters.Sha = bindingContext.ParseResult.GetValueForOption(shaOpt);
+                parameters.Ref = bindingContext.ParseResult.GetValueForOption(refOpt);
                 return parameters;
             });
 

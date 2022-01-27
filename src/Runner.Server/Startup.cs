@@ -100,7 +100,12 @@ namespace Runner.Server
                 });
 
             });
+#if EF_MIGRATION
+            // By default we use an InMemoryDatabase, which is incompatible with sqlite migrations
+            var sqlitecon = "Data Source=Agents.db;";
+#else
             var sqlitecon = Configuration.GetConnectionString("sqlite");
+#endif
             if(string.IsNullOrEmpty(sqlitecon)) {
                 services.AddHostedService<CleanUpArtifactsAndCache>();
             }

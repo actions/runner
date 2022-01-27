@@ -552,7 +552,10 @@ interface IWorkflowRun {
   id: string,
   fileName: string,
   displayName: string,
-  eventName: string
+  eventName: string,
+  ref: string,
+  sha: string,
+  result: string
 }
 function JobPage() {
   var params = useParams();
@@ -783,7 +786,7 @@ function App() {
             <Route path="/" element={<Navigate to={"0"}/>}/>
             <Route path=":page/:repo/*" element={
               <Routes>
-                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`}></GenericList>}/>
+                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} {o.result ?? "Pending"}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`}></GenericList>}/>
                 <Route path="/" element={<Navigate to={"0"}/>}/>
                 <Route path=":page/:runid/*" element={
                   <div style={{display: 'flex', flexFlow: 'row', alignItems: 'left', width: '100%', height: '100%'}}>

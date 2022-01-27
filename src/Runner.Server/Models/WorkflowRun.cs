@@ -19,5 +19,11 @@ namespace Runner.Server.Models
         public List<WorkflowRunAttempt> Attempts { get; set; }
         [NotMapped]
         public String EventName { get; set; }
+        [NotMapped]
+        public String Ref { get; set; }
+        [NotMapped]
+        public String Sha { get; set; }
+        [NotMapped]
+        public TaskResult? Result { get; set; }
     }
 }

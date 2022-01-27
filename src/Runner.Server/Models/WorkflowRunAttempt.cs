@@ -23,5 +23,9 @@ namespace Runner.Server.Models
         [IgnoreDataMember]
         public List<ArtifactContainer> Artifacts { get; set; }
         public Guid TimeLineId { get; set; }
+        public string Ref { get; set; }
+        public string Sha { get; set; }
+        public string StatusCheckSha { get; set; }
+        public TaskResult? Result { get; set; }
     }
 }
