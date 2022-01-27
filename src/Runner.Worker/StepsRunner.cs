@@ -104,9 +104,16 @@ namespace GitHub.Runner.Worker
                     // Set GITHUB_ACTION
                     step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
 
-                    var stepSummaryFilePath = CreateStepSummaryFile(step);
-                    step.ExecutionContext.SetGitHubContext("step_summary", stepSummaryFilePath);
-                    envContext["GITHUB_STEP_SUMMARY"] = new StringContextData(stepSummaryFilePath);
+                    if (ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
+                    {
+                        var stepSummaryFilePath = CreateStepSummaryFile(step);
+                        step.ExecutionContext.SetGitHubContext("step_summary", stepSummaryFilePath);
+                        envContext["GITHUB_STEP_SUMMARY"] = new StringContextData(stepSummaryFilePath);
+                    }
+                    else
+                    {
+                        Trace.Info("Step Summary is disabled; skipping file creation");
+                    }
 
                     try
                     {
@@ -357,7 +364,15 @@ namespace GitHub.Runner.Worker
         {
             var executionContext = step.ExecutionContext;
 
-            CreateSummaryAttachment(step);
+            if (ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
+            {
+                CreateSummaryAttachment(step);
+            }
+            else
+            {
+                Trace.Info("Step Summary is disabled; skipping file creation");
+
+            }
 
             executionContext.Complete(result, resultCode: resultCode);
         }
