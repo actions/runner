@@ -128,7 +128,7 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: runner-packages
-        path: ./
+        path: _package
 
     # Create ReleaseNote file
     - name: Create ReleaseNote
