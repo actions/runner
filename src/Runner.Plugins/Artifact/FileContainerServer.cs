@@ -469,7 +469,7 @@ namespace GitHub.Runner.Plugins.Artifact
                         try
                         {
                             uploadTimer.Restart();
-                            using (HttpResponseMessage response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token, chunkSize: 4 * 1024 * 1024))
+                            using (HttpResponseMessage response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token))
                             {
                                 if (response == null || response.StatusCode != HttpStatusCode.Created)
                                 {

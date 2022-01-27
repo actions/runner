@@ -27,6 +27,11 @@ namespace GitHub.Runner.Sdk
 
             VssClientHttpRequestSettings.Default.UserAgent = headerValues;
             VssHttpMessageHandler.DefaultWebProxy = proxy;
+
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+            {
+                VssClientHttpRequestSettings.Default.ServerCertificateValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            }
         }
 
         public static VssConnection CreateConnection(Uri serverUri, VssCredentials credentials, IEnumerable<DelegatingHandler> additionalDelegatingHandler = null, TimeSpan? timeout = null)

@@ -318,7 +318,7 @@ namespace GitHub.Runner.Listener
 
                 IJobDispatcher jobDispatcher = null;
                 CancellationTokenSource messageQueueLoopTokenSource = CancellationTokenSource.CreateLinkedTokenSource(HostContext.RunnerShutdownToken);
-                
+
                 // Should we try to cleanup ephemeral runners
                 bool runOnceJobCompleted = false;
                 try
@@ -408,7 +408,7 @@ namespace GitHub.Runner.Listener
                                     autoUpdateInProgress = true;
                                     var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.RunnerShutdownToken);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
@@ -425,6 +425,7 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
+                                    Trace.Info($"Received job message of length {message.Body.Length} from service, with hash '{IOUtil.GetSha256Hash(message.Body)}'");
                                     var jobMessage = StringUtil.ConvertFromJson<Pipelines.AgentJobRequestMessage>(message.Body);
                                     jobDispatcher.Run(jobMessage, runOnce);
                                     if (runOnce)
@@ -539,13 +540,14 @@ Config Options:
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
  --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`
+ --disableupdate        Disable self-hosted runner automatic update to the latest released version`
  --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
-        if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-            _term.WriteLine($@" --runasservice   Run the runner as a service");
-            _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
-            _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
-        }
-        _term.WriteLine($@"
+            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
+                _term.WriteLine($@" --runasservice   Run the runner as a service");
+                _term.WriteLine($@" --windowslogonaccount string   Account to run the service as. Requires runasservice");
+                _term.WriteLine($@" --windowslogonpassword string  Password for the service account. Requires runasservice");
+            }
+            _term.WriteLine($@"
 Examples:
  Check GitHub server network connectivity:
   .{separator}run.{ext} --check --url <url> --pat <pat>

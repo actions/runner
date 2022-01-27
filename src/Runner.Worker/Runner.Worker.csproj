@@ -7,8 +7,8 @@
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
     <NoWarn>NU1701;NU1603;CA1416</NoWarn>
     <Version>$(Version)</Version>
-    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
-    <PublishReadyToRun>true</PublishReadyToRun>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <PublishReadyToRunComposite>true</PublishReadyToRunComposite>
   </PropertyGroup>
 
   <ItemGroup>
