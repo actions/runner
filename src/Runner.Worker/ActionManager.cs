@@ -619,7 +619,6 @@ namespace GitHub.Runner.Worker
         private async Task<IDictionary<string, WebApi.ActionDownloadInfo>> GetDownloadInfoAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions)
         {
             executionContext.Output("Getting action download info");
-            executionContext.Output($"yay!!!! got jobid: {executionContext.Root.Id}");
             // Convert to action reference
             var actionReferences = actions
                 .GroupBy(x => GetDownloadInfoLookupKey(x))
@@ -650,7 +649,7 @@ namespace GitHub.Runner.Worker
             for (var attempt = 1; attempt <= 3; attempt++)
             {
                 try
-                {   
+                {
                     actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     break;
                 }
