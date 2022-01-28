@@ -619,7 +619,7 @@ namespace GitHub.Runner.Worker
         private async Task<IDictionary<string, WebApi.ActionDownloadInfo>> GetDownloadInfoAsync(IExecutionContext executionContext, List<Pipelines.ActionStep> actions)
         {
             executionContext.Output("Getting action download info");
-            
+
             // Convert to action reference
             var actionReferences = actions
                 .GroupBy(x => GetDownloadInfoLookupKey(x))
