@@ -25,6 +25,7 @@ namespace GitHub.DistributedTask.WebApi
             this.ProvisioningState = referenceToBeCloned.ProvisioningState;
             this.AccessPoint = referenceToBeCloned.AccessPoint;
             this.Ephemeral = referenceToBeCloned.Ephemeral;
+            this.DisableUpdate = referenceToBeCloned.DisableUpdate;
 
             if (referenceToBeCloned.m_links != null)
             {
@@ -87,6 +88,16 @@ namespace GitHub.DistributedTask.WebApi
         /// </summary>
         [DataMember]
         public bool? Ephemeral
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Whether or not this agent should auto-update to latest version.
+        /// </summary>
+        [DataMember(EmitDefaultValue = false)]
+        public bool? DisableUpdate
         {
             get;
             set;
