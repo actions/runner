@@ -41,8 +41,8 @@ namespace GitHub.Runner.Common
             int totalAttempts = 5;
             int attemptCount = totalAttempts;
             var configurationStore = HostContext.GetService<IConfigurationStore>();
-            var runnerSettings = configurationStore.GetSettings(); 
-            
+            var runnerSettings = configurationStore.GetSettings();
+
             while (!_connection.HasAuthenticated && attemptCount-- > 0)
             {
                 try
