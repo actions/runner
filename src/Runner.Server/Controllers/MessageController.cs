@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using GitHub.DistributedTask.WebApi;
@@ -1049,7 +1049,7 @@ namespace Runner.Server.Controllers
                                 if(inputInfo != null) {
                                     var workflowCallInputMappingKey = $"on.workflow_call.inputs.{inputName} mapping key";
                                     bool required = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.inputs.{inputName}.required").Value).FirstOrDefault();
-                                    string type = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "type" select r.Value.AssertString($"on.workflow_call.inputs.{inputName}.type").Value).First();
+                                    string type = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "type" select r.Value.AssertString($"on.workflow_call.inputs.{inputName}.type").Value).FirstOrDefault();
                                     var defassertMessage = $"on.workflow_call.inputs.{inputName}.default";
                                     var rawdef = (from r in inputInfo where r.Key.AssertString(workflowCallInputMappingKey).Value == "default" select r.Value).FirstOrDefault();
                                     if(rawdef != null) {
@@ -1084,7 +1084,7 @@ namespace Runner.Server.Controllers
                                         def.AssertBoolean(defassertMessage);
                                     break;
                                     default:
-                                        throw new Exception($"on.workflow_call.inputs.{inputName}.type assigned to invalid type: {type}, expected 'string', 'number' or 'boolean'");
+                                        throw new Exception($"on.workflow_call.inputs.{inputName}.type assigned to invalid type: '{type}', expected 'string', 'number' or 'boolean'");
                                     }
                                     var inputsDict = callingJob?.Inputs.AssertDictionary("dict");
                                     var assertMessage = $"This workflow requires that the input: {inputName}, to have type {type}";
