@@ -1619,6 +1619,8 @@ namespace Runner.Server.Controllers
                                             jobitem.NoStatusCheck = true;
                                             var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                             AddJob(_job);
+                                            // Fix workflow doesn't wait for cancelled matrix jobs to finish, add dummy sessionid
+                                            _job.SessionId = Guid.NewGuid();
                                         }
                                         {
                                             int i = 0;
@@ -2412,6 +2414,13 @@ namespace Runner.Server.Controllers
                         traceWriter.Verbose("Failed to instantiate Workflow: {0}", message);
                         new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                     };
+                    if(cancel) {
+                        traceWriter.Verbose("workflow_call cancelled successfully");
+                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Canceled, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                        return _job;
+                    }
+                    // Fix workflow doesn't wait for cancelled called workflows to finish, add dummy sessionid
+                    _job.SessionId = Guid.NewGuid();
                     (new Func<Task>(async () => {
                         if(reference == null) {
                             failedtoInstantiateWorkflow($"Invalid reference format: {uses.Value}");
