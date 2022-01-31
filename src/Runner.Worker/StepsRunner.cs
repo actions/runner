@@ -364,17 +364,41 @@ namespace GitHub.Runner.Worker
         {
             var executionContext = step.ExecutionContext;
 
-            if (ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
+            if (ShouldUploadAttachment(step))
             {
-                CreateSummaryAttachment(step);
-            }
-            else
-            {
-                Trace.Info("Step Summary is disabled; skipping file creation");
-
+                QueueStepSummaryUpload(step);
             }
 
             executionContext.Complete(result, resultCode: resultCode);
+        }
+
+        private bool ShouldUploadAttachment(IStep step)
+        {
+          var executionContext = step.ExecutionContext;
+          var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
+
+          if(!ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
+          {
+              Trace.Info("Step Summary is disabled; skipping attachment upload");
+              return false;
+          }
+
+          var summaryExists = File.Exists(stepSummaryFilePath);
+          if (summaryExists)
+          {
+              Trace.Info($"Summary file ({stepSummaryFilePath}) does not exist; skipping attachment upload");
+              return false;
+          }
+          Trace.Info($"Summary file exists: {stepSummaryFilePath}");
+
+          var summaryFileIsEmpty = new FileInfo(stepSummaryFilePath).Length == 0;
+          if (summaryFileIsEmpty)
+          {
+              Trace.Info($"Summary file ({stepSummaryFilePath}) is empty; skipping attachment upload");
+              return false;
+          }
+
+          return true;
         }
 
         private string CreateStepSummaryFile(IStep step)
@@ -394,31 +418,16 @@ namespace GitHub.Runner.Worker
             return stepSummaryFilePath;
         }
 
-        private void CreateSummaryAttachment(IStep step)
+        private void QueueStepSummaryUpload(IStep step)
         {
             var executionContext = step.ExecutionContext;
             var parentContext = executionContext.Root;
             var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
-            var stepID = executionContext.Id;
+            var stepID = step.ExecutionContext.Id;
+            var attachmentName = stepID.ToString();
 
-            Trace.Info($"Reading step summary data from {stepSummaryFilePath}");
-
-            var summaryExists = File.Exists(stepSummaryFilePath);
-            if (summaryExists)
-            {
-                Trace.Info($"File exists: {stepSummaryFilePath}");
-
-                var summaryFileIsEmpty = new FileInfo(stepSummaryFilePath).Length == 0;
-                if (summaryFileIsEmpty)
-                {
-                    Trace.Info($"Summary file ({summaryFileIsEmpty}) is empty, skipping attachment upload");
-                }
-                else
-                {
-                    Trace.Info($"Queueing file ({stepSummaryFilePath}) for attachment upload ({stepID})");
-                    parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, stepID.ToString(), stepSummaryFilePath);
-                }
-            }
+            Trace.Info($"Queueing file ({stepSummaryFilePath}) for attachment upload ({attachmentName})");
+            parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, stepSummaryFilePath);
         }
     }
 }
