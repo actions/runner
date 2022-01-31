@@ -128,3 +128,28 @@ jobs:
         gharun -W testworkflows/artifact.yml -P self-hosted=ubuntu:latest
         gharun -W testworkflows/cache.yml -P ubuntu-latest=ubuntu:latest
       shell: bash
+    - name: Test sqlite support
+      if: contains(matrix.os, 'ubuntu')
+      run: |
+        mkdir gharun
+        cd gharun
+        unzip ../src/Runner.Client/nupkg/io.github.christopherhx.gharun.${{needs.package.outputs.version}}.nupkg
+        chmod -R +rw tools/
+        dotnet tools/net5.0/any/Runner.Server.dll --urls http://*:5000 "--ConnectionStrings:sqlite=Data Source=Agents.db;" &
+        sleep 2
+        echo "Check for creation of sqlite db"
+        stat Agents.db
+        echo "Configure Runner"
+        dotnet tools/net5.0/any/Runner.Listener.dll configure --url http://localhost:5000 --token nothing
+        echo "Start Runner"
+        dotnet tools/net5.0/any/Runner.Listener.dll run&
+        sleep 2
+        echo "Send job"
+        cd ..
+        gharun --server http://localhost:5000 -W testworkflows/testlocalcheckout.yml
+        gharun --server http://localhost:5000 -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
+        gharun --server http://localhost:5000 -W testworkflows/testhashfiles.yml
+        gharun --server http://localhost:5000 -W testworkflows/dumpcontexts.yml
+        gharun --server http://localhost:5000 -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
+        gharun --server http://localhost:5000 -W testworkflows/artifact.yml
+      shell: bash
