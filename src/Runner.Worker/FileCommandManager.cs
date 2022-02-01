@@ -259,4 +259,20 @@ namespace GitHub.Runner.Worker
             return text.Substring(originalIndex, lfIndex - originalIndex);
         }
     }
+
+    public sealed class SetStepSummaryCommand: RunnerService, IFileCommandExtension
+    {
+        public string ContextName => "step_summary";
+        public string FilePrefix => "step_summary_";
+
+        public Type ExtensionType => typeof(IFileCommandExtension);
+
+        public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
+        {
+            if (File.Exists(filePath))
+            {
+                Trace.Info($"Submitting step summary content from file {filePath}");
+            }
+        }
+    }
 }
