@@ -9,7 +9,6 @@ namespace GitHub.Runner.Common
         Externals,
         Root,
         Actions,
-        StepSummary,
         Temp,
         Tools,
         Update,
@@ -198,7 +197,6 @@ namespace GitHub.Runner.Common
             public static readonly string DiagDirectory = "_diag";
             public static readonly string ExternalsDirectory = "externals";
             public static readonly string RunnerDiagnosticLogPrefix = "Runner_";
-            public static readonly string StepSummaryDirectory = "_step_summary";
             public static readonly string TempDirectory = "_temp";
             public static readonly string ToolDirectory = "_tool";
             public static readonly string UpdateDirectory = "_update";

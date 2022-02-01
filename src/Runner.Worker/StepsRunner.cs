@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -103,20 +102,6 @@ namespace GitHub.Runner.Worker
                 {
                     // Set GITHUB_ACTION
                     step.ExecutionContext.SetGitHubContext("action", actionStep.Action.Name);
-
-                    if (ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
-                    {
-                        var stepSummaryFilePath = CreateStepSummaryFile(step);
-                        if (!String.IsNullOrEmpty(stepSummaryFilePath))
-                        {
-                          step.ExecutionContext.SetGitHubContext("step_summary", stepSummaryFilePath);
-                          envContext["GITHUB_STEP_SUMMARY"] = new StringContextData(stepSummaryFilePath);
-                        }
-                    }
-                    else
-                    {
-                        Trace.Info("Step Summary is disabled; skipping file creation");
-                    }
 
                     try
                     {
@@ -367,106 +352,7 @@ namespace GitHub.Runner.Worker
         {
             var executionContext = step.ExecutionContext;
 
-            if (ShouldUploadAttachment(step))
-            {
-                QueueStepSummaryUpload(step);
-            }
-
             executionContext.Complete(result, resultCode: resultCode);
-        }
-
-        private bool ShouldUploadAttachment(IStep step)
-        {
-          var executionContext = step.ExecutionContext;
-          var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
-
-          if (!ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
-          {
-              Trace.Info("Step Summary is disabled; skipping attachment upload");
-              return false;
-          }
-
-          if (String.IsNullOrEmpty(stepSummaryFilePath))
-          {
-            Trace.Info("Step Summary path is empty; skipping attachment upload");
-            return false;
-          }
-
-          if (File.Exists(stepSummaryFilePath))
-          {
-              Trace.Info($"Step Summary file ({stepSummaryFilePath}) does not exist; skipping attachment upload");
-              return false;
-          }
-
-          Trace.Info($"Step Summary file exists: {stepSummaryFilePath}");
-
-          if (new FileInfo(stepSummaryFilePath).Length == 0)
-          {
-              Trace.Info($"Step Summary file ({stepSummaryFilePath}) is empty; skipping attachment upload");
-              return false;
-          }
-
-          return true;
-        }
-
-        private string CreateStepSummaryFile(IStep step)
-        {
-            var stepSummaryDirectory = HostContext.GetDirectory(WellKnownDirectory.StepSummary);
-            if (!Directory.Exists(stepSummaryDirectory))
-            {
-                Trace.Info($"Creating step summary directory: {stepSummaryDirectory}");
-                try
-                {
-                  Directory.CreateDirectory(stepSummaryDirectory);
-                }
-                catch (UnauthorizedAccessException e)
-                {
-                    Trace.Error($"Permission is required to create step summary directory: {stepSummaryDirectory}");
-                    Trace.Error(e);
-                    return null;
-                }
-                catch (Exception e)
-                {
-                    Trace.Error($"Unable to create step summary directory: {stepSummaryDirectory}");
-                    Trace.Error(e);
-                    return null;
-                }
-            }
-
-            var stepID = step.ExecutionContext.Id;
-            var stepSummaryFilePath = Path.Combine(stepSummaryDirectory, $"{stepID}.md");
-
-            Trace.Info($"Creating step summary file: {stepSummaryFilePath}");
-            try
-            {
-                File.Create(stepSummaryFilePath).Close();
-            }
-            catch (UnauthorizedAccessException e)
-            {
-                Trace.Error($"Permission is required to create step summary file: {stepSummaryFilePath}");
-                Trace.Error(e);
-                return null;
-            }
-            catch (Exception e)
-            {
-                Trace.Error($"Unable to create step summary file: {stepSummaryFilePath}");
-                Trace.Error(e);
-                return null;
-            }
-
-            return stepSummaryFilePath;
-        }
-
-        private void QueueStepSummaryUpload(IStep step)
-        {
-            var executionContext = step.ExecutionContext;
-            var parentContext = executionContext.Root;
-            var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
-            var stepID = step.ExecutionContext.Id;
-            var attachmentName = stepID.ToString();
-
-            Trace.Info($"Queueing file ({stepSummaryFilePath}) for attachment upload ({attachmentName})");
-            parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, stepSummaryFilePath);
         }
     }
 }
