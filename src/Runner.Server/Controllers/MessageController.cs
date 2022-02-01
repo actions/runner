@@ -651,7 +651,7 @@ namespace Runner.Server.Controllers
                         new GitHubJwt.GitHubJwtFactoryOptions
                         {
                             AppIntegrationId = GitHubAppId, // The GitHub App Id
-                            ExpirationSeconds = 600 // 10 minutes is the maximum time allowed
+                            ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
                         }
                     );
                     var jwtToken = generator.CreateEncodedJwtToken();
@@ -765,7 +765,7 @@ namespace Runner.Server.Controllers
                                 new GitHubJwt.GitHubJwtFactoryOptions
                                 {
                                     AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                    ExpirationSeconds = 600 // 10 minutes is the maximum time allowed
+                                    ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
                                 }
                             );
                             var jwtToken = generator.CreateEncodedJwtToken();
@@ -1287,11 +1287,14 @@ namespace Runner.Server.Controllers
                     }
                 }
                 workflowname = callingJob?.WorkflowName ?? (from r in actionMapping where r.Key.AssertString("workflow root mapping key").Value == "name" select r).FirstOrDefault().Value?.AssertString("name").Value ?? fileRelativePath;
-                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
-                if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
-                    attempt.WorkflowRun.DisplayName = workflowname;
-                    _context.SaveChanges();
+                if(callingJob == null)  {
+                    TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Updated Workflow Name: {workflowname}" }), workflowTimelineId, workflowRecordId);
+                    if(attempt.WorkflowRun != null && attempt.WorkflowRun.DisplayName == null && !string.IsNullOrEmpty(workflowname)) {
+                        attempt.WorkflowRun.DisplayName = workflowname;
+                        _context.SaveChanges();
+                    }
                 }
+
                 Action<DictionaryContextData, JobItem, JobCompletedEvent> updateNeedsCtx = (needsctx, job, e) => {
                     IDictionary<string, VariableValue> dependentOutputs = e.Outputs != null ? new Dictionary<string, VariableValue>(e.Outputs) : new Dictionary<string, VariableValue>();
                     DictionaryContextData jobctx = new DictionaryContextData();
@@ -2755,7 +2758,7 @@ namespace Runner.Server.Controllers
                                 new GitHubJwt.GitHubJwtFactoryOptions
                                 {
                                     AppIntegrationId = GitHubAppId, // The GitHub App Id
-                                    ExpirationSeconds = 600 // 10 minutes is the maximum time allowed
+                                    ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
                                 }
                             );
                             var jwtToken = generator.CreateEncodedJwtToken();
@@ -3223,7 +3226,7 @@ namespace Runner.Server.Controllers
             string githubAppToken = null;
             if(!string.IsNullOrEmpty(hook?.repository?.full_name)) {
                 try {
-                    if(GITHUB_TOKEN == null) {
+                    if(string.IsNullOrEmpty(GITHUB_TOKEN)) {
                         githubAppToken = await CreateGithubAppToken(hook.repository.full_name);
                     }
                     var evs = new Dictionary<string,  (string,string,string)>();
@@ -3258,8 +3261,8 @@ namespace Runner.Server.Controllers
                     var client = new HttpClient();
                     client.DefaultRequestHeaders.Add("accept", "application/json");
                     client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
-                    if(!string.IsNullOrEmpty(GITHUB_TOKEN ?? githubAppToken)) {
-                        client.DefaultRequestHeaders.Add("Authorization", $"token {GITHUB_TOKEN ?? githubAppToken}");
+                    if(!string.IsNullOrEmpty(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)) {
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)}");
                     }
                     foreach(var em in evs) {
                         var (Ref, Sha, StatusCheckSha) = em.Value;

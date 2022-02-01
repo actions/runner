@@ -55,7 +55,7 @@ namespace Runner.Server.Controllers
                         new GitHubJwt.GitHubJwtFactoryOptions
                         {
                             AppIntegrationId = GitHubAppId, // The GitHub App Id
-                            ExpirationSeconds = 600 // 10 minutes is the maximum time allowed
+                            ExpirationSeconds = 500 // 10 minutes is the maximum time allowed
                         }
                     );
                     var jwtToken = generator.CreateEncodedJwtToken();
