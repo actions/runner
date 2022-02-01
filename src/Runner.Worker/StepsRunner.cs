@@ -107,8 +107,11 @@ namespace GitHub.Runner.Worker
                     if (ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
                     {
                         var stepSummaryFilePath = CreateStepSummaryFile(step);
-                        step.ExecutionContext.SetGitHubContext("step_summary", stepSummaryFilePath);
-                        envContext["GITHUB_STEP_SUMMARY"] = new StringContextData(stepSummaryFilePath);
+                        if (!String.IsNullOrEmpty(stepSummaryFilePath))
+                        {
+                          step.ExecutionContext.SetGitHubContext("step_summary", stepSummaryFilePath);
+                          envContext["GITHUB_STEP_SUMMARY"] = new StringContextData(stepSummaryFilePath);
+                        }
                     }
                     else
                     {
@@ -377,24 +380,29 @@ namespace GitHub.Runner.Worker
           var executionContext = step.ExecutionContext;
           var stepSummaryFilePath = executionContext.GetGitHubContext("step_summary");
 
-          if(!ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
+          if (!ActionCommandManager.StepSummaryEnabled(step.ExecutionContext))
           {
               Trace.Info("Step Summary is disabled; skipping attachment upload");
               return false;
           }
 
-          var summaryExists = File.Exists(stepSummaryFilePath);
-          if (summaryExists)
+          if (String.IsNullOrEmpty(stepSummaryFilePath))
           {
-              Trace.Info($"Summary file ({stepSummaryFilePath}) does not exist; skipping attachment upload");
+            Trace.Info("Step Summary path is empty; skipping attachment upload");
+            return false;
+          }
+
+          if (File.Exists(stepSummaryFilePath))
+          {
+              Trace.Info($"Step Summary file ({stepSummaryFilePath}) does not exist; skipping attachment upload");
               return false;
           }
-          Trace.Info($"Summary file exists: {stepSummaryFilePath}");
 
-          var summaryFileIsEmpty = new FileInfo(stepSummaryFilePath).Length == 0;
-          if (summaryFileIsEmpty)
+          Trace.Info($"Step Summary file exists: {stepSummaryFilePath}");
+
+          if (new FileInfo(stepSummaryFilePath).Length == 0)
           {
-              Trace.Info($"Summary file ({stepSummaryFilePath}) is empty; skipping attachment upload");
+              Trace.Info($"Step Summary file ({stepSummaryFilePath}) is empty; skipping attachment upload");
               return false;
           }
 
@@ -407,14 +415,45 @@ namespace GitHub.Runner.Worker
             if (!Directory.Exists(stepSummaryDirectory))
             {
                 Trace.Info($"Creating step summary directory: {stepSummaryDirectory}");
-                Directory.CreateDirectory(stepSummaryDirectory);
+                try
+                {
+                  Directory.CreateDirectory(stepSummaryDirectory);
+                }
+                catch (UnauthorizedAccessException e)
+                {
+                    Trace.Error($"Permission is required to create step summary directory: {stepSummaryDirectory}");
+                    Trace.Error(e);
+                    return null;
+                }
+                catch (Exception e)
+                {
+                    Trace.Error($"Unable to create step summary directory: {stepSummaryDirectory}");
+                    Trace.Error(e);
+                    return null;
+                }
             }
 
             var stepID = step.ExecutionContext.Id;
             var stepSummaryFilePath = Path.Combine(stepSummaryDirectory, $"{stepID}.md");
 
             Trace.Info($"Creating step summary file: {stepSummaryFilePath}");
-            File.Create(stepSummaryFilePath).Close();
+            try
+            {
+                File.Create(stepSummaryFilePath).Close();
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                Trace.Error($"Permission is required to create step summary file: {stepSummaryFilePath}");
+                Trace.Error(e);
+                return null;
+            }
+            catch (Exception e)
+            {
+                Trace.Error($"Unable to create step summary file: {stepSummaryFilePath}");
+                Trace.Error(e);
+                return null;
+            }
+
             return stepSummaryFilePath;
         }
 
