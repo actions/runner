@@ -1,97 +1,16 @@
 ## Changes
-- Artifacts v1 support, v2 works for ca. 6 month or longer
-- Cancel reusable workflows and matrix construction
-- Reference reusable workflows relative to current branch
-- Fix cancelling matrix creation
-- Implement concurrency support (#14)
-- Implement permissions support if configured as github app (#13)
-- Provide recursive needs ctx in job-if, parity with github
-- Implement Endpoint for runner diagnostic logs
-- Implement Endpoint to create and get Timelines
-- Fix inputs ctx in job-if errored out
-- Remove jobname from server github context, parity with github
-- Implement basic check_runs on github via github app
-- Fix exception while logging matrix evaluation
-- Refactor secret passing of workflow_call
-- No commit status / check_run for localcheckout and events other than
-"push", "pull_request", "pull_request_target"
-- Only opened, synchronize, synchronized, reopened actions of PR's creating a status
-- github app installation token for reading ( reusable ) workflows
-- added default types for pull_request and pull_request_target event
-- adjust needs ctx creation to not access null Outputs github-act-runner
-- adjust needs ctx creation, to keep failures even if later job succeeds
-- fix race condition, where getmessage takes to long to abort
-    GetMessage is now synchronized per session, to avoid loosing a job
-- Return all artifacts, if the attempt of this run is unknown
-    Used by the new workflow summary
-- Persist workflow logs in the database
-- Send the job property in timeline events
-- Cleanup concurrency groups, if they are empty
-- Always show the full job name in Runner.Client
-    added temporary in memory jobs, which are cleaned up later
-- Refactor: bundle workflow_call parameter in a class
-- Move workflow_call workflow logging into it's own job logs
-- Default types filter for all pull_request events
-- Pseudo job for workflow_call, now always visible in webui
-- skipping an called workflow, now fails the workflow in certain conditions
-- New webui with grouping of jobs and workflow runs
-    Resolves #5
-- Refactor persisting timeline logs
-- Fix db disposed while running multiple workflows
-- Add 60s timeout for starting runners and server
-- Fix handling errors in workflow outputs / job name
-- Always add matrix dummy job to list
-- Add open state of job steps to the UI
-- Remove linefeeds from livelogs of actions/runner
-- Fix issues while rerunning partial workflows
-- Runner: Fix escape '\' before escaping '"'
-- Added alpine linux support, the dotnet tool should now run on alpine
-- Update to System.Commandline 2 beta 2
-- Static github.token now available to workflow_call
-- Mount docker pipe for windows container
-- Fix access of actions artifacts azure app service
-- Improve some type assert error messages
-- accept scalars for branches(-ignore), paths(-ignore), types
-- Use head branch for pull_requests by default
-- Adjust max-parallel to match more with github
-- Add github.repositoryUrl
-- Try to avoid the 100s timeout on node download
-- Fix missing caller job name in callable matrix job
-- Send actions sha to actions/runner
-
-
-- Add custom properties to github context via config GitHubContext
-- Add config option AllowPrivateActionAccess for,
-allowing accessing private repos for reusable workflows and actions
-- Add repositoryUrl to github context
-- Fix evaluating defaults of reusable workflows
-- Fix respect permission of calling workflow only allow downgrade
-- Only query one commit object from commits api on github
-- Fix entity framework migration errors
-always use static sqlite source in this case
-- Include workflow ref, sha and result in the workflow run list
-- Allow overriding github.ref from Runner.Client
-- Allow overriding github.sha from Runner.Client
-- Allow overriding github.repository from Runner.Client
-- Correctly set sha for most events on reruns
-not only for push and pull_request
-- Fix pull request merge sha location in the pull_request event payload
-- Allow to run an workflow with an empty event payload via Runner.Client
-- Save workflow result in the database
-- Fix selecting jobs inside of callable workflows concat jobids with `/`
-- Show output name of workflow_call output prior execution
-- Fix also compare workflow_call ref against sha to use cached workflow
-- Runner access token now expires 10min after timeout, to give the job some time to finish
-- Remove runner sessionid from log
-- Rework parsing webhook event and retrieve a sha from server if necessary
-- Remove old schedule interface of Runner.Client
-
-## Security
-- Mask secrets of workflow_call trace logs
+- Add basic test for sqlite integration
+- No longer throws "sequence is empty" if
+  `on.workflow_call.inputs.*.type` is missing
+- Fix unauthorized calls to GitHub of webhook endpoint if configured as GitHub App, GITHUB_TOKEN auth not affected
+- Fix potential time synchonization issues while requesting a GitHub App Installation Token, the GitHub App jwt now expires after 500s instead of 600s
+- Fix status sha of pull_request trigger pointing to base branch instead of head, version v3.5.0 not affected
+- Fix workflow doesn't wait for cancellation of matrix / workflow_call
 
 ## Known Issues
 
 - **TODO** Manage Verbosity in more levels ideas are welcome, please open a discussion or issue
+- No status checks if `Runner.Server:ServerUrl` is not set in your appsettings.json or via cli, all 3.6.x versions affected
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
