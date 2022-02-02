@@ -269,10 +269,41 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            if (File.Exists(filePath))
+            if (ShouldUploadAttachment(context, filePath))
             {
                 Trace.Info($"Submitting step summary content from file {filePath}");
             }
+        }
+
+        private bool ShouldUploadAttachment(IExecutionContext context, string filePath)
+        {
+            if (!ActionCommandManager.StepSummaryEnabled(context))
+            {
+                Trace.Info("Step Summary is disabled; skipping attachment upload");
+                return false;
+            }
+
+            if (String.IsNullOrEmpty(filePath))
+            {
+                Trace.Info("Step Summary path is empty; skipping attachment upload");
+                return false;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                Trace.Info($"Step Summary file ({filePath}) does not exist; skipping attachment upload");
+                return false;
+            }
+
+            Trace.Info($"Step Summary file exists: {filePath}");
+
+            if (new FileInfo(filePath).Length == 0)
+            {
+                Trace.Info($"Step Summary file ({filePath}) is empty; skipping attachment upload");
+                return false;
+            }
+
+            return true;
         }
     }
 }
