@@ -280,10 +280,15 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> DockerNetworkCreate(IExecutionContext context, string network)
         {
+            int mtu;
+            if (!int.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_DOCKER_NETWORK_MTU") ?? string.Empty, out mtu))
+            {
+                mtu = 1500;
+            }
 #if OS_WINDOWS
-            return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat --opt com.docker.network.driver.mtu={mtu}", context.CancellationToken);
 #else
-            return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
+            return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --opt com.docker.network.driver.mtu={mtu}", context.CancellationToken);
 #endif
         }
 
