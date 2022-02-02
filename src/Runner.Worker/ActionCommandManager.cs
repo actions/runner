@@ -194,7 +194,7 @@ namespace GitHub.Runner.Worker
 
         internal static bool StepSummaryEnabled(IExecutionContext context)
         {
-            return context.Global.Variables.GetBoolean("DistributedTask.StepSummary") ?? false;
+            return context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? false;
         }
     }
 
