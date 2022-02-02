@@ -276,6 +276,7 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
                 var scrubbedFilePath = ScrubStepSummaryFileSecrets(filePath);
 
+                // TODO: For debugging only; remove before opening PR
                 File.Copy(filePath, Path.Combine("/tmp", Path.GetFileName(filePath)));
                 File.Copy(scrubbedFilePath, Path.Combine("/tmp", Path.GetFileName(scrubbedFilePath)));
 
