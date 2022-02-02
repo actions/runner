@@ -223,7 +223,9 @@ namespace GitHub.Runner.Common
             public static class Agent
             {
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
-                public static readonly string ForcedNodeVersion = "GITHUB_ACTIONS_RUNNER_FORCED_NODE_VERSION";
+
+                // Set this env var to force a node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
+                public static readonly string ForcedNodeVersion = "GITHUB_ACTIONS_RUNNER_FORCED_NODE_VERSION"; 
             }
 
             public static class System
