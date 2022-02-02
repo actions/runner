@@ -1,7 +1,5 @@
 #!/bin/bash
 
-echo "Starting update.sh"
-
 # runner will replace key words in the template and generate a batch script to run.
 # Keywords: 
 #  PROCESSID = pid
@@ -19,8 +17,6 @@ existrunnerversion=_EXIST_RUNNER_VERSION_
 downloadrunnerversion=_DOWNLOAD_RUNNER_VERSION_
 logfile="_UPDATE_LOG_"
 restartinteractiverunner=_RESTART_INTERACTIVE_RUNNER_
-
-echo "Creating bin and external folders for $existrunnerversion"
 
 telemetryfile="$rootfolder/_diag/.telemetry"
 
