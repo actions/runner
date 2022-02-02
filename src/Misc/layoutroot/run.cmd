@@ -19,7 +19,7 @@ rem Run.
 rem ********************************************************************************
 
 :launch_helper
-copy run-helper.cmd.template run-helper.cmd /Y
+copy "%~dp0run-helper.cmd.template" "%~dp0run-helper.cmd" /Y
 call "%~dp0run-helper.cmd" %*
   
 if %ERRORLEVEL% EQU 1 (
@@ -27,5 +27,5 @@ if %ERRORLEVEL% EQU 1 (
   goto :launch_helper
 ) else (  
   echo "Exiting runner..."
-  exit 0
+  exit /b 0
 )
