@@ -251,11 +251,13 @@ Add `<url of Runner.Server>/signin-oidc` (https://localhost:5001/signin-oidc) as
 ```json
 {
   "Kestrel": {
-    "HttpsFromPem": {
-      "Url": "https://*:5001",
-      "Certificate": {
-        "Path": "./cert.pem",
-        "KeyPath": "./key.pem"
+    "Endpoints": {
+      "HttpsFromPem": {
+        "Url": "https://*:5001",
+        "Certificate": {
+          "Path": "./cert.pem",
+          "KeyPath": "./key.pem"
+        }
       }
     }
   },
