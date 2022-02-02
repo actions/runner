@@ -274,7 +274,12 @@ namespace GitHub.Runner.Worker
             if (ShouldUploadAttachment(context, filePath))
             {
                 Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
-                QueueStepSummaryUpload(context, filePath);
+                var scrubbedFilePath = ScrubStepSummaryFileSecrets(filePath);
+
+                File.Copy(filePath, Path.Combine("/tmp", Path.GetFileName(filePath)));
+                File.Copy(scrubbedFilePath, Path.Combine("/tmp", Path.GetFileName(scrubbedFilePath)));
+
+                QueueStepSummaryUpload(context, scrubbedFilePath);
             }
         }
 
@@ -316,6 +321,24 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
 
             return true;
+        }
+
+        private string ScrubStepSummaryFileSecrets(string filePath)
+        {
+            var scrubbedFilePath = filePath + "-scrubbed";
+
+            using (var streamReader = new StreamReader(filePath))
+            using (var streamWriter = new StreamWriter(scrubbedFilePath))
+            {
+                string line;
+                while ((line = streamReader.ReadLine()) != null)
+                {
+                    var maskedLine = HostContext.SecretMasker.MaskSecrets(line);
+                    streamWriter.WriteLine(maskedLine);
+                }
+            }
+
+            return scrubbedFilePath;
         }
 
         private void QueueStepSummaryUpload(IExecutionContext context, string filePath)
