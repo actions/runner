@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http;
 using GitHub.Runner.Sdk;
 
@@ -13,7 +14,14 @@ namespace GitHub.Runner.Common
     {
         public HttpClientHandler CreateClientHandler(RunnerWebProxy webProxy)
         {
-            return new HttpClientHandler() { Proxy = webProxy };
+            var client = new HttpClientHandler() { Proxy = webProxy };
+
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+            {
+                client.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            }
+
+            return client;
         }
     }
 }
