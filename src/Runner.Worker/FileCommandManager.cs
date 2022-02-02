@@ -265,6 +265,8 @@ namespace GitHub.Runner.Worker
         public string ContextName => "step_summary";
         public string FilePrefix => "step_summary_";
 
+        private const int AttachmentSizeLimit = 128 * 1024;
+
         public Type ExtensionType => typeof(IFileCommandExtension);
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
@@ -301,6 +303,14 @@ namespace GitHub.Runner.Worker
             {
                 Trace.Info($"Step Summary file ({filePath}) is empty; skipping attachment upload");
                 return false;
+            }
+
+            if (fileSize > AttachmentSizeLimit)
+            {
+                context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {AttachmentSizeLimit/1024}k got {fileSize/1024}k");
+                Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
+                return false;
+
             }
 
             Trace.Info($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
