@@ -314,7 +314,14 @@ namespace GitHub.Runner.Worker
             var attachmentName = stepID.ToString();
 
             Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
-            parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, filePath);
+            try
+            {
+                parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, filePath);
+            }
+            catch (Exception e)
+            {
+                Trace.Error($"Error while trying to enqueue file upload for file ({filePath}): {e}");
+            }
         }
     }
 }
