@@ -120,7 +120,6 @@ then
     exit 1
 fi
 
-
 # fix upgrade issue with macOS when running as a service
 attemptedtargetedfix=0
 currentplatform=$(uname | awk '{print tolower($0)}')
