@@ -10,6 +10,7 @@ using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 
@@ -314,7 +315,7 @@ namespace GitHub.Runner.Listener.Check
                     });
 
                     var downloadCertScript = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "downloadCert");
-                    var node = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), "node16", "bin", $"node{IOUtil.ExeExtension}");
+                    var node = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetForcedOrLatestNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node} \"{downloadCertScript}\"' ");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} {StringUtil.ConvertToJson(env)}");
                     await processInvoker.ExecuteAsync(

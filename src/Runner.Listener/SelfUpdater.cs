@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
@@ -761,7 +762,7 @@ namespace GitHub.Runner.Listener
                 IOUtil.CopyDirectory(_externalsCloneDirectory, Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory), token);
 
                 // try run node.js to see if current node.js works fine after copy over to new location.
-                var nodeVersions = new[] { "node12", "node16" };
+                var nodeVersions = NodeUtil.AllowedNodeVersions;
                 foreach (var nodeVersion in nodeVersions)
                 {
                     var newNodeBinary = Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory, nodeVersion, "bin", $"node{IOUtil.ExeExtension}");
@@ -1026,7 +1027,7 @@ namespace GitHub.Runner.Listener
 
             var stopWatch = Stopwatch.StartNew();
             string binDir = HostContext.GetDirectory(WellKnownDirectory.Bin);
-            string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node16", "bin", $"node{IOUtil.ExeExtension}");
+            string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetForcedOrLatestNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
             string hashFilesScript = Path.Combine(binDir, "hashFiles");
             var hashResult = string.Empty;
 
