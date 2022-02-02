@@ -296,13 +296,14 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
-            Trace.Info($"Step Summary file exists: {filePath}");
-
-            if (new FileInfo(filePath).Length == 0)
+            var fileSize = new FileInfo(filePath).Length;
+            if (fileSize == 0)
             {
                 Trace.Info($"Step Summary file ({filePath}) is empty; skipping attachment upload");
                 return false;
             }
+
+            Trace.Info($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
 
             return true;
         }
