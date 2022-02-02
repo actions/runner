@@ -104,7 +104,7 @@ namespace GitHub.Runner.Listener
                     }
                 }
 
-                await DownloadLatestRunner(token);
+                await DownloadLatestRunner(token, updateMessage.TargetVersion);
                 Trace.Info($"Download latest runner and unzip into runner root.");
 
                 // wait till all running job finish
@@ -206,7 +206,7 @@ namespace GitHub.Runner.Listener
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        private async Task DownloadLatestRunner(CancellationToken token)
+        private async Task DownloadLatestRunner(CancellationToken token, string targetVersion)
         {
             string latestRunnerDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Work), Constants.Path.UpdateDirectory);
             IOUtil.DeleteDirectory(latestRunnerDirectory, token);
@@ -266,14 +266,57 @@ namespace GitHub.Runner.Listener
 
             try
             {
-                archiveFile = await DownLoadRunner(latestRunnerDirectory, packageDownloadUrl, packageHashValue, token);
-
-                if (string.IsNullOrEmpty(archiveFile))
+#if DEBUG
+                // Much of the update process (targetVersion, archive) is server-side, this is a way to control it from here for testing specific update scenarios
+                // Add files like 'runner_v2.281.2.tar.gz' or 'runner_v2.283.0.zip' depending on your platform in your runner root folder
+                // Note that runners still need to be behind the server's runner version in order to receive an 'AgentRefreshMessage' and trigger this update
+                // This should not be in the release build to prevent tampering with updates
+                if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
                 {
-                    throw new TaskCanceledException($"Runner package '{packageDownloadUrl}' failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts");
-                }
+                    var waitForDebugger = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE_WAIT_FOR_DEBUGGER"));
+                    if (waitForDebugger)
+                    {
+                        int waitInSeconds = 20;
+                        while (!Debugger.IsAttached && waitInSeconds-- > 0)
+                        {
+                            await Task.Delay(1000);
+                        }
+                        Debugger.Break();
+                    }
 
-                await ValidateRunnerHash(archiveFile, packageHashValue);
+                    if (_targetPackage.Platform.StartsWith("win"))
+                    {
+                        archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.zip");
+                    }
+                    else
+                    {
+                        archiveFile = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), $"runner{targetVersion}.tar.gz");
+                    }
+
+                    if (File.Exists(archiveFile)) 
+                    {
+                        _updateTrace.Enqueue($"Mocking update with file: '{archiveFile}' and targetVersion: '{targetVersion}', nothing is downloaded");
+                        _terminal.WriteLine($"Mocking update with file: '{archiveFile}' and targetVersion: '{targetVersion}', nothing is downloaded");
+                    }
+                    else 
+                    {
+                        archiveFile = null;
+                        _terminal.WriteLine($"Mock runner archive not found at {archiveFile} for target version {targetVersion}, proceeding with download instead");
+                        _updateTrace.Enqueue($"Mock runner archive not found at {archiveFile} for target version {targetVersion}, proceeding with download instead");
+                    }
+                }
+#endif
+                // archiveFile is not null only if we mocked it above
+                if (archiveFile == null)
+                {
+                    archiveFile = await DownLoadRunner(latestRunnerDirectory, packageDownloadUrl, packageHashValue, token);
+
+                    if (string.IsNullOrEmpty(archiveFile))
+                    {
+                        throw new TaskCanceledException($"Runner package '{packageDownloadUrl}' failed after {Constants.RunnerDownloadRetryMaxAttempts} download attempts");
+                    }
+                    await ValidateRunnerHash(archiveFile, packageHashValue);
+                }
 
                 await ExtractRunnerPackage(archiveFile, latestRunnerDirectory, token);
             }
