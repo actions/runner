@@ -300,8 +300,9 @@ namespace GitHub.Runner.Listener
                     }
                     else 
                     {
-                        _terminal.WriteLine($"Mock runner archive not found at {archiveFile} for target version {targetVersion}, proceeding with download instead");
                         archiveFile = null;
+                        _terminal.WriteLine($"Mock runner archive not found at {archiveFile} for target version {targetVersion}, proceeding with download instead");
+                        _updateTrace.Enqueue($"Mock runner archive not found at {archiveFile} for target version {targetVersion}, proceeding with download instead");
                     }
                 }
 #endif
