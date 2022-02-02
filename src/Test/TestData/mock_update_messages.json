@@ -1,1 +1,1 @@
-[{"targetVersion":"2.284.1"}, {"targetVersion":"2.284.1"}]
+{ "2.283.2": {"targetVersion":"2.284.1"}, "2.284.1": {"targetVersion":"2.285.0"}}
