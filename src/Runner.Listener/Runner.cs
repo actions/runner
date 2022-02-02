@@ -408,6 +408,7 @@ namespace GitHub.Runner.Listener
                                 {
                                     autoUpdateInProgress = true;
                                     var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+#if DEBUG
                                     // Can mock the update for testing
                                     if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
                                     {
@@ -427,6 +428,7 @@ namespace GitHub.Runner.Listener
                                             }
                                         }
                                     }
+#endif
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
                                     selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
