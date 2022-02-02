@@ -260,7 +260,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class SetStepSummaryCommand: RunnerService, IFileCommandExtension
+    public sealed class SetStepSummaryCommand : RunnerService, IFileCommandExtension
     {
         public string ContextName => "step_summary";
         public string FilePrefix => "step_summary_";
@@ -271,7 +271,8 @@ namespace GitHub.Runner.Worker
         {
             if (ShouldUploadAttachment(context, filePath))
             {
-                Trace.Info($"Submitting step summary content from file {filePath}");
+                Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
+                QueueStepSummaryUpload(context, filePath);
             }
         }
 
@@ -304,6 +305,16 @@ namespace GitHub.Runner.Worker
             }
 
             return true;
+        }
+
+        private void QueueStepSummaryUpload(IExecutionContext context, string filePath)
+        {
+            var parentContext = context.Root;
+            var stepID = context.Id;
+            var attachmentName = stepID.ToString();
+
+            Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
+            parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, filePath);
         }
     }
 }
