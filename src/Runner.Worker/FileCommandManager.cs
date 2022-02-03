@@ -276,10 +276,6 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
                 var scrubbedFilePath = ScrubStepSummaryFileSecrets(filePath);
 
-                // TODO: For debugging only; remove before opening PR
-                File.Copy(filePath, Path.Combine("/tmp", Path.GetFileName(filePath)));
-                File.Copy(scrubbedFilePath, Path.Combine("/tmp", Path.GetFileName(scrubbedFilePath)));
-
                 QueueStepSummaryUpload(context, scrubbedFilePath);
             }
         }
@@ -344,14 +340,13 @@ namespace GitHub.Runner.Worker
 
         private void QueueStepSummaryUpload(IExecutionContext context, string filePath)
         {
-            var parentContext = context.Root;
             var stepID = context.Id;
             var attachmentName = stepID.ToString();
 
             Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
             try
             {
-                parentContext.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, filePath);
+                context.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, filePath);
             }
             catch (Exception e)
             {
