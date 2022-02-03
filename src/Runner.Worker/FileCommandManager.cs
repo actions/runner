@@ -305,6 +305,11 @@ namespace GitHub.Runner.Worker
                 Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
                 var scrubbedFilePath = filePath + "-scrubbed";
 
+                if (File.Exists(scrubbedFilePath))
+                {
+                    File.Delete(scrubbedFilePath);
+                }
+
                 using (var streamReader = new StreamReader(filePath))
                 using (var streamWriter = new StreamWriter(scrubbedFilePath))
                 {
