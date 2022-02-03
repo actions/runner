@@ -140,6 +140,38 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetStepSummaryCommand_ScrubSecrets()
+        {
+            using (var hostContext = Setup())
+            {
+                // configure secretmasker to actually mask secrets
+                hostContext.SecretMasker.AddRegex("Password=.*");
+                hostContext.SecretMasker.AddRegex("ghs_.*");
+
+                var stepSummaryFile = Path.Combine(_rootDirectory, "simple");
+                var scrubbedFile = stepSummaryFile + "-scrubbed";
+                var content = new List<string>
+                {
+                    "# Password=ThisIsMySecretPassword!",
+                    "",
+                    "# GITHUB_TOKEN ghs_verysecuretoken",
+                };
+                WriteContent(stepSummaryFile, content);
+
+                _setStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
+
+                var scrubbedFileContents = File.ReadAllText(scrubbedFile);
+                Assert.DoesNotContain("ThisIsMySecretPassword!", scrubbedFileContents);
+                Assert.DoesNotContain("ghs_verysecuretoken", scrubbedFileContents);
+
+                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, _executionContext.Object.Id.ToString(), scrubbedFile), Times.Once());
+                Assert.Equal(0, _issues.Count);
+            }
+        }
+
         private void WriteContent(
             string path,
             List<string> content,
