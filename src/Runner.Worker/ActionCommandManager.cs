@@ -191,11 +191,6 @@ namespace GitHub.Runner.Worker
         {
             return context.Global.Variables.GetBoolean("DistributedTask.EnhancedAnnotations") ?? false;
         }
-
-        internal static bool StepSummaryEnabled(IExecutionContext context)
-        {
-            return context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? false;
-        }
     }
 
     public interface IActionCommandExtension : IExtension

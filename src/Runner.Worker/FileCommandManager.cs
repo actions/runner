@@ -282,7 +282,7 @@ namespace GitHub.Runner.Worker
 
         private bool ShouldUploadAttachment(IExecutionContext context, string filePath)
         {
-            if (!ActionCommandManager.StepSummaryEnabled(context))
+            if (!context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? false)
             {
                 Trace.Info("Step Summary is disabled; skipping attachment upload");
                 return false;
