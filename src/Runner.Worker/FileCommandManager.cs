@@ -271,85 +271,60 @@ namespace GitHub.Runner.Worker
 
         public void ProcessCommand(IExecutionContext context, string filePath, ContainerInfo container)
         {
-            if (ShouldUploadAttachment(context, filePath))
-            {
-                Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
-                var scrubbedFilePath = ScrubStepSummaryFileSecrets(filePath);
-
-                QueueStepSummaryUpload(context, scrubbedFilePath);
-            }
-        }
-
-        private bool ShouldUploadAttachment(IExecutionContext context, string filePath)
-        {
-            if (!context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? false)
+            if (!context.Global.Variables.GetBoolean("DistributedTask.UploadStepSummary") ?? true)
             {
                 Trace.Info("Step Summary is disabled; skipping attachment upload");
-                return false;
+                return;
             }
 
-            if (String.IsNullOrEmpty(filePath))
-            {
-                Trace.Info("Step Summary path is empty; skipping attachment upload");
-                return false;
-            }
-
-            if (!File.Exists(filePath))
+            if (String.IsNullOrEmpty(filePath) || !File.Exists(filePath))
             {
                 Trace.Info($"Step Summary file ({filePath}) does not exist; skipping attachment upload");
-                return false;
+                return;
             }
 
             var fileSize = new FileInfo(filePath).Length;
             if (fileSize == 0)
             {
                 Trace.Info($"Step Summary file ({filePath}) is empty; skipping attachment upload");
-                return false;
+                return;
             }
 
             if (fileSize > _attachmentSizeLimit)
             {
-                context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {_attachmentSizeLimit/1024}k got {fileSize/1024}k");
+                context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {_attachmentSizeLimit / 1024}k got {fileSize / 1024}k");
                 Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
-                return false;
 
+                return;
             }
 
-            Trace.Info($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
+            Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
 
-            return true;
-        }
-
-        private string ScrubStepSummaryFileSecrets(string filePath)
-        {
-            var scrubbedFilePath = filePath + "-scrubbed";
-
-            using (var streamReader = new StreamReader(filePath))
-            using (var streamWriter = new StreamWriter(scrubbedFilePath))
-            {
-                string line;
-                while ((line = streamReader.ReadLine()) != null)
-                {
-                    var maskedLine = HostContext.SecretMasker.MaskSecrets(line);
-                    streamWriter.WriteLine(maskedLine);
-                }
-            }
-
-            return scrubbedFilePath;
-        }
-
-        private void QueueStepSummaryUpload(IExecutionContext context, string filePath)
-        {
-            var attachmentName = context.Id.ToString();
-
-            Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
             try
             {
-                context.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, filePath);
+                Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
+                var scrubbedFilePath = filePath + "-scrubbed";
+
+                using (var streamReader = new StreamReader(filePath))
+                using (var streamWriter = new StreamWriter(scrubbedFilePath))
+                {
+                    string line;
+                    while ((line = streamReader.ReadLine()) != null)
+                    {
+                        var maskedLine = HostContext.SecretMasker.MaskSecrets(line);
+                        streamWriter.WriteLine(maskedLine);
+                    }
+                }
+
+                var attachmentName = context.Id.ToString();
+
+                Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
+                context.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
             }
             catch (Exception e)
             {
-                Trace.Error($"Error while trying to enqueue file upload for file ({filePath}): {e}");
+                Trace.Error($"Error while processing file file ({filePath}): {e}");
+                context.Error($"Error while enqueueing GITHUB_STEP_SUMMARY: {e.Message}");
             }
         }
     }
