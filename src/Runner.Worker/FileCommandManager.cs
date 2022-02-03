@@ -262,10 +262,10 @@ namespace GitHub.Runner.Worker
 
     public sealed class SetStepSummaryCommand : RunnerService, IFileCommandExtension
     {
+        private const int _attachmentSizeLimit = 128 * 1024;
+
         public string ContextName => "step_summary";
         public string FilePrefix => "step_summary_";
-
-        private const int AttachmentSizeLimit = 128 * 1024;
 
         public Type ExtensionType => typeof(IFileCommandExtension);
 
@@ -307,9 +307,9 @@ namespace GitHub.Runner.Worker
                 return false;
             }
 
-            if (fileSize > AttachmentSizeLimit)
+            if (fileSize > _attachmentSizeLimit)
             {
-                context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {AttachmentSizeLimit/1024}k got {fileSize/1024}k");
+                context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {_attachmentSizeLimit/1024}k got {fileSize/1024}k");
                 Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
                 return false;
 
@@ -340,8 +340,7 @@ namespace GitHub.Runner.Worker
 
         private void QueueStepSummaryUpload(IExecutionContext context, string filePath)
         {
-            var stepID = context.Id;
-            var attachmentName = stepID.ToString();
+            var attachmentName = context.Id.ToString();
 
             Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
             try
