@@ -260,7 +260,7 @@ namespace GitHub.Runner.Worker
         }
     }
 
-    public sealed class SetStepSummaryCommand : RunnerService, IFileCommandExtension
+    public sealed class CreateStepSummaryCommand : RunnerService, IFileCommandExtension
     {
         private const int _attachmentSizeLimit = 128 * 1024;
 
@@ -283,26 +283,24 @@ namespace GitHub.Runner.Worker
                 return;
             }
 
-            var fileSize = new FileInfo(filePath).Length;
-            if (fileSize == 0)
-            {
-                Trace.Info($"Step Summary file ({filePath}) is empty; skipping attachment upload");
-                return;
-            }
-
-            if (fileSize > _attachmentSizeLimit)
-            {
-                context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {_attachmentSizeLimit / 1024}k got {fileSize / 1024}k");
-                Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
-
-                return;
-            }
-
-            Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
-
             try
             {
-                Trace.Info($"Submitting step summary content from file {filePath}, container: {container}");
+                var fileSize = new FileInfo(filePath).Length;
+                if (fileSize == 0)
+                {
+                    Trace.Info($"Step Summary file ({filePath}) is empty; skipping attachment upload");
+                    return;
+                }
+
+                if (fileSize > _attachmentSizeLimit)
+                {
+                    context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {_attachmentSizeLimit / 1024}k got {fileSize / 1024}k");
+                    Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
+
+                    return;
+                }
+
+                Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
                 var scrubbedFilePath = filePath + "-scrubbed";
 
                 if (File.Exists(scrubbedFilePath))

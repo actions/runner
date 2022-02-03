@@ -13,19 +13,19 @@ using GitHub.DistributedTask.WebApi;
 
 namespace GitHub.Runner.Common.Tests.Worker
 {
-    public sealed class SetStepSummaryCommandL0
+    public sealed class CreateStepSummaryCommandL0
     {
         private Mock<IExecutionContext> _executionContext;
         private List<Tuple<DTWebApi.Issue, string>> _issues;
         private Variables _variables;
         private string _rootDirectory;
-        private SetStepSummaryCommand _setStepCommand;
+        private CreateStepSummaryCommand _createStepCommand;
         private ITraceWriter _trace;
 
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_FeatureDisabled()
+        public void CreateStepSummaryCommand_FeatureDisabled()
         {
             using (var hostContext = Setup(featureFlagState: "false"))
             {
@@ -40,11 +40,11 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_FileNull()
+        public void CreateStepSummaryCommand_FileNull()
         {
             using (var hostContext = Setup())
             {
-                _setStepCommand.ProcessCommand(_executionContext.Object, null, null);
+                _createStepCommand.ProcessCommand(_executionContext.Object, null, null);
 
                 _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
@@ -54,13 +54,13 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_DirectoryNotFound()
+        public void CreateStepSummaryCommand_DirectoryNotFound()
         {
             using (var hostContext = Setup())
             {
                 var stepSummaryFile = Path.Combine(_rootDirectory, "directory-not-found", "env");
 
-                _setStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
+                _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
                 _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
@@ -70,13 +70,13 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_FileNotFound()
+        public void CreateStepSummaryCommand_FileNotFound()
         {
             using (var hostContext = Setup())
             {
                 var stepSummaryFile = Path.Combine(_rootDirectory, "file-not-found");
 
-                _setStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
+                _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
                 _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
@@ -86,14 +86,14 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_EmptyFile()
+        public void CreateStepSummaryCommand_EmptyFile()
         {
             using (var hostContext = Setup())
             {
                 var stepSummaryFile = Path.Combine(_rootDirectory, "empty-file");
                 File.Create(stepSummaryFile).Dispose();
 
-                _setStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
+                _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
                 _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
@@ -103,14 +103,14 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_LargeFile()
+        public void CreateStepSummaryCommand_LargeFile()
         {
             using (var hostContext = Setup())
             {
                 var stepSummaryFile = Path.Combine(_rootDirectory, "empty-file");
                 File.WriteAllBytes(stepSummaryFile, new byte[128 * 1024 + 1]);
 
-                _setStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
+                _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
                 _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(1, _issues.Count);
@@ -120,7 +120,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_Simple()
+        public void CreateStepSummaryCommand_Simple()
         {
             using (var hostContext = Setup())
             {
@@ -133,7 +133,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
                 WriteContent(stepSummaryFile, content);
 
-                _setStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
+                _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
                 _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, _executionContext.Object.Id.ToString(), stepSummaryFile + "-scrubbed"), Times.Once());
                 Assert.Equal(0, _issues.Count);
@@ -143,7 +143,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void SetStepSummaryCommand_ScrubSecrets()
+        public void CreateStepSummaryCommand_ScrubSecrets()
         {
             using (var hostContext = Setup())
             {
@@ -161,7 +161,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
                 WriteContent(stepSummaryFile, content);
 
-                _setStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
+                _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
                 var scrubbedFileContents = File.ReadAllText(scrubbedFile);
                 Assert.DoesNotContain("ThisIsMySecretPassword!", scrubbedFileContents);
@@ -206,7 +206,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             var workDirectory = hostContext.GetDirectory(WellKnownDirectory.Work);
             ArgUtil.NotNullOrEmpty(workDirectory, nameof(workDirectory));
             Directory.CreateDirectory(workDirectory);
-            _rootDirectory = Path.Combine(workDirectory, nameof(SetStepSummaryCommandL0));
+            _rootDirectory = Path.Combine(workDirectory, nameof(CreateStepSummaryCommandL0));
             Directory.CreateDirectory(_rootDirectory);
 
             // Execution context
@@ -231,9 +231,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _trace.Info($"{tag}{message}");
                 });
 
-            // SetStepSummaryCommand
-            _setStepCommand = new SetStepSummaryCommand();
-            _setStepCommand.Initialize(hostContext);
+            //CreateStepSummaryCommand
+            _createStepCommand = new CreateStepSummaryCommand();
+            _createStepCommand.Initialize(hostContext);
 
             return hostContext;
         }
