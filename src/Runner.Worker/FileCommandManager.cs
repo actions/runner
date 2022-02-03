@@ -326,8 +326,8 @@ namespace GitHub.Runner.Worker
             }
             catch (Exception e)
             {
-                Trace.Error($"Error while processing file file ({filePath}): {e}");
-                context.Error($"Error while enqueueing GITHUB_STEP_SUMMARY: {e.Message}");
+                Trace.Error($"Error while processing file ({filePath}): {e}");
+                context.Error($"Failed to create step summary using 'GITHUB_STEP_SUMMARY': {e.Message}");
             }
         }
     }
