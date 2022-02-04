@@ -337,11 +337,11 @@ namespace GitHub.DistributedTask.WebApi
             object userState = null,
             CancellationToken cancellationToken = default)
         {
-           HttpMethod httpMethod = new HttpMethod("POST");
+            HttpMethod httpMethod = new HttpMethod("POST");
             Guid locationId = new Guid("27d7f831-88c1-4719-8ca1-6a061dad90eb");
             object routeValues = new { scopeIdentifier = scopeIdentifier, hubName = hubName, planId = planId};
             HttpContent content = new ObjectContent<ActionReferenceList>(actionReferenceList, new VssJsonMediaTypeFormatter(true));
-            
+      
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
             queryParams.Add("jobId", jobId);
             return SendAsync<ActionDownloadInfoCollection>(
