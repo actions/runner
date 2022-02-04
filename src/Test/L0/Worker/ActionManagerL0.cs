@@ -2125,7 +2125,7 @@ runs:
         {
             _ecTokenSource?.Dispose();
             _ecTokenSource = new CancellationTokenSource();
-        
+
             // Test host context.
             _hc = new TestHostContext(this, name);
 
