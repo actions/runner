@@ -303,11 +303,6 @@ namespace GitHub.Runner.Worker
                 Trace.Verbose($"Step Summary file exists: {filePath} and has a file size of {fileSize} bytes");
                 var scrubbedFilePath = filePath + "-scrubbed";
 
-                if (File.Exists(scrubbedFilePath))
-                {
-                    File.Delete(scrubbedFilePath);
-                }
-
                 using (var streamReader = new StreamReader(filePath))
                 using (var streamWriter = new StreamWriter(scrubbedFilePath))
                 {
