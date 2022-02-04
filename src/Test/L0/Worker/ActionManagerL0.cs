@@ -2125,7 +2125,7 @@ runs:
         {
             _ecTokenSource?.Dispose();
             _ecTokenSource = new CancellationTokenSource();
-
+        
             // Test host context.
             _hc = new TestHostContext(this, name);
 
@@ -2135,6 +2135,7 @@ runs:
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
+            _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
             var variables = new Dictionary<string, VariableValue>();
             if (enableComposite)
             {
