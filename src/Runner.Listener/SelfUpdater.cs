@@ -38,7 +38,7 @@ namespace GitHub.Runner.Listener
         private IRunnerServer _runnerServer;
         private int _poolId;
         private int _agentId;
-        private readonly List<string> _updateTrace = new List<string>();
+        private readonly ConcurrentQueue<string> _updateTrace = new ConcurrentQueue<string>();
         private Task _cloneAndCalculateContentHashTask;
         private string _dotnetRuntimeCloneDirectory;
         private string _externalsCloneDirectory;
@@ -80,7 +80,7 @@ namespace GitHub.Runner.Listener
                 }
 
                 Trace.Info($"An update is available.");
-                _updateTrace.Add($"RunnerPlatform: {_targetPackage.Platform}");
+                _updateTrace.Enqueue($"RunnerPlatform: {_targetPackage.Platform}");
 
                 // Print console line that warn user not shutdown runner.
                 await UpdateRunnerUpdateStateAsync("Runner update in progress, do not shutdown runner.");
@@ -120,7 +120,7 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Delete old version runner backup.");
                 stopWatch.Stop();
                 // generate update script from template
-                _updateTrace.Add($"DeleteRunnerBackupTime: {stopWatch.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"DeleteRunnerBackupTime: {stopWatch.ElapsedMilliseconds}ms");
                 await UpdateRunnerUpdateStateAsync("Generate and execute update script.");
 
                 string updateScript = GenerateUpdateScript(restartInteractiveRunner);
@@ -145,14 +145,14 @@ namespace GitHub.Runner.Listener
 
                 totalUpdateTime.Stop();
 
-                _updateTrace.Add($"TotalUpdateTime: {totalUpdateTime.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"TotalUpdateTime: {totalUpdateTime.ElapsedMilliseconds}ms");
                 await UpdateRunnerUpdateStateAsync("Runner will exit shortly for update, should be back online within 10 seconds.");
 
                 return true;
             }
             catch (Exception ex)
             {
-                _updateTrace.Add(ex.ToString());
+                _updateTrace.Enqueue(ex.ToString());
                 throw;
             }
             finally
@@ -260,9 +260,9 @@ namespace GitHub.Runner.Listener
                 }
             }
 
-            _updateTrace.Add($"DownloadUrl: {packageDownloadUrl}");
-            _updateTrace.Add($"RuntimeTrimmed: {runtimeTrimmed}");
-            _updateTrace.Add($"ExternalsTrimmed: {externalsTrimmed}");
+            _updateTrace.Enqueue($"DownloadUrl: {packageDownloadUrl}");
+            _updateTrace.Enqueue($"RuntimeTrimmed: {runtimeTrimmed}");
+            _updateTrace.Enqueue($"ExternalsTrimmed: {externalsTrimmed}");
 
             try
             {
@@ -328,14 +328,14 @@ namespace GitHub.Runner.Listener
             if (fallbackToFullPackage)
             {
                 Trace.Error("Something wrong with the trimmed runner package, failback to use the full package for runner updates.");
-                _updateTrace.Add($"FallbackToFullPackage: {fallbackToFullPackage}");
+                _updateTrace.Enqueue($"FallbackToFullPackage: {fallbackToFullPackage}");
 
                 IOUtil.DeleteDirectory(latestRunnerDirectory, token);
                 Directory.CreateDirectory(latestRunnerDirectory);
 
                 packageDownloadUrl = _targetPackage.DownloadUrl;
                 packageHashValue = _targetPackage.HashValue;
-                _updateTrace.Add($"DownloadUrl: {packageDownloadUrl}");
+                _updateTrace.Enqueue($"DownloadUrl: {packageDownloadUrl}");
 
                 try
                 {
@@ -453,9 +453,9 @@ namespace GitHub.Runner.Listener
                         Trace.Info($"Download runner: finished download");
                         downloadSucceeded = true;
                         stopWatch.Stop();
-                        _updateTrace.Add($"PackageDownloadTime: {stopWatch.ElapsedMilliseconds}ms");
-                        _updateTrace.Add($"Attempts: {attempt}");
-                        _updateTrace.Add($"PackageSize: {downloadSize / 1024 / 1024}MB");
+                        _updateTrace.Enqueue($"PackageDownloadTime: {stopWatch.ElapsedMilliseconds}ms");
+                        _updateTrace.Enqueue($"Attempts: {attempt}");
+                        _updateTrace.Enqueue($"PackageSize: {downloadSize / 1024 / 1024}MB");
                         break;
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -505,7 +505,7 @@ namespace GitHub.Runner.Listener
 
                         stopWatch.Stop();
                         Trace.Info($"Validated Runner Hash matches {archiveFile} : {packageHashValue}");
-                        _updateTrace.Add($"ValidateHashTime: {stopWatch.ElapsedMilliseconds}ms");
+                        _updateTrace.Enqueue($"ValidateHashTime: {stopWatch.ElapsedMilliseconds}ms");
                     }
                 }
             }
@@ -561,7 +561,7 @@ namespace GitHub.Runner.Listener
 
             stopWatch.Stop();
             Trace.Info($"Finished getting latest runner package at: {extractDirectory}.");
-            _updateTrace.Add($"PackageExtractTime: {stopWatch.ElapsedMilliseconds}ms");
+            _updateTrace.Enqueue($"PackageExtractTime: {stopWatch.ElapsedMilliseconds}ms");
         }
 
         private Task CopyLatestRunnerToRoot(string latestRunnerDirectory, CancellationToken token)
@@ -594,7 +594,7 @@ namespace GitHub.Runner.Listener
             }
 
             stopWatch.Stop();
-            _updateTrace.Add($"CopyRunnerToRootTime: {stopWatch.ElapsedMilliseconds}ms");
+            _updateTrace.Enqueue($"CopyRunnerToRootTime: {stopWatch.ElapsedMilliseconds}ms");
             return Task.CompletedTask;
         }
 
@@ -720,9 +720,14 @@ namespace GitHub.Runner.Listener
             _terminal.WriteLine(currentState);
 
             var traces = new List<string>();
-            if (_updateTrace.Count > 0)
+            while (_updateTrace.TryDequeue(out var trace))
             {
-                foreach (var trace in _updateTrace)
+                traces.Add(trace);
+            }
+
+            if (traces.Count > 0)
+            {
+                foreach (var trace in traces)
                 {
                     Trace.Info(trace);
                 }
@@ -730,7 +735,7 @@ namespace GitHub.Runner.Listener
 
             try
             {
-                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState, string.Join(Environment.NewLine, _updateTrace));
+                await _runnerServer.UpdateAgentUpdateStateAsync(_poolId, _agentId, currentState, string.Join(Environment.NewLine, traces));
                 _updateTrace.Clear();
             }
             catch (VssResourceNotFoundException)
@@ -806,7 +811,7 @@ namespace GitHub.Runner.Listener
             finally
             {
                 stopWatch.Stop();
-                _updateTrace.Add($"{nameof(RestoreTrimmedExternals)}Time: {stopWatch.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"{nameof(RestoreTrimmedExternals)}Time: {stopWatch.ElapsedMilliseconds}ms");
             }
         }
 
@@ -858,7 +863,7 @@ namespace GitHub.Runner.Listener
             finally
             {
                 stopWatch.Stop();
-                _updateTrace.Add($"{nameof(RestoreTrimmedDotnetRuntime)}Time: {stopWatch.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"{nameof(RestoreTrimmedDotnetRuntime)}Time: {stopWatch.ElapsedMilliseconds}ms");
             }
         }
 
@@ -889,7 +894,7 @@ namespace GitHub.Runner.Listener
                             var externalsHash = await HashFiles(externalsCloneDirectory, token);
                             Trace.Info($"Externals content hash: {externalsHash}");
                             _contentHashes[_externals] = externalsHash;
-                            _updateTrace.Add($"ExternalsHash: {_contentHashes[_externals]}");
+                            _updateTrace.Enqueue($"ExternalsHash: {_contentHashes[_externals]}");
                         }
                         else
                         {
@@ -913,7 +918,7 @@ namespace GitHub.Runner.Listener
                             var runtimeHash = await HashFiles(dotnetRuntimeCloneDirectory, token);
                             Trace.Info($"Runtime content hash: {runtimeHash}");
                             _contentHashes[_dotnetRuntime] = runtimeHash;
-                            _updateTrace.Add($"DotnetRuntimeHash: {_contentHashes[_dotnetRuntime]}");
+                            _updateTrace.Enqueue($"DotnetRuntimeHash: {_contentHashes[_dotnetRuntime]}");
                         }
                         else
                         {
@@ -983,7 +988,7 @@ namespace GitHub.Runner.Listener
             finally
             {
                 stopWatch.Stop();
-                _updateTrace.Add($"{nameof(CloneDotnetRuntime)}Time: {stopWatch.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"{nameof(CloneDotnetRuntime)}Time: {stopWatch.ElapsedMilliseconds}ms");
             }
 
             return false;
@@ -1009,7 +1014,7 @@ namespace GitHub.Runner.Listener
             finally
             {
                 stopWatch.Stop();
-                _updateTrace.Add($"{nameof(CloneExternals)}Time: {stopWatch.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"{nameof(CloneExternals)}Time: {stopWatch.ElapsedMilliseconds}ms");
             }
 
             return Task.FromResult(false);
@@ -1063,7 +1068,7 @@ namespace GitHub.Runner.Listener
                 }
 
                 stopWatch.Stop();
-                _updateTrace.Add($"{nameof(HashFiles)}{Path.GetFileName(fileFolder)}Time: {stopWatch.ElapsedMilliseconds}ms");
+                _updateTrace.Enqueue($"{nameof(HashFiles)}{Path.GetFileName(fileFolder)}Time: {stopWatch.ElapsedMilliseconds}ms");
                 return hashResult;
             }
         }
