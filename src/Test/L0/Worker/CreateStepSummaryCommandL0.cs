@@ -31,7 +31,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 var stepSummaryFile = Path.Combine(_rootDirectory, "feature-off");
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
                 Assert.Equal(0, _issues.Count);
             }
@@ -46,7 +46,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             {
                 _createStepCommand.ProcessCommand(_executionContext.Object, null, null);
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
             }
         }
@@ -62,7 +62,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
             }
         }
@@ -78,7 +78,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
             }
         }
@@ -95,7 +95,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(0, _issues.Count);
             }
         }
@@ -112,7 +112,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
                 Assert.Equal(1, _issues.Count);
             }
         }
@@ -135,7 +135,7 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 _createStepCommand.ProcessCommand(_executionContext.Object, stepSummaryFile, null);
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, _executionContext.Object.Id.ToString(), stepSummaryFile + "-scrubbed"), Times.Once());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, _executionContext.Object.Id.ToString(), stepSummaryFile + "-scrubbed"), Times.Once());
                 Assert.Equal(0, _issues.Count);
             }
         }
@@ -167,7 +167,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.DoesNotContain("ThisIsMySecretPassword!", scrubbedFileContents);
                 Assert.DoesNotContain("ghs_verysecuretoken", scrubbedFileContents);
 
-                _executionContext.Verify(e => e.QueueAttachFile(ChecksAttachmentType.StepSummary, _executionContext.Object.Id.ToString(), scrubbedFile), Times.Once());
+                _executionContext.Verify(e => e.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, _executionContext.Object.Id.ToString(), scrubbedFile), Times.Once());
                 Assert.Equal(0, _issues.Count);
             }
         }
@@ -209,7 +209,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             _rootDirectory = Path.Combine(workDirectory, nameof(CreateStepSummaryCommandL0));
             Directory.CreateDirectory(_rootDirectory);
 
-            // Execution context
+            // Job execution context
+            var jobContext = new ExecutionContext();
+            jobContext.Initialize(hostContext);
+
+            // Step execution context
             _executionContext = new Mock<IExecutionContext>();
             _executionContext.Setup(x => x.Global)
                 .Returns(new GlobalContext
@@ -230,6 +234,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     _trace.Info($"{tag}{message}");
                 });
+            _executionContext.SetupGet(x => x.Root)
+                .Returns(jobContext);
 
             //CreateStepSummaryCommand
             _createStepCommand = new CreateStepSummaryCommand();
