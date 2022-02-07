@@ -762,7 +762,7 @@ namespace GitHub.Runner.Listener
                 IOUtil.CopyDirectory(_externalsCloneDirectory, Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory), token);
 
                 // try run node.js to see if current node.js works fine after copy over to new location.
-                var nodeVersions = NodeUtil.AllowedNodeVersions;
+                var nodeVersions = NodeUtil.BuiltInNodeVersions;
                 foreach (var nodeVersion in nodeVersions)
                 {
                     var newNodeBinary = Path.Combine(downloadDirectory, Constants.Path.ExternalsDirectory, nodeVersion, "bin", $"node{IOUtil.ExeExtension}");
