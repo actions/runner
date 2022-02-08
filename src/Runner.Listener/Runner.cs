@@ -12,6 +12,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Listener.Check;
+using System.Collections.Generic;
 
 namespace GitHub.Runner.Listener
 {
@@ -407,6 +408,27 @@ namespace GitHub.Runner.Listener
                                 {
                                     autoUpdateInProgress = true;
                                     var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+#if DEBUG
+                                    // Can mock the update for testing
+                                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
+                                    {
+
+                                        // The mock_update_messages.json file should be an object with keys being the current version and values being the targeted mock version object
+                                        // Example: { "2.283.2": {"targetVersion":"2.284.1"}, "2.284.1": {"targetVersion":"2.285.0"}}
+                                        var mockUpdatesPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "mock_update_messages.json");
+                                        if (File.Exists(mockUpdatesPath))
+                                        {
+                                            var mockUpdateMessages = JsonUtility.FromString<Dictionary<string, AgentRefreshMessage>>(File.ReadAllText(mockUpdatesPath));
+                                            if (mockUpdateMessages.ContainsKey(BuildConstants.RunnerPackage.Version))
+                                            {
+                                                var mockTargetVersion = mockUpdateMessages[BuildConstants.RunnerPackage.Version].TargetVersion;
+                                                _term.WriteLine($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                Trace.Info($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockTargetVersion, runnerUpdateMessage.Timeout);
+                                            }
+                                        }
+                                    }
+#endif
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
                                     selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
