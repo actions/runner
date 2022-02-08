@@ -317,7 +317,8 @@ namespace GitHub.Runner.Worker
                 var attachmentName = context.Id.ToString();
 
                 Trace.Info($"Queueing file ({filePath}) for attachment upload ({attachmentName})");
-                context.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
+                // Attachments must be added to the parent context (job), not the current context (step)
+                context.Root.QueueAttachFile(ChecksAttachmentType.StepSummary, attachmentName, scrubbedFilePath);
             }
             catch (Exception e)
             {
