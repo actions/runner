@@ -1102,6 +1102,8 @@ namespace GitHub.Runner.Listener
                                               fileName: node,
                                               arguments: $"\"{hashFilesScript.Replace("\"", "\\\"")}\"",
                                               environment: env,
+                                              outputEncoding: null,
+                                              killProcessOnCancel: true,
                                               requireExitCodeZero: false,
                                               cancellationToken: token);
 
