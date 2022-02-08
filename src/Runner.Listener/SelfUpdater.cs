@@ -581,17 +581,17 @@ namespace GitHub.Runner.Listener
             IOUtil.CopyDirectory(Path.Combine(latestRunnerDirectory, Constants.Path.ExternalsDirectory), externalsVersionDir, token);
 
             // copy and replace all .sh/.cmd files
-            Trace.Info($"DISABLED");
-            // foreach (FileInfo file in new DirectoryInfo(latestRunnerDirectory).GetFiles() ?? new FileInfo[0])
-            // {
-            //     string destination = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name);
+            Trace.Info($"Copy any remaining .sh/.cmd files into runner root.");
+            foreach (FileInfo file in new DirectoryInfo(latestRunnerDirectory).GetFiles() ?? new FileInfo[0])
+            {
+                string destination = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), file.Name);
 
-            //     // Removing the file instead of just trying to overwrite it works around permissions issues on linux.
-            //     // https://github.com/actions/runner/issues/981
-            //     Trace.Info($"Copy {file.FullName} to {destination}");
-            //     IOUtil.DeleteFile(destination);
-            //     file.CopyTo(destination, true);
-            // }
+                // Removing the file instead of just trying to overwrite it works around permissions issues on linux.
+                // https://github.com/actions/runner/issues/981
+                Trace.Info($"Copy {file.FullName} to {destination}");
+                IOUtil.DeleteFile(destination);
+                file.CopyTo(destination, true);
+            }
 
             stopWatch.Stop();
             _updateTrace.Enqueue($"CopyRunnerToRootTime: {stopWatch.ElapsedMilliseconds}ms");
