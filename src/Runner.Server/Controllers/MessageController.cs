@@ -1783,16 +1783,18 @@ namespace Runner.Server.Controllers
                                                 if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
                                                     var currentItem = jobitem.Childs?.Find(ji => ji.Id == e.JobId) ?? (jobitem.Id == e.JobId ? jobitem : null);
                                                     if(jobitem.JobCompletedEvent == null) {
-                                                        jobitem.JobCompletedEvent = new JobCompletedEvent() { JobId = jobitem.Id, Result = e.Result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>(e.Outputs)};
+                                                        jobitem.JobCompletedEvent = new JobCompletedEvent() { JobId = jobitem.Id, Result = e.Result, RequestId = jobitem.RequestId, Outputs = e.Outputs != null ? new Dictionary<String, VariableValue>(e.Outputs) : e.Outputs };
                                                     } else {
                                                         if(jobitem.JobCompletedEvent.Result == TaskResult.Failed || jobitem.JobCompletedEvent.Result == TaskResult.Canceled || jobitem.JobCompletedEvent.Result == TaskResult.Abandoned || (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || currentItem.ContinueOnError != true)) {
                                                             jobitem.JobCompletedEvent.Result = TaskResult.Failed;
                                                         } else if(jobitem.JobCompletedEvent.Result == TaskResult.Succeeded || jobitem.JobCompletedEvent.Result == TaskResult.SucceededWithIssues || e.Result != TaskResult.Skipped) {
                                                             jobitem.JobCompletedEvent.Result = TaskResult.Succeeded;
                                                         }
-                                                        foreach(var output in e.Outputs) {
-                                                            if(!string.IsNullOrEmpty(output.Value.Value)) {
-                                                                jobitem.JobCompletedEvent.Outputs[output.Key] = output.Value;
+                                                        if(e.Outputs != null) {
+                                                            foreach(var output in e.Outputs) {
+                                                                if(!string.IsNullOrEmpty(output.Value.Value)) {
+                                                                    jobitem.JobCompletedEvent.Outputs[output.Key] = output.Value;
+                                                                }
                                                             }
                                                         }
                                                     }
