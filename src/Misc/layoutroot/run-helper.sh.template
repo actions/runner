@@ -1,5 +1,7 @@
 #!/bin/bash
 
+trap 'SECONDS=0' DEBUG
+
 # Validate not sudo
 user_id=`id -u`
 if [ $user_id -eq 0 -a -z "$RUNNER_ALLOW_RUNASROOT" ]; then
@@ -13,10 +15,8 @@ shopt -s nocasematch
 safe_sleep() {
     if [ ! -x "$(command -v sleep)" ]; then
         if [ ! -x "$(command -v ping)" ]; then
-            COUNT="0"
-            while [[ $COUNT != 5000 ]]; do
-                echo "SLEEP" > /dev/null
-                COUNT=$[$COUNT+1]
+            while [[ $SECONDS != 5 ]]; do
+                :
             done
         else
             ping -c 5 127.0.0.1 > /dev/null
