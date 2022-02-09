@@ -398,7 +398,7 @@ namespace Runner.Server.Controllers
                     return;
                 }
                 try {
-                    Callback(string.Format(format, args));
+                    Callback(args?.Length > 0 ? string.Format(format, args) : format);
                 } catch {
                     Callback(format);
                 }
@@ -407,7 +407,7 @@ namespace Runner.Server.Controllers
             public void Info(string format, params object[] args)
             {
                 try {
-                    Callback(string.Format(format, args));
+                    Callback(args?.Length > 0 ? string.Format(format, args) : format);
                 } catch {
                     Callback(format);
                 }
@@ -420,7 +420,7 @@ namespace Runner.Server.Controllers
             public void Verbose(string format, params object[] args)
             {
                 try {
-                    Callback(string.Format(format, args));
+                    Callback(args?.Length > 0 ? string.Format(format, args) : format);
                 } catch {
                     Callback(format);
                 }
