@@ -49,9 +49,9 @@ namespace GitHub.Runner.Common.Util
                 switch (Constants.Runner.PlatformArchitecture)
                 {
                     case Constants.Architecture.X86:
-                        return "X86";
+                        return "x86";
                     case Constants.Architecture.X64:
-                        return "X64";
+                        return "x64";
                     case Constants.Architecture.Arm:
                         return "ARM";
                     case Constants.Architecture.Arm64:
