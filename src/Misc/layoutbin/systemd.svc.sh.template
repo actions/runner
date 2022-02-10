@@ -5,99 +5,22 @@ SVC_NAME=${SVC_NAME// /_}
 SVC_DESCRIPTION="{{SvcDescription}}"
 
 SVC_CMD=$1
-SVC_RUN_AS_USER=
-
-SCRIPT_NAME=$0
+arg_2=${2}
 
 RUNNER_ROOT=`pwd`
 
 UNIT_PATH=/etc/systemd/system/${SVC_NAME}
-TEMPLATE_PATH=./bin/actions.runner.service.template
+TEMPLATE_PATH=$GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE
+IS_CUSTOM_TEMPLATE=0
+if [[ -z $TEMPLATE_PATH ]]; then
+    TEMPLATE_PATH=./bin/actions.runner.service.template
+else
+    IS_CUSTOM_TEMPLATE=1
+fi
 TEMP_PATH=./bin/actions.runner.service.temp
 CONFIG_PATH=.service
 
 user_id=`id -u`
-
-# is_custom_template is a controll variable stating the custom service template file is used
-# or not. 0 means default run, 1 means that custom template is used
-is_custom_template=0
-
-function usage()
-{
-    echo
-    echo "Usage:"
-    echo "$SCRIPT_NAME install|start|stop|status|uninstall"
-    echo
-    echo "Subcommands:"
-    echo 
-    echo "   install: Install runner service as Root or specified user."
-    echo "   start: Manually start the runner service."
-    echo "   stop: Manually stop the runner service."
-    echo "   status: Display status of runner service."
-    echo "   uninstall: Uninstall runner service."
-    echo
-}
-
-function installUsage() 
-{
-    echo
-    echo "Usage: $SCRIPT_NAME install"
-    echo
-    echo "    -f string:"
-    echo "        Path to your custom service file"
-    echo "    -u value: "
-    echo "        Run service as specified user"
-    echo
-}
-
-function uninstallUsage() 
-{
-    echo
-    echo "Usage: $SCRIPT_NAME uninstall"
-    echo
-    echo "    -f string:" 
-    echo "        Path to your custom service file"
-    echo
-}
-
-function genericSubcommandUsage()
-{
-    echo
-    echo "Usage: $SCRIPT_NAME $SVC_CMD"
-    echo
-}
-
-
-while getopts :f:u:h opt ${@:2}; do
-    case $opt in
-    h)
-
-        case $SVC_CMD in
-            "install") installUsage;;
-            "uninstall"|"status"|"start"|"stop") genericSubcommandUsage;;
-            *) usage;;
-        esac
-        exit 0
-        ;;
-    u)
-        SVC_RUN_AS_USER=$OPTARG
-        ;;
-    f)
-        if [[ $1 = 'install' ]]; then
-            TEMPLATE_PATH=$OPTARG
-            is_custom_template=1
-        fi
-        ;;
-    \?)
-        echo "Invalid option: -$OPTARG" >&2
-        exit 1
-        ;;
-    :)
-        echo "Option -$OPTARG requires an argument" >&2
-        ;;
-    esac
-done
-
 
 # systemctl must run as sudo
 # this script is a convenience wrapper around systemctl
@@ -114,7 +37,11 @@ function failed()
 }
 
 if [ ! -f "${TEMPLATE_PATH}" ]; then
-    failed "Must run from runner root or install is corrupt"
+    if [[ $IS_CUSTOM_TEMPLATE = 0 ]]; then
+        failed "Must run from runner root or install is corrupt"
+    else
+        failed "Service file at '$GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE' using GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE env variable is not found"
+    fi
 fi
 
 #check if we run as root
@@ -134,18 +61,15 @@ function install()
       rm "${TEMP_PATH}" || failed "failed to delete ${TEMP_PATH}"
     fi
 
-    log_message_suffix=
-    [[ $is_custom_template -eq 1 ]] && log_message_suffix="if not specified otherwise by the service template"
     # can optionally use username supplied
-    echo $SVC_RUN_AS_USER
-    run_as_user=${SVC_RUN_AS_USER:-$SUDO_USER}
-    echo "Run as user ${log_message_suffix}: ${run_as_user}"
+    run_as_user=${arg_2:-$SUDO_USER}
+    echo "Run as user: ${run_as_user}"
 
     run_as_uid=$(id -u ${run_as_user}) || failed "User does not exist"
-    echo "Run as uid ${log_message_suffix}: ${run_as_uid}"
+    echo "Run as uid: ${run_as_uid}"
 
     run_as_gid=$(id -g ${run_as_user}) || failed "Group not available"
-    echo "Run as gid ${log_message_suffix}: ${run_as_gid}"
+    echo "gid: ${run_as_gid}"
 
     sed "s/{{User}}/${run_as_user}/g; s/{{Description}}/$(echo ${SVC_DESCRIPTION} | sed -e 's/[\/&]/\\&/g')/g; s/{{RunnerRoot}}/$(echo ${RUNNER_ROOT} | sed -e 's/[\/&]/\\&/g')/g;" "${TEMPLATE_PATH}" > "${TEMP_PATH}" || failed "failed to create replacement temp file"
     mv "${TEMP_PATH}" "${UNIT_PATH}" || failed "failed to copy unit file"
@@ -226,6 +150,20 @@ function status()
     fi
 
     systemctl --no-pager status ${SVC_NAME}
+}
+
+function usage()
+{
+    echo
+    echo Usage:
+    echo "./svc.sh [install, start, stop, status, uninstall]"
+    echo "Commands:"
+    echo "   install [user]: Install runner service as Root or specified user."
+    echo "   start: Manually start the runner service."
+    echo "   stop: Manually stop the runner service."
+    echo "   status: Display status of runner service."
+    echo "   uninstall: Uninstall runner service."
+    echo
 }
 
 case $SVC_CMD in
