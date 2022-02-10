@@ -193,6 +193,11 @@ namespace GitHub.Runner.Common
                 _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
             }
 
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+            {
+                _trace.Warning($"Runner is running under insecure mode: HTTPS server certifcate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
+            }
+
             var credFile = GetConfigFile(WellKnownConfigFile.Credentials);
             if (File.Exists(credFile))
             {
@@ -350,7 +355,7 @@ namespace GitHub.Runner.Common
                         GetDirectory(WellKnownDirectory.Root),
                         ".setup_info");
                     break;
-                
+
                 case WellKnownConfigFile.Telemetry:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Diag),

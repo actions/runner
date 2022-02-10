@@ -23,6 +23,10 @@ An ADR is an Architectural Decision Record.  This allows consensus on the direct
 
 ![Win](res/win_sm.png) ![*nix](res/linux_sm.png)  Git for Windows and Linux [Install Here](https://git-scm.com/downloads) (needed for dev sh script)
 
+![*nix](res/linux_sm.png) cURL [Install here](https://curl.se/download.html) (needed for external sh script)
+
+![Win](res/win_sm.png) Visual Studio 2017 or newer [Install here](https://visualstudio.microsoft.com) (needed for dev sh script)
+
 ## Quickstart: Run a job from a real repository
 
 If you just want to get from building the sourcecode to using it to execute an action, you will need:
