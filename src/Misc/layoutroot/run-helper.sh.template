@@ -11,18 +11,10 @@ fi
 shopt -s nocasematch
 
 safe_sleep() {
-    if [ ! -x "$(command -v sleep)" ]; then
-        if [ ! -x "$(command -v ping)" ]; then
-            SECONDS=0
-            while [[ $SECONDS != 5 ]]; do
-                :
-            done
-        else
-            ping -c 5 127.0.0.1 > /dev/null
-        fi
-    else
-        sleep 5
-    fi
+    SECONDS=0
+    while [[ $SECONDS != 5 ]]; do
+        :
+    done
 }
 
 SOURCE="${BASH_SOURCE[0]}"
