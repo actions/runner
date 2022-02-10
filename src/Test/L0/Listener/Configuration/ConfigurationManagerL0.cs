@@ -66,7 +66,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
             _serviceControlManager = new Mock<ILinuxServiceControlManager>();
 #endif
 
-            var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1 };
+            var expectedAgent = new TaskAgent(_expectedAgentName) { Id = 1, Ephemeral = true, DisableUpdate = true };
             expectedAgent.Authorization = new TaskAgentAuthorization
             {
                 ClientId = Guid.NewGuid(),
@@ -154,7 +154,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                     tc,
                     new[]
                     {
-                       "configure",                
+                       "configure",
                        "--url", _expectedServerUrl,
                        "--name", _expectedAgentName,
                        "--runnergroup", _secondRunnerGroupName,
@@ -163,6 +163,8 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                        "--token", _expectedToken,
                        "--labels", userLabels,
                        "--ephemeral",
+                       "--disableupdate",
+                       "--unattended",
                     });
                 trace.Info("Constructed.");
                 _store.Setup(x => x.IsConfigured()).Returns(false);
@@ -185,7 +187,7 @@ namespace GitHub.Runner.Common.Tests.Listener.Configuration
                 // validate GetAgentPoolsAsync gets called twice with automation pool type
                 _runnerServer.Verify(x => x.GetAgentPoolsAsync(It.IsAny<string>(), It.Is<TaskAgentPoolType>(p => p == TaskAgentPoolType.Automation)), Times.Exactly(2));
 
-                var expectedLabels = new List<string>() { "self-hosted", VarUtil.OS, VarUtil.OSArchitecture};
+                var expectedLabels = new List<string>() { "self-hosted", VarUtil.OS, VarUtil.OSArchitecture };
                 expectedLabels.AddRange(userLabels.Split(",").ToList());
 
                 _runnerServer.Verify(x => x.AddAgentAsync(It.IsAny<int>(), It.Is<TaskAgent>(a => a.Labels.Select(x => x.Name).ToHashSet().SetEquals(expectedLabels))), Times.Once);
