@@ -3,7 +3,6 @@ using System.Collections.ObjectModel;
 
 namespace GitHub.Runner.Common.Util
 {
-
     public static class NodeUtil
     {
         private const string _defaultNodeVersion = "node16";
