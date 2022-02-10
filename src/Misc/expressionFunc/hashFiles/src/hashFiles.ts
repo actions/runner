@@ -52,10 +52,12 @@ async function run(): Promise<void> {
   }
 }
 
-run().then(out => {
-  console.log(out) 
-  process.exit(0)
-}).catch(err => {
-  console.error(err)
-  process.exit(1)
-})
+run()
+  .then(out => {
+    console.log(out)
+    process.exit(0)
+  })
+  .catch(err => {
+    console.error(err)
+    process.exit(1)
+  })
