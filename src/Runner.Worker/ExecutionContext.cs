@@ -648,9 +648,9 @@ namespace GitHub.Runner.Worker
             // Variables
             Global.Variables = new Variables(HostContext, message.Variables);
 
-            if (Global.Variables.TryGetValue("DistributedTask.ForceInternalNodeVersionOnRunner", out var forcedNodeVersion)) 
+            if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo12") ?? false)
             {
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedNodeVersion, forcedNodeVersion);
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedNodeVersion, "node12");
             }
 
             // Environment variables shared across all actions
