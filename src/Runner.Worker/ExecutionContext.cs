@@ -108,6 +108,7 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
+        void PublishStepTelemetry();
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -138,6 +139,7 @@ namespace GitHub.Runner.Worker
 
         // only job level ExecutionContext will track throttling delay.
         private long _totalThrottlingDelayInMilliseconds = 0;
+        private bool _stepTelemetryPublished = false;
 
         public Guid Id => _record.Id;
         public Guid EmbeddedId { get; private set; }
@@ -420,11 +422,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            // Add to the global steps telemetry only if we have something to log.
-            if (!string.IsNullOrEmpty(StepTelemetry?.Type))
-            {
-                Global.StepsTelemetry.Add(StepTelemetry);
-            }
+            PublishStepTelemetry();
 
             if (Root != this)
             {
@@ -917,6 +915,24 @@ namespace GitHub.Runner.Worker
         {
             // Lock not required since the list is immutable
             return Root._matchers ?? Array.Empty<IssueMatcherConfig>();
+        }
+
+        public void PublishStepTelemetry()
+        {
+            if (!_stepTelemetryPublished)
+            {
+                // Add to the global steps telemetry only if we have something to log.
+                if (!string.IsNullOrEmpty(StepTelemetry?.Type))
+                {
+                    Trace.Info($"Publish step telemetry for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
+                    Global.StepsTelemetry.Add(StepTelemetry);
+                    _stepTelemetryPublished = true;
+                }
+            }
+            else
+            {
+                Trace.Info($"Step telemetry has already been published.");
+            }
         }
 
         private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int? order)
