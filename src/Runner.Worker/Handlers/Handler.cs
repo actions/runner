@@ -1,13 +1,13 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq;
 using System.IO;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Linq;
+using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -44,7 +44,7 @@ namespace GitHub.Runner.Worker.Handlers
         public string ActionDirectory { get; set; }
         public List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
 
-        public virtual string GetActionRef()
+        public string GetActionRef()
         {
             if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
@@ -77,9 +77,10 @@ namespace GitHub.Runner.Worker.Handlers
             }
             return "";
         }
+
         public virtual void PrintActionDetails(ActionRunStage stage)
         {
-            
+
             if (stage == ActionRunStage.Post)
             {
                 ExecutionContext.Output($"Post job cleanup.");

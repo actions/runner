@@ -1,12 +1,12 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Linq;
 using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
@@ -147,12 +147,8 @@ namespace GitHub.Runner.Worker.Handlers
             // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
-                var telemetry = new ActionsStepTelemetry
-                {
-                    IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = "run",
-                };
-                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+                ExecutionContext.StepTelemetry.IsEmbedded = ExecutionContext.IsEmbedded;
+                ExecutionContext.StepTelemetry.Type = "run";
             }
 
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);

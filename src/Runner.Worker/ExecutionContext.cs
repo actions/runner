@@ -15,8 +15,8 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.WebApi;
@@ -52,8 +52,7 @@ namespace GitHub.Runner.Worker
         Dictionary<string, string> IntraActionState { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
         ActionsEnvironmentReference ActionsEnvironment { get; }
-        List<ActionsStepTelemetry> ActionsStepsTelemetry { get; }
-        List<JobTelemetry> JobTelemetry { get; }
+        ActionsStepTelemetry StepTelemetry { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -152,8 +151,7 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
-        public List<ActionsStepTelemetry> ActionsStepsTelemetry { get; private set; }
-        public List<JobTelemetry> JobTelemetry { get; private set; }
+        public ActionsStepTelemetry StepTelemetry { get; } = new ActionsStepTelemetry();
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -273,9 +271,9 @@ namespace GitHub.Runner.Worker
                     {
                         Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
                     }
-                    else 
+                    else
                     {
-                        Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;    
+                        Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;
                     }
                     return;
                 }
@@ -294,7 +292,20 @@ namespace GitHub.Runner.Worker
             Root.PostJobSteps.Push(step);
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null)
+        public IExecutionContext CreateChild(
+            Guid recordId,
+            string displayName,
+            string refName,
+            string scopeName,
+            string contextName,
+            ActionRunStage stage,
+            Dictionary<string, string> intraActionState = null,
+            int? recordOrder = null,
+            IPagingLogger logger = null,
+            bool isEmbedded = false,
+            CancellationTokenSource cancellationTokenSource = null,
+            Guid embeddedId = default(Guid),
+            string siblingScopeName = null)
         {
             Trace.Entering();
 
@@ -306,7 +317,6 @@ namespace GitHub.Runner.Worker
             child.Stage = stage;
             child.EmbeddedId = embeddedId;
             child.SiblingScopeName = siblingScopeName;
-            child.JobTelemetry = JobTelemetry;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -354,7 +364,13 @@ namespace GitHub.Runner.Worker
         /// An embedded execution context shares the same record ID, record name, logger,
         /// and a linked cancellation token.
         /// </summary>
-        public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null)
+        public IExecutionContext CreateEmbeddedChild(
+            string scopeName,
+            string contextName,
+            Guid embeddedId,
+            ActionRunStage stage,
+            Dictionary<string, string> intraActionState = null,
+            string siblingScopeName = null)
         {
             return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
         }
@@ -402,6 +418,12 @@ namespace GitHub.Runner.Worker
 
                     _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
                 }
+            }
+
+            // Add to the global steps telemetry only if we have something to log.
+            if (!string.IsNullOrEmpty(StepTelemetry?.Type))
+            {
+                Global.StepsTelemetry.Add(StepTelemetry);
             }
 
             if (Root != this)
@@ -654,16 +676,18 @@ namespace GitHub.Runner.Worker
             // Job defaults shared across all actions
             Global.JobDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
 
+            // Job Telemetry
+            Global.JobTelemetry = new List<JobTelemetry>();
+
+            // ActionsStepTelemetry for entire job
+            Global.StepsTelemetry = new List<ActionsStepTelemetry>();
+
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
             // Actions environment
             ActionsEnvironment = message.ActionsEnvironment;
 
-            // ActionsStepTelemetry
-            ActionsStepsTelemetry = new List<ActionsStepTelemetry>();
-
-            JobTelemetry = new List<JobTelemetry>();
 
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();
