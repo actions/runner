@@ -13,7 +13,7 @@ set -e
 
 flags_found=false
 
-while getopts 's:g:n:u:l:' opt; do
+while getopts 's:g:n:r:u:l:' opt; do
     flags_found=true
 
     case $opt in
@@ -25,6 +25,9 @@ while getopts 's:g:n:u:l:' opt; do
         ;;
     n)
         runner_name=$OPTARG
+        ;;
+    r)
+        runner_group=$OPTARG
         ;;
     u)
         svc_user=$OPTARG
@@ -44,6 +47,7 @@ Usage:
     -s          required  scope: repo (:owner/:repo) or org (:organization)
     -g          optional  ghe_hostname: the fully qualified domain name of your GitHub Enterprise Server deployment
     -n          optional  name of the runner, defaults to hostname
+    -r          optional  name of the runner group to add the runner to, defaults to the Default group
     -u          optional  user svc will run as, defaults to current
     -l          optional  list of labels (split by comma) applied on the runner"
         exit 0
@@ -59,6 +63,7 @@ if ! "$flags_found"; then
     runner_name=${3:-$(hostname)}
     svc_user=${4:-$USER}
     labels=${5}
+    runner_group=${6}
 fi
 
 # apply defaults
@@ -164,8 +169,8 @@ fi
 
 echo
 echo "Configuring ${runner_name} @ $runner_url"
-echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name --labels $labels"
-sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name --labels $labels
+echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"}"
+sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"}
 
 #---------------------------------------
 # Configuring as a service
