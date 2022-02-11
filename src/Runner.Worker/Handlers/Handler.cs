@@ -44,39 +44,6 @@ namespace GitHub.Runner.Worker.Handlers
         public string ActionDirectory { get; set; }
         public List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
 
-        public string GetActionRef()
-        {
-            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
-            {
-                var registryAction = Action as Pipelines.ContainerRegistryReference;
-                return registryAction.Image;
-            }
-            else if (Action.Type == Pipelines.ActionSourceType.Repository)
-            {
-                var repoAction = Action as Pipelines.RepositoryPathReference;
-                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-                {
-                    return repoAction.Path;
-                }
-                else
-                {
-                    if (string.IsNullOrEmpty(repoAction.Path))
-                    {
-                        return $"{repoAction.Name}@{repoAction.Ref}";
-                    }
-                    else
-                    {
-                        return $"{repoAction.Name}/{repoAction.Path}@{repoAction.Ref}";
-                    }
-                }
-            }
-            else
-            {
-                // this should never happen
-                Trace.Error($"Can't generate ref for {Action.Type.ToString()}");
-            }
-            return "";
-        }
 
         public virtual void PrintActionDetails(ActionRunStage stage)
         {
@@ -149,6 +116,40 @@ namespace GitHub.Runner.Worker.Handlers
         {
             base.Initialize(hostContext);
             ActionCommandManager = hostContext.CreateService<IActionCommandManager>();
+        }
+
+        protected string GetActionRef()
+        {
+            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                var registryAction = Action as Pipelines.ContainerRegistryReference;
+                return registryAction.Image;
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Repository)
+            {
+                var repoAction = Action as Pipelines.RepositoryPathReference;
+                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    return repoAction.Path;
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(repoAction.Path))
+                    {
+                        return $"{repoAction.Name}@{repoAction.Ref}";
+                    }
+                    else
+                    {
+                        return $"{repoAction.Name}/{repoAction.Path}@{repoAction.Ref}";
+                    }
+                }
+            }
+            else
+            {
+                // this should never happen
+                Trace.Error($"Can't generate ref for {Action.Type.ToString()}");
+            }
+            return "";
         }
 
         protected void AddInputsToEnvironment()
