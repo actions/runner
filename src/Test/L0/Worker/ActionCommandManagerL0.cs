@@ -121,6 +121,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                _ec.Object.Global.JobTelemetry = new List<JobTelemetry>();
                 var expressionValues = new DictionaryContextData
                 {
                     ["env"] =
@@ -131,7 +132,6 @@ namespace GitHub.Runner.Common.Tests.Worker
 #endif
                 };
                 _ec.Setup(x => x.ExpressionValues).Returns(expressionValues);
-                _ec.Setup(x => x.JobTelemetry).Returns(new List<JobTelemetry>());
 
                 Assert.True(_commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
             }
@@ -148,8 +148,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             using (TestHostContext hc = CreateTestContext())
             {
                 _ec.Object.Global.EnvironmentVariables = new Dictionary<string, string>();
+                _ec.Object.Global.JobTelemetry = new List<JobTelemetry>();
                 _ec.Setup(x => x.ExpressionValues).Returns(GetExpressionValues());
-                _ec.Setup(x => x.JobTelemetry).Returns(new List<JobTelemetry>());
                 Assert.Throws<Exception>(() => _commandManager.TryProcessCommand(_ec.Object, $"::stop-commands::{invalidToken}", null));
             }
         }

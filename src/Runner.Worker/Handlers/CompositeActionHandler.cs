@@ -83,19 +83,15 @@ namespace GitHub.Runner.Worker.Handlers
                         hasUsesStep = true;
                     }
                 }
-                var pathReference = Action as Pipelines.RepositoryPathReference;
-                var telemetry = new ActionsStepTelemetry
-                {
-                    Ref = GetActionRef(),
-                    HasPreStep = Data.HasPre,
-                    HasPostStep = Data.HasPost,
-                    IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = "composite",
-                    HasRunsStep = hasRunsStep,
-                    HasUsesStep = hasUsesStep,
-                    StepCount = steps.Count
-                };
-                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+
+                ExecutionContext.StepTelemetry.Ref = GetActionRef();
+                ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
+                ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
+                ExecutionContext.StepTelemetry.IsEmbedded = ExecutionContext.IsEmbedded;
+                ExecutionContext.StepTelemetry.Type = "composite";
+                ExecutionContext.StepTelemetry.HasRunsStep = hasRunsStep;
+                ExecutionContext.StepTelemetry.HasUsesStep = hasUsesStep;
+                ExecutionContext.StepTelemetry.StepCount = steps.Count;
             }
 
             try
@@ -468,6 +464,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
             step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
+            step.ExecutionContext.PublishStepTelemetry();
         }
 
         private void SetStepConclusion(IStep step, TaskResult result)

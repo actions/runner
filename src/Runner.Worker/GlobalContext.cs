@@ -14,6 +14,8 @@ namespace GitHub.Runner.Worker
         public PlanFeatures Features { get; set; }
         public IList<String> FileTable { get; set; }
         public IDictionary<String, IDictionary<String, String>> JobDefaults { get; set; }
+        public List<ActionsStepTelemetry> StepsTelemetry { get; set; }
+        public List<JobTelemetry> JobTelemetry { get; set; }
         public TaskOrchestrationPlanReference Plan { get; set; }
         public List<string> PrependPath { get; set; }
         public List<ContainerInfo> ServiceContainers { get; set; }

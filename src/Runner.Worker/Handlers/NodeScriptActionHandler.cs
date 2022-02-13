@@ -1,12 +1,12 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using System;
-using System.Linq;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -77,15 +77,11 @@ namespace GitHub.Runner.Worker.Handlers
             // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
-                var telemetry = new ActionsStepTelemetry
-                {
-                    Ref = GetActionRef(),
-                    HasPreStep = Data.HasPre,
-                    HasPostStep = Data.HasPost,
-                    IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = Data.NodeVersion
-                };
-                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+                ExecutionContext.StepTelemetry.Ref = GetActionRef();
+                ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
+                ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
+                ExecutionContext.StepTelemetry.IsEmbedded = ExecutionContext.IsEmbedded;
+                ExecutionContext.StepTelemetry.Type = Data.NodeVersion;
             }
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));
