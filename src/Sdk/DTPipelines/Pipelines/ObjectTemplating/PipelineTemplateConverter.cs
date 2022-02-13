@@ -509,7 +509,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     var image = uses.Value.Substring("docker://".Length);
                     result.Reference = new ContainerRegistryReference { Image = image };
                 }
-                else if (uses.Value.StartsWith("./") || uses.Value.StartsWith(".\\"))
+                else if (uses.Value.StartsWith("./") || uses.Value.StartsWith(".\\") || uses.Value.StartsWith("${GITHUB_ACTION_PATH}/"))
                 {
                     result.Reference = new RepositoryPathReference
                     {

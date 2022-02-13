@@ -42,7 +42,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 ArgUtil.NotNull(Data.PreSteps, nameof(Data.PreSteps));
                 steps = Data.PreSteps;
-            } 
+            }
             else if (stage == ActionRunStage.Post)
             {
                 ArgUtil.NotNull(Data.PostSteps, nameof(Data.PostSteps));
@@ -60,7 +60,7 @@ namespace GitHub.Runner.Worker.Handlers
                         Trace.Info($"Skipping executing post step id: {step.Id}, name: ${step.DisplayName}");
                     }
                 }
-            }  
+            }
             else
             {
                 ArgUtil.NotNull(Data.Steps, nameof(Data.Steps));
@@ -84,7 +84,8 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
                 var pathReference = Action as Pipelines.RepositoryPathReference;
-                var telemetry = new ActionsStepTelemetry {
+                var telemetry = new ActionsStepTelemetry
+                {
                     Ref = GetActionRef(),
                     HasPreStep = Data.HasPre,
                     HasPostStep = Data.HasPost,
@@ -96,7 +97,7 @@ namespace GitHub.Runner.Worker.Handlers
                 };
                 ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
             }
-            
+
             try
             {
                 // Inputs of the composite step
@@ -117,7 +118,7 @@ namespace GitHub.Runner.Worker.Handlers
                 // Create embedded steps
                 var embeddedSteps = new List<IStep>();
 
-                 // If we need to setup containers beforehand, do it
+                // If we need to setup containers beforehand, do it
                 // only relevant for local composite actions that need to JIT download/setup containers
                 if (LocalActionContainerSetupSteps != null && LocalActionContainerSetupSteps.Count > 0)
                 {
@@ -152,7 +153,7 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                     else
                     {
-                        step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);   
+                        step.ExecutionContext.ExpressionValues["steps"] = ExecutionContext.Global.StepsContext.GetScope(childScopeName);
                     }
 
                     // Shallow copy github context
@@ -160,6 +161,15 @@ namespace GitHub.Runner.Worker.Handlers
                     ArgUtil.NotNull(gitHubContext, nameof(gitHubContext));
                     gitHubContext = gitHubContext.ShallowCopy();
                     step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
+
+                    // Replace GITHUB_ACTION_PATH in composite action steps
+                    var ActionReference = step.Action.Reference;
+                    if (ActionReference is GitHub.DistributedTask.Pipelines.RepositoryPathReference)
+                    {
+                        var repoReference = ActionReference as GitHub.DistributedTask.Pipelines.RepositoryPathReference;
+                        repoReference.Path = repoReference.Path.Replace("${GITHUB_ACTION_PATH}", ActionDirectory);
+                        step.Action.Reference = repoReference;
+                    }
 
                     // Set GITHUB_ACTION_PATH
                     step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
@@ -309,7 +319,7 @@ namespace GitHub.Runner.Worker.Handlers
                             // Mark job as cancelled
                             ExecutionContext.Root.Result = TaskResult.Canceled;
                             ExecutionContext.Root.JobContext.Status = ExecutionContext.Root.Result?.ToActionResult();
-                            
+
                             step.ExecutionContext.Debug($"Re-evaluate condition on job cancellation for step: '{step.DisplayName}'.");
                             var conditionReTestTraceWriter = new ConditionTraceWriter(Trace, null); // host tracing only
                             var conditionReTestResult = false;
@@ -393,7 +403,7 @@ namespace GitHub.Runner.Worker.Handlers
                     {
                         await RunStepAsync(step);
                     }
-                
+
                 }
                 finally
                 {
