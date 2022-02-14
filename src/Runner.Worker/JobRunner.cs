@@ -74,7 +74,7 @@ namespace GitHub.Runner.Worker
                     switch (HostContext.RunnerShutdownReason)
                     {
                         case ShutdownReason.UserCancelled:
-                            errorMessage = "The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is cancelled.";
+                            errorMessage = "The runner has received a shutdown signal. This can happen when the runner service is stopped, or a manually started runner is canceled.";
                             break;
                         case ShutdownReason.OperatingSystemShutdown:
                             errorMessage = $"Operating system is shutting down for computer '{Environment.MachineName}'";
