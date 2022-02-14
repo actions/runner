@@ -12,5 +12,10 @@ namespace GitHub.Runner.Common.Util
             var forcedNodeVersion = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedNodeVersion);
             return !string.IsNullOrEmpty(forcedNodeVersion) && BuiltInNodeVersions.Contains(forcedNodeVersion) ? forcedNodeVersion : _defaultNodeVersion;
         }
+        public static string GetActionsNodeVersion()
+        {
+            var forcedActionsNodeVersion = Environment.GetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion);
+            return !string.IsNullOrEmpty(forcedActionsNodeVersion) && BuiltInNodeVersions.Contains(forcedActionsNodeVersion) ? forcedActionsNodeVersion : null;
+        }
     }
 }
