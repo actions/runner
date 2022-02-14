@@ -181,6 +181,10 @@ namespace GitHub.Runner.Worker
                                 {
                                     throw new Exception($"Invalid environment variable value. Matching delimiter not found '{delimiter}'");
                                 }
+                                if (newline == null)
+                                {
+                                    throw new Exception($"Invalid environment variable value. EOF marker missing newline.");
+                                }
                                 endIndex = index - newline.Length;
                                 tempLine = ReadLine(text, ref index, out newline);
                             }
