@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -7,12 +8,11 @@ using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
+using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
-using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker
 {
@@ -274,8 +274,8 @@ namespace GitHub.Runner.Worker
                             actionDirectory: definition.Directory,
                             localActionContainerSetupSteps: localActionContainerSetupSteps);
 
-            // Print out action details
-            handler.PrintActionDetails(Stage);
+            // Print out action details and log telemetry
+            handler.PrepareExecution(Stage);
 
             // Run the task.
             try

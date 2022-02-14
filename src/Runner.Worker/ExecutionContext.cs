@@ -358,6 +358,9 @@ namespace GitHub.Runner.Worker
             }
 
             child.IsEmbedded = isEmbedded;
+            child.StepTelemetry.StepId = recordId;
+            child.StepTelemetry.Stage = stage.ToString();
+            child.StepTelemetry.IsEmbedded = isEmbedded;
 
             return child;
         }
@@ -539,6 +542,10 @@ namespace GitHub.Runner.Worker
             }
 
             issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
+            if (issue.Message.Length > 4096)
+            {
+                issue.Message = issue.Message[..4096];
+            }
 
             if (issue.Type == IssueType.Error)
             {
@@ -924,6 +931,47 @@ namespace GitHub.Runner.Worker
                 // Add to the global steps telemetry only if we have something to log.
                 if (!string.IsNullOrEmpty(StepTelemetry?.Type))
                 {
+                    if (!IsEmbedded)
+                    {
+                        StepTelemetry.Result = _record.Result;
+                    }
+
+                    if (!IsEmbedded &&
+                        _record.FinishTime != null &&
+                        _record.StartTime != null)
+                    {
+                        StepTelemetry.ExecutionTimeInSeconds = (int)Math.Ceiling((_record.FinishTime - _record.StartTime)?.TotalSeconds ?? 0);
+                    }
+
+                    if (!IsEmbedded &&
+                        _record.Issues.Count > 0)
+                    {
+                        foreach (var issue in _record.Issues)
+                        {
+                            if ((issue.Type == IssueType.Error || issue.Type == IssueType.Warning) &&
+                                !string.IsNullOrEmpty(issue.Message))
+                            {
+                                string issueTelemetry;
+                                if (issue.Message.Length > 256)
+                                {
+                                    issueTelemetry = $"{issue.Message[..256]}";
+                                }
+                                else
+                                {
+                                    issueTelemetry = issue.Message;
+                                }
+
+                                StepTelemetry.ErrorMessages.Add(issueTelemetry);
+
+                                // Only send over the first 3 issues to avoid sending too much data.
+                                if (StepTelemetry.ErrorMessages.Count > 2)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     Trace.Info($"Publish step telemetry for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
                     Global.StepsTelemetry.Add(StepTelemetry);
                     _stepTelemetryPublished = true;

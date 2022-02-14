@@ -67,7 +67,7 @@ namespace GitHub.Runner.Worker.Handlers
                 steps = Data.Steps;
             }
 
-            // Add Telemetry to JobContext to send with JobCompleteMessage
+            // Set extra telemetry base on the current context.
             if (stage == ActionRunStage.Main)
             {
                 var hasRunsStep = false;
@@ -84,15 +84,14 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 
-                ExecutionContext.StepTelemetry.Ref = GetActionRef();
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
-                ExecutionContext.StepTelemetry.IsEmbedded = ExecutionContext.IsEmbedded;
-                ExecutionContext.StepTelemetry.Type = "composite";
+                
                 ExecutionContext.StepTelemetry.HasRunsStep = hasRunsStep;
                 ExecutionContext.StepTelemetry.HasUsesStep = hasUsesStep;
                 ExecutionContext.StepTelemetry.StepCount = steps.Count;
             }
+            ExecutionContext.StepTelemetry.Type = "composite";
 
             try
             {
