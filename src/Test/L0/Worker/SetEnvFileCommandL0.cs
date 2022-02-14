@@ -342,7 +342,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
                 WriteContent(envFile, content, " ");
                 var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
-                Assert.Contains("EOF marker missing newline", ex.Message);
+                Assert.Contains("EOF marker missing new line", ex.Message);
             }
         }
 

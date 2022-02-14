@@ -183,7 +183,7 @@ namespace GitHub.Runner.Worker
                                 }
                                 if (newline == null)
                                 {
-                                    throw new Exception($"Invalid environment variable value. EOF marker missing newline.");
+                                    throw new Exception($"Invalid environment variable value. EOF marker missing new line.");
                                 }
                                 endIndex = index - newline.Length;
                                 tempLine = ReadLine(text, ref index, out newline);
