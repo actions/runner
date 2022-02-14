@@ -7,6 +7,7 @@ using GitHub.Runner.Sdk;
 using System.Reflection;
 using System.Threading;
 using System.Collections.Generic;
+using GitHub.Runner.Common.Util;
 
 namespace GitHub.Runner.Worker.Expressions
 {
@@ -62,7 +63,7 @@ namespace GitHub.Runner.Worker.Expressions
             string binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             string runnerRoot = new DirectoryInfo(binDir).Parent.FullName;
 
-            string node = Path.Combine(runnerRoot, "externals", "node12", "bin", $"node{IOUtil.ExeExtension}");
+            string node = Path.Combine(runnerRoot, "externals", NodeUtil.GetNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
             string hashFilesScript = Path.Combine(binDir, "hashFiles");
             var hashResult = string.Empty;
             var p = new ProcessInvoker(new HashFilesTrace(context.Trace));
