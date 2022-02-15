@@ -670,12 +670,7 @@ namespace GitHub.Runner.Worker
 
             if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo12") ?? false)
             {
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedNodeVersion, "node12");
-            }
-
-            if (Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode16") ?? false)
-            {
-                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedActionsNodeVersion, "node16");
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, "node12");
             }
 
             // Environment variables shared across all actions

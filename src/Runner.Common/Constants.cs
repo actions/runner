@@ -219,15 +219,15 @@ namespace GitHub.Runner.Common
                 public static readonly string AllowUnsupportedStopCommandTokens = "ACTIONS_ALLOW_UNSECURE_STOPCOMMAND_TOKENS";
                 public static readonly string RunnerDebug = "ACTIONS_RUNNER_DEBUG";
                 public static readonly string StepDebug = "ACTIONS_STEP_DEBUG";
+                public static readonly string AllowActionsUseUnsecureNodeVersion = "ALLOW_ACTIONS_USE_UNSECURE_NODE_VERSION";
             }
 
             public static class Agent
             {
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
 
-                // Set this env var to force a node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
-                public static readonly string ForcedNodeVersion = "GITHUB_ACTIONS_RUNNER_FORCED_NODE_VERSION"; 
-                public static readonly string ForcedActionsNodeVersion = "GITHUB_ACTIONS_RUNNER_FORCED_ACTIONS_NODE_VERSION"; 
+                // Set this env var to "node12" to downgrade the node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
+                public static readonly string ForcedInternalNodeVersion = "ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION"; 
             }
 
             public static class System
