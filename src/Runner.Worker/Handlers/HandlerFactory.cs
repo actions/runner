@@ -66,7 +66,6 @@ namespace GitHub.Runner.Worker.Handlers
                         nodeData.NodeVersion = "node16";
                     }
                 }
-
                 (handler as INodeScriptActionHandler).Data = nodeData;
             }
             else if (data.ExecutionType == ActionExecutionType.Script)
