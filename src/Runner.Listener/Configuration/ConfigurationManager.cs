@@ -613,18 +613,17 @@ namespace GitHub.Runner.Listener.Configuration
                 throw new ArgumentException($"'{githubUrl}' should point to an org or repository.");
             }
 
-            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-            using (var httpClient = new HttpClient(httpClientHandler))
+            int retryCount = 0;
+            while(retryCount < 3)
             {
-                var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
-                HostContext.SecretMasker.AddValue(base64EncodingToken);
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
-                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-                httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-
-                int retryCount = 0;
-                while(retryCount < 3)
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                using (var httpClient = new HttpClient(httpClientHandler))
                 {
+                    var base64EncodingToken = Convert.ToBase64String(Encoding.UTF8.GetBytes($"github:{githubToken}"));
+                    HostContext.SecretMasker.AddValue(base64EncodingToken);
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
+                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
+                    httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
                     try
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
@@ -655,11 +654,10 @@ namespace GitHub.Runner.Listener.Configuration
                         Trace.Error(ex);
                         Trace.Info("Retrying in 5 seconds");
                     }
-                    await Task.Delay(TimeSpan.FromSeconds(5));
                 }
-
-                return null;
+                await Task.Delay(TimeSpan.FromSeconds(5));
             }
+            return null;
         }
 
         private async Task<GitHubAuthResult> GetTenantCredential(string githubUrl, string githubToken, string runnerEvent)
@@ -675,21 +673,21 @@ namespace GitHub.Runner.Listener.Configuration
                 githubApiUrl = $"{gitHubUrlBuilder.Scheme}://{gitHubUrlBuilder.Host}/api/v3/actions/runner-registration";
             }
 
-            using (var httpClientHandler = HostContext.CreateHttpClientHandler())
-            using (var httpClient = new HttpClient(httpClientHandler))
+            int retryCount = 0;
+            while (retryCount < 3)
             {
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
-                httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
-
-                var bodyObject = new Dictionary<string, string>()
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
+                using (var httpClient = new HttpClient(httpClientHandler))
                 {
-                    {"url", githubUrl},
-                    {"runner_event", runnerEvent}
-                };
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("RemoteAuth", githubToken);
+                    httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
 
-                int retryCount = 0;
-                while (retryCount < 3)
-                {
+                    var bodyObject = new Dictionary<string, string>()
+                    {
+                        {"url", githubUrl},
+                        {"runner_event", runnerEvent}
+                    };
+
                     try
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
@@ -721,11 +719,10 @@ namespace GitHub.Runner.Listener.Configuration
                         Trace.Error(ex);
                         Trace.Info("Retrying in 5 seconds");
                     }
-                    await Task.Delay(TimeSpan.FromSeconds(5));
                 }
-
-                return null;
+                await Task.Delay(TimeSpan.FromSeconds(5));
             }
+            return null;
         }
     }
 }
