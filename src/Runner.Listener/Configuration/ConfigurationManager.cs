@@ -622,22 +622,43 @@ namespace GitHub.Runner.Listener.Configuration
                 httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                 httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
-                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
+                int retryCount = 0;
+                while(retryCount < 3)
+                {
+                    try
+                    {
+                        var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
 
-                if (response.IsSuccessStatusCode)
-                {
-                    Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                    return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            var jsonResponse = await response.Content.ReadAsStringAsync();
+                            return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
+                        }
+                        else if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                        {
+                            // It doesn't make sense to retry in this case, so just stop
+                            break;
+                        }
+                        else
+                        {
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            var errorResponse = await response.Content.ReadAsStringAsync();
+                            _term.WriteError(errorResponse);
+                            response.EnsureSuccessStatusCode();
+                        }
+                    }
+                    catch(Exception ex) when (retryCount < 2)
+                    {
+                        retryCount++;
+                        Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
+                        Trace.Error(ex);
+                        Trace.Info("Retrying in 5 seconds");
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(5));
                 }
-                else
-                {
-                    _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var errorResponse = await response.Content.ReadAsStringAsync();
-                    _term.WriteError(errorResponse);
-                    response.EnsureSuccessStatusCode();
-                    return null;
-                }
+
+                return null;
             }
         }
 
@@ -666,22 +687,44 @@ namespace GitHub.Runner.Listener.Configuration
                     {"runner_event", runnerEvent}
                 };
 
-                var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
+                int retryCount = 0;
+                while (retryCount < 3)
+                {
+                    try
+                    {
+                        var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
 
-                if (response.IsSuccessStatusCode)
-                {
-                    Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var jsonResponse = await response.Content.ReadAsStringAsync();
-                    return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
+                        if(response.IsSuccessStatusCode)
+                        {
+                            Trace.Info($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            var jsonResponse = await response.Content.ReadAsStringAsync();
+                            return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
+                        }
+                        else if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                        {
+                            // It doesn't make sense to retry in this case, so just stop
+                            break;
+                        }
+                        else
+                        {
+                            _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
+                            var errorResponse = await response.Content.ReadAsStringAsync();
+                            _term.WriteError(errorResponse);
+                            // Something else bad happened, let's go to our retry logic
+                            response.EnsureSuccessStatusCode();
+                        }
+                    }
+                    catch(Exception ex) when (retryCount < 2)
+                    {
+                        retryCount++;
+                        Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
+                        Trace.Error(ex);
+                        Trace.Info("Retrying in 5 seconds");
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(5));
                 }
-                else
-                {
-                    _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
-                    var errorResponse = await response.Content.ReadAsStringAsync();
-                    _term.WriteError(errorResponse);
-                    response.EnsureSuccessStatusCode();
-                    return null;
-                }
+
+                return null;
             }
         }
     }
