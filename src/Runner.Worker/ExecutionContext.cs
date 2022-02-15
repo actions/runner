@@ -115,6 +115,9 @@ namespace GitHub.Runner.Worker
     {
         private const int _maxIssueCount = 10;
         private const int _throttlingDelayReportThreshold = 10 * 1000; // Don't report throttling with less than 10 seconds delay
+        private const int _maxIssueMessageLength = 4096; // Don't send issue with huge message since we can't forward them from actions to check annotation.
+        private const int _maxIssueCountInTelemetry = 3; // Only send the first 3 issues to telemetry
+        private const int _maxIssueMessageLengthInTelemetry = 256; // Only send the first 256 characters of issue message to telemetry
 
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
@@ -542,9 +545,9 @@ namespace GitHub.Runner.Worker
             }
 
             issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
-            if (issue.Message.Length > 4096)
+            if (issue.Message.Length > _maxIssueMessageLength)
             {
-                issue.Message = issue.Message[..4096];
+                issue.Message = issue.Message[.._maxIssueMessageLength];
             }
 
             if (issue.Type == IssueType.Error)
@@ -952,9 +955,9 @@ namespace GitHub.Runner.Worker
                                 !string.IsNullOrEmpty(issue.Message))
                             {
                                 string issueTelemetry;
-                                if (issue.Message.Length > 256)
+                                if (issue.Message.Length > _maxIssueMessageLengthInTelemetry)
                                 {
-                                    issueTelemetry = $"{issue.Message[..256]}";
+                                    issueTelemetry = $"{issue.Message[.._maxIssueMessageLengthInTelemetry]}";
                                 }
                                 else
                                 {
@@ -964,7 +967,7 @@ namespace GitHub.Runner.Worker
                                 StepTelemetry.ErrorMessages.Add(issueTelemetry);
 
                                 // Only send over the first 3 issues to avoid sending too much data.
-                                if (StepTelemetry.ErrorMessages.Count > 2)
+                                if (StepTelemetry.ErrorMessages.Count >= _maxIssueCountInTelemetry)
                                 {
                                     break;
                                 }
