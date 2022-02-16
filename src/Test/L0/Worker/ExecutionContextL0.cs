@@ -521,6 +521,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
                 ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
                 ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
 
                 ec.Complete();
 
@@ -531,7 +534,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal("v2", ec.Global.StepsTelemetry.Single().Ref);
                 Assert.Equal(TaskResult.Succeeded, ec.Global.StepsTelemetry.Single().Result);
                 Assert.NotNull(ec.Global.StepsTelemetry.Single().ExecutionTimeInSeconds);
-                Assert.Equal(2, ec.Global.StepsTelemetry.Single().ErrorMessages.Count);
+                Assert.Equal(3, ec.Global.StepsTelemetry.Single().ErrorMessages.Count);
+                Assert.DoesNotContain(ec.Global.StepsTelemetry.Single().ErrorMessages, x => x.Contains("notice"));
             }
         }
 
