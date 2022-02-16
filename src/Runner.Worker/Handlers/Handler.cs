@@ -22,7 +22,7 @@ namespace GitHub.Runner.Worker.Handlers
         string ActionDirectory { get; set; }
         List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
         Task RunAsync(ActionRunStage stage);
-        void PrintActionDetails(ActionRunStage stage);
+        void PrepareExecution(ActionRunStage stage);
     }
 
     public abstract class Handler : RunnerService
@@ -44,8 +44,56 @@ namespace GitHub.Runner.Worker.Handlers
         public string ActionDirectory { get; set; }
         public List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
 
+        public void PrepareExecution(ActionRunStage stage)
+        {
+            // Print out action details
+            PrintActionDetails(stage);
 
-        public virtual void PrintActionDetails(ActionRunStage stage)
+            // Get telemetry for the action.
+            PopulateActionTelemetry();
+        }
+
+        protected void PopulateActionTelemetry()
+        {
+            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            {
+                ExecutionContext.StepTelemetry.Type = "docker";
+                var registryAction = Action as Pipelines.ContainerRegistryReference;
+                ExecutionContext.StepTelemetry.Action = registryAction.Image;
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Script)
+            {
+                ExecutionContext.StepTelemetry.Type = "run";
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Repository)
+            {
+                ExecutionContext.StepTelemetry.Type = "repository";
+                var repoAction = Action as Pipelines.RepositoryPathReference;
+                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
+                {
+                    ExecutionContext.StepTelemetry.Action = repoAction.Path;
+                }
+                else
+                {
+                    ExecutionContext.StepTelemetry.Ref = repoAction.Ref;
+                    if (string.IsNullOrEmpty(repoAction.Path))
+                    {
+                        ExecutionContext.StepTelemetry.Action = repoAction.Name;
+                    }
+                    else
+                    {
+                        ExecutionContext.StepTelemetry.Action = $"{repoAction.Name}/{repoAction.Path}";
+                    }
+                }
+            }
+            else
+            {
+                // this should never happen
+                Trace.Error($"Can't generate ref for {Action.Type.ToString()}");
+            }
+        }
+
+        protected virtual void PrintActionDetails(ActionRunStage stage)
         {
 
             if (stage == ActionRunStage.Post)
@@ -116,40 +164,6 @@ namespace GitHub.Runner.Worker.Handlers
         {
             base.Initialize(hostContext);
             ActionCommandManager = hostContext.CreateService<IActionCommandManager>();
-        }
-
-        protected string GetActionRef()
-        {
-            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
-            {
-                var registryAction = Action as Pipelines.ContainerRegistryReference;
-                return registryAction.Image;
-            }
-            else if (Action.Type == Pipelines.ActionSourceType.Repository)
-            {
-                var repoAction = Action as Pipelines.RepositoryPathReference;
-                if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
-                {
-                    return repoAction.Path;
-                }
-                else
-                {
-                    if (string.IsNullOrEmpty(repoAction.Path))
-                    {
-                        return $"{repoAction.Name}@{repoAction.Ref}";
-                    }
-                    else
-                    {
-                        return $"{repoAction.Name}/{repoAction.Path}@{repoAction.Ref}";
-                    }
-                }
-            }
-            else
-            {
-                // this should never happen
-                Trace.Error($"Can't generate ref for {Action.Type.ToString()}");
-            }
-            return "";
         }
 
         protected void AddInputsToEnvironment()

@@ -70,15 +70,13 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";
-            // Add Telemetry to JobContext to send with JobCompleteMessage
+            // Set extra telemetry base on the current context.
             if (stage == ActionRunStage.Main)
             {
-                ExecutionContext.StepTelemetry.Ref = GetActionRef();
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
-                ExecutionContext.StepTelemetry.IsEmbedded = ExecutionContext.IsEmbedded;
-                ExecutionContext.StepTelemetry.Type = type;
             }
+            ExecutionContext.StepTelemetry.Type = type;
 
             // run container
             var container = new ContainerInfo(HostContext)

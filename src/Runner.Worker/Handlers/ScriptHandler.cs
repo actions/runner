@@ -22,7 +22,7 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public ScriptActionExecutionData Data { get; set; }
 
-        public override void PrintActionDetails(ActionRunStage stage)
+        protected override void PrintActionDetails(ActionRunStage stage)
         {
 
             if (stage == ActionRunStage.Post)
@@ -145,13 +145,6 @@ namespace GitHub.Runner.Worker.Handlers
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
 
-            // Add Telemetry to JobContext to send with JobCompleteMessage
-            if (stage == ActionRunStage.Main)
-            {
-                ExecutionContext.StepTelemetry.IsEmbedded = ExecutionContext.IsEmbedded;
-                ExecutionContext.StepTelemetry.Type = "run";
-            }
-
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
             Inputs.TryGetValue("script", out var contents);
@@ -217,6 +210,11 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
                 }
+            }
+
+            if (!string.IsNullOrEmpty(shellCommand))
+            {
+                ExecutionContext.StepTelemetry.Action = shellCommand;
             }
 
             // No arg format was given, shell must be a built-in
