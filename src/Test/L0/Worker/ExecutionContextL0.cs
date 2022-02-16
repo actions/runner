@@ -1,12 +1,12 @@
-﻿using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Worker;
-using Moq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Worker;
+using Moq;
 using Xunit;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -93,6 +93,60 @@ namespace GitHub.Runner.Common.Tests.Worker
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
+        public void AddIssue_TrimMessageSize()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                var bigMessage = "";
+                for (var i = 0; i < 5000; i++)
+                {
+                    bigMessage += "a";
+                }
+
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = bigMessage });
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = bigMessage });
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = bigMessage });
+
+                ec.Complete();
+
+                // Assert.
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Error).Single().Message.Length <= 4096)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Warning).Single().Message.Length <= 4096)), Times.AtLeastOnce);
+                jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Notice).Single().Message.Length <= 4096)), Times.AtLeastOnce);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void Debug_Multilines()
         {
             using (TestHostContext hc = CreateTestContext())
@@ -116,7 +170,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 var pagingLogger = new Mock<IPagingLogger>();
                 var jobServerQueue = new Mock<IJobServerQueue>();
                 jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
-                jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(),It.IsAny<long>())).Callback((Guid id, string msg, long? lineNumber) => { hc.GetTrace().Info(msg); });
+                jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>())).Callback((Guid id, string msg, long? lineNumber) => { hc.GetTrace().Info(msg); });
 
                 hc.EnqueueInstance(pagingLogger.Object);
                 hc.SetSingleton(jobServerQueue.Object);
@@ -375,6 +429,173 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 jobContext.JobContext.Status = ActionResult.Success;
                 Assert.Equal(jobContext.JobContext["status"].ToString(), jobContext.JobContext["status"].ToString().ToLowerInvariant());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PublishStepTelemetry_RegularStep_NoOpt()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+                ec.Start();
+
+                ec.Complete();
+
+                // Assert.
+                Assert.Equal(0, ec.Global.StepsTelemetry.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PublishStepTelemetry_RegularStep()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+                ec.Start();
+
+                ec.StepTelemetry.Type = "node16";
+                ec.StepTelemetry.Action = "actions/checkout";
+                ec.StepTelemetry.Ref = "v2";
+                ec.StepTelemetry.IsEmbedded = false;
+                ec.StepTelemetry.StepId = Guid.NewGuid();
+                ec.StepTelemetry.Stage = "main";
+
+                ec.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
+                ec.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
+                ec.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+
+                ec.Complete();
+
+                // Assert.
+                Assert.Equal(1, ec.Global.StepsTelemetry.Count);
+                Assert.Equal("node16", ec.Global.StepsTelemetry.Single().Type);
+                Assert.Equal("actions/checkout", ec.Global.StepsTelemetry.Single().Action);
+                Assert.Equal("v2", ec.Global.StepsTelemetry.Single().Ref);
+                Assert.Equal(TaskResult.Succeeded, ec.Global.StepsTelemetry.Single().Result);
+                Assert.NotNull(ec.Global.StepsTelemetry.Single().ExecutionTimeInSeconds);
+                Assert.Equal(2, ec.Global.StepsTelemetry.Single().ErrorMessages.Count);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void PublishStepTelemetry_EmbeddedStep()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var pagingLogger2 = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.EnqueueInstance(pagingLogger2.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+                ec.Start();
+
+                var embeddedStep = ec.CreateChild(Guid.NewGuid(), "action_1_pre", "action_1_pre", null, null, ActionRunStage.Main, isEmbedded: true);
+                embeddedStep.Start();
+
+                embeddedStep.StepTelemetry.Type = "node16";
+                embeddedStep.StepTelemetry.Action = "actions/checkout";
+                embeddedStep.StepTelemetry.Ref = "v2";
+
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Error, Message = "error" });
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Warning, Message = "warning" });
+                embeddedStep.AddIssue(new Issue() { Type = IssueType.Notice, Message = "notice" });
+
+                embeddedStep.PublishStepTelemetry();
+
+                // Assert.
+                Assert.Equal(1, ec.Global.StepsTelemetry.Count);
+                Assert.Equal("node16", ec.Global.StepsTelemetry.Single().Type);
+                Assert.Equal("actions/checkout", ec.Global.StepsTelemetry.Single().Action);
+                Assert.Equal("v2", ec.Global.StepsTelemetry.Single().Ref);
+                Assert.Equal(ActionRunStage.Main.ToString(), ec.Global.StepsTelemetry.Single().Stage);
+                Assert.True(ec.Global.StepsTelemetry.Single().IsEmbedded);
+                Assert.Null(ec.Global.StepsTelemetry.Single().Result);
+                Assert.Null(ec.Global.StepsTelemetry.Single().ExecutionTimeInSeconds);
+                Assert.Equal(0, ec.Global.StepsTelemetry.Single().ErrorMessages.Count);
             }
         }
 
