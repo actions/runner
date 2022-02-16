@@ -655,7 +655,8 @@ namespace GitHub.Runner.Listener.Configuration
                         Trace.Info("Retrying in 5 seconds");
                     }
                 }
-                await Task.Delay(TimeSpan.FromSeconds(5));
+                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                await Task.Delay(backOff);
             }
             return null;
         }
@@ -720,7 +721,8 @@ namespace GitHub.Runner.Listener.Configuration
                         Trace.Info("Retrying in 5 seconds");
                     }
                 }
-                await Task.Delay(TimeSpan.FromSeconds(5));
+                var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                await Task.Delay(backOff);
             }
             return null;
         }
