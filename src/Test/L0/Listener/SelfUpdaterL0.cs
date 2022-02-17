@@ -780,7 +780,7 @@ namespace GitHub.Runner.Common.Tests.Listener
                     }
                     else
                     {
-                        Console.WriteLine("::warning:: Skipping the 'TestSelfUpdateAsync_FallbackToFullPackage' test, as the `externals` or `runtime` hashes have been updated");
+                        hc.GetTrace().Warning("Skipping the 'TestSelfUpdateAsync_FallbackToFullPackage' test, as the `externals` or `runtime` hashes have been updated");
                     }
                 }
             }
