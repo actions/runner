@@ -74,8 +74,6 @@ namespace GitHub.Runner.Worker.Handlers
                 target = Data.Post;
             }
 
-            var preferredNodeVersion = NodeUtil.GetActionsNodeVersion() ?? Data.NodeVersion;
-
             // Add Telemetry to JobContext to send with JobCompleteMessage
             if (stage == ActionRunStage.Main)
             {
@@ -83,7 +81,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
                 ExecutionContext.StepTelemetry.IsEmbedded = ExecutionContext.IsEmbedded;
-                ExecutionContext.StepTelemetry.Type = preferredNodeVersion;
+                ExecutionContext.StepTelemetry.Type = Data.NodeVersion;
             }
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));
@@ -97,7 +95,7 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, preferredNodeVersion);
+            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 
             // Format the arguments passed to node.

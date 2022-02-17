@@ -145,7 +145,7 @@ namespace GitHub.Runner.Listener.Check
                     });
 
                     var makeWebRequestScript = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "makeWebRequest.js");
-                    var node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
+                    var node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node} \"{makeWebRequestScript}\"' ");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} {StringUtil.ConvertToJson(env)}");
                     await processInvoker.ExecuteAsync(

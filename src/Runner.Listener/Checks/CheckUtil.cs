@@ -315,7 +315,7 @@ namespace GitHub.Runner.Listener.Check
                     });
 
                     var downloadCertScript = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "downloadCert");
-                    var node = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
+                    var node = Path.Combine(hostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node} \"{downloadCertScript}\"' ");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} {StringUtil.ConvertToJson(env)}");
                     await processInvoker.ExecuteAsync(
