@@ -6,13 +6,35 @@
 Make sure the runner has access to actions service for GitHub.com or GitHub Enterprise Server
 
 - For GitHub.com
-  - The runner needs to access https://api.github.com for downloading actions.
-  - The runner needs to access https://vstoken.actions.githubusercontent.com/_apis/.../ for requesting an access token.
-  - The runner needs to access https://pipelines.actions.githubusercontent.com/_apis/.../ for receiving workflow jobs.
+  - The runner needs to access `https://api.github.com` for downloading actions.
+  - The runner needs to access `https://vstoken.actions.githubusercontent.com/_apis/.../` for requesting an access token.
+  - The runner needs to access `https://pipelines.actions.githubusercontent.com/_apis/.../` for receiving workflow jobs.
+
+  These can by tested by running the following `curl` commands from your self-hosted runner machine:
+
+    ```
+    curl -v https://api.github.com/api/v3/zen
+    curl -v https://vstoken.actions.githubusercontent.com/_apis/health
+    curl -v https://pipelines.actions.githubusercontent/_apis/health
+    ```
+
 - For GitHub Enterprise Server
-  - The runner needs to access https://myGHES.com/api/v3 for downloading actions.
-  - The runner needs to access https://myGHES.com/_services/vstoken/_apis/.../ for requesting an access token.
-  - The runner needs to access https://myGHES.com/_services/pipelines/_apis/.../ for receiving workflow jobs.
+  - The runner needs to access `https://[hostname]/api/v3` for downloading actions.
+  - The runner needs to access `https://[hostname]/_services/vstoken/_apis/.../` for requesting an access token.
+  - The runner needs to access `https://[hostname]/_services/pipelines/_apis/.../` for receiving workflow jobs.
+  
+  These can by tested by running the following `curl` commands from your self-hosted runner machine, replacing `[hostname]` with the hostname of your appliance, for instance `github.example.com`:
+
+    ```
+    curl -v https://[hostname]/api/v3/zen
+    curl -v https://[hostname]/_services/vstoken/_apis/health
+    curl -v https://[hostname]/_services/pipelines/_apis/health
+    ```
+
+    A common cause of this these connectivity issues is if your to GitHub Enterprise Server appliance is using [the self-signed certificate that is enabled the first time](https://docs.github.com/en/enterprise-server/admin/configuration/configuring-network-settings/configuring-tls) your appliance is started. As self-signed certificates are not trusted by web browsers and Git clients, these clients (including the GitHub Actions runner) will report certificate warnings.
+    
+    We recommend [upload a certificate signed by a trusted authority](https://docs.github.com/en/enterprise-server/admin/configuration/configuring-network-settings/configuring-tls) to GitHub Enterprise Server, or enabling the built-in ][Let's Encrypt support](https://docs.github.com/en/enterprise-server/admin/configuration/configuring-network-settings/configuring-tls).
+
 
 ## What is checked?
 
@@ -42,4 +64,4 @@ Make sure the runner has access to actions service for GitHub.com or GitHub Ente
   
 ## Still not working?
 
-Contact GitHub customer service or log an issue at https://github.com/actions/runner if you think it's a runner issue.
+Contact [GitHub Support](https://support.github.com] if you have further questuons, or log an issue at https://github.com/actions/runner if you think it's a runner issue.

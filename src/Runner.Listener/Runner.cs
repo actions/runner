@@ -12,6 +12,7 @@ using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
 using GitHub.Runner.Listener.Check;
+using System.Collections.Generic;
 
 namespace GitHub.Runner.Listener
 {
@@ -407,8 +408,29 @@ namespace GitHub.Runner.Listener
                                 {
                                     autoUpdateInProgress = true;
                                     var runnerUpdateMessage = JsonUtility.FromString<AgentRefreshMessage>(message.Body);
+#if DEBUG
+                                    // Can mock the update for testing
+                                    if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_IS_MOCK_UPDATE")))
+                                    {
+
+                                        // The mock_update_messages.json file should be an object with keys being the current version and values being the targeted mock version object
+                                        // Example: { "2.283.2": {"targetVersion":"2.284.1"}, "2.284.1": {"targetVersion":"2.285.0"}}
+                                        var mockUpdatesPath = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Root), "mock_update_messages.json");
+                                        if (File.Exists(mockUpdatesPath))
+                                        {
+                                            var mockUpdateMessages = JsonUtility.FromString<Dictionary<string, AgentRefreshMessage>>(File.ReadAllText(mockUpdatesPath));
+                                            if (mockUpdateMessages.ContainsKey(BuildConstants.RunnerPackage.Version))
+                                            {
+                                                var mockTargetVersion = mockUpdateMessages[BuildConstants.RunnerPackage.Version].TargetVersion;
+                                                _term.WriteLine($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                Trace.Info($"Mocking update, using version {mockTargetVersion} instead of {runnerUpdateMessage.TargetVersion}");
+                                                runnerUpdateMessage = new AgentRefreshMessage(runnerUpdateMessage.AgentId, mockTargetVersion, runnerUpdateMessage.Timeout);
+                                            }
+                                        }
+                                    }
+#endif
                                     var selfUpdater = HostContext.GetService<ISelfUpdater>();
-                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, !runOnce && HostContext.StartupType != StartupType.Service, HostContext.RunnerShutdownToken);
+                                    selfUpdateTask = selfUpdater.SelfUpdate(runnerUpdateMessage, jobDispatcher, false, HostContext.RunnerShutdownToken);
                                     Trace.Info("Refresh message received, kick-off selfupdate background process.");
                                 }
                                 else
@@ -540,6 +562,7 @@ Config Options:
  --work string          Relative runner work directory (default {Constants.Path.WorkDirectory})
  --replace              Replace any existing runner with the same name (default false)
  --pat                  GitHub personal access token used for checking network connectivity when executing `.{separator}run.{ext} --check`
+ --disableupdate        Disable self-hosted runner automatic update to the latest released version`
  --ephemeral            Configure the runner to only take one job and then let the service un-configure the runner after the job finishes (default false)");
 
 #if OS_WINDOWS

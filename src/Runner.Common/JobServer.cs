@@ -1,4 +1,4 @@
-﻿using GitHub.DistributedTask.WebApi;
+using GitHub.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -26,7 +26,7 @@ namespace GitHub.Runner.Common
         Task<List<TimelineRecord>> UpdateTimelineRecordsAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, IEnumerable<TimelineRecord> records, CancellationToken cancellationToken);
         Task RaisePlanEventAsync<T>(Guid scopeIdentifier, string hubName, Guid planId, T eventData, CancellationToken cancellationToken) where T : JobEvent;
         Task<Timeline> GetTimelineAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, CancellationToken cancellationToken);
-        Task<ActionDownloadInfoCollection> ResolveActionDownloadInfoAsync(Guid scopeIdentifier, string hubName, Guid planId, ActionReferenceList actions, CancellationToken cancellationToken);
+        Task<ActionDownloadInfoCollection> ResolveActionDownloadInfoAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken);
     }
 
     public sealed class JobServer : RunnerService, IJobServer
@@ -42,7 +42,7 @@ namespace GitHub.Runner.Common
             int attemptCount = totalAttempts;
             var configurationStore = HostContext.GetService<IConfigurationStore>();
             var runnerSettings = configurationStore.GetSettings();
- 
+
             while (!_connection.HasAuthenticated && attemptCount-- > 0)
             {
                 try
@@ -186,10 +186,10 @@ namespace GitHub.Runner.Common
         //-----------------------------------------------------------------
         // Action download info
         //-----------------------------------------------------------------
-        public Task<ActionDownloadInfoCollection> ResolveActionDownloadInfoAsync(Guid scopeIdentifier, string hubName, Guid planId, ActionReferenceList actions, CancellationToken cancellationToken)
+        public Task<ActionDownloadInfoCollection> ResolveActionDownloadInfoAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken)
         {
             CheckConnection();
-            return _taskClient.ResolveActionDownloadInfoAsync(scopeIdentifier, hubName, planId, actions, cancellationToken: cancellationToken);
+            return _taskClient.ResolveActionDownloadInfoAsync(scopeIdentifier, hubName, planId, jobId, actions, cancellationToken: cancellationToken);
         }
     }
 }

@@ -60,6 +60,7 @@ namespace GitHub.Runner.Common
                 case "GitHub.Runner.Worker.IFileCommandExtension":
                     Add<T>(extensions, "GitHub.Runner.Worker.AddPathFileCommand, Runner.Worker");
                     Add<T>(extensions, "GitHub.Runner.Worker.SetEnvFileCommand, Runner.Worker");
+                    Add<T>(extensions, "GitHub.Runner.Worker.CreateStepSummaryCommand, Runner.Worker");
                     break;
                 case "GitHub.Runner.Listener.Check.ICheckExtension":
                     Add<T>(extensions, "GitHub.Runner.Listener.Check.InternetCheck, Runner.Listener");
