@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Handlers

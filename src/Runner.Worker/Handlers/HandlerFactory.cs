@@ -57,7 +57,7 @@ namespace GitHub.Runner.Worker.Handlers
                 handler = HostContext.CreateService<INodeScriptActionHandler>();
                 var nodeData = data as NodeJSActionExecutionData;
                 
-                // With node12 EoL in 03/2022, we want to be able to uniformly upgrade all JS actions to node16 from the server
+                // With node12 EoL in 04/2022, we want to be able to uniformly upgrade all JS actions to node16 from the server
                 if (executionContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode16") ?? false)
                 {   
                     // The user can opt out of this behaviour by setting this variable to true, either in 'env' in their workflow or as an environment variable on their machine
