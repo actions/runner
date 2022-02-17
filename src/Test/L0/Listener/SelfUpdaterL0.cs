@@ -774,7 +774,14 @@ namespace GitHub.Runner.Common.Tests.Listener
 
                     var traceFile = Path.GetTempFileName();
                     File.Copy(hc.TraceFileName, traceFile, true);
-                    Assert.Contains("Something wrong with the trimmed runner package, failback to use the full package for runner updates", File.ReadAllText(traceFile));
+                    if (File.ReadAllText(traceFile).Contains("Use trimmed (runtime+externals) package"))
+                    {
+                        Assert.Contains("Something wrong with the trimmed runner package, failback to use the full package for runner updates", File.ReadAllText(traceFile));
+                    }
+                    else
+                    {
+                        Console.WriteLine("::warning:: Skipping the 'TestSelfUpdateAsync_FallbackToFullPackage' test, as the `externals` or `runtime` hashes have been updated");
+                    }
                 }
             }
             finally
