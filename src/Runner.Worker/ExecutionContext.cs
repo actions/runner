@@ -136,6 +136,8 @@ namespace GitHub.Runner.Worker
         private Guid _detailTimelineId;
         private bool _expandedForPostJob = false;
         private int _childTimelineRecordOrder = 0;
+        private int _childPostActionCounter = 0;
+
         private CancellationTokenSource _cancellationTokenSource;
         private TaskCompletionSource<int> _forceCompleted = new TaskCompletionSource<int>();
         private bool _throttlingReported = false;
@@ -1043,7 +1045,7 @@ namespace GitHub.Runner.Worker
             }
 
             var newGuid = Guid.NewGuid();
-            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
+            return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - (_childPostActionCounter++), siblingScopeName: siblingScopeName);
         }
     }
 
