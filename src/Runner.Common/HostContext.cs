@@ -98,14 +98,14 @@ namespace GitHub.Runner.Common
             {
                 int logPageSize;
                 string logSizeEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGSIZE");
-                if (!string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
+                if (string.IsNullOrEmpty(logSizeEnv) || !int.TryParse(logSizeEnv, out logPageSize))
                 {
                     logPageSize = _defaultLogPageSize;
                 }
 
                 int logRetentionDays;
                 string logRetentionDaysEnv = Environment.GetEnvironmentVariable($"{hostType.ToUpperInvariant()}_LOGRETENTION");
-                if (!string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
+                if (string.IsNullOrEmpty(logRetentionDaysEnv) || !int.TryParse(logRetentionDaysEnv, out logRetentionDays))
                 {
                     logRetentionDays = _defaultLogRetentionDays;
                 }
@@ -193,6 +193,11 @@ namespace GitHub.Runner.Common
                 _trace.Info($"No proxy settings were found based on environmental variables (http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY)");
             }
 
+            if (StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY")))
+            {
+                _trace.Warning($"Runner is running under insecure mode: HTTPS server certifcate validation has been turned off by GITHUB_ACTIONS_RUNNER_TLS_NO_VERIFY environment variable.");
+            }
+
             var credFile = GetConfigFile(WellKnownConfigFile.Credentials);
             if (File.Exists(credFile))
             {
@@ -211,6 +216,8 @@ namespace GitHub.Runner.Common
                 _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
                 _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
             }
+
+            _userAgents.Add(new ProductInfoHeaderValue("CommitSHA", BuildConstants.Source.CommitHash));
         }
 
         public string GetDirectory(WellKnownDirectory directory)
@@ -350,7 +357,7 @@ namespace GitHub.Runner.Common
                         GetDirectory(WellKnownDirectory.Root),
                         ".setup_info");
                     break;
-                
+
                 case WellKnownConfigFile.Telemetry:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Diag),

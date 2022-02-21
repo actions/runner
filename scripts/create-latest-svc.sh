@@ -23,7 +23,66 @@ set -e
 # Should be used on VMs and not containers
 # Works on OSX and Linux 
 # Assumes x64 arch
+ <<<<<<< main
 #
+ =======
+# See EXAMPLES below
+
+flags_found=false
+
+while getopts 's:g:n:r:u:l:' opt; do
+    flags_found=true
+
+    case $opt in
+    s)
+        runner_scope=$OPTARG
+        ;;
+    g)
+        ghe_hostname=$OPTARG
+        ;;
+    n)
+        runner_name=$OPTARG
+        ;;
+    r)
+        runner_group=$OPTARG
+        ;;
+    u)
+        svc_user=$OPTARG
+        ;;
+    l)
+        labels=$OPTARG
+        ;;
+    *)
+        echo "
+Runner Service Installer
+Examples:
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh myuser/myrepo my.ghe.deployment.net
+RUNNER_CFG_PAT=<yourPAT> ./create-latest-svc.sh -s myorg -u user_name -l label1,label2
+Usage:
+    export RUNNER_CFG_PAT=<yourPAT>
+    ./create-latest-svc scope [ghe_domain] [name] [user] [labels]
+    -s          required  scope: repo (:owner/:repo) or org (:organization)
+    -g          optional  ghe_hostname: the fully qualified domain name of your GitHub Enterprise Server deployment
+    -n          optional  name of the runner, defaults to hostname
+    -r          optional  name of the runner group to add the runner to, defaults to the Default group
+    -u          optional  user svc will run as, defaults to current
+    -l          optional  list of labels (split by comma) applied on the runner"
+        exit 0
+        ;;
+    esac
+done
+
+shift "$((OPTIND - 1))"
+
+if ! "$flags_found"; then
+    runner_scope=${1}
+    ghe_hostname=${2}
+    runner_name=${3:-$(hostname)}
+    svc_user=${4:-$USER}
+    labels=${5}
+    runner_group=${6}
+fi
+ >>>>>>> main
 
 runner_scope=${1}
 runner_name=${2:-$(hostname)}
@@ -118,8 +177,13 @@ pushd ./runner
 runner_url="https://github.com/${runner_scope}"
 echo
 echo "Configuring ${runner_name} @ $runner_url"
+ <<<<<<< main
 echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name"
 sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name
+ =======
+echo "./config.sh --unattended --url $runner_url --token *** --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup \"$runner_group\"}"
+sudo -E -u ${svc_user} ./config.sh --unattended --url $runner_url --token $RUNNER_TOKEN --name $runner_name ${labels:+--labels $labels} ${runner_group:+--runnergroup "$runner_group"}
+ >>>>>>> main
 
 #---------------------------------------
 # Configuring as a service

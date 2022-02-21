@@ -178,7 +178,7 @@ namespace GitHub.Runner.Worker
                     Message = $"Invoked ::stopCommand:: with token: [{stopToken}]",
                     Type = JobTelemetryType.ActionCommand
                 };
-                context.JobTelemetry.Add(telemetry);
+                context.Global.JobTelemetry.Add(telemetry);
             }
 
             if (isTokenInvalid && !allowUnsecureStopCommandTokens)
@@ -381,6 +381,13 @@ namespace GitHub.Runner.Worker
 
                 HostContext.SecretMasker.AddValue(command.Data);
                 Trace.Info($"Add new secret mask with length of {command.Data.Length}");
+
+                // Also add each individual line. Typically individual lines are processed from STDOUT of child processes.
+                var split = command.Data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var item in split)
+                {
+                    HostContext.SecretMasker.AddValue(item);
+                }
             }
         }
     }

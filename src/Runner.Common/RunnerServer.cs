@@ -51,7 +51,7 @@ namespace GitHub.Runner.Common
         Task<PackageMetadata> GetPackageAsync(string packageType, string platform, string version, bool includeToken, CancellationToken cancellationToken);
 
         // agent update
-        Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState);
+        Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState, string trace);
     }
 
     public sealed class RunnerServer : RunnerService, IRunnerServer
@@ -341,25 +341,10 @@ namespace GitHub.Runner.Common
             return _genericTaskAgentClient.GetPackageAsync(packageType, platform, version, includeToken, cancellationToken: cancellationToken);
         }
 
-        public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState)
+        public Task<TaskAgent> UpdateAgentUpdateStateAsync(int agentPoolId, int agentId, string currentState, string trace)
         {
             CheckConnection(RunnerConnectionType.Generic);
-            return _genericTaskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState);
-        }
-
-        //-----------------------------------------------------------------
-        // Runner Auth Url
-        //-----------------------------------------------------------------
-        public Task<string> GetRunnerAuthUrlAsync(int runnerPoolId, int runnerId)
-        {
-            CheckConnection(RunnerConnectionType.MessageQueue);
-            return _messageTaskAgentClient.GetAgentAuthUrlAsync(runnerPoolId, runnerId);
-        }
-
-        public Task ReportRunnerAuthUrlErrorAsync(int runnerPoolId, int runnerId, string error)
-        {
-            CheckConnection(RunnerConnectionType.MessageQueue);
-            return _messageTaskAgentClient.ReportAgentAuthUrlMigrationErrorAsync(runnerPoolId, runnerId, error);
+            return _genericTaskAgentClient.UpdateAgentUpdateStateAsync(agentPoolId, agentId, currentState, trace);
         }
     }
 }

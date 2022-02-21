@@ -29,6 +29,7 @@ namespace GitHub.Runner.Listener
         {
             Constants.Runner.CommandLine.Flags.Check,
             Constants.Runner.CommandLine.Flags.Commit,
+            Constants.Runner.CommandLine.Flags.DisableUpdate,
             Constants.Runner.CommandLine.Flags.Ephemeral,
             Constants.Runner.CommandLine.Flags.Help,
             Constants.Runner.CommandLine.Flags.Once,
@@ -68,6 +69,7 @@ namespace GitHub.Runner.Listener
         public bool Unattended => TestFlag(Constants.Runner.CommandLine.Flags.Unattended);
         public bool Version => TestFlag(Constants.Runner.CommandLine.Flags.Version);
         public bool Ephemeral => TestFlag(Constants.Runner.CommandLine.Flags.Ephemeral);
+        public bool DisableUpdate => TestFlag(Constants.Runner.CommandLine.Flags.DisableUpdate);
 
         // Keep this around since customers still relies on it
         public bool RunOnce => TestFlag(Constants.Runner.CommandLine.Flags.Once);
@@ -243,6 +245,7 @@ namespace GitHub.Runner.Listener
                 validator: Validators.ServerUrlValidator);
         }
 
+#if OS_WINDOWS
         public string GetWindowsLogonAccount(string defaultValue, string descriptionMsg)
         {
             return GetArgOrPrompt(
@@ -260,7 +263,7 @@ namespace GitHub.Runner.Listener
                 defaultValue: string.Empty,
                 validator: Validators.NonEmptyValidator);
         }
-
+#endif
         public string GetWork()
         {
             return GetArgOrPrompt(

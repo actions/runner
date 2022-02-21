@@ -5,7 +5,6 @@
 # GitHub Actions Runner
 
 [![Actions Status](https://github.com/actions/runner/workflows/Runner%20CI/badge.svg)](https://github.com/actions/runner/actions)
-[![Runner E2E Test](https://github.com/actions-canary/actions-runner-e2e/actions/workflows/runner_e2etest.yml/badge.svg)](https://github.com/actions-canary/actions-runner-e2e/actions/workflows/runner_e2etest.yml)
 
 The runner is the application that runs a job from a GitHub Actions workflow. It is used by GitHub Actions in the [hosted virtual environments](https://github.com/actions/virtual-environments), or you can [self-host the runner](https://help.github.com/en/actions/automating-your-workflow-with-github-actions/about-self-hosted-runners) in your own environment.
 

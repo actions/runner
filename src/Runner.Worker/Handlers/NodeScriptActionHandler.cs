@@ -1,12 +1,12 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using System;
-using System.Linq;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -74,19 +74,13 @@ namespace GitHub.Runner.Worker.Handlers
                 target = Data.Post;
             }
 
-            // Add Telemetry to JobContext to send with JobCompleteMessage
+            // Set extra telemetry base on the current context.
             if (stage == ActionRunStage.Main)
             {
-                var telemetry = new ActionsStepTelemetry
-                {
-                    Ref = GetActionRef(),
-                    HasPreStep = Data.HasPre,
-                    HasPostStep = Data.HasPost,
-                    IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = "node12"
-                };
-                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+                ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
+                ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
             }
+            ExecutionContext.StepTelemetry.Type = Data.NodeVersion;
 
             ArgUtil.NotNullOrEmpty(target, nameof(target));
             target = Path.Combine(ActionDirectory, target);
@@ -99,7 +93,7 @@ namespace GitHub.Runner.Worker.Handlers
                 workingDirectory = HostContext.GetDirectory(WellKnownDirectory.Work);
             }
 
-            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext);
+            var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             string file = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), nodeRuntimeVersion, "bin", $"node{IOUtil.ExeExtension}");
 
             // Format the arguments passed to node.

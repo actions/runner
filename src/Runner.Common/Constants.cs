@@ -129,6 +129,7 @@ namespace GitHub.Runner.Common
                     public static readonly string Ephemeral = "ephemeral";
                     public static readonly string Help = "help";
                     public static readonly string Replace = "replace";
+                    public static readonly string DisableUpdate = "disableupdate";
                     public static readonly string Once = "once"; // Keep this around since customers still relies on it
                     public static readonly string RunAsService = "runasservice";
                     public static readonly string Unattended = "unattended";
@@ -223,6 +224,9 @@ namespace GitHub.Runner.Common
             public static class Agent
             {
                 public static readonly string ToolsDirectory = "agent.ToolsDirectory";
+
+                // Set this env var to force a node version for internal functions (e.g hashfiles). This does NOT affect the version of node actions.
+                public static readonly string ForcedNodeVersion = "GITHUB_ACTIONS_RUNNER_FORCED_NODE_VERSION"; 
             }
 
             public static class System

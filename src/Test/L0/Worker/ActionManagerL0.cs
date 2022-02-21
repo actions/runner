@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -965,7 +965,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 };
 
                 //Act
-                var result =  await _actionManager.PrepareActionsAsync(_ec.Object, actions);
+                var result = await _actionManager.PrepareActionsAsync(_ec.Object, actions);
 
                 //Assert
                 Assert.Equal(1, result.PreStepTracker.Count);
@@ -1288,7 +1288,7 @@ runs:
         [Fact]
         [Trait("Level", "L0")]
         [Trait("Category", "Worker")]
-        public void LoadsNodeActionDefinition()
+        public void LoadsNode12ActionDefinition()
         {
             try
             {
@@ -1344,8 +1344,78 @@ runs:
                 Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
                 Assert.NotNull(definition.Data.Execution); // execution
 
-                Assert.NotNull((definition.Data.Execution as NodeJSActionExecutionData));
+                Assert.NotNull(definition.Data.Execution as NodeJSActionExecutionData);
                 Assert.Equal("task.js", (definition.Data.Execution as NodeJSActionExecutionData).Script);
+                Assert.Equal("node12", (definition.Data.Execution as NodeJSActionExecutionData).NodeVersion);
+            }
+            finally
+            {
+                Teardown();
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void LoadsNode16ActionDefinition()
+        {
+            try
+            {
+                // Arrange.
+                Setup();
+                const string Content = @"
+# Container action
+name: 'Hello World'
+description: 'Greet the world and record the time'
+author: 'GitHub'
+inputs:
+  greeting: # id of input
+    description: 'The greeting we choose - will print ""{greeting}, World!"" on stdout'
+    required: true
+    default: 'Hello'
+  entryPoint: # id of input
+    description: 'optional docker entrypoint overwrite.'
+    required: false
+outputs:
+  time: # id of output
+    description: 'The time we did the greeting'
+icon: 'hello.svg' # vector art to display in the GitHub Marketplace
+color: 'green' # optional, decorates the entry in the GitHub Marketplace
+runs:
+  using: 'node16'
+  main: 'task.js'
+";
+                Pipelines.ActionStep instance;
+                string directory;
+                CreateAction(yamlContent: Content, instance: out instance, directory: out directory);
+
+                // Act.
+                Definition definition = _actionManager.LoadAction(_ec.Object, instance);
+
+                // Assert.
+                Assert.NotNull(definition);
+                Assert.Equal(directory, definition.Directory);
+                Assert.NotNull(definition.Data);
+                Assert.NotNull(definition.Data.Inputs); // inputs
+                Dictionary<string, string> inputDefaults = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var input in definition.Data.Inputs)
+                {
+                    var name = input.Key.AssertString("key").Value;
+                    var value = input.Value.AssertScalar("value").ToString();
+
+                    _hc.GetTrace().Info($"Default: {name} = {value}");
+                    inputDefaults[name] = value;
+                }
+
+                Assert.Equal(2, inputDefaults.Count);
+                Assert.True(inputDefaults.ContainsKey("greeting"));
+                Assert.Equal("Hello", inputDefaults["greeting"]);
+                Assert.True(string.IsNullOrEmpty(inputDefaults["entryPoint"]));
+                Assert.NotNull(definition.Data.Execution); // execution
+
+                Assert.NotNull(definition.Data.Execution as NodeJSActionExecutionData);
+                Assert.Equal("task.js", (definition.Data.Execution as NodeJSActionExecutionData).Script);
+                Assert.Equal("node16", (definition.Data.Execution as NodeJSActionExecutionData).NodeVersion);
             }
             finally
             {
@@ -2065,6 +2135,7 @@ runs:
             _ec = new Mock<IExecutionContext>();
             _ec.Setup(x => x.Global).Returns(new GlobalContext());
             _ec.Setup(x => x.CancellationToken).Returns(_ecTokenSource.Token);
+            _ec.Setup(x => x.Root).Returns(new GitHub.Runner.Worker.ExecutionContext());
             var variables = new Dictionary<string, VariableValue>();
             if (enableComposite)
             {
@@ -2086,8 +2157,8 @@ runs:
             _dockerManager.Setup(x => x.DockerBuild(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(0));
 
             _jobServer = new Mock<IJobServer>();
-            _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
-                .Returns((Guid scopeIdentifier, string hubName, Guid planId, ActionReferenceList actions, CancellationToken cancellationToken) =>
+            _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
+                .Returns((Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken) =>
                 {
                     var result = new ActionDownloadInfoCollection { Actions = new Dictionary<string, ActionDownloadInfo>() };
                     foreach (var action in actions.Actions)

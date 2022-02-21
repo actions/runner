@@ -1,7 +1,12 @@
 name: "Code Scanning - Action"
 
+permissions:
+  security-events: write
+
 on:
   push:
+    branches: 
+      - main
   pull_request:
   schedule:
     - cron: '0 0 * * 0'

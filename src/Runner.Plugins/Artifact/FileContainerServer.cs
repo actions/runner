@@ -444,7 +444,7 @@ namespace GitHub.Runner.Plugins.Artifact
                 {
                     // We should never
                     context.Error($"Error '{ex.Message}' when downloading file '{fileToDownload}'. (Downloader {downloaderId})");
-                    throw ex;
+                    throw;
                 }
             }
 
@@ -469,7 +469,7 @@ namespace GitHub.Runner.Plugins.Artifact
                         try
                         {
                             uploadTimer.Restart();
-                            using (HttpResponseMessage response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token, chunkSize: 4 * 1024 * 1024))
+                            using (HttpResponseMessage response = await _fileContainerHttpClient.UploadFileAsync(_containerId, itemPath, fs, _projectId, cancellationToken: token))
                             {
                                 if (response == null || response.StatusCode != HttpStatusCode.Created)
                                 {
@@ -528,7 +528,7 @@ namespace GitHub.Runner.Plugins.Artifact
                 catch (Exception ex)
                 {
                     context.Output($"File error '{ex.Message}' when uploading file '{fileToUpload}'.");
-                    throw ex;
+                    throw;
                 }
             }
 

@@ -278,7 +278,7 @@ namespace GitHub.Runner.Worker
                         }
                         // Clone action so we can modify the condition without affecting the original
                         var clonedAction = action.Clone() as Pipelines.ActionStep;
-                        _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);                        
+                        _cachedEmbeddedPostSteps[parentStepId].Push(clonedAction);
                     }
                 }
             }
@@ -443,12 +443,22 @@ namespace GitHub.Runner.Worker
                         {
                             for (var i = 0; i < compositeAction.Steps.Count; i++)
                             {
-                                // Store Id's for later load actions
+                                // Load stored Ids for later load actions
                                 compositeAction.Steps[i].Id = _cachedEmbeddedStepIds[action.Id][i];
                                 if (string.IsNullOrEmpty(executionContext.Global.Variables.Get("DistributedTask.EnableCompositeActions")) && compositeAction.Steps[i].Reference.Type != Pipelines.ActionSourceType.Script)
                                 {
                                     throw new Exception("`uses:` keyword is not currently supported.");
                                 }
+                            }
+                        }
+                        else
+                        {
+                            _cachedEmbeddedStepIds[action.Id] = new List<Guid>();
+                            foreach (var compositeStep in compositeAction.Steps)
+                            {
+                                var guid = Guid.NewGuid();
+                                compositeStep.Id = guid;
+                                _cachedEmbeddedStepIds[action.Id].Add(guid);
                             }
                         }
                     }
@@ -641,7 +651,7 @@ namespace GitHub.Runner.Worker
             {
                 try
                 {
-                    actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
+                    actionDownloadInfos = await jobServer.ResolveActionDownloadInfoAsync(executionContext.Global.Plan.ScopeIdentifier, executionContext.Global.Plan.PlanType, executionContext.Global.Plan.PlanId, executionContext.Root.Id, new WebApi.ActionReferenceList { Actions = actionReferences }, executionContext.CancellationToken);
                     break;
                 }
                 catch (Exception ex) when (!executionContext.CancellationToken.IsCancellationRequested) // Do not retry if the run is canceled.
@@ -1189,6 +1199,8 @@ namespace GitHub.Runner.Worker
         public string Pre { get; set; }
 
         public string Post { get; set; }
+
+        public string NodeVersion { get; set; }
     }
 
     public sealed class PluginActionExecutionData : ActionExecutionData

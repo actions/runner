@@ -1,12 +1,13 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Linq;
 using GitHub.DistributedTask.Pipelines.ContextData;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
 using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
+using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
@@ -21,7 +22,7 @@ namespace GitHub.Runner.Worker.Handlers
     {
         public ScriptActionExecutionData Data { get; set; }
 
-        public override void PrintActionDetails(ActionRunStage stage)
+        protected override void PrintActionDetails(ActionRunStage stage)
         {
 
             if (stage == ActionRunStage.Post)
@@ -144,17 +145,6 @@ namespace GitHub.Runner.Worker.Handlers
             var githubContext = ExecutionContext.ExpressionValues["github"] as GitHubContext;
             ArgUtil.NotNull(githubContext, nameof(githubContext));
 
-            // Add Telemetry to JobContext to send with JobCompleteMessage
-            if (stage == ActionRunStage.Main)
-            {
-                var telemetry = new ActionsStepTelemetry
-                {
-                    IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = "run",
-                };
-                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
-            }
-
             var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
 
             Inputs.TryGetValue("script", out var contents);
@@ -222,6 +212,11 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
+            if (!string.IsNullOrEmpty(shellCommand))
+            {
+                ExecutionContext.StepTelemetry.Action = shellCommand;
+            }
+
             // No arg format was given, shell must be a built-in
             if (string.IsNullOrEmpty(argFormat) || !argFormat.Contains("{0}"))
             {
@@ -271,10 +266,10 @@ namespace GitHub.Runner.Worker.Handlers
             if (Environment.ContainsKey("DYLD_INSERT_LIBRARIES"))  // We don't check `isContainerStepHost` because we don't support container on macOS
             {
                 // launch `node macOSRunInvoker.js shell args` instead of `shell args` to avoid macOS SIP remove `DYLD_INSERT_LIBRARIES` when launch process
-                string node12 = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
+                string node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
                 string macOSRunInvoker = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "macos-run-invoker.js");
                 arguments = $"\"{macOSRunInvoker.Replace("\"", "\\\"")}\" \"{fileName.Replace("\"", "\\\"")}\" {arguments}";
-                fileName = node12;
+                fileName = node;
             }
 #endif
             var systemConnection = ExecutionContext.Global.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));

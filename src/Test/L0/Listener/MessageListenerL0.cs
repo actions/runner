@@ -1,18 +1,18 @@
-﻿using GitHub.DistributedTask.WebApi;
-using GitHub.Services.Common;
-using GitHub.Services.WebApi;
-using GitHub.Runner.Listener;
-using GitHub.Runner.Listener.Configuration;
-using Moq;
-using System;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Xunit;
-using System.Threading;
-using System.Reflection;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Listener;
+using GitHub.Runner.Listener.Configuration;
+using GitHub.Services.Common;
+using GitHub.Services.WebApi;
+using Moq;
+using Xunit;
 
 namespace GitHub.Runner.Common.Tests.Listener
 {
@@ -254,6 +254,68 @@ namespace GitHub.Runner.Common.Tests.Listener
                         _settings.PoolId,
                         It.Is<TaskAgentSession>(y => y != null),
                         tokenSource.Token), Times.Once());
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Runner")]
+        public async void SkipDeleteSession_WhenGetNextMessageGetTaskAgentAccessTokenExpiredException()
+        {
+            using (TestHostContext tc = CreateTestContext())
+            using (var tokenSource = new CancellationTokenSource())
+            {
+                Tracing trace = tc.GetTrace();
+
+                // Arrange.
+                var expectedSession = new TaskAgentSession();
+                PropertyInfo sessionIdProperty = expectedSession.GetType().GetProperty("SessionId", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                Assert.NotNull(sessionIdProperty);
+                sessionIdProperty.SetValue(expectedSession, Guid.NewGuid());
+
+                _runnerServer
+                    .Setup(x => x.CreateAgentSessionAsync(
+                        _settings.PoolId,
+                        It.Is<TaskAgentSession>(y => y != null),
+                        tokenSource.Token))
+                    .Returns(Task.FromResult(expectedSession));
+
+                _credMgr.Setup(x => x.LoadCredentials()).Returns(new VssCredentials());
+                _store.Setup(x => x.GetCredentials()).Returns(new CredentialData() { Scheme = Constants.Configuration.OAuthAccessToken });
+                _store.Setup(x => x.GetMigratedCredentials()).Returns(default(CredentialData));
+
+                // Act.
+                MessageListener listener = new MessageListener();
+                listener.Initialize(tc);
+
+                bool result = await listener.CreateSessionAsync(tokenSource.Token);
+                Assert.True(result);
+
+                _runnerServer
+                    .Setup(x => x.GetAgentMessageAsync(
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token))
+                    .Throws(new TaskAgentAccessTokenExpiredException("test"));
+                try
+                {
+                    await listener.GetNextMessageAsync(tokenSource.Token);
+                }
+                catch (TaskAgentAccessTokenExpiredException)
+                {
+                    //expected
+                }
+                finally
+                {
+                    await listener.DeleteSessionAsync();
+                }
+
+                //Assert
+                _runnerServer
+                    .Verify(x => x.GetAgentMessageAsync(
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<long?>(), tokenSource.Token), Times.Once);
+
+                _runnerServer
+                    .Verify(x => x.DeleteAgentSessionAsync(
+                        _settings.PoolId, expectedSession.SessionId, It.IsAny<CancellationToken>()), Times.Never);
             }
         }
     }
