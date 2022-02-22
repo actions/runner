@@ -30,13 +30,13 @@ date "+[%F %T-%4N] Waiting for $runnerprocessname ($runnerpid) to complete" >> "
 while [ -e /proc/$runnerpid ]
 do
     date "+[%F %T-%4N] Process $runnerpid still running" >> "$logfile" 2>&1
-    sleep 2
+    ./safe_sleep.sh 2
 done
 date "+[%F %T-%4N] Process $runnerpid finished running" >> "$logfile" 2>&1
 
 # start re-organize folders
 date "+[%F %T-%4N] Sleep 1 more second to make sure process exited" >> "$logfile" 2>&1
-sleep 1
+./safe_sleep.sh 1
 
 # the folder structure under runner root will be
 # ./bin -> bin.2.100.0 (junction folder)
