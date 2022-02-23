@@ -130,7 +130,7 @@ namespace GitHub.Runner.Worker
                         // Register job cancellation call back only if job cancellation token not been fire before each step run
                         if (!jobContext.CancellationToken.IsCancellationRequested)
                         {
-                            // Test the condition again. The job was canceled after the condition was originally evaluated.
+                            // Test the condition again. The job was cancelled after the condition was originally evaluated.
                             jobCancelRegister = jobContext.CancellationToken.Register(() =>
                             {
                                 // Mark job as cancelled

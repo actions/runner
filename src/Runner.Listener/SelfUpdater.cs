@@ -504,7 +504,7 @@ namespace GitHub.Runner.Listener
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
                     {
-                        Trace.Info($"Runner download has been canceled.");
+                        Trace.Info($"Runner download has been cancelled.");
                         throw;
                     }
                     catch (Exception ex)

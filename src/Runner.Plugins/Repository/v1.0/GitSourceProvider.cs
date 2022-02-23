@@ -166,7 +166,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
             }
             else
             {
-                // delete the index.lock file left by previous canceled build or any operation cause git.exe crash last time.
+                // delete the index.lock file left by previous cancelled build or any operation cause git.exe crash last time.
                 string lockFile = Path.Combine(targetPath, ".git\\index.lock");
                 if (File.Exists(lockFile))
                 {
@@ -181,7 +181,7 @@ namespace GitHub.Runner.Plugins.Repository.v1_0
                     }
                 }
 
-                // delete the shallow.lock file left by previous canceled build or any operation cause git.exe crash last time.		
+                // delete the shallow.lock file left by previous cancelled build or any operation cause git.exe crash last time.		
                 string shallowLockFile = Path.Combine(targetPath, ".git\\shallow.lock");
                 if (File.Exists(shallowLockFile))
                 {

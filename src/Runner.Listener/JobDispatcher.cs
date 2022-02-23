@@ -285,7 +285,7 @@ namespace GitHub.Runner.Listener
                     {
                         // at this point, the job execution might encounter some dead lock and even not able to be cancelled.
                         // no need to localize the exception string should never happen.
-                        throw new InvalidOperationException($"Job dispatch process for {jobDispatch.JobId} has encountered unexpected error, the dispatch task is not able to be canceled within 45 seconds.");
+                        throw new InvalidOperationException($"Job dispatch process for {jobDispatch.JobId} has encountered unexpected error, the dispatch task is not able to be cancelled within 45 seconds.");
                     }
                 }
                 else
@@ -363,7 +363,7 @@ namespace GitHub.Runner.Listener
                     Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
                     Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
 
-                    // wait till first renew succeed or job request is canceled
+                    // wait till first renew succeed or job request is cancelled
                     // not even start worker if the first renew fail
                     await Task.WhenAny(firstJobRequestRenewed.Task, renewJobRequest, Task.Delay(-1, jobRequestCancellationToken));
 
@@ -704,7 +704,7 @@ namespace GitHub.Runner.Listener
                 {
                     // OperationCanceledException may caused by http timeout or _lockRenewalTokenSource.Cance();
                     // Stop renew only on cancellation token fired.
-                    Trace.Info($"job renew has been canceled, stop renew job request {requestId}.");
+                    Trace.Info($"job renew has been cancelled, stop renew job request {requestId}.");
                     return;
                 }
                 catch (Exception ex)
@@ -762,7 +762,7 @@ namespace GitHub.Runner.Listener
                         }
                         catch (OperationCanceledException) when (token.IsCancellationRequested)
                         {
-                            Trace.Info($"job renew has been canceled, stop renew job request {requestId}.");
+                            Trace.Info($"job renew has been cancelled, stop renew job request {requestId}.");
                         }
                     }
                     else
