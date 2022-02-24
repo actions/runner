@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Runner.Server.Models;
 using GitHub.Actions.Pipelines.WebApi;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Mime;
 
 namespace Runner.Server.Controllers {
 
@@ -165,7 +166,11 @@ namespace Runner.Server.Controllers {
                 throw new Exception($"container is null!, id='{id}', file='{file}'");
             }
             if(container.FileName?.Length > 0) {
-                Response.Headers.Add("Content-Disposition", $"attachment; filename={container.FileName}");
+                var lastPathSep = container.FileName.LastIndexOfAny(new [] { '/', '\\' }) + 1;
+                var content = new ContentDisposition();
+                content.DispositionType = DispositionTypeNames.Attachment;
+                content.FileName = container.FileName.Substring(lastPathSep);
+                Response.Headers.Add("Content-Disposition", content.ToString());
             }
             if(container.GZip) {
                 Response.Headers.Add("Content-Encoding", "gzip");
