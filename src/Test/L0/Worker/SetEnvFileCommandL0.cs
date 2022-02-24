@@ -302,6 +302,50 @@ namespace GitHub.Runner.Common.Tests.Worker
             }
         }
 
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_Heredoc_MissingNewLine()
+        {
+            using (var hostContext = Setup())
+            {
+                var envFile = Path.Combine(_rootDirectory, "heredoc");
+                var content = new List<string>
+                {
+                    "MY_ENV<<EOF",
+                    "line one",
+                    "line two",
+                    "line three",
+                    "EOF",
+                };
+                WriteContent(envFile, content, " ");
+                var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
+                Assert.Contains("Matching delimiter not found", ex.Message);
+            }
+        }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void SetEnvFileCommand_Heredoc_MissingNewLineMultipleLinesEnv()
+        {
+            using (var hostContext = Setup())
+            {
+                var envFile = Path.Combine(_rootDirectory, "heredoc");
+                var content = new List<string>
+                {
+                    "MY_ENV<<EOF",
+                    @"line one
+                    line two
+                    line three",
+                    "EOF",
+                };
+                WriteContent(envFile, content, " ");
+                var ex = Assert.Throws<Exception>(() => _setEnvFileCommand.ProcessCommand(_executionContext.Object, envFile, null));
+                Assert.Contains("EOF marker missing new line", ex.Message);
+            }
+        }
+
 #if OS_WINDOWS
         [Fact]
         [Trait("Level", "L0")]

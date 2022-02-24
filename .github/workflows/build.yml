@@ -50,13 +50,6 @@ jobs:
         ${{ matrix.devScript }} layout Release ${{ matrix.runtime }}
       working-directory: src
 
-    # Run tests
-    - name: L0
-      run: |
-        ${{ matrix.devScript }} test
-      working-directory: src
-      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
-
     # Check runtime/externals hash
     - name: Compute/Compare runtime and externals Hash
       shell: bash
@@ -79,6 +72,13 @@ jobs:
       env:
         DOTNET_RUNTIME_HASH: ${{hashFiles('**/_layout_trims/runtime/**/*')}}
         EXTERNALS_HASH: ${{hashFiles('**/_layout_trims/externals/**/*')}}
+
+    # Run tests
+    - name: L0
+      run: |
+        ${{ matrix.devScript }} test
+      working-directory: src
+      if: matrix.runtime != 'linux-arm64' && matrix.runtime != 'linux-arm'
 
     # Create runner package tar.gz/zip
     - name: Package Release
