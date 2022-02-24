@@ -656,7 +656,7 @@ namespace Runner.Server.Controllers
                     );
                     var jwtToken = generator.CreateEncodedJwtToken();
                     // Pass the JWT as a Bearer token to Octokit.net
-                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
                     {
                         Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
                     };
@@ -671,7 +671,7 @@ namespace Runner.Server.Controllers
         }
 
         private async Task DeleteGithubAppToken(string token) {
-            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
             {
                 Credentials = new Octokit.Credentials(token)
             };
@@ -770,13 +770,13 @@ namespace Runner.Server.Controllers
                             );
                             var jwtToken = generator.CreateEncodedJwtToken();
                             // Pass the JWT as a Bearer token to Octokit.net
-                            var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                            var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
                             {
                                 Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
                             };
                             var installation = await appClient.GitHubApps.GetRepositoryInstallationForCurrent(ownerAndRepo[0], ownerAndRepo[1]);
                             var response = await appClient.Connection.Post<Octokit.AccessToken>(Octokit.ApiUrls.AccessTokens(installation.Id), new { Permissions = new { metadata = "read", checks = "write" } }, Octokit.AcceptHeaders.GitHubAppsPreview, Octokit.AcceptHeaders.GitHubAppsPreview);
-                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
                             {
                                 Credentials = new Octokit.Credentials(response.Body.Token)
                             };
@@ -2825,7 +2825,7 @@ namespace Runner.Server.Controllers
                                 );
                                 var jwtToken = generator.CreateEncodedJwtToken();
                                 // Pass the JWT as a Bearer token to Octokit.net
-                                var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                                var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
                                 {
                                     Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
                                 };

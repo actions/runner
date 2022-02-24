@@ -20,6 +20,7 @@ namespace Runner.Server.Controllers
     [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
     public class ActionDownloadInfoController : VssControllerBase
     {
+        private string GitServerUrl;
         private string GitHubAppPrivateKeyFile { get; }
         private int GitHubAppId { get; }
         private bool AllowPrivateActionAccess { get; }
@@ -42,6 +43,7 @@ namespace Runner.Server.Controllers
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
+            GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
             ReadConfig(configuration);
         }
 
@@ -60,7 +62,7 @@ namespace Runner.Server.Controllers
                     );
                     var jwtToken = generator.CreateEncodedJwtToken();
                     // Pass the JWT as a Bearer token to Octokit.net
-                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+                    var appClient = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
                     {
                         Credentials = new Octokit.Credentials(jwtToken, Octokit.AuthenticationType.Bearer)
                     };
@@ -75,7 +77,7 @@ namespace Runner.Server.Controllers
         }
 
         private async Task DeleteGithubAppToken(string token) {
-            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"))
+            var appClient2 = new Octokit.GitHubClient(new Octokit.ProductHeaderValue("gharun"), new Uri(GitServerUrl))
             {
                 Credentials = new Octokit.Credentials(token)
             };
