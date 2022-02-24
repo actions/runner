@@ -65,7 +65,7 @@ namespace GitHub.Runner.Listener.Configuration
                 {
                     runnerNameSubstring = StringUtil.SubstringPrefix(settings.AgentName, settings.AgentName.Length - exceededCharLength);
                 }
-
+                #pragma warning disable CS0162
                 if (AdditionalDigits > 0)
                 {
                     var random = new Random();
@@ -73,7 +73,6 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerNameSubstring +=$"-{num}";
                     serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
                 }
-                #pragma warning disable CS0162
                 else
                 {
                     serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
