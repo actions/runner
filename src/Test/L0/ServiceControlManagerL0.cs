@@ -193,8 +193,8 @@ namespace GitHub.Runner.Common.Tests
                         out string serviceName,
                         out string serviceDisplayName);
 
-                    // Verify name has been shortened to 150 + 5 randomized characters
-                    Assert.Equal(155, serviceName.Length);
+                    // Verify name has been shortened to 150
+                    Assert.Equal(150, serviceName.Length);
 
                     var serviceNameParts = serviceName.Split('.');
 
@@ -202,7 +202,7 @@ namespace GitHub.Runner.Common.Tests
                     Assert.Equal("actions", serviceNameParts[0]); // Never shortened
                     Assert.Equal("runner", serviceNameParts[1]); // Never shortened
                     Assert.Equal("myreallylongorganizationexampleonlinux-myreallylongrepoexampleonlinux1", serviceNameParts[2]); // First 70 chars, '/' has been replaced with '-'
-                    Assert.Matches(@"^(thisisareallyreallylongbutstillvalidagentnameiamusingforthisexam-[0-9]{4})$", serviceNameParts[3]);
+                    Assert.Matches(@"^(thisisareallyreallylongbutstillvalidagentnameiamusingforthi-[0-9]{4})$", serviceNameParts[3]);
                 }
             }
         #endif
