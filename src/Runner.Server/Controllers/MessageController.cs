@@ -1680,37 +1680,49 @@ namespace Runner.Server.Controllers
                                                     }
                                                 }
                                                 contextData["matrix"] = matrixContext;
-                                                if(finishedJobs != null && !usesJob) {
-                                                    if(finishedJobs.TryGetValue(jobname, out var fjobs)) {
-                                                        foreach(var fjob in fjobs) {
-                                                            if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null), fjob.MatrixToken)) {
-                                                                var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true } : jobitem;
-                                                                _next.TimelineId = fjob.TimeLineId;
-                                                                _next.NoStatusCheck = true;
-                                                                jobitem.Childs?.Add(_next);
-                                                                return b => {
-                                                                    var jevent = new JobCompletedEvent(_next.RequestId, _next.Id, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false)));
-                                                                    workflowcomplete(jevent);
-                                                                    return fjob;
-                                                                };
-                                                            }
+                                                if(finishedJobs != null) {
+                                                    if(usesJob) {
+                                                        if(!finishedJobs.ContainsKey(jobname)) {
+                                                            // Allow rerunning one reusable workflow
+                                                            // If the rerun is requested discard all child results
+                                                            Array.ForEach(finishedJobs.ToArray(), fjobs => {
+                                                                if(fjobs.Key.StartsWith(jobname + "/")) {
+                                                                    finishedJobs.Remove(fjobs.Key);
+                                                                }
+                                                            });
                                                         }
-                                                    }
-                                                    if(callingJob != null) {
-                                                        callingJob.RanJob = true;
-                                                    }
-                                                    Array.ForEach(finishedJobs.ToArray(), fjobs => {
-                                                        foreach(var djob in dependentjobgroup) {
-                                                            if(djob.Dependencies != null && (fjobs.Key == djob.name || fjobs.Key.StartsWith(djob.name + "/"))) {
-                                                                foreach(var dep in djob.Dependencies) {
-                                                                    if(dep.Key == jobname) {
-                                                                        finishedJobs.Remove(fjobs.Key);
-                                                                        return;
-                                                                    }
+                                                    } else {
+                                                        if(finishedJobs.TryGetValue(jobname, out var fjobs)) {
+                                                            foreach(var fjob in fjobs) {
+                                                                if(TemplateTokenEqual(matrixContext?.ToTemplateToken() ?? new NullToken(null, null, null), fjob.MatrixToken)) {
+                                                                    var _next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = fjob.JobId, NoFailFast = true } : jobitem;
+                                                                    _next.TimelineId = fjob.TimeLineId;
+                                                                    _next.NoStatusCheck = true;
+                                                                    jobitem.Childs?.Add(_next);
+                                                                    return b => {
+                                                                        var jevent = new JobCompletedEvent(_next.RequestId, _next.Id, fjob.Result.Value, fjob.Outputs.ToDictionary(o => o.Name, o => new VariableValue(o.Value, false)));
+                                                                        workflowcomplete(jevent);
+                                                                        return fjob;
+                                                                    };
                                                                 }
                                                             }
                                                         }
-                                                    });
+                                                        if(callingJob != null) {
+                                                            callingJob.RanJob = true;
+                                                        }
+                                                        Array.ForEach(finishedJobs.ToArray(), fjobs => {
+                                                            foreach(var djob in dependentjobgroup) {
+                                                                if(djob.Dependencies != null && (fjobs.Key == djob.name || fjobs.Key.StartsWith(djob.name + "/"))) {
+                                                                    foreach(var dep in djob.Dependencies) {
+                                                                        if(dep.Key == jobname) {
+                                                                            finishedJobs.Remove(fjobs.Key);
+                                                                            return;
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        });
+                                                    }
                                                 }
                                                 var next = jobTotal > 1 ? new JobItem() { name = jobitem.name, Id = Guid.NewGuid() } : jobitem;
                                                 var _prejobdisplayname = displayname;
