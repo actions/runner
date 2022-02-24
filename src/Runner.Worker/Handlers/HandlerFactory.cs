@@ -62,20 +62,20 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     // The user can opt out of this behaviour by setting this variable to true, either setting 'env' in their workflow or as an environment variable on their machine
                     executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, out var workflowOptOut);
-                    var isWorkflowOptOutSet = string.IsNullOrEmpty(workflowOptOut);
+                    var isWorkflowOptOutSet = !string.IsNullOrEmpty(workflowOptOut);
                     if (isWorkflowOptOutSet)
                     {
-                        // Fallback to environment variable opt out
-                        var isLocalEnvOptOut = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion));
-                        if (!isLocalEnvOptOut)
+                        var isWorkflowOptOut = StringUtil.ConvertToBoolean(workflowOptOut);
+                        if (!isWorkflowOptOut)
                         {
                             nodeData.Script = "node16";
                         }
                     }
                     else
                     {
-                        var isWorkflowOptOut = StringUtil.ConvertToBoolean(workflowOptOut);
-                        if (!isWorkflowOptOut)
+                        // Fallback to local environment variable opt out
+                        var isLocalEnvOptOut = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion));
+                        if (!isLocalEnvOptOut)
                         {
                             nodeData.Script = "node16";
                         }
