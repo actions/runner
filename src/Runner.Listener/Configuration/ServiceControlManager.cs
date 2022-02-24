@@ -66,7 +66,19 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerNameSubstring = StringUtil.SubstringPrefix(settings.AgentName, settings.AgentName.Length - exceededCharLength);
                 }
 
-                serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
+                if (AdditionalDigits > 0)
+                {
+                    var random = new Random();
+                    var num = random.Next((int)Math.Pow(10, AdditionalDigits-1),(int)Math.Pow(10, AdditionalDigits)).ToString();
+                    runnerNameSubstring +=$"-{num}";
+                    serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
+                }
+                #pragma warning disable CS0162
+                else
+                {
+                    serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
+                }
+                #pragma warning restore CS0162
             }
 
             serviceDisplayName = StringUtil.Format(serviceDisplayNamePattern, repoOrOrgName, settings.AgentName);
@@ -76,9 +88,11 @@ namespace GitHub.Runner.Listener.Configuration
         #if (OS_LINUX || OS_OSX)
             const int MaxServiceNameLength = 150;
             const int MaxRepoOrgCharacters = 70;
+            const int AdditionalDigits = 4;
         #elif OS_WINDOWS
             const int MaxServiceNameLength = 80;
             const int MaxRepoOrgCharacters = 45;
+            const int AdditionalDigits = 0;
         #endif
     }
 }

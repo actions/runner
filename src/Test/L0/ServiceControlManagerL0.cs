@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using GitHub.Runner.Common;
 using GitHub.Runner.Listener.Configuration;
 using Xunit;
@@ -192,8 +193,8 @@ namespace GitHub.Runner.Common.Tests
                         out string serviceName,
                         out string serviceDisplayName);
 
-                    // Verify name has been shortened to 150 characters
-                    Assert.Equal(150, serviceName.Length);
+                    // Verify name has been shortened to 150 + 5 randomized characters
+                    Assert.Equal(155, serviceName.Length);
 
                     var serviceNameParts = serviceName.Split('.');
 
@@ -201,7 +202,8 @@ namespace GitHub.Runner.Common.Tests
                     Assert.Equal("actions", serviceNameParts[0]); // Never shortened
                     Assert.Equal("runner", serviceNameParts[1]); // Never shortened
                     Assert.Equal("myreallylongorganizationexampleonlinux-myreallylongrepoexampleonlinux1", serviceNameParts[2]); // First 70 chars, '/' has been replaced with '-'
-                    Assert.Equal("thisisareallyreallylongbutstillvalidagentnameiamusingforthisexam", serviceNameParts[3]); // Remainder of unused chars
+                    Regex regex = new Regex(@"^(thisisareallyreallylongbutstillvalidagentnameiamusingforthisexam[0-9]{4})$");
+                    Assert.Matches(@"^(thisisareallyreallylongbutstillvalidagentnameiamusingforthisexam[0-9]{4})$", serviceNameParts[3]);
                 }
             }
         #endif
