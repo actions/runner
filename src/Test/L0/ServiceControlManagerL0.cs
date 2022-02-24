@@ -123,7 +123,7 @@ namespace GitHub.Runner.Common.Tests
                     Assert.Equal("actions", serviceNameParts[0]); // Never shortened
                     Assert.Equal("runner", serviceNameParts[1]); // Never shortened
                     Assert.Equal("myreallylongorganizationexample-myreallylongr", serviceNameParts[2]); // First 45 chars, '/' has been replaced with '-'
-                    Assert.Equal("thisisareallyreally", serviceNameParts[3]); // Remainder of unused chars
+                    Assert.Matches(@"^(thisisareallyr-[0-9]{4})$", serviceNameParts[3]); // Remainder of unused chars
                 }
             }
 
