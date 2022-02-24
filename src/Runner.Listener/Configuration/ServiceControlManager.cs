@@ -48,12 +48,11 @@ namespace GitHub.Runner.Listener.Configuration
             string repoOrOrgName = regex.Replace(settings.RepoOrOrgName, "-");
 
             serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgName, settings.AgentName);
-
             if (serviceName.Length > MaxServiceNameLength)
             {
                 Trace.Verbose($"Calculated service name is too long (> {MaxServiceNameLength} chars). Trying again by calculating a shorter name.");
-
-                int exceededCharLength = serviceName.Length - MaxServiceNameLength;
+                // Subtract 5 to add -xxxx random number on the end
+                int exceededCharLength = serviceName.Length - MaxServiceNameLength - 5;
                 string repoOrOrgNameSubstring = StringUtil.SubstringPrefix(repoOrOrgName, MaxRepoOrgCharacters);
 
                 exceededCharLength -= repoOrOrgName.Length - repoOrOrgNameSubstring.Length;
@@ -81,7 +80,7 @@ namespace GitHub.Runner.Listener.Configuration
             const int MaxServiceNameLength = 150;
             const int MaxRepoOrgCharacters = 70;
         #elif OS_WINDOWS
-            const int MaxServiceNameLength = 75;
+            const int MaxServiceNameLength = 80;
             const int MaxRepoOrgCharacters = 45;
         #endif
     }

@@ -16,7 +16,7 @@ namespace GitHub.Runner.Common.Tests
         {
             RunnerSettings settings = new RunnerSettings();
 
-            settings.AgentName = "thisiskindofalongrunnername1";
+            settings.AgentName = "thisiskindofalongrunnerabcde";
             settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
             settings.GitHubUrl = "https://github.com/myorganizationexample/myrepoexample";
 
@@ -44,7 +44,7 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("actions", serviceNameParts[0]);
                 Assert.Equal("runner", serviceNameParts[1]);
                 Assert.Equal("myorganizationexample-myrepoexample", serviceNameParts[2]); // '/' has been replaced with '-'
-                Assert.Equal("thisiskindofalongrunnername1", serviceNameParts[3]);
+                Assert.Equal("thisiskindofalongrunnerabcde", serviceNameParts[3]);
             }
         }
 
@@ -55,7 +55,7 @@ namespace GitHub.Runner.Common.Tests
         {
             RunnerSettings settings = new RunnerSettings();
 
-            settings.AgentName = "thisiskindofalongrunnername12";
+            settings.AgentName = "thisiskindofalongrunnernabcde";
             settings.ServerUrl = "https://example.githubusercontent.com/12345678901234567890123456789012345678901234567890";
             settings.GitHubUrl = "https://github.com/myorganizationexample/myrepoexample";
 
@@ -83,7 +83,7 @@ namespace GitHub.Runner.Common.Tests
                 Assert.Equal("actions", serviceNameParts[0]);
                 Assert.Equal("runner", serviceNameParts[1]);
                 Assert.Equal("myorganizationexample-myrepoexample", serviceNameParts[2]); // '/' has been replaced with '-'
-                Assert.Equal("thisiskindofalongrunnername12", serviceNameParts[3]);
+                Assert.Equal("thisiskindofalongrunnernabcde", serviceNameParts[3]); // should not have random numbers unless we exceed 80
             }
         }
 
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Common.Tests
                     Assert.Equal("actions", serviceNameParts[0]); // Never shortened
                     Assert.Equal("runner", serviceNameParts[1]); // Never shortened
                     Assert.Equal("myreallylongorganizationexample-myreallylongr", serviceNameParts[2]); // First 45 chars, '/' has been replaced with '-'
-                    Assert.Matches(@"^(thisisareallyr-[0-9]{4})$", serviceNameParts[3]); // Remainder of unused chars
+                    Assert.Matches(@"^(thisisareallyr-[0-9]{4})$", serviceNameParts[3]); // Remainder of unused chars, 4 random numbers added at the end
                 }
             }
 
