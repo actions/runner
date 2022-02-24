@@ -51,8 +51,8 @@ namespace GitHub.Runner.Listener.Configuration
             if (serviceName.Length > MaxServiceNameLength)
             {
                 Trace.Verbose($"Calculated service name is too long (> {MaxServiceNameLength} chars). Trying again by calculating a shorter name.");
-                // Subtract 5 to add -xxxx random number on the end
-                int exceededCharLength = serviceName.Length - MaxServiceNameLength - 5;
+                // Add 5 to add -xxxx random number on the end
+                int exceededCharLength = serviceName.Length - MaxServiceNameLength + 5;
                 string repoOrOrgNameSubstring = StringUtil.SubstringPrefix(repoOrOrgName, MaxRepoOrgCharacters);
 
                 exceededCharLength -= repoOrOrgName.Length - repoOrOrgNameSubstring.Length;
