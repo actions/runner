@@ -68,7 +68,7 @@ namespace GitHub.Runner.Listener.Configuration
 
                 // Lets add a suffix with a random number to reduce the chance of collisions between runner names once we truncate
                 var random = new Random();
-                var num = random.Next((int)Math.Pow(10, AdditionalDigits-1),(int)Math.Pow(10, AdditionalDigits)).ToString();
+                var num = random.Next(1000, 9999).ToString();
                 runnerNameSubstring +=$"-{num}";
                 serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
             }
@@ -80,11 +80,9 @@ namespace GitHub.Runner.Listener.Configuration
         #if (OS_LINUX || OS_OSX)
             const int MaxServiceNameLength = 150;
             const int MaxRepoOrgCharacters = 70;
-            const int AdditionalDigits = 4;
         #elif OS_WINDOWS
             const int MaxServiceNameLength = 75;
             const int MaxRepoOrgCharacters = 45;
-            const int AdditionalDigits = 4;
         #endif
     }
 }
