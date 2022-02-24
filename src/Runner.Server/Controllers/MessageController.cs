@@ -959,7 +959,7 @@ namespace Runner.Server.Controllers
                             if(!values.All(s => validator.IsMatch(s))) {
                                 var z = 0;
                                 var sb = new StringBuilder();
-                                foreach (var prop in (from s in values where !validator.IsMatch(s) select s)) {
+                                foreach (var prop in (from cronpattern in values where !validator.IsMatch(cronpattern) select cronpattern)) {
                                     if(z++ != 0) {
                                         sb.Append(", ");
                                     }
@@ -1328,6 +1328,8 @@ namespace Runner.Server.Controllers
                 TemplateToken workflowPermissions = null;
                 TemplateToken workflowConcurrency = null;
                 var jobnamebuilder = new ReferenceNameBuilder();
+                CancellationTokenSource finished = null;
+                SemaphoreSlim s = null;
                 foreach (var actionPair in actionMapping)
                 {
                     var propertyName = actionPair.Key.AssertString($"workflow root mapping key");
@@ -1621,6 +1623,32 @@ namespace Runner.Server.Controllers
                                             jobitem.Childs = new List<JobItem>();
                                             jobitem.NoStatusCheck = true;
                                             var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
+                                            Task.Run(async () => {
+                                                try {
+                                                    await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(finished.Token, _job.CancelRequest.Token, jobitem.Cancel.Token).Token);
+                                                } catch {
+
+                                                }
+                                                if(!finished.IsCancellationRequested) {
+                                                    s.Wait();
+                                                    try {
+                                                        jobitem.Cancel.Cancel();
+                                                        foreach(var ji in jobitem.Childs) {
+                                                            ji.Cancel.Cancel();
+                                                            Job job = _cache.Get<Job>(ji.Id);
+                                                            if(job != null) {
+                                                                // cancel normal job
+                                                                job.CancelRequest.Cancel();
+                                                                if(job.SessionId == Guid.Empty) {
+                                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                                }
+                                                            }
+                                                        }
+                                                    } finally {
+                                                        s.Release();
+                                                    }
+                                                }
+                                            });
                                             AddJob(_job);
                                             // Fix workflow doesn't wait for cancelled matrix jobs to finish, add dummy sessionid
                                             _job.SessionId = Guid.NewGuid();
@@ -1777,7 +1805,7 @@ namespace Runner.Server.Controllers
                                             Action cancelAll = () => {
                                                 FinishJobController.OnJobCompleted -= handler2;
                                                 foreach (var _j in scheduled) {
-                                                    if(!(exctx.Cancelled.IsCancellationRequested && canBeCancelled())) {
+                                                    if(!(exctx.Cancelled.IsCancellationRequested && canBeCancelled() || jobitem.Cancel.IsCancellationRequested)) {
                                                         TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(_j.JobId, new List<string>{ "FailFast Matrix job with ContinueOnError=false requests Cancellation" }), _j.TimeLineId, _j.JobId);
                                                     }
                                                     _j.CancelRequest?.Cancel();
@@ -1814,7 +1842,7 @@ namespace Runner.Server.Controllers
                                                         cancelAll();
                                                     } else {
                                                         while((!max_parallel.HasValue || scheduled.Count < max_parallel.Value) && jobs.TryDequeue(out var cb)) {
-                                                            if(exctx.Cancelled.IsCancellationRequested && canBeCancelled()) {
+                                                            if(exctx.Cancelled.IsCancellationRequested && canBeCancelled() || jobitem.Cancel.IsCancellationRequested) {
                                                                 cb(true);
                                                                 cancelAll();
                                                                 return;
@@ -1834,7 +1862,7 @@ namespace Runner.Server.Controllers
                                             };
                                             localJobCompletedEvents.JobCompleted += handler2;
                                             for (int j = 0; j < (max_parallel.HasValue ? (int)max_parallel.Value : jobTotal) && jobs.TryDequeue(out var cb2); j++) {
-                                                if(exctx.Cancelled.IsCancellationRequested && canBeCancelled()) {
+                                                if(exctx.Cancelled.IsCancellationRequested && canBeCancelled() || jobitem.Cancel.IsCancellationRequested) {
                                                     cb2(true);
                                                     cancelAll();
                                                     return;
@@ -1989,7 +2017,7 @@ namespace Runner.Server.Controllers
                     return new HookResponse { repo = repository_name, run_id = runid, skipped = false, jobList = (from ji in dependentjobgroup select new JobListItem{Name= ji.name, Needs = ji.Needs}).ToList()};
                 } else {
                     var jobs = dependentjobgroup.ToArray();
-                    var finished = new CancellationTokenSource();
+                    finished = new CancellationTokenSource();
                     FinishJobController.JobCompleted withoutlock = e => {
                         var ja = jobs.Where(j => e.JobId == j.Id || (j.Childs?.Where(ji => e.JobId == ji.Id).Any() ?? false)).FirstOrDefault();
                         Action<JobItem> updateStatus = job => {
@@ -2050,7 +2078,7 @@ namespace Runner.Server.Controllers
                         }
                     };
                     ConcurrentQueue<JobCompletedEvent> queue = new ConcurrentQueue<JobCompletedEvent>();
-                    SemaphoreSlim s = new SemaphoreSlim(1, 1);
+                    s = new SemaphoreSlim(1, 1);
                     workflowcomplete = (e) => {
                         if(s.Wait(0)) {      
                             try {
@@ -2077,6 +2105,9 @@ namespace Runner.Server.Controllers
                         if(cancelWorkflows.TryAdd(runid, ctoken)) {
                             exctx.Cancelled = ctoken.Token;
                             cancellationToken = ctoken;
+                        } else {
+                            // Better don't allow to have multiple reruns active
+                            throw new Exception("This workflow run is already running, multiple attempts are not supported at the same time");
                         }
                     }
                     asyncProcessing = true;
@@ -2121,9 +2152,11 @@ namespace Runner.Server.Controllers
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Reevaluate Condition of {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
                                                 if(job2.EvaluateIf.Invoke() == false) {
                                                     foreach(var ji in job2.Childs ?? new List<MessageController.JobItem>{job2}) {
+                                                        // cancel pseudo job e.g. workflow_call
                                                         ji.Cancel.Cancel();
                                                         Job job = _cache.Get<Job>(ji.Id);
                                                         if(job != null) {
+                                                            // cancel normal job
                                                             job.CancelRequest.Cancel();
                                                             if(job.SessionId == Guid.Empty) {
                                                                 new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
@@ -2510,7 +2543,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                                }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = ji.Cancel.Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions};
+                                }, Id = parentId != null ? parentId + "/" + name : name, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions};
                                 var resp = clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null, false, null, _secrets.ToArray(), _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value));
                                 if(resp == null || resp.failed || resp.skipped) {
                                     failedtoInstantiateWorkflow(filename);
