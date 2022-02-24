@@ -56,16 +56,29 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 handler = HostContext.CreateService<INodeScriptActionHandler>();
                 var nodeData = data as NodeJSActionExecutionData;
-                
+
                 // With node12 EoL in 04/2022, we want to be able to uniformly upgrade all JS actions to node16 from the server
                 if (executionContext.Global.Variables.GetBoolean("DistributedTask.ForceGithubJavascriptActionsToNode16") ?? false)
-                {   
-                    // The user can opt out of this behaviour by setting this variable to true, either in 'env' in their workflow or as an environment variable on their machine
-                    executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, out var optOutWorkflowEnv);                    
-                    var optOutMachineEnv = Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion);
-                    if (!StringUtil.ConvertToBoolean(optOutWorkflowEnv ?? optOutMachineEnv))
+                {
+                    // The user can opt out of this behaviour by setting this variable to true, either setting 'env' in their workflow or as an environment variable on their machine
+                    executionContext.Global.EnvironmentVariables.TryGetValue(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion, out var workflowOptOut);
+                    var isWorkflowOptOutSet = string.IsNullOrEmpty(workflowOptOut);
+                    if (isWorkflowOptOutSet)
                     {
-                        nodeData.NodeVersion = "node16";
+                        // Fallback to environment variable opt out
+                        var isLocalEnvOptOut = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion));
+                        if (!isLocalEnvOptOut)
+                        {
+                            nodeData.Script = "node16";
+                        }
+                    }
+                    else
+                    {
+                        var isWorkflowOptOut = StringUtil.ConvertToBoolean(workflowOptOut);
+                        if (!isWorkflowOptOut)
+                        {
+                            nodeData.Script = "node16";
+                        }
                     }
                 }
                 (handler as INodeScriptActionHandler).Data = nodeData;
