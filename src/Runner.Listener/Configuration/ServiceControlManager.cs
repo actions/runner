@@ -49,12 +49,12 @@ namespace GitHub.Runner.Listener.Configuration
 
             serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgName, settings.AgentName);
 
-            if (serviceName.Length > 80)
+            if (serviceName.Length > MaxServiceNameLength)
             {
-                Trace.Verbose($"Calculated service name is too long (> 80 chars). Trying again by calculating a shorter name.");
+                Trace.Verbose($"Calculated service name is too long (> {MaxServiceNameLength} chars). Trying again by calculating a shorter name.");
 
-                int exceededCharLength = serviceName.Length - 80;
-                string repoOrOrgNameSubstring = StringUtil.SubstringPrefix(repoOrOrgName, 45);
+                int exceededCharLength = serviceName.Length - MaxServiceNameLength;
+                string repoOrOrgNameSubstring = StringUtil.SubstringPrefix(repoOrOrgName, MaxRepoOrgCharacters);
 
                 exceededCharLength -= repoOrOrgName.Length - repoOrOrgNameSubstring.Length;
 
@@ -73,5 +73,12 @@ namespace GitHub.Runner.Listener.Configuration
 
             Trace.Info($"Service name '{serviceName}' display name '{serviceDisplayName}' will be used for service configuration.");
         }
+        #if (OS_LINUX || OS_OSX)
+            const int MaxServiceNameLength = 150;
+            const int MaxRepoOrgCharacters = 70;
+        #elif OS_WINDOWS
+            const int MaxServiceNameLength = 80;
+            const int MaxRepoOrgCharacters = 45;
+        #endif
     }
 }
