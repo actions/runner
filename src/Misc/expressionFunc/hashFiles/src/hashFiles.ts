@@ -45,7 +45,7 @@ async function run(): Promise<void> {
   result.end()
 
   if (hasMatch) {
-    console.log(`Find ${count} files to hash.`)
+    console.log(`Found ${count} files to hash.`)
     console.error(`__OUTPUT__${result.digest('hex')}__OUTPUT__`)
   } else {
     console.error(`__OUTPUT____OUTPUT__`)
@@ -53,3 +53,11 @@ async function run(): Promise<void> {
 }
 
 run()
+  .then(out => {
+    console.log(out)
+    process.exit(0)
+  })
+  .catch(err => {
+    console.error(err)
+    process.exit(1)
+  })

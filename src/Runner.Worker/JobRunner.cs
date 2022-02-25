@@ -131,9 +131,9 @@ namespace GitHub.Runner.Worker
                 }
                 catch (OperationCanceledException ex) when (jobContext.CancellationToken.IsCancellationRequested)
                 {
-                    // set the job to canceled
+                    // set the job to cancelled
                     // don't log error issue to job ExecutionContext, since server owns the job level issue
-                    Trace.Error($"Job is canceled during initialize.");
+                    Trace.Error($"Job is cancelled during initialize.");
                     Trace.Error($"Caught exception: {ex}");
                     return await CompleteJobAsync(jobServer, jobContext, message, TaskResult.Canceled);
                 }
@@ -279,14 +279,13 @@ namespace GitHub.Runner.Worker
             }
 
             // Load any upgrade telemetry
-            LoadFromTelemetryFile(jobContext.JobTelemetry);
+            LoadFromTelemetryFile(jobContext.Global.JobTelemetry);
 
             // Make sure we don't submit secrets as telemetry
-            MaskTelemetrySecrets(jobContext.JobTelemetry);
+            MaskTelemetrySecrets(jobContext.Global.JobTelemetry);
 
-            Trace.Info("Raising job completed event.");
-            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.ActionsStepsTelemetry, jobContext.JobTelemetry);
-
+            Trace.Info($"Raising job completed event");
+            var jobCompletedEvent = new JobCompletedEvent(message.RequestId, message.JobId, result, jobContext.JobOutputs, jobContext.ActionsEnvironment, jobContext.Global.StepsTelemetry, jobContext.Global.JobTelemetry);
 
             var completeJobRetryLimit = 5;
             var exceptions = new List<Exception>();

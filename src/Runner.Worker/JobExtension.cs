@@ -57,6 +57,8 @@ namespace GitHub.Runner.Worker
 
             // Create a new timeline record for 'Set up job'
             IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Set up job", $"{nameof(JobExtension)}_Init", null, null, ActionRunStage.Pre);
+            context.StepTelemetry.Type = "runner";
+            context.StepTelemetry.Action = "setup_job";
 
             List<IStep> preJobSteps = new List<IStep>();
             List<IStep> jobSteps = new List<IStep>();
@@ -317,6 +319,8 @@ namespace GitHub.Runner.Worker
                             ArgUtil.NotNull(extensionStep, extensionStep.DisplayName);
                             Guid stepId = Guid.NewGuid();
                             extensionStep.ExecutionContext = jobContext.CreateChild(stepId, extensionStep.DisplayName, stepId.ToString("N"), null, stepId.ToString("N"), ActionRunStage.Pre);
+                            extensionStep.ExecutionContext.StepTelemetry.Type = "runner";
+                            extensionStep.ExecutionContext.StepTelemetry.Action = extensionStep.DisplayName.ToLowerInvariant().Replace(' ', '_');
                         }
                         else if (step is IActionRunner actionStep)
                         {
@@ -405,6 +409,8 @@ namespace GitHub.Runner.Worker
 
             // create a new timeline record node for 'Finalize job'
             IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Complete job", $"{nameof(JobExtension)}_Final", null, null, ActionRunStage.Post);
+            context.StepTelemetry.Type = "runner";
+            context.StepTelemetry.Action = "complete_joh";
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try

@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Listener.Check
@@ -144,12 +145,12 @@ namespace GitHub.Runner.Listener.Check
                     });
 
                     var makeWebRequestScript = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "checkScripts", "makeWebRequest.js");
-                    var node12 = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), "node12", "bin", $"node{IOUtil.ExeExtension}");
-                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node12} \"{makeWebRequestScript}\"' ");
+                    var node = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
+                    result.Logs.Add($"{DateTime.UtcNow.ToString("O")} Run '{node} \"{makeWebRequestScript}\"' ");
                     result.Logs.Add($"{DateTime.UtcNow.ToString("O")} {StringUtil.ConvertToJson(env)}");
                     await processInvoker.ExecuteAsync(
                         HostContext.GetDirectory(WellKnownDirectory.Root),
-                        node12,
+                        node,
                         $"\"{makeWebRequestScript}\"",
                         env,
                         true,

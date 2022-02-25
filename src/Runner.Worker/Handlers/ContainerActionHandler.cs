@@ -1,14 +1,14 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
-using System;
-using GitHub.Runner.Worker.Container;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.WebApi;
-using GitHub.DistributedTask.Pipelines.ContextData;
-using System.Linq;
+using GitHub.Runner.Worker.Container;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -95,18 +95,13 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";
-            // Add Telemetry to JobContext to send with JobCompleteMessage
+            // Set extra telemetry base on the current context.
             if (stage == ActionRunStage.Main)
             {
-                var telemetry = new ActionsStepTelemetry {
-                    Ref = GetActionRef(),
-                    HasPreStep = Data.HasPre,
-                    HasPostStep = Data.HasPost,
-                    IsEmbedded = ExecutionContext.IsEmbedded,
-                    Type = type
-                };
-                ExecutionContext.Root.ActionsStepsTelemetry.Add(telemetry);
+                ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
+                ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
             }
+            ExecutionContext.StepTelemetry.Type = type;
 
             // run container
             var container = new ContainerInfo(HostContext)

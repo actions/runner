@@ -15,8 +15,8 @@ using GitHub.DistributedTask.Pipelines;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Container;
 using GitHub.Services.WebApi;
@@ -52,8 +52,7 @@ namespace GitHub.Runner.Worker
         Dictionary<string, string> IntraActionState { get; }
         Dictionary<string, VariableValue> JobOutputs { get; }
         ActionsEnvironmentReference ActionsEnvironment { get; }
-        List<ActionsStepTelemetry> ActionsStepsTelemetry { get; }
-        List<JobTelemetry> JobTelemetry { get; }
+        ActionsStepTelemetry StepTelemetry { get; }
         DictionaryContextData ExpressionValues { get; }
         IList<IFunctionInfo> ExpressionFunctions { get; }
         JobContext JobContext { get; }
@@ -109,12 +108,16 @@ namespace GitHub.Runner.Worker
         // others
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
+        void PublishStepTelemetry();
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
     {
         private const int _maxIssueCount = 10;
         private const int _throttlingDelayReportThreshold = 10 * 1000; // Don't report throttling with less than 10 seconds delay
+        private const int _maxIssueMessageLength = 4096; // Don't send issue with huge message since we can't forward them from actions to check annotation.
+        private const int _maxIssueCountInTelemetry = 3; // Only send the first 3 issues to telemetry
+        private const int _maxIssueMessageLengthInTelemetry = 256; // Only send the first 256 characters of issue message to telemetry
 
         private readonly TimelineRecord _record = new TimelineRecord();
         private readonly Dictionary<Guid, TimelineRecord> _detailRecords = new Dictionary<Guid, TimelineRecord>();
@@ -139,6 +142,7 @@ namespace GitHub.Runner.Worker
 
         // only job level ExecutionContext will track throttling delay.
         private long _totalThrottlingDelayInMilliseconds = 0;
+        private bool _stepTelemetryPublished = false;
 
         public Guid Id => _record.Id;
         public Guid EmbeddedId { get; private set; }
@@ -152,8 +156,7 @@ namespace GitHub.Runner.Worker
         public Dictionary<string, VariableValue> JobOutputs { get; private set; }
 
         public ActionsEnvironmentReference ActionsEnvironment { get; private set; }
-        public List<ActionsStepTelemetry> ActionsStepsTelemetry { get; private set; }
-        public List<JobTelemetry> JobTelemetry { get; private set; }
+        public ActionsStepTelemetry StepTelemetry { get; } = new ActionsStepTelemetry();
         public DictionaryContextData ExpressionValues { get; } = new DictionaryContextData();
         public IList<IFunctionInfo> ExpressionFunctions { get; } = new List<IFunctionInfo>();
 
@@ -273,9 +276,9 @@ namespace GitHub.Runner.Worker
                     {
                         Trace.Info($"'post' of '{actionRunner.DisplayName}' already push to child post step stack.");
                     }
-                    else 
+                    else
                     {
-                        Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;    
+                        Root.EmbeddedStepsWithPostRegistered[actionRunner.Action.Id] = actionRunner.Condition;
                     }
                     return;
                 }
@@ -294,7 +297,20 @@ namespace GitHub.Runner.Worker
             Root.PostJobSteps.Push(step);
         }
 
-        public IExecutionContext CreateChild(Guid recordId, string displayName, string refName, string scopeName, string contextName, ActionRunStage stage, Dictionary<string, string> intraActionState = null, int? recordOrder = null, IPagingLogger logger = null, bool isEmbedded = false, CancellationTokenSource cancellationTokenSource = null, Guid embeddedId = default(Guid), string siblingScopeName = null)
+        public IExecutionContext CreateChild(
+            Guid recordId,
+            string displayName,
+            string refName,
+            string scopeName,
+            string contextName,
+            ActionRunStage stage,
+            Dictionary<string, string> intraActionState = null,
+            int? recordOrder = null,
+            IPagingLogger logger = null,
+            bool isEmbedded = false,
+            CancellationTokenSource cancellationTokenSource = null,
+            Guid embeddedId = default(Guid),
+            string siblingScopeName = null)
         {
             Trace.Entering();
 
@@ -306,7 +322,6 @@ namespace GitHub.Runner.Worker
             child.Stage = stage;
             child.EmbeddedId = embeddedId;
             child.SiblingScopeName = siblingScopeName;
-            child.JobTelemetry = JobTelemetry;
             if (intraActionState == null)
             {
                 child.IntraActionState = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -346,6 +361,9 @@ namespace GitHub.Runner.Worker
             }
 
             child.IsEmbedded = isEmbedded;
+            child.StepTelemetry.StepId = recordId;
+            child.StepTelemetry.Stage = stage.ToString();
+            child.StepTelemetry.IsEmbedded = isEmbedded;
 
             return child;
         }
@@ -354,7 +372,13 @@ namespace GitHub.Runner.Worker
         /// An embedded execution context shares the same record ID, record name, logger,
         /// and a linked cancellation token.
         /// </summary>
-        public IExecutionContext CreateEmbeddedChild(string scopeName, string contextName, Guid embeddedId, ActionRunStage stage, Dictionary<string, string> intraActionState = null, string siblingScopeName = null)
+        public IExecutionContext CreateEmbeddedChild(
+            string scopeName,
+            string contextName,
+            Guid embeddedId,
+            ActionRunStage stage,
+            Dictionary<string, string> intraActionState = null,
+            string siblingScopeName = null)
         {
             return Root.CreateChild(_record.Id, _record.Name, _record.Id.ToString("N"), scopeName, contextName, stage, logger: _logger, isEmbedded: true, cancellationTokenSource: CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token), intraActionState: intraActionState, embeddedId: embeddedId, siblingScopeName: siblingScopeName);
         }
@@ -403,6 +427,8 @@ namespace GitHub.Runner.Worker
                     _jobServerQueue.QueueTimelineRecordUpdate(_detailTimelineId, record.Value);
                 }
             }
+
+            PublishStepTelemetry();
 
             if (Root != this)
             {
@@ -514,6 +540,10 @@ namespace GitHub.Runner.Worker
             }
 
             issue.Message = HostContext.SecretMasker.MaskSecrets(issue.Message);
+            if (issue.Message.Length > _maxIssueMessageLength)
+            {
+                issue.Message = issue.Message[.._maxIssueMessageLength];
+            }
 
             if (issue.Type == IssueType.Error)
             {
@@ -643,11 +673,22 @@ namespace GitHub.Runner.Worker
             // Variables
             Global.Variables = new Variables(HostContext, message.Variables);
 
+            if (Global.Variables.GetBoolean("DistributedTask.ForceInternalNodeVersionOnRunnerTo12") ?? false)
+            {
+                Environment.SetEnvironmentVariable(Constants.Variables.Agent.ForcedInternalNodeVersion, "node12");
+            }
+
             // Environment variables shared across all actions
             Global.EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
 
             // Job defaults shared across all actions
             Global.JobDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+
+            // Job Telemetry
+            Global.JobTelemetry = new List<JobTelemetry>();
+
+            // ActionsStepTelemetry for entire job
+            Global.StepsTelemetry = new List<ActionsStepTelemetry>();
 
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
@@ -655,10 +696,6 @@ namespace GitHub.Runner.Worker
             // Actions environment
             ActionsEnvironment = message.ActionsEnvironment;
 
-            // ActionsStepTelemetry
-            ActionsStepsTelemetry = new List<ActionsStepTelemetry>();
-
-            JobTelemetry = new List<JobTelemetry>();
 
             // Service container info
             Global.ServiceContainers = new List<ContainerInfo>();
@@ -883,6 +920,65 @@ namespace GitHub.Runner.Worker
         {
             // Lock not required since the list is immutable
             return Root._matchers ?? Array.Empty<IssueMatcherConfig>();
+        }
+
+        public void PublishStepTelemetry()
+        {
+            if (!_stepTelemetryPublished)
+            {
+                // Add to the global steps telemetry only if we have something to log.
+                if (!string.IsNullOrEmpty(StepTelemetry?.Type))
+                {
+                    if (!IsEmbedded)
+                    {
+                        StepTelemetry.Result = _record.Result;
+                    }
+
+                    if (!IsEmbedded &&
+                        _record.FinishTime != null &&
+                        _record.StartTime != null)
+                    {
+                        StepTelemetry.ExecutionTimeInSeconds = (int)Math.Ceiling((_record.FinishTime - _record.StartTime)?.TotalSeconds ?? 0);
+                    }
+
+                    if (!IsEmbedded &&
+                        _record.Issues.Count > 0)
+                    {
+                        foreach (var issue in _record.Issues)
+                        {
+                            if ((issue.Type == IssueType.Error || issue.Type == IssueType.Warning) &&
+                                !string.IsNullOrEmpty(issue.Message))
+                            {
+                                string issueTelemetry;
+                                if (issue.Message.Length > _maxIssueMessageLengthInTelemetry)
+                                {
+                                    issueTelemetry = $"{issue.Message[.._maxIssueMessageLengthInTelemetry]}";
+                                }
+                                else
+                                {
+                                    issueTelemetry = issue.Message;
+                                }
+
+                                StepTelemetry.ErrorMessages.Add(issueTelemetry);
+
+                                // Only send over the first 3 issues to avoid sending too much data.
+                                if (StepTelemetry.ErrorMessages.Count >= _maxIssueCountInTelemetry)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    Trace.Info($"Publish step telemetry for current step {StringUtil.ConvertToJson(StepTelemetry)}.");
+                    Global.StepsTelemetry.Add(StepTelemetry);
+                    _stepTelemetryPublished = true;
+                }
+            }
+            else
+            {
+                Trace.Info($"Step telemetry has already been published.");
+            }
         }
 
         private void InitializeTimelineRecord(Guid timelineId, Guid timelineRecordId, Guid? parentTimelineRecordId, string recordType, string displayName, string refName, int? order)

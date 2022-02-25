@@ -1,11 +1,4 @@
 ## Changes
-- Add basic test for sqlite integration
-- No longer throws "sequence is empty" if
-  `on.workflow_call.inputs.*.type` is missing
-- Fix unauthorized calls to GitHub of webhook endpoint if configured as GitHub App, GITHUB_TOKEN auth not affected
-- Fix potential time synchonization issues while requesting a GitHub App Installation Token, the GitHub App jwt now expires after 500s instead of 600s
-- Fix status sha of pull_request trigger pointing to base branch instead of head, version v3.5.0 not affected
-- Fix workflow doesn't wait for cancellation of matrix / workflow_call
 
 ## Known Issues
 

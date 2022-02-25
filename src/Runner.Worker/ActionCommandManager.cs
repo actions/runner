@@ -178,7 +178,7 @@ namespace GitHub.Runner.Worker
                     Message = $"Invoked ::stopCommand:: with token: [{stopToken}]",
                     Type = JobTelemetryType.ActionCommand
                 };
-                context.JobTelemetry.Add(telemetry);
+                context.Global.JobTelemetry.Add(telemetry);
             }
 
             if (isTokenInvalid && !allowUnsecureStopCommandTokens)

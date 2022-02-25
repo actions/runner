@@ -17,7 +17,13 @@ RUNNER_ROOT=`pwd`
 
 LAUNCH_PATH="${HOME}/Library/LaunchAgents"
 PLIST_PATH="${LAUNCH_PATH}/${SVC_NAME}.plist"
-TEMPLATE_PATH=./bin/actions.runner.plist.template
+TEMPLATE_PATH=$GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE
+IS_CUSTOM_TEMPLATE=0
+if [[ -z $TEMPLATE_PATH ]]; then
+    TEMPLATE_PATH=./bin/actions.runner.plist.template
+else
+    IS_CUSTOM_TEMPLATE=1
+fi
 TEMP_PATH=./bin/actions.runner.plist.temp
 CONFIG_PATH=.service
 
@@ -29,7 +35,11 @@ function failed()
 }
 
 if [ ! -f "${TEMPLATE_PATH}" ]; then
-    failed "Must run from runner root or install is corrupt"
+    if [[ $IS_CUSTOM_TEMPLATE = 0 ]]; then
+        failed "Must run from runner root or install is corrupt"
+    else
+        failed "Service file at '$GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE' using GITHUB_ACTIONS_RUNNER_SERVICE_TEMPLATE env variable is not found"
+    fi
 fi
 
 function install()

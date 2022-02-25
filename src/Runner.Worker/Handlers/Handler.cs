@@ -1,13 +1,13 @@
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq;
 using System.IO;
-using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Linq;
+using System.Threading.Tasks;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -22,7 +22,7 @@ namespace GitHub.Runner.Worker.Handlers
         string ActionDirectory { get; set; }
         List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
         Task RunAsync(ActionRunStage stage);
-        void PrintActionDetails(ActionRunStage stage);
+        void PrepareExecution(ActionRunStage stage);
     }
 
     public abstract class Handler : RunnerService
@@ -42,29 +42,45 @@ namespace GitHub.Runner.Worker.Handlers
         public string ActionDirectory { get; set; }
         public List<JobExtensionRunner> LocalActionContainerSetupSteps { get; set; }
 
-        public virtual string GetActionRef()
+        public void PrepareExecution(ActionRunStage stage)
+        {
+            // Print out action details
+            PrintActionDetails(stage);
+
+            // Get telemetry for the action.
+            PopulateActionTelemetry();
+        }
+
+        protected void PopulateActionTelemetry()
         {
             if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
+                ExecutionContext.StepTelemetry.Type = "docker";
                 var registryAction = Action as Pipelines.ContainerRegistryReference;
-                return registryAction.Image;
+                ExecutionContext.StepTelemetry.Action = registryAction.Image;
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Script)
+            {
+                ExecutionContext.StepTelemetry.Type = "run";
             }
             else if (Action.Type == Pipelines.ActionSourceType.Repository)
             {
+                ExecutionContext.StepTelemetry.Type = "repository";
                 var repoAction = Action as Pipelines.RepositoryPathReference;
                 if (string.Equals(repoAction.RepositoryType, Pipelines.PipelineConstants.SelfAlias, StringComparison.OrdinalIgnoreCase))
                 {
-                    return repoAction.Path;
+                    ExecutionContext.StepTelemetry.Action = repoAction.Path;
                 }
                 else
                 {
+                    ExecutionContext.StepTelemetry.Ref = repoAction.Ref;
                     if (string.IsNullOrEmpty(repoAction.Path))
                     {
-                        return $"{repoAction.Name}@{repoAction.Ref}";
+                        ExecutionContext.StepTelemetry.Action = repoAction.Name;
                     }
                     else
                     {
-                        return $"{repoAction.Name}/{repoAction.Path}@{repoAction.Ref}";
+                        ExecutionContext.StepTelemetry.Action = $"{repoAction.Name}/{repoAction.Path}";
                     }
                 }
             }
@@ -73,11 +89,11 @@ namespace GitHub.Runner.Worker.Handlers
                 // this should never happen
                 Trace.Error($"Can't generate ref for {Action.Type.ToString()}");
             }
-            return "";
         }
-        public virtual void PrintActionDetails(ActionRunStage stage)
+
+        protected virtual void PrintActionDetails(ActionRunStage stage)
         {
-            
+
             if (stage == ActionRunStage.Post)
             {
                 ExecutionContext.Output($"Post job cleanup.");
