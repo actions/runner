@@ -13,7 +13,10 @@
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
-            "targetArchitecture": "x86_64"
+            "targetArchitecture": "x86_64",
+            "env": {
+                "GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER": "1",
+            }
         },
         {
             "name": "Run",
@@ -26,7 +29,10 @@
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
-            "targetArchitecture": "x86_64"
+            "targetArchitecture": "x86_64",
+            "env": {
+                "GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER": "1",
+            }
         },
         {
             "name": "Configure",
@@ -40,7 +46,10 @@
             "cwd": "${workspaceFolder}/src",
             "console": "integratedTerminal",
             "requireExactSource": false,
-            "targetArchitecture": "x86_64"
+            "targetArchitecture": "x86_64",
+            "env": {
+                "GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER": "1",
+            }
         },
         {
             "name": "Debug Worker",
@@ -48,7 +57,21 @@
             "request": "attach",
             "processName": "Runner.Worker",
             "requireExactSource": false,
-            "targetArchitecture": "x86_64"
+            "targetArchitecture": "x86_64",
+            "env": {
+                "GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER": "1",
+            }
+        },
+        {
+            "name": "Debug Listener",
+            "type": "coreclr",
+            "request": "attach",
+            "processName": "Runner.Listener",
+            "requireExactSource": false,
+            "targetArchitecture": "x86_64",
+            "env": {
+                "GITHUB_ACTIONS_RUNNER_ATTACH_DEBUGGER": "1",
+            }
         },
         {
             "name": "Attach Debugger",

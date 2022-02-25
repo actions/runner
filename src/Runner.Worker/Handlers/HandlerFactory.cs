@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker.Handlers
                         var isWorkflowOptOut = StringUtil.ConvertToBoolean(workflowOptOut);
                         if (!isWorkflowOptOut)
                         {
-                            nodeData.Script = "node16";
+                            nodeData.NodeVersion = "node16";
                         }
                     }
                     else
@@ -77,7 +77,7 @@ namespace GitHub.Runner.Worker.Handlers
                         var isLocalEnvOptOut = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowActionsUseUnsecureNodeVersion));
                         if (!isLocalEnvOptOut)
                         {
-                            nodeData.Script = "node16";
+                            nodeData.NodeVersion = "node16";
                         }
                     }
                 }
