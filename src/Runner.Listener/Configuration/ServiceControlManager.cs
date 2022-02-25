@@ -48,13 +48,12 @@ namespace GitHub.Runner.Listener.Configuration
             string repoOrOrgName = regex.Replace(settings.RepoOrOrgName, "-");
 
             serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgName, settings.AgentName);
-
-            if (serviceName.Length > 80)
+            if (serviceName.Length > MaxServiceNameLength)
             {
-                Trace.Verbose($"Calculated service name is too long (> 80 chars). Trying again by calculating a shorter name.");
-
-                int exceededCharLength = serviceName.Length - 80;
-                string repoOrOrgNameSubstring = StringUtil.SubstringPrefix(repoOrOrgName, 45);
+                Trace.Verbose($"Calculated service name is too long (> {MaxServiceNameLength} chars). Trying again by calculating a shorter name.");
+                // Add 5 to add -xxxx random number on the end
+                int exceededCharLength = serviceName.Length - MaxServiceNameLength + 5;
+                string repoOrOrgNameSubstring = StringUtil.SubstringPrefix(repoOrOrgName, MaxRepoOrgCharacters);
 
                 exceededCharLength -= repoOrOrgName.Length - repoOrOrgNameSubstring.Length;
 
@@ -66,6 +65,10 @@ namespace GitHub.Runner.Listener.Configuration
                     runnerNameSubstring = StringUtil.SubstringPrefix(settings.AgentName, settings.AgentName.Length - exceededCharLength);
                 }
 
+                // Lets add a suffix with a random number to reduce the chance of collisions between runner names once we truncate
+                var random = new Random();
+                var num = random.Next(1000, 9999).ToString();
+                runnerNameSubstring +=$"-{num}";
                 serviceName = StringUtil.Format(serviceNamePattern, repoOrOrgNameSubstring, runnerNameSubstring);
             }
 
@@ -73,5 +76,12 @@ namespace GitHub.Runner.Listener.Configuration
 
             Trace.Info($"Service name '{serviceName}' display name '{serviceDisplayName}' will be used for service configuration.");
         }
+        #if (OS_LINUX || OS_OSX)
+            const int MaxServiceNameLength = 150;
+            const int MaxRepoOrgCharacters = 70;
+        #elif OS_WINDOWS
+            const int MaxServiceNameLength = 80;
+            const int MaxRepoOrgCharacters = 45;
+        #endif
     }
 }
