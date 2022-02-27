@@ -67,12 +67,7 @@ namespace GitHub.Runner.Listener.Configuration
 
             Trace.Info($"Service name '{serviceName}' display name '{serviceDisplayName}' will be used for service configuration.");
         }
-        #if (OS_LINUX || OS_OSX)
-            const int MaxServiceNameLength = 150;
-            const int MaxRepoOrgCharacters = 70;
-        #elif OS_WINDOWS
-            const int MaxServiceNameLength = 80;
-            const int MaxRepoOrgCharacters = 45;
-        #endif
+        int MaxServiceNameLength { get => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? 80 : 150; }
+        int MaxRepoOrgCharacters { get => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? 45 : 70; }
     }
 }
