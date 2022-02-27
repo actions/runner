@@ -68,6 +68,7 @@ namespace Runner.Server.Controllers
         private int GitHubAppId { get; }
         private Dictionary<string, string> GitHubContext { get; }
         private bool AllowPrivateActionAccess { get; }
+        private int Verbosity { get; }
         private List<Secret> secrets;
 
         private IConfiguration configuration;
@@ -105,6 +106,7 @@ namespace Runner.Server.Controllers
             GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             GitHubContext = configuration.GetSection("Runner.Server:GitHubContext").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
+            Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 2) ?? 2;
             
             secrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();
             _cache = memoryCache;
@@ -383,7 +385,7 @@ namespace Runner.Server.Controllers
         {
             private Action<string> callback;
             private Regex regex;
-            public TraceWriter2(Action<string> callback) {
+            public TraceWriter2(Action<string> callback, int verbosity = 0) {
                 this.callback = callback;
                 regex = new Regex("\r?\n");
             }
@@ -409,29 +411,37 @@ namespace Runner.Server.Controllers
 
             public void Info(string format, params object[] args)
             {
-                try {
-                    Callback(args?.Length > 0 ? string.Format(format, args) : format);
-                } catch {
-                    Callback(format);
+                if(verbosity <= 1) {
+                    try {
+                        Callback(args?.Length > 0 ? string.Format(format, args) : format);
+                    } catch {
+                        Callback(format);
+                    }
                 }
             }
 
             public void Info(string message)
             {
-                Callback(message);
+                if(verbosity <= 1) {
+                    Callback(message);
+                }
             }
             public void Verbose(string format, params object[] args)
             {
-                try {
-                    Callback(args?.Length > 0 ? string.Format(format, args) : format);
-                } catch {
-                    Callback(format);
+                if(verbosity <= 0) {
+                    try {
+                        Callback(args?.Length > 0 ? string.Format(format, args) : format);
+                    } catch {
+                        Callback(format);
+                    }
                 }
             }
 
             public void Verbose(string message)
             {
-                Callback(message);
+                if(verbosity <= 0) {
+                    Callback(message);
+                }
             }
         }
 
@@ -731,7 +741,7 @@ namespace Runner.Server.Controllers
             var jobsctx = new DictionaryContextData();
             var workflowTraceWriter = new TraceWriter2(line => {
                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ line }), workflowTimelineId, workflowRecordId);
-            });
+            }, Verbosity);
             var workflowname = fileRelativePath;
             Func<JobItem, TaskResult?, Task> updateJobStatus = async (next, status) => {
                 var effective_event = callingJob?.Event ?? event_name;
@@ -2063,9 +2073,9 @@ namespace Runner.Server.Controllers
                             ji.Status = e.Result;
                             ji.Completed = true;
                             updateStatus(ji);
-                            workflowTraceWriter.Info("{0}", $"{ji.DisplayName} ({ji.name}) completed");
+                            workflowTraceWriter.Verbose("{0}", $"{ji.DisplayName} ({ji.name}) completed");
                             if(jobs.All(j => j.Completed)) {
-                                workflowTraceWriter.Info("{0}", $"All jobs completed");
+                                workflowTraceWriter.Verbose("{0}", $"All jobs completed");
                                 FinishJobController.OnJobCompletedAfter -= workflowcomplete;
                                 exctx.workflow = jobs.ToList();
                                 var evargs = new WorkflowEventArgs { runid = runid, Success = exctx.Success };
@@ -2547,7 +2557,7 @@ namespace Runner.Server.Controllers
                     AddJob(_job);
                     return cancel => {
                         Action<string> failedtoInstantiateWorkflow = message => {
-                            traceWriter.Verbose("Failed to instantiate Workflow: {0}", message);
+                            traceWriter.Error("Failed to instantiate Workflow: {0}", message);
                             new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                         };
                         if(cancel) {
