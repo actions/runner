@@ -385,9 +385,11 @@ namespace Runner.Server.Controllers
         {
             private Action<string> callback;
             private Regex regex;
+            private int verbosity;
             public TraceWriter2(Action<string> callback, int verbosity = 0) {
                 this.callback = callback;
                 regex = new Regex("\r?\n");
+                this.verbosity = verbosity;
             }
 
             public void Callback(string lines) {
