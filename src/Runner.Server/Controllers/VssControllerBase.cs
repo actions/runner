@@ -18,7 +18,7 @@ namespace Runner.Server.Controllers
 {
     public class VssControllerBase : ControllerBase {
         private string _serverUrl = null;
-        protected string ServerUrl { get => string.IsNullOrEmpty(_serverUrl) ? $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}" : _serverUrl; private set => _serverUrl = value; }
+        protected string ServerUrl { get => string.IsNullOrEmpty(_serverUrl) ? $"{Request.Scheme}://{Request.Host.Host ?? (HttpContext.Connection.RemoteIpAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6 ? ("[" + HttpContext.Connection.LocalIpAddress.ToString() + "]") : HttpContext.Connection.LocalIpAddress.ToString())}:{Request.Host.Port ?? (Request.Host.Host != null ? 80 : HttpContext.Connection.LocalPort)}" : _serverUrl; set => _serverUrl = value; }
         protected void ReadConfig(IConfiguration configuration) {
             ServerUrl = configuration?.GetSection("Runner.Server")?.GetValue<string>("ServerUrl");
         }

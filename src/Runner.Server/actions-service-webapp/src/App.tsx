@@ -706,6 +706,11 @@ function JobPage() {
           })();
         }}>Cancel Workflow</button>
         <button onClick={(event) => {
+          (async () => {
+              await fetch(ghHostApiUrl + "/_apis/v1/Message/forceCancelWorkflow/" + params.runid, { method: "POST" });
+          })();
+        }}>Force Cancel Workflow</button>
+        <button onClick={(event) => {
             (async () => {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + params.runid, { method: "POST" });
             })();
