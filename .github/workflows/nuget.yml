@@ -63,6 +63,7 @@ jobs:
         dotnet-version:
         - '5.0.x'
         - '5.0.200'
+        - '6.0.x'
         include:
         - os: windows-2022
           tag: ltsc2022
