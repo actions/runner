@@ -1166,7 +1166,7 @@ namespace Runner.Client
                                                     sha = line;
                                                     line = null;
                                                 } else {
-                                                    await Console.Error.WriteLineAsync("Couldn't retrive github.sha");
+                                                    await Console.Error.WriteLineAsync("Couldn't retrieve github.sha");
                                                 }
                                             }
                                         } catch {
@@ -1179,7 +1179,7 @@ namespace Runner.Client
                                             Ref = "refs/heads/main";
                                         }
                                         if(string.IsNullOrEmpty(sha)) {
-                                            sha = "4544205a385319fe846d5df4ed2e3b8173569d78";
+                                            sha = "0000000000000000000000000000000000000000";
                                         }
                                         query.Add("Ref", Ref);
                                         query.Add("Sha", sha);
