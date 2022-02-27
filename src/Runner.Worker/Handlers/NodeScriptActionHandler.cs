@@ -2,19 +2,11 @@
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.DistributedTask.WebApi;
-using Pipelines = GitHub.DistributedTask.Pipelines;
-using System;
-using System.Linq;
 using GitHub.Runner.Worker.Container;
-using System.IO.Compression;
-using System.Net.Http;
-using System.Collections.Generic;
 
 namespace GitHub.Runner.Worker.Handlers
 {

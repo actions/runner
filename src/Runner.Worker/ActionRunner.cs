@@ -14,9 +14,6 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
-using GitHub.Runner.Common;
-using GitHub.Runner.Sdk;
-using System.Collections.Generic;
 using GitHub.Runner.Worker.Container;
 
 namespace GitHub.Runner.Worker
