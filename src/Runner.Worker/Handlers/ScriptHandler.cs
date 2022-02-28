@@ -85,11 +85,15 @@ namespace GitHub.Runner.Worker.Handlers
                     }
                 }
 #else
-                shellCommand = "sh";
-                if (validateShellOnHost)
+                shellCommand = "bash";
+                shellCommandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                if (string.IsNullOrEmpty(shellCommandPath))
                 {
-                    shellCommandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                    shellCommand = "sh";
+                    Trace.Info($"Defaulting to {shellCommand}");
+                    shellCommandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                 }
+
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
@@ -194,8 +198,16 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
 #else
-                shellCommand = "sh";
-                commandPath = WhichUtil.Which("bash", false, Trace, prependPath) ?? WhichUtil.Which("sh", true, Trace, prependPath);
+                shellCommand = "bash";
+                commandPath = WhichUtil.Which(shellCommand, require: false, Trace, prependPath);
+                if (string.IsNullOrEmpty(commandPath))
+                {
+                    shellCommand = "sh";
+                    Trace.Info($"Defaulting to {shellCommand}");
+                    commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
+                }
+                ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
+
 #endif
                 argFormat = ScriptHandlerHelpers.GetScriptArgumentsFormat(shellCommand);
             }
