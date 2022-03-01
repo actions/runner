@@ -111,28 +111,15 @@ namespace GitHub.Runner.Worker
             }
             executionContext.Output("##[endgroup]");
 
-            var platform = (await HostContext.GetService<IDockerCommandManager>().DockerInspect(executionContext, containers[0].ContainerImage, "--format=\"{{.Os}}/{{.Architecture}}\"")).FirstOrDefault();
-            if(string.IsNullOrEmpty(platform) || !platform.Contains('/')) {
-                throw new Exception("Failed to determine container platform");
-            }
-            var plat = platform.Split('/', 2);
-            var os = plat[0];
-            var arch = plat[1];
-
-            // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
-            // All containers within a job join the same network
-            executionContext.Output("##[group]Create local container network");
-            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
-            await CreateContainerNetworkAsync(executionContext, containerNetwork, os == "windows" ? "nat" : null);
-            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
-            executionContext.Output("##[endgroup]");
+            string containerNetwork = null;
 
             foreach (var container in containers)
             {
                 container.ContainerNetwork = containerNetwork;
-                container.Os = os;
-                container.Arch = arch;
                 await StartContainerAsync(executionContext, container);
+                if(containerNetwork == null) {
+                    containerNetwork = container.ContainerNetwork;
+                }
             }
 
             executionContext.Output("##[group]Waiting for all services to be ready");
@@ -160,6 +147,17 @@ namespace GitHub.Runner.Worker
                 // Remove the container network
                 await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
             }
+        }
+
+        private async Task CreateContainerNetwork(IExecutionContext executionContext, ContainerInfo container) {
+            // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
+            // All containers within a job join the same network
+            executionContext.Output("##[group]Create local container network");
+            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
+            await CreateContainerNetworkAsync(executionContext, containerNetwork, container.Os == "windows" ? "nat" : null);
+            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
+            executionContext.Output("##[endgroup]");
+            container.ContainerNetwork = containerNetwork;
         }
 
         private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
@@ -223,6 +221,18 @@ namespace GitHub.Runner.Worker
             if (retryCount == 3 && pullExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
+            }
+
+            var platform = (await HostContext.GetService<IDockerCommandManager>().DockerInspect(executionContext, container.ContainerImage, "--format=\"{{.Os}}/{{.Architecture}}\"")).FirstOrDefault();
+            if(string.IsNullOrEmpty(platform) || !platform.Contains('/')) {
+                throw new Exception("Failed to determine container platform");
+            }
+            var plat = platform.Split('/', 2);
+            container.Os = plat[0];
+            container.Arch = plat[1];
+
+            if(container.ContainerNetwork == null) {
+                await CreateContainerNetwork(executionContext, container);
             }
 
             if (container.IsJobContainer)
