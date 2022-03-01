@@ -1,9 +1,20 @@
 ## Changes
+- Fixed: No status checks if `Runner.Server:ServerUrl` is not set in your appsettings.json or via cli, all 3.6.x versions affected
+- Fixed: Accessing an null object
+- Fixed: stability issues, while cancelling larger workflows
+- Fixed: Correctly fail matrix child jobs on validation exceptions
+- Fixed: Cancellation of workflow_call workflows with large matrices takes much more time
+- Fixed: GitHub App Auth didn't respect the specified github url
+- Feature: node alpine support for arm32 and arm64 linux with and without container
+- Feature: the nuget package now also runs under .net6, .net5 is no longer required to be installed
+- Feature: link back to git repository from webui
+- Feature: basic live updates of owner, repository and workflow runs view
+- Feature: m1 mac native node16 auto download
+- Only use the filename without path as artifact download name, avoids weird filenames after downloading
 
 ## Known Issues
 
 - **TODO** Manage Verbosity in more levels ideas are welcome, please open a discussion or issue
-- No status checks if `Runner.Server:ServerUrl` is not set in your appsettings.json or via cli, all 3.6.x versions affected
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
