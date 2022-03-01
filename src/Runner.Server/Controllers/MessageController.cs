@@ -573,11 +573,22 @@ namespace Runner.Server.Controllers
         private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null) {
             string owner_name = repository.Split('/', 2)[0];
             string repo_name = repository.Split('/', 2)[1];
-            var run = new WorkflowRun { FileName = fileRelativePath, Workflow = (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault() ?? new Workflow { FileName = fileRelativePath, Repository = (from r in _context.Set<Repository>() where r.Owner.Name == owner_name && r.Name == repo_name select r).FirstOrDefault() ?? new Repository { Name = repo_name, Owner = (from o in _context.Set<Owner>() where o.Name == owner_name select o).FirstOrDefault() ?? new Owner { Name = owner_name } } } };
+            Func<Workflow> getWorkflow = () => (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault();
+            var run = new WorkflowRun { FileName = fileRelativePath, Workflow = getWorkflow() };
             long attempt = 1;
             var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt++, WorkflowRun = run, EventPayload = payloadObject.ToString(), EventName = e, Workflow = content, Ref = Ref, Sha = Sha, StatusCheckSha = StatusCheckSha };
             _context.Artifacts.Add(new ArtifactContainer() { Attempt = _attempt } );
-            _context.SaveChanges();
+            if(run.Workflow == null) {
+                // Fix creating duplicated repositories
+                lock(concurrencyGroups) {
+                    if((run.Workflow = getWorkflow()) == null) {
+                        run.Workflow = new Workflow { FileName = fileRelativePath, Repository = (from r in _context.Set<Repository>() where r.Owner.Name == owner_name && r.Name == repo_name select r).FirstOrDefault() ?? new Repository { Name = repo_name, Owner = (from o in _context.Set<Owner>() where o.Name == owner_name select o).FirstOrDefault() ?? new Owner { Name = owner_name } } };
+                    }
+                    _context.SaveChanges();
+                }
+            } else {
+                _context.SaveChanges();
+            }
             workflowrun?.Invoke(run.Id);
             var runid = run.Id;
             long runnumber = run.Id;
