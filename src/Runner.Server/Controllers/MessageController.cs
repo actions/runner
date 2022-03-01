@@ -582,13 +582,24 @@ namespace Runner.Server.Controllers
                 // Fix creating duplicated repositories
                 lock(concurrencyGroups) {
                     if((run.Workflow = getWorkflow()) == null) {
-                        run.Workflow = new Workflow { FileName = fileRelativePath, Repository = (from r in _context.Set<Repository>() where r.Owner.Name == owner_name && r.Name == repo_name select r).FirstOrDefault() ?? new Repository { Name = repo_name, Owner = (from o in _context.Set<Owner>() where o.Name == owner_name select o).FirstOrDefault() ?? new Owner { Name = owner_name } } };
+                        Func<Owner> createOwner = () => {
+                            var o = new Owner { Name = owner_name };
+                            Task.Run(() => ownerevent?.Invoke(o));
+                            return o;
+                        };
+                        Func<Repository> createRepo = () => {
+                            var r = new Repository { Name = repo_name, Owner = (from o in _context.Set<Owner>() where o.Name == owner_name select o).FirstOrDefault() ?? createOwner() };
+                            Task.Run(() => repoevent?.Invoke(r));
+                            return r;
+                        };
+                        run.Workflow = new Workflow { FileName = fileRelativePath, Repository = (from r in _context.Set<Repository>() where r.Owner.Name == owner_name && r.Name == repo_name select r).FirstOrDefault() ?? createRepo() };
                     }
                     _context.SaveChanges();
                 }
             } else {
                 _context.SaveChanges();
             }
+            Task.Run(() => runevent?.Invoke(owner_name, repo_name, run));
             workflowrun?.Invoke(run.Id);
             var runid = run.Id;
             long runnumber = run.Id;
@@ -3844,6 +3855,9 @@ namespace Runner.Server.Controllers
 
         private delegate void JobEvent(object sender, string repo, Job job);
         private static event JobEvent jobevent;
+        private static event Action<Owner> ownerevent;
+        private static event Action<Repository> repoevent;
+        private static event Action<string, string, WorkflowRun> runevent;
         public class WorkflowEventArgs {
             public long runid {get;set;}
             public bool Success {get;set;}
@@ -3890,6 +3904,81 @@ namespace Runner.Server.Controllers
                     await writer.DisposeAsync();
                 }
             }, "text/event-stream");
+        }
+
+        [HttpGet("event2")]
+        public IActionResult LiveUpdateEvents([FromQuery] string owner, [FromQuery] string repo, [FromQuery] long? runid)
+        {
+            var requestAborted = HttpContext.RequestAborted;
+            return new PushStreamResult(async stream => {
+                var wait = requestAborted.WaitHandle;
+                var writer = new StreamWriter(stream);
+                try
+                {
+                    writer.NewLine = "\n";
+                    var queue2 = Channel.CreateUnbounded<KeyValuePair<string,object>>(new UnboundedChannelOptions { SingleReader = true });
+                    var chwriter = queue2.Writer;
+                    JobEvent handler = (sender, crepo, job) => {
+                        var repoowner = crepo.Split("/", 2);
+                        if((string.IsNullOrEmpty(owner) || owner == repoowner[0]) && (string.IsNullOrEmpty(repo) || repo == repoowner[1]) && (runid == null || runid == job.runid)) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("job", job));
+                        }
+                    };
+                    Action<Owner> ownerh = cowner => {
+                        if(string.IsNullOrEmpty(owner)) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("owner", cowner));
+                        }
+                    };
+                    Action<Repository> repoh = crepo => {
+                        if((string.IsNullOrEmpty(owner) || owner == crepo.Owner.Name) && string.IsNullOrEmpty(repo)) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("repo", crepo));
+                        }
+                    };
+                    Action<string, string, WorkflowRun> runh = (cowner, crepo, crun) => {
+                        if((string.IsNullOrEmpty(repo) || repo == crepo) || (string.IsNullOrEmpty(owner) || owner == cowner) && runid == null) {
+                            chwriter.WriteAsync(new KeyValuePair<string, object>("workflowrun", crun));
+                        }
+                    };
+                    var chreader = queue2.Reader;
+                    var ping = Task.Run(async () => {
+                        try {
+                            while(!requestAborted.IsCancellationRequested) {
+                                KeyValuePair<string, object> p = await chreader.ReadAsync(requestAborted);
+                                string value = "";
+                                try {
+                                    value = JsonConvert.SerializeObject(p.Value, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}});
+                                } catch (Exception ex) {
+                                    p = new KeyValuePair<string, object>("error", null);
+                                    value = ex.ToString();
+                                }
+                                await writer.WriteLineAsync($"event: {p.Key}");
+                                await writer.WriteLineAsync($"data: {value}");
+                                await writer.WriteLineAsync();
+                                await writer.FlushAsync();
+                            }
+                        } catch (OperationCanceledException) {
+
+                        }
+                    }, requestAborted);
+                    jobevent += handler;
+                    ownerevent += ownerh;
+                    repoevent += repoh;
+                    runevent += runh;
+                    await ping;
+                    runevent -= runh;
+                    repoevent -= repoh;
+                    ownerevent -= ownerh;
+                    jobevent -= handler;
+                } finally {
+                    await writer.DisposeAsync();
+                }
+            }, "text/event-stream");
+        }
+
+        [AllowAnonymous]
+        [HttpGet("gitserverurl")]
+        public string GetGitServerUrl() {
+            return GitServerUrl;
         }
     }
 }

@@ -13,9 +13,11 @@ namespace Runner.Server.Models
     public class WorkflowRun {
 
         public long Id { get; set; }
+        [IgnoreDataMember]
         public Workflow Workflow { get; set; }
         public String FileName { get; set; }
         public String DisplayName { get; set; }
+        [IgnoreDataMember]
         public List<WorkflowRunAttempt> Attempts { get; set; }
         [NotMapped]
         public String EventName { get; set; }

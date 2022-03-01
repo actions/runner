@@ -120,8 +120,13 @@ function List() {
 interface GenericListProps<T> {
   url: (params : Readonly<Params<string>>) => string
   id: (el : T) => string
-  summary: (el : T) => JSX.Element
+  summary: (el : T, params : Readonly<Params<string>>) => JSX.Element
   hasBack?: boolean
+  externalBackUrl?: (params : Readonly<Params<string>>) => string | undefined
+  externalBackLabel?: (params : Readonly<Params<string>>) => string
+  actions?: (el : T, params : Readonly<Params<string>>) => JSX.Element
+  eventName?: string
+  eventQuery?: (params : Readonly<Params<string>>) => string
 }
 
 const GenericList = <T, >(param : GenericListProps<T>) => {
@@ -139,6 +144,21 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
           setJobs(jobs || []);
         }
       })()
+      if(page === 0 && param.eventName) {
+        var source = new EventSource(`${ghHostApiUrl}/_apis/v1/Message/event2?${(param.eventQuery && param.eventQuery(params)) ?? ""}`);
+        source.addEventListener(param.eventName, ev => {
+          var je = JSON.parse((ev as MessageEvent).data) as T;
+          setJobs(_jobs => {
+              var final = [je, ..._jobs];
+              // Remove elements from the first page
+              if(final.length > 30) {
+                  final.length = 30;
+              }
+              return final;
+          });
+        });
+        return () => source.close();
+      }
     }
   }, [params, param]);
   var page = Number.parseInt(params["page"] || "0");
@@ -149,6 +169,12 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
       borderColor: 'gray',
       borderStyle: 'solid',
       padding: '10px' }} to={resolved}>Back</Link>
+    {param.externalBackUrl && param.externalBackLabel && param.externalBackLabel(params) ? <a style={{width: "calc(100% - 22px)", color: 'black', textDecoration: "none", display: !param.externalBackUrl ? "none" : "block",
+      border: '1px',
+      borderBottom: '0',
+      borderColor: 'gray',
+      borderStyle: 'solid',
+      padding: '10px' }} href={param.externalBackUrl(params) || ""} target="_blank" rel="noreferrer">{param.externalBackLabel(params)}</a>: <></>}
     <div style={{
       display: "flex",
       width: 'calc(100% - 2px)',
@@ -168,22 +194,28 @@ const GenericList = <T, >(param : GenericListProps<T>) => {
       backgroundColor: 'gray'
     }}></span> */}
     {jobs.map(val => (
-      <NavLink key={param.id(val)} to={`${encodeURIComponent(param.id(val))}/0`} style={({ isActive }) => {
-        return {
-          width: 'calc(100% - 2px)',
-          display: "block",
-          borderLeft: "1px",
-          borderRight: "1px",
-          borderBottom: "1px",
-          borderTop: "0",
-          borderStyle: 'solid',
-          borderColor: 'gray',
-          // margin: "1rem 0",
-          color: 'black',
-          textDecoration: 'none',
-          background: isActive ? "lightblue" : "white"
-        };
-      }}>{param.summary(val)}</NavLink>
+      <div key={param.id(val)} style={{
+        width: 'calc(100% - 2px)',
+        display: "flex",
+        borderLeft: "1px",
+        borderRight: "1px",
+        borderBottom: "1px",
+        borderTop: "0",
+        borderStyle: 'solid',
+        borderColor: 'gray',
+        // margin: "1rem 0",
+      }} >
+        <NavLink to={`${encodeURIComponent(param.id(val))}/0`} style={({ isActive }) => {
+          return {
+            width: "100%",
+            textDecoration: 'none',
+            color: 'black',
+            background: isActive ? "lightblue" : "white"
+          };
+        }}>{param.summary(val, params)}</NavLink>
+        {(param.actions && param.actions(val, params)) || ""}
+      </div>
+      
     ))}
   </div>);
 };
@@ -779,19 +811,28 @@ function RedirectOldUrl() {
 }
 
 function App() {
+  var [gitServerUrl, setGitServerUrl] = useState<string>()
+  useEffect(() => {
+    (async () => {
+      var resp = await fetch(ghHostApiUrl + "/_apis/v1/Message/gitserverurl");
+      if(resp.status === 200) {
+        setGitServerUrl(await resp.text())
+      }
+    })()
+  }, []);
   return (
       <Routes>
         <Route path="/master/:a/:b/detail/:id" element={<RedirectOldUrl/>}/>
         <Route path="/master" element={<Navigate to={"0"}/>}/>
-        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")}></GenericList>}/>
+        <Route path=":page" element={<GenericList id={(o: IOwner) => o.name} summary={(o: IOwner) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => ghHostApiUrl + "/_apis/v1/Message/owners?page=" + (params.page || "0")} externalBackUrl={params => gitServerUrl} externalBackLabel={() => "Back to git"} actions={ o => gitServerUrl ? <a href={new URL(o.name, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="owner" eventQuery={ params => "" }></GenericList>}/>
         <Route path="/" element={<Navigate to={"0"}/>}/>
         <Route path=":page/:owner/*" element={
           <Routes>
-            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`}></GenericList>}/>
+            <Route path=":page" element={<GenericList id={(o: IRepository) => o.name} hasBack={true} summary={(o: IRepository) => <div style={{padding: "10px"}}>{o.name}</div>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/repositories?owner=${encodeURIComponent(params.owner || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (r, params) => gitServerUrl ? <a href={new URL(`${params.owner}/${r.name}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="repo" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}` }></GenericList>}/>
             <Route path="/" element={<Navigate to={"0"}/>}/>
             <Route path=":page/:repo/*" element={
               <Routes>
-                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} {o.result ?? "Pending"}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`}></GenericList>}/>
+                <Route path=":page" element={<GenericList id={(o: IWorkflowRun) => o.id} hasBack={true} summary={(o: IWorkflowRun) => <span>{o.displayName ?? o.fileName}<br/>RunId: {o.id}, EventName: {o.eventName}<br/>Workflow: {o.fileName}<br/>{o.ref} {o.sha} {o.result ?? "Pending"}</span>} url={(params) => `${ghHostApiUrl}/_apis/v1/Message/workflow/runs?owner=${encodeURIComponent(params.owner || "zero")}&repo=${encodeURIComponent(params.repo || "zero")}&page=${params.page || "0"}`} externalBackUrl={params => gitServerUrl && new URL(`${params.owner}/${params.repo}`, gitServerUrl).href} externalBackLabel={() => "Back to git"} actions={ (run, params) => gitServerUrl ? <a href={new URL(`${params.owner}/${params.repo}/commit/${run.sha}`, gitServerUrl).href} target="_blank" rel="noreferrer">Git</a> : <></> } eventName="workflowrun" eventQuery={ params => `owner=${encodeURIComponent(params.owner || "")}&repo=${encodeURIComponent(params.repo || "")}` }></GenericList>}/>
                 <Route path="/" element={<Navigate to={"0"}/>}/>
                 <Route path=":page/:runid/*" element={
                   <div style={{display: 'flex', flexFlow: 'row', alignItems: 'left', width: '100%', height: '100%'}}>
