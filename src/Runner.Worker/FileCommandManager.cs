@@ -181,6 +181,10 @@ namespace GitHub.Runner.Worker
                                 {
                                     throw new Exception($"Invalid environment variable value. Matching delimiter not found '{delimiter}'");
                                 }
+                                if (newline == null)
+                                {
+                                    throw new Exception($"Invalid environment variable value. EOF marker missing new line.");
+                                }
                                 endIndex = index - newline.Length;
                                 tempLine = ReadLine(text, ref index, out newline);
                             }
@@ -294,7 +298,7 @@ namespace GitHub.Runner.Worker
 
                 if (fileSize > _attachmentSizeLimit)
                 {
-                    context.Error($"$GITHUB_STEP_SUMMARY supports content up a size of {_attachmentSizeLimit / 1024}k got {fileSize / 1024}k");
+                    context.Error(String.Format(Constants.Runner.UnsupportedSummarySize, _attachmentSizeLimit / 1024, fileSize / 1024));
                     Trace.Info($"Step Summary file ({filePath}) is too large ({fileSize} bytes); skipping attachment upload");
 
                     return;

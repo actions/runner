@@ -108,7 +108,7 @@ namespace GitHub.Runner.Sdk
             }
 
             // Create a new token source for the parallel query. The parallel query should be
-            // canceled after the first error is encountered. Otherwise the number of exceptions
+            // cancelled after the first error is encountered. Otherwise the number of exceptions
             // could get out of control for a large directory with access denied on every file.
             using (var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
