@@ -4,7 +4,6 @@
 
 var childProcess = require("child_process");
 var path = require("path");
-const { exit } = require("process");
 
 var supported = ["linux", "darwin"];
 
@@ -27,7 +26,7 @@ if (exitServiceAfterNFailures <= 0) {
 
 var consecutiveFailureCount = 0;
 
-var gracefulShutdown = function (code) {
+var gracefulShutdown = function () {
   console.log("Shutting down runner listener");
   stopping = true;
   if (listener) {
@@ -109,7 +108,7 @@ var runService = function () {
             console.error(
               `${messagePrefix}, exiting service after ${consecutiveFailureCount} consecutive failures`
             );
-            gracefulShutdown(5);
+            gracefulShutdown();
             return;
           } else {
             console.log(`${messagePrefix}, re-launch runner in 5 seconds.`);
@@ -130,9 +129,9 @@ runService();
 console.log("Started running service");
 
 process.on("SIGINT", () => {
-  gracefulShutdown(0);
+  gracefulShutdown();
 });
 
 process.on("SIGTERM", () => {
-  gracefulShutdown(0);
+  gracefulShutdown();
 });
