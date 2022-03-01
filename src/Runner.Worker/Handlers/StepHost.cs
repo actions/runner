@@ -140,13 +140,6 @@ namespace GitHub.Runner.Worker.Handlers
                     executionContext.Debug(line);
                     if (line.ToLower().Contains("alpine"))
                     {
-                        if (!Constants.Runner.PlatformArchitecture.Equals(Constants.Architecture.X64))
-                        {
-                            var os = Constants.Runner.Platform.ToString();
-                            var arch = Constants.Runner.PlatformArchitecture.ToString();
-                            var msg = $"JavaScript Actions in Alpine containers are only supported on x64 Linux runners. Detected {os} {arch}";
-                            throw new NotSupportedException(msg);
-                        }
                         nodeExternal = $"{preferredVersion}_alpine";
                         executionContext.Debug($"Container distribution is alpine. Running JavaScript Action with external tool: {nodeExternal}");
                         return nodeExternal;

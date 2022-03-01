@@ -2,16 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
+using System.Net.Mime;
+using System.Linq;
 
 namespace GitHub.Runner.Worker
 {
     public class ExternalToolHelper {
-         public static string GetHostArch() {
+        public static IHostContext HostContext;
+
+        public static string GetHostArch() {
             switch(System.Runtime.InteropServices.RuntimeInformation.OSArchitecture) {
                 case System.Runtime.InteropServices.Architecture.X86:
                     return "386";
@@ -41,7 +46,7 @@ namespace GitHub.Runner.Worker
             return $"{NODE_URL}/v{NODE12_VERSION}/node-v{NODE12_VERSION}-{os}-{arch}.{suffix}";
         }
 
-        private static async Task DownloadTool(IHostContext hostContext, IExecutionContext executionContext, string link, string destDirectory, string tarextraopts = "", bool unwrap = false) {
+        private static async Task DownloadTool(IExecutionContext executionContext, string link, string destDirectory, string tarextraopts = "", bool unwrap = false) {
             executionContext.Write("", $"Downloading from {link} to {destDirectory}");
             string tempDirectory = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "temp" + System.Guid.NewGuid().ToString());
             var stagingDirectory = Path.Combine(tempDirectory, "_staging");
@@ -55,23 +60,37 @@ namespace GitHub.Runner.Worker
                     var lastSlash = link.LastIndexOf('/');
                     if(lastSlash != -1) {
                         archiveName = link.Substring(lastSlash + 1);
-                    } else {
-                        throw new Exception("Failed to get basename of url");
                     }
                 }
-                string archiveFile = Path.Combine(tempDirectory, archiveName);
+                string archiveFile = "";
 
-                using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
-                using (var httpClientHandler = hostContext.CreateHttpClientHandler())
-                using (var httpClient = new HttpClient(httpClientHandler))
+                using (var httpClientHandler = HostContext.CreateHttpClientHandler())
                 {
-                    using (var response = await httpClient.GetAsync(link, HttpCompletionOption.ResponseHeadersRead))
+                    httpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                    using (var httpClient = new HttpClient(httpClientHandler))
                     {
-                        response.EnsureSuccessStatusCode();
-                        using (var result = await response.Content.ReadAsStreamAsync())
+                        using (var response = await httpClient.GetAsync(link, HttpCompletionOption.ResponseHeadersRead))
                         {
-                            await result.CopyToAsync(fs, 4096, CancellationToken.None);
-                            await fs.FlushAsync(CancellationToken.None);
+                            response.EnsureSuccessStatusCode();
+                            if(response.Headers.TryGetValues("Content-Disposition", out var values)) {
+                                executionContext.Debug(string.Join("; ", values));
+                                var content = new ContentDisposition(string.Join("; ", values));
+                                var lastSlash = content.FileName?.LastIndexOfAny(new[]{'/', '\\'});
+                                if(lastSlash.HasValue) {
+                                    if(lastSlash != -1) {
+                                        archiveName = content.FileName.Substring(lastSlash.Value  + 1);
+                                    } else {
+                                        archiveName = content.FileName;
+                                    }
+                                }
+                            }
+                            archiveFile = Path.Combine(tempDirectory, archiveName);
+                            using (FileStream fs = new FileStream(archiveFile, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true))
+                            using (var result = await response.Content.ReadAsStreamAsync())
+                            {
+                                await result.CopyToAsync(fs, 4096, CancellationToken.None);
+                                await fs.FlushAsync(CancellationToken.None);
+                            }
                         }
                     }
                 }
@@ -82,7 +101,7 @@ namespace GitHub.Runner.Worker
                     string tar = WhichUtil.Which("tar", require: true);
 
                     // tar -xzf
-                    using (var processInvoker = hostContext.CreateService<IProcessInvoker>())
+                    using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
                         processInvoker.OutputDataReceived += new EventHandler<ProcessDataReceivedEventArgs>((sender, args) =>
                         {
@@ -130,12 +149,15 @@ namespace GitHub.Runner.Worker
             }
         }
 
-        public static Task<string> GetHostNodeTool(IHostContext hostContext, IExecutionContext executionContext, string name, string os, string arch) {
-            return GetNodeTool(hostContext, executionContext, System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("alpine") ? name + "_alpine" : name, os, arch);
+        public static Task<string> GetHostNodeTool(IExecutionContext executionContext, string name) {
+            return GetNodeTool(executionContext, System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("musl") || System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier.Contains("alpine") ? name + "_alpine" : name, GetHostOS(), GetHostArch());
         }
-        public static async Task<string> GetNodeTool(IHostContext hostContext, IExecutionContext executionContext, string name, string os, string arch) {
+        public static async Task<string> GetNodeTool(IExecutionContext executionContext, string name, string os, string arch) {
+            if(HostContext == null) {
+                throw new Exception("Cannot download any tool without an valid HostContext");
+            }
             string platform = os + "/" + arch;
-            var externalsPath = hostContext.GetDirectory(WellKnownDirectory.Externals);
+            var externalsPath = HostContext.GetDirectory(WellKnownDirectory.Externals);
 #if !OS_LINUX && !OS_WINDOWS && !OS_OSX && !X64 && !X86 && !ARM && !ARM64
             externalsPath = Path.Combine(externalsPath, os, arch);
 #else
@@ -154,14 +176,14 @@ namespace GitHub.Runner.Worker
                     string nodeVersion = "12.13.1";
                     string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/node*\" \"*/LICENSE\"" : "";
                     _tools = new Dictionary<string, Func<string, Task>> {
-                        { "windows/386", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x86", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
-                        { "windows/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
-                        { "windows/arm64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "win", "arm64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
-                        { "linux/386", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "linux", "x86", "tar.gz"), dest, tarextraopts, true)},
-                        { "linux/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts, true)},
-                        { "linux/arm", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "armv7l", "tar.gz"), dest, tarextraopts, true)},
-                        { "linux/arm64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "arm64", "tar.gz"), dest, tarextraopts, true)},
-                        { "osx/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "darwin", "x64", "tar.gz"), dest, tarextraopts, true)},
+                        { "windows/386", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x86", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "windows/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "windows/arm64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "win", "arm64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "linux/386", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "linux", "x86", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/arm", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "armv7l", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/arm64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "arm64", "tar.gz"), dest, tarextraopts, true)},
+                        { "osx/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "darwin", "x64", "tar.gz"), dest, tarextraopts, true)},
                     };
 
                 } else if(name == "node16") {
@@ -170,29 +192,33 @@ namespace GitHub.Runner.Worker
                     string nodeVersion = "16.13.0";
                     string tarextraopts = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? " --exclude \"*/lib/*\" \"*/bin/node*\" \"*/LICENSE\"" : "";
                     _tools = new Dictionary<string, Func<string, Task>> {
-                        { "windows/386", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x86", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
-                        { "windows/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
-                        { "windows/arm64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUnofficialUrl, "16.6.2", "win", "arm64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
-                        { "linux/386", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "linux", "x86", "tar.gz"), dest, tarextraopts, true)},
-                        { "linux/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts, true)},
-                        { "linux/arm", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "armv7l", "tar.gz"), dest, tarextraopts, true)},
-                        { "linux/arm64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "arm64", "tar.gz"), dest, tarextraopts, true)},
-                        { "osx/amd64", dest => DownloadTool(hostContext, executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "darwin", "x64", "tar.gz"), dest, tarextraopts, true)},
+                        { "windows/386", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x86", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "windows/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "win", "x64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "windows/arm64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUnofficialUrl, "16.6.2", "win", "arm64", "zip"), Path.Combine(dest, "bin"), unwrap: true)},
+                        { "linux/386", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUnofficialUrl, nodeVersion, "linux", "x86", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "x64", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/arm", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "armv7l", "tar.gz"), dest, tarextraopts, true)},
+                        { "linux/arm64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "linux", "arm64", "tar.gz"), dest, tarextraopts, true)},
+                        { "osx/amd64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "darwin", "x64", "tar.gz"), dest, tarextraopts, true)},
+                        { "osx/arm64", dest => DownloadTool(executionContext, NodeOfficialUrl(nodeUrl, nodeVersion, "darwin", "arm64", "tar.gz"), dest, tarextraopts, true)},
                     };
 
                 } else if(name == "node12_alpine") {
                     string nodeVersion = "12.13.1";
                     _tools = new Dictionary<string, Func<string, Task>> {
-                        { "linux/amd64", dest => DownloadTool(hostContext, executionContext, $"https://vstsagenttools.blob.core.windows.net/tools/nodejs/{nodeVersion}/alpine/x64/node-{nodeVersion}-alpine-x64.tar.gz", dest)},
+                        { "linux/amd64", dest => DownloadTool(executionContext, $"https://vstsagenttools.blob.core.windows.net/tools/nodejs/{nodeVersion}/alpine/x64/node-{nodeVersion}-alpine-x64.tar.gz", dest)},
+                        { "linux/arm", dest => DownloadTool(executionContext, "https://github.com/ChristopherHX/node_alpine_arm/releases/download/v1.1918136754.1/node-12-alpine3.10-arm.tar.gz", dest)},
+                        { "linux/arm64", dest => DownloadTool(executionContext, "https://github.com/ChristopherHX/node_alpine_arm/releases/download/v1.1918136754.1/node-12-alpine3.10-arm64.tar.gz", dest)},
                     };
                 } else if(name == "node16_alpine") {
                     string nodeVersion = "16.13.0";
                     _tools = new Dictionary<string, Func<string, Task>> {
-                        { "linux/amd64", dest => DownloadTool(hostContext, executionContext, $"https://vstsagenttools.blob.core.windows.net/tools/nodejs/{nodeVersion}/alpine/x64/node-v{nodeVersion}-alpine-x64.tar.gz", dest)},
+                        { "linux/amd64", dest => DownloadTool(executionContext, $"https://vstsagenttools.blob.core.windows.net/tools/nodejs/{nodeVersion}/alpine/x64/node-v{nodeVersion}-alpine-x64.tar.gz", dest)},
+                        { "linux/arm", dest => DownloadTool(executionContext, "https://github.com/ChristopherHX/node_alpine_arm/releases/download/v1.1918136754.1/node-16-alpine3.11-arm.tar.gz", dest)},
+                        { "linux/arm64", dest => DownloadTool(executionContext, "https://github.com/ChristopherHX/node_alpine_arm/releases/download/v1.1918136754.1/node-16-alpine3.11-arm64.tar.gz", dest)},
                     };
                 }
                 if(_tools.TryGetValue(platform, out Func<string, Task> download)) {
-                    executionContext.Write("", "downloading...");
                     await download(Path.Combine(externalsPath, name));
                     if(!File.Exists(file)) {
                         throw new Exception("node executable, not found after download");

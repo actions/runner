@@ -15,7 +15,7 @@ namespace GitHub.Runner.Worker.Expressions
     {
         private const int _hashFileTimeoutSeconds = 120;
 
-        public static string NodeTool { get; set; }
+        public static IExecutionContext ExecutionContext;
 
         protected sealed override Object EvaluateCore(
             EvaluationContext context,
@@ -65,7 +65,7 @@ namespace GitHub.Runner.Worker.Expressions
             string binDir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             string runnerRoot = new DirectoryInfo(binDir).Parent.FullName;
 
-            string node = NodeTool ?? Path.Combine(runnerRoot, "externals", NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}");
+            string node = ExternalToolHelper.GetHostNodeTool(ExecutionContext, NodeUtil.GetInternalNodeVersion()).GetAwaiter().GetResult();
             string hashFilesScript = Path.Combine(binDir, "hashFiles");
             var hashResult = string.Empty;
             var p = new ProcessInvoker(new HashFilesTrace(context.Trace));

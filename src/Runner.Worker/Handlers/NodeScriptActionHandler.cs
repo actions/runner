@@ -96,10 +96,10 @@ namespace GitHub.Runner.Worker.Handlers
             var nodeRuntimeVersion = await StepHost.DetermineNodeRuntimeVersion(ExecutionContext, Data.NodeVersion);
             var _os = ExternalToolHelper.GetHostOS();
             var _arch = ExternalToolHelper.GetHostArch();
-            if(StepHost is ContainerStepHost) {
+            if(StepHost is ContainerStepHost cstephost) {
                 var manager = HostContext.GetService<IDockerCommandManager>();
-                var os = manager.Os;
-                var arch = manager.Arch;
+                var os = cstephost.Container.Os;
+                var arch = cstephost.Container.Arch;
                 if(manager.ClientVersion >= new Version(1, 32) && manager.ServerVersion >= new Version(1, 32)) {
                     var val = System.Environment.GetEnvironmentVariable("RUNNER_CONTAINER_ARCH");
                     if(val?.Length > 0) {
@@ -115,7 +115,7 @@ namespace GitHub.Runner.Worker.Handlers
                 _os = os;
                 _arch = (archi != -1 ? arch.Substring(0, archi) : arch);
             }
-            string file = await ExternalToolHelper.GetNodeTool(HostContext, ExecutionContext, nodeRuntimeVersion, _os, _arch);
+            string file = await ExternalToolHelper.GetNodeTool(ExecutionContext, nodeRuntimeVersion, _os, _arch);
 
             // Format the arguments passed to node.
             // 1) Wrap the script file path in double quotes.

@@ -201,7 +201,7 @@ namespace GitHub.Runner.Worker
                     foreach(var entr in runnerctx) {
                         ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
                     }
-                    var os = HostContext.GetService<IDockerCommandManager>().Os;
+                    var os = ExecutionContext.Global.Container.Os;
                     ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
                     ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(Path.GetDirectoryName(runnerctx["tool_cache"].AssertString("runner ctx").Value), os));
                 }

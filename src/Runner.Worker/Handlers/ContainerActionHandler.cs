@@ -50,17 +50,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
 
-            if(!(StepHost is IContainerStepHost) && runnerctx != null) {
-                ExecutionContext.ExpressionValues["runner"] = new RunnerContext();
-                foreach(var entr in runnerctx) {
-                    ExecutionContext.SetRunnerContext(entr.Key, entr.Value?.AssertString("runner ctx").Value);
-                }
-                await dockerManager.DockerVersion(ExecutionContext);
-                var os = dockerManager.Os;
-                ExecutionContext.SetRunnerContext("os", os.First().ToString().ToUpper() + os.Substring(1));
-                ExecutionContext.SetRunnerContext("tool_cache", Path.Combine(Path.GetDirectoryName(runnerctx["tool_cache"].AssertString("runner ctx").Value), os));
-            }
-
             // Update the env dictionary.
             AddInputsToEnvironment();
 
@@ -110,6 +99,23 @@ namespace GitHub.Runner.Worker.Handlers
                 ContainerName = ExecutionContext.Id.ToString("N"),
                 ContainerDisplayName = $"{Pipelines.Validation.NameValidation.Sanitize(Data.Image)}_{Guid.NewGuid().ToString("N").Substring(0, 6)}",
             };
+            string[] plat = new [] { "linux", "" };
+            for(int i = 0; i < 2; i++) {
+                try {
+                    var platform = (await dockerManager.DockerInspect(ExecutionContext, container.ContainerImage, "--format=\"{{.Os}}/{{.Architecture}}\"")).FirstOrDefault();
+                    if(string.IsNullOrEmpty(platform) || !platform.Contains('/')) {
+                        throw new Exception("Failed to determine container platform");
+                    }
+                    plat = platform.Split('/', 2);
+                    break;
+                } catch(Exception ex) {
+                    ExecutionContext.Error(ex);
+                }
+                // Just in case docker inspect fails, because we ran as an local action
+                await dockerManager.DockerPull(ExecutionContext, container.ContainerImage);
+            }
+            container.Os = plat[0];
+            container.Arch = plat[1];
 
             if (stage == ActionRunStage.Main)
             {
@@ -202,7 +208,7 @@ namespace GitHub.Runner.Worker.Handlers
             ArgUtil.Directory(tempWorkflowDirectory, nameof(tempWorkflowDirectory));
 
             string prefix = "";
-            if(HostContext.GetService<IDockerCommandManager>().Os == "windows") {
+            if(container.Os == "windows") {
                 prefix = "c:";
             } else {
                 container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
@@ -259,9 +265,6 @@ namespace GitHub.Runner.Worker.Handlers
                 {
                     ExecutionContext.Result = TaskResult.Failed;
                 }
-            }
-            if(runnerctx != null) {
-                ExecutionContext.ExpressionValues["runner"] = runnerctx;
             }
         }
     }

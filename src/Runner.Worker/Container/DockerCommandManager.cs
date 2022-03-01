@@ -16,8 +16,6 @@ namespace GitHub.Runner.Worker.Container
     {
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
-        string Os { get; }
-        string Arch { get; }
         Version ClientVersion { get; }
         Version ServerVersion { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
@@ -30,7 +28,7 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerLogs(IExecutionContext context, string containerId);
         Task<List<string>> DockerPS(IExecutionContext context, string options);
         Task<int> DockerRemove(IExecutionContext context, string containerId);
-        Task<int> DockerNetworkCreate(IExecutionContext context, string network);
+        Task<int> DockerNetworkCreate(IExecutionContext context, string network, string driver = null);
         Task<int> DockerNetworkRemove(IExecutionContext context, string network);
         Task<int> DockerNetworkPrune(IExecutionContext context);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
@@ -45,26 +43,8 @@ namespace GitHub.Runner.Worker.Container
         public string DockerPath { get; private set; }
 
         public string DockerInstanceLabel { get; private set; }
-
-        public string Os { get {
-            if(os != null) {
-                return os;
-            }
-            throw new Exception("Unsupported");
-        } }
-
-        public string Arch { get {
-            if(arch != null) {
-                return arch;
-            }
-            throw new Exception("Unsupported");
-        } }
-
         public Version ClientVersion { get; private set; }
         public Version ServerVersion { get; private set; }
-
-        private string os = null;
-        private string arch = null;
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -82,24 +62,6 @@ namespace GitHub.Runner.Worker.Container
             string clientVersionStr = (await ExecuteDockerCommandAsync(context, "version", "--format '{{.Client.APIVersion}}'")).FirstOrDefault();
             ArgUtil.NotNullOrEmpty(serverVersionStr, "Docker.Client.Version");
             context.Output($"Docker client API version: {clientVersionStr}");
-
-            string serverOsStr = (await ExecuteDockerCommandAsync(context, "version", "--format '{{.Server.Os}}'")).FirstOrDefault();
-            ArgUtil.NotNullOrEmpty(serverOsStr, "Docker.Server.Os");
-            context.Output($"Docker server Os: {serverOsStr}");
-            Regex osarchRegex = new Regex("^[\"'](.+)[\"']$", RegexOptions.IgnoreCase);
-            var osMatchResult = osarchRegex.Match(serverOsStr);
-            if(osMatchResult.Success) {
-                os = osMatchResult.Groups[1].Value;
-            }
-
-            string serverArchStr = (await ExecuteDockerCommandAsync(context, "version", "--format '{{.Server.Arch}}'")).FirstOrDefault();
-            ArgUtil.NotNullOrEmpty(serverArchStr, "Docker.Server.Arch");
-            context.Output($"Docker server Arch: {serverArchStr}");
-            
-            var archMatchResult = osarchRegex.Match(serverArchStr);
-            if(archMatchResult.Success) {
-                arch = archMatchResult.Groups[1].Value;
-            }
 
             // we interested about major.minor.patch version
             Regex verRegex = new Regex("\\d+\\.\\d+(\\.\\d+)?", RegexOptions.IgnoreCase);
@@ -393,9 +355,9 @@ namespace GitHub.Runner.Worker.Container
             return await ExecuteDockerCommandAsync(context, "ps", options);
         }
 
-        public async Task<int> DockerNetworkCreate(IExecutionContext context, string network)
+        public async Task<int> DockerNetworkCreate(IExecutionContext context, string network, string driver)
         {
-            if(os == "windows") return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver nat", context.CancellationToken);
+            if(!string.IsNullOrWhiteSpace(driver)) return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network} --driver {driver}", context.CancellationToken);
             return await ExecuteDockerCommandAsync(context, "network", $"create --label {DockerInstanceLabel} {network}", context.CancellationToken);
         }
 

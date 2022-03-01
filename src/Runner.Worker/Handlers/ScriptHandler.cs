@@ -179,7 +179,8 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            var isContainerStepHost = StepHost is ContainerStepHost;
+            var cstepcost = StepHost as ContainerStepHost;
+            var isContainerStepHost = cstepcost != null;
 
             string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
             string commandPath = null, argFormat = null, shellCommand = null;
@@ -197,7 +198,7 @@ namespace GitHub.Runner.Worker.Handlers
                         commandPath = WhichUtil.Which(shellCommand, require: true, Trace, prependPath);
                     }
                     ArgUtil.NotNullOrEmpty(commandPath, "Default Shell");
-                } else if (isWin && HostContext.GetService<IDockerCommandManager>().Os == "windows") {
+                } else if (isContainerStepHost && cstepcost.Container.Os == "windows") {
                     shellCommand = "cmd";
                     commandPath = WhichUtil.Which("cmd", true, Trace, prependPath);
                 } else {
@@ -271,7 +272,7 @@ namespace GitHub.Runner.Worker.Handlers
                 if (!isContainerStepHost && Environment.ContainsKey("DYLD_INSERT_LIBRARIES"))  // We don't check `isContainerStepHost` because we don't support container on macOS
                 {
                     // launch `node macOSRunInvoker.js shell args` instead of `shell args` to avoid macOS SIP remove `DYLD_INSERT_LIBRARIES` when launch process
-                    string node = await ExternalToolHelper.GetHostNodeTool(HostContext, ExecutionContext, NodeUtil.GetInternalNodeVersion(), ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
+                    string node = await ExternalToolHelper.GetHostNodeTool(ExecutionContext, NodeUtil.GetInternalNodeVersion());
                     string macOSRunInvoker = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Bin), "macos-run-invoker.js");
                     arguments = $"\"{macOSRunInvoker.Replace("\"", "\\\"")}\" \"{fileName.Replace("\"", "\\\"")}\" {arguments}";
                     fileName = node;

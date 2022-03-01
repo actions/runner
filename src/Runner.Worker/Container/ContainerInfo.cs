@@ -5,6 +5,7 @@ using GitHub.Runner.Common.Util;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Linq;
 
 namespace GitHub.Runner.Worker.Container
 {
@@ -16,6 +17,7 @@ namespace GitHub.Runner.Worker.Container
         private List<PortMapping> _portMappings;
         private IDictionary<string, string> _environmentVariables;
         private List<PathMapping> _pathMappings = new List<PathMapping>();
+        private Dictionary<string, List<PathMapping>> _osPathMappings = new Dictionary<string, List<PathMapping>>{ { "linux", new List<PathMapping>() }, { "windows", new List<PathMapping>() } };
 
         public ContainerInfo()
         {
@@ -43,27 +45,14 @@ namespace GitHub.Runner.Worker.Container
             this.RegistryAuthPassword = container.Credentials?.Password;
             this.RegistryServer = DockerUtil.ParseRegistryHostnameFromImageName(this.ContainerImage);
 
-            if (hostContext.GetService<IDockerCommandManager>().Os == "windows")
-            {
-                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
-                _pathMappings.Add(new PathMapping(Path.GetDirectoryName(hostContext.GetDirectory(WellKnownDirectory.Tools)), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
-                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\__e"));
-                // add -v '\\.\pipe\docker_engine:\\.\pipe\docker_engine' when they are available (17.09)
-                if (this.IsJobContainer)
-                {
-                    this.MountVolumes.Add(new MountVolume(@"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
-                }
-            }
-            else
-            {
-                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
-                _pathMappings.Add(new PathMapping(Path.GetDirectoryName(hostContext.GetDirectory(WellKnownDirectory.Tools)), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
-                _pathMappings.Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "/__e"));
-                if (this.IsJobContainer)
-                {
-                    this.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
-                }
-            }
+
+            _osPathMappings["windows"].Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "C:\\__w"));
+            _osPathMappings["windows"].Add(new PathMapping(Path.GetDirectoryName(hostContext.GetDirectory(WellKnownDirectory.Tools)), "C:\\__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _osPathMappings["windows"].Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "C:\\__e"));
+            _osPathMappings["linux"].Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Work), "/__w"));
+            _osPathMappings["linux"].Add(new PathMapping(Path.GetDirectoryName(hostContext.GetDirectory(WellKnownDirectory.Tools)), "/__t")); // Tool cache folder may come from ENV, so we need a unique folder to avoid collision
+            _osPathMappings["linux"].Add(new PathMapping(hostContext.GetDirectory(WellKnownDirectory.Externals), "/__e"));
+
             if (container.Ports?.Count > 0)
             {
                 foreach (var port in container.Ports)
@@ -163,11 +152,13 @@ namespace GitHub.Runner.Worker.Container
             }
         }
 
+        public string Os { get; internal set; }
+        public string Arch { get; internal set; }
         public string TranslateToContainerPath(string path)
         {
             if (!string.IsNullOrEmpty(path))
             {
-                foreach (var mapping in _pathMappings)
+                foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os]))
                 {
                     if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                         if (string.Equals(path, mapping.HostPath, StringComparison.OrdinalIgnoreCase))

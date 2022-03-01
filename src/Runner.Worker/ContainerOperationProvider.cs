@@ -111,17 +111,27 @@ namespace GitHub.Runner.Worker
             }
             executionContext.Output("##[endgroup]");
 
+            var platform = (await HostContext.GetService<IDockerCommandManager>().DockerInspect(executionContext, containers[0].ContainerImage, "--format=\"{{.Os}}/{{.Architecture}}\"")).FirstOrDefault();
+            if(string.IsNullOrEmpty(platform) || !platform.Contains('/')) {
+                throw new Exception("Failed to determine container platform");
+            }
+            var plat = platform.Split('/', 2);
+            var os = plat[0];
+            var arch = plat[1];
+
             // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
             // All containers within a job join the same network
             executionContext.Output("##[group]Create local container network");
             var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
-            await CreateContainerNetworkAsync(executionContext, containerNetwork);
+            await CreateContainerNetworkAsync(executionContext, containerNetwork, os == "windows" ? "nat" : null);
             executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
             executionContext.Output("##[endgroup]");
 
             foreach (var container in containers)
             {
                 container.ContainerNetwork = containerNetwork;
+                container.Os = os;
+                container.Arch = arch;
                 await StartContainerAsync(executionContext, container);
             }
 
@@ -222,6 +232,15 @@ namespace GitHub.Runner.Worker
                 ArgUtil.NotNull(githubContext, nameof(githubContext));
                 var workingDirectory = githubContext["workspace"] as StringContextData;
                 ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
+
+                if (container.IsJobContainer)
+                {
+                    if(container.Os == "windows") {
+                        container.MountVolumes.Add(new MountVolume(@"\\.\pipe\docker_engine", @"\\.\pipe\docker_engine"));
+                    } else {
+                        container.MountVolumes.Add(new MountVolume("/var/run/docker.sock", "/var/run/docker.sock"));
+                    }
+                }
                 container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
                 if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                     container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath((HostContext.GetDirectory(WellKnownDirectory.Externals)))));
@@ -237,7 +256,7 @@ namespace GitHub.Runner.Worker
                 var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
                 Directory.CreateDirectory(tempHomeDirectory);
                 string prefix = "";
-                if(HostContext.GetService<IDockerCommandManager>().Os == "windows") {
+                if(container.Os == "windows") {
                     prefix = "c:";
                 }
                 container.MountVolumes.Add(new MountVolume(tempHomeDirectory, prefix + "/github/home"));
@@ -250,7 +269,7 @@ namespace GitHub.Runner.Worker
                 container.AddPathTranslateMapping(tempWorkflowDirectory, prefix + "/github/workflow");
 
                 container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-                if(HostContext.GetService<IDockerCommandManager>().Os != "windows") {
+                if(container.Os != "windows") {
                     container.ContainerEntryPoint = "tail";
                     container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
                 } else {
@@ -395,11 +414,11 @@ namespace GitHub.Runner.Worker
             return outputs;
         }
 
-        private async Task CreateContainerNetworkAsync(IExecutionContext executionContext, string network)
+        private async Task CreateContainerNetworkAsync(IExecutionContext executionContext, string network, string driver = null)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
-            int networkExitCode = await _dockerManager.DockerNetworkCreate(executionContext, network);
+            int networkExitCode = await _dockerManager.DockerNetworkCreate(executionContext, network, driver);
             if (networkExitCode != 0)
             {
                 throw new InvalidOperationException($"Docker network create failed with exit code {networkExitCode}");

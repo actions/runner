@@ -42,6 +42,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(jobContext, nameof(jobContext));
             ArgUtil.NotNull(jobContext.JobSteps, nameof(jobContext.JobSteps));
 
+            ExternalToolHelper.HostContext = HostContext;
             // TaskResult:
             //  Abandoned (Server set this.)
             //  Canceled
@@ -75,12 +76,7 @@ namespace GitHub.Runner.Worker
                 // Start
                 step.ExecutionContext.Start();
 
-                try {
-                    // Prepare host nodejs version
-                    HashFilesFunction.NodeTool = await ExternalToolHelper.GetHostNodeTool(HostContext, step.ExecutionContext, "node12", ExternalToolHelper.GetHostOS(), ExternalToolHelper.GetHostArch());
-                } catch {
-                    
-                }
+                HashFilesFunction.ExecutionContext = step.ExecutionContext;
 
                 // Expression functions
                 step.ExecutionContext.ExpressionFunctions.Add(new FunctionInfo<AlwaysFunction>(PipelineTemplateConstants.Always, 0, 0));
