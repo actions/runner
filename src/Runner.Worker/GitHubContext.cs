@@ -8,12 +8,11 @@ namespace GitHub.Runner.Worker
     {
         private readonly HashSet<string> _contextEnvAllowlist = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "action",
             "action_path",
             "action_ref",
             "action_repository",
+            "action",
             "actor",
-            "triggering_actor",
             "api_url",
             "base_ref",
             "env",
@@ -23,12 +22,12 @@ namespace GitHub.Runner.Worker
             "head_ref",
             "job",
             "path",
-            "ref",
             "ref_name",
             "ref_protected",
             "ref_type",
-            "repository",
+            "ref",
             "repository_owner",
+            "repository",
             "retention_days",
             "run_attempt",
             "run_id",
@@ -36,6 +35,7 @@ namespace GitHub.Runner.Worker
             "server_url",
             "sha",
             "step_summary",
+            "triggering_actor",
             "workflow",
             "workspace",
         };
