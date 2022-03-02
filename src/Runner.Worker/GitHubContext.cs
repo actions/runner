@@ -13,6 +13,7 @@ namespace GitHub.Runner.Worker
             "action_ref",
             "action_repository",
             "actor",
+            "triggering_actor",
             "api_url",
             "base_ref",
             "env",
