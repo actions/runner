@@ -3218,23 +3218,38 @@ namespace Runner.Server.Controllers
                         }
                     }
                 } else if(!session.Job.Cancelled) {
+                    var now = DateTime.UtcNow;
+                    if(session.DoNotCancelBefore != null && session.DoNotCancelBefore > now) {
+                        // Attempt to mitigate an actions/runner bug, where the runner doesn't send a jobcompleted event if we cancel to early
+                        await Task.Delay(session.DoNotCancelBefore.Value - now, ts.Token);
+                    }
                     try {
                         await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token, session.Job.CancelRequest.Token).Token);
                     } catch (TaskCanceledException) {
                         if(!session.JobRunningToken.IsCancellationRequested && session.Job.CancelRequest.IsCancellationRequested) {
-                            session.Job.Cancelled = true;
-                            session.Key.GenerateIV();
-                            // await Task.Delay(2500);
-                            using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
-                            using (var body = new MemoryStream())
-                            using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                await new ObjectContent<JobCancelMessage>(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes)), new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
-                                cryptoStream.FlushFinalBlock();
-                                return await Ok(new TaskAgentMessage() {
-                                    Body = Convert.ToBase64String(body.ToArray()),
-                                    MessageId = id++,
-                                    MessageType = JobCancelMessage.MessageType,
-                                    IV = session.Key.IV
+                            var job = session.Job;
+                            try {
+                                session.Job.Cancelled = true;
+                                session.Key.GenerateIV();
+                                // await Task.Delay(2500);
+                                using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
+                                using (var body = new MemoryStream())
+                                using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
+                                    await new ObjectContent<JobCancelMessage>(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes)), new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                    cryptoStream.FlushFinalBlock();
+                                    return await Ok(new TaskAgentMessage() {
+                                        Body = Convert.ToBase64String(body.ToArray()),
+                                        MessageId = id++,
+                                        MessageType = JobCancelMessage.MessageType,
+                                        IV = session.Key.IV
+                                    });
+                                }
+                            } finally {
+                                // Catch possible desynchronized runner is stale forever
+                                var clone = Clone();
+                                Task.Run(async () => {
+                                    await Task.Delay(TimeSpan.FromMinutes(job.CancelTimeoutMinutes + 2));
+                                    new FinishJobController(clone._cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                 });
                             }
                         }

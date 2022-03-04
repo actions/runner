@@ -41,6 +41,7 @@ namespace Runner.Server.Models
                 }
             }
         }
+        public DateTime? DoNotCancelBefore {get; set;}
 
         public System.Timers.Timer Timer {get; set;}
         public System.Timers.Timer JobTimer {get; set;}
