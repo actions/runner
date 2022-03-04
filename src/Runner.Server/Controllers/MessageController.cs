@@ -1793,7 +1793,7 @@ namespace Runner.Server.Controllers
                                                     new TimelineController(_context).UpdateTimeLine(next.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[next.TimelineId].Item1));
                                                 }
                                                 Func<Func<bool, Job>> failJob = () => {
-                                                    var _job = new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, runid = runid, RequestId = next.RequestId };
+                                                    var _job = new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, repo = repository_name, WorkflowRunAttempt = attempt, runid = runid, RequestId = next.RequestId };
                                                     AddJob(_job);
                                                     new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = next.Id, Result = TaskResult.Failed, RequestId = next.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     return cancel => _job;
@@ -1844,10 +1844,10 @@ namespace Runner.Server.Controllers
                                                     }
                                                 }
                                             };
-                                            Action cancelAll = () => {
+                                            Action<string> cancelAll = message => {
                                                 foreach (var _j in scheduled) {
-                                                    if(!cancelRequest()) {
-                                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(_j.JobId, new List<string>{ "FailFast Matrix job with ContinueOnError=false requests Cancellation" }), _j.TimeLineId, _j.JobId);
+                                                    if(!string.IsNullOrEmpty(message)) {
+                                                        TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(_j.JobId, new List<string>{ message }), _j.TimeLineId, _j.JobId);
                                                     }
                                                     _j.CancelRequest?.Cancel();
                                                     if(_j.SessionId == Guid.Empty) {
@@ -1860,16 +1860,20 @@ namespace Runner.Server.Controllers
                                                 }
                                                 cleanupOnFinish();
                                             };
+                                            var cancelreqmsg = "Cancelled via cancel request";
                                             handler2 = e => {
                                                 if(scheduled.RemoveAll(j => j.JobId == e.JobId) > 0) {
                                                     var currentItem = jobitem.Childs?.Find(ji => ji.Id == e.JobId) ?? (jobitem.Id == e.JobId ? jobitem : null);
+                                                    var conclusion = (currentItem == null || currentItem.ContinueOnError != true) ? e.Result : TaskResult.Succeeded;
                                                     if(jobitem.JobCompletedEvent == null) {
-                                                        jobitem.JobCompletedEvent = new JobCompletedEvent() { JobId = jobitem.Id, Result = e.Result, RequestId = jobitem.RequestId, Outputs = e.Outputs != null ? new Dictionary<String, VariableValue>(e.Outputs) : e.Outputs };
+                                                        jobitem.JobCompletedEvent = new JobCompletedEvent() { JobId = jobitem.Id, Result = conclusion, RequestId = jobitem.RequestId, Outputs = e.Outputs != null ? new Dictionary<String, VariableValue>(e.Outputs) : e.Outputs };
                                                     } else {
-                                                        if(jobitem.JobCompletedEvent.Result == TaskResult.Failed || jobitem.JobCompletedEvent.Result == TaskResult.Canceled || jobitem.JobCompletedEvent.Result == TaskResult.Abandoned || (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || currentItem.ContinueOnError != true)) {
-                                                            jobitem.JobCompletedEvent.Result = TaskResult.Failed;
-                                                        } else if(jobitem.JobCompletedEvent.Result == TaskResult.Succeeded || jobitem.JobCompletedEvent.Result == TaskResult.SucceededWithIssues || e.Result != TaskResult.Skipped) {
-                                                            jobitem.JobCompletedEvent.Result = TaskResult.Succeeded;
+                                                        if(jobitem.JobCompletedEvent.Result != conclusion) {
+                                                            if(jobitem.JobCompletedEvent.Result == TaskResult.Canceled || jobitem.JobCompletedEvent.Result == TaskResult.Abandoned || conclusion == TaskResult.Failed || conclusion == TaskResult.Canceled || conclusion == TaskResult.Abandoned) {
+                                                                jobitem.JobCompletedEvent.Result = TaskResult.Failed;
+                                                            } else if((jobitem.JobCompletedEvent.Result == TaskResult.SucceededWithIssues || jobitem.JobCompletedEvent.Result == TaskResult.Skipped) && (conclusion == TaskResult.Succeeded || conclusion == TaskResult.SucceededWithIssues || conclusion == TaskResult.Skipped)) {
+                                                                jobitem.JobCompletedEvent.Result = TaskResult.Succeeded;
+                                                            }
                                                         }
                                                         if(e.Outputs != null) {
                                                             foreach(var output in e.Outputs) {
@@ -1879,22 +1883,18 @@ namespace Runner.Server.Controllers
                                                             }
                                                         }
                                                     }
-                                                    if(failFast && (e.Result == TaskResult.Failed || e.Result == TaskResult.Canceled || e.Result == TaskResult.Abandoned) && (currentItem == null || (currentItem.ContinueOnError != true && currentItem.NoFailFast != true))) {
-                                                        cancelAll();
+                                                    if(failFast && (conclusion == TaskResult.Failed || conclusion == TaskResult.Canceled || conclusion == TaskResult.Abandoned) && (currentItem == null || currentItem.NoFailFast != true)) {
+                                                        cancelAll("Cancelled via strategy.fail-fast == true");
                                                     } else {
                                                         while((!max_parallel.HasValue || scheduled.Count < max_parallel.Value) && jobs.TryDequeue(out var cb)) {
                                                             if(cancelRequest()) {
                                                                 cb(true);
-                                                                cancelAll();
+                                                                cancelAll(cancelreqmsg);
                                                                 return;
                                                             }
                                                             var jret = cb(false);
                                                             if(jret != null) {
                                                                 scheduled.Add(jret);
-                                                                return;
-                                                            } else if(failFast) {
-                                                                cancelAll();
-                                                                return;
                                                             }
                                                         }
                                                         cleanupOnFinish();
@@ -1905,7 +1905,7 @@ namespace Runner.Server.Controllers
                                             if(keys.Length != 0 || includematrix.Count == 0) {
                                                 foreach (var item in flatmatrix) {
                                                     if(cancelRequest()) {
-                                                        cancelAll();
+                                                        cancelAll(cancelreqmsg);
                                                         return;
                                                     }
                                                     var j = act(defaultDisplayName(from displayitem in keys.SelectMany(key => item[key].Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
@@ -1916,7 +1916,7 @@ namespace Runner.Server.Controllers
                                             }
                                             foreach (var item in includematrix) {
                                                 if(cancelRequest()) {
-                                                    cancelAll();
+                                                    cancelAll(cancelreqmsg);
                                                     return;
                                                 }
                                                 var j = act(defaultDisplayName(from displayitem in item.SelectMany(it => it.Value.Traverse(true)) where !(displayitem is SequenceToken || displayitem is MappingToken) select displayitem.ToString()), item);
@@ -1927,15 +1927,12 @@ namespace Runner.Server.Controllers
                                             for (int j = 0; j < (max_parallel.HasValue ? (int)max_parallel.Value : jobTotal) && jobs.TryDequeue(out var cb2); j++) {
                                                 if(cancelRequest()) {
                                                     cb2(true);
-                                                    cancelAll();
+                                                    cancelAll(cancelreqmsg);
                                                     return;
                                                 }
                                                 var jret = cb2(false);
                                                 if(jret != null) {
                                                     scheduled.Add(jret);
-                                                } else if (failFast) {
-                                                    cancelAll();
-                                                    return;
                                                 }
                                             }
                                             cleanupOnFinish();
