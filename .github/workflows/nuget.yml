@@ -101,6 +101,7 @@ jobs:
         gharun -W testworkflows/skippedjob.yml
         gharun --workflow testworkflows/test_with_required_secret.yml --workflow testworkflows/called_with_required_secret.yml
         gharun -W testworkflows/job-continue-on-error.yml
+        gharun -W testworkflows/continue-on-error-bug-3.6.0-4-test.yml
         cd testworkflows/node16_complex_reusable_workflows
         gharun
         cd ../..

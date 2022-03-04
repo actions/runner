@@ -1,0 +1,17 @@
+on: push
+jobs:
+  test:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        test: [0,1,2]
+    continue-on-error: true
+    steps:
+    - run: exit 1
+  assert:
+    needs:
+    - test
+    if: always() && ( needs.test.result != 'success' || !success() )
+    runs-on: self-hosted
+    steps:
+    - run: exit 1
