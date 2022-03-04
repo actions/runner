@@ -3,10 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
+using Newtonsoft.Json;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common
@@ -17,7 +20,7 @@ namespace GitHub.Runner.Common
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest, ServiceEndpoint serviceEndpoint);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
@@ -71,7 +74,7 @@ namespace GitHub.Runner.Common
 
         // Web console dequeue will start with process queue every 250ms for the first 60*4 times (~60 seconds).
         // Then the dequeue will happen every 500ms.
-        // In this way, customer still can get instance live console output on job start, 
+        // In this way, customer still can get instance live console output on job start,
         // at the same time we can cut the load to server after the build run for more than 60s
         private int _webConsoleLineAggressiveDequeueCount = 0;
         private const int _webConsoleLineAggressiveDequeueLimit = 4 * 60;
@@ -79,15 +82,23 @@ namespace GitHub.Runner.Common
         private bool _webConsoleLineAggressiveDequeue = true;
         private bool _firstConsoleOutputs = true;
 
+        private ClientWebSocket _websocketClient = null;
+
+        private ServiceEndpoint _serviceEndPoint;
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _jobServer = hostContext.GetService<IJobServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest, ServiceEndpoint serviceEndpoint)
         {
             Trace.Entering();
+
+            this._serviceEndPoint = serviceEndpoint;
+
+            InitializeWebsocket();
 
             if (_queueInProcess)
             {
@@ -155,6 +166,9 @@ namespace GitHub.Runner.Common
             Trace.Verbose("Draining timeline update queue.");
             await ProcessTimelinesUpdateQueueAsync(runOnce: true);
             Trace.Info("Timeline update queue drained.");
+
+            Trace.Info($"Disposing websocket client ...");
+            this._websocketClient?.Dispose();
 
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
@@ -292,14 +306,46 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                // we will not requeue failed batch, since the web console lines are time sensitive.
-                                if (batch[0].LineNumber.HasValue)
+                                bool pushedLinesViaWebsocket = false;
+                                if (this._websocketClient?.State == WebSocketState.Open)
                                 {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value, default(CancellationToken));
+                                    var jsonData = JsonConvert.SerializeObject(new
+                                    {
+                                        stepRecordId,
+                                        startLine = batch[0].LineNumber,
+                                        lines = batch.Select(logLine => logLine.Line).ToList()
+                                    });
+                                    Trace.Info($"Sending to websocket: {jsonData}");
+                                    try
+                                    {
+                                        // It should be okay to wait for the result since we are already doing this in the background and doing it one by one
+                                        await this._websocketClient.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(jsonData)), WebSocketMessageType.Text, false, default(CancellationToken));
+                                        pushedLinesViaWebsocket = true;
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Trace.Info("Catch exception during append web console line to websocket, let's fallback to sending via non-websocket call.");
+                                        Trace.Error(ex);
+                                        if (this._websocketClient?.State != WebSocketState.Open)
+                                        {
+                                            Trace.Info("Websocket is not open, let's attempt to connect back again.");
+                                            InitializeWebsocket();
+                                        }
+                                    }
                                 }
-                                else
+
+                                if (!pushedLinesViaWebsocket)
                                 {
-                                    await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), default(CancellationToken));
+                                    Trace.Info("Sending via non-websocket call.");
+                                    // we will not requeue failed batch, since the web console lines are time sensitive.
+                                    if (batch[0].LineNumber.HasValue)
+                                    {
+                                        await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value, default(CancellationToken));
+                                    }
+                                    else
+                                    {
+                                        await _jobServer.AppendTimelineRecordFeedAsync(_scopeIdentifier, _hubName, _planId, _jobTimelineId, _jobTimelineRecordId, stepRecordId, batch.Select(logLine => logLine.Line).ToList(), default(CancellationToken));
+                                    }
                                 }
 
                                 if (_firstConsoleOutputs)
@@ -388,6 +434,35 @@ namespace GitHub.Runner.Common
                 {
                     await Task.Delay(_delayForFileUploadDequeue);
                 }
+            }
+        }
+
+        private void InitializeWebsocket()
+        {
+            if (_serviceEndPoint.Authorization != null &&
+                _serviceEndPoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out var accessToken) &&
+                !string.IsNullOrEmpty(accessToken))
+            {
+                if (_serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl) && !string.IsNullOrEmpty(feedStreamUrl))
+                {
+                    Trace.Info($"Creating websocket client ..." + feedStreamUrl);
+                    this._websocketClient = new ClientWebSocket();
+                    this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+                    Task.Run(async () =>
+                    {
+                        Trace.Info($"Attempting to start websocket client.");
+                        await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
+                        Trace.Info($"Successfully started websocket client.");
+                    });
+                }
+                else
+                {
+                    Trace.Info($"No FeedStreamUrl found, so we will use Rest API calls for sending feeddata");
+                }
+            }
+            else
+            {
+                Trace.Info($"No access token from the service endpoint");
             }
         }
 
@@ -489,8 +564,8 @@ namespace GitHub.Runner.Common
 
                 if (runOnce)
                 {
-                    // continue process timeline records update, 
-                    // we might have more records need update, 
+                    // continue process timeline records update,
+                    // we might have more records need update,
                     // since we just create a new sub-timeline
                     if (pendingSubtimelineUpdate)
                     {
