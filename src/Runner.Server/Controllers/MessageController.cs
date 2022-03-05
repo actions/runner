@@ -3150,10 +3150,7 @@ namespace Runner.Server.Controllers
                                             if(res == null) {
                                                 Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
-                                                Job job = GetJob(req.JobId);
-                                                if(job != null) {
-                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
-                                                }
+                                                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Failed, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                 continue;
                                             }
                                             HttpContext.RequestAborted.ThrowIfCancellationRequested();
