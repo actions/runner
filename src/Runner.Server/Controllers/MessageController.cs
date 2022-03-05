@@ -1560,7 +1560,12 @@ namespace Runner.Server.Controllers
                                                             foreach (var item in map)
                                                             {
                                                                 TemplateToken val;
-                                                                if (!dict.TryGetValue(item.Key, out val) || !TemplateTokenEqual(item.Value, val)) {
+                                                                if (!dict.TryGetValue(item.Key, out val))
+                                                                {
+                                                                    // The official github actions service reject this matrix, return false would just ignore it
+                                                                    throw new Exception($"Tried to exclude a matrix key {item.Key} which isn't defined by the matrix");
+                                                                }
+                                                                if (!TemplateTokenEqual(item.Value, val)) {
                                                                     return false;
                                                                 }
                                                             }

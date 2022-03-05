@@ -102,6 +102,7 @@ jobs:
         gharun --workflow testworkflows/test_with_required_secret.yml --workflow testworkflows/called_with_required_secret.yml
         gharun -W testworkflows/job-continue-on-error.yml
         gharun -W testworkflows/continue-on-error-bug-3.6.0-4-test.yml
+        gharun -W testworkflows/expect-matrix-error-on-missing-exclude-key.yml && exit 1 || [[ "$?" = "1" ]]
         cd testworkflows/node16_complex_reusable_workflows
         gharun
         cd ../..

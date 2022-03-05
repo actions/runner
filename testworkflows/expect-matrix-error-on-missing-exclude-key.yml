@@ -1,0 +1,11 @@
+on: push
+jobs:
+  test:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        test: [0,1,2]
+        exclude:
+        - test2: false
+    steps:
+    - run: exit 0
