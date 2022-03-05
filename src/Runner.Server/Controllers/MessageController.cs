@@ -3090,7 +3090,9 @@ namespace Runner.Server.Controllers
                 session.Timer.Start();
                 session.DropMessage?.Invoke("Called GetMessage without deleting the old Message");
                 session.DropMessage = null;
-                if(session.Job == null) {
+                var job = session.Job;
+                var jobRunningToken = session.JobRunningToken;
+                if(job == null) {
                     if(session.Agent.TaskAgent.Ephemeral == true && session.FirstJobReceived) {
                         try {
                             new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
@@ -3224,25 +3226,29 @@ namespace Runner.Server.Controllers
                             }
                         }
                     }
-                } else if(!session.Job.Cancelled) {
-                    var now = DateTime.UtcNow;
-                    if(session.DoNotCancelBefore != null && session.DoNotCancelBefore > now) {
-                        // Attempt to mitigate an actions/runner bug, where the runner doesn't send a jobcompleted event if we cancel to early
-                        await Task.Delay(session.DoNotCancelBefore.Value - now, ts.Token);
-                    }
+                } else if(!job.Cancelled) {
                     try {
-                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token, session.Job.CancelRequest.Token).Token);
+                        var now = DateTime.UtcNow;
+                        if(session.DoNotCancelBefore != null && session.DoNotCancelBefore > now) {
+                            // Attempt to mitigate an actions/runner bug, where the runner doesn't send a jobcompleted event if we cancel to early
+                            await Task.Delay(session.DoNotCancelBefore.Value - now, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token).Token);
+                        }
+                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token, job.CancelRequest.Token).Token);
                     } catch (TaskCanceledException) {
-                        if(!session.JobRunningToken.IsCancellationRequested && session.Job.CancelRequest.IsCancellationRequested) {
-                            var job = session.Job;
+                        // Connection Reset
+                        if(ts.Token.IsCancellationRequested)
+                        {
+                            return NoContent();
+                        }
+                        if(!jobRunningToken.IsCancellationRequested && job.CancelRequest.IsCancellationRequested) {
                             try {
-                                session.Job.Cancelled = true;
+                                job.Cancelled = true;
                                 session.Key.GenerateIV();
                                 // await Task.Delay(2500);
                                 using (var encryptor = session.Key.CreateEncryptor(session.Key.Key, session.Key.IV))
                                 using (var body = new MemoryStream())
                                 using (var cryptoStream = new CryptoStream(body, encryptor, CryptoStreamMode.Write)) {
-                                    await new ObjectContent<JobCancelMessage>(new JobCancelMessage(session.Job.JobId, TimeSpan.FromMinutes(session.Job.CancelTimeoutMinutes)), new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
+                                    await new ObjectContent<JobCancelMessage>(new JobCancelMessage(job.JobId, TimeSpan.FromMinutes(job.CancelTimeoutMinutes)), new VssJsonMediaTypeFormatter(true)).CopyToAsync(cryptoStream);
                                     cryptoStream.FlushFinalBlock();
                                     return await Ok(new TaskAgentMessage() {
                                         Body = Convert.ToBase64String(body.ToArray()),
@@ -3260,7 +3266,7 @@ namespace Runner.Server.Controllers
                                 });
                             }
                         }
-                        if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+                        if(jobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
                             try {
                                 new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
                             } catch {
@@ -3272,9 +3278,14 @@ namespace Runner.Server.Controllers
                     }
                 } else {
                     try {
-                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(session.JobRunningToken, ts.Token).Token);
+                        await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(jobRunningToken, ts.Token).Token);
                     } catch (TaskCanceledException) {
-                        if(session.JobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
+                        // Connection Reset
+                        if(ts.Token.IsCancellationRequested)
+                        {
+                            return NoContent();
+                        }
+                        if(jobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
                             try {
                                 new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
                             } catch {
