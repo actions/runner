@@ -2916,6 +2916,9 @@ namespace Runner.Server.Controllers
                         auth.Parameters.Add(GitHub.DistributedTask.WebApi.EndpointAuthorizationParameters.AccessToken, stoken);
                         var systemVssConnection = new GitHub.DistributedTask.WebApi.ServiceEndpoint() { Id = Guid.NewGuid(), Name = WellKnownServiceEndpointNames.SystemVssConnection, Authorization = auth, Url = new Uri(apiUrl) };
                         systemVssConnection.Data["CacheServerUrl"] = apiUrl;
+                        var feedStreamUrl = new UriBuilder(new Uri(new Uri(apiUrl), $"_apis/v1/TimeLineWebConsoleLog/feedstream/{Uri.EscapeDataString(timelineId.ToString())}/ws"));
+                        feedStreamUrl.Scheme = feedStreamUrl.Scheme == "http" ? "ws" : "wss";
+                        systemVssConnection.Data["FeedStreamUrl"] = feedStreamUrl.ToString();
                         resources.Endpoints.Add(systemVssConnection);
 
                         if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0 && (!variables.TryGetValue("system.github.token", out var _token) || string.IsNullOrEmpty(_token?.Value))) {

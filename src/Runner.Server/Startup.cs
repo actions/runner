@@ -259,6 +259,7 @@ namespace Runner.Server
 
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseWebSockets();
     
             app.UseEndpoints(endpoints =>
             {

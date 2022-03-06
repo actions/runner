@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -175,6 +176,44 @@ namespace Runner.Server.Controllers
             record.Value.AddRange(nl);
             Task.Run(() => AppendTimelineRecordFeed(record, timelineId, recordId));
             return Ok();
+        }
+
+        private class WebSocketLiveLogFeed {
+            public Guid StepRecordId { get; set; }
+            public Int64 StartLine { get; set; }
+            public string[] Lines { get; set; }
+        }
+
+        [HttpGet("feedstream/{timelineId}/ws")]
+        public async Task Get(Guid timelineId)
+        {
+            if (HttpContext.WebSockets.IsWebSocketRequest)
+            {
+                using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+                try {
+                    var buffer = new byte[1024 * 8];
+                    while(!webSocket.CloseStatus.HasValue) {
+                        var res = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), HttpContext.RequestAborted);
+                        if(res.CloseStatus.HasValue) {
+                            return;
+                        }
+                        if(res.MessageType == System.Net.WebSockets.WebSocketMessageType.Text) {
+                            var livelogfeed = JsonConvert.DeserializeObject<WebSocketLiveLogFeed>(Encoding.UTF8.GetString(buffer, 0, res.Count));
+                            // It seems the actions/runner sends faulty lines with linebreaks, I guess it happens also here
+                            var regex = new Regex("\r?\n");
+                            var nl = livelogfeed.Lines.SelectMany(lines => regex.Split(lines)).ToList();
+                            var record = new TimelineRecordFeedLinesWrapper(livelogfeed.StepRecordId, nl);
+                            AppendTimelineRecordFeed(record, timelineId, livelogfeed.StepRecordId);
+                        }
+                    }
+                } finally {
+                    await webSocket.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.Empty, "", System.Threading.CancellationToken.None);    
+                }
+            }
+            else
+            {
+                HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            }
         }
     }
 }
