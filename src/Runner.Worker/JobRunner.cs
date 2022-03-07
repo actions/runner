@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker
             VssConnection jobConnection = VssUtil.CreateConnection(jobServerUrl, jobServerCredential, new DelegatingHandler[] { new ThrottlingReportHandler(_jobServerQueue) });
             await jobServer.ConnectAsync(jobConnection);
 
-            _jobServerQueue.Start(message, systemConnection);
+            _jobServerQueue.Start(message);
             HostContext.WritePerfCounter($"WorkerJobServerQueueStarted_{message.RequestId.ToString()}");
 
             IExecutionContext jobContext = null;

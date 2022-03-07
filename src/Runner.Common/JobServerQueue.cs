@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Sdk;
+using GitHub.Services.Common;
 using Newtonsoft.Json;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -20,7 +21,7 @@ namespace GitHub.Runner.Common
         TaskCompletionSource<int> JobRecordUpdated { get; }
         event EventHandler<ThrottlingEventArgs> JobServerQueueThrottling;
         Task ShutdownAsync();
-        void Start(Pipelines.AgentJobRequestMessage jobRequest, ServiceEndpoint serviceEndpoint);
+        void Start(Pipelines.AgentJobRequestMessage jobRequest);
         void QueueWebConsoleLine(Guid stepRecordId, string line, long? lineNumber = null);
         void QueueFileUpload(Guid timelineId, Guid timelineRecordId, string type, string name, string path, bool deleteSource);
         void QueueTimelineRecordUpdate(Guid timelineId, TimelineRecord timelineRecord);
@@ -33,6 +34,12 @@ namespace GitHub.Runner.Common
         private static readonly TimeSpan _delayForWebConsoleLineDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForTimelineUpdateDequeue = TimeSpan.FromMilliseconds(500);
         private static readonly TimeSpan _delayForFileUploadDequeue = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan _minDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(1);
+        private static readonly TimeSpan _maxDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(500);
+
+        // In our hosted environment
+        private static readonly int _minWebsocketFailurePercentageAllowed = 50;
+        private static readonly int _minWebsocketBatchedLinesCountToConsider = 5;
 
         // Job message information
         private Guid _scopeIdentifier;
@@ -61,6 +68,8 @@ namespace GitHub.Runner.Common
         private Task _fileUploadDequeueTask;
         private Task _timelineUpdateDequeueTask;
 
+        private Task _websocketConnectTask = null;
+
         // common
         private IJobServer _jobServer;
         private Task[] _allDequeueTasks;
@@ -82,6 +91,9 @@ namespace GitHub.Runner.Common
         private bool _webConsoleLineAggressiveDequeue = true;
         private bool _firstConsoleOutputs = true;
 
+        private int totalBatchedLinesPosted = 0;
+        private int failedAttemptsToPostBatchedLinesByWebsocket = 0;
+
         private ClientWebSocket _websocketClient = null;
 
         private ServiceEndpoint _serviceEndPoint;
@@ -92,11 +104,11 @@ namespace GitHub.Runner.Common
             _jobServer = hostContext.GetService<IJobServer>();
         }
 
-        public void Start(Pipelines.AgentJobRequestMessage jobRequest, ServiceEndpoint serviceEndpoint)
+        public void Start(Pipelines.AgentJobRequestMessage jobRequest)
         {
             Trace.Entering();
 
-            this._serviceEndPoint = serviceEndpoint;
+            this._serviceEndPoint = jobRequest.Resources.Endpoints.Single(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
 
             InitializeWebsocket();
 
@@ -266,6 +278,12 @@ namespace GitHub.Runner.Common
                     }
                 }
 
+                if (this._websocketConnectTask != null)
+                {
+                    // lazily await here, we are already in the background task here
+                    await this._websocketConnectTask;
+                }
+
                 // Batch post consolelines for each step timeline record
                 foreach (var stepRecordId in stepRecordIds)
                 {
@@ -306,16 +324,16 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
+                                totalBatchedLinesPosted++;
                                 bool pushedLinesViaWebsocket = false;
-                                if (this._websocketClient?.State == WebSocketState.Open)
+                                if (this._websocketClient != null)
                                 {
-                                    var jsonData = JsonConvert.SerializeObject(new
+                                    var jsonData = StringUtil.ConvertToJson(new
                                     {
                                         stepRecordId,
                                         startLine = batch[0].LineNumber,
                                         lines = batch.Select(logLine => logLine.Line).ToList()
                                     });
-                                    Trace.Info($"Sending to websocket: {jsonData}");
                                     try
                                     {
                                         // It should be okay to wait for the result since we are already doing this in the background and doing it one by one
@@ -324,12 +342,28 @@ namespace GitHub.Runner.Common
                                     }
                                     catch (Exception ex)
                                     {
-                                        Trace.Info("Catch exception during append web console line to websocket, let's fallback to sending via non-websocket call.");
+                                        Trace.Info("Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call.");
                                         Trace.Error(ex);
+                                        failedAttemptsToPostBatchedLinesByWebsocket++;
                                         if (this._websocketClient?.State != WebSocketState.Open)
                                         {
-                                            Trace.Info("Websocket is not open, let's attempt to connect back again.");
-                                            InitializeWebsocket();
+                                            if (totalBatchedLinesPosted > _minWebsocketBatchedLinesCountToConsider)
+                                            {
+                                                // let's consider failure percentage
+                                                if ((failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesPosted) > _minWebsocketFailurePercentageAllowed)
+                                                {
+                                                    Trace.Info($"Exhausted websocket allow retries, we will not attempt websocket connection for this job to postlines again.");
+                                                    this._websocketClient?.Dispose();
+                                                    this._websocketClient = null;
+                                                }
+                                            }
+
+                                            if (this._websocketClient != null)
+                                            {
+                                                var delay = BackoffTimerHelper.GetRandomBackoff(_minDelayForWebsocketReconnect, _maxDelayForWebsocketReconnect);
+                                                Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
+                                                InitializeWebsocket(delay);
+                                            }
                                         }
                                     }
                                 }
@@ -437,7 +471,7 @@ namespace GitHub.Runner.Common
             }
         }
 
-        private void InitializeWebsocket()
+        private void InitializeWebsocket(TimeSpan? delay = null)
         {
             if (_serviceEndPoint.Authorization != null &&
                 _serviceEndPoint.Authorization.Parameters.TryGetValue(EndpointAuthorizationParameters.AccessToken, out var accessToken) &&
@@ -448,11 +482,20 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Creating websocket client ..." + feedStreamUrl);
                     this._websocketClient = new ClientWebSocket();
                     this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-                    Task.Run(async () =>
+                    this._websocketConnectTask = Task.Run(async () =>
                     {
-                        Trace.Info($"Attempting to start websocket client.");
-                        await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
-                        Trace.Info($"Successfully started websocket client.");
+                        try
+                        {
+                            Trace.Info($"Attempting to start websocket client with delay {delay}.");
+                            await Task.Delay(delay ?? TimeSpan.Zero);
+                            await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
+                            Trace.Info($"Successfully started websocket client.");
+                        }
+                        catch(Exception ex)
+                        {
+                            Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now isntead of websocket.");
+                            Trace.Error(ex);
+                        }
                     });
                 }
                 else
