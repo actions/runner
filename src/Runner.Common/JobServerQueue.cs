@@ -341,28 +341,25 @@ namespace GitHub.Runner.Common
                                     }
                                     catch (Exception ex)
                                     {
-                                        Trace.Info("Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call.");
+                                        Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesPosted}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
                                         Trace.Error(ex);
                                         failedAttemptsToPostBatchedLinesByWebsocket++;
-                                        if (this._websocketClient?.State != WebSocketState.Open)
+                                        if (totalBatchedLinesPosted > _minWebsocketBatchedLinesCountToConsider)
                                         {
-                                            if (totalBatchedLinesPosted > _minWebsocketBatchedLinesCountToConsider)
+                                            // let's consider failure percentage
+                                            if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesPosted > _minWebsocketFailurePercentageAllowed)
                                             {
-                                                // let's consider failure percentage
-                                                if ((failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesPosted) > _minWebsocketFailurePercentageAllowed)
-                                                {
-                                                    Trace.Info($"Exhausted websocket allow retries, we will not attempt websocket connection for this job to postlines again.");
-                                                    this._websocketClient?.Dispose();
-                                                    this._websocketClient = null;
-                                                }
+                                                Trace.Info($"Exhausted websocket allow retries, we will not attempt websocket connection for this job to post lines again.");
+                                                this._websocketClient?.Dispose();
+                                                this._websocketClient = null;
                                             }
+                                        }
 
-                                            if (this._websocketClient != null)
-                                            {
-                                                var delay = BackoffTimerHelper.GetRandomBackoff(_minDelayForWebsocketReconnect, _maxDelayForWebsocketReconnect);
-                                                Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {totalBatchedLinesPosted}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}).");
-                                                InitializeWebsocket(delay);
-                                            }
+                                        if (this._websocketClient != null)
+                                        {
+                                            var delay = BackoffTimerHelper.GetRandomBackoff(_minDelayForWebsocketReconnect, _maxDelayForWebsocketReconnect);
+                                            Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {totalBatchedLinesPosted}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}).");
+                                            InitializeWebsocket(delay);
                                         }
                                     }
                                 }
