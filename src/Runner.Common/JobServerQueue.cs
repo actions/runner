@@ -37,7 +37,6 @@ namespace GitHub.Runner.Common
         private static readonly TimeSpan _minDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(1);
         private static readonly TimeSpan _maxDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(500);
 
-        // In our hosted environment
         private static readonly int _minWebsocketFailurePercentageAllowed = 50;
         private static readonly int _minWebsocketBatchedLinesCountToConsider = 5;
 
@@ -361,7 +360,7 @@ namespace GitHub.Runner.Common
                                             if (this._websocketClient != null)
                                             {
                                                 var delay = BackoffTimerHelper.GetRandomBackoff(_minDelayForWebsocketReconnect, _maxDelayForWebsocketReconnect);
-                                                Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms.");
+                                                Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {totalBatchedLinesPosted}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}).");
                                                 InitializeWebsocket(delay);
                                             }
                                         }
@@ -370,7 +369,6 @@ namespace GitHub.Runner.Common
 
                                 if (!pushedLinesViaWebsocket)
                                 {
-                                    Trace.Info("Sending via non-websocket call.");
                                     // we will not requeue failed batch, since the web console lines are time sensitive.
                                     if (batch[0].LineNumber.HasValue)
                                     {
@@ -479,6 +477,8 @@ namespace GitHub.Runner.Common
             {
                 if (_serviceEndPoint.Data.TryGetValue("FeedStreamUrl", out var feedStreamUrl) && !string.IsNullOrEmpty(feedStreamUrl))
                 {
+                    // let's ensure we use the right scheme
+                    feedStreamUrl = feedStreamUrl.Replace("https://", "wss://").Replace("http://", "ws://");
                     Trace.Info($"Creating websocket client ..." + feedStreamUrl);
                     this._websocketClient = new ClientWebSocket();
                     this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
@@ -493,14 +493,14 @@ namespace GitHub.Runner.Common
                         }
                         catch(Exception ex)
                         {
-                            Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now isntead of websocket.");
+                            Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now instead of websocket.");
                             Trace.Error(ex);
                         }
                     });
                 }
                 else
                 {
-                    Trace.Info($"No FeedStreamUrl found, so we will use Rest API calls for sending feeddata");
+                    Trace.Info($"No FeedStreamUrl found, so we will use Rest API calls for sending feed data");
                 }
             }
             else
