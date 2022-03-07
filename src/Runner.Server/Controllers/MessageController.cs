@@ -3172,7 +3172,6 @@ namespace Runner.Server.Controllers
                                                     MessageType = JobRequestMessageTypes.PipelineAgentJobRequest,
                                                     IV = session.Key.IV
                                                 });
-                                                HttpContext.RequestAborted.ThrowIfCancellationRequested();
                                                 if(req.CancelRequest.IsCancellationRequested) {
                                                     session.Job = null;
                                                     session.DropMessage = null;
@@ -3182,6 +3181,7 @@ namespace Runner.Server.Controllers
                                                     continue;
                                                     //return NoContent();
                                                 }
+                                                HttpContext.RequestAborted.ThrowIfCancellationRequested();
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Send Job to Runner: {req.name} for queue {string.Join(",", queues[i].Key)} assigned to Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
                                                 // Attempt to mitigate an actions/runner bug, where the runner doesn't send a jobcompleted event if we cancel to early
                                                 session.DoNotCancelBefore = DateTime.UtcNow.AddSeconds(5);
