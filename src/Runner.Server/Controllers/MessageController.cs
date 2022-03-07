@@ -2413,11 +2413,16 @@ namespace Runner.Server.Controllers
         }
         private Func<bool, Job> queueJob(TemplateContext templateContext, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null)
         {
+            int fileContainerId = -1;
             Func<Func<bool, Job>> failJob = () => {
                 var jid = jobId;
                 var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(_job);
                 new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                if(fileContainerId != -1) {
+                    _context.ArtifactFileContainer.Remove(_context.ArtifactFileContainer.Find(fileContainerId));
+                    _context.SaveChanges();
+                }
                 return cancel => _job;
             };
             try {
@@ -2436,6 +2441,7 @@ namespace Runner.Server.Controllers
                 variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                 variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
                 var resp = new ArtifactController(_context, configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
+                fileContainerId = resp.Id;
                 variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
                 foreach (var secret in this.secrets) {
                     variables[secret.Name] = new VariableValue(secret.Value, true);
