@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
@@ -147,6 +149,17 @@ namespace GitHub.Runner.Worker.Handlers
                         ExecutionContext.Result = TaskResult.Failed;
                     }
                 }
+            }
+
+            if (Data.NodeVersion == "node12") // TODO: Add FF
+            {
+                if (!ExecutionContext.JobContext.ContainsKey("Node12ActionsWarnings"))
+                {                     
+                    ExecutionContext.JobContext["Node12ActionsWarnings"] = new ArrayContextData();
+                }
+                var repoAction = Action as RepositoryPathReference;
+                var actionDisplayName = new StringContextData(repoAction.Name ?? repoAction.Path); // local actions don't have a 'Name'                
+                ExecutionContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Add(actionDisplayName);
             }
         }
     }
