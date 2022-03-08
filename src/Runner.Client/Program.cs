@@ -159,6 +159,7 @@ namespace Runner.Client
             public string Repository { get; set; }
             public string Ref { get; set; }
             public string Sha { get; set; }
+            public string[] EnvironmentSecretFiles { get; set; }
         }
 
         class WorkflowEventArgs {
@@ -541,6 +542,9 @@ namespace Runner.Client
                 "--secret-file",
                 getDefaultValue: () => ".secrets",
                 description: "Secrets for your workflow.");
+            var environmentSecretFileOpt = new Option<string[]>(
+                "--environment-secret-file",
+                description: "Environment Secrets with name name for your workflow, name=filename.yml");
             var jobOpt = new Option<string>(
                 new[] {"-j", "--job"},
                 description: "Job to run. If multiple jobs have the same name in multiple workflows, all matching jobs will run. Use together with `--workflow <workflow>` to run exact one job.");
@@ -642,6 +646,7 @@ namespace Runner.Client
                 envFile,
                 secretOpt,
                 secretFileOpt,
+                environmentSecretFileOpt,
                 jobOpt,
                 matrixOpt,
                 listOpt,
@@ -1212,6 +1217,14 @@ namespace Runner.Client
                                         payloadContent = new JObject();
                                     }
                                     mp.Add(new StringContent(payloadContent.ToString()), "event", "event.json");
+                                    if(parameters.EnvironmentSecretFiles?.Length > 0) {
+                                        foreach(var opt in parameters.EnvironmentSecretFiles) {
+                                            var subopt = opt.Split('=', 2);
+                                            var envfile = File.OpenRead(subopt[1]);
+                                            workflowsToDispose.Add(envfile);
+                                            mp.Add(new StreamContent(envfile), "actions-environment-secrets", $"{subopt[0]}.secrets");
+                                        }
+                                    }
                                     b.Query = query.ToQueryString().ToString().TrimStart('?');
                                     resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Post, b.Uri.ToString()) { Content = mp }, HttpCompletionOption.ResponseHeadersRead);
                                     resp.EnsureSuccessStatusCode();
@@ -1579,6 +1592,7 @@ namespace Runner.Client
                 parameters.envFile = bindingContext.ParseResult.GetValueForOption(envFile);
                 parameters.secret = bindingContext.ParseResult.GetValueForOption(secretOpt);
                 parameters.secretFile = bindingContext.ParseResult.GetValueForOption(secretFileOpt);
+                parameters.EnvironmentSecretFiles = bindingContext.ParseResult.GetValueForOption(environmentSecretFileOpt);
                 parameters.job = bindingContext.ParseResult.GetValueForOption(jobOpt);
                 parameters.matrix = bindingContext.ParseResult.GetValueForOption(matrixOpt);
                 parameters.list = bindingContext.ParseResult.GetValueForOption(listOpt);

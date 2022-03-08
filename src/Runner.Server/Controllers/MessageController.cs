@@ -40,6 +40,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using GitHub.Runner.Sdk;
 using GitHub.Actions.Pipelines.WebApi;
+using YamlDotNet.Serialization;
 
 namespace Runner.Server.Controllers
 {
@@ -69,8 +70,6 @@ namespace Runner.Server.Controllers
         private Dictionary<string, string> GitHubContext { get; }
         private bool AllowPrivateActionAccess { get; }
         private int Verbosity { get; }
-        private List<Secret> secrets;
-
         private IConfiguration configuration;
 
         private MessageController Clone() {
@@ -107,8 +106,6 @@ namespace Runner.Server.Controllers
             GitHubContext = configuration.GetSection("Runner.Server:GitHubContext").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 2) ?? 2;
-            
-            secrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();
             _cache = memoryCache;
             _context = context;
             ReadConfig(configuration);
@@ -568,7 +565,7 @@ namespace Runner.Server.Controllers
         }
         private static ConcurrentDictionary<string, ConcurrencyGroup> concurrencyGroups = new ConcurrentDictionary<string, ConcurrencyGroup>();
 
-        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null) {
+        private HookResponse ConvertYaml(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e = "push", string selectedJob = null, bool list = false, string[] env = null, string[] secrets = null, string[] _matrix = null, string[] platform = null, bool localcheckout = false, KeyValuePair<string, string>[] workflows = null, Action<long> workflowrun = null, string Ref = null, string Sha = null, string StatusCheckSha = null, ISecretsProvider secretsProvider = null) {
             string owner_name = repository.Split('/', 2)[0];
             string repo_name = repository.Split('/', 2)[1];
             Func<Workflow> getWorkflow = () => (from w in _context.Set<Workflow>() where w.FileName == fileRelativePath && w.Repository.Owner.Name == owner_name && w.Repository.Name == repo_name select w).FirstOrDefault();
@@ -647,7 +644,7 @@ namespace Runner.Server.Controllers
                     Sha = hook.After;
                 }
             }
-            return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha));
+            return ConvertYaml2(fileRelativePath, content, repository, giteaUrl, hook, payloadObject, e, selectedJob, list, env, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, workflows: workflows, attempt: _attempt, statusSha: !string.IsNullOrEmpty(StatusCheckSha) ? StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha), secretsProvider: secretsProvider);
         }
 
         private void AddJob(Job job) {
@@ -733,9 +730,10 @@ namespace Runner.Server.Controllers
             // Set by the called workflow to indicate whether to clean cached job dependencies
             public bool RanJob { get; set; }
             public Dictionary<string, string> Permissions { get; set; }
+            public List<string> ProvidedSecrets { get; set; }
         }
 
-        private TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, DictionaryContextData contextData = null, ExecutionContext exctx = null) {
+        private static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, DictionaryContextData contextData = null, ExecutionContext exctx = null) {
             var templateContext = new TemplateContext() {
                 CancellationToken = CancellationToken.None,
                 Errors = new TemplateValidationErrors(10, 500),
@@ -764,9 +762,12 @@ namespace Runner.Server.Controllers
             return templateContext;
         }
 
-        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null) {
+        private HookResponse ConvertYaml2(string fileRelativePath, string content, string repository, string giteaUrl, GiteaHook hook, JObject payloadObject, string e, string selectedJob, bool list, string[] env, string[] secrets, string[] _matrix, string[] platform, bool localcheckout, long runid, long runnumber, string Ref, string Sha, CallingJob callingJob = null, KeyValuePair<string, string>[] workflows = null, WorkflowRunAttempt attempt = null, string statusSha = null, Dictionary<string, List<Job>> finishedJobs = null, ISecretsProvider secretsProvider = null) {
             attempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
             _context.Entry(attempt).Reference(a => a.WorkflowRun).Load();
+            if(secretsProvider == null) {
+                secretsProvider = new DefaultSecretsProvider(configuration);
+            }
             bool asyncProcessing = false;
             Guid workflowTimelineId = callingJob?.TimelineId ?? attempt.TimeLineId;
             if(workflowTimelineId == Guid.Empty) {
@@ -1171,7 +1172,7 @@ namespace Runner.Server.Controllers
                         }
                         // Validate secrets
                         var workflowSecrets = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "secrets" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.secrets") : null;
-                        List<string> validSecrets = new List<string> { "system.github.token" };
+                        List<string> validSecrets = new List<string> { };
                         if(workflowSecrets != null) {
                             foreach(var secret in workflowSecrets) {
                                 var secretName = secret.Key.AssertString("on.workflow_call.secrets mapping key").Value;
@@ -1184,15 +1185,14 @@ namespace Runner.Server.Controllers
                                     validSecrets.Add(secretName.ToLowerInvariant());
                                     bool required = (from r in secretMapping where r.Key.AssertString(workflowCallSecretsMappingKey).Value == "required" select r.Value.AssertBoolean($"on.workflow_call.secrets.{secretName}.required").Value).FirstOrDefault();
                                     
-                                    if(!secrets.Any(s => s.ToLowerInvariant().StartsWith(secretName.ToLowerInvariant() + "=")) && required) {
+                                    if(!callingJob.ProvidedSecrets.Any(s => s.ToLowerInvariant() == secretName.ToLowerInvariant()) && required) {
                                         throw new Exception($"This workflow requires the secret: {secretName}, but no such secret were provided");
                                     }
                                 }
                             }
                         }
-                        foreach(var secret in secrets) {
-                            var name = secret.Substring(0, secret.IndexOf('=')).ToLowerInvariant();
-                            if(!validSecrets.Contains(name)) {
+                        foreach(var name in callingJob.ProvidedSecrets) {
+                            if(!validSecrets.Contains(name.ToLowerInvariant())) {
                                 throw new Exception($"This workflow doesn't define secret {name}");
                             }
                         }
@@ -1837,7 +1837,7 @@ namespace Runner.Server.Controllers
                                                     templateContext.Errors.Check();
                                                     next.NoStatusCheck = usesJob;
                                                     next.ActionStatusQueue.Post(() => updateJobStatus(next, null));
-                                                    return queueJob(matrixJobTraceWriter, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext);
+                                                    return queueJob(matrixJobTraceWriter, workflowDefaults, workflowEnvironment, _jobdisplayname, run, contextData.Clone() as DictionaryContextData, next.Id, next.TimelineId, repository_name, jobname, workflowname, runid, runnumber, secrets, timeoutMinutes, cancelTimeoutMinutes, next.ContinueOnError, platform ?? new String[] { }, localcheckout, next.RequestId, Ref, Sha, callingJob?.Event ?? event_name, callingJob?.Event, workflows, statusSha, callingJob?.Id, finishedJobs, attempt, next, workflowPermissions, callingJob, dependentjobgroup, selectedJob, _matrix, workflowContext, secretsProvider);
                                                 } catch(Exception ex) {
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(next.Id, new List<string>{ $"Exception: {ex?.ToString()}" }), next.TimelineId, next.Id);
                                                     return failJob();
@@ -2401,7 +2401,7 @@ namespace Runner.Server.Controllers
             await task;
             _cache.Remove(id);
         }
-        private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null)
+        private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
             int fileContainerId = -1;
             Func<Func<bool, Job>> failJob = () => {
@@ -2433,18 +2433,6 @@ namespace Runner.Server.Controllers
                 var resp = new ArtifactController(_context, configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                 fileContainerId = resp.Id;
                 variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
-                foreach (var secret in this.secrets) {
-                    variables[secret.Name] = new VariableValue(secret.Value, true);
-                }
-                if(secrets != null) {
-                    LoadEnvSec(secrets, (name, value) => {
-                        if(StringComparer.OrdinalIgnoreCase.Compare("github_token", name) == 0) {
-                            variables["system.github.token"] = new VariableValue(value, true);
-                        } else {
-                            variables[name] = new VariableValue(value, true);
-                        }
-                    });
-                }
                 // Job permissions
                 TemplateToken jobPermissions = (from r in run where r.Key.AssertString($"jobs.{name} mapping key").Value == "permissions" select r).FirstOrDefault().Value ?? workflowPermissions;
                 var calculatedPermissions = new Dictionary<string, string>();
@@ -2547,41 +2535,15 @@ namespace Runner.Server.Controllers
                             };
                         }
                     }
-                    SecretMasker masker = new SecretMasker();
-                    var linesplitter = new Regex("\r?\n");
-                    foreach(var variable in variables) {
-                        if(variable.Value.IsSecret) {
-                            masker.AddValue(variable.Value.Value);
-                            if(variable.Value.Value.Contains('\r') || variable.Value.Value.Contains('\n')) {
-                                foreach(var line in linesplitter.Split(variable.Value.Value)) {
-                                    masker.AddValue(line);
-                                }
-                            }
-                        }
-                    }
-                    masker.AddValueEncoder(ValueEncoders.Base64StringEscape);
-                    masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
-                    masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
-                    masker.AddValueEncoder(ValueEncoders.CommandLineArgumentEscape);
-                    masker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
-                    masker.AddValueEncoder(ValueEncoders.JsonStringEscape);
-                    masker.AddValueEncoder(ValueEncoders.UriDataEscape);
-                    masker.AddValueEncoder(ValueEncoders.XmlDataEscape);
-                    masker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
-                    masker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
-                    masker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
-                    var traceWriter = new TraceWriter2(line => {
-                        matrixJobTraceWriter.Info("{0}", masker.MaskSecrets(line));
-                    });
                     var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jobId, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                     AddJob(_job);
                     return cancel => {
                         Action<string> failedtoInstantiateWorkflow = message => {
-                            traceWriter.Error("Failed to instantiate Workflow: {0}", message);
+                            matrixJobTraceWriter.Error("Failed to instantiate Workflow: {0}", message);
                             new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                         };
                         if(cancel) {
-                            traceWriter.Verbose("workflow_call cancelled successfully");
+                            matrixJobTraceWriter.Verbose("workflow_call cancelled successfully");
                             new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Canceled, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                             return _job;
                         }
@@ -2601,7 +2563,7 @@ namespace Runner.Server.Controllers
                                 var hook = (JObject)((DictionaryContextData) contextData["github"])["event"].ToJToken();
                                 var ghook = hook.ToObject<GiteaHook>();
 
-                                var templateContext = CreateTemplateContext(traceWriter, contextData);
+                                var templateContext = CreateTemplateContext(matrixJobTraceWriter, contextData);
                                 var eval = rawWith != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-with", rawWith, 0, null, true) : null;
                                 templateContext.Errors.Check();
                                 var result = new DictionaryContextData();
@@ -2616,20 +2578,7 @@ namespace Runner.Server.Controllers
                                         }
                                     }
                                 }
-                                templateContext = CreateTemplateContext(traceWriter, contextData);
-                                templateContext.ExpressionValues["secrets"] = result;
-                                var evalSec = rawSecrets != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", rawSecrets, 0, null, true).AssertMapping($"jobs.{name}.secrets") : null;
-                                templateContext.Errors.Check();
-                                List<string> _secrets = new List<string>();
-                                if(evalSec != null) {
-                                    foreach(var entry in evalSec) {
-                                        _secrets.Add(entry.Key.AssertString($"jobs.{ji.name}.secrets mapping key") + "=" + entry.Value.AssertString($"jobs.{ji.name}.secrets mapping value"));
-                                    }
-                                }
-                                if(result.TryGetValue("github_token", out var ghtoken)) {
-                                    // Enshure to share a customized github_token secret with the called workflow
-                                    _secrets.Add("system.github.token=" + ghtoken);
-                                }
+                                var reuseableSecretsProvider = new ReusableWorkflowSecretsProvider(ji, secretsProvider, rawSecrets, contextData);
                                 var callerJob = new CallingJob() { Name = displayname, Event = wevent, Inputs = eval?.ToContextData(), Workflowfinish = (callerJob, e) => {
                                     if(callerJob.RanJob) {
                                         if(callingJob != null) {
@@ -2649,12 +2598,11 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions};
+                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = (from entry in rawSecrets.AssertMapping("") select entry.Key.AssertString("").Value).ToList()};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value);
-                                var secrets = _secrets.ToArray();
                                 var sjob = selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null;
                                 Task.Run(() => {
-                                    var resp = clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", sjob, false, null, secrets, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: fjobs);
+                                    var resp = clone.ConvertYaml2(filename, filecontent, repo, GitServerUrl, ghook, hook, "workflow_call", sjob, false, null, null, _matrix, platform, localcheckout, runid, runnumber, Ref, Sha, callingJob: callerJob, workflows, attempt, statusSha: statusSha, finishedJobs: fjobs, secretsProvider: reuseableSecretsProvider);
                                     if(resp == null || resp.failed || resp.skipped) {
                                         failedtoInstantiateWorkflow(filename);
                                         return;
@@ -2872,6 +2820,9 @@ namespace Runner.Server.Controllers
                     var templateContext = CreateTemplateContext(matrixJobTraceWriter, contextData);
                     jobConcurrency = GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-concurrency", jobConcurrency, 0, null, true);
                 }
+                foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name)) {
+                    variables[secr.Key] = new VariableValue(secr.Value, true);
+                }
                 var job = new Job() { message = (apiUrl) => {
                     try {
                         var auth = new GitHub.DistributedTask.WebApi.EndpointAuthorization() { Scheme = GitHub.DistributedTask.WebApi.EndpointAuthorizationSchemes.OAuth };
@@ -2898,6 +2849,15 @@ namespace Runner.Server.Controllers
                             Audience = myAudience,
                             SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
                         };
+                        // var signingcred = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256);
+                        // var kid = mySecurityKey.KeyId;
+                        // var n = Base64UrlEncoder.Encode(Startup.AccessTokenParameter.Modulus);
+                        // var e = Base64UrlEncoder.Encode(Startup.AccessTokenParameter.Exponent);
+                        // var alg = SecurityAlgorithms.RsaSha256;
+                        // var kty = "RSA";
+                        // var x5t = Base64UrlEncoder.Encode(mySecurityKey.ComputeJwkThumbprint());
+                        // var jwk = new { kid, n, e, alg, kty, x5t };
+                        // var sjwk = JsonConvert.SerializeObject(jwk);
 
                         var resources = new JobResources();
                         var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -3502,6 +3462,109 @@ namespace Runner.Server.Controllers
             return Ok();
         }
 
+        private interface ISecretsProvider {
+            IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null);
+        }
+
+        private class ScheduleSecretsProvider : ISecretsProvider
+        {
+            public IDictionary<string, IDictionary<string, string>> SecretsEnvironments { get; set; }
+            public IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null)
+            {
+                if(string.IsNullOrEmpty(name)) {
+                    name = "";
+                }
+                if(SecretsEnvironments.TryGetValue(name, out var val)) {
+                    return val;
+                } else {
+                    return new Dictionary<string, string>();
+                }
+            }
+        }
+
+        private class DefaultSecretsProvider : ISecretsProvider
+        {
+            private Dictionary<string, Dictionary<string, string>> SecretsEnvironments { get; set; }
+
+            public DefaultSecretsProvider(IConfiguration configuration) {
+                SecretsEnvironments = configuration.GetSection("Runner.Server:Environments").Get<Dictionary<string, Dictionary<string, string>>>() ?? new Dictionary<string, Dictionary<string, string>>();
+                var globalSecrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();                
+                if(!SecretsEnvironments.ContainsKey("")) {
+                    SecretsEnvironments[""] = globalSecrets.ToDictionary(sec => sec.Name, sec => sec.Value);
+                }
+            }
+            public IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null)
+            {
+                if(string.IsNullOrEmpty(name)) {
+                    name = "";
+                }
+                if(SecretsEnvironments.TryGetValue(name, out var val)) {
+                    return val;
+                } else {
+                    return new Dictionary<string, string>();
+                }
+            }
+        }
+
+        private class ReusableWorkflowSecretsProvider : ISecretsProvider
+        {
+            private ISecretsProvider parent;
+            private TemplateToken secretsMapping;
+            private DictionaryContextData contextData;
+            private JobItem ji;
+
+            public ReusableWorkflowSecretsProvider(JobItem ji, ISecretsProvider parent, TemplateToken secretsMapping, DictionaryContextData contextData){
+                this.parent = parent;
+                this.secretsMapping = secretsMapping;
+                this.contextData = contextData;
+                this.ji = ji;
+            }
+            public IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null)
+            {
+                var parentSecrets = parent.GetSecretsForEnvironment(traceWriter, name);
+                traceWriter.Info("{0}", $"Evaluating Secrets of {ji.name} for environment {name}");
+                SecretMasker masker = new SecretMasker();
+                var linesplitter = new Regex("\r?\n");
+                foreach(var variable in parentSecrets) {
+                        masker.AddValue(variable.Value);
+                        if(variable.Value.Contains('\r') || variable.Value.Contains('\n')) {
+                            foreach(var line in linesplitter.Split(variable.Value)) {
+                                masker.AddValue(line);
+                            }
+                        }
+                }
+                masker.AddValueEncoder(ValueEncoders.Base64StringEscape);
+                masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
+                masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift2);
+                masker.AddValueEncoder(ValueEncoders.CommandLineArgumentEscape);
+                masker.AddValueEncoder(ValueEncoders.ExpressionStringEscape);
+                masker.AddValueEncoder(ValueEncoders.JsonStringEscape);
+                masker.AddValueEncoder(ValueEncoders.UriDataEscape);
+                masker.AddValueEncoder(ValueEncoders.XmlDataEscape);
+                masker.AddValueEncoder(ValueEncoders.TrimDoubleQuotes);
+                masker.AddValueEncoder(ValueEncoders.PowerShellPreAmpersandEscape);
+                masker.AddValueEncoder(ValueEncoders.PowerShellPostAmpersandEscape);
+                var secureTraceWriter = new TraceWriter2(line => {
+                    traceWriter.Info("{0}", masker.MaskSecrets(line));
+                });
+                var result = new DictionaryContextData();
+                foreach (var variable in parentSecrets) {
+                    result[variable.Key] = new StringContextData(variable.Value);
+                }
+                var templateContext = CreateTemplateContext(secureTraceWriter, contextData);
+                templateContext.ExpressionValues["secrets"] = result;
+                var evalSec = secretsMapping != null ? GitHub.DistributedTask.ObjectTemplating.TemplateEvaluator.Evaluate(templateContext, "job-secrets", secretsMapping, 0, null, true).AssertMapping($"jobs.{name}.secrets") : null;
+                templateContext.Errors.Check();
+                IDictionary<string, string> ret = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if(evalSec != null) {
+                    foreach(var entry in evalSec) {
+                        ret[entry.Key.AssertString($"jobs.{ji.name}.secrets mapping key").Value] = entry.Value.AssertString($"jobs.{ji.name}.secrets mapping value").Value;
+                    }
+                }
+                return ret;
+            }
+        }
+
         [HttpPost("schedule2")]
         public async Task<IActionResult> OnSchedule2([FromQuery] string job, [FromQuery] int? list, [FromQuery] string[] env, [FromQuery] string[] secrets, [FromQuery] string[] matrix, [FromQuery] string[] platform, [FromQuery] bool? localcheckout, [FromQuery] string Ref, [FromQuery] string Sha, [FromQuery] string Repository)
         {
@@ -3517,7 +3580,14 @@ namespace Runner.Server.Controllers
                 obj = new KeyValuePair<GiteaHook, JObject>(JsonConvert.DeserializeObject<GiteaHook>(text), obj_);
             }
 
-            var workflow = (from f in form.Files where f.Name != "event" select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd())).ToArray();
+            var workflow = (from f in form.Files where f.Name != "event" && !(f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets") select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd())).ToArray();
+            var des = new DeserializerBuilder().Build();
+            var secretsEnvironments = (from f in form.Files where f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets" select (f.FileName.Substring(0, f.FileName.Length - 8), des.Deserialize<IDictionary<string, string>>(new StreamReader(f.OpenReadStream())))).ToDictionary(kv => kv.Item1, kv => kv.Item2);
+            if(!secretsEnvironments.ContainsKey("") && secrets?.Length > 0) {
+                var dict = new Dictionary<string, string>();
+                LoadEnvSec(secrets, (k, v) => dict[k] = v);
+                secretsEnvironments[""] = dict;
+            }
 
             // Try to fix head_commit == null 
             if(obj.Key.head_commit == null) {
@@ -3612,7 +3682,7 @@ namespace Runner.Server.Controllers
                         lock(runid) {
                             if(workflow.Any()) {
                                 foreach (var w in workflow) {
-                                    HookResponse response = Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha);
+                                    HookResponse response = Clone().ConvertYaml(w.Key, w.Value, string.IsNullOrEmpty(Repository) ? hook?.repository?.full_name ?? "Unknown/Unknown" : Repository, GitServerUrl, hook, obj.Value, e, job, list >= 1, env, secrets, matrix, platform, localcheckout ?? true, workflow, run => runid.Add(run), Ref: Ref, Sha: Sha, secretsProvider: new ScheduleSecretsProvider{ SecretsEnvironments = secretsEnvironments });
                                     if(response.skipped || response.failed) {
                                         runid.Remove(response.run_id);
                                         if(response.failed) {
