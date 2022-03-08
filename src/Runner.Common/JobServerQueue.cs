@@ -90,7 +90,7 @@ namespace GitHub.Runner.Common
         private bool _webConsoleLineAggressiveDequeue = true;
         private bool _firstConsoleOutputs = true;
 
-        private int totalBatchedLinesPosted = 0;
+        private int totalBatchedLinesAttemptedByWebsocket = 0;
         private int failedAttemptsToPostBatchedLinesByWebsocket = 0;
 
         private ClientWebSocket _websocketClient = null;
@@ -277,12 +277,6 @@ namespace GitHub.Runner.Common
                     }
                 }
 
-                if (this._websocketConnectTask != null)
-                {
-                    // lazily await here, we are already in the background task here
-                    await this._websocketConnectTask;
-                }
-
                 // Batch post consolelines for each step timeline record
                 foreach (var stepRecordId in stepRecordIds)
                 {
@@ -323,33 +317,36 @@ namespace GitHub.Runner.Common
                         {
                             try
                             {
-                                totalBatchedLinesPosted++;
-                                bool pushedLinesViaWebsocket = false;
+                                if (this._websocketConnectTask != null)
+                                {
+                                    // lazily await here, we are already in the background task here
+                                    await this._websocketConnectTask;
+                                }
+
+                                var pushedLinesViaWebsocket = false;
                                 if (this._websocketClient != null)
                                 {
-                                    var jsonData = StringUtil.ConvertToJson(new
-                                    {
-                                        stepRecordId,
-                                        startLine = batch[0].LineNumber,
-                                        lines = batch.Select(logLine => logLine.Line).ToList()
-                                    });
+                                    var linesWrapper =  batch[0].LineNumber.HasValue? new TimelineRecordFeedLinesWrapper(stepRecordId, batch.Select(logLine => logLine.Line).ToList(), batch[0].LineNumber.Value):
+                                        new TimelineRecordFeedLinesWrapper(stepRecordId, batch.Select(logLine => logLine.Line).ToList());
+                                    var jsonData = StringUtil.ConvertToJson(linesWrapper);
                                     try
                                     {
+                                        totalBatchedLinesAttemptedByWebsocket++;
                                         // It should be okay to wait for the result since we are already doing this in the background and doing it one by one
                                         await this._websocketClient.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(jsonData)), WebSocketMessageType.Text, false, default(CancellationToken));
                                         pushedLinesViaWebsocket = true;
                                     }
                                     catch (Exception ex)
                                     {
-                                        Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesPosted}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
+                                        Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
                                         Trace.Error(ex);
                                         failedAttemptsToPostBatchedLinesByWebsocket++;
-                                        if (totalBatchedLinesPosted > _minWebsocketBatchedLinesCountToConsider)
+                                        if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
                                         {
                                             // let's consider failure percentage
-                                            if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesPosted > _minWebsocketFailurePercentageAllowed)
+                                            if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesAttemptedByWebsocket > _minWebsocketFailurePercentageAllowed)
                                             {
-                                                Trace.Info($"Exhausted websocket allow retries, we will not attempt websocket connection for this job to post lines again.");
+                                                Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
                                                 this._websocketClient?.Dispose();
                                                 this._websocketClient = null;
                                             }
@@ -358,12 +355,13 @@ namespace GitHub.Runner.Common
                                         if (this._websocketClient != null)
                                         {
                                             var delay = BackoffTimerHelper.GetRandomBackoff(_minDelayForWebsocketReconnect, _maxDelayForWebsocketReconnect);
-                                            Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {totalBatchedLinesPosted}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}).");
+                                            Trace.Info($"Websocket is not open, let's attempt to connect back again with random backoff {delay} ms (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}).");
                                             InitializeWebsocket(delay);
                                         }
                                     }
                                 }
 
+                                // if we can't push via websocket, let's fallback to posting via REST API
                                 if (!pushedLinesViaWebsocket)
                                 {
                                     // we will not requeue failed batch, since the web console lines are time sensitive.
