@@ -35,9 +35,6 @@ namespace GitHub.Runner.Worker
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
         {
             Trace.Entering();
-            executionContext.Debug(string.Join(", ", (executionContext.ExpressionValues["env"] as DictionaryContextData).Keys));
-            executionContext.Write(WellKnownTags.Warning, string.Join(", ", (executionContext.ExpressionValues["env"] as DictionaryContextData).Keys));
-
             if (!Constants.Runner.Platform.Equals(Constants.OSPlatform.Linux))
             {
                 throw new NotSupportedException("Container operations are only supported on Linux runners");

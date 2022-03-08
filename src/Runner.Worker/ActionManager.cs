@@ -16,7 +16,6 @@ using GitHub.Services.Common;
 using WebApi = GitHub.DistributedTask.WebApi;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 using PipelineTemplateConstants = GitHub.DistributedTask.Pipelines.ObjectTemplating.PipelineTemplateConstants;
-using GitHub.DistributedTask.Pipelines.ContextData;
 
 namespace GitHub.Runner.Worker
 {
@@ -572,9 +571,6 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNullOrEmpty(setupInfo.Container.Dockerfile, nameof(setupInfo.Container.Dockerfile));
 
             executionContext.Output($"##[group]Build container for action use: '{setupInfo.Container.Dockerfile}'.");
-
-            executionContext.Debug(string.Join(", ", (executionContext.ExpressionValues["env"] as DictionaryContextData).Keys));
-            executionContext.Write(WellKnownTags.Warning, string.Join(", ", (executionContext.ExpressionValues["env"] as DictionaryContextData).Keys));
 
             // Build docker image with retry up to 3 times
             var dockerManager = HostContext.GetService<IDockerCommandManager>();
