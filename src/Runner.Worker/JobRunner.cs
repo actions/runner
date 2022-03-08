@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
@@ -255,6 +256,13 @@ namespace GitHub.Runner.Worker
                     // Ignore any error since suggest runner update is best effort.
                     Trace.Error($"Caught exception during runner version check: {ex}");
                 }
+            }
+
+            if (jobContext.JobContext.ContainsKey("Node12ActionsWarnings"))
+            {
+                var actions = string.Join(", ", jobContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Select(action => action.ToString()));
+                var acm = HostContext.CreateService<IActionCommandManager>();
+                acm.TryProcessCommand(jobContext, $"::warning::Placeholder text: This action uses Node v12 with EoL in April. It is recommended to update to v16. Actions: {actions}", null);
             }
 
             try
