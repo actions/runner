@@ -2215,7 +2215,14 @@ namespace Runner.Server.Controllers
                                     foreach(var job2 in jobs) {
                                         if(job2.Status == null && job2.EvaluateIf != null) {
                                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Reevaluate Condition of {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
-                                            if(job2.EvaluateIf(workflowTraceWriter) == false) {
+                                            bool ifResult;
+                                            try {
+                                                ifResult = job2.EvaluateIf(workflowTraceWriter);
+                                            } catch(Exception ex) {
+                                                ifResult = false;
+                                                TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Exception while evaluating if expression of {job2.DisplayName ?? job2.name}: {ex.Message}, Stacktrace: {ex.StackTrace}" }), workflowTimelineId, workflowRecordId);
+                                            }
+                                            if(!ifResult) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Cancelling {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
                                                 var ji = job2;
                                                 // cancel pseudo job e.g. workflow_call
