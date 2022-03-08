@@ -256,7 +256,7 @@ namespace GitHub.Runner.Worker
 
                     IExecutionContext hookContext = jobContext.CreateChild(Guid.NewGuid(), "Pre Job Hook", $"{nameof(JobExtension)}_Pre_Job_Hook", null, null, ActionRunStage.Pre);
                     var jobStartedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
-                    if (!string.IsNullOrEmpty(jobStartedHookPath) && false)
+                    if (!string.IsNullOrEmpty(jobStartedHookPath))
                     {
                         preJobSteps.Add(new ManagedScriptStep(jobStartedHookPath,
                                                                 $"{PipelineTemplateConstants.Success}()",
