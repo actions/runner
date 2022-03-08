@@ -15,6 +15,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
+using GitHub.Runner.Worker;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Worker
@@ -248,7 +249,20 @@ namespace GitHub.Runner.Worker
                     Trace.Info("Downloading actions");
                     var actionManager = HostContext.GetService<IActionManager>();
                     var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
+
+                    // add hook to preJobSteps
+
                     preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
+
+                    IExecutionContext hookContext = jobContext.CreateChild(Guid.NewGuid(), "Pre Job Hook", $"{nameof(JobExtension)}_Pre_Job_Hook", null, null, ActionRunStage.Pre);
+                    var jobStartedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
+                    if (!string.IsNullOrEmpty(jobStartedHookPath))
+                    {
+                        preJobSteps.Add(new ManagedScriptStep($"{PipelineTemplateConstants.Success}()",
+                                                                jobStartedHookPath,
+                                                                displayName: "Pre Job Hook",
+                                                                hookContext));
+                    }
 
                     // Add start-container steps, record and stop-container steps
                     if (jobContext.Global.Container != null || jobContext.Global.ServiceContainers.Count > 0)
