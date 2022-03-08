@@ -2203,6 +2203,7 @@ namespace Runner.Server.Controllers
                     Action runWorkflow = () => {
                         s.Wait();
                         try {
+                            var clone = Clone();
                             Task.Run(async () => {
                                 try {
                                     await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.CancellationToken, finished.Token, workflowContext.ForceCancellationToken ?? CancellationToken.None).Token);
@@ -2216,16 +2217,15 @@ namespace Runner.Server.Controllers
                                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Reevaluate Condition of {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
                                             if(job2.EvaluateIf(workflowTraceWriter) == false) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Cancelling {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
-                                                foreach(var ji in job2.Childs ?? new List<MessageController.JobItem>{job2}) {
-                                                    // cancel pseudo job e.g. workflow_call
-                                                    ji.Cancel.Cancel();
-                                                    Job job = _cache.Get<Job>(ji.Id);
-                                                    if(job != null) {
-                                                        // cancel normal job
-                                                        job.CancelRequest.Cancel();
-                                                        if(job.SessionId == Guid.Empty) {
-                                                            new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
-                                                        }
+                                                var ji = job2;
+                                                // cancel pseudo job e.g. workflow_call
+                                                ji.Cancel.Cancel();
+                                                Job job = _cache.Get<Job>(ji.Id);
+                                                if(job != null) {
+                                                    // cancel normal job
+                                                    job.CancelRequest.Cancel();
+                                                    if(job.SessionId == Guid.Empty) {
+                                                        new FinishJobController(clone._cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     }
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Cancelled {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
@@ -2238,6 +2238,7 @@ namespace Runner.Server.Controllers
                                 }
                             });
                             if(workflowContext.ForceCancellationToken.HasValue) {
+                                var clone2 = Clone();
                                 Task.Run(async () => {
                                     try {
                                         await Task.Delay(-1, CancellationTokenSource.CreateLinkedTokenSource(workflowContext.ForceCancellationToken.Value, finished.Token).Token);
@@ -2249,24 +2250,15 @@ namespace Runner.Server.Controllers
                                         foreach(var job2 in jobs) {
                                             if(job2.Status == null) {
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Force cancelling {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
-                                                foreach(var ji in job2.Childs ?? new List<MessageController.JobItem>{job2}) {
-                                                    // cancel pseudo job e.g. workflow_call
-                                                    ji.Cancel.Cancel();
-                                                    Job job = _cache.Get<Job>(ji.Id);
-                                                    if(job != null) {
-                                                        // cancel normal job
-                                                        job.CancelRequest.Cancel();
-                                                        if(job.SessionId == Guid.Empty) {
-                                                            Task.Run(() => {
-                                                                // We need to resync with our workflow to alter the db
-                                                                s.Wait();
-                                                                try {
-                                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
-                                                                } finally {
-                                                                    s.Release();
-                                                                }
-                                                            });
-                                                        }
+                                                var ji = job2;
+                                                // cancel pseudo job e.g. workflow_call
+                                                ji.Cancel.Cancel();
+                                                Job job = _cache.Get<Job>(ji.Id);
+                                                if(job != null) {
+                                                    // cancel normal job
+                                                    job.CancelRequest.Cancel();
+                                                    if(job.SessionId == Guid.Empty) {
+                                                        new FinishJobController(clone2._cache, clone2._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     }
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Force cancelled {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
