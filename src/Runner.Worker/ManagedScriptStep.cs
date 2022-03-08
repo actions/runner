@@ -55,7 +55,6 @@ namespace GitHub.Runner.Worker
 
             // Create the handler invoker
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
-
             // Create the handler.
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             Dictionary<string, string> inputs = new()

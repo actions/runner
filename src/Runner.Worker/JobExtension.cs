@@ -258,10 +258,12 @@ namespace GitHub.Runner.Worker
                     var jobStartedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(jobStartedHookPath))
                     {
-                        preJobSteps.Add(new ManagedScriptStep(jobStartedHookPath,
+                        var hookStep = new ManagedScriptStep(jobStartedHookPath,
                                                                 $"{PipelineTemplateConstants.Success}()",
                                                                 displayName: "Pre Job Hook",
-                                                                hookContext));
+                                                                hookContext);
+                        hookStep.Initialize(HostContext);
+                        preJobSteps.Add(hookStep);
                     }
 
                     // Add start-container steps, record and stop-container steps
