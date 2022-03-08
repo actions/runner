@@ -151,7 +151,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 
-            if (Data.NodeVersion == "node12") // TODO: Add FF
+            if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.FeatureFlags.Node12Warning) ?? false))
             {
                 if (!ExecutionContext.JobContext.ContainsKey("Node12ActionsWarnings"))
                 {                     
