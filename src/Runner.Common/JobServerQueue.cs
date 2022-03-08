@@ -333,7 +333,7 @@ namespace GitHub.Runner.Common
                                     {
                                         totalBatchedLinesAttemptedByWebsocket++;
                                         // It should be okay to wait for the result since we are already doing this in the background and doing it one by one
-                                        await this._websocketClient.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(jsonData)), WebSocketMessageType.Text, false, default(CancellationToken));
+                                        await this._websocketClient.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(jsonData)), WebSocketMessageType.Text, true, default(CancellationToken));
                                         pushedLinesViaWebsocket = true;
                                     }
                                     catch (Exception ex)
