@@ -50,12 +50,14 @@ namespace GitHub.Runner.Worker
                 throw new IOException("File doesn't exist");
             }
 
+            this.WriteWebhookPayload(HostContext, Trace);
+
             // Create the handler data.
             var scriptDirectory = Path.GetDirectoryName(ScriptPath);
 
             // Create the handler invoker
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
-            // Create the handler.
+            // Create the handler
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             Dictionary<string, string> inputs = new()
             {

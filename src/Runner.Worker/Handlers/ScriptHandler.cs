@@ -223,17 +223,17 @@ namespace GitHub.Runner.Worker.Handlers
                 throw new ArgumentException("Invalid shell option. Shell must be a valid built-in (bash, sh, cmd, powershell, pwsh) or a format string containing '{0}'");
             }
             string scriptFilePath, resolvedScriptPath;
-            if (string.IsNullOrEmpty(Inputs["path"]))
-            {
-                // We do not not the full path until we know what shell is being used, so that we can determine the file extension
-                scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
-                resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
-            }
-            else 
+            if (Inputs.ContainsKey("path"))
             {
                 // TODO: Consider absolute vs relative path, symlinks
                 scriptFilePath = Inputs["path"];
                 resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
+            }
+            else 
+            {
+                // We do not not the full path until we know what shell is being used, so that we can determine the file extension
+                scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
+                resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
             }
 
             // Format arg string with script path
@@ -252,7 +252,7 @@ namespace GitHub.Runner.Worker.Handlers
             var encoding = new UTF8Encoding(false);
 #endif
             // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
-            if (string.IsNullOrEmpty(Inputs["path"]))
+            if (!Inputs.ContainsKey("path"))
             {
                 File.WriteAllText(scriptFilePath, contents, encoding);                
             }

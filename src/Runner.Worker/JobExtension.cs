@@ -251,13 +251,10 @@ namespace GitHub.Runner.Worker
                     var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
 
                     // add hook to preJobSteps
-
-                    preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
-
-                    IExecutionContext hookContext = jobContext.CreateChild(Guid.NewGuid(), "Pre Job Hook", $"{nameof(JobExtension)}_Pre_Job_Hook", null, null, ActionRunStage.Pre);
                     var jobStartedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(jobStartedHookPath))
                     {
+                        IExecutionContext hookContext = jobContext.CreateChild(Guid.NewGuid(), "Pre Job Hook", $"{nameof(JobExtension)}_Pre_Job_Hook", null, null, ActionRunStage.Pre);
                         var hookStep = new ManagedScriptStep(jobStartedHookPath,
                                                                 $"{PipelineTemplateConstants.Success}()",
                                                                 displayName: "Pre Job Hook",
@@ -265,6 +262,9 @@ namespace GitHub.Runner.Worker
                         hookStep.Initialize(HostContext);
                         preJobSteps.Add(hookStep);
                     }
+
+                    preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
+
 
                     // Add start-container steps, record and stop-container steps
                     if (jobContext.Global.Container != null || jobContext.Global.ServiceContainers.Count > 0)
