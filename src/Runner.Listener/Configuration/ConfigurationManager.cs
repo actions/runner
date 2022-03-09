@@ -634,17 +634,22 @@ namespace GitHub.Runner.Listener.Configuration
                             var jsonResponse = await response.Content.ReadAsStringAsync();
                             return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(jsonResponse);
                         }
-                        else if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                        {
-                            // It doesn't make sense to retry in this case, so just stop
-                            break;
-                        }
                         else
                         {
                             _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
-                            response.EnsureSuccessStatusCode();
+
+                            if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                            {
+                                _term.WriteError("Invalid repository URL or register token");
+                                return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(errorResponse);
+                            }
+                            else
+                            {
+                                // Something else bad happened, let's go to our retry logic
+                                response.EnsureSuccessStatusCode();
+                            }
                         }
                     }
                     catch(Exception ex) when (retryCount < 2)
@@ -652,10 +657,10 @@ namespace GitHub.Runner.Listener.Configuration
                         retryCount++;
                         Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
                         Trace.Error(ex);
-                        Trace.Info("Retrying in 5 seconds");
                     }
                 }
                 var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                Trace.Info($"Retrying in {backOff.Seconds} seconds");
                 await Task.Delay(backOff);
             }
             return null;
@@ -699,18 +704,22 @@ namespace GitHub.Runner.Listener.Configuration
                             var jsonResponse = await response.Content.ReadAsStringAsync();
                             return StringUtil.ConvertFromJson<GitHubAuthResult>(jsonResponse);
                         }
-                        else if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                        {
-                            // It doesn't make sense to retry in this case, so just stop
-                            break;
-                        }
                         else
                         {
                             _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
-                            // Something else bad happened, let's go to our retry logic
-                            response.EnsureSuccessStatusCode();
+
+                            if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                            {
+                                _term.WriteError("Invalid repository URL or register token");
+                                return StringUtil.ConvertFromJson<GitHubAuthResult>(errorResponse);
+                            }
+                            else
+                            {
+                                // Something else bad happened, let's go to our retry logic
+                                response.EnsureSuccessStatusCode();
+                            }
                         }
                     }
                     catch(Exception ex) when (retryCount < 2)
@@ -718,10 +727,10 @@ namespace GitHub.Runner.Listener.Configuration
                         retryCount++;
                         Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
                         Trace.Error(ex);
-                        Trace.Info("Retrying in 5 seconds");
                     }
                 }
                 var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                Trace.Info($"Retrying in {backOff.Seconds} seconds");
                 await Task.Delay(backOff);
             }
             return null;
