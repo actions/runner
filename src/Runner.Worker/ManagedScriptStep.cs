@@ -22,17 +22,19 @@ namespace GitHub.Runner.Worker
             string scriptPath,
             string condition,
             string displayName,
-            IExecutionContext executionContext)
+            ActionRunStage stage)
         {
             ScriptPath = scriptPath;
             Condition = condition;
             DisplayName = displayName;
-            ExecutionContext = executionContext;
+            Stage = stage;
         }
 
         public string ScriptPath { get; private set; }
         public string Condition { get; set; }
         public string DisplayName { get; set; }
+        public ActionRunStage Stage { get; }
+
         public bool Enabled => true;
         public string AccessToken { get; set; }
 
@@ -75,7 +77,7 @@ namespace GitHub.Runner.Worker
                             localActionContainerSetupSteps: null);
 
             // Run the task.
-            await handler.RunAsync(ActionRunStage.Main); // TODO: Try to pass ActionRunStage.Post
+            await handler.RunAsync(Stage);
         }
     }
 }
