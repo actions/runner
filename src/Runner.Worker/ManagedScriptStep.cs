@@ -12,6 +12,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
+using System.Linq;
 
 namespace GitHub.Runner.Worker
 {
@@ -61,6 +62,10 @@ namespace GitHub.Runner.Worker
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             // Create the handler
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
+            
+            var prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
+            ScriptHandlerHelpers.WhichShell(ScriptPath, Trace, prependPath);
+
             Dictionary<string, string> inputs = new()
             {
                 ["path"] = ScriptPath,

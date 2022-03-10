@@ -1,6 +1,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Handlers
 {
@@ -77,6 +79,23 @@ namespace GitHub.Runner.Worker.Handlers
             else
             {
                 throw new ArgumentException($"Failed to parse COMMAND [..ARGS] from {shellOption}");
+            }
+        }
+
+        internal static string WhichShell(string path, Common.Tracing trace, string prependPath) // TODO: Figure out how it relates to 
+        {
+            var format = "{0} {1}";
+            switch (Path.GetExtension(path))
+            {
+                case ".sh":
+                    // use 'sh' args but prefer bash
+                    var pathToShell = WhichUtil.Which("bash", false, trace, prependPath) ?? WhichUtil.Which("sh", true, trace, prependPath);
+                    return string.Format(format, pathToShell, _defaultArguments["sh"]);
+                case ".ps1":
+                    var pathToPowershell = WhichUtil.Which("pwsh", false, trace, prependPath) ?? WhichUtil.Which("powershell", true, trace, prependPath);
+                    return string.Format(format, pathToPowershell, _defaultArguments["powershell"]);
+                default:
+                    throw new ArgumentException($"{path} is not a valid path to a script. Make sure it ends in '.sh' or '.ps1'.");
             }
         }
     }
