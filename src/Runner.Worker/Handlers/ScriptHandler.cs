@@ -25,7 +25,7 @@ namespace GitHub.Runner.Worker.Handlers
         protected override void PrintActionDetails(ActionRunStage stage)
         {
             // if we're executing a managed script, we won't have an 'Action'
-            if (IsActionStep)
+            if (!IsActionStep)
             {
                 if(Inputs.TryGetValue("path", out var path))
                 {
