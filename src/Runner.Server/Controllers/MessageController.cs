@@ -509,11 +509,22 @@ namespace Runner.Server.Controllers
             }
         }
 
-        private static MappingToken LoadEnv(string[] contents)
+        private static IEnumerable<MappingToken> LoadEnv(string[] contents)
         {
-            var environment = new MappingToken(null, null, null);
-            LoadEnvSec(contents, (envKey, envValue) => environment.Add(new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, envKey), new StringToken(null, null, null, envValue))));
-            return environment;
+            var ret = new List<(ISet<string> keys, MappingToken envToken)>();
+            LoadEnvSec(contents, (envKey, envValue) => {
+                var entry = new KeyValuePair<ScalarToken, TemplateToken>(new StringToken(null, null, null, envKey), new StringToken(null, null, null, envValue));
+                foreach(var l in ret) {
+                    if(l.keys.Add(envKey)) {
+                        l.envToken.Add(entry);
+                        return;
+                    }
+                }
+                var environment = new MappingToken(null, null, null);
+                environment.Add(entry);
+                ret.Add((new HashSet<string>(new [] { envKey }, StringComparer.OrdinalIgnoreCase), environment));
+            });
+            return from env in ret select env.envToken;
         }
         private enum JobStatus {
             Pending,
@@ -949,7 +960,7 @@ namespace Runner.Server.Controllers
                 TemplateToken workflowDefaults = null;
                 List<TemplateToken> workflowEnvironment = new List<TemplateToken>();
                 if(env?.Length > 0) {
-                    workflowEnvironment.Add(LoadEnv(env));
+                    workflowEnvironment.AddRange(LoadEnv(env));
                 }
 
                 var localJobCompletedEvents = new LocalJobCompletedEvents();
