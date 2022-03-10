@@ -332,8 +332,15 @@ namespace GitHub.Runner.Common
                                     try
                                     {
                                         totalBatchedLinesAttemptedByWebsocket++;
-                                        // It should be okay to wait for the result since we are already doing this in the background and doing it one by one
-                                        await this._websocketClient.SendAsync(new ArraySegment<byte>(Encoding.UTF8.GetBytes(jsonData)), WebSocketMessageType.Text, true, default(CancellationToken));
+                                        var jsonDataBytes = Encoding.UTF8.GetBytes(jsonData);
+                                        // break the message into chunks of 1024 bytes
+                                        for (var i = 0; i < jsonDataBytes.Length; i += 1 * 1024)
+                                        {
+                                            var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
+                                            var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
+                                            await this._websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage:lastChunk, CancellationToken.None);
+                                        }
+
                                         pushedLinesViaWebsocket = true;
                                     }
                                     catch (Exception ex)
