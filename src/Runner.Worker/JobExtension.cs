@@ -251,16 +251,18 @@ namespace GitHub.Runner.Worker
                     var prepareResult = await actionManager.PrepareActionsAsync(context, message.Steps);
 
                     // add hook to preJobSteps
-                    var jobStartedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
-                    if (!string.IsNullOrEmpty(jobStartedHookPath))
+                    var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
+                    if (!string.IsNullOrEmpty(startedHookPath))
                     {
-                        IExecutionContext hookContext = jobContext.CreateChild(Guid.NewGuid(), "Pre Job Hook", $"{nameof(JobExtension)}_Pre_Job_Hook", null, null, ActionRunStage.Pre);
-                        var hookStep = new ManagedScriptStep(jobStartedHookPath,
-                                                                $"{PipelineTemplateConstants.Success}()",
-                                                                displayName: "Pre Job Hook",
-                                                                hookContext);
-                        hookStep.Initialize(HostContext);
-                        preJobSteps.Add(hookStep);
+                        if (!string.IsNullOrEmpty(startedHookPath))
+                        {
+                            var hookStep = new ManagedScriptStep(startedHookPath,
+                                                                    $"{PipelineTemplateConstants.Always}()",
+                                                                    displayName: "Pre Job Hook",
+                                                                    ActionRunStage.Pre);
+                            hookStep.Initialize(HostContext); // TODO: is Initialize() the right way to pass on a HostContext?
+                            preJobSteps.Add(hookStep);
+                        }
                     }
 
                     preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
@@ -340,6 +342,11 @@ namespace GitHub.Runner.Worker
                             Guid stepId = Guid.NewGuid();
                             actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, stepId.ToString("N"), null, null, ActionRunStage.Pre, intraActionStates[actionStep.Action.Id]);
                         }
+                        else if (step is ManagedScriptStep)
+                        {
+                            var managedScriptStep = step as ManagedScriptStep;
+                            managedScriptStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), "Pre Job Hook", $"{nameof(JobExtension)}_Pre_Job_Hook", null, null, ActionRunStage.Pre);
+                        }
                     }
 
                     // Create execution context for job steps
@@ -350,6 +357,20 @@ namespace GitHub.Runner.Worker
                             ArgUtil.NotNull(actionStep, step.DisplayName);
                             intraActionStates.TryGetValue(actionStep.Action.Id, out var intraActionState);
                             actionStep.ExecutionContext = jobContext.CreateChild(actionStep.Action.Id, actionStep.DisplayName, actionStep.Action.Name, null, actionStep.Action.ContextName, ActionRunStage.Main, intraActionState);
+                        }
+                    }
+
+                    var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
+                    if (!string.IsNullOrEmpty(completedHookPath))
+                    {
+                        if (!string.IsNullOrEmpty(completedHookPath))
+                        {
+                            var hookStep = new ManagedScriptStep(completedHookPath,
+                                                                    $"{PipelineTemplateConstants.Always}()",
+                                                                    displayName: "Post Job Hook",
+                                                                    ActionRunStage.Post);
+                            hookStep.Initialize(HostContext); // TODO: is Initialize() the right way to pass on a HostContext?
+                            jobContext.RegisterPostJobStep(hookStep);
                         }
                     }
 
