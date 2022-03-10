@@ -24,10 +24,22 @@ namespace GitHub.Runner.Worker.Handlers
 
         protected override void PrintActionDetails(ActionRunStage stage)
         {
-            Inputs.TryGetValue("script", out string contents);
-            contents = contents ?? string.Empty;
-            if (Action.Type == Pipelines.ActionSourceType.Script)
+            // if we're executing a managed script, we won't have an 'Action'
+            if (IsActionStep)
             {
+                if(Inputs.TryGetValue("path", out var path))
+                {
+                    ExecutionContext.Output($"##[group]Run '{path}'");
+                }
+                else
+                {
+                    throw new InvalidOperationException("Inputs 'path' must be set for managed scripts");
+                }
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.Script)
+            {
+                Inputs.TryGetValue("script", out string contents);
+                contents = contents ?? string.Empty;
                 var firstLine = contents.TrimStart(' ', '\t', '\r', '\n');
                 var firstNewLine = firstLine.IndexOfAny(new[] { '\r', '\n' });
                 if (firstNewLine >= 0)
@@ -36,17 +48,16 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 ExecutionContext.Output($"##[group]Run {firstLine}");
+                var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+                foreach (var line in multiLines)
+                {
+                    // Bright Cyan color
+                    ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
+                }
             }
             else
             {
-                throw new InvalidOperationException($"Invalid action type {Action.Type} for {nameof(ScriptHandler)}");
-            }
-
-            var multiLines = contents.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
-            foreach (var line in multiLines)
-            {
-                // Bright Cyan color
-                ExecutionContext.Output($"\x1b[36;1m{line}\x1b[0m");
+                throw new InvalidOperationException($"Invalid action type {Action?.Type} for {nameof(ScriptHandler)}");
             }
 
             string argFormat;
@@ -218,7 +229,7 @@ namespace GitHub.Runner.Worker.Handlers
                 scriptFilePath = Inputs["path"];
                 resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
             }
-            else 
+            else
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
@@ -243,7 +254,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
             if (!Inputs.ContainsKey("path"))
             {
-                File.WriteAllText(scriptFilePath, contents, encoding);                
+                File.WriteAllText(scriptFilePath, contents, encoding);
             }
 
             // Prepend PATH

@@ -36,6 +36,7 @@ namespace GitHub.Runner.Worker.Handlers
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
         public Pipelines.ActionStepDefinitionReference Action { get; set; }
+        public bool IsActionStep => Action != null; 
         public Dictionary<string, string> Environment { get; set; }
         public Variables RuntimeVariables { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
@@ -49,8 +50,11 @@ namespace GitHub.Runner.Worker.Handlers
             // Print out action details
             PrintActionDetails(stage);
 
-            // Get telemetry for the action.
-            PopulateActionTelemetry();
+            // Get telemetry for the action, skip telemetry for managed scripts
+            if (IsActionStep)
+            {
+                PopulateActionTelemetry();
+            }
         }
 
         protected void PopulateActionTelemetry()
