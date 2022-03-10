@@ -63,7 +63,8 @@ namespace GitHub.Runner.Worker
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             Dictionary<string, string> inputs = new()
             {
-                ["path"] = ScriptPath
+                ["path"] = ScriptPath,
+                ["shell"] = "/usr/bin/bash -e {0}"
             };
             var handler = handlerFactory.Create(
                             ExecutionContext,
@@ -76,8 +77,19 @@ namespace GitHub.Runner.Worker
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null);
 
-            // Run the task.
-            await handler.RunAsync(Stage);
+            handler.PrepareExecution(Stage);
+
+            // Setup File Command Manager
+            var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
+            fileCommandManager.InitializeFiles(ExecutionContext, null);
+            try
+            {
+                await handler.RunAsync(Stage);
+            }
+            finally
+            {
+                fileCommandManager.ProcessFiles(ExecutionContext, ExecutionContext.Global.Container);
+            }
         }
     }
 }
