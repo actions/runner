@@ -642,8 +642,9 @@ namespace GitHub.Runner.Listener.Configuration
 
                             if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
                             {
-                                _term.WriteError("Invalid repository URL or register token");
-                                return StringUtil.ConvertFromJson<GitHubRunnerRegisterToken>(errorResponse);
+                                // No need to retry
+                                retryCount = 3;
+                                throw new Exception("Invalid repository URL or register token");
                             }
                             else
                             {
@@ -712,8 +713,9 @@ namespace GitHub.Runner.Listener.Configuration
 
                             if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
                             {
-                                _term.WriteError("Invalid repository URL or register token");
-                                return StringUtil.ConvertFromJson<GitHubAuthResult>(errorResponse);
+                                // No need to retry
+                                retryCount = 3;
+                                throw new Exception("Invalid repository URL or register token");
                             }
                             else
                             {
