@@ -50,16 +50,18 @@ namespace GitHub.Runner.Worker.Handlers
             // Print out action details
             PrintActionDetails(stage);
 
-            // Get telemetry for the action, skip telemetry for managed scripts
-            if (IsActionStep)
-            {
-                PopulateActionTelemetry();
-            }
+            // Get telemetry for the action and managed scripts
+            PopulateActionTelemetry(stage);            
         }
 
-        protected void PopulateActionTelemetry()
+        protected void PopulateActionTelemetry(ActionRunStage stage)
         {
-            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            if (!IsActionStep)
+            {
+                ExecutionContext.StepTelemetry.Type = "runner";
+                ExecutionContext.StepTelemetry.Action = $"{stage} Job Hook";
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
                 ExecutionContext.StepTelemetry.Type = "docker";
                 var registryAction = Action as Pipelines.ContainerRegistryReference;

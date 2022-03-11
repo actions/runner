@@ -223,17 +223,18 @@ namespace GitHub.Runner.Worker.Handlers
                 throw new ArgumentException("Invalid shell option. Shell must be a valid built-in (bash, sh, cmd, powershell, pwsh) or a format string containing '{0}'");
             }
             string scriptFilePath, resolvedScriptPath;
-            if (Inputs.ContainsKey("path"))
-            {
-                // TODO: Consider absolute vs relative path, symlinks
-                scriptFilePath = Inputs["path"];
-                resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
-            }
-            else
+            bool shouldWriteContentToDisk = !Inputs.ContainsKey("path");
+            if (shouldWriteContentToDisk)
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
                 resolvedScriptPath = $"{StepHost.ResolvePathForStepHost(scriptFilePath).Replace("\"", "\\\"")}";
+            }
+            else
+            {
+                // TODO: Consider absolute vs relative path, symlinks
+                scriptFilePath = Inputs["path"];
+                resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
             }
 
             // Format arg string with script path
@@ -250,10 +251,10 @@ namespace GitHub.Runner.Worker.Handlers
 #else
             // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
             var encoding = new UTF8Encoding(false);
-#endif
-            // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
-            if (!Inputs.ContainsKey("path"))
+#endif            
+            if (shouldWriteContentToDisk)
             {
+                // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
                 File.WriteAllText(scriptFilePath, contents, encoding);
             }
 
