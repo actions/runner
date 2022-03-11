@@ -406,7 +406,7 @@ namespace GitHub.Runner.Worker
             // create a new timeline record node for 'Finalize job'
             IExecutionContext context = jobContext.CreateChild(Guid.NewGuid(), "Complete job", $"{nameof(JobExtension)}_Final", null, null, ActionRunStage.Post);
             context.StepTelemetry.Type = "runner";
-            context.StepTelemetry.Action = "complete_joh";
+            context.StepTelemetry.Action = "complete_job";
             using (var register = jobContext.CancellationToken.Register(() => { context.CancelToken(); }))
             {
                 try
