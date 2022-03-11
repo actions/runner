@@ -2415,6 +2415,47 @@ namespace Runner.Server.Controllers
             await task;
             _cache.Remove(id);
         }
+
+        [HttpGet("idtoken")]
+        [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
+        public Task<FileStreamResult> GenerateIdToken([FromQuery] string run_id, [FromQuery] string run_number, [FromQuery] string environment, [FromQuery] string head_ref, [FromQuery] string base_ref, [FromQuery] string actor, [FromQuery] string workflow, [FromQuery] string event_name, [FromQuery] string job_workflow_ref, [FromQuery] string sha, [FromQuery] string audience) {
+            var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
+            var myIssuer = "http://githubactionsserver";
+            var myAudience = audience ?? new Uri(new Uri(ServerUrl), User.FindFirstValue("repository").Split('/', 2)[0]).ToString();
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim("environment", environment ?? ""),
+                    new Claim("ref", User.FindFirstValue("ref") ?? ""),
+                    new Claim("sha", sha ?? ""),
+                    new Claim("repository", User.FindFirstValue("repository") ?? ""),
+                    new Claim("repository_owner", User.FindFirstValue("repository").Split('/', 2)[0]),
+                    new Claim("run_id", run_id ?? ""),
+                    new Claim("run_number", run_number ?? ""),
+                    new Claim("run_attempt", User.FindFirstValue("attempt") ?? ""),
+                    new Claim("actor", actor ?? ""),
+                    new Claim("workflow", workflow ?? ""),
+                    new Claim("head_ref", head_ref ?? ""),
+                    new Claim("base_ref", base_ref ?? ""),
+                    new Claim("event_name", event_name ?? ""),
+                    new Claim("ref_type", User.FindFirstValue("ref").StartsWith("refs/heads/") ? "branch" : User.FindFirstValue("ref").StartsWith("refs/tags/") ? "tag" : ""),
+                    new Claim("job_workflow_ref", job_workflow_ref ?? ""),
+                }),
+                Expires = DateTime.UtcNow.AddHours(1),
+                Issuer = myIssuer,
+                Audience = myAudience,
+                SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
+            };
+
+            var resources = new JobResources();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var stoken = tokenHandler.WriteToken(token);
+            return Ok(new { value = stoken });
+        }
+
         private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
         {
             int fileContainerId = -1;
@@ -2882,6 +2923,7 @@ namespace Runner.Server.Controllers
                         var feedStreamUrl = new UriBuilder(new Uri(new Uri(apiUrl), $"_apis/v1/TimeLineWebConsoleLog/feedstream/{Uri.EscapeDataString(timelineId.ToString())}/ws"));
                         feedStreamUrl.Scheme = feedStreamUrl.Scheme == "http" ? "ws" : "wss";
                         systemVssConnection.Data["FeedStreamUrl"] = feedStreamUrl.ToString();
+                        systemVssConnection.Data["GenerateIdTokenUrl"] = new Uri(new Uri(apiUrl), $"_apis/v1/Message/idtoken?run_id={attempt?.WorkflowRun?.Id??0}&run_number={attempt?.WorkflowRun?.Id??0}&environment={Uri.EscapeDataString(deploymentEnvironmentValue?.Name ?? (""))}&head_ref={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["head_ref"].ToString())}&base_ref={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["base_ref"].ToString())}&actor={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["actor"].ToString())}&workflow={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["workflow"].ToString())}&event_name={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["event_name"].ToString())}&sha={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["sha"].ToString())}&job_workflow_ref={Uri.EscapeDataString(callingJob?.WorkflowRepo ?? ".")}%2f{Uri.EscapeDataString(callingJob?.WorkflowPath??"")}@{Uri.EscapeDataString(callingJob?.WorkflowRef??"")}").ToString();
                         resources.Endpoints.Add(systemVssConnection);
 
                         if(!string.IsNullOrEmpty(GitHubAppPrivateKeyFile) && GitHubAppId != 0 && (!variables.TryGetValue("system.github.token", out var _token) || string.IsNullOrEmpty(_token?.Value))) {
