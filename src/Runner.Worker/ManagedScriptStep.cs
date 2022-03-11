@@ -16,7 +16,6 @@ using System.Linq;
 
 namespace GitHub.Runner.Worker
 {
-    // This is for internal testing and is not publicly supported. This will be removed from the agent at a later time.
     public class ManagedScriptStep : RunnerService, IStep
     {
         public ManagedScriptStep(
@@ -35,11 +34,6 @@ namespace GitHub.Runner.Worker
         public string Condition { get; set; }
         public string DisplayName { get; set; }
         public ActionRunStage Stage { get; }
-
-        public bool Enabled => true;
-        public string AccessToken { get; set; }
-
-
         public TemplateToken ContinueOnError => new BooleanToken(null, null, null, false);
         public TemplateToken Timeout => new NumberToken(null, null, null, 0);
 
@@ -57,7 +51,6 @@ namespace GitHub.Runner.Worker
 
             // Create the handler data.
             var scriptDirectory = Path.GetDirectoryName(ScriptPath);
-
             // Create the handler invoker
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             // Create the handler
@@ -72,18 +65,17 @@ namespace GitHub.Runner.Worker
             };
             var handler = handlerFactory.Create(
                             ExecutionContext,
-                            null,
+                            action: null,
                             stepHost,
                             new ScriptActionExecutionData(),
                             inputs,
-                            new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
+                            environment: new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
                             ExecutionContext.Global.Variables,
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null);
 
             handler.PrepareExecution(Stage);
 
-            // Setup File Command Manager
             var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
             fileCommandManager.InitializeFiles(ExecutionContext, null);
             try
