@@ -552,7 +552,10 @@ namespace GitHub.Runner.Worker
 
             // Tracking the line number (logFileLineNumber) and step number (stepNumber) for each issue that gets created
             // Actions UI from the run summary page use both values to easily link to an exact locations in logs where annotations originate from
-            issue.Data["stepNumber"] = _record.Order != null ? _record.Order.ToString() : "0"; 
+            if (_record.Order != null)
+            {
+                issue.Data["stepNumber"] = _record.Order.ToString();
+            }
 
             if (issue.Type == IssueType.Error)
             {
