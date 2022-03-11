@@ -3859,9 +3859,9 @@ namespace Runner.Server.Controllers
         }
         private void RerunWorkflow2(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false) {
             string latestWorkflow = null;
-            string latestSha = null;
             var run = (from r in _context.Set<WorkflowRun>() where r.Id == runid select r).First();
             var lastAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt descending select a).First();
+            string latestSha = lastAttempt.Sha;
             var payloadObject = JObject.Parse(lastAttempt.EventPayload);
             var hook = payloadObject.ToObject<GiteaHook>();
             string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
@@ -3877,15 +3877,23 @@ namespace Runner.Server.Controllers
                     if(!string.IsNullOrEmpty(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)) {
                         client.DefaultRequestHeaders.Add("Authorization", $"token {(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)}");
                     }
+                    var cres = client.GetAsync(new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{repository_name}/commits")) { Query = $"?sha={Uri.EscapeDataString(lastAttempt.Ref ?? "")}&page=1&limit=1&per_page=1" }.ToString()).GetAwaiter().GetResult();;
+                    if(cres.IsSuccessStatusCode) {
+                        var content = cres.Content.ReadAsStringAsync().GetAwaiter().GetResult();;
+                        var o = JsonConvert.DeserializeObject<GitCommit[]>(content)[0];
+                        latestSha = o.Sha;
+                    }
+
                     var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{repository_name}/contents/{Uri.EscapeDataString(run.FileName)}"));
-                    url.Query = $"ref={Uri.EscapeDataString(lastAttempt.Ref)}";
+                    url.Query = $"ref={Uri.EscapeDataString(latestSha)}";
                     var res = client.GetAsync(url.ToString()).GetAwaiter().GetResult();
-                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                    if(res.IsSuccessStatusCode) {
                         var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
                         var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
                         var fileRes = client.GetAsync(item.download_url).GetAwaiter().GetResult();
-                        latestWorkflow = fileRes.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                        latestSha = item.Sha;
+                        if(fileRes.IsSuccessStatusCode) {
+                            latestWorkflow =  fileRes.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        }
                     }
                 } finally {
                     if(githubAppToken != null) {
