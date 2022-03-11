@@ -232,9 +232,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         private bool IsDockerFile(string image)
         {
-
-            var imagePathSplit = Data.Image.Split('/');
-            var imageWithoutPath = imagePathSplit[imagePathSplit.Length - 1];
+            var imageWithoutPath = Data.Image.Split('/').Last();
             if (imageWithoutPath.StartsWith("Dockerfile") || imageWithoutPath.StartsWith("dockerfile") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile"))
             {
                 // ensure docker file exist
