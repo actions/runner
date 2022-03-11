@@ -1698,13 +1698,29 @@ namespace Runner.Client
             configs.Add(Path.Combine(".", ".actrc"));
             List<string> cargs = new List<string>();
             var cfgregex = new Regex("\\s");
+
+            var dummyCommand = new Command("actrc");
+            foreach(var opt in rootCommand.Options) {
+                dummyCommand.AddOption(opt);
+            }
             foreach(var config in configs) {
                 try {
                     var content = File.ReadAllLines(config);
-                    foreach(var line in content) {
+                    long n = 0;
+                    foreach(var rawline in content) {
+                        var line = rawline.Trim();
                         if(line.StartsWith("-")) {
-                            cargs.AddRange(cfgregex.Split(line, 2));
+                            var opt = cfgregex.Split(line, 2);
+                            var pres = dummyCommand.Parse(opt);
+                            if(pres.Errors?.Count > 0) {
+                                foreach(var err in pres.Errors) {
+                                    Console.Error.WriteLine($"Warning: Failed to parse \"{config}\" line {n}: {err.Message}");
+                                }
+                            } else {
+                                cargs.AddRange(opt);
+                            }
                         }
+                        n++;
                     }
                 } catch {
 
@@ -1712,7 +1728,7 @@ namespace Runner.Client
             }
             cargs.AddRange(args);
             // Parse the incoming args and invoke the handler
-            return rootCommand.InvokeAsync(cargs.ToArray()).Result;
+            return rootCommand.InvokeAsync(args.Length == 1 && args[0] == "--version" ? args : cargs.ToArray()).Result;
         }
 
         private static async Task CollectRepoFiles(string wd, RepoDownload endpoint, MultipartFormDataContent repodownload, List<Stream> streamsToDispose, long level, Parameters parameters, CancellationTokenSource source) {
