@@ -44,34 +44,26 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Data.Image = Data.Image.Substring("docker://".Length);
             }
-            else if (Data.Image.Split('/').Length > 0)
+            else if (IsDockerFile(Data.Image))
             {
-                var imagePathSplit = Data.Image.Split('/');
-                var image = imagePathSplit[imagePathSplit.Length-1];
-                if (image.StartsWith("Dockerfile") || image.StartsWith("dockerfile") || image.EndsWith("Dockerfile") || image.EndsWith("dockerfile"))
+                var dockerFile = Path.Combine(ActionDirectory, Data.Image);
+                ExecutionContext.Output($"##[group]Building docker image");
+                ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
+                var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                var buildExitCode = await dockerManager.DockerBuild(
+                    ExecutionContext,
+                    ExecutionContext.GetGitHubContext("workspace"),
+                    dockerFile,
+                    Directory.GetParent(dockerFile).FullName,
+                    imageName);
+                ExecutionContext.Output("##[endgroup]");
+
+                if (buildExitCode != 0)
                 {
-                    // ensure docker file exist
-                    var dockerFile = Path.Combine(ActionDirectory, Data.Image);
-                    ArgUtil.File(dockerFile, nameof(Data.Image));
-
-                    ExecutionContext.Output($"##[group]Building docker image");
-                    ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-                    var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                    var buildExitCode = await dockerManager.DockerBuild(
-                        ExecutionContext,
-                        ExecutionContext.GetGitHubContext("workspace"),
-                        dockerFile,
-                        Directory.GetParent(dockerFile).FullName,
-                        imageName);
-                    ExecutionContext.Output("##[endgroup]");
-
-                    if (buildExitCode != 0)
-                    {
-                        throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
-                    }
-
-                    Data.Image = imageName;
+                    throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
                 }
+
+                Data.Image = imageName;
             }
 
             string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";
@@ -236,6 +228,21 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 #endif
+        }
+
+        private bool IsDockerFile(string image)
+        {
+
+            var imagePathSplit = Data.Image.Split('/');
+            var imageWithoutPath = imagePathSplit[imagePathSplit.Length - 1];
+            if (imageWithoutPath.StartsWith("Dockerfile") || imageWithoutPath.StartsWith("dockerfile") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile"))
+            {
+                // ensure docker file exist
+                var dockerFile = Path.Combine(ActionDirectory, Data.Image);
+                ArgUtil.File(dockerFile, nameof(Data.Image));
+                return true;
+            }
+            return false;
         }
     }
 }
