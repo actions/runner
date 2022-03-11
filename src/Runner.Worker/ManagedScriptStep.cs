@@ -64,19 +64,18 @@ namespace GitHub.Runner.Worker
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             
             var prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
-            ScriptHandlerHelpers.WhichShell(ScriptPath, Trace, prependPath);
 
             Dictionary<string, string> inputs = new()
             {
                 ["path"] = ScriptPath,
-                ["shell"] = "/usr/bin/bash -e {0}"
+                ["shell"] = ScriptHandlerHelpers.WhichShell(ScriptPath, Trace, prependPath)
             };
             var handler = handlerFactory.Create(
                             ExecutionContext,
                             null,
                             stepHost,
                             new ScriptActionExecutionData(),
-                            inputs, // TODO: set shell. ps1,sh
+                            inputs,
                             new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer),
                             ExecutionContext.Global.Variables,
                             actionDirectory: scriptDirectory,
