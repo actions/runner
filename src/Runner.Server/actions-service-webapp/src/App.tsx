@@ -711,6 +711,11 @@ function JobPage() {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/cancel/" + job.jobId, { method: "POST" });
                       })();
                   }}>Cancel</button>
+                  <button onClick={(event) => {
+                      (async () => {
+                          await fetch(ghHostApiUrl + "/_apis/v1/Message/cancel/" + job.jobId + "?force=true", { method: "POST" });
+                      })();
+                  }}>Force Cancel</button>
               </div>;
           } else {
               return <div>
@@ -729,6 +734,21 @@ function JobPage() {
                           await fetch(ghHostApiUrl + "/_apis/v1/Message/rerun/" + job.jobId, { method: "POST" });
                       })();
                   }}>Rerun</button>
+                  <button onClick={(event) => {
+                      (async () => {
+                          await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + job.runid + "?onLatestCommit=true", { method: "POST" });
+                      })();
+                  }}>Rerun Workflow ( Latest Commit )</button>
+                  <button onClick={(event) => {
+                      (async () => {
+                          await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + job.runid + "?onLatestCommit=true", { method: "POST" });
+                      })();
+                  }}>Rerun Failed Jobs ( Latest Commit )</button>
+                  <button onClick={(event) => {
+                      (async () => {
+                          await fetch(ghHostApiUrl + "/_apis/v1/Message/rerun/" + job.jobId + "?onLatestCommit=true", { method: "POST" });
+                      })();
+                  }}>Rerun ( Latest Commit )</button>
               </div>;
           }
       } else if(workflowRun !== undefined && workflowRun != null) {
@@ -752,6 +772,16 @@ function JobPage() {
                 await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + params.runid, { method: "POST" });
             })();
         }}>Rerun Failed Jobs</button>
+        <button onClick={(event) => {
+            (async () => {
+                await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunworkflow/" + params.runid + "?onLatestCommit=true", { method: "POST" });
+            })();
+        }}>Rerun Workflow ( Latest Commit )</button>
+        <button onClick={(event) => {
+            (async () => {
+                await fetch(ghHostApiUrl + "/_apis/v1/Message/rerunFailed/" + params.runid + "?onLatestCommit=true", { method: "POST" });
+            })();
+        }}>Rerun Failed Jobs ( On Latest Commit )</button>
         {artifacts.map((container: ArtifactResponse) => <div>{(() => {
             if(container.files !== undefined) {
                 return (<div>{(container.files || []).filter(f => f.itemType === "file").map(file => <div><a href={file.contentLocation}>{file.path}</a></div>)}</div>);
