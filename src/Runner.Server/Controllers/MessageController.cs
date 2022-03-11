@@ -3399,6 +3399,7 @@ namespace Runner.Server.Controllers
         class UnknownItem {
             public string download_url {get;set;}
             public string path {get;set;}
+            public string Sha {get;set;}
         }
         [HttpPost]
         [AllowAnonymous]
@@ -3852,23 +3853,53 @@ namespace Runner.Server.Controllers
             return await Ok(page.HasValue ? query.Skip(page.Value * 30).Take(30) : query, true);
         }
 
-        private void RerunWorkflow(long runid, Dictionary<string, List<Job>> finishedJobs = null) {
+        private void RerunWorkflow(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false) {
             var clone = Clone();
-            Task.Run(() => clone.RerunWorkflow2(runid, finishedJobs));
+            Task.Run(() => clone.RerunWorkflow2(runid, finishedJobs, onLatestCommit));
         }
-        private void RerunWorkflow2(long runid, Dictionary<string, List<Job>> finishedJobs = null) {
+        private void RerunWorkflow2(long runid, Dictionary<string, List<Job>> finishedJobs = null, bool onLatestCommit = false) {
+            string latestWorkflow = null;
+            string latestSha = null;
             var run = (from r in _context.Set<WorkflowRun>() where r.Id == runid select r).First();
             var lastAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt descending select a).First();
+            var payloadObject = JObject.Parse(lastAttempt.EventPayload);
+            var hook = payloadObject.ToObject<GiteaHook>();
+            string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
+            if(onLatestCommit) {
+                string githubAppToken = null;
+                try {
+                    if(string.IsNullOrEmpty(GITHUB_TOKEN)) {
+                        githubAppToken = CreateGithubAppToken(repository_name).GetAwaiter().GetResult();
+                    }
+                    var client = new HttpClient();
+                    client.DefaultRequestHeaders.Add("accept", "application/json");
+                    client.DefaultRequestHeaders.UserAgent.Add(new System.Net.Http.Headers.ProductInfoHeaderValue("runner", string.IsNullOrEmpty(GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version) ? "0.0.0" : GitHub.Runner.Sdk.BuildConstants.RunnerPackage.Version));
+                    if(!string.IsNullOrEmpty(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)) {
+                        client.DefaultRequestHeaders.Add("Authorization", $"token {(!string.IsNullOrEmpty(GITHUB_TOKEN) ? GITHUB_TOKEN : githubAppToken)}");
+                    }
+                    var url = new UriBuilder(new Uri(new Uri(GitApiServerUrl + "/"), $"repos/{repository_name}/contents/{Uri.EscapeDataString(run.FileName)}"));
+                    url.Query = $"ref={Uri.EscapeDataString(lastAttempt.Ref)}";
+                    var res = client.GetAsync(url.ToString()).GetAwaiter().GetResult();
+                    if(res.StatusCode == System.Net.HttpStatusCode.OK) {
+                        var content = res.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        var item = Newtonsoft.Json.JsonConvert.DeserializeObject<UnknownItem>(content);
+                        var fileRes = client.GetAsync(item.download_url).GetAwaiter().GetResult();
+                        latestWorkflow = fileRes.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                        latestSha = item.Sha;
+                    }
+                } finally {
+                    if(githubAppToken != null) {
+                        DeleteGithubAppToken(githubAppToken).GetAwaiter().GetResult();
+                    }
+                }
+            }
             var firstAttempt = (from a in _context.Entry(run).Collection(r => r.Attempts).Query() orderby a.Attempt ascending select a).First();
 
             long attempt = lastAttempt.Attempt + 1;
-            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt, WorkflowRun = run, EventPayload = lastAttempt.EventPayload, EventName = lastAttempt.EventName, Workflow = lastAttempt.Workflow, Ref = lastAttempt.Ref, Sha = lastAttempt.Sha, StatusCheckSha = lastAttempt.StatusCheckSha, TimeLineId = firstAttempt.TimeLineId };
+            var _attempt = new WorkflowRunAttempt() { Attempt = (int) attempt, WorkflowRun = run, EventPayload = lastAttempt.EventPayload, EventName = lastAttempt.EventName, Workflow = latestWorkflow ?? lastAttempt.Workflow, Ref = lastAttempt.Ref, Sha = latestSha ?? lastAttempt.Sha, StatusCheckSha = lastAttempt.StatusCheckSha, TimeLineId = firstAttempt.TimeLineId };
             _context.Artifacts.Add(new ArtifactContainer() { Attempt = _attempt } );
             _context.SaveChanges();
-            var payloadObject = JObject.Parse(lastAttempt.EventPayload);
-            var hook = payloadObject.ToObject<GiteaHook>();
             var e = lastAttempt.EventName;
-            string repository_name = hook?.repository?.full_name ?? "Unknown/Unknown";
             // Try to load the repository_name from our database
             var repository = (from w in _context.Entry(run).Reference(r => r.Workflow).Query().Include(w => w.Repository.Owner) select w.Repository).FirstOrDefault();
 
@@ -3925,11 +3956,11 @@ namespace Runner.Server.Controllers
                     Sha = hook.After;
                 }
             }
-            var xres = ConvertYaml2(run.FileName, lastAttempt.Workflow, repository_name, GitServerUrl, hook, payloadObject, e, null, false, null, null, null, null, false, runid, runnumber, Ref, Sha, attempt: _attempt, finishedJobs: finishedJobs, statusSha: !string.IsNullOrEmpty(_attempt.StatusCheckSha) ? _attempt.StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha));
+            var xres = ConvertYaml2(run.FileName, _attempt.Workflow, repository_name, GitServerUrl, hook, payloadObject, e, null, false, null, null, null, null, false, runid, runnumber, Ref, Sha, attempt: _attempt, finishedJobs: finishedJobs, statusSha: !string.IsNullOrEmpty(_attempt.StatusCheckSha) ? _attempt.StatusCheckSha : (e == "pull_request_target" ? hook?.pull_request?.head?.Sha : Sha));
         }
 
         [HttpPost("rerun/{id}")]
-        public void RerunJob(Guid id) {
+        public void RerunJob(Guid id, [FromQuery] bool onLatestCommit) {
             Job job = GetJob(id);
             var finishedJobs = new Dictionary<string, List<Job>>();
             foreach(var _job in (from j in _context.Jobs where j.runid == job.runid && (j.WorkflowIdentifier != job.WorkflowIdentifier || (j.Matrix != job.Matrix && job.Matrix != null)) select j).Include(z => z.Outputs).Include(z => z.WorkflowRunAttempt)) {
@@ -3948,16 +3979,16 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(job.runid, finishedJobs);
+            RerunWorkflow(job.runid, finishedJobs, onLatestCommit);
         }
 
         [HttpPost("rerunworkflow/{id}")]
-        public void RerunJob(long id) {
-            RerunWorkflow(id);
+        public void PostRerunWorkflow(long id, [FromQuery] bool onLatestCommit) {
+            RerunWorkflow(id, onLatestCommit: onLatestCommit);
         }
 
         [HttpPost("rerunFailed/{id}")]
-        public void RerunFailedJobs(long id) {
+        public void RerunFailedJobs(long id, [FromQuery] bool onLatestCommit) {
             var finishedJobs = new Dictionary<string, List<Job>>();
             foreach(var _job in (from j in _context.Jobs where j.runid == id && j.Result == TaskResult.Succeeded select j).Include(z => z.Outputs).Include(z => z.WorkflowRunAttempt)) {
                 if(!finishedJobs.TryAdd(_job.WorkflowIdentifier, new List<Job> { _job })) {
@@ -3975,15 +4006,15 @@ namespace Runner.Server.Controllers
                     }
                 }
             }
-            RerunWorkflow(id, finishedJobs);
+            RerunWorkflow(id, finishedJobs, onLatestCommit);
         }
 
         [HttpPost("cancel/{id}")]
-        public void CancelJob(Guid id) {
+        public void CancelJob(Guid id, [FromQuery] bool force) {
             Job job = _cache.Get<Job>(id);
             if(job != null) {
                 job.CancelRequest.Cancel();
-                if(job.SessionId == Guid.Empty) {
+                if(job.SessionId == Guid.Empty || force) {
                     new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                 }
             }
