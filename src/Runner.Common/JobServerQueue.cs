@@ -179,7 +179,7 @@ namespace GitHub.Runner.Common
             Trace.Info("Timeline update queue drained.");
 
             Trace.Info($"Disposing websocket client ...");
-            this._websocketClient?.Abort();
+            this._websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
 
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }
@@ -354,7 +354,7 @@ namespace GitHub.Runner.Common
                                             if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesAttemptedByWebsocket > _minWebsocketFailurePercentageAllowed)
                                             {
                                                 Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
-                                                this._websocketClient?.Abort();
+                                                this._websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", CancellationToken.None);
                                                 this._websocketClient = null;
                                             }
                                         }
