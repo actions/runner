@@ -1521,7 +1521,7 @@ namespace Runner.Server.Controllers
                                         new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                     };
                                     try {
-                                        var _res = jobitem.EvaluateIf(jobTraceWriter);
+                                        var _res = !workflowContext.ForceCancellationToken?.IsCancellationRequested ?? jobitem.EvaluateIf(jobTraceWriter);
                                         if(!_res) {
                                             sendFinishJob(TaskResult.Skipped);
                                             return;
@@ -2279,9 +2279,8 @@ namespace Runner.Server.Controllers
                                                 if(job != null) {
                                                     // cancel normal job
                                                     job.CancelRequest.Cancel();
-                                                    if(job.SessionId == Guid.Empty) {
-                                                        new FinishJobController(clone2._cache, clone2._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
-                                                    }
+                                                    // No check for sessionid, since we do force cancellation
+                                                    new FinishJobController(clone2._cache, clone2._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Force cancelled {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
                                             }
