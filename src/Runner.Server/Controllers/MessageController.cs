@@ -2920,6 +2920,7 @@ namespace Runner.Server.Controllers
                         req.RequestId = requestId;
                         return req;
                     } catch(Exception ex) {
+                        matrixJobTraceWriter.Error("{0}", $"Internal Error: {ex.Message}, {ex.StackTrace}");
                         Console.WriteLine($"Internal Error: {ex.Message}, {ex.StackTrace}");
                         return null;
                     }
