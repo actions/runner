@@ -742,6 +742,10 @@ namespace Runner.Server.Controllers
             public bool RanJob { get; set; }
             public Dictionary<string, string> Permissions { get; set; }
             public List<string> ProvidedSecrets { get; set; }
+
+            public string WorkflowRef {get;set;}
+            public string WorkflowRepo {get;set;}
+            public string WorkflowPath {get;set;}
         }
 
         private static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, DictionaryContextData contextData = null, ExecutionContext exctx = null) {
@@ -2608,7 +2612,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = (from entry in rawSecrets.AssertMapping("") select entry.Key.AssertString("").Value).ToList()};
+                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? "", WorkflowRepo = reference?.Name ?? "."};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value);
                                 var sjob = selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null;
                                 Task.Run(() => {
@@ -3476,6 +3480,15 @@ namespace Runner.Server.Controllers
             IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null);
         }
 
+        private static IDictionary<string, string> WithGithubToken(IDictionary<string, string> dict, string github_token) {
+            if(string.IsNullOrEmpty(github_token) || dict == null) {
+                return dict;
+            }
+            var ret = new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
+            ret["GITHUB_TOKEN"] = github_token;
+            return ret;
+        }
+
         private class ScheduleSecretsProvider : ISecretsProvider
         {
             public IDictionary<string, IDictionary<string, string>> SecretsEnvironments { get; set; }
@@ -3484,10 +3497,14 @@ namespace Runner.Server.Controllers
                 if(string.IsNullOrEmpty(name)) {
                     name = "";
                 }
+                var github_token = "";
+                if(SecretsEnvironments.TryGetValue("", out var def) && def.TryGetValue("GITHUB_TOKEN", out var token)) {
+                    github_token = token;
+                }
                 if(SecretsEnvironments.TryGetValue(name, out var val)) {
-                    return val;
+                    return WithGithubToken(val, github_token);
                 } else {
-                    return new Dictionary<string, string>();
+                    return WithGithubToken(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), github_token);
                 }
             }
         }
@@ -3495,12 +3512,20 @@ namespace Runner.Server.Controllers
         private class DefaultSecretsProvider : ISecretsProvider
         {
             private Dictionary<string, Dictionary<string, string>> SecretsEnvironments { get; set; }
+            private string github_token = "";
 
             public DefaultSecretsProvider(IConfiguration configuration) {
-                SecretsEnvironments = configuration.GetSection("Runner.Server:Environments").Get<Dictionary<string, Dictionary<string, string>>>() ?? new Dictionary<string, Dictionary<string, string>>();
+                var secenvs = (configuration.GetSection("Runner.Server:Environments").Get<Dictionary<string, Dictionary<string, string>>>() ?? new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase)).ToArray();
+                SecretsEnvironments = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+                foreach(var secenv in secenvs) {
+                    SecretsEnvironments[secenv.Key] = new Dictionary<string, string>(secenv.Value, StringComparer.OrdinalIgnoreCase);
+                }
                 var globalSecrets = configuration.GetSection("Runner.Server:Secrets")?.Get<List<Secret>>() ?? new List<Secret>();                
                 if(!SecretsEnvironments.ContainsKey("")) {
-                    SecretsEnvironments[""] = globalSecrets.ToDictionary(sec => sec.Name, sec => sec.Value);
+                    SecretsEnvironments[""] = globalSecrets.ToDictionary(sec => sec.Name, sec => sec.Value, StringComparer.OrdinalIgnoreCase);
+                }
+                if(SecretsEnvironments.TryGetValue("", out var def) && def.TryGetValue("GITHUB_TOKEN", out var token)) {
+                    github_token = token;
                 }
             }
             public IDictionary<string, string> GetSecretsForEnvironment(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, string name = null)
@@ -3509,9 +3534,9 @@ namespace Runner.Server.Controllers
                     name = "";
                 }
                 if(SecretsEnvironments.TryGetValue(name, out var val)) {
-                    return val;
+                    return WithGithubToken(val, github_token);
                 } else {
-                    return new Dictionary<string, string>();
+                    return WithGithubToken(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), github_token);
                 }
             }
         }
@@ -3536,12 +3561,12 @@ namespace Runner.Server.Controllers
                 SecretMasker masker = new SecretMasker();
                 var linesplitter = new Regex("\r?\n");
                 foreach(var variable in parentSecrets) {
-                        masker.AddValue(variable.Value);
-                        if(variable.Value.Contains('\r') || variable.Value.Contains('\n')) {
-                            foreach(var line in linesplitter.Split(variable.Value)) {
-                                masker.AddValue(line);
-                            }
+                    masker.AddValue(variable.Value);
+                    if(variable.Value.Contains('\r') || variable.Value.Contains('\n')) {
+                        foreach(var line in linesplitter.Split(variable.Value)) {
+                            masker.AddValue(line);
                         }
+                    }
                 }
                 masker.AddValueEncoder(ValueEncoders.Base64StringEscape);
                 masker.AddValueEncoder(ValueEncoders.Base64StringEscapeShift1);
@@ -3571,6 +3596,9 @@ namespace Runner.Server.Controllers
                         ret[entry.Key.AssertString($"jobs.{ji.name}.secrets mapping key").Value] = entry.Value.AssertString($"jobs.{ji.name}.secrets mapping value").Value;
                     }
                 }
+                if(parentSecrets.TryGetValue("GITHUB_TOKEN", out var github_token)) {
+                    ret["GITHUB_TOKEN"] = github_token;
+                }
                 return ret;
             }
         }
@@ -3592,9 +3620,9 @@ namespace Runner.Server.Controllers
 
             var workflow = (from f in form.Files where f.Name != "event" && !(f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets") select new KeyValuePair<string, string>(f.FileName, new StreamReader(f.OpenReadStream()).ReadToEnd())).ToArray();
             var des = new DeserializerBuilder().Build();
-            var secretsEnvironments = (from f in form.Files where f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets" select (f.FileName.Substring(0, f.FileName.Length - 8), des.Deserialize<IDictionary<string, string>>(new StreamReader(f.OpenReadStream())))).ToDictionary(kv => kv.Item1, kv => kv.Item2);
+            var secretsEnvironments = (from f in form.Files where f.FileName.EndsWith(".secrets") && f.Name == "actions-environment-secrets" select (f.FileName.Substring(0, f.FileName.Length - 8), des.Deserialize<IDictionary<string, string>>(new StreamReader(f.OpenReadStream())))).ToDictionary(kv => kv.Item1, kv => (IDictionary<string, string>) new Dictionary<string, string>(kv.Item2, StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase);
             if(!secretsEnvironments.ContainsKey("") && secrets?.Length > 0) {
-                var dict = new Dictionary<string, string>();
+                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 LoadEnvSec(secrets, (k, v) => dict[k] = v);
                 secretsEnvironments[""] = dict;
             }

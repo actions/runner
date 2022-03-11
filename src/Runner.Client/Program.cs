@@ -980,7 +980,7 @@ namespace Runner.Client
                                     try {
                                         workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Concat(Directory.GetFiles(parameters.workflows, "*.yaml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })).ToArray();
                                         if((workflows == null || workflows.Length == 0)) {
-                                            Console.Error.WriteLine($"No workflow *.yml file found inside of {parameters.workflows}");
+                                            Console.Error.WriteLine($"No workflow *.yml / *.yaml file found inside of {parameters.workflows}");
                                             return 1;
                                         }
                                     } catch {
@@ -1220,9 +1220,18 @@ namespace Runner.Client
                                     if(parameters.EnvironmentSecretFiles?.Length > 0) {
                                         foreach(var opt in parameters.EnvironmentSecretFiles) {
                                             var subopt = opt.Split('=', 2);
-                                            var envfile = File.OpenRead(subopt[1]);
-                                            workflowsToDispose.Add(envfile);
-                                            mp.Add(new StreamContent(envfile), "actions-environment-secrets", $"{subopt[0]}.secrets");
+                                            string name = subopt.Length == 2 ? subopt[0] : "";
+                                            string filename = subopt.Length == 2 ? subopt[1] : subopt[0];
+                                            if(filename.EndsWith(".yml") || filename.EndsWith(".yaml")) {
+                                                var envfile = File.OpenRead(filename);
+                                                workflowsToDispose.Add(envfile);
+                                                mp.Add(new StreamContent(envfile), "actions-environment-secrets", $"{name}.secrets");
+                                            } else {
+                                                var ser = new YamlDotNet.Serialization.SerializerBuilder().Build();
+                                                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                                                Util.ReadEnvFile(filename, (key, val) => dict[key] = val);
+                                                mp.Add(new StringContent(ser.Serialize(dict)), "actions-environment-secrets", $"{name}.secrets");
+                                            }
                                         }
                                     }
                                     b.Query = query.ToQueryString().ToString().TrimStart('?');

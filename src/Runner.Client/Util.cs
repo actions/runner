@@ -9,6 +9,10 @@ namespace Runner.Client {
             Action<string, string> SetEnvironmentVariable = (name, value) => {
                 ret.Add($"{name}={value}");
             };
+            ReadEnvFile(filePath, SetEnvironmentVariable);
+            return ret;
+        }
+        public static void ReadEnvFile(string filePath, Action<string, string> SetEnvironmentVariable) {
             var text = File.ReadAllText(filePath) ?? string.Empty;
             var index = 0;
             var line = ReadLine(text, ref index);
@@ -63,7 +67,6 @@ namespace Runner.Client {
 
                 line = ReadLine(text, ref index);
             }
-            return ret;
         }
         private static string ReadLine(
             string text,
