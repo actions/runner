@@ -3443,7 +3443,7 @@ namespace Runner.Server.Controllers
                     var evs = new Dictionary<string,  (string,string,string)>();
                     if(e == "pull_request") {
                         evs.Add("pull_request_target", ($"refs/heads/{hook?.pull_request?.Base?.Ref}", hook?.pull_request?.Base?.Sha, hook?.pull_request?.head?.Sha));
-                        if(AllowPullRequests) {
+                        if(AllowPullRequests || (!hook?.pull_request?.head?.Repo?.Fork ?? false)) {
                             if(HasPullRequestMergePseudoBranch) {
                                 evs.Add("pull_request", ($"refs/pull/{hook.Number}/merge",  hook?.pull_request?.merge_commit_sha, hook?.pull_request?.head?.Sha));
                             } else {
