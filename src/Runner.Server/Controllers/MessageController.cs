@@ -72,6 +72,7 @@ namespace Runner.Server.Controllers
         private Dictionary<string, string> GitHubContext { get; }
         private bool AllowPrivateActionAccess { get; }
         private int Verbosity { get; }
+        private bool DisableNoCI { get; }
         private IConfiguration configuration;
 
         private MessageController Clone() {
@@ -110,6 +111,7 @@ namespace Runner.Server.Controllers
             GitHubContext = configuration.GetSection("Runner.Server:GitHubContext").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 2) ?? 2;
+            DisableNoCI = configuration.GetSection("Runner.Server").GetValue<bool>("DisableNoCI");
             _cache = memoryCache;
             _context = context;
             ReadConfig(configuration);
@@ -3356,6 +3358,7 @@ namespace Runner.Server.Controllers
         }
 
         public class GitCommit {
+            public string Message {get;set;}
             public string Ref {get;set;}
             public string Sha {get;set;}
             public List<string> Added {get;set;}
@@ -3440,6 +3443,7 @@ namespace Runner.Server.Controllers
                     if(string.IsNullOrEmpty(GITHUB_TOKEN)) {
                         githubAppToken = await CreateGithubAppToken(hook.repository.full_name);
                     }
+                    var skipCILabels = new [] { "[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]" };
                     var evs = new Dictionary<string,  (string,string,string)>();
                     if(e == "pull_request") {
                         evs.Add("pull_request_target", ($"refs/heads/{hook?.pull_request?.Base?.Ref}", hook?.pull_request?.Base?.Sha, hook?.pull_request?.head?.Sha));
@@ -3465,7 +3469,9 @@ namespace Runner.Server.Controllers
                             evs.Add(e, ($"refs/tags/{hook.Release.tag_name}", null, null));
                         }
                     } else if(e == "push") {
-                        evs.Add(e, (hook?.Ref, hook?.After, hook?.After));
+                        if(DisableNoCI || (!hook?.Commits?.Any(c => skipCILabels.Any(l => c.Message?.Contains(l) ?? false)) ?? true)) {
+                            evs.Add(e, (hook?.Ref, hook?.After, hook?.After));
+                        }
                     } else {
                         evs.Add(e, (hook?.repository?.default_branch != null ? $"refs/heads/{hook.repository.default_branch}" : null, null, null));
                     }
