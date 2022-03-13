@@ -41,6 +41,7 @@ using Microsoft.EntityFrameworkCore;
 using GitHub.Runner.Sdk;
 using GitHub.Actions.Pipelines.WebApi;
 using YamlDotNet.Serialization;
+using System.Diagnostics;
 
 namespace Runner.Server.Controllers
 {
@@ -73,6 +74,8 @@ namespace Runner.Server.Controllers
         private bool AllowPrivateActionAccess { get; }
         private int Verbosity { get; }
         private bool DisableNoCI { get; }
+        private string OnQueueJobProgram { get; }
+        private string OnQueueJobArgs { get; }
         private IConfiguration configuration;
 
         private MessageController Clone() {
@@ -112,6 +115,8 @@ namespace Runner.Server.Controllers
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
             Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 2) ?? 2;
             DisableNoCI = configuration.GetSection("Runner.Server").GetValue<bool>("DisableNoCI");
+            OnQueueJobProgram = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobProgram");
+            OnQueueJobArgs = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobArgs");
             _cache = memoryCache;
             _context = context;
             ReadConfig(configuration);
@@ -731,6 +736,7 @@ namespace Runner.Server.Controllers
             public CancellationToken CancellationToken {get;set;}
             public CancellationToken? ForceCancellationToken {get;set;}
             public IList<string> FileTable { get; set; }
+            public string FileName { get; set; }
         }
 
         private class CallingJob {
@@ -939,7 +945,7 @@ namespace Runner.Server.Controllers
                 return contextData;
             };
             try {
-                var workflowContext = new WorkflowContext();
+                var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
                 List<JobItem> jobgroup = new List<JobItem>();
                 List<JobItem> dependentjobgroup = new List<JobItem>();
                 var token = default(TemplateToken);
@@ -2763,39 +2769,6 @@ namespace Runner.Server.Controllers
                     }
                 }
 
-                if(!QueueJobsWithoutRunner) {
-                    var sessionsfreeze = sessions.ToArray();
-                    var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()) select s.Key).FirstOrDefault();
-                    if(x == null) {
-                        StringBuilder b = new StringBuilder();
-                        int i = 0;
-                        foreach(var e in runsOnMap) {
-                            if(i++ != 0) {
-                                b.Append(", ");
-                            }
-                            b.Append(e);
-                        }
-                        StringBuilder b2 = new StringBuilder();
-                        i = 0;
-                        foreach(var s in sessionsfreeze) {
-                            if(i++ != 0) {
-                                b2.Append(", ");
-                            }
-                            b2.Append($"Name: `{s.Value.TaskAgentSession.Agent.Name}` OSDescription: `{s.Value.TaskAgentSession.Agent.OSDescription}` Labels [");
-                            int j = 0;
-                            foreach(var l in s.Value.Agent.TaskAgent.Labels) {
-                                if(j++ != 0) {
-                                    b2.Append(", ");
-                                }
-                                b2.Append(l.Name);
-                            }
-                            b2.Append("]");
-                        }
-                        matrixJobTraceWriter.Info("{0}", $"No runner is registered for the requested runs-on labels: [{b.ToString()}], please register and run a self-hosted runner with at least these labels. Available runner: {(i == 0 ? "No Runner available!" : b2.ToString())}");
-                        return failJob();
-                    }
-                }
-
                 if(localcheckout) {
                     // Rewrite checkout step to copy repo via custom protocol
                     for (int i = 0; i < steps.Count; i++) {
@@ -2870,6 +2843,66 @@ namespace Runner.Server.Controllers
                 if(!isFork) {
                     foreach(var secr in secretsProvider.GetSecretsForEnvironment(matrixJobTraceWriter, deploymentEnvironmentValue?.Name)) {
                         variables[secr.Key] = new VariableValue(secr.Value, true);
+                    }
+                }
+                if(!string.IsNullOrEmpty(OnQueueJobProgram)) {
+                    var startupInfo = new ProcessStartInfo(OnQueueJobProgram, OnQueueJobArgs ?? "") { CreateNoWindow = true, RedirectStandardError = true, RedirectStandardInput = true, RedirectStandardOutput = true, StandardErrorEncoding = Encoding.UTF8, StandardInputEncoding = Encoding.UTF8, StandardOutputEncoding = Encoding.UTF8 };
+                    startupInfo.Environment["RUNNER_SERVER_PAYLOAD"] = JsonConvert.SerializeObject(new {
+                        ContextData = contextData.ToJToken(),
+                        Repository = repo,
+                        WorkflowFileName = workflowContext?.FileName ?? workflowname,
+                        Job = name,
+                        JobDisplayName = displayname,
+                        Environment = deploymentEnvironmentValue?.Name ?? "",
+                        Labels = runsOnMap.ToArray(),
+                    }, new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver(), Converters = new List<JsonConverter>{new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() }}});
+                    Task.Run(() => {
+                        try {
+                            using(var proc = new Process()) {
+                                proc.StartInfo = startupInfo;
+                                proc.OutputDataReceived += (s, e) => matrixJobTraceWriter.Info("OnQueueJob: {0}", e.Data);
+                                proc.ErrorDataReceived += (s, e) => matrixJobTraceWriter.Info("OnQueueJob Error: {0}", e.Data);
+                                proc.Start();
+                                proc.BeginOutputReadLine();
+                                proc.BeginErrorReadLine();
+                                proc.StandardInput.Dispose();
+                                proc.WaitForExit();
+                                matrixJobTraceWriter.Info("OnQueueJob exited with code: {0}", proc.ExitCode);
+                            }
+                        } catch(Exception ex) {
+                            matrixJobTraceWriter.Info("Failed to start OnQueueJob: {0}", ex.Message);
+                        }
+                    });
+                } else if(!QueueJobsWithoutRunner) {
+                    var sessionsfreeze = sessions.ToArray();
+                    var x = (from s in sessionsfreeze where runsOnMap.IsSubsetOf(from l in s.Value.Agent.TaskAgent.Labels select l.Name.ToLowerInvariant()) select s.Key).FirstOrDefault();
+                    if(x == null) {
+                        StringBuilder b = new StringBuilder();
+                        int i = 0;
+                        foreach(var e in runsOnMap) {
+                            if(i++ != 0) {
+                                b.Append(", ");
+                            }
+                            b.Append(e);
+                        }
+                        StringBuilder b2 = new StringBuilder();
+                        i = 0;
+                        foreach(var s in sessionsfreeze) {
+                            if(i++ != 0) {
+                                b2.Append(", ");
+                            }
+                            b2.Append($"Name: `{s.Value.TaskAgentSession.Agent.Name}` OSDescription: `{s.Value.TaskAgentSession.Agent.OSDescription}` Labels [");
+                            int j = 0;
+                            foreach(var l in s.Value.Agent.TaskAgent.Labels) {
+                                if(j++ != 0) {
+                                    b2.Append(", ");
+                                }
+                                b2.Append(l.Name);
+                            }
+                            b2.Append("]");
+                        }
+                        matrixJobTraceWriter.Info("{0}", $"No runner is registered for the requested runs-on labels: [{b.ToString()}], please register and run a self-hosted runner with at least these labels. Available runner: {(i == 0 ? "No Runner available!" : b2.ToString())}");
+                        return failJob();
                     }
                 }
                 var job = new Job() { message = (apiUrl) => {
