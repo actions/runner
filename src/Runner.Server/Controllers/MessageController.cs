@@ -2508,12 +2508,12 @@ namespace Runner.Server.Controllers
                                 calculatedPermissions["checks"] = "read";
                                 calculatedPermissions["contents"] = "read";
                                 calculatedPermissions["deployments"] = "read";
+                                calculatedPermissions["discussions"] = "read";
                                 calculatedPermissions["issues"] = "read";
                                 calculatedPermissions["packages"] = "read";
                                 calculatedPermissions["pull_requests"] = "read";
                                 calculatedPermissions["security_events"] = "read";
                                 calculatedPermissions["statuses"] = "read";
-                                calculatedPermissions["id_token"] = "read";
                             } else if(isFork) {
                                 calculatedPermissions["contents"] = "read";
                             } else if(jobPermissions == null || stkn?.Value == "write-all") {
@@ -2521,12 +2521,16 @@ namespace Runner.Server.Controllers
                                 calculatedPermissions["checks"] = "write";
                                 calculatedPermissions["contents"] = "write";
                                 calculatedPermissions["deployments"] = "write";
+                                calculatedPermissions["discussions"] = "write";
                                 calculatedPermissions["issues"] = "write";
                                 calculatedPermissions["packages"] = "write";
                                 calculatedPermissions["pull_requests"] = "write";
                                 calculatedPermissions["security_events"] = "write";
                                 calculatedPermissions["statuses"] = "write";
-                                calculatedPermissions["id_token"] = "write";
+                                if(stkn?.Value == "write-all") {
+                                    // it seems github doesn't assign this permission by default, only by write-all or id-token: write
+                                    calculatedPermissions["id_token"] = "write";
+                                }
                             }
                         }
                     } else {
