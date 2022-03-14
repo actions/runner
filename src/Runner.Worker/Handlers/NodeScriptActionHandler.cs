@@ -114,6 +114,17 @@ namespace GitHub.Runner.Worker.Handlers
             // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
+            if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.FeatureFlags.Node12Warning) ?? false))
+            {
+                if (!ExecutionContext.JobContext.ContainsKey("Node12ActionsWarnings"))
+                {                     
+                    ExecutionContext.JobContext["Node12ActionsWarnings"] = new ArrayContextData();
+                }
+                var repoAction = Action as RepositoryPathReference;
+                var actionDisplayName = new StringContextData(repoAction.Name ?? repoAction.Path); // local actions don't have a 'Name'                
+                ExecutionContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Add(actionDisplayName);
+            }
+
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager))
             {
@@ -149,17 +160,6 @@ namespace GitHub.Runner.Worker.Handlers
                         ExecutionContext.Result = TaskResult.Failed;
                     }
                 }
-            }
-
-            if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.FeatureFlags.Node12Warning) ?? false))
-            {
-                if (!ExecutionContext.JobContext.ContainsKey("Node12ActionsWarnings"))
-                {                     
-                    ExecutionContext.JobContext["Node12ActionsWarnings"] = new ArrayContextData();
-                }
-                var repoAction = Action as RepositoryPathReference;
-                var actionDisplayName = new StringContextData(repoAction.Name ?? repoAction.Path); // local actions don't have a 'Name'                
-                ExecutionContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Add(actionDisplayName);
             }
         }
     }
