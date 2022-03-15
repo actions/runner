@@ -36,13 +36,16 @@ namespace GitHub.Runner.Worker
 
         public async Task RunAsync()
         {
+            // Log to users so that they know how this step was injected
+            ExecutionContext.Output($"A '{DisplayName}' has been configured by the Self Hosted Runner Administrator");
+
             // Validate script file.
             if (!File.Exists(ScriptPath))
             {
                 throw new FileNotFoundException("File doesn't exist");
             }
 
-            this.WriteWebhookPayload(HostContext, Trace);
+            ExecutionContext.WriteWebhookPayload();
 
             // Create the handler data.
             var scriptDirectory = Path.GetDirectoryName(ScriptPath);
@@ -58,7 +61,6 @@ namespace GitHub.Runner.Worker
                 ["path"] = ScriptPath,
                 ["shell"] = ScriptHandlerHelpers.WhichShell(ScriptPath, Trace, prependPath)
             };
-            ExecutionContext.Output($"A '{DisplayName}' has been configured by the Self Hosted Runner Administrator");
             var handler = handlerFactory.Create(
                             ExecutionContext,
                             action: null,

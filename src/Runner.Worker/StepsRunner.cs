@@ -29,27 +29,6 @@ namespace GitHub.Runner.Worker
         Task RunAsync();
     }
 
-    public static class IStepExtension 
-    {
-        public static void WriteWebhookPayload(this IStep step, IHostContext hostContext, Tracing trace) 
-        {
-            // Makes directory for event_path data
-            var tempDirectory = hostContext.GetDirectory(WellKnownDirectory.Temp);
-            var workflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
-            Directory.CreateDirectory(workflowDirectory);
-            var gitHubEvent = step.ExecutionContext.GetGitHubContext("event");
-
-            // adds the GitHub event path/file if the event exists
-            if (gitHubEvent != null)
-            {
-                var workflowFile = Path.Combine(workflowDirectory, "event.json");
-                trace.Info($"Write event payload to {workflowFile}");
-                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
-                step.ExecutionContext.SetGitHubContext("event_path", workflowFile);
-            }
-        }
-    }
-
     [ServiceLocator(Default = typeof(StepsRunner))]
     public interface IStepsRunner : IRunnerService
     {

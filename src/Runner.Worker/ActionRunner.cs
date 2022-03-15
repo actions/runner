@@ -140,7 +140,7 @@ namespace GitHub.Runner.Worker
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
 
-            this.WriteWebhookPayload(HostContext, Trace);
+            ExecutionContext.WriteWebhookPayload();
 
             // Set GITHUB_ACTION_REPOSITORY if this Action is from a repository
             if (Action.Reference is Pipelines.RepositoryPathReference repoPathReferenceAction &&

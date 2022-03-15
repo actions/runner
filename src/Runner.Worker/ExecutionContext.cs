@@ -109,6 +109,7 @@ namespace GitHub.Runner.Worker
         void ForceTaskComplete();
         void RegisterPostJobStep(IStep step);
         void PublishStepTelemetry();
+        void WriteWebhookPayload();
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -988,6 +989,24 @@ namespace GitHub.Runner.Worker
             else
             {
                 Trace.Info($"Step telemetry has already been published.");
+            }
+        }
+
+        public void WriteWebhookPayload()
+        {
+            // Makes directory for event_path data
+            var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
+            var workflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
+            Directory.CreateDirectory(workflowDirectory);
+            var gitHubEvent = GetGitHubContext("event");
+
+            // adds the GitHub event path/file if the event exists
+            if (gitHubEvent != null)
+            {
+                var workflowFile = Path.Combine(workflowDirectory, "event.json");
+                Trace.Info($"Write event payload to {workflowFile}");
+                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
+                SetGitHubContext("event_path", workflowFile);
             }
         }
 
