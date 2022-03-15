@@ -254,7 +254,7 @@ namespace GitHub.Runner.Worker
                     var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(startedHookPath))
                     {
-                        var hookStep = HostContext.CreateService<ManagedScriptStep>();
+                        var hookStep = HostContext.CreateService<IManagedScriptStep>();
                         hookStep.ScriptPath = startedHookPath;
                         hookStep.Condition = $"{PipelineTemplateConstants.Always}()";
                         hookStep.DisplayName = "Set up runner";
@@ -359,8 +359,8 @@ namespace GitHub.Runner.Worker
                     var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
                     if (!string.IsNullOrEmpty(completedHookPath))
                     {
-                        var hookStep = HostContext.CreateService<ManagedScriptStep>();
-                        hookStep.ScriptPath = startedHookPath;
+                        var hookStep = HostContext.CreateService<IManagedScriptStep>();
+                        hookStep.ScriptPath = completedHookPath;
                         hookStep.Condition = $"{PipelineTemplateConstants.Always}()";
                         hookStep.DisplayName = "Complete runner";
                         hookStep.Stage = ActionRunStage.Post;

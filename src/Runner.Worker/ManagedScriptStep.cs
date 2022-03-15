@@ -14,7 +14,14 @@ using System.Linq;
 
 namespace GitHub.Runner.Worker
 {
-    public class ManagedScriptStep : RunnerService, IRunnerService, IStep
+
+    [ServiceLocator(Default = typeof(ManagedScriptStep))]
+    public interface IManagedScriptStep : IRunnerService, IStep
+    {
+        string ScriptPath { get; set; }
+        ActionRunStage Stage { get; set; }
+    }
+    public class ManagedScriptStep : RunnerService, IManagedScriptStep
     {
         public ManagedScriptStep() { }
 
