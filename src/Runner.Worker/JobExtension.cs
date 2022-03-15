@@ -256,7 +256,7 @@ namespace GitHub.Runner.Worker
                     {
                         var hookStep = new ManagedScriptStep(startedHookPath,
                                                                 $"{PipelineTemplateConstants.Always}()",
-                                                                displayName: "Pre Job Hook",
+                                                                displayName: "Set up runner",
                                                                 ActionRunStage.Pre);
                         hookStep.Initialize(HostContext); // TODO: is Initialize() the right way to pass on a HostContext?
                         preJobSteps.Add(hookStep);
@@ -341,7 +341,7 @@ namespace GitHub.Runner.Worker
                         else if (step is ManagedScriptStep)
                         {
                             var managedScriptStep = step as ManagedScriptStep;
-                            managedScriptStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), "Pre Job Hook", $"{nameof(JobExtension)}_Pre_Job_Hook", null, null, ActionRunStage.Pre);
+                            managedScriptStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), "Set up runner", $"{nameof(JobExtension)}_Set_up_runner", null, null, ActionRunStage.Pre);
                         }
                     }
 
@@ -361,7 +361,7 @@ namespace GitHub.Runner.Worker
                     {
                         var hookStep = new ManagedScriptStep(completedHookPath,
                                                                 $"{PipelineTemplateConstants.Always}()",
-                                                                "Post Job Hook",
+                                                                "Complete runner",
                                                                 ActionRunStage.Post);
                         hookStep.Initialize(HostContext); // TODO: is Initialize() the right way to pass on a HostContext?
                         jobContext.RegisterPostJobStep(hookStep);

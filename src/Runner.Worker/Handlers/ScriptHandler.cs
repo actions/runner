@@ -214,7 +214,7 @@ namespace GitHub.Runner.Worker.Handlers
 
             if (!string.IsNullOrEmpty(shellCommand))
             {
-                ExecutionContext.StepTelemetry.Action = shellCommand; // TODO: figure out stepTelemetry for hooks
+                ExecutionContext.StepTelemetry.Action = shellCommand;
             }
 
             // No arg format was given, shell must be a built-in
