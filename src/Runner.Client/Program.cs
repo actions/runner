@@ -1167,7 +1167,7 @@ namespace Runner.Client
                                                 gitinvoker = new GitHub.Runner.Sdk.ProcessInvoker(new TraceWriter(parameters.verbose));
                                                 gitinvoker.OutputDataReceived += handleoutput;
                                                 await gitinvoker.ExecuteAsync(parameters.directory ?? Path.GetFullPath("."), git, "rev-parse HEAD", new Dictionary<string, string>(), source.Token);
-                                                if(line != null) {
+                                                if(line != null && line != "HEAD" /* on failure git returns HEAD instead of a sha */) {
                                                     sha = line;
                                                     line = null;
                                                 } else {
