@@ -232,7 +232,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
-                // TODO: Consider absolute vs relative path, symlinks
                 scriptFilePath = Inputs["path"];
                 resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
             }
