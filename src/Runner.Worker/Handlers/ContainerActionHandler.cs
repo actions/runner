@@ -44,9 +44,11 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 Data.Image = Data.Image.Substring("docker://".Length);
             }
-            else if (IsDockerFile(Data.Image))
+            else if (DockerUtil.IsDockerfile(Data.Image))
             {
                 var dockerFile = Path.Combine(ActionDirectory, Data.Image);
+                ArgUtil.File(dockerFile, nameof(Data.Image));
+
                 ExecutionContext.Output($"##[group]Building docker image");
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
                 var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
@@ -228,19 +230,6 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
 #endif
-        }
-
-        private bool IsDockerFile(string image)
-        {
-            var imageWithoutPath = Data.Image.Split('/').Last();
-            if (imageWithoutPath.StartsWith("Dockerfile") || imageWithoutPath.StartsWith("dockerfile") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile"))
-            {
-                // ensure docker file exist
-                var dockerFile = Path.Combine(ActionDirectory, Data.Image);
-                ArgUtil.File(dockerFile, nameof(Data.Image));
-                return true;
-            }
-            return false;
         }
     }
 }
