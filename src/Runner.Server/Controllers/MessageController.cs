@@ -2459,27 +2459,34 @@ namespace Runner.Server.Controllers
             var myAudience = audience ?? new Uri(new Uri(GitServerUrl), User.FindFirstValue("repository").Split('/', 2)[0]).ToString();
 
             var tokenHandler = new JwtSecurityTokenHandler();
+            IEnumerable<Claim> claims = new Claim[]
+            {
+                new Claim("ref", User.FindFirstValue("ref") ?? ""),
+                new Claim("sha", sha ?? ""),
+                new Claim("repository", User.FindFirstValue("repository") ?? ""),
+                new Claim("repository_owner", User.FindFirstValue("repository").Split('/', 2)[0]),
+                new Claim("run_id", run_id ?? ""),
+                new Claim("run_number", run_number ?? ""),
+                new Claim("run_attempt", User.FindFirstValue("attempt") ?? ""),
+                new Claim("actor", actor ?? ""),
+                new Claim("workflow", workflow ?? ""),
+                new Claim("head_ref", head_ref ?? ""),
+                new Claim("base_ref", base_ref ?? ""),
+                new Claim("event_name", event_name ?? ""),
+                new Claim("ref_type", User.FindFirstValue("ref").StartsWith("refs/heads/") ? "branch" : User.FindFirstValue("ref").StartsWith("refs/tags/") ? "tag" : ""),
+                new Claim("job_workflow_ref", job_workflow_ref ?? ""),
+                new Claim("jti", Guid.NewGuid().ToString()),
+            };
+            if(string.IsNullOrEmpty(environment)) {
+                // It seems if we have no environment, the oidc token doesn't has the environment claim and the subject includes ref
+                claims = claims.Append(new Claim("sub", $"repo:{User.FindFirstValue("repository")}:ref:{User.FindFirstValue("ref") ?? ""}"));
+            } else {
+                claims = claims.Append(new Claim("sub", $"repo:{User.FindFirstValue("repository")}:environment:{environment}"));
+                claims = claims.Append(new Claim("environment", environment ?? ""));
+            }
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new Claim("sub", $"repo:{User.FindFirstValue("repository")}:environment:{environment}"),
-                    new Claim("environment", environment ?? ""),
-                    new Claim("ref", User.FindFirstValue("ref") ?? ""),
-                    new Claim("sha", sha ?? ""),
-                    new Claim("repository", User.FindFirstValue("repository") ?? ""),
-                    new Claim("repository_owner", User.FindFirstValue("repository").Split('/', 2)[0]),
-                    new Claim("run_id", run_id ?? ""),
-                    new Claim("run_number", run_number ?? ""),
-                    new Claim("run_attempt", User.FindFirstValue("attempt") ?? ""),
-                    new Claim("actor", actor ?? ""),
-                    new Claim("workflow", workflow ?? ""),
-                    new Claim("head_ref", head_ref ?? ""),
-                    new Claim("base_ref", base_ref ?? ""),
-                    new Claim("event_name", event_name ?? ""),
-                    new Claim("ref_type", User.FindFirstValue("ref").StartsWith("refs/heads/") ? "branch" : User.FindFirstValue("ref").StartsWith("refs/tags/") ? "tag" : ""),
-                    new Claim("job_workflow_ref", job_workflow_ref ?? ""),
-                }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = myIssuer,
                 Audience = myAudience,
