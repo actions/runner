@@ -63,6 +63,7 @@ namespace GitHub.Runner.Worker
                 ["path"] = ScriptPath,
                 ["shell"] = ScriptHandlerHelpers.WhichShell(ScriptPath, Trace, prependPath)
             };
+            ExecutionContext.Output($"A '{DisplayName}' has been configured by the Self Hosted Runner Administrator");
             var handler = handlerFactory.Create(
                             ExecutionContext,
                             action: null,
