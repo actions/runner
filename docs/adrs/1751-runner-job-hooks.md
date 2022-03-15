@@ -33,8 +33,8 @@ We will **not** set the [standard flags we typically set](https://docs.github.co
 
 ### UI
 We want to ensure the experience for users invoking workflows is good, if hooks take too long, you may feel your job is delayed or broken. So, much like `Set Up Job`, we will generate two new steps automatically in your job, one for each configured hook: 
-- `Pre Job Hook`  
-- `Post Job Hook` 
+- `Set up runner`  
+- `Complete runner` 
 
 These steps will contain all of the output from invoking your hook, so you will have visibility into the runtime. We will also provide information on the path to the hook, and what shell we are invoking it as, much like we do for `run: ` steps.
 
@@ -67,7 +67,7 @@ These are **synchronous** hooks, so they will block job execution while they are
   - `ACTIONS_RUNNER_HOOK_JOB_STARTED`
   - `ACTIONS_RUNNER_HOOK_JOB_COMPLETED`
 - Users can set these variables to the path of a `.sh` or `.ps1` file, which we will execute when Jobs are started or completed.
-  - Output from these will be added to a new step at the start/end of a job named `Pre Job Hook` or `Post Job Hook`. 
+  - Output from these will be added to a new step at the start/end of a job named `Set up runner` or `Complete runner`. 
     - These steps will only be generated on runs with these hooks
 - These hooks `always()` execute if the env variable is set
 - These files will execute as the Runner user, outside of any container specification on the job
