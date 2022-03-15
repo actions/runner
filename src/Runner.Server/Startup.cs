@@ -36,6 +36,7 @@ namespace Runner.Server
     public class Startup
     {
         public static RSAParameters AccessTokenParameter;
+        public static string KeyId;
 
         public Startup(IConfiguration configuration)
         {
@@ -142,6 +143,7 @@ namespace Runner.Server
             });
             var rsa = RSA.Create();
             AccessTokenParameter = rsa.ExportParameters(true);
+            KeyId = Guid.NewGuid().ToString();
             var auth = services.AddAuthentication(options =>
             {
                 options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;

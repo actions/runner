@@ -2429,16 +2429,41 @@ namespace Runner.Server.Controllers
 
         [HttpGet("idtoken")]
         [Authorize(AuthenticationSchemes = "Bearer", Policy = "AgentJob")]
-        public Task<FileStreamResult> GenerateIdToken([FromQuery] string run_id, [FromQuery] string run_number, [FromQuery] string environment, [FromQuery] string head_ref, [FromQuery] string base_ref, [FromQuery] string actor, [FromQuery] string workflow, [FromQuery] string event_name, [FromQuery] string job_workflow_ref, [FromQuery] string sha, [FromQuery] string audience) {
+        public async Task<IActionResult> GenerateIdToken([FromQuery] string sig, [FromQuery] string run_id, [FromQuery] string run_number, [FromQuery] string environment, [FromQuery] string head_ref, [FromQuery] string base_ref, [FromQuery] string actor, [FromQuery] string workflow, [FromQuery] string event_name, [FromQuery] string job_workflow_ref, [FromQuery] string sha, [FromQuery] string audience) {
+            var rsa = RSA.Create(Startup.AccessTokenParameter);
+            using(var memstr = new MemoryStream()) {
+                using(var wr = new StreamWriter(memstr)) {
+                    await wr.WriteLineAsync($"repository: {User.FindFirstValue("repository")}");
+                    await wr.WriteLineAsync($"run_attempt: {User.FindFirstValue("attempt")}");
+                    await wr.WriteLineAsync($"ref: {User.FindFirstValue("ref")}");
+                    await wr.WriteLineAsync($"run_id: {run_id}");
+                    await wr.WriteLineAsync($"run_number: {run_number}");
+                    await wr.WriteLineAsync($"environment: {environment}");
+                    await wr.WriteLineAsync($"head_ref: {head_ref}");
+                    await wr.WriteLineAsync($"base_ref: {base_ref}");
+                    await wr.WriteLineAsync($"actor: {actor}");
+                    await wr.WriteLineAsync($"workflow: {workflow}");
+                    await wr.WriteLineAsync($"event_name: {event_name}");
+                    await wr.WriteLineAsync($"job_workflow_ref: {job_workflow_ref}");
+                    await wr.WriteLineAsync($"sha: {sha}");
+                    wr.Flush();
+                    memstr.Seek(0, SeekOrigin.Begin);
+                    if(!rsa.VerifyData(memstr, Base64UrlEncoder.DecodeBytes(sig), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)) {
+                        return NotFound();
+                    }
+                }
+            }
             var mySecurityKey = new RsaSecurityKey(Startup.AccessTokenParameter);
-            var myIssuer = "http://githubactionsserver";
-            var myAudience = audience ?? new Uri(new Uri(ServerUrl), User.FindFirstValue("repository").Split('/', 2)[0]).ToString();
+            mySecurityKey.KeyId = Startup.KeyId;
+            var myIssuer = ServerUrl;
+            var myAudience = audience ?? new Uri(new Uri(GitServerUrl), User.FindFirstValue("repository").Split('/', 2)[0]).ToString();
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
                 {
+                    new Claim("sub", $"repo:{User.FindFirstValue("repository")}:environment:{environment}"),
                     new Claim("environment", environment ?? ""),
                     new Claim("ref", User.FindFirstValue("ref") ?? ""),
                     new Claim("sha", sha ?? ""),
@@ -2464,7 +2489,7 @@ namespace Runner.Server.Controllers
             var resources = new JobResources();
             var token = tokenHandler.CreateToken(tokenDescriptor);
             var stoken = tokenHandler.WriteToken(token);
-            return Ok(new { value = stoken });
+            return await Ok(new { value = stoken });
         }
 
         private Func<bool, Job> queueJob(GitHub.DistributedTask.ObjectTemplating.ITraceWriter matrixJobTraceWriter, TemplateToken workflowDefaults, List<TemplateToken> workflowEnvironment, string displayname, MappingToken run, DictionaryContextData contextData, Guid jobId, Guid timelineId, string repo, string name, string workflowname, long runid, long runnumber, string[] secrets, double timeoutMinutes, double cancelTimeoutMinutes, bool continueOnError, string[] platform, bool localcheckout, long requestId, string Ref, string Sha, string wevent, string parentEvent, KeyValuePair<string, string>[] workflows = null, string statusSha = null, string parentId = null, Dictionary<string, List<Job>> finishedJobs = null, WorkflowRunAttempt attempt = null, JobItem ji = null, TemplateToken workflowPermissions = null, CallingJob callingJob = null, List<JobItem> dependentjobgroup = null, string selectedJob = null, string[] _matrix = null, WorkflowContext workflowContext = null, ISecretsProvider secretsProvider = null)
@@ -2651,7 +2676,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? "", WorkflowRepo = reference?.Name ?? "."};
+                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value);
                                 var sjob = selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null;
                                 Task.Run(() => {
@@ -2931,15 +2956,6 @@ namespace Runner.Server.Controllers
                             Audience = myAudience,
                             SigningCredentials = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256)
                         };
-                        // var signingcred = new SigningCredentials(mySecurityKey, SecurityAlgorithms.RsaSha256);
-                        // var kid = mySecurityKey.KeyId;
-                        // var n = Base64UrlEncoder.Encode(Startup.AccessTokenParameter.Modulus);
-                        // var e = Base64UrlEncoder.Encode(Startup.AccessTokenParameter.Exponent);
-                        // var alg = SecurityAlgorithms.RsaSha256;
-                        // var kty = "RSA";
-                        // var x5t = Base64UrlEncoder.Encode(mySecurityKey.ComputeJwkThumbprint());
-                        // var jwk = new { kid, n, e, alg, kty, x5t };
-                        // var sjwk = JsonConvert.SerializeObject(jwk);
 
                         var resources = new JobResources();
                         var token = tokenHandler.CreateToken(tokenDescriptor);
@@ -2951,8 +2967,40 @@ namespace Runner.Server.Controllers
                         feedStreamUrl.Scheme = feedStreamUrl.Scheme == "http" ? "ws" : "wss";
                         systemVssConnection.Data["FeedStreamUrl"] = feedStreamUrl.ToString();
                         if(calculatedPermissions.TryGetValue("id_token", out var p_id_token) && p_id_token == "write") {
-                            // TODO check if the url was modified and never used without write permissions
-                            systemVssConnection.Data["GenerateIdTokenUrl"] = new Uri(new Uri(apiUrl), $"_apis/v1/Message/idtoken?run_id={attempt?.WorkflowRun?.Id??0}&run_number={attempt?.WorkflowRun?.Id??0}&environment={Uri.EscapeDataString(deploymentEnvironmentValue?.Name ?? (""))}&head_ref={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["head_ref"].ToString())}&base_ref={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["base_ref"].ToString())}&actor={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["actor"].ToString())}&workflow={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["workflow"].ToString())}&event_name={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["event_name"].ToString())}&sha={Uri.EscapeDataString(((DictionaryContextData) contextData["github"])["sha"].ToString())}&job_workflow_ref={Uri.EscapeDataString(callingJob?.WorkflowRepo ?? ".")}%2f{Uri.EscapeDataString(callingJob?.WorkflowPath??"")}@{Uri.EscapeDataString(callingJob?.WorkflowRef??"")}").ToString();
+                            var run_id = attempt?.WorkflowRun?.Id ?? 0;
+                            var run_number = attempt?.WorkflowRun?.Id ?? 0;
+                            var environment = deploymentEnvironmentValue?.Name ?? ("");
+                            var head_ref = ((DictionaryContextData) contextData["github"])["head_ref"].ToString();
+                            var base_ref = ((DictionaryContextData) contextData["github"])["base_ref"].ToString();
+                            var actor = ((DictionaryContextData) contextData["github"])["actor"].ToString();
+                            var workflow = ((DictionaryContextData) contextData["github"])["workflow"].ToString();
+                            var event_name = ((DictionaryContextData) contextData["github"])["event_name"].ToString();
+                            var sha = ((DictionaryContextData) contextData["github"])["sha"].ToString();
+                            var job_workflow_ref = $"{(callingJob?.WorkflowRepo ?? repo ?? ".")}/{(callingJob?.WorkflowPath ?? workflowContext?.FileName ?? "")}@{(callingJob?.WorkflowRef ?? Ref ?? "")}";
+                            var repository = repo;
+                            var run_attempt = attempt?.Attempt ?? 1;
+                            var run_ref = Ref;
+                            using(var rsa = RSA.Create(Startup.AccessTokenParameter))
+                            using(var memstr = new MemoryStream()) {
+                                using(var wr = new StreamWriter(memstr)) {
+                                    wr.WriteLine($"repository: {repository}");
+                                    wr.WriteLine($"run_attempt: {run_attempt}");
+                                    wr.WriteLine($"ref: {run_ref}");
+                                    wr.WriteLine($"run_id: {run_id}");
+                                    wr.WriteLine($"run_number: {run_number}");
+                                    wr.WriteLine($"environment: {environment}");
+                                    wr.WriteLine($"head_ref: {head_ref}");
+                                    wr.WriteLine($"base_ref: {base_ref}");
+                                    wr.WriteLine($"actor: {actor}");
+                                    wr.WriteLine($"workflow: {workflow}");
+                                    wr.WriteLine($"event_name: {event_name}");
+                                    wr.WriteLine($"job_workflow_ref: {job_workflow_ref}");
+                                    wr.WriteLine($"sha: {sha}");
+                                    wr.Flush();
+                                    memstr.Seek(0, SeekOrigin.Begin);
+                                    systemVssConnection.Data["GenerateIdTokenUrl"] = new Uri(new Uri(apiUrl), $"_apis/v1/Message/idtoken?sig={Uri.EscapeDataString(Base64UrlEncoder.Encode(rsa.SignData(memstr, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)))}&run_id={run_id}&run_number={run_number}&environment={Uri.EscapeDataString(environment)}&head_ref={Uri.EscapeDataString(head_ref)}&base_ref={Uri.EscapeDataString(base_ref)}&actor={Uri.EscapeDataString(actor)}&workflow={Uri.EscapeDataString(workflow)}&event_name={Uri.EscapeDataString(event_name)}&sha={Uri.EscapeDataString(sha)}&job_workflow_ref={Uri.EscapeDataString(job_workflow_ref)}").ToString();
+                                }
+                            }
                         }
                         resources.Endpoints.Add(systemVssConnection);
 
