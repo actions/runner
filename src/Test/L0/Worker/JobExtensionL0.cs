@@ -402,9 +402,9 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
 
                 Assert.Equal(TaskResult.Succeeded, _jobEc.Result);
+                Assert.Equal(0, _jobEc.PostJobSteps.Count);
             }
         }
 
-        // add step exists if env exists and negative tests
     }
 }
