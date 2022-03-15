@@ -29,7 +29,7 @@ namespace Runner.Server.Controllers
             var kid = Startup.KeyId;
             var n = Base64UrlEncoder.Encode(Startup.AccessTokenParameter.Modulus);
             var e = Base64UrlEncoder.Encode(Startup.AccessTokenParameter.Exponent);
-            var jwks = new [] { new { kid, n, e, alg = SecurityAlgorithms.RsaSha256, kty = "RSA", use = "sig" } };
+            var jwks = new { keys = new [] { new { kid, n, e, alg = SecurityAlgorithms.RsaSha256, kty = "RSA", use = "sig" } } };
             return Ok(jwks, true);
         }
     }
