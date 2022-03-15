@@ -155,11 +155,7 @@ namespace GitHub.Runner.Worker
 
         private void ValidateStopToken(IExecutionContext context, string stopToken)
         {
-#if OS_WINDOWS
-            var envContext = context.ExpressionValues["env"] as DictionaryContextData;
-#else
-            var envContext = context.ExpressionValues["env"] as CaseSensitiveDictionaryContextData;
-#endif
+            var envContext = context.ExpressionValues["env"] as IDictionaryContextData;
             var allowUnsecureStopCommandTokens = false;
             allowUnsecureStopCommandTokens = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens));
             if (!allowUnsecureStopCommandTokens && envContext.ContainsKey(Constants.Variables.Actions.AllowUnsupportedStopCommandTokens))

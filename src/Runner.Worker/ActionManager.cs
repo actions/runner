@@ -126,13 +126,6 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-#if !OS_LINUX
-            if (containerSetupSteps.Count > 0)
-            {
-                executionContext.Output("Container action is only supported on Linux, skip pull and build docker images.");
-                containerSetupSteps.Clear();
-            }
-#endif
             return new PrepareResult(containerSetupSteps, result.PreStepTracker);
         }
 
