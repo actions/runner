@@ -71,7 +71,7 @@ These are **syncronous** hooks, so they will block job execution while they are 
     - These steps will only be generated on runs with these hooks
 - These hooks `always()` execute if the env variable is set
 - These files will execute as the Runner user, outside of any container specification on the job
-- These are **syncronous** hooks
+- These are **synchronous** hooks
   - Runner admins can execute a background process for async hooks if they want
   - We will fail the job and halt execution on any exit code that is not 0. The Runner admin is responsible for returning the correct exit code and ensuring resilency. 
     - This includes that the runner user needs access to the file in the env and the file must exist
