@@ -1,17 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
-using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
-using Pipelines = GitHub.DistributedTask.Pipelines;
 using System.Linq;
 
+// This feature is in BETA and its interfaces may change, use with caution
 namespace GitHub.Runner.Worker
 {
 
