@@ -47,18 +47,16 @@ namespace GitHub.Runner.Worker
 
             // Create the handler data.
             var scriptDirectory = Path.GetDirectoryName(ScriptPath);
-            // Create the handler invoker
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
-            // Create the handler
-            var handlerFactory = HostContext.GetService<IHandlerFactory>();
-
             var prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
-
             Dictionary<string, string> inputs = new()
             {
                 ["path"] = ScriptPath,
                 ["shell"] = ScriptHandlerHelpers.WhichShell(ScriptPath, Trace, prependPath)
             };
+
+            // Create the handler
+            var handlerFactory = HostContext.GetService<IHandlerFactory>();
             var handler = handlerFactory.Create(
                             ExecutionContext,
                             action: null,
@@ -69,11 +67,13 @@ namespace GitHub.Runner.Worker
                             ExecutionContext.Global.Variables,
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null);
-
             handler.PrepareExecution(Stage);
 
+            // Setup file commands
             var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
             fileCommandManager.InitializeFiles(ExecutionContext, null);
+
+            // Run the step and process the file commands
             try
             {
                 await handler.RunAsync(Stage);
