@@ -18,6 +18,7 @@ namespace GitHub.Runner.Worker
         string ScriptPath { get; set; }
         ActionRunStage Stage { get; set; }
     }
+
     public class ManagedScriptStep : RunnerService, IManagedScriptStep
     {
         public ManagedScriptStep() { }
