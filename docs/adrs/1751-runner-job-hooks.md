@@ -59,7 +59,7 @@ While a self hosted runner admin can [set env variables](https://docs.github.com
 
 
 ### Exit codes
-These are **syncronous** hooks, so they will block job execution while they are being run. Exit code 0 will indicate a successful run of the hook and we will proceed with the job, any other exit code will fail the job with an appropriate annotation.
+These are **synchronous** hooks, so they will block job execution while they are being run. Exit code 0 will indicate a successful run of the hook and we will proceed with the job, any other exit code will fail the job with an appropriate annotation.
 - There will be no support for `continue-on-error`
 
 ## Key Decisions
