@@ -254,11 +254,11 @@ namespace GitHub.Runner.Worker
                     var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(startedHookPath))
                     {
-                        var hookStep = new ManagedScriptStep(startedHookPath,
-                                                                $"{PipelineTemplateConstants.Always}()",
-                                                                displayName: "Set up runner",
-                                                                ActionRunStage.Pre);
-                        hookStep.Initialize(HostContext); // TODO: is Initialize() the right way to pass on a HostContext?
+                        var hookStep = HostContext.CreateService<ManagedScriptStep>();
+                        hookStep.ScriptPath = startedHookPath;
+                        hookStep.Condition = $"{PipelineTemplateConstants.Always}()";
+                        hookStep.DisplayName = "Set up runner";
+                        hookStep.Stage = ActionRunStage.Pre;
                         preJobSteps.Add(hookStep);
                     }
 
@@ -341,7 +341,7 @@ namespace GitHub.Runner.Worker
                         else if (step is ManagedScriptStep)
                         {
                             var managedScriptStep = step as ManagedScriptStep;
-                            managedScriptStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), "Set up runner", $"{nameof(JobExtension)}_Set_up_runner", null, null, ActionRunStage.Pre);
+                            managedScriptStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), step.DisplayName, $"{nameof(JobExtension)}_Set_up_runner", null, null, ActionRunStage.Pre);
                         }
                     }
 
@@ -359,11 +359,11 @@ namespace GitHub.Runner.Worker
                     var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
                     if (!string.IsNullOrEmpty(completedHookPath))
                     {
-                        var hookStep = new ManagedScriptStep(completedHookPath,
-                                                                $"{PipelineTemplateConstants.Always}()",
-                                                                "Complete runner",
-                                                                ActionRunStage.Post);
-                        hookStep.Initialize(HostContext); // TODO: is Initialize() the right way to pass on a HostContext?
+                        var hookStep = HostContext.CreateService<ManagedScriptStep>();
+                        hookStep.ScriptPath = startedHookPath;
+                        hookStep.Condition = $"{PipelineTemplateConstants.Always}()";
+                        hookStep.DisplayName = "Complete runner";
+                        hookStep.Stage = ActionRunStage.Post;
                         jobContext.RegisterPostJobStep(hookStep);
                     }
 

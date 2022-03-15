@@ -14,24 +14,14 @@ using System.Linq;
 
 namespace GitHub.Runner.Worker
 {
-    public class ManagedScriptStep : RunnerService, IStep
+    public class ManagedScriptStep : RunnerService, IRunnerService, IStep
     {
-        public ManagedScriptStep(
-            string scriptPath,
-            string condition,
-            string displayName,
-            ActionRunStage stage)
-        {
-            ScriptPath = scriptPath;
-            Condition = condition;
-            DisplayName = displayName;
-            Stage = stage;
-        }
+        public ManagedScriptStep() { }
 
-        public string ScriptPath { get; private set; }
+        public string ScriptPath { get; set; }
         public string Condition { get; set; }
         public string DisplayName { get; set; }
-        public ActionRunStage Stage { get; }
+        public ActionRunStage Stage { get; set; }
         public TemplateToken ContinueOnError => new BooleanToken(null, null, null, false);
         public TemplateToken Timeout => new NumberToken(null, null, null, 0);
 
@@ -42,7 +32,7 @@ namespace GitHub.Runner.Worker
             // Validate script file.
             if (!File.Exists(ScriptPath))
             {
-                throw new IOException("File doesn't exist");
+                throw new FileNotFoundException("File doesn't exist");
             }
 
             this.WriteWebhookPayload(HostContext, Trace);
@@ -53,7 +43,7 @@ namespace GitHub.Runner.Worker
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             // Create the handler
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
-            
+
             var prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
 
             Dictionary<string, string> inputs = new()
