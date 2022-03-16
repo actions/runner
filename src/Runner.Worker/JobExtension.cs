@@ -338,7 +338,6 @@ namespace GitHub.Runner.Worker
                             Guid stepId = Guid.NewGuid();
                             actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, stepId.ToString("N"), null, null, ActionRunStage.Pre, intraActionStates[actionStep.Action.Id]);
                         }
-
                     }
 
                     // Create execution context for job steps
@@ -352,6 +351,7 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
+                    // Register Job Completed hook if the variable is set
                     var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
                     if (!string.IsNullOrEmpty(completedHookPath))
                     {
