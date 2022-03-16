@@ -539,7 +539,6 @@ namespace Runner.Client
                 description: "List jobs for the selected event (defaults to push).");
             var workflowsOpt = new Option<string>(
                 new[] { "-W", "--workflows"},
-                getDefaultValue: () => ".github/workflows",
                 description: "Workflow file or directory which contains workflows, only used if no `--workflow <workflow>` option is set.");
             var actorOpt = new Option<string>(
                 new[] {"-a" , "--actor"},
@@ -962,6 +961,9 @@ namespace Runner.Client
                             first = false;
                             var workflows = parameters.workflow;
                             if(workflows == null || workflows.Length == 0) {
+                                if(string.IsNullOrEmpty(parameters.workflows)) {
+                                    parameters.workflows = Path.Join(parameters.directory ?? ".", ".github/workflows");
+                                }
                                 if(Directory.Exists(parameters.workflows)) {
                                     try {
                                         workflows = Directory.GetFiles(parameters.workflows, "*.yml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true }).Concat(Directory.GetFiles(parameters.workflows, "*.yaml", new EnumerationOptions { RecurseSubdirectories = false, MatchType = MatchType.Win32, AttributesToSkip = 0, IgnoreInaccessible = true })).ToArray();
@@ -997,7 +999,8 @@ namespace Runner.Client
                                         try {
                                             var workflow = File.OpenRead(w);
                                             workflowsToDispose.Add(workflow);
-                                            mp.Add(new StreamContent(workflow), w.Replace('\\', '/'), w.Replace('\\', '/'));
+                                            var name = (string.IsNullOrEmpty(parameters.directory) ? Path.GetRelativePath(parameters.directory, w) : w).Replace('\\', '/');
+                                            mp.Add(new StreamContent(workflow), name, name);
                                         } catch {
                                             Console.WriteLine($"Failed to read file: {w}");
                                             return 1;
