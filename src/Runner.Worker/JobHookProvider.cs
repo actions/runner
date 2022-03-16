@@ -44,7 +44,7 @@ namespace GitHub.Runner.Worker
             ArgUtil.NotNull(hookData, nameof(JobHookData));
 
             // Log to users so that they know how this step was injected
-            executionContext.Output($"A '{hookData.DisplayName}' has been configured by the Self Hosted Runner Administrator");
+            executionContext.Output($"A '{hookData.DisplayName}' has been configured by the self-hosted runner administrator");
 
             // Validate script file.
             if (!File.Exists(hookData.Path))
