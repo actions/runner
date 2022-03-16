@@ -217,6 +217,8 @@ namespace GitHub.Runner.Common
                 await _websocketConnectTask;
             }
 
+            // "_websocketClient != null" implies either: We have a successful connection OR we have to attempt sending again and then reconnect
+            // ...in other words, if websocket client is null, we will skip sending to websocket and just use rest api calls to send data
             if (_websocketClient != null)
             {
                 var linesWrapper =  startLine.HasValue? new TimelineRecordFeedLinesWrapper(stepId, lines, startLine.Value):  new TimelineRecordFeedLinesWrapper(stepId, lines);
@@ -247,6 +249,7 @@ namespace GitHub.Runner.Common
                         {
                             Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
                             _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", CancellationToken.None);
+                            // By setting it to null, we will ensure that we never try websocket path again for this job
                             _websocketClient = null;
                         }
                     }
