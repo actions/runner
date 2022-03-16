@@ -377,8 +377,8 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
 
-                Assert.Equal("Set up runner", hookStart.DisplayName);
-                Assert.Equal("Complete runner", (_jobEc.PostJobSteps.Last() as JobExtensionRunner).DisplayName);                
+                Assert.Equal(Constants.Hooks.JobStartedStepName, hookStart.DisplayName);
+                Assert.Equal(Constants.Hooks.JobCompletedStepName, (_jobEc.PostJobSteps.Last() as JobExtensionRunner).DisplayName);                
             }
 
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED", null);

@@ -255,10 +255,10 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(startedHookPath))
                     {
                         var hookProvider = HostContext.GetService<IJobHookProvider>();
-                        var jobHookData = new JobHookData(ActionRunStage.Pre, startedHookPath, "Set up runner");
+                        var jobHookData = new JobHookData(ActionRunStage.Pre, startedHookPath, Constants.Hooks.JobStartedStepName);
                         preJobSteps.Add(new JobExtensionRunner(runAsync: hookProvider.RunHook,
                                                                           condition: $"{PipelineTemplateConstants.Always}()",
-                                                                          displayName: "Set up runner",
+                                                                          displayName: Constants.Hooks.JobStartedStepName,
                                                                           data: (object)jobHookData));
                     }
 
@@ -356,10 +356,10 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(completedHookPath))
                     {
                         var hookProvider = HostContext.GetService<IJobHookProvider>();
-                        var jobHookData = new JobHookData(ActionRunStage.Post, completedHookPath, "Complete runner");
+                        var jobHookData = new JobHookData(ActionRunStage.Post, completedHookPath, Constants.Hooks.JobCompletedStepName);
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
                                                                           condition: $"{PipelineTemplateConstants.Always}()",
-                                                                          displayName: "Complete runner",
+                                                                          displayName: Constants.Hooks.JobCompletedStepName,
                                                                           data: (object)jobHookData));
                     }
 
