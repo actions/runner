@@ -254,12 +254,12 @@ namespace GitHub.Runner.Worker
                     var startedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED");
                     if (!string.IsNullOrEmpty(startedHookPath))
                     {
-                        var hookStep = HostContext.CreateService<IManagedScriptStep>();
-                        hookStep.ScriptPath = startedHookPath;
-                        hookStep.Condition = $"{PipelineTemplateConstants.Always}()";
-                        hookStep.DisplayName = "Set up runner";
-                        hookStep.Stage = ActionRunStage.Pre;
-                        preJobSteps.Add(hookStep);
+                        var hookProvider = HostContext.GetService<IJobHookProvider>();
+                        var jobHookData = new JobHookData(ActionRunStage.Pre, startedHookPath, "Set up runner");
+                        preJobSteps.Add(new JobExtensionRunner(runAsync: hookProvider.RunHook,
+                                                                          condition: $"{PipelineTemplateConstants.Always}()",
+                                                                          displayName: "Set up runner",
+                                                                          data: (object)jobHookData));
                     }
 
                     preJobSteps.AddRange(prepareResult.ContainerSetupSteps);
@@ -359,12 +359,12 @@ namespace GitHub.Runner.Worker
                     var completedHookPath = Environment.GetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED");
                     if (!string.IsNullOrEmpty(completedHookPath))
                     {
-                        var hookStep = HostContext.CreateService<IManagedScriptStep>();
-                        hookStep.ScriptPath = completedHookPath;
-                        hookStep.Condition = $"{PipelineTemplateConstants.Always}()";
-                        hookStep.DisplayName = "Complete runner";
-                        hookStep.Stage = ActionRunStage.Post;
-                        jobContext.RegisterPostJobStep(hookStep);
+                        var hookProvider = HostContext.GetService<IJobHookProvider>();
+                        var jobHookData = new JobHookData(ActionRunStage.Post, startedHookPath, "Complete runner");
+                        jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
+                                                                          condition: $"{PipelineTemplateConstants.Always}()",
+                                                                          displayName: "Complete runner",
+                                                                          data: (object)jobHookData));
                     }
 
                     List<IStep> steps = new List<IStep>();
