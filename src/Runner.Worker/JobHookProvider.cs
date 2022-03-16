@@ -45,9 +45,9 @@ namespace GitHub.Runner.Worker
 
             // Log to users so that they know how this step was injected
             executionContext.Output($"A '{hookData.DisplayName}' has been configured by the Self Hosted Runner Administrator");
-            var ScriptPath = hookData.Path;
+
             // Validate script file.
-            if (!File.Exists(ScriptPath))
+            if (!File.Exists(hookData.Path))
             {
                 throw new FileNotFoundException("File doesn't exist");
             }
@@ -55,13 +55,13 @@ namespace GitHub.Runner.Worker
             executionContext.WriteWebhookPayload();
 
             // Create the handler data.
-            var scriptDirectory = Path.GetDirectoryName(ScriptPath);
+            var scriptDirectory = Path.GetDirectoryName(hookData.Path);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             var prependPath = string.Join(Path.PathSeparator.ToString(), executionContext.Global.PrependPath.Reverse<string>());
             Dictionary<string, string> inputs = new()
             {
-                ["path"] = ScriptPath,
-                ["shell"] = ScriptHandlerHelpers.WhichShell(ScriptPath, Trace, prependPath)
+                ["path"] = hookData.Path,
+                ["shell"] = ScriptHandlerHelpers.WhichShell(hookData.Path, Trace, prependPath)
             };
 
             // Create the handler
