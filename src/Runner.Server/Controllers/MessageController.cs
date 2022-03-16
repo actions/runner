@@ -113,7 +113,7 @@ namespace Runner.Server.Controllers
             GitHubAppId = configuration.GetSection("Runner.Server")?.GetValue<int>("GitHubAppId") ?? 0;
             GitHubContext = configuration.GetSection("Runner.Server:GitHubContext").Get<Dictionary<string, string>>() ?? new Dictionary<string, string>();
             AllowPrivateActionAccess = configuration.GetSection("Runner.Server").GetValue<bool>("AllowPrivateActionAccess");
-            Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 2) ?? 2;
+            Verbosity = configuration.GetSection("Runner.Server")?.GetValue<int>("Verbosity", 1) ?? 1;
             DisableNoCI = configuration.GetSection("Runner.Server").GetValue<bool>("DisableNoCI");
             OnQueueJobProgram = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobProgram");
             OnQueueJobArgs = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobArgs");
@@ -486,17 +486,11 @@ namespace Runner.Server.Controllers
             });
         }
 
-        private class JobListItem {
-            public string Name {get;set;}
-            public string[] Needs {get;set;}
-        }
-
         private class HookResponse {
             public string repo {get;set;}
             public long run_id {get;set;}
             public bool skipped {get;set;}
             public bool failed {get;set;}
-            public List<JobListItem> jobList {get;set;}
         }
 
         private static void LoadEnvSec(string[] contents, Action<string, string> kvhandler)
@@ -2073,7 +2067,7 @@ namespace Runner.Server.Controllers
                                 dependentjobgroup.ForEach(d => {
                                     if(cur.Needs.Contains(d.name)) {
                                         if(pcyclic.Contains(d.name)) {
-                                            throw new Exception("Cyclic Dependency detected");
+                                            throw new Exception($"{cur.name}: Cyclic dependency to {d.name} detected");
                                         }
                                         ret[d.name] = d;
                                         if(d.Dependencies == null) {
@@ -2084,7 +2078,7 @@ namespace Runner.Server.Controllers
                                         } else {
                                             foreach (var k in d.Dependencies) {
                                                 if(pcyclic.Contains(k.Key)) {
-                                                    throw new Exception("Cyclic Dependency detected");
+                                                    throw new Exception($"{cur.name}: Cyclic dependency to {k.Key} detected");
                                                 }
                                                 ret[k.Key] = k.Value;
                                             }
@@ -2093,7 +2087,7 @@ namespace Runner.Server.Controllers
                                     }
                                 });
                                 if(missingDeps.Any()) {
-                                    throw new Exception("Missing Dependency detected");
+                                    throw new Exception($"{cur.name}: One or more missing dependencies detected: {string.Join(", ", missingDeps)}");
                                 }
                             }
                             return ret;
@@ -2103,11 +2097,19 @@ namespace Runner.Server.Controllers
                     }
                 });
                 if(list) {
+                    workflowTraceWriter.Info("{0}", $"Found {dependentjobgroup.Count} matching jobs for the requested event {e}");
+                    foreach(var j in dependentjobgroup) {
+                        if(j.Needs.Any()) {
+                            workflowTraceWriter.Info("{0}", $"{j.name} depends on {string.Join(", ", j.Needs)}");
+                        } else {
+                            workflowTraceWriter.Info("{0}", $"{j.name}");
+                        }
+                    }
                     if(callingJob == null) {
                         attempt.Result = TaskResult.Skipped;
                         _context.SaveChanges();
                     }
-                    return new HookResponse { repo = repository_name, run_id = runid, skipped = false, jobList = (from ji in dependentjobgroup select new JobListItem{Name= ji.name, Needs = ji.Needs}).ToList()};
+                    return new HookResponse { repo = repository_name, run_id = runid, skipped = true };
                 } else {
                     var jobs = dependentjobgroup.ToArray();
                     finished = new CancellationTokenSource();
