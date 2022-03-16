@@ -561,7 +561,7 @@ namespace Runner.Client
                 "Change the docker container platform, if docker supports it. Only applies to container jobs using this Runner fork.");
             var keepContainerOpt = new Option<bool>(
                 "--keep-container",
-                "Dot not clean up docker container after job, this leaks resources.");
+                "Do not clean up docker container after job, this leaks resources.");
             var defaultbranchOpt = new Option<string>(
                 "--defaultbranch",
                 description: "The default branch of your workflow run, ignored if already in your event payload.");
