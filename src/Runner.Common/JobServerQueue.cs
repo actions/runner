@@ -161,7 +161,7 @@ namespace GitHub.Runner.Common
             Trace.Info("Timeline update queue drained.");
 
             Trace.Info($"Disposing job server ...");
-            _jobServer.Dispose();
+            await _jobServer.DisposeAsync();
 
             Trace.Info("All queue process tasks have been stopped, and all queues are drained.");
         }

@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 namespace GitHub.Runner.Common
 {
     [ServiceLocator(Default = typeof(JobServer))]
-    public interface IJobServer : IRunnerService
+    public interface IJobServer : IRunnerService, IAsyncDisposable
     {
         Task ConnectAsync(VssConnection jobConnection);
 
@@ -31,8 +31,6 @@ namespace GitHub.Runner.Common
         Task RaisePlanEventAsync<T>(Guid scopeIdentifier, string hubName, Guid planId, T eventData, CancellationToken cancellationToken) where T : JobEvent;
         Task<Timeline> GetTimelineAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid timelineId, CancellationToken cancellationToken);
         Task<ActionDownloadInfoCollection> ResolveActionDownloadInfoAsync(Guid scopeIdentifier, string hubName, Guid planId, Guid jobId, ActionReferenceList actions, CancellationToken cancellationToken);
-
-        void Dispose();
     }
 
     public sealed class JobServer : RunnerService, IJobServer
@@ -48,7 +46,7 @@ namespace GitHub.Runner.Common
         private int failedAttemptsToPostBatchedLinesByWebsocket = 0;
 
 
-        private static readonly TimeSpan _minDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(1);
+        private static readonly TimeSpan _minDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(100);
         private static readonly TimeSpan _maxDelayForWebsocketReconnect = TimeSpan.FromMilliseconds(500);
         private static readonly int _minWebsocketFailurePercentageAllowed = 50;
         private static readonly int _minWebsocketBatchedLinesCountToConsider = 5;
@@ -143,10 +141,11 @@ namespace GitHub.Runner.Common
              InitializeWebsocketClient(TimeSpan.Zero);
         }
 
-        public void Dispose()
+        public ValueTask DisposeAsync()
         {
             Trace.Info($"Disposing websocket client ...");
             this._websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
+            return ValueTask.CompletedTask;
         }
 
         private void CheckConnection()
@@ -170,21 +169,7 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Creating websocket client ..." + feedStreamUrl);
                     this._websocketClient = new ClientWebSocket();
                     this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-                    this._websocketConnectTask = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            Trace.Info($"Attempting to start websocket client with delay {delay}.");
-                            await Task.Delay(delay);
-                            await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
-                            Trace.Info($"Successfully started websocket client.");
-                        }
-                        catch(Exception ex)
-                        {
-                            Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now instead of websocket.");
-                            Trace.Error(ex);
-                        }
-                    });
+                    this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }
                 else
                 {
@@ -194,6 +179,22 @@ namespace GitHub.Runner.Common
             else
             {
                 Trace.Info($"No access token from the service endpoint");
+            }
+        }
+
+        private async Task ConnectWebSocketClient(string feedStreamUrl, TimeSpan delay)
+        {
+            try
+            {
+                Trace.Info($"Attempting to start websocket client with delay {delay}.");
+                await Task.Delay(delay);
+                await this._websocketClient.ConnectAsync(new Uri(feedStreamUrl), default(CancellationToken));
+                Trace.Info($"Successfully started websocket client.");
+            }
+            catch(Exception ex)
+            {
+                Trace.Info("Exception caught during websocket client connect, fallback of HTTP would be used now instead of websocket.");
+                Trace.Error(ex);
             }
         }
 
@@ -236,9 +237,9 @@ namespace GitHub.Runner.Common
                 }
                 catch (Exception ex)
                 {
+                    failedAttemptsToPostBatchedLinesByWebsocket++;
                     Trace.Info($"Caught exception during append web console line to websocket, let's fallback to sending via non-websocket call (total calls: {totalBatchedLinesAttemptedByWebsocket}, failed calls: {failedAttemptsToPostBatchedLinesByWebsocket}, websocket state: {this._websocketClient?.State}).");
                     Trace.Error(ex);
-                    failedAttemptsToPostBatchedLinesByWebsocket++;
                     if (totalBatchedLinesAttemptedByWebsocket > _minWebsocketBatchedLinesCountToConsider)
                     {
                         // let's consider failure percentage
