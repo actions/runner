@@ -178,12 +178,6 @@ namespace Runner.Server.Controllers
             return Ok();
         }
 
-        private class WebSocketLiveLogFeed {
-            public Guid StepRecordId { get; set; }
-            public Int64 StartLine { get; set; }
-            public string[] Lines { get; set; }
-        }
-
         [HttpGet("feedstream/{timelineId}/ws")]
         public async Task Get(Guid timelineId)
         {
@@ -198,12 +192,12 @@ namespace Runner.Server.Controllers
                             return;
                         }
                         if(res.MessageType == System.Net.WebSockets.WebSocketMessageType.Text) {
-                            var livelogfeed = JsonConvert.DeserializeObject<WebSocketLiveLogFeed>(Encoding.UTF8.GetString(buffer, 0, res.Count));
+                            var livelogfeed = JsonConvert.DeserializeObject<TimelineRecordFeedLinesWrapper>(Encoding.UTF8.GetString(buffer, 0, res.Count));
                             // It seems the actions/runner sends faulty lines with linebreaks, I guess it happens also here
                             var regex = new Regex("\r?\n");
-                            var nl = livelogfeed.Lines.SelectMany(lines => regex.Split(lines)).ToList();
-                            var record = new TimelineRecordFeedLinesWrapper(livelogfeed.StepRecordId, nl);
-                            AppendTimelineRecordFeed(record, timelineId, livelogfeed.StepRecordId);
+                            var nl = livelogfeed.Value.SelectMany(lines => regex.Split(lines)).ToList();
+                            var record = new TimelineRecordFeedLinesWrapper(livelogfeed.StepId, nl);
+                            AppendTimelineRecordFeed(record, timelineId, livelogfeed.StepId);
                         }
                     }
                 } finally {
