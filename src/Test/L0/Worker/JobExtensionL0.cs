@@ -354,7 +354,9 @@ namespace GitHub.Runner.Common.Tests.Worker
         }
 
 
-        [Fact] [Trait("Level", "L0")] [Trait("Category", "Worker")]
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public async Task EnsurePreAndPostHookStepsIfEnvExists()
         {
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED", "/foo/bar");
@@ -383,7 +385,9 @@ namespace GitHub.Runner.Common.Tests.Worker
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_COMPLETED", null);
         }
 
-        [Fact] [Trait("Level", "L0")] [Trait("Category", "Worker")]
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
         public void EnsureNoPreAndPostHookSteps()
         {
             using (TestHostContext hc = CreateTestContext())
