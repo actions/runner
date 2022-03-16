@@ -30,20 +30,6 @@ namespace Runner.Client
 {
     class Program
     {
-
-        private class JobListItem {
-            public string Name {get;set;}
-            public string[] Needs {get;set;}
-        }
-
-        private class HookResponse {
-            public string repo {get;set;}
-            public long run_id {get;set;}
-            public bool skipped {get;set;}
-            public bool failed {get;set;}
-            public List<JobListItem> jobList {get;set;}
-        }
-
         public class Job {
             public Guid JobId { get; set; }
             public long RequestId { get; set; }
@@ -1562,7 +1548,7 @@ namespace Runner.Client
                                 if(hasErrors) {
                                     Console.WriteLine("All Workflows finished, at least one workflow failed");
                                 } else if(!hasAny) {
-                                    Console.WriteLine("All workflow were skipped, due to filters");
+                                    Console.WriteLine("All Workflows skipped, due to filters");
                                 } else {
                                     Console.WriteLine("All Workflows finished successfully");
                                 }
