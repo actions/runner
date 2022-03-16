@@ -24,7 +24,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         protected override void PrintActionDetails(ActionRunStage stage)
         {
-            // if we're executing a managed script, we won't have an 'Action'
+            // if we're executing a Job Extension, we won't have an 'Action'
             if (!IsActionStep)
             {
                 if (Inputs.TryGetValue("path", out var path))
@@ -33,7 +33,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
                 else
                 {
-                    throw new InvalidOperationException("Inputs 'path' must be set for managed scripts");
+                    throw new InvalidOperationException("Inputs 'path' must be set for job extensions");
                 }
             }
             else if (Action.Type == Pipelines.ActionSourceType.Script)

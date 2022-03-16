@@ -50,7 +50,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Print out action details
             PrintActionDetails(stage);
 
-            // Get telemetry for the action and managed scripts
+            // Get telemetry for the action
             PopulateActionTelemetry(stage);
         }
 
