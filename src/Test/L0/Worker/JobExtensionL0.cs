@@ -123,13 +123,13 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // prepare2
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // job complete hook
 
-            hc.EnqueueInstance<IManagedScriptStep>(new ManagedScriptStep()); // job start hook
+            hc.EnqueueInstance<IJobHookProvider>(new JobHookProvider()); // job start hook
             hc.EnqueueInstance<IActionRunner>(step1);
             hc.EnqueueInstance<IActionRunner>(step2);
             hc.EnqueueInstance<IActionRunner>(step3);
             hc.EnqueueInstance<IActionRunner>(step4);
             hc.EnqueueInstance<IActionRunner>(step5);
-            hc.EnqueueInstance<IManagedScriptStep>(new ManagedScriptStep()); // job complete hook
+            hc.EnqueueInstance<IJobHookProvider>(new JobHookProvider()); // job complete hook
 
             _jobEc.Initialize(hc);
             _jobEc.InitializeJob(_message, _tokenSource.Token);
@@ -373,12 +373,12 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var trace = hc.GetTrace();
 
-                var hookStart = result.First() as IManagedScriptStep;
+                var hookStart = result.First() as JobExtensionRunner;
 
                 jobExtension.FinalizeJob(_jobEc, _message, DateTime.UtcNow);
 
-                Assert.Equal("/foo/bar", hookStart.ScriptPath);
-                Assert.Equal("/bar/foo", (_jobEc.PostJobSteps.Last() as IManagedScriptStep).ScriptPath);                
+                Assert.Equal("Set up runner", hookStart.DisplayName);
+                Assert.Equal("Complete runner", (_jobEc.PostJobSteps.Last() as JobExtensionRunner).DisplayName);                
             }
 
             Environment.SetEnvironmentVariable("ACTIONS_RUNNER_HOOK_JOB_STARTED", null);

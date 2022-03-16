@@ -338,11 +338,7 @@ namespace GitHub.Runner.Worker
                             Guid stepId = Guid.NewGuid();
                             actionStep.ExecutionContext = jobContext.CreateChild(stepId, actionStep.DisplayName, stepId.ToString("N"), null, null, ActionRunStage.Pre, intraActionStates[actionStep.Action.Id]);
                         }
-                        else if (step is ManagedScriptStep)
-                        {
-                            var managedScriptStep = step as ManagedScriptStep;
-                            managedScriptStep.ExecutionContext = jobContext.CreateChild(Guid.NewGuid(), step.DisplayName, $"{nameof(JobExtension)}_Set_up_runner", null, null, ActionRunStage.Pre);
-                        }
+
                     }
 
                     // Create execution context for job steps
