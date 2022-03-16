@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
@@ -13,7 +11,6 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -86,7 +83,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
-                
+
                 ExecutionContext.StepTelemetry.HasRunsStep = hasRunsStep;
                 ExecutionContext.StepTelemetry.HasUsesStep = hasUsesStep;
                 ExecutionContext.StepTelemetry.StepCount = steps.Count;
@@ -452,6 +449,31 @@ namespace GitHub.Runner.Worker.Handlers
                 SetStepConclusion(step, Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value));
             }
 
+            if (step.ExecutionContext.Result == TaskResult.Failed)
+            {
+                var continueOnError = false;
+                try
+                {
+                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
+                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
+                }
+                catch (Exception ex)
+                {
+                    Trace.Info("The step failed and an error occurred when attempting to determine whether to continue on error.");
+                    Trace.Error(ex);
+                    step.ExecutionContext.Error("The step failed and an error occurred when attempting to determine whether to continue on error.");
+                    step.ExecutionContext.Error(ex);
+                }
+
+                if (continueOnError)
+                {
+                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
+                    step.ExecutionContext.Result = TaskResult.Succeeded;
+                    Trace.Info($"Updated step result (continue on error)");
+                    SetStepsContext(step);
+                }
+            }
+
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
             step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
             step.ExecutionContext.PublishStepTelemetry();
@@ -466,8 +488,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
             {
-                // TODO: when we support continue on error, we may need to do logic here to change conclusion based on the continue on error result
-                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
+                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Outcome ?? TaskResult.Succeeded).ToActionResult());
                 step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
             }
         }

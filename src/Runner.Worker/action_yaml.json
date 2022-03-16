@@ -129,6 +129,7 @@
                         "required": true
                     },
                     "env": "step-env",
+                    "continue-on-error": "boolean-strategy-context",
                     "working-directory": "string-steps-context",
                     "shell": {
                         "type": "non-empty-string",
@@ -147,6 +148,7 @@
                         "type": "non-empty-string",
                         "required": true
                     },
+                    "continue-on-error": "boolean-strategy-context",
                     "with": "step-with",
                     "env": "step-env"
                 }
@@ -200,6 +202,15 @@
                 "hashFiles(1,255)"
             ],
             "string": {}
+        },
+        "boolean-strategy-context": {
+          "context": [
+            "github",
+            "needs",
+            "strategy",
+            "matrix"
+          ],
+          "boolean": {}
         },
         "step-env": {
             "context": [
