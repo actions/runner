@@ -51,7 +51,7 @@ namespace GitHub.Runner.Common
         private static readonly int _minWebsocketFailurePercentageAllowed = 50;
         private static readonly int _minWebsocketBatchedLinesCountToConsider = 5;
 
-        private Task _websocketConnectTask = null;
+        private Task _websocketConnectTask;
 
         public async Task ConnectAsync(VssConnection jobConnection)
         {
