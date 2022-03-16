@@ -356,7 +356,7 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(completedHookPath))
                     {
                         var hookProvider = HostContext.GetService<IJobHookProvider>();
-                        var jobHookData = new JobHookData(ActionRunStage.Post, startedHookPath, "Complete runner");
+                        var jobHookData = new JobHookData(ActionRunStage.Post, completedHookPath, "Complete runner");
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
                                                                           condition: $"{PipelineTemplateConstants.Always}()",
                                                                           displayName: "Complete runner",
