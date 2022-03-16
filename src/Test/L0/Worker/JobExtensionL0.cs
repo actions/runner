@@ -25,6 +25,7 @@ namespace GitHub.Runner.Common.Tests.Worker
         private Mock<IPagingLogger> _logger;
         private Mock<IContainerOperationProvider> _containerProvider;
         private Mock<IDiagnosticLogManager> _diagnosticLogManager;
+        private Mock<IJobHookProvider> _jobHookProvider;
 
         private CancellationTokenSource _tokenSource;
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
@@ -40,6 +41,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             _directoryManager = new Mock<IPipelineDirectoryManager>();
             _directoryManager.Setup(x => x.PrepareDirectory(It.IsAny<IExecutionContext>(), It.IsAny<Pipelines.WorkspaceOptions>()))
                              .Returns(new TrackingConfig() { PipelineDirectory = "runner", WorkspaceDirectory = "runner/runner" });
+            _jobHookProvider = new Mock<IJobHookProvider>();
 
             IActionRunner step1 = new ActionRunner();
             IActionRunner step2 = new ActionRunner();
@@ -111,6 +113,7 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.SetSingleton(_containerProvider.Object);
             hc.SetSingleton(_directoryManager.Object);
             hc.SetSingleton(_diagnosticLogManager.Object);
+            hc.SetSingleton(_jobHookProvider.Object);
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // JobExecutionContext
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // job start hook
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // Initial Job
@@ -123,13 +126,11 @@ namespace GitHub.Runner.Common.Tests.Worker
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // prepare2
             hc.EnqueueInstance<IPagingLogger>(_logger.Object); // job complete hook
 
-            hc.EnqueueInstance<IJobHookProvider>(new JobHookProvider()); // job start hook
             hc.EnqueueInstance<IActionRunner>(step1);
             hc.EnqueueInstance<IActionRunner>(step2);
             hc.EnqueueInstance<IActionRunner>(step3);
             hc.EnqueueInstance<IActionRunner>(step4);
             hc.EnqueueInstance<IActionRunner>(step5);
-            hc.EnqueueInstance<IJobHookProvider>(new JobHookProvider()); // job complete hook
 
             _jobEc.Initialize(hc);
             _jobEc.InitializeJob(_message, _tokenSource.Token);
