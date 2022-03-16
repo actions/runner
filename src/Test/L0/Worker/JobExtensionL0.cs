@@ -410,6 +410,5 @@ namespace GitHub.Runner.Common.Tests.Worker
                 Assert.Equal(0, _jobEc.PostJobSteps.Count);
             }
         }
-
     }
 }
