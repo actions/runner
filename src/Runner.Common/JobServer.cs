@@ -143,8 +143,8 @@ namespace GitHub.Runner.Common
 
         public ValueTask DisposeAsync()
         {
-            Trace.Info($"Disposing websocket client ...");
-            this._websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
+            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
+            GC.SuppressFinalize(this);
             return ValueTask.CompletedTask;
         }
 
