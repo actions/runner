@@ -86,7 +86,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
-                
+
                 ExecutionContext.StepTelemetry.HasRunsStep = hasRunsStep;
                 ExecutionContext.StepTelemetry.HasUsesStep = hasUsesStep;
                 ExecutionContext.StepTelemetry.StepCount = steps.Count;
@@ -158,7 +158,7 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
 
                     // Set GITHUB_ACTION_PATH
-                    step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
+                    step.ExecutionContext.SetGitHubContext("action_path", StepHost.ResolvePathForStepHost(ActionDirectory));
 
                     embeddedSteps.Add(step);
                 }
