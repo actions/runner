@@ -1,3 +1,5 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.224.2/containers/codespaces-linux
 {
 	"name": "GitHub Codespaces (Default)",
 	"build": {
@@ -44,6 +46,5 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
-	// "oryx build" will automatically install your dependencies and attempt to build your project
-	"postCreateCommand": "oryx build -p virtualenv_name=.venv --log-file /tmp/oryx-build.log --manifest-dir /tmp || echo 'Could not auto-build. Skipping.'"
+	"postCreateCommand": "echo 'Post create commands here'"
 }
