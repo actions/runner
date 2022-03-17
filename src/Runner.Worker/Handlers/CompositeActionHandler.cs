@@ -467,10 +467,8 @@ namespace GitHub.Runner.Worker.Handlers
 
                 if (continueOnError)
                 {
-                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
-                    step.ExecutionContext.Result = TaskResult.Succeeded;
+                    SetStepConclusion(step, TaskResult.Succeeded);
                     Trace.Info($"Updated step result (continue on error)");
-                    SetStepsContext(step);
                 }
             }
 
@@ -481,6 +479,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         private void SetStepConclusion(IStep step, TaskResult result)
         {
+            step.ExecutionContext.Outcome ?= result;
             step.ExecutionContext.Result = result;
             SetStepsContext(step);
         }
