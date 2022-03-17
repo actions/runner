@@ -27,5 +27,5 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
-	"postCreateCommand": "echo 'Post create commands here'"
+	"postCreateCommand": "echo 'Creating symlink for embedded sdk...' && ln -s /home/codespace/.dotnet/sdk/ _dotnetsdk"
 }
