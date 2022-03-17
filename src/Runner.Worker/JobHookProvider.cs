@@ -20,7 +20,6 @@ namespace GitHub.Runner.Worker
     {
         public string Path {get; private set;}
         public ActionRunStage Stage {get; private set;}
-        public string DisplayName {get; private set;}
 
         public JobHookData(ActionRunStage stage, string path)
         {
@@ -61,7 +60,7 @@ namespace GitHub.Runner.Worker
             Dictionary<string, string> inputs = new()
             {
                 ["path"] = hookData.Path,
-                ["shell"] = ScriptHandlerHelpers.WhichShell(hookData.Path, Trace, prependPath)
+                ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(hookData.Path, Trace, prependPath)
             };
 
             // Create the handler

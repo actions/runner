@@ -224,8 +224,7 @@ namespace GitHub.Runner.Worker.Handlers
                 throw new ArgumentException("Invalid shell option. Shell must be a valid built-in (bash, sh, cmd, powershell, pwsh) or a format string containing '{0}'");
             }
             string scriptFilePath, resolvedScriptPath;
-            bool shouldWriteContentToDisk = !Inputs.ContainsKey("path");
-            if (shouldWriteContentToDisk)
+            if (IsActionStep)
             {
                 // We do not not the full path until we know what shell is being used, so that we can determine the file extension
                 scriptFilePath = Path.Combine(tempDirectory, $"{Guid.NewGuid()}{ScriptHandlerHelpers.GetScriptFileExtension(shellCommand)}");
@@ -233,7 +232,13 @@ namespace GitHub.Runner.Worker.Handlers
             }
             else
             {
+                // JobExtensionRunners run a script file, we load that from the inputs here
+                if (!Inputs.ContainsKey("path"))
+                {
+                    throw new ArgumentException("Expected 'path' input to be set");
+                }
                 scriptFilePath = Inputs["path"];
+                ArgUtil.NotNullOrEmpty(scriptFilePath, "path");
                 resolvedScriptPath = Inputs["path"].Replace("\"", "\\\"");
             }
 
@@ -252,7 +257,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Don't add a BOM. It causes the script to fail on some operating systems (e.g. on Ubuntu 14).
             var encoding = new UTF8Encoding(false);
 #endif            
-            if (shouldWriteContentToDisk)
+            if (IsActionStep)
             {
                 // Script is written to local path (ie host) but executed relative to the StepHost, which may be a container
                 File.WriteAllText(scriptFilePath, contents, encoding);
