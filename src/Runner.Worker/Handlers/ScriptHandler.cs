@@ -213,7 +213,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Don't override runner telemetry here
-            if (!string.IsNullOrEmpty(shellCommand) && ExecutionContext.StepTelemetry.Type != "runner")
+            if (!string.IsNullOrEmpty(shellCommand) && IsActionStep)
             {
                 ExecutionContext.StepTelemetry.Action = shellCommand;
             }

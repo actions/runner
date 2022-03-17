@@ -82,7 +82,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
         }
 
-        internal static string WhichShell(string path, Common.Tracing trace, string prependPath) // TODO: Figure out how it relates to 
+        internal static string WhichShell(string path, Common.Tracing trace, string prependPath)
         {
             var format = "{0} {1}";
             switch (Path.GetExtension(path))
