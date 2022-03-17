@@ -232,7 +232,7 @@ namespace GitHub.Runner.Common
                     {
                         var lastChunk = i + (1 * 1024) >= jsonDataBytes.Length;
                         var chunk = new ArraySegment<byte>(jsonDataBytes, i, Math.Min(1 * 1024, jsonDataBytes.Length - i));
-                        await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage:lastChunk, CancellationToken.None);
+                        await _websocketClient.SendAsync(chunk, WebSocketMessageType.Text, endOfMessage:lastChunk, cancellationToken);
                     }
 
                     pushedLinesViaWebsocket = true;
@@ -248,7 +248,7 @@ namespace GitHub.Runner.Common
                         if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesAttemptedByWebsocket > _minWebsocketFailurePercentageAllowed)
                         {
                             Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
-                            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", CancellationToken.None);
+                            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", cancellationToken);
                             // By setting it to null, we will ensure that we never try websocket path again for this job
                             _websocketClient = null;
                         }
