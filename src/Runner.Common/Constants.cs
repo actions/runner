@@ -146,7 +146,7 @@ namespace GitHub.Runner.Common
                 public const int RunOnceRunnerUpdating = 4;
             }
 
-            public static class FeatureFlags
+            public static class Features
             {
                 public static readonly string DiskSpaceWarning = "runner.diskspace.warning";
                 public static readonly string Node12Warning = "DistributedTask.AddWarningToNode12Action";

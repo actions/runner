@@ -358,7 +358,7 @@ namespace GitHub.Runner.Worker
                         }
                     }
 
-                    jobContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.FeatureFlags.DiskSpaceWarning, out var enableWarning);
+                    jobContext.Global.EnvironmentVariables.TryGetValue(Constants.Runner.Features.DiskSpaceWarning, out var enableWarning);
                     if (StringUtil.ConvertToBoolean(enableWarning, defaultValue: true))
                     {
                         _diskSpaceCheckTask = CheckDiskSpaceAsync(context, _diskSpaceCheckToken.Token);

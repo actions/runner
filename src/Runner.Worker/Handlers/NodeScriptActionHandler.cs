@@ -114,7 +114,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Remove environment variable that may cause conflicts with the node within the runner.
             Environment.Remove("NODE_ICU_DATA"); // https://github.com/actions/runner/issues/795
 
-            if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.FeatureFlags.Node12Warning) ?? false))
+            if (Data.NodeVersion == "node12" && (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.Node12Warning) ?? false))
             {
                 if (!ExecutionContext.JobContext.ContainsKey("Node12ActionsWarnings"))
                 {                     
