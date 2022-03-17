@@ -2,9 +2,6 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.224.2/containers/codespaces-linux
 {
 	"name": "GitHub Codespaces (Default)",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
 	"settings": {
 		"files.watcherExclude": {
 			"**/_layout/**": true
