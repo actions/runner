@@ -346,7 +346,10 @@ namespace GitHub.Runner.Listener
                 }
 
                 var term = HostContext.GetService<ITerminal>();
-                term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}");
+
+                string workflowName = message.Variables["system.workflowFilePath"].Value.Split('/').LastOrDefault();
+                string additionalInfo = string.IsNullOrEmpty(workflowName) ? $"(in repository \"{_runnerSettings.RepoOrOrgName}\")" : $"(workflow \"{workflowName}\" in repository \"{_runnerSettings.RepoOrOrgName}\")";
+                term.WriteLine($"{DateTime.UtcNow:u}: Running job: \"{message.JobDisplayName}\" {additionalInfo}");
 
                 // first job request renew succeed.
                 TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
@@ -531,7 +534,7 @@ namespace GitHub.Runner.Listener
 
                                 TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
                                 Trace.Info($"finish job request for job {message.JobId} with result: {result}");
-                                term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {result}");
+                                term.WriteLine($"{DateTime.UtcNow:u}: Job \"{message.JobDisplayName}\" {additionalInfo} completed with result: {result}");
 
                                 Trace.Info($"Stop renew job request for job {message.JobId}.");
                                 // stop renew lock
@@ -627,7 +630,7 @@ namespace GitHub.Runner.Listener
                             }
 
                             Trace.Info($"finish job request for job {message.JobId} with result: {resultOnAbandonOrCancel}");
-                            term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {resultOnAbandonOrCancel}");
+                            term.WriteLine($"{DateTime.UtcNow:u}: Job \"{message.JobDisplayName}\" {additionalInfo} completed with result: {resultOnAbandonOrCancel}");
                             // complete job request with cancel result, stop renew lock, job has finished.
 
                             Trace.Info($"Stop renew job request for job {message.JobId}.");
