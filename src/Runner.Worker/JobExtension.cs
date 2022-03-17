@@ -255,7 +255,7 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(startedHookPath))
                     {
                         var hookProvider = HostContext.GetService<IJobHookProvider>();
-                        var jobHookData = new JobHookData(ActionRunStage.Pre, startedHookPath, Constants.Hooks.JobStartedStepName);
+                        var jobHookData = new JobHookData(ActionRunStage.Pre, startedHookPath);
                         preJobSteps.Add(new JobExtensionRunner(runAsync: hookProvider.RunHook,
                                                                           condition: $"{PipelineTemplateConstants.Always}()",
                                                                           displayName: Constants.Hooks.JobStartedStepName,
@@ -356,7 +356,7 @@ namespace GitHub.Runner.Worker
                     if (!string.IsNullOrEmpty(completedHookPath))
                     {
                         var hookProvider = HostContext.GetService<IJobHookProvider>();
-                        var jobHookData = new JobHookData(ActionRunStage.Post, completedHookPath, Constants.Hooks.JobCompletedStepName);
+                        var jobHookData = new JobHookData(ActionRunStage.Post, completedHookPath);
                         jobContext.RegisterPostJobStep(new JobExtensionRunner(runAsync: hookProvider.RunHook,
                                                                           condition: $"{PipelineTemplateConstants.Always}()",
                                                                           displayName: Constants.Hooks.JobCompletedStepName,

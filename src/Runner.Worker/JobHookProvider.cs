@@ -22,11 +22,10 @@ namespace GitHub.Runner.Worker
         public ActionRunStage Stage {get; private set;}
         public string DisplayName {get; private set;}
 
-        public JobHookData(ActionRunStage stage, string path, string displayName)
+        public JobHookData(ActionRunStage stage, string path)
         {
             Path = path;
             Stage = stage;
-            DisplayName = displayName;
         }
     }
 
@@ -43,8 +42,9 @@ namespace GitHub.Runner.Worker
             var hookData = data as JobHookData;
             ArgUtil.NotNull(hookData, nameof(JobHookData));
 
+            var displayName = hookData.Stage == ActionRunStage.Pre ? Constants.Hooks.JobStartedStepName : Constants.Hooks.JobCompletedStepName;
             // Log to users so that they know how this step was injected
-            executionContext.Output($"A '{hookData.DisplayName}' has been configured by the self-hosted runner administrator");
+            executionContext.Output($"A '{displayName}' has been configured by the self-hosted runner administrator");
 
             // Validate script file.
             if (!File.Exists(hookData.Path))
