@@ -261,8 +261,7 @@ namespace GitHub.Runner.Worker
             if (jobContext.JobContext.ContainsKey("Node12ActionsWarnings"))
             {
                 var actions = string.Join(", ", jobContext.JobContext["Node12ActionsWarnings"].AssertArray("Node12ActionsWarnings").Select(action => action.ToString()));
-                var acm = HostContext.CreateService<IActionCommandManager>();
-                acm.TryProcessCommand(jobContext, $"::warning::Placeholder text: This action uses Node v12 with EoL in April. It is recommended to update to v16. For more info: https://nodejs.org/en/about/releases/ Actions: {actions}", null);
+                jobContext.Warning(string.Format(Constants.Runner.Node12DetectedAfterEndOfLife, actions));
             }
 
             try
