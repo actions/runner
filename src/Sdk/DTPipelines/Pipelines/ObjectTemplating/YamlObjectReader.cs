@@ -19,7 +19,19 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
             TextReader input)
         {
             m_fileId = fileId;
+#if FEATURE_YAML_ANCHORS
             m_parser = new YamlAnchorParser(new Parser(input));
+#else
+            m_parser = new Parser(input);
+#endif
+        }
+
+        private string GetScalarStringValue(Scalar scalar) {
+#if FEATURE_YAML_FOLD
+            return scalar.Style == ScalarStyle.Folded ? scalar.Value.Replace("\n", " ") : scalar.Value;
+#else
+            return scalar.Value;
+#endif
         }
 
         public Boolean AllowLiteral(out LiteralToken value)
@@ -32,7 +44,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     // String tag
                     if (String.Equals(scalar.Tag.Value, c_stringTag, StringComparison.Ordinal))
                     {
-                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
+                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
                         MoveNext();
                         return true;
                     }
@@ -84,7 +96,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                     }
                     else
                     {
-                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
+                        value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
                     }
 
                     MoveNext();
@@ -92,7 +104,7 @@ namespace GitHub.DistributedTask.Pipelines.ObjectTemplating
                 }
 
                 // Otherwise assume string
-                value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, scalar.Value);
+                value = new StringToken(m_fileId, scalar.Start.Line, scalar.Start.Column, GetScalarStringValue(scalar));
                 MoveNext();
                 return true;
             }
