@@ -185,14 +185,22 @@ namespace Runner.Server.Controllers
             {
                 using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
                 try {
-                    var buffer = new byte[1024 * 8];
+                    var buffer = new byte[64 * 1024 * 1024];
                     while(!webSocket.CloseStatus.HasValue) {
-                        var res = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), HttpContext.RequestAborted);
-                        if(res.CloseStatus.HasValue) {
-                            return;
+                        int offset = 0;
+                        while(!webSocket.CloseStatus.HasValue) {
+                            var res = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer, offset, buffer.Length - offset), HttpContext.RequestAborted);
+                            if(res.CloseStatus.HasValue) {
+                                return;
+                            }
+                            offset += res.Count;
+                            if(res.EndOfMessage) {
+                                break;
+                            }
                         }
-                        if(res.MessageType == System.Net.WebSockets.WebSocketMessageType.Text) {
-                            var livelogfeed = JsonConvert.DeserializeObject<TimelineRecordFeedLinesWrapper>(Encoding.UTF8.GetString(buffer, 0, res.Count));
+                        if(offset > 0)
+                        {
+                            var livelogfeed = JsonConvert.DeserializeObject<TimelineRecordFeedLinesWrapper>(Encoding.UTF8.GetString(buffer, 0, offset));
                             // It seems the actions/runner sends faulty lines with linebreaks, I guess it happens also here
                             var regex = new Regex("\r?\n");
                             var nl = livelogfeed.Value.SelectMany(lines => regex.Split(lines)).ToList();
