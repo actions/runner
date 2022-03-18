@@ -1527,7 +1527,7 @@ namespace Runner.Server.Controllers
                                         new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                     };
                                     try {
-                                        var _res = !workflowContext.ForceCancellationToken?.IsCancellationRequested ?? jobitem.EvaluateIf(jobTraceWriter);
+                                        var _res = (!workflowContext.ForceCancellationToken?.IsCancellationRequested ?? true) && jobitem.EvaluateIf(jobTraceWriter);
                                         if(!_res) {
                                             sendFinishJob(TaskResult.Skipped);
                                             return;
