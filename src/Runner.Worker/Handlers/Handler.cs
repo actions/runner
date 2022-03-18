@@ -34,6 +34,7 @@ namespace GitHub.Runner.Worker.Handlers
         protected IActionCommandManager ActionCommandManager { get; private set; }
 
         public Pipelines.ActionStepDefinitionReference Action { get; set; }
+        public bool IsActionStep => Action != null; 
         public Dictionary<string, string> Environment { get; set; }
         public Variables RuntimeVariables { get; set; }
         public IExecutionContext ExecutionContext { get; set; }
@@ -47,13 +48,18 @@ namespace GitHub.Runner.Worker.Handlers
             // Print out action details
             PrintActionDetails(stage);
 
-            // Get telemetry for the action.
-            PopulateActionTelemetry();
+            // Get telemetry for the action
+            PopulateActionTelemetry(stage);
         }
 
-        protected void PopulateActionTelemetry()
+        protected void PopulateActionTelemetry(ActionRunStage stage)
         {
-            if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
+            if (!IsActionStep)
+            {
+                ExecutionContext.StepTelemetry.Type = "runner";
+                ExecutionContext.StepTelemetry.Action = $"{stage} Job Hook";
+            }
+            else if (Action.Type == Pipelines.ActionSourceType.ContainerRegistry)
             {
                 ExecutionContext.StepTelemetry.Type = "docker";
                 var registryAction = Action as Pipelines.ContainerRegistryReference;
