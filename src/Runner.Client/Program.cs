@@ -999,7 +999,7 @@ namespace Runner.Client
                                         try {
                                             var workflow = File.OpenRead(w);
                                             workflowsToDispose.Add(workflow);
-                                            var name = (string.IsNullOrEmpty(parameters.directory) ? Path.GetRelativePath(parameters.directory, w) : w).Replace('\\', '/');
+                                            var name = (!string.IsNullOrEmpty(parameters.directory) ? Path.GetRelativePath(parameters.directory, w) : w).Replace('\\', '/');
                                             mp.Add(new StreamContent(workflow), name, name);
                                         } catch {
                                             Console.WriteLine($"Failed to read file: {w}");
