@@ -479,7 +479,7 @@ namespace GitHub.Runner.Worker.Handlers
 
         private void SetStepConclusion(IStep step, TaskResult result)
         {
-            step.ExecutionContext.Outcome ?= result;
+            step.ExecutionContext.Outcome ??= result;
             step.ExecutionContext.Result = result;
             SetStepsContext(step);
         }
