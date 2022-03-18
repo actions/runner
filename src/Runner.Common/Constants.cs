@@ -189,6 +189,12 @@ namespace GitHub.Runner.Common
             public static readonly string Success = "success";
         }
 
+        public static class Hooks
+        {
+            public static readonly string JobStartedStepName = "Set up runner";
+            public static readonly string JobCompletedStepName = "Complete runner";
+        }
+
         public static class Path
         {
             public static readonly string ActionsDirectory = "_actions";
