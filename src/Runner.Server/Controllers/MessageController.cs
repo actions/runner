@@ -2518,6 +2518,7 @@ namespace Runner.Server.Controllers
             try {
                 var variables = new Dictionary<String, GitHub.DistributedTask.WebApi.VariableValue>(StringComparer.OrdinalIgnoreCase);
                 variables.Add("system.github.job", new VariableValue(name, false));
+                variables.Add("system.workflowFilePath", new VariableValue(workflowContext.FileName, false));
                 Regex special = new Regex("[*'\",_&#^@\\/\r\n ]");
                 variables.Add("system.phaseDisplayName", new VariableValue(special.Replace($"{workflowname}_{parentId}_{name}", "-"), false));
                 variables.Add("system.runnerGroupName", new VariableValue("misc", false));
