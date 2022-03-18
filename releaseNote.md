@@ -1,17 +1,11 @@
 ## Features
 
-- Added `github.triggering_actor` to the `github` context (#1726)
-- Save step information when creating annotations (#1744)
-- Improved performance of live log streaming (#1730, #1755)
-- Added Beta support for job started and completed hooks (#1737)
-
 ## Bugs
-
+- Fixed a crash on runner startup (#1770)
 
 ## Misc
 
-- Made some minor job telemetry improvements (#1747)
-- Added repository name and workflow file name to `run.sh` output (#1761)
+- Clarified the type of step running when running job started or completed hooks (#1769)
 
 
 ## Windows x64
