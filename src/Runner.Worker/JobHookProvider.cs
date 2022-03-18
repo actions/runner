@@ -41,9 +41,9 @@ namespace GitHub.Runner.Worker
             var hookData = data as JobHookData;
             ArgUtil.NotNull(hookData, nameof(JobHookData));
 
-            var displayName = hookData.Stage == ActionRunStage.Pre ? Constants.Hooks.JobStartedStepName : Constants.Hooks.JobCompletedStepName;
+            var displayName = hookData.Stage == ActionRunStage.Pre ? "job started hook" : "job completed hook";
             // Log to users so that they know how this step was injected
-            executionContext.Output($"A '{displayName}' has been configured by the self-hosted runner administrator");
+            executionContext.Output($"A {displayName} has been configured by the self-hosted runner administrator");
 
             // Validate script file.
             if (!File.Exists(hookData.Path))
