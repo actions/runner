@@ -1,0 +1,15 @@
+on: 
+  push:
+name: windows-container-test1
+jobs:
+  test:
+    strategy:
+      matrix:
+        image:
+          - ""
+          - "mcr.microsoft.com/windows/servercore:ltsc2022"
+    container: ${{matrix.image}}
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - uses: ./

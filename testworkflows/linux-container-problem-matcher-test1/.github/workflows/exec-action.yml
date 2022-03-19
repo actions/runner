@@ -1,0 +1,18 @@
+on: 
+  push:
+jobs:
+  test:
+    strategy:
+      matrix:
+        image:
+          - ""
+          - "ubuntu:18.04"
+    container: ${{matrix.image}}
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - if: matrix.image != ''
+      run: |
+        echo GITHUB_WORKSPACE: $GITHUB_WORKSPACE && echo ::add-matcher::$GITHUB_WORKSPACE/problem.json && echo ::add-matcher::problem.json
+      shell: bash
+    - uses: ./

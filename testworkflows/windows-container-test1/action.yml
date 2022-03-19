@@ -1,0 +1,5 @@
+runs:
+  using: docker
+  image: docker://mcr.microsoft.com/windows/nanoserver:ltsc2022
+  entrypoint: cmd
+  args: [/c, ver]

@@ -1,0 +1,8 @@
+runs:
+  using: docker
+  image: docker://ubuntu:18.04
+  entrypoint: bash
+  args: 
+  - -c
+  - |-
+      echo GITHUB_WORKSPACE: $GITHUB_WORKSPACE && echo ::add-matcher::$GITHUB_WORKSPACE/problem.json && echo ::add-matcher::problem.json

@@ -1,0 +1,12 @@
+on:
+  push:
+name: Main
+jobs:
+  matrix:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v2
+      with:
+        node-version: '17'
+    - run: node -v

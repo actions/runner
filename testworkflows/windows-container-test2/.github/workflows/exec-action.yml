@@ -1,0 +1,19 @@
+on: 
+  push:
+name: windows-container-test2
+jobs:
+  test:
+    strategy:
+      matrix:
+        image:
+          - ""
+          - "mcr.microsoft.com/windows/servercore:ltsc2022"
+    container: ${{matrix.image}}
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - if: matrix.image != ''
+      run: |
+        echo GITHUB_WORKSPACE: %GITHUB_WORKSPACE% && echo ::add-matcher::%GITHUB_WORKSPACE%\problem.json && echo ::add-matcher::problem.json
+      shell: cmd
+    - uses: ./

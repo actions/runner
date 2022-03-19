@@ -1,0 +1,8 @@
+runs:
+  using: docker
+  image: docker://mcr.microsoft.com/windows/nanoserver:ltsc2022
+  entrypoint: cmd
+  args: 
+  - /c
+  - |-
+      echo GITHUB_WORKSPACE: %GITHUB_WORKSPACE% && echo ::add-matcher::%GITHUB_WORKSPACE%\problem2.json && echo ::add-matcher::problem.json

@@ -50,7 +50,7 @@ jobs:
     defaults:
       run:
         # It seems pwsh doesn't failfast, windows jobs succeeded with errors
-        shell: bash
+        shell: ${{ matrix.shell || 'bash' }}
     needs:
     - package
     strategy:
@@ -64,13 +64,20 @@ jobs:
         - '5.0.x'
         - '5.0.200'
         - '6.0.x'
+        image:
+        - ''
         include:
         - os: windows-2022
           tag: ltsc2022
+        - os: ubuntu-latest
+          image: mcr.microsoft.com/dotnet/sdk:6.0-alpine3.15
+          shell: sh
     runs-on: ${{matrix.os}}
+    container: ${{matrix.image}}
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-dotnet@v1
+    - if: matrix.dotnet-version
+      uses: actions/setup-dotnet@v1
       with:
         dotnet-version: ${{matrix.dotnet-version}}
     - run: mkdir src/Runner.Client/nupkg
@@ -82,12 +89,15 @@ jobs:
     - name: Install
       run: |
         dotnet tool install -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg --version ${{needs.package.outputs.version}}
+        # Make shure to have gharun in path in job container
+        echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
     - name: Test
       run: |
         gharun -W testworkflows/testlocalcheckout.yml
-        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun -W testworkflows/testhashfiles.yml
         gharun -W testworkflows/dumpcontexts.yml
+        ${{matrix.image && 'echo "Skipping additional testcases" && exit 0' || ''}}
+        gharun -W testworkflows/cache.yml -P ubuntu-latest=-self-hosted
         gharun -P ubuntu-latest=-self-hosted -W testworkflows/matrixtest.yml --parallel 1
         gharun -W testworkflows/artifact.yml
         gharun -W testworkflows/issue70/main.yml
@@ -110,29 +120,37 @@ jobs:
         gharun -P ubuntu-latest=-self-hosted
         gharun -P ubuntu-latest=-self-hosted --parallel 8
         cd ../..
+        gharun -W testworkflows/test-setup-node.yml
     - name: Windows Container Change Firewall Settings
-      if: contains(matrix.os, 'windows')
+      if: contains(matrix.os, 'windows') && !job.container
       run: |
         New-NetFirewallRule -Name gharun -DisplayName gharun -Enabled True -Action Allow -Direction Inbound -Program ($env:USERPROFILE + '\.dotnet\tools\gharun.exe') -Protocol tcp
         Get-NetFirewallProfile | Set-NetFirewallProfile -Enabled False
       shell: pwsh
     - name: Test Windows Container
-      if: contains(matrix.os, 'windows')
+      if: contains(matrix.os, 'windows') && !job.container
       run: |
         gharun -W testworkflows/windows.yml -P windows-latest=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
         gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
         # depends on bash, therefore disabled for now
         # gharun -W testworkflows/artifact.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
         gharun -W testworkflows/cachewindowscontainer.yml -P windows-latest=mcr.microsoft.com/powershell:lts-windowsservercore-${{matrix.tag}}
+        gharun -W testworkflows/test-setup-node.yml -P self-hosted=mcr.microsoft.com/windows/servercore:${{matrix.tag}}
+        gharun -C testworkflows/windows-container-test1
+        gharun -C testworkflows/windows-container-test2
+        gharun -C testworkflows/windows-container-test3-invalid-problem-matcher && exit 1 || [[ "$?" = "1" ]]
     - name: Test Linux Container
-      if: contains(matrix.os, 'ubuntu')
+      if: contains(matrix.os, 'ubuntu') && !job.container
       run: |
         gharun -W testworkflows/testlocalcheckout.yml -P self-hosted=ubuntu:latest
         gharun -W testworkflows/artifact.yml -P self-hosted=ubuntu:latest
         gharun -W testworkflows/cache.yml -P ubuntu-latest=ubuntu:latest
+        gharun -W testworkflows/test-setup-node.yml -P self-hosted=ubuntu:latest
+        gharun -C testworkflows/linux-container-problem-matcher-test1
+        gharun -C testworkflows/linux-container-i386
       shell: bash
     - name: Test sqlite support
-      if: contains(matrix.os, 'ubuntu')
+      if: contains(matrix.os, 'ubuntu') && !job.container
       run: |
         mkdir gharun
         cd gharun

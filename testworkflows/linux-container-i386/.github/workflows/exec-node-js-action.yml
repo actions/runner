@@ -1,0 +1,8 @@
+on: 
+  push:
+jobs:
+  test:
+    container: i386/ubuntu:18.04
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
