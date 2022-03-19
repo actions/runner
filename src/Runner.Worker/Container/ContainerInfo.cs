@@ -192,7 +192,7 @@ namespace GitHub.Runner.Worker.Container
         {
             if (!string.IsNullOrEmpty(path))
             {
-                foreach (var mapping in _pathMappings)
+                foreach (var mapping in _pathMappings.Concat(_osPathMappings[Os]))
                 {
                     if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
                         if (string.Equals(path, mapping.ContainerPath, StringComparison.OrdinalIgnoreCase))
