@@ -26,6 +26,51 @@ The new nuget package [can be found here](https://www.nuget.org/packages/io.gith
 - `dotnet tool install --global io.github.christopherhx.gharun`
 - Run `gharun` like `Runner.Client`
 
+## Environment Secret files
+CLI
+```
+Runner.Client -W sample.yml --environment-secret-file develop=develop.yml --environment-secret-file staging=staging.yaml --environment-secret-file prod=prod.secrets
+```
+
+develop.yml, staging.yaml
+```yaml
+secret1: |
+  My multiline secret
+  it's yaml
+secret2: val3
+```
+
+prod.secrets
+```
+secret1<<DELIMITER
+My multiline secret
+it's the environment file syntax of github actions
+see GITHUB_ENV
+DELIMITER
+secret2=val3 x
+prodsecret=xval
+```
+
+sample.yml
+```yaml
+on: push
+jobs:
+  test:
+    strategy:
+      matrix:
+        environment:
+        - develop
+        - staging
+        - prod
+    runs-on: self-hosted
+    environment: ${{matrix.environment}}
+    steps:
+    - run: echo prodsecret=${{env.prodsecret}}
+      if: env.prodsecret
+      env: ${{secrets}}
+    - run: exit ${{ secrets.secret1 && secrets.secret2 && (matrix.environment != 'prod' || secrets.prodsecret) && '0' || '1' }}
+```
+
 ## Troubleshooting
 
 If you get an error like: 
@@ -177,7 +222,7 @@ With this config you are no longer allowed to register a runner with any token, 
 ```
 
 ### Allow PullRequest events
-Process the `pull_request` action trigger, if disabled only `pull_request_target` from the target branch are processed. Enabling this make it possible to leak secrets and run arbitary code on your self-hosted runners. Proper secret and self-hosted runner protection needs to be implemented, to make this save to enable.
+Process the `pull_request` action trigger, if disabled only `pull_request_target` from the target branch or `pull_request` from the same repository are processed. Enabling this make it possible to leak secrets and run arbitary code on your self-hosted runners from forked repositories. Proper secret and self-hosted runner protection needs to be implemented, to make this save to enable.
 ```json
 {
   "Runner.Server": {
@@ -233,6 +278,27 @@ If this doesn't match with the your configuration url, you cannot configure any 
 }
 ```
 
+### Configure insecure Environment Secrets
+
+This provides the secrets `mysecret1`, `myothersecret` to jobs with the `environment` name set to `develop`. Only the `Runner.Server:GITHUB_TOKEN`, `Runner.Server:GITHUB_TOKEN_READ_ONLY` and `Runner.Server:GITHUB_TOKEN_NONE` properties are shared with jobs with a specfic environment.
+`appsettings.json`
+```json
+{
+  "Runner.Server": {
+    "Environments": {
+      "develop": {
+        "mysecret1": "test",
+        "myothersecret": "other"
+      }
+    }
+  }
+}
+```
+CLI
+```
+Runner.Server --Runner.Server:Environments:develop:mysecret1=test --Runner.Server:Environments:develop:myothersecret=other
+```
+
 ### Configure to use sqlite instead of an in Memory DB
 ```json
 {
@@ -265,6 +331,145 @@ Add `<url of Runner.Server>/signin-oidc` (https://localhost:5001/signin-oidc) as
   "ClientId": "ClientId of your Oauth app",
   "ClientSecret": "Client secret of your Oauth app",
   "Authority": "https://try.gitea.io",
+}
+```
+
+### Dynamic GITHUB_TOKEN with specified permissions ( GitHub App )
+
+Create a new github app with the following permissions
+- Read access to metadata
+- Read and write access to actions, checks, code, commit statuses, deployments, discussions, issues, packages, pull requests, repository projects, and security events
+
+Create the private key and configure the server to use the private key and your GitHubAppId.
+```json
+{
+  "Runner.Server": {
+    "GitHubAppPrivateKeyFile": "path/to/privatekey.pem",
+    "GitHubAppId": 32344
+  }
+}
+```
+CLI
+```
+Runner.Server --Runner.Server:GitHubAppPrivateKeyFile=path/to/privatekey.pem --Runner.Server:GitHubAppId=32344
+```
+
+#### AllowPrivateActionAccess
+You can allow that your workflows can access private reusable workflows and actions where your GitHub App is registered. **Do not use together with AllowPullRequests or the content of all your private repositories can be leaked.**
+
+```json
+{
+  "Runner.Server": {
+    "AllowPrivateActionAccess": true
+  }
+}
+```
+
+### OnQueueJob
+You can configure the server to execute a command once a job is queued, e.g. you can configure or start a suspended runner to run the job.
+
+For example run a bash script, you can see the stdout and stderr of the process in the live logs of the job which ran the hook
+```json
+{
+  "Runner.Server": {
+    "OnQueueJobProgram": "/bin/bash",
+    "OnQueueJobArgs": "\"/home/ubuntu/runner.server-3.6.0/upscale.sh\""
+  }
+}
+```
+You also get the `RUNNER_SERVER_PAYLOAD` environment variable with information about the queued job. Sample Content:
+```json
+{
+    "contextData": {
+        "inputs": null,
+        "github": {
+            "server_url": "https://github.com",
+            "api_url": "https://api.github.com",
+            "graphql_url": "https://api.github.com/graphql",
+            "workflow": "example",
+            "repository": "murx/murx",
+            "sha": "02303847892393472939380472973932",
+            "repository_owner": "murx",
+            "ref": "refs/tags/urgh",
+            "ref_protected": false,
+            "ref_type": "tag",
+            "ref_name": "urgh",
+            "head_ref": "",
+            "base_ref": "",
+            "event": {
+                "commits": [
+                    {
+                        "message": "Untraced changes",
+                        "id": "02303847892393472939380472973932",
+                        "added": [],
+                        "removed": [],
+                        "modified": []
+                    }
+                ],
+                "sender": {
+                    "login": "weird",
+                    "name": "weird",
+                    "email": "weird@runner.server.localhost",
+                    "id": 976638,
+                    "type": "user"
+                },
+                "pusher": {
+                    "login": "weird",
+                    "name": "weird",
+                    "email": "weird@runner.server.localhost",
+                    "id": 976638,
+                    "type": "user"
+                },
+                "before": "0000000000000000000000000000000000000000",
+                "ref": "refs/tags/urgh",
+                "after": "02303847892393472939380472973932",
+                "head_commit": {
+                    "message": "Untraced changes",
+                    "id": "02303847892393472939380472973932",
+                    "added": [],
+                    "removed": [],
+                    "modified": []
+                },
+                "repository": {
+                    "owner": {
+                        "login": "weird",
+                        "name": "weird",
+                        "email": "weird@runner.server.localhost",
+                        "id": 976638,
+                        "type": "user"
+                    },
+                    "default_branch": "main",
+                    "master_branch": "master",
+                    "name": "murx",
+                    "full_name": "murx/murx"
+                }
+            },
+            "event_name": "push",
+            "actor": "weird",
+            "run_id": "824",
+            "run_number": "824",
+            "retention_days": "90",
+            "run_attempt": "1",
+            "repositoryUrl": "https://github.com/murx/murx.git"
+        },
+        "needs": {},
+        "strategy": {
+            "fail-fast": true,
+            "max-parallel": 1,
+            "job-total": 1,
+            "job-index": 0
+        },
+        "matrix": null
+    },
+    "repository": "murx/murx",
+    "workflowFileName": ".github/workflows/main.yaml",
+    "job": "test",
+    "jobDisplayName": "test",
+    "environment": "",
+    "labels": [
+        "self-hosted",
+        "container-host"
+    ]
 }
 ```
 
@@ -309,7 +514,7 @@ This Software contains Open Source reimplementations of some parts of the propri
 - matrix parsing and evaluation
 - callable workflows
 - `on` parsing incl. filter
-- context creation of `github`, `needs`, `matrix` and `strategy`
+- context creation of `github`, `needs`, `matrix`, `strategy` and `inputs`
 - job inputs / outputs, based on documentation
 - secret management
 - cache service

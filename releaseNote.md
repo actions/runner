@@ -1,28 +1,9 @@
 ## Fixes
-- Don't share the templatecontext to avoid accumulated evaluation memory limits across jobs
-- `--version` switch now working again with an `.actrc`
-- Errors in `.actrc` are no longer fatal errors
-- Trim white spaces in `.actrc` files
-- `--list` flag works again, was broken between `v3.5.0` and `v3.6.4`
-- Force cancellation no longer waits for any running agent, can be used to resync a stale runner
-- Send cancellation Message not within 5s after sending the job message, **to mitigate a runner bug**
+- Problem matcher commands now working again in docker containers, broken as of 3.6.4. New tests added, since this is part of a runner modification.
 
 ## Features
-- Specify deployment environment secrets and use different secrets per job
-- Simple oidc stub, eventually works with cloud providers or not
-- Update actions/runner 2.289.1
-- Accept live logs via websockets, Protocol addition of github actions March 2022
-- Allow to rerun from HEAD commit of the branch or tag, faster testing of release and issue workflows 
-- Option to run a command when a new job gets queued, e.g. for basic upscaling
-- Better error messages of cyclic and missing dependencies 
 
 ## Breaking Changes
-- Specifing an job ( deployment ) environment no longer uses secrets of `-s` or `--secret` flag
-- Yaml anchors are now disabled again
-- The `GITHUB_TOKEN` in appsettings.json is no longer sent to jobs with contents: read / none permissions
-  Added `GITHUB_TOKEN_NONE` and `GITHUB_TOKEN_READ_ONLY` properties to be able to set a value
-- The `gharun` / `Runner.Client` `-C` flag no longer uses `.github/workflows` as default argument, instead it uses a default path relative to the `-C` flag
-  workflow filenames are now resolved relative to the `-C` flag before sending the name to the server
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
