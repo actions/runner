@@ -1,0 +1,16 @@
+on: push
+jobs:
+  test:
+    strategy:
+      matrix:
+        environment:
+        - develop
+        - staging
+        - prod
+    runs-on: self-hosted
+    environment: ${{matrix.environment}}
+    steps:
+    - run: echo prodsecret=${{env.prodsecret}}
+      if: env.prodsecret
+      env: ${{secrets}}
+    - run: exit ${{ secrets.secret1 && secrets.secret2 && (matrix.environment != 'prod' || secrets.prodsecret) && '0' || '1' }}

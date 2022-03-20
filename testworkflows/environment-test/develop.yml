@@ -1,0 +1,4 @@
+secret1: |
+  My multiline secret
+  it's yaml
+secret2: val3
