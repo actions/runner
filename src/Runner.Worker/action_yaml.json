@@ -131,7 +131,7 @@
                     "env": "step-env",
                     "working-directory": "string-steps-context",
                     "shell": {
-                        "type": "string-shell-context",
+                        "type": "string-steps-context",
                         "required": true
                     }
                 }
@@ -198,12 +198,6 @@
                 "runner",
                 "env",
                 "hashFiles(1,255)"
-            ],
-            "string": {}
-        },
-        "string-shell-context": {
-            "context": [
-                "inputs"
             ],
             "string": {}
         },
