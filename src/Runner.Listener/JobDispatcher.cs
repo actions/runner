@@ -350,7 +350,7 @@ namespace GitHub.Runner.Listener
                 string workflowName = string.Empty;
                 if(message.Variables.TryGetValue("system.workflowFilePath", out var workflowPath))
                 {
-                    workflowName = workflowPath.Value.Split('/').LastOrDefault();
+                    workflowName = workflowPath.Value.Split('/').LastOrDefault().Trim();
                 }
 
                 string repositoryName = string.Empty;
@@ -359,7 +359,7 @@ namespace GitHub.Runner.Listener
                     var githubContext = context as Pipelines.ContextData.DictionaryContextData;
                     if(githubContext.TryGetValue("repository", out var repository))
                     {
-                        repositoryName = (repository as Pipelines.ContextData.StringContextData).Value;
+                        repositoryName = (repository as Pipelines.ContextData.StringContextData).Value.Trim();
                     }
                 }
                 
