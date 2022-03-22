@@ -163,6 +163,7 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         [InlineData("Dockerfile.test", true)]
         [InlineData("test.Dockerfile", true)]
         [InlineData("docker/dockerfile:latest", false)]
+        [InlineData("/some/path/dockerfile:latest", false)]
         [InlineData("dockerfile:latest", false)]
         [InlineData("Dockerfile:latest", false)]
         [InlineData("dockerfile-latest", false)]
