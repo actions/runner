@@ -346,7 +346,38 @@ namespace GitHub.Runner.Listener
                 }
 
                 var term = HostContext.GetService<ITerminal>();
-                term.WriteLine($"{DateTime.UtcNow:u}: Running job: {message.JobDisplayName}");
+
+                string workflowName = string.Empty;
+                if(message.Variables.TryGetValue("system.workflowFilePath", out var workflowPath))
+                {
+                    workflowName = workflowPath.Value.Split('/').LastOrDefault();
+                }
+
+                string repositoryName = string.Empty;
+                if(message.ContextData.TryGetValue("github", out var context))
+                {
+                    var githubContext = context as Pipelines.ContextData.DictionaryContextData;
+                    if(githubContext.TryGetValue("repository", out var repository))
+                    {
+                        repositoryName = (repository as Pipelines.ContextData.StringContextData).Value;
+                    }
+                }
+                
+                string additionalInfo = string.Empty;
+                if(!string.IsNullOrEmpty(workflowName))
+                {
+                    additionalInfo += $"(workflow \"{workflowName}\"";
+                    if(!string.IsNullOrEmpty(repositoryName))
+                    {
+                        additionalInfo += $" in repository \"{repositoryName}\")";
+                    }
+                    else
+                    {
+                        additionalInfo += ")";
+                    }
+                }
+                
+                term.WriteLine($"{DateTime.UtcNow:u}: Running job: \"{message.JobDisplayName}\" {additionalInfo}");
 
                 // first job request renew succeed.
                 TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
@@ -531,7 +562,7 @@ namespace GitHub.Runner.Listener
 
                                 TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
                                 Trace.Info($"finish job request for job {message.JobId} with result: {result}");
-                                term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {result}");
+                                term.WriteLine($"{DateTime.UtcNow:u}: Job \"{message.JobDisplayName}\" {additionalInfo} completed with result: {result}");
 
                                 Trace.Info($"Stop renew job request for job {message.JobId}.");
                                 // stop renew lock
@@ -627,7 +658,7 @@ namespace GitHub.Runner.Listener
                             }
 
                             Trace.Info($"finish job request for job {message.JobId} with result: {resultOnAbandonOrCancel}");
-                            term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {resultOnAbandonOrCancel}");
+                            term.WriteLine($"{DateTime.UtcNow:u}: Job \"{message.JobDisplayName}\" {additionalInfo} completed with result: {resultOnAbandonOrCancel}");
                             // complete job request with cancel result, stop renew lock, job has finished.
 
                             Trace.Info($"Stop renew job request for job {message.JobId}.");
