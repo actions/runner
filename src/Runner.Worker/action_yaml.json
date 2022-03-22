@@ -206,10 +206,9 @@
         "boolean-steps-context": {
             "context": [
                 "github",
-                "needs",
+                "inputs",
                 "strategy",
                 "matrix",
-                "secrets",
                 "steps",
                 "job",
                 "runner",
