@@ -467,7 +467,10 @@ namespace GitHub.Runner.Worker.Handlers
 
                 if (continueOnError)
                 {
-                    SetStepConclusion(step, TaskResult.Succeeded);
+
+                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
+                    step.ExecutionContext.Result = TaskResult.Succeeded;
+                    SetStepsContext(step);
                     Trace.Info($"Updated step result (continue on error)");
                 }
             }
@@ -479,7 +482,6 @@ namespace GitHub.Runner.Worker.Handlers
 
         private void SetStepConclusion(IStep step, TaskResult result)
         {
-            step.ExecutionContext.Outcome ??= result;
             step.ExecutionContext.Result = result;
             SetStepsContext(step);
         }
@@ -487,7 +489,7 @@ namespace GitHub.Runner.Worker.Handlers
         {
             if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
             {
-                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Outcome ?? TaskResult.Succeeded).ToActionResult());
+                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Outcome ?? step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
                 step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
             }
         }
