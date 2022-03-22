@@ -11,7 +11,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Container
 {
-    [ServiceLocator(Default = typeof(DockerCommandManager))]
+    [ServiceLocator(Default = typeof(DockerHookCommandManager))]
     public interface IDockerCommandManager : IRunnerService
     {
         string DockerPath { get; }
@@ -188,7 +188,7 @@ namespace GitHub.Runner.Worker.Container
             return outputStrings.FirstOrDefault();
         }
 
-        public async Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        public virtual async Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             IList<string> dockerOptions = new List<string>();
             // OPTIONS
@@ -258,7 +258,7 @@ namespace GitHub.Runner.Worker.Container
             return await ExecuteDockerCommandAsync(context, "run", optionsString, container.ContainerEnvironmentVariables, stdoutDataReceived, stderrDataReceived, context.CancellationToken);
         }
 
-        public async Task<int> DockerStart(IExecutionContext context, string containerId)
+        public virtual async Task<int> DockerStart(IExecutionContext context, string containerId)
         {
             return await ExecuteDockerCommandAsync(context, "start", containerId, context.CancellationToken);
         }
