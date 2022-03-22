@@ -65,6 +65,10 @@ namespace GitHub.Runner.Worker.Container
 
         public static bool IsDockerfile(string image)
         {
+            if (image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
             var imageWithoutPath = image.Split('/').Last();
             return imageWithoutPath.StartsWith("Dockerfile.") || imageWithoutPath.StartsWith("dockerfile.") || imageWithoutPath.EndsWith("Dockerfile") || imageWithoutPath.EndsWith("dockerfile");
         }

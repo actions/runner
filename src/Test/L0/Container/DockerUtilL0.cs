@@ -179,6 +179,8 @@ namespace GitHub.Runner.Common.Tests.Worker.Container
         [InlineData("./example/Dockerfile.test", true)]
         [InlineData("example/test.dockerfile", true)]
         [InlineData("./example/test.dockerfile", true)]
+        [InlineData("docker://Dockerfile", false)]
+        [InlineData("docker://ubuntu:latest", false)]
         public void IsDockerfile(string input, bool expected)
         {
             var actual = DockerUtil.IsDockerfile(input);
