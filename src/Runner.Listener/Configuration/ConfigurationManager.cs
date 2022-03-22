@@ -624,9 +624,12 @@ namespace GitHub.Runner.Listener.Configuration
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("basic", base64EncodingToken);
                     httpClient.DefaultRequestHeaders.UserAgent.AddRange(HostContext.UserAgents);
                     httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
+                    
+                    var responseStatus = System.Net.HttpStatusCode.OK;
                     try
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(string.Empty));
+                        responseStatus = response.StatusCode;
 
                         if (response.IsSuccessStatusCode)
                         {
@@ -639,21 +642,10 @@ namespace GitHub.Runner.Listener.Configuration
                             _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
-
-                            if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                            {
-                                // No need to retry
-                                retryCount = 3;
-                                throw new Exception("Invalid repository URL or register token");
-                            }
-                            else
-                            {
-                                // Something else bad happened, let's go to our retry logic
-                                response.EnsureSuccessStatusCode();
-                            }
+                            response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2)
+                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get JIT runner token -- Atempt: {retryCount}");
@@ -695,9 +687,11 @@ namespace GitHub.Runner.Listener.Configuration
                         {"runner_event", runnerEvent}
                     };
 
+                    var responseStatus = System.Net.HttpStatusCode.OK;
                     try
                     {
                         var response = await httpClient.PostAsync(githubApiUrl, new StringContent(StringUtil.ConvertToJson(bodyObject), null, "application/json"));
+                        responseStatus = response.StatusCode;
 
                         if(response.IsSuccessStatusCode)
                         {
@@ -710,21 +704,10 @@ namespace GitHub.Runner.Listener.Configuration
                             _term.WriteError($"Http response code: {response.StatusCode} from 'POST {githubApiUrl}'");
                             var errorResponse = await response.Content.ReadAsStringAsync();
                             _term.WriteError(errorResponse);
-
-                            if(response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                            {
-                                // No need to retry
-                                retryCount = 3;
-                                throw new Exception("Invalid repository URL or register token");
-                            }
-                            else
-                            {
-                                // Something else bad happened, let's go to our retry logic
-                                response.EnsureSuccessStatusCode();
-                            }
+                            response.EnsureSuccessStatusCode();
                         }
                     }
-                    catch(Exception ex) when (retryCount < 2)
+                    catch(Exception ex) when (retryCount < 2 && responseStatus != System.Net.HttpStatusCode.NotFound)
                     {
                         retryCount++;
                         Trace.Error($"Failed to get tenant credentials -- Atempt: {retryCount}");
