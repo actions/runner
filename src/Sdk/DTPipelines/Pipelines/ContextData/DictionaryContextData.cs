@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Runtime.Serialization;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Runtime.Serialization;
 using GitHub.DistributedTask.Expressions2.Sdk;
 using GitHub.Services.WebApi.Internal;
 using Newtonsoft.Json;
@@ -13,6 +13,7 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
     [DataContract]
     [JsonObject]
     [ClientIgnore]
+    [Serializable]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public class DictionaryContextData : PipelineContextData, IEnumerable<KeyValuePair<String, PipelineContextData>>, IReadOnlyObject
     {
@@ -158,6 +159,12 @@ namespace GitHub.DistributedTask.Pipelines.ContextData
         {
             IndexLookup.Add(key, m_list?.Count ?? 0);
             List.Add(new DictionaryContextDataPair(key, value));
+        }
+
+        public DictionaryContextData DeepClone()
+        {
+            var serialized = JsonConvert.SerializeObject(this);
+            return JsonConvert.DeserializeObject<DictionaryContextData>(serialized);
         }
 
         public override PipelineContextData Clone()

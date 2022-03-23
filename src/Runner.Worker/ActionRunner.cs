@@ -9,7 +9,6 @@ using GitHub.DistributedTask.Pipelines.ObjectTemplating;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Handlers;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -165,14 +164,14 @@ namespace GitHub.Runner.Worker
                 stepHost = containerStepHost;
             }
 
+
             // Setup File Command Manager
             var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
             fileCommandManager.InitializeFiles(ExecutionContext, null);
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
-            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+            var inputs = EvaluateStepInputs(stepHost);
 
             var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> input in inputs)
@@ -297,6 +296,58 @@ namespace GitHub.Runner.Worker
             context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
             _didFullyEvaluateDisplayName = didFullyEvaluate;
             return didFullyEvaluate;
+        }
+
+        private Dictionary<String, String> EvaluateStepInputs(
+            IStepHost stepHost
+        )
+        {
+            // var githubContext = new GitHubContext().Clone();
+            // Dictionary<string, string> githubContextOriginals = new Dictionary<string, string>();
+            // foreach ( in githubContext.GetRuntimeEnvironmentVariables())
+            // {
+            //     githubContextOriginals[key] = ExecutionContext.GetGitHubContext(key);
+            // }
+
+            // foreach (KeyValuePair<string, string> entry in githubContextOriginals)
+            // {
+            //     if (String.IsNullOrEmpty(entry.Value))
+            //     {
+            //         continue;
+            //     }
+            //     ExecutionContext.SetGitHubContext(entry.Key, stepHost.ResolvePathForStepHost(entry.Value));
+            // }
+
+            var expressionValues = ExecutionContext.ExpressionValues.DeepClone();
+
+            var githubExpressionValues = expressionValues["github"] as GitHubContext;
+            if (githubExpressionValues != null)
+            {
+                var githubContext = expressionValues["github"] as GitHubContext;
+
+                foreach (KeyValuePair<string, string> pair in githubContext.GetRuntimeEnvironmentVariables())
+                {
+                    if (String.IsNullOrEmpty(pair.Value))
+                    {
+                        continue;
+                    }
+                    githubContext[pair.Key] = new StringContextData(stepHost.ResolvePathForStepHost(pair.Value));
+                }
+            }
+            // expression values of github = github dictionary
+            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
+
+            // foreach (KeyValuePair<string, string> entry in githubContextOriginals)
+            // {
+            //     if (String.IsNullOrEmpty(entry.Value))
+            //     {
+            //         continue;
+            //     }
+            //     ExecutionContext.SetGitHubContext(entry.Key, entry.Value);
+            // }
+
+            return inputs;
         }
 
         private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)
