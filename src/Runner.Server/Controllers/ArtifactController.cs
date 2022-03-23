@@ -52,12 +52,11 @@ namespace Runner.Server.Controllers {
 
         private SqLiteDb _context;
 
-        public ArtifactController(SqLiteDb context, IConfiguration configuration)
+        public ArtifactController(SqLiteDb context, IConfiguration configuration) : base(configuration)
         {
             _context = context;
             _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "artifacts");
             Directory.CreateDirectory(_targetFilePath);
-            ReadConfig(configuration);
         }
 
         public async Task<ArtifactFileContainer> CreateContainer(long run, long attempt, CreateActionsStorageArtifactParameters req) {

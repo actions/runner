@@ -8,6 +8,7 @@ using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Runner.Server.Controllers
@@ -20,7 +21,7 @@ namespace Runner.Server.Controllers
     {
         private IMemoryCache _cache;
 
-        public AgentRequestController(IMemoryCache cache)
+        public AgentRequestController(IMemoryCache cache, IConfiguration conf) : base(conf)
         {
             _cache = cache;
         }

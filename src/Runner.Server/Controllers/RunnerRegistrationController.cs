@@ -27,10 +27,9 @@ namespace Runner.Server.Controllers
     {
         private string RUNNER_TOKEN { get; }
 
-        public RunnerRegistrationController(IConfiguration configuration)
+        public RunnerRegistrationController(IConfiguration configuration) : base(configuration)
         {
             RUNNER_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("RUNNER_TOKEN") ?? "";
-            ReadConfig(configuration);
         }
 
         class AddRemoveRunner

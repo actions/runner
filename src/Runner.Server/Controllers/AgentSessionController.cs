@@ -10,6 +10,7 @@ using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Runner.Server.Models;
@@ -28,7 +29,7 @@ namespace Runner.Server.Controllers
         private SqLiteDb _context;
     
 
-        public AgentSessionController(IMemoryCache cache, SqLiteDb context)
+        public AgentSessionController(IMemoryCache cache, SqLiteDb context, IConfiguration conf) : base(conf)
         {
             _cache = cache;
             _context = context;

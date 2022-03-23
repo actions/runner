@@ -39,12 +39,11 @@ namespace Runner.Server.Controllers {
             public string version  {get;set;}
         }
         private SqLiteDb _context;
-        public CacheController(SqLiteDb context, IWebHostEnvironment environment, IConfiguration configuration)
+        public CacheController(SqLiteDb context, IWebHostEnvironment environment, IConfiguration configuration) : base(configuration)
         {
             _context = context;
             _targetFilePath = Path.Combine(GitHub.Runner.Sdk.GharunUtil.GetLocalStorage(), "cache");
             Directory.CreateDirectory(_targetFilePath);
-            ReadConfig(configuration);
         }
 
         [HttpPost("caches")]

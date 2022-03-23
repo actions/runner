@@ -29,11 +29,10 @@ namespace Runner.Server.Controllers
 
         private SqLiteDb _context;
 
-        public AgentController(IMemoryCache cache, SqLiteDb context, IConfiguration configuration = null)
+        public AgentController(IMemoryCache cache, SqLiteDb context, IConfiguration conf) : base(conf)
         {
             _cache = cache;
             _context = context;
-            ReadConfig(configuration);
         }
 
         private static object lok = new object();

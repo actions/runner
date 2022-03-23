@@ -12,6 +12,7 @@ using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
 
@@ -24,7 +25,7 @@ namespace Runner.Server.Controllers
     {        
         private SqLiteDb _context;
 
-        public LogfilesController(SqLiteDb context)
+        public LogfilesController(SqLiteDb context, IConfiguration conf) : base(conf) 
         {
             _context = context;
         }

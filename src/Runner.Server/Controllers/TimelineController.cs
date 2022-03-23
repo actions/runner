@@ -14,6 +14,7 @@ using Runner.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using System.IO;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Configuration;
 
 namespace Runner.Server.Controllers
 {
@@ -25,7 +26,7 @@ namespace Runner.Server.Controllers
         public static ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)> dict = new ConcurrentDictionary<Guid, (List<TimelineRecord>, ConcurrentDictionary<Guid, List<TimelineRecordLogLine>>)>();
         private SqLiteDb _context;
 
-        public TimelineController(SqLiteDb context)
+        public TimelineController(SqLiteDb context, IConfiguration conf) : base(conf)
         {
             _context = context;
         }

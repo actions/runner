@@ -11,6 +11,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace Runner.Server.Controllers
 {
@@ -22,7 +23,7 @@ namespace Runner.Server.Controllers
         private IMemoryCache _cache;
         private SqLiteDb _context;
 
-        public FinishJobController(IMemoryCache cache, SqLiteDb context)
+        public FinishJobController(IMemoryCache cache, SqLiteDb context, IConfiguration conf) : base(conf)
         {
             _cache = cache;
             _context = context;
@@ -49,7 +50,7 @@ namespace Runner.Server.Controllers
                     job.Outputs.AddRange(from o in ev.Outputs select new JobOutput { Name = o.Key, Value = o.Value?.Value ?? "" });
                 }
                 _context.SaveChanges();
-                new TimelineController(_context).SyncLiveLogsToDb(job.TimeLineId);
+                new TimelineController(_context, Configuration).SyncLiveLogsToDb(job.TimeLineId);
             }
             Task.Run(() => {
                 OnJobCompleted?.Invoke(ev);

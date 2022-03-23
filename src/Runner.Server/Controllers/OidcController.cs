@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Runner.Server.Controllers
@@ -10,6 +11,11 @@ namespace Runner.Server.Controllers
     [AllowAnonymous]
     [Route(".well-known")]
     public class OidcController : VssControllerBase {
+
+        public OidcController(IConfiguration conf) : base(conf) {
+            
+        }
+
         [HttpGet("openid-configuration")]
         public Task<FileStreamResult> GetOidcConfig() {
             var conf = new {

@@ -76,10 +76,8 @@ namespace Runner.Server.Controllers
         private bool DisableNoCI { get; }
         private string OnQueueJobProgram { get; }
         private string OnQueueJobArgs { get; }
-        private IConfiguration configuration;
-
         private MessageController Clone() {
-            var nc = new MessageController(configuration, _cache, new SqLiteDb(_context.Options));
+            var nc = new MessageController(Configuration, _cache, new SqLiteDb(_context.Options));
             // We have no access to the HttpContext in the clone
             nc.ServerUrl = ServerUrl;
             return nc;
@@ -90,9 +88,8 @@ namespace Runner.Server.Controllers
             public string Value {get;set;}
         }
 
-        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context)
+        public MessageController(IConfiguration configuration, IMemoryCache memoryCache, SqLiteDb context) : base(configuration)
         {
-            this.configuration = configuration;
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
             GitGraphQlServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitGraphQlServerUrl") ?? "";
@@ -119,7 +116,6 @@ namespace Runner.Server.Controllers
             OnQueueJobArgs = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobArgs");
             _cache = memoryCache;
             _context = context;
-            ReadConfig(configuration);
         }
 
         [HttpDelete("{poolId}/{messageId}")]
@@ -787,7 +783,7 @@ namespace Runner.Server.Controllers
             attempt = _context.Set<WorkflowRunAttempt>().Find(attempt.Id);
             _context.Entry(attempt).Reference(a => a.WorkflowRun).Load();
             if(secretsProvider == null) {
-                secretsProvider = new DefaultSecretsProvider(configuration);
+                secretsProvider = new DefaultSecretsProvider(Configuration);
             }
             bool asyncProcessing = false;
             Guid workflowTimelineId = callingJob?.TimelineId ?? attempt.TimeLineId;
@@ -797,7 +793,7 @@ namespace Runner.Server.Controllers
                 _context.SaveChanges();
                 var records = new List<TimelineRecord>{ new TimelineRecord{ Id = workflowTimelineId, Name = fileRelativePath } };
                 TimelineController.dict[workflowTimelineId] = (records, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                new TimelineController(_context).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(records));
+                new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(records));
             }
             Guid workflowRecordId = callingJob?.RecordId ?? attempt.TimeLineId;
             if(workflowTimelineId == attempt.TimeLineId) {
@@ -805,7 +801,7 @@ namespace Runner.Server.Controllers
                 initializingJobs.TryAdd(workflowTimelineId, new Job() { JobId = workflowTimelineId, TimeLineId = workflowTimelineId, runid = runid } );
                 if(attempt.Attempt > 1) {
                     workflowRecordId = Guid.NewGuid();
-                    new TimelineController(_context).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }));
+                    new TimelineController(_context, Configuration).UpdateTimeLine(workflowTimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(new List<TimelineRecord>{ new TimelineRecord{ Id = workflowRecordId, ParentId = workflowTimelineId, Order = attempt.Attempt, Name = $"Attempt {attempt.Attempt}" } }));
                 }
             }
             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Initialize Workflow Run {runid}" }), workflowTimelineId, workflowRecordId);
@@ -1499,7 +1495,7 @@ namespace Runner.Server.Controllers
                                     jobitem.DisplayName = _jobdisplayname;
                                     // For Runner.Client to show the workflowname
                                     initializingJobs.TryAdd(jobitem.Id, new Job() { JobId = jobitem.Id, TimeLineId = jobitem.TimelineId, name = jobitem.DisplayName, workflowname = workflowname, runid = runid, RequestId = jobitem.RequestId } );
-                                    new TimelineController(_context).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
+                                    new TimelineController(_context, Configuration).UpdateTimeLine(jobitem.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[jobitem.TimelineId].Item1));
                                     jobTraceWriter.Info("{0}", $"Evaluate if");
                                     var ifexpr = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "if" select r).FirstOrDefault().Value;
                                     var translateConditionCtx = CreateTemplateContext(jobTraceWriter);
@@ -1524,7 +1520,7 @@ namespace Runner.Server.Controllers
                                     Action<TaskResult> sendFinishJob = result => {
                                         var _job = new Job() { message = null, repo = repository_name, WorkflowRunAttempt = attempt, WorkflowIdentifier = callingJob?.Id != null ? callingJob.Id + "/" + jobitem.name : jobitem.name, name = _jobdisplayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = jobitem.RequestId, TimeLineId = jobitem.TimelineId};
                                         AddJob(_job);
-                                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                        new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = result, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                     };
                                     try {
                                         var _res = (!workflowContext.ForceCancellationToken?.IsCancellationRequested ?? true) && jobitem.EvaluateIf(jobTraceWriter);
@@ -1728,7 +1724,7 @@ namespace Runner.Server.Controllers
                                                                 // cancel normal job
                                                                 job.CancelRequest.Cancel();
                                                                 if(job.SessionId == Guid.Empty) {
-                                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                                    new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                                 }
                                                             }
                                                         }
@@ -1822,12 +1818,12 @@ namespace Runner.Server.Controllers
                                                     // For Runner.Client to show the workflowname
                                                     initializingJobs.TryAdd(next.Id, new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, runid = runid, RequestId = next.RequestId } );
                                                     TimelineController.dict[next.TimelineId] = ( new List<TimelineRecord>{ new TimelineRecord{ Id = next.Id, Name = _prejobdisplayname } }, new System.Collections.Concurrent.ConcurrentDictionary<System.Guid, System.Collections.Generic.List<GitHub.DistributedTask.WebApi.TimelineRecordLogLine>>() );
-                                                    new TimelineController(_context).UpdateTimeLine(next.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[next.TimelineId].Item1));
+                                                    new TimelineController(_context, Configuration).UpdateTimeLine(next.TimelineId, new VssJsonCollectionWrapper<List<TimelineRecord>>(TimelineController.dict[next.TimelineId].Item1));
                                                 }
                                                 Func<Func<bool, Job>> failJob = () => {
                                                     var _job = new Job() { JobId = next.Id, TimeLineId = next.TimelineId, name = _prejobdisplayname, workflowname = workflowname, repo = repository_name, WorkflowRunAttempt = attempt, runid = runid, RequestId = next.RequestId };
                                                     AddJob(_job);
-                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = next.Id, Result = TaskResult.Failed, RequestId = next.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                    new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = next.Id, Result = TaskResult.Failed, RequestId = next.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     return cancel => _job;
                                                 };
                                                 try {
@@ -1871,7 +1867,7 @@ namespace Runner.Server.Controllers
                                                 if (scheduled.Count == 0) {
                                                     localJobCompletedEvents.JobCompleted -= handler2;
                                                     if(jobTotal > 1) {
-                                                        new FinishJobController(_cache, _context).InvokeJobCompleted(jobitem.JobCompletedEvent ?? new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Canceled, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                        new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(jobitem.JobCompletedEvent ?? new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Canceled, RequestId = jobitem.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     }
                                                 }
                                             };
@@ -1882,7 +1878,7 @@ namespace Runner.Server.Controllers
                                                     }
                                                     _j.CancelRequest?.Cancel();
                                                     if(_j.SessionId == Guid.Empty) {
-                                                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = _j.JobId, Result = TaskResult.Canceled, RequestId = _j.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                        new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = _j.JobId, Result = TaskResult.Canceled, RequestId = _j.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     }
                                                 }
                                                 scheduled.Clear();
@@ -1985,12 +1981,12 @@ namespace Runner.Server.Controllers
                                         if(job != null) {
                                             job.CancelRequest?.Cancel();
                                             if(job.SessionId == Guid.Empty) {
-                                                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Failed, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                             }
                                         }
                                         return true;
                                     }) > 0)) {
-                                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Failed, Outputs = new Dictionary<String, VariableValue>() });
+                                        new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobitem.Id, Result = TaskResult.Failed, Outputs = new Dictionary<String, VariableValue>() });
                                     }
                                 }
                             };
@@ -2213,7 +2209,7 @@ namespace Runner.Server.Controllers
                         } catch {
                         }
                         if(callingJob == null) {
-                            new TimelineController(_context).SyncLiveLogsToDb(workflowTimelineId);
+                            new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
                         }
                         // Cleanup dummy job for this workflow
                         if(workflowTimelineId == attempt.TimeLineId) {
@@ -2261,7 +2257,7 @@ namespace Runner.Server.Controllers
                                                     // cancel normal job
                                                     job.CancelRequest.Cancel();
                                                     if(job.SessionId == Guid.Empty) {
-                                                        new FinishJobController(clone._cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                        new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     }
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Cancelled {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
@@ -2294,7 +2290,7 @@ namespace Runner.Server.Controllers
                                                     // cancel normal job
                                                     job.CancelRequest.Cancel();
                                                     // No check for sessionid, since we do force cancellation
-                                                    new FinishJobController(clone2._cache, clone2._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                    new FinishJobController(clone2._cache, clone2._context, clone2.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                 }
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(workflowRecordId, new List<string>{ $"Force cancelled {job2.DisplayName ?? job2.name}" }), workflowTimelineId, workflowRecordId);
                                             }
@@ -2388,7 +2384,7 @@ namespace Runner.Server.Controllers
             } finally {
                 if(!asyncProcessing) {
                     if(callingJob == null) {
-                        new TimelineController(_context).SyncLiveLogsToDb(workflowTimelineId);
+                        new TimelineController(_context, Configuration).SyncLiveLogsToDb(workflowTimelineId);
                     }
                     _context.Dispose();
                 }
@@ -2508,7 +2504,7 @@ namespace Runner.Server.Controllers
                 var jid = jobId;
                 var _job = new Job() { message = null, repo = repo, WorkflowRunAttempt = attempt, WorkflowIdentifier = parentId != null ? parentId + "/" + name : name, name = displayname, workflowname = workflowname, runid = runid, JobId = jid, RequestId = requestId, TimeLineId = timelineId, Matrix = contextData["matrix"]?.ToJToken()?.ToString() };
                 AddJob(_job);
-                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                 if(fileContainerId != -1) {
                     _context.ArtifactFileContainer.Remove(_context.ArtifactFileContainer.Find(fileContainerId));
                     _context.SaveChanges();
@@ -2529,7 +2525,7 @@ namespace Runner.Server.Controllers
                 // For actions/upload-artifact@v1, actions/download-artifact@v1
                 variables.Add(SdkConstants.Variables.Build.BuildId, new VariableValue(runid.ToString(), false));
                 variables.Add(SdkConstants.Variables.Build.BuildNumber, new VariableValue(runid.ToString(), false));
-                var resp = new ArtifactController(_context, configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
+                var resp = new ArtifactController(_context, Configuration).CreateContainer(runid, attempt.Attempt, new CreateActionsStorageArtifactParameters() { Name = $"Artifact of {displayname}",  }).GetAwaiter().GetResult();
                 fileContainerId = resp.Id;
                 variables.Add(SdkConstants.Variables.Build.ContainerId, new VariableValue(resp.Id.ToString(), false));
                 // Job permissions
@@ -2644,11 +2640,11 @@ namespace Runner.Server.Controllers
                     return cancel => {
                         Action<string> failedtoInstantiateWorkflow = message => {
                             matrixJobTraceWriter.Error("Failed to instantiate Workflow: {0}", message);
-                            new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                            new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Failed, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                         };
                         if(cancel) {
                             matrixJobTraceWriter.Verbose("workflow_call cancelled successfully");
-                            new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Canceled, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
+                            new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = TaskResult.Canceled, RequestId = requestId, Outputs = new Dictionary<String, VariableValue>() });
                             return _job;
                         }
                         // Fix workflow doesn't wait for cancelled called workflows to finish, add dummy sessionid
@@ -2685,7 +2681,7 @@ namespace Runner.Server.Controllers
                                             }
                                         });
                                     }
-                                    new FinishJobController(_cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
+                                    new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
                                 }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value);
                                 var sjob = selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null;
@@ -3083,7 +3079,7 @@ namespace Runner.Server.Controllers
                 return cancel => {
                     if(cancel || job.CancelRequest.IsCancellationRequested) {
                         job.CancelRequest.Cancel();
-                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                        new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                     } else {
                         Action _queueJob = () => {
                             Channel<Job> queue = jobqueue.GetOrAdd(runsOnMap, (a) => Channel.CreateUnbounded<Job>());
@@ -3118,7 +3114,7 @@ namespace Runner.Server.Controllers
                                     centry.CancelPending = () => {
                                         TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(job.JobId, new List<string>{ $"Job was cancelled by another workflow or job, while it was pending in the concurrency group" }), job.TimeLineId, job.JobId);
                                         job.CancelRequest.Cancel();
-                                        new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                        new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                     };
                                     centry.CancelRunning = cancelInProgress => {
                                         if(job.SessionId != Guid.Empty) {
@@ -3129,7 +3125,7 @@ namespace Runner.Server.Controllers
                                             // Keep Job running, since the cancelInProgress is false
                                         } else {
                                             job.CancelRequest.Cancel();
-                                            new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                            new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                         }
                                     };
                                     cgroup.PushEntry(centry, cancelInprogress);
@@ -3204,7 +3200,7 @@ namespace Runner.Server.Controllers
                 if(job == null) {
                     if(session.Agent.TaskAgent.Ephemeral == true && session.FirstJobReceived) {
                         try {
-                            new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                            new AgentController(_cache, _context, Configuration).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
                         } catch {
 
                         }
@@ -3239,7 +3235,7 @@ namespace Runner.Server.Controllers
                                         req.SessionId = sessionId;
                                         if(req.CancelRequest.IsCancellationRequested) {
                                             TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job: {req.name} for queue {string.Join(",", queues[i].Key)} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                                            new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                            new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                             continue;
                                         }
                                         var q = queues[i].Value;
@@ -3259,7 +3255,7 @@ namespace Runner.Server.Controllers
                                             if(res == null) {
                                                 Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
-                                                new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Failed, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Failed, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                 continue;
                                             }
                                             HttpContext.RequestAborted.ThrowIfCancellationRequested();
@@ -3294,7 +3290,7 @@ namespace Runner.Server.Controllers
                                                     session.DropMessage = null;
                                                     session.JobTimer.Stop();
                                                     TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Cancelled Job (2): {req.name} for queue {string.Join(",", queues[i].Key)} unassigned from Runner Name:{session.Agent.TaskAgent.Name} Labels:{string.Join(",", queues[i].Key)}" }), req.TimeLineId, req.JobId);
-                                                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                                    new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = req.JobId, Result = TaskResult.Canceled, RequestId = req.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                                     continue;
                                                     //return NoContent();
                                                 }
@@ -3368,13 +3364,13 @@ namespace Runner.Server.Controllers
                                 var clone = Clone();
                                 Task.Run(async () => {
                                     await Task.Delay(TimeSpan.FromMinutes(job.CancelTimeoutMinutes + 2));
-                                    new FinishJobController(clone._cache, clone._context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                                    new FinishJobController(clone._cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                                 });
                             }
                         }
                         if(jobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
                             try {
-                                new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                                new AgentController(_cache, _context, Configuration).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
                             } catch {
 
                             }
@@ -3393,7 +3389,7 @@ namespace Runner.Server.Controllers
                         }
                         if(jobRunningToken.IsCancellationRequested && session.Agent.TaskAgent.Ephemeral == true) {
                             try {
-                                new AgentController(_cache, _context).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
+                                new AgentController(_cache, _context, Configuration).Delete(session.Agent.Pool.Id, session.Agent.TaskAgent.Id);
                             } catch {
                                 
                             }
@@ -4127,7 +4123,7 @@ namespace Runner.Server.Controllers
             if(job != null) {
                 job.CancelRequest.Cancel();
                 if(job.SessionId == Guid.Empty || force) {
-                    new FinishJobController(_cache, _context).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
+                    new FinishJobController(_cache, _context, Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = job.JobId, Result = TaskResult.Canceled, RequestId = job.RequestId, Outputs = new Dictionary<String, VariableValue>() });
                 }
             }
         }

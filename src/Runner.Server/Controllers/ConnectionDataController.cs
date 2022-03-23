@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using GitHub.Services.Location;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Runner.Server.Controllers
@@ -14,6 +15,10 @@ namespace Runner.Server.Controllers
     [Route("{owner}/{repo}/_apis/[controller]")]
     public class ConnectionDataController : VssControllerBase
     {
+
+        public ConnectionDataController(IConfiguration conf) : base(conf) {
+            
+        }
 
         [HttpGet]
         [AllowAnonymous]

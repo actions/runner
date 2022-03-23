@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -28,7 +29,7 @@ namespace Runner.Server.Controllers
 
         private IMemoryCache _cache;
 
-        public TimeLineWebConsoleLogController(IMemoryCache cache)
+        public TimeLineWebConsoleLogController(IMemoryCache cache, IConfiguration conf) : base(conf)
         {
             _cache = cache;
         }

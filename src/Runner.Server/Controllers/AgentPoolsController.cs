@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Runner.Server.Models;
 
@@ -25,7 +26,7 @@ namespace Runner.Server.Controllers
 
         private SqLiteDb db;
 
-        public AgentPoolsController(IMemoryCache cache, SqLiteDb db)
+        public AgentPoolsController(IMemoryCache cache, SqLiteDb db, IConfiguration conf) : base(conf)
         {
             this.db = db;
             _cache = cache;

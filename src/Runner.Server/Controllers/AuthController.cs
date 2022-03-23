@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
 
 namespace Runner.Server.Controllers {
     [ApiController]
@@ -22,7 +23,7 @@ namespace Runner.Server.Controllers {
         private SqLiteDb db;
 
 
-        public AuthController(SqLiteDb _db) {
+        public AuthController(SqLiteDb _db, IConfiguration conf) : base(conf) {
             db = _db;
         }
 

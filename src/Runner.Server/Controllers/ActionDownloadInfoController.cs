@@ -35,7 +35,7 @@ namespace Runner.Server.Controllers
             public string ZipballUrl { get; set; }
         }
 
-        public ActionDownloadInfoController(IConfiguration configuration)
+        public ActionDownloadInfoController(IConfiguration configuration) : base(configuration)
         {
             downloadUrls = configuration.GetSection("Runner.Server:ActionDownloadUrls").Get<List<ActionDownloadUrls>>();
             GitHubAppPrivateKeyFile = configuration.GetSection("Runner.Server")?.GetValue<string>("GitHubAppPrivateKeyFile") ?? "";
@@ -44,7 +44,6 @@ namespace Runner.Server.Controllers
             GITHUB_TOKEN = configuration.GetSection("Runner.Server")?.GetValue<String>("GITHUB_TOKEN") ?? "";
             GitApiServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitApiServerUrl") ?? "";
             GitServerUrl = configuration.GetSection("Runner.Server")?.GetValue<String>("GitServerUrl") ?? "";
-            ReadConfig(configuration);
         }
 
         private async Task<string> CreateGithubAppToken(string repository_name) {
