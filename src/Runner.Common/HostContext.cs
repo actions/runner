@@ -235,6 +235,12 @@ namespace GitHub.Runner.Common
                         Constants.Path.DiagDirectory);
                     break;
 
+                case WellKnownDirectory.DockerHooks:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        Constants.Path.DockerHooks);
+                    break;
+
                 case WellKnownDirectory.Externals:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),

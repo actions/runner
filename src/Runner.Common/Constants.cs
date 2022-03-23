@@ -6,6 +6,7 @@ namespace GitHub.Runner.Common
     {
         Bin,
         Diag,
+        DockerHooks,
         Externals,
         Root,
         Actions,
@@ -202,6 +203,7 @@ namespace GitHub.Runner.Common
             public static readonly string ActionManifestYamlFile = "action.yaml";
             public static readonly string BinDirectory = "bin";
             public static readonly string DiagDirectory = "_diag";
+            public static readonly string DockerHooks = "_dockerhooks";
             public static readonly string ExternalsDirectory = "externals";
             public static readonly string RunnerDiagnosticLogPrefix = "Runner_";
             public static readonly string TempDirectory = "_temp";

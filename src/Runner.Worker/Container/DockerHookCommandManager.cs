@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines;
+using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Handlers;
 
@@ -17,7 +18,7 @@ namespace GitHub.Runner.Worker.Container
             // execute script
             
             // Create the handler data.
-            var path = "/home/ferenc/Documents/runner/_layout/docker_run.sh";
+            var path = GetDockerHook(nameof(DockerStart));
             var scriptDirectory = Path.GetDirectoryName(path);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
@@ -28,7 +29,6 @@ namespace GitHub.Runner.Worker.Container
                 ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(path, Trace, prependPath)
             };
 
-            // Create the handler
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
             var handler = handlerFactory.Create(
                             context,
@@ -45,6 +45,12 @@ namespace GitHub.Runner.Worker.Container
             await handler.RunAsync(ActionRunStage.Main);
 
             return ((int?) handler.ExecutionContext.CommandResult) ?? 0;
+        }
+
+        private string GetDockerHook(string commandName) 
+        {
+            commandName = string.Format("{0}.sh", commandName.ToLower());
+            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.DockerHooks), commandName);
         }
     }
 }
