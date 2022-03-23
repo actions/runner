@@ -29,7 +29,7 @@ namespace Runner.Server.Controllers
                     serverurl.Host = Request.Host.Host;
                     serverurl.Port = Request.Host.Port ?? -1;
                 }
-                return serverurl.ToString();
+                return serverurl.Uri.GetComponents(UriComponents.Scheme | UriComponents.Host | UriComponents.Port, UriFormat.UriEscaped);
             } else {
                 return _serverUrl;
             }
