@@ -91,7 +91,7 @@ namespace Runner.Server.Controllers
             foreach (var item in reflist.Actions) {
                 foreach(var downloadUrl in downloadUrls) {
                     if(item.NameWithOwner == "localcheckout") {
-                        actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = $"{ServerUrl}/localcheckout.tar.gz", ZipballUrl = $"{ServerUrl}/localcheckout.zip", ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };
+                        actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), "localcheckout.tar.gz").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), "localcheckout.zip").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };
                     } else {
                         var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, item.Ref), ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, item.Ref) };
                         // TODO: How to check on github if url is valid?, maybe use GITHUB_TOKEN?

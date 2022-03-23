@@ -68,7 +68,7 @@ namespace Runner.Server.Controllers {
                 foreach (var item in a) {
                     var record = (from rec in _context.Caches where rec.Repo == repository.Value && rec.Ref == cref && rec.Key == item orderby rec.LastUpdated descending select rec).FirstOrDefault();
                     if(record != null) {
-                        return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/_apis/artifactcache/get/{record.Id}" });
+                        return await Ok(new ArtifactCacheEntry{ cacheKey = item, scope = cref, creationTime = record.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{record.Id}").ToString() });
                     }
                 }
                 CacheRecord partialMatch = null;
@@ -79,7 +79,7 @@ namespace Runner.Server.Controllers {
                     }
                 }
                 if(partialMatch != null) {
-                    return await Ok(new ArtifactCacheEntry{ cacheKey = partialMatch.Key, scope = cref, creationTime = partialMatch.LastUpdated.ToLongDateString(), archiveLocation = $"{ServerUrl}/_apis/artifactcache/get/{partialMatch.Id}" });
+                    return await Ok(new ArtifactCacheEntry{ cacheKey = partialMatch.Key, scope = cref, creationTime = partialMatch.LastUpdated.ToLongDateString(), archiveLocation = new Uri(new Uri(ServerUrl), $"_apis/artifactcache/get/{partialMatch.Id}").ToString() });
                 }
             }
             return NoContent();

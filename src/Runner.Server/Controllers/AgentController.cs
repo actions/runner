@@ -43,7 +43,7 @@ namespace Runner.Server.Controllers
             TaskAgent agent = await FromBody<TaskAgent>();
             lock(lok) {
                 // Without a lock we get rsa message exchange problems, decryption error of rsa encrypted session aes key
-                agent.Authorization.AuthorizationUrl = new Uri($"{ServerUrl}/_apis/v1/auth/");
+                agent.Authorization.AuthorizationUrl = new Uri(new Uri(ServerUrl), "_apis/v1/auth/");
                 agent.Authorization.ClientId = Guid.NewGuid();
                 Agent _agent = Agent.CreateAgent(_cache, _context, poolId, agent);
                 _context.SaveChanges();
@@ -76,7 +76,7 @@ namespace Runner.Server.Controllers
             TaskAgent tagent = await FromBody<TaskAgent>();
             lock(lok) {
                 var agent = Agent.GetAgent(_cache, _context, poolId, agentId);
-                agent.TaskAgent.Authorization = new TaskAgentAuthorization() { ClientId = agent.ClientId, PublicKey = new TaskAgentPublicKey(agent.Exponent, agent.Modulus), AuthorizationUrl = new Uri($"{ServerUrl}/_apis/v1/auth/") };
+                agent.TaskAgent.Authorization = new TaskAgentAuthorization() { ClientId = agent.ClientId, PublicKey = new TaskAgentPublicKey(agent.Exponent, agent.Modulus), AuthorizationUrl = new Uri(new Uri(ServerUrl), "_apis/v1/auth/") };
                 agent.TaskAgent.Labels.Clear();
                 foreach(var l in tagent.Labels) {
                     agent.TaskAgent.Labels.Add(l);

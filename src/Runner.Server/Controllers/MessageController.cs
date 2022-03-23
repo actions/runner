@@ -3251,7 +3251,7 @@ namespace Runner.Server.Controllers
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
                                                 continue;
                                             }
-                                            var res = req.message.Invoke($"{ServerUrl}/Unknown/Unknown/");
+                                            var res = req.message.Invoke(ServerUrl);
                                             if(res == null) {
                                                 Console.WriteLine("res == null in GetMessage of Worker, skip internal Error");
                                                 TimeLineWebConsoleLogController.AppendTimelineRecordFeed(new TimelineRecordFeedLinesWrapper(req.JobId, new List<string>{ $"Failed Job: {req.name} for queue {string.Join(",", queues[i].Key)}: req.message == null in GetMessage of Worker, skip invalid message" }), req.TimeLineId, req.JobId);
