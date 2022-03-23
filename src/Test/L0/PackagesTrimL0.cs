@@ -208,7 +208,7 @@ namespace GitHub.Runner.Common.Tests
                                               killProcessOnCancel: true,
                                               cancellationToken: CancellationToken.None);
 
-                Assert.True(string.Equals(hashResult, File.ReadAllText(dotnetRuntimeHashFile).Trim()), $"Hash mismatch for dotnet runtime. You might need to update `Misc/contentHash/dotnetRuntime/{BuildConstants.RunnerPackage.PackageName}` or check if `hashFiles.ts` ever changed recently.");
+                Assert.True(string.Equals(hashResult, File.ReadAllText(dotnetRuntimeHashFile).Trim()), $"Hash mismatch for dotnet runtime. You might need to update `Misc/contentHash/dotnetRuntime/{BuildConstants.RunnerPackage.PackageName}` to '{hashResult}' or check if `hashFiles.ts` ever changed recently.");
             }
         }
 
@@ -270,7 +270,7 @@ namespace GitHub.Runner.Common.Tests
                                               killProcessOnCancel: true,
                                               cancellationToken: CancellationToken.None);
 
-                Assert.True(string.Equals(hashResult, File.ReadAllText(externalsHashFile).Trim()), $"Hash mismatch for externals. You might need to update `Misc/contentHash/externals/{BuildConstants.RunnerPackage.PackageName}` or check if `hashFiles.ts` ever changed recently.");
+                Assert.True(string.Equals(hashResult, File.ReadAllText(externalsHashFile).Trim()), $"Hash mismatch for externals. You might need to update `Misc/contentHash/externals/{BuildConstants.RunnerPackage.PackageName}` to '{hashResult}' or check if `hashFiles.ts` ever changed recently.");
             }
         }
     }
