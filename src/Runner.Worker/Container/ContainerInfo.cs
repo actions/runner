@@ -169,7 +169,7 @@ namespace GitHub.Runner.Worker.Container
                         if (path.StartsWith(mapping.HostPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
                             path.StartsWith(mapping.HostPath + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
                         {
-                            return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length).Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                            return mapping.ContainerPath + path.Remove(0, mapping.HostPath.Length).Replace(Os == "windows" ? Path.AltDirectorySeparatorChar : Path.DirectorySeparatorChar, Os == "windows" ? Path.DirectorySeparatorChar : Path.AltDirectorySeparatorChar);
                         }
                     } else {
                         if (string.Equals(path, mapping.HostPath))
