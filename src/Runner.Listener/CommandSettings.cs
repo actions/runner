@@ -17,45 +17,6 @@ namespace GitHub.Runner.Listener
         private readonly IPromptManager _promptManager;
         private readonly Tracing _trace;
 
-        // private readonly string[] validCommands =
-        // {
-        //     Constants.Runner.CommandLine.Commands.Configure,
-        //     Constants.Runner.CommandLine.Commands.Remove,
-        //     Constants.Runner.CommandLine.Commands.Run,
-        //     Constants.Runner.CommandLine.Commands.Warmup,
-        // };
-
-        // private readonly string[] validFlags =
-        // {
-        //     Constants.Runner.CommandLine.Flags.Check,
-        //     Constants.Runner.CommandLine.Flags.Commit,
-        //     Constants.Runner.CommandLine.Flags.DisableUpdate,
-        //     Constants.Runner.CommandLine.Flags.Ephemeral,
-        //     Constants.Runner.CommandLine.Flags.Help,
-        //     Constants.Runner.CommandLine.Flags.Once,
-        //     Constants.Runner.CommandLine.Flags.Replace,
-        //     Constants.Runner.CommandLine.Flags.RunAsService,
-        //     Constants.Runner.CommandLine.Flags.Unattended,
-        //     Constants.Runner.CommandLine.Flags.Version
-        // };
-
-        // private readonly string[] validArgs =
-        // {
-        //     Constants.Runner.CommandLine.Args.Auth,
-        //     Constants.Runner.CommandLine.Args.Labels,
-        //     Constants.Runner.CommandLine.Args.MonitorSocketAddress,
-        //     Constants.Runner.CommandLine.Args.Name,
-        //     Constants.Runner.CommandLine.Args.PAT,
-        //     Constants.Runner.CommandLine.Args.RunnerGroup,
-        //     Constants.Runner.CommandLine.Args.StartupType,
-        //     Constants.Runner.CommandLine.Args.Token,
-        //     Constants.Runner.CommandLine.Args.Url,
-        //     Constants.Runner.CommandLine.Args.UserName,
-        //     Constants.Runner.CommandLine.Args.WindowsLogonAccount,
-        //     Constants.Runner.CommandLine.Args.WindowsLogonPassword,
-        //     Constants.Runner.CommandLine.Args.Work
-        // };
-
         // Valid flags and args for specific command - key: command, value: array of valid flags and args
         private readonly Dictionary<string, string[]> validOptions = new Dictionary<string, string[]>
         {
