@@ -302,52 +302,33 @@ namespace GitHub.Runner.Worker
             IStepHost stepHost
         )
         {
-            // var githubContext = new GitHubContext().Clone();
-            // Dictionary<string, string> githubContextOriginals = new Dictionary<string, string>();
-            // foreach ( in githubContext.GetRuntimeEnvironmentVariables())
-            // {
-            //     githubContextOriginals[key] = ExecutionContext.GetGitHubContext(key);
-            // }
+            var expressionValues = ExecutionContext.ExpressionValues.Clone() as DictionaryContextData;
+            UpdatePathsInExpressionValues("github", expressionValues, stepHost);
 
-            // foreach (KeyValuePair<string, string> entry in githubContextOriginals)
-            // {
-            //     if (String.IsNullOrEmpty(entry.Value))
-            //     {
-            //         continue;
-            //     }
-            //     ExecutionContext.SetGitHubContext(entry.Key, stepHost.ResolvePathForStepHost(entry.Value));
-            // }
-
-            var expressionValues = ExecutionContext.ExpressionValues.DeepClone();
-
-            var githubExpressionValues = expressionValues["github"] as GitHubContext;
-            if (githubExpressionValues != null)
-            {
-                var githubContext = expressionValues["github"] as GitHubContext;
-
-                foreach (KeyValuePair<string, string> pair in githubContext.GetRuntimeEnvironmentVariables())
-                {
-                    if (String.IsNullOrEmpty(pair.Value))
-                    {
-                        continue;
-                    }
-                    githubContext[pair.Key] = new StringContextData(stepHost.ResolvePathForStepHost(pair.Value));
-                }
-            }
             // expression values of github = github dictionary
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
 
-            // foreach (KeyValuePair<string, string> entry in githubContextOriginals)
-            // {
-            //     if (String.IsNullOrEmpty(entry.Value))
-            //     {
-            //         continue;
-            //     }
-            //     ExecutionContext.SetGitHubContext(entry.Key, entry.Value);
-            // }
-
             return inputs;
+        }
+
+        private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues, IStepHost stepHost) {
+            var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
+            var output = dict.Clone().AssertDictionary($"expected dictionary clone in {contextName} to be dictionary");
+            foreach (var pair in dict)
+            {
+                if (pair.Value.Type != TokenType.String)
+                {
+                    continue;
+                }
+                var value = pair.Value.ToString();
+                if (String.IsNullOrEmpty(value))
+                {
+                    continue;
+                }
+                output[pair.Key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
+            }
+            expressionValues[contextName] = output;
         }
 
         private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)
