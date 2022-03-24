@@ -158,7 +158,7 @@ namespace GitHub.Runner.Worker.Handlers
                     step.ExecutionContext.ExpressionValues["github"] = gitHubContext;
 
                     // Set GITHUB_ACTION_PATH
-                    step.ExecutionContext.SetGitHubContext("action_path", StepHost.ResolvePathForStepHost(ActionDirectory));
+                    step.ExecutionContext.SetGitHubContext("action_path", ActionDirectory);
 
                     embeddedSteps.Add(step);
                 }
