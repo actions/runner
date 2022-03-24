@@ -1,9 +1,9 @@
-import * as glob from '@actions/glob'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
+import * as glob from '@actions/glob'
+import * as path from 'path'
 import * as stream from 'stream'
 import * as util from 'util'
-import * as path from 'path'
 
 async function run(): Promise<void> {
   // arg0 -> node

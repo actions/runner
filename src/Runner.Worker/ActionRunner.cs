@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -141,21 +139,7 @@ namespace GitHub.Runner.Worker
 
             IStepHost stepHost = HostContext.CreateService<IDefaultStepHost>();
 
-            // Makes directory for event_path data
-            var tempDirectory = HostContext.GetDirectory(WellKnownDirectory.Temp);
-            var workflowDirectory = Path.Combine(tempDirectory, "_github_workflow");
-            Directory.CreateDirectory(workflowDirectory);
-
-            var gitHubEvent = ExecutionContext.GetGitHubContext("event");
-
-            // adds the GitHub event path/file if the event exists
-            if (gitHubEvent != null)
-            {
-                var workflowFile = Path.Combine(workflowDirectory, "event.json");
-                Trace.Info($"Write event payload to {workflowFile}");
-                File.WriteAllText(workflowFile, gitHubEvent, new UTF8Encoding(false));
-                ExecutionContext.SetGitHubContext("event_path", workflowFile);
-            }
+            ExecutionContext.WriteWebhookPayload();
 
             // Set GITHUB_ACTION_REPOSITORY if this Action is from a repository
             if (Action.Reference is Pipelines.RepositoryPathReference repoPathReferenceAction &&
@@ -180,14 +164,14 @@ namespace GitHub.Runner.Worker
                 stepHost = containerStepHost;
             }
 
+
             // Setup File Command Manager
             var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
             fileCommandManager.InitializeFiles(ExecutionContext, null);
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
-            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+            var inputs = EvaluateStepInputs(stepHost);
 
             var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> input in inputs)
@@ -312,6 +296,44 @@ namespace GitHub.Runner.Worker
             context.Debug($"Set step '{Action.Name}' display name to: '{_displayName}'");
             _didFullyEvaluateDisplayName = didFullyEvaluate;
             return didFullyEvaluate;
+        }
+
+        private Dictionary<String, String> EvaluateStepInputs(
+            IStepHost stepHost
+        )
+        {
+            DictionaryContextData expressionValues;
+            if (stepHost is ContainerStepHost)
+            {
+                expressionValues = ExecutionContext.ExpressionValues.Clone() as DictionaryContextData;
+                UpdatePathsInExpressionValues("github", expressionValues, stepHost);
+                UpdatePathsInExpressionValues("runner", expressionValues, stepHost);
+            }
+            else
+            {
+                expressionValues = ExecutionContext.ExpressionValues;
+            }
+
+            // expression values of github = github dictionary
+            var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+            var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
+
+            return inputs;
+        }
+
+        private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues, IStepHost stepHost)
+        {
+            var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
+            var output = dict.Clone().AssertDictionary($"expected dictionary clone in {contextName} to be dictionary");
+            foreach (var pair in dict)
+            {
+                var value = pair.Value?.ToString();
+                if (pair.Value?.Type == TokenType.String && !String.IsNullOrEmpty(value) && pair.Key != null)
+                {
+                    output[pair.Key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
+                }
+            }
+            expressionValues[contextName] = output;
         }
 
         private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)

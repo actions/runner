@@ -1,32 +1,12 @@
 ## Features
 
-- Make run.sh|cmd handle update without quitting so containers using them as entrypoints don't exit on update (#1646, #1633, #1708)
-- Add support for Step Summary (#1642, #1667, #1712) 
-- Pass jobId to the actionsDownloadInfo controller (#1639)
-- updated systemd svc.sh to accept custom service file (#1612) 
-- Add ability to specify runner group when creating service (#1675)
-- Prefer node16 over node12 when running internal scripts (#1621) 
-- Sending telemetry about actions usage. (#1688) 
-- Bump node12 version to latest (#1651)
-- Add internal to node version function and use better env var name (#1715)
-- Force JS Actions Node version to 16 if FF is on unless user opted out (#1716)
-
 ## Bugs
-- Fix windows console runner update crash (#1670) 
-- Retry policy for methods GetTenantCredential and GetJITRunnerTokenAsync (#1691)
-- Skip DeleteAgentSession when the acess token has been revoked. (#1692)
-- Repaired hashFiles call so if error was thrown, it was returned to process invoker (#1678)
-- Runner throws null ref exception when new line after EOF is missing (#1687)
-- Lets allow up to 150 characters for services on linux/mac (#1710) 
+- Fixed a crash on runner startup (#1770)
 
 ## Misc
 
-- Added examples and aligned language within docs/checks/actions.md (#1664)
-- Problem with debugging on macOS M1 (#1625) 
-- Fix typo in hashFiles.ts. (#1672) 
-- Allow mocked updates for E2E testing (#1654)
-- Move JobTelemetry and StepsTelemetry into GlobalContext. (#1680) 
-- Fix inconsistency of outputs (both canceled and cancelled are used (#1624)
+- Clarified the type of step running when running job started or completed hooks (#1769)
+
 
 ## Windows x64
 We recommend configuring the runner in a root folder of the Windows drive (e.g. "C:\actions-runner"). This will help avoid issues related to service identity folder permissions and long file path restrictions on Windows.
