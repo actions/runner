@@ -17,43 +17,104 @@ namespace GitHub.Runner.Listener
         private readonly IPromptManager _promptManager;
         private readonly Tracing _trace;
 
-        private readonly string[] validCommands =
-        {
-            Constants.Runner.CommandLine.Commands.Configure,
-            Constants.Runner.CommandLine.Commands.Remove,
-            Constants.Runner.CommandLine.Commands.Run,
-            Constants.Runner.CommandLine.Commands.Warmup,
-        };
+        // private readonly string[] validCommands =
+        // {
+        //     Constants.Runner.CommandLine.Commands.Configure,
+        //     Constants.Runner.CommandLine.Commands.Remove,
+        //     Constants.Runner.CommandLine.Commands.Run,
+        //     Constants.Runner.CommandLine.Commands.Warmup,
+        // };
 
-        private readonly string[] validFlags =
-        {
-            Constants.Runner.CommandLine.Flags.Check,
-            Constants.Runner.CommandLine.Flags.Commit,
-            Constants.Runner.CommandLine.Flags.DisableUpdate,
-            Constants.Runner.CommandLine.Flags.Ephemeral,
-            Constants.Runner.CommandLine.Flags.Help,
-            Constants.Runner.CommandLine.Flags.Once,
-            Constants.Runner.CommandLine.Flags.Replace,
-            Constants.Runner.CommandLine.Flags.RunAsService,
-            Constants.Runner.CommandLine.Flags.Unattended,
-            Constants.Runner.CommandLine.Flags.Version
-        };
+        // private readonly string[] validFlags =
+        // {
+        //     Constants.Runner.CommandLine.Flags.Check,
+        //     Constants.Runner.CommandLine.Flags.Commit,
+        //     Constants.Runner.CommandLine.Flags.DisableUpdate,
+        //     Constants.Runner.CommandLine.Flags.Ephemeral,
+        //     Constants.Runner.CommandLine.Flags.Help,
+        //     Constants.Runner.CommandLine.Flags.Once,
+        //     Constants.Runner.CommandLine.Flags.Replace,
+        //     Constants.Runner.CommandLine.Flags.RunAsService,
+        //     Constants.Runner.CommandLine.Flags.Unattended,
+        //     Constants.Runner.CommandLine.Flags.Version
+        // };
 
-        private readonly string[] validArgs =
+        // private readonly string[] validArgs =
+        // {
+        //     Constants.Runner.CommandLine.Args.Auth,
+        //     Constants.Runner.CommandLine.Args.Labels,
+        //     Constants.Runner.CommandLine.Args.MonitorSocketAddress,
+        //     Constants.Runner.CommandLine.Args.Name,
+        //     Constants.Runner.CommandLine.Args.PAT,
+        //     Constants.Runner.CommandLine.Args.RunnerGroup,
+        //     Constants.Runner.CommandLine.Args.StartupType,
+        //     Constants.Runner.CommandLine.Args.Token,
+        //     Constants.Runner.CommandLine.Args.Url,
+        //     Constants.Runner.CommandLine.Args.UserName,
+        //     Constants.Runner.CommandLine.Args.WindowsLogonAccount,
+        //     Constants.Runner.CommandLine.Args.WindowsLogonPassword,
+        //     Constants.Runner.CommandLine.Args.Work
+        // };
+
+        // Valid flags and args for specific command - key: command, value: array of valid flags and args
+        private readonly Dictionary<string, string[]> validOptions = new Dictionary<string, string[]>
         {
-            Constants.Runner.CommandLine.Args.Auth,
-            Constants.Runner.CommandLine.Args.Labels,
-            Constants.Runner.CommandLine.Args.MonitorSocketAddress,
-            Constants.Runner.CommandLine.Args.Name,
-            Constants.Runner.CommandLine.Args.PAT,
-            Constants.Runner.CommandLine.Args.RunnerGroup,
-            Constants.Runner.CommandLine.Args.StartupType,
-            Constants.Runner.CommandLine.Args.Token,
-            Constants.Runner.CommandLine.Args.Url,
-            Constants.Runner.CommandLine.Args.UserName,
-            Constants.Runner.CommandLine.Args.WindowsLogonAccount,
-            Constants.Runner.CommandLine.Args.WindowsLogonPassword,
-            Constants.Runner.CommandLine.Args.Work
+            // Valid configure flags and args
+            [Constants.Runner.CommandLine.Commands.Configure] = 
+                new string[] 
+                {
+                    Constants.Runner.CommandLine.Flags.Help,
+                    Constants.Runner.CommandLine.Flags.Version,
+                    Constants.Runner.CommandLine.Flags.Commit,
+                    Constants.Runner.CommandLine.Flags.Check,
+                    Constants.Runner.CommandLine.Flags.DisableUpdate,
+                    Constants.Runner.CommandLine.Flags.Ephemeral,
+                    Constants.Runner.CommandLine.Flags.Replace,
+                    Constants.Runner.CommandLine.Flags.RunAsService,
+                    Constants.Runner.CommandLine.Flags.Unattended,
+                    Constants.Runner.CommandLine.Args.Auth,
+                    Constants.Runner.CommandLine.Args.Labels,
+                    Constants.Runner.CommandLine.Args.MonitorSocketAddress,
+                    Constants.Runner.CommandLine.Args.Name,
+                    Constants.Runner.CommandLine.Args.PAT,
+                    Constants.Runner.CommandLine.Args.RunnerGroup,
+                    Constants.Runner.CommandLine.Args.Token,
+                    Constants.Runner.CommandLine.Args.Url,
+                    Constants.Runner.CommandLine.Args.UserName,
+                    Constants.Runner.CommandLine.Args.WindowsLogonAccount,
+                    Constants.Runner.CommandLine.Args.WindowsLogonPassword,
+                    Constants.Runner.CommandLine.Args.Work
+                },
+            // Valid remove flags and args
+            [Constants.Runner.CommandLine.Commands.Remove] =
+                new string[]
+                {
+                    Constants.Runner.CommandLine.Flags.Help,
+                    Constants.Runner.CommandLine.Flags.Version,
+                    Constants.Runner.CommandLine.Flags.Commit,
+                    Constants.Runner.CommandLine.Flags.Check,
+                    Constants.Runner.CommandLine.Args.Token
+                },
+            // Valid run flags and args
+            [Constants.Runner.CommandLine.Commands.Run] =
+                new string[]
+                {
+                    Constants.Runner.CommandLine.Flags.Help,
+                    Constants.Runner.CommandLine.Flags.Version,
+                    Constants.Runner.CommandLine.Flags.Commit,
+                    Constants.Runner.CommandLine.Flags.Check,
+                    Constants.Runner.CommandLine.Flags.Once,
+                    Constants.Runner.CommandLine.Args.StartupType
+                },
+            // valid warmup flags and args
+            [Constants.Runner.CommandLine.Commands.Warmup] =
+                new string[]
+                {
+                    Constants.Runner.CommandLine.Flags.Help,
+                    Constants.Runner.CommandLine.Flags.Version,
+                    Constants.Runner.CommandLine.Flags.Commit,
+                    Constants.Runner.CommandLine.Flags.Check
+                }
         };
 
         // Commands.
@@ -126,13 +187,20 @@ namespace GitHub.Runner.Listener
             List<string> unknowns = new List<string>();
 
             // detect unknown commands
-            unknowns.AddRange(_parser.Commands.Where(x => !validCommands.Contains(x, StringComparer.OrdinalIgnoreCase)));
+            unknowns.AddRange(_parser.Commands.Where(x => !validOptions.Keys.Contains(x, StringComparer.OrdinalIgnoreCase)));
 
-            // detect unknown flags
-            unknowns.AddRange(_parser.Flags.Where(x => !validFlags.Contains(x, StringComparer.OrdinalIgnoreCase)));
-
-            // detect unknown args
-            unknowns.AddRange(_parser.Args.Keys.Where(x => !validArgs.Contains(x, StringComparer.OrdinalIgnoreCase)));
+            if (unknowns.Count == 0)
+            {
+                // detect unknown flags and args for valid commands
+                foreach (var command in _parser.Commands)
+                {
+                    if (validOptions.TryGetValue(command, out string[] options))
+                    {
+                        unknowns.AddRange(_parser.Flags.Where(x => !options.Contains(x, StringComparer.OrdinalIgnoreCase)));
+                        unknowns.AddRange(_parser.Args.Keys.Where(x => !options.Contains(x, StringComparer.OrdinalIgnoreCase)));
+                    }
+                }
+            }
 
             return unknowns;
         }
