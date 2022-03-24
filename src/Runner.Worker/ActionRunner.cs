@@ -302,8 +302,17 @@ namespace GitHub.Runner.Worker
             IStepHost stepHost
         )
         {
-            var expressionValues = ExecutionContext.ExpressionValues.Clone() as DictionaryContextData;
-            UpdatePathsInExpressionValues("github", expressionValues, stepHost);
+            DictionaryContextData expressionValues;
+            if (stepHost is ContainerStepHost)
+            {
+                expressionValues = ExecutionContext.ExpressionValues.Clone() as DictionaryContextData;
+                UpdatePathsInExpressionValues("github", expressionValues, stepHost);
+                UpdatePathsInExpressionValues("runner", expressionValues, stepHost);
+            }
+            else
+            {
+                expressionValues = ExecutionContext.ExpressionValues;
+            }
 
             // expression values of github = github dictionary
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
@@ -312,21 +321,17 @@ namespace GitHub.Runner.Worker
             return inputs;
         }
 
-        private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues, IStepHost stepHost) {
+        private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues, IStepHost stepHost)
+        {
             var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
             var output = dict.Clone().AssertDictionary($"expected dictionary clone in {contextName} to be dictionary");
             foreach (var pair in dict)
             {
-                if (pair.Value.Type != TokenType.String)
+                var value = pair.Value?.ToString();
+                if (pair.Value?.Type == TokenType.String && !String.IsNullOrEmpty(value) && pair.Key != null)
                 {
-                    continue;
+                    output[pair.Key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
                 }
-                var value = pair.Value.ToString();
-                if (String.IsNullOrEmpty(value))
-                {
-                    continue;
-                }
-                output[pair.Key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
             }
             expressionValues[contextName] = output;
         }
