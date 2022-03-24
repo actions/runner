@@ -404,7 +404,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 // Update context
-                SetStepsContext(step);
+                step.ExecutionContext.UpdateGlobalStepsContext();
             }
         }
 
@@ -449,31 +449,7 @@ namespace GitHub.Runner.Worker.Handlers
                 SetStepConclusion(step, Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value));
             }
 
-            if (step.ExecutionContext.Result == TaskResult.Failed)
-            {
-                var continueOnError = false;
-                try
-                {
-                    var templateEvaluator = step.ExecutionContext.ToPipelineTemplateEvaluator();
-                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(step.ContinueOnError, step.ExecutionContext.ExpressionValues, step.ExecutionContext.ExpressionFunctions);
-                }
-                catch (Exception ex)
-                {
-                    Trace.Info("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    Trace.Error(ex);
-                    step.ExecutionContext.Error("The step failed and an error occurred when attempting to determine whether to continue on error.");
-                    step.ExecutionContext.Error(ex);
-                }
-
-                if (continueOnError)
-                {
-
-                    step.ExecutionContext.Outcome = step.ExecutionContext.Result;
-                    step.ExecutionContext.Result = TaskResult.Succeeded;
-                    SetStepsContext(step);
-                    Trace.Info($"Updated step result (continue on error)");
-                }
-            }
+            step.ExecutionContext.ApplyContinueOnError(step.ContinueOnError);
 
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
             step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
@@ -483,15 +459,7 @@ namespace GitHub.Runner.Worker.Handlers
         private void SetStepConclusion(IStep step, TaskResult result)
         {
             step.ExecutionContext.Result = result;
-            SetStepsContext(step);
-        }
-        private void SetStepsContext(IStep step)
-        {
-            if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
-            {
-                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Outcome ?? step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
-                step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
-            }
+            step.ExecutionContext.UpdateGlobalStepsContext();
         }
     }
 }
