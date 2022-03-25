@@ -622,6 +622,41 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _stepContext.SetOutcome("", stepContext.Object.ContextName, (stepContext.Object.Outcome ?? stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
                     _stepContext.SetConclusion("", stepContext.Object.ContextName, (stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
                 });
+
+            stepContext.Setup(x => x.UpdateGlobalStepsContext()).Callback(() =>
+            {
+                if (!string.IsNullOrEmpty(stepContext.Object.ContextName) && !stepContext.Object.ContextName.StartsWith("__", StringComparison.Ordinal))
+                {
+                    stepContext.Object.Global.StepsContext.SetOutcome(stepContext.Object.ScopeName, stepContext.Object.ContextName, (stepContext.Object.Outcome ?? stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
+                    stepContext.Object.Global.StepsContext.SetConclusion(stepContext.Object.ScopeName, stepContext.Object.ContextName, (stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
+                }
+            });
+            stepContext.Setup(x => x.ApplyContinueOnError(It.IsAny<TemplateToken>())).Callback((TemplateToken token) =>
+            {
+                if (stepContext.Object.Result != TaskResult.Failed)
+                {
+                    return;
+                }
+                var continueOnError = false;
+                try
+                {
+                    var templateEvaluator = stepContext.Object.ToPipelineTemplateEvaluator();
+                    continueOnError = templateEvaluator.EvaluateStepContinueOnError(token, stepContext.Object.ExpressionValues, stepContext.Object.ExpressionFunctions);
+                }
+                catch (Exception ex)
+                {
+                    stepContext.Object.Error("The step failed and an error occurred when attempting to determine whether to continue on error.");
+                    stepContext.Object.Error(ex);
+                }
+
+                if (continueOnError)
+                {
+
+                    stepContext.Object.Outcome = stepContext.Object.Result;
+                    stepContext.Object.Result = TaskResult.Succeeded;
+                }
+                stepContext.Object.UpdateGlobalStepsContext();
+            });
             var trace = hc.GetTrace();
             stepContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
             stepContext.Object.Result = result;
