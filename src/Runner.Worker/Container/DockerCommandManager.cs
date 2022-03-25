@@ -11,7 +11,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Container
 {
-    [ServiceLocator(Default = typeof(DockerHookCommandManager))]
+    [ServiceLocator(Default = typeof(DockerCommandManager))]
     public interface IDockerCommandManager : IRunnerService
     {
         string DockerPath { get; }

@@ -9,7 +9,7 @@ using GitHub.Services.Common;
 
 namespace GitHub.Runner.Worker.Container
 {
-    [ServiceLocator(Default = typeof(ContainerCommandManager))]
+    [ServiceLocator(Default = typeof(DockerContainerManager))]
     public interface IContainerManager : IRunnerService
     {
         string DockerPath { get; }
@@ -46,6 +46,10 @@ namespace GitHub.Runner.Worker.Container
 
     public class ContainerCommandManager : RunnerService, IContainerManager
     {
+        public string DockerPath => throw new NotImplementedException();
+
+        public string DockerInstanceLabel => throw new NotImplementedException();
+
         public Task<DockerVersion> DockerVersion(IExecutionContext context)
         {
             throw new NotImplementedException();
@@ -59,11 +63,150 @@ namespace GitHub.Runner.Worker.Container
         {
             throw new NotImplementedException();
         }
+
+        public Task<int> EnsureImageExists(IExecutionContext context, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerStart(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerLogs(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> DockerPS(IExecutionContext context, string options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerRemove(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerNetworkCreate(IExecutionContext context, string network)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerNetworkRemove(IExecutionContext context, string network)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerNetworkPrune(IExecutionContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> ContainersCreate(IExecutionContext context, List<ContainerInfo> containers)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> Container(IExecutionContext context, List<ContainerInfo> containers)
+        {
+            throw new NotImplementedException();
+        }
+
+        Task IContainerManager.ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> CreateContainerNetworkAsync(IExecutionContext executionContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task RemoveContainerNetworkAsync(IExecutionContext executionContext, string network)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task ContainerCleanup(IExecutionContext executionContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<DictionaryContextData> GetServiceInfo(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task GetJobContainerInfo(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
     }
     public class DockerContainerManager : RunnerService, IContainerManager
     {
         private IDockerCommandManager dockerManager;
         private IContainerRegistryManager registryManager;
+
+        public string DockerPath => throw new NotImplementedException();
+
+        public string DockerInstanceLabel => throw new NotImplementedException();
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -306,6 +449,96 @@ namespace GitHub.Runner.Worker.Container
             var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
             var containerEnv = await dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
             container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
+        }
+
+        public Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerStart(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerLogs(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> DockerPS(IExecutionContext context, string options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerRemove(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerNetworkCreate(IExecutionContext context, string network)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerNetworkRemove(IExecutionContext context, string network)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerNetworkPrune(IExecutionContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> ContainersCreate(IExecutionContext context, List<ContainerInfo> containers)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<string>> Container(IExecutionContext context, List<ContainerInfo> containers)
+        {
+            throw new NotImplementedException();
         }
     }
 }
