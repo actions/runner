@@ -24,12 +24,12 @@ namespace GitHub.Runner.Worker
 
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
-        private IDockerCommandManager _dockerManager;
+        private IContainerManager _containerManager;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
-            _dockerManager = HostContext.GetService<IDockerCommandManager>();
+            _containerManager = HostContext.GetService<IContainerManager>();
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
@@ -50,112 +50,39 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-
-            // Check whether we are inside a container.
-            // Our container feature requires to map working directory from host to the container.
-            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
-#if OS_WINDOWS
-#pragma warning disable CA1416
-            // service CExecSvc is Container Execution Agent.
-            ServiceController[] scServices = ServiceController.GetServices();
-            if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
-            {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-            }
-#pragma warning restore CA1416
-#else
-            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
-            {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-            }
-#endif
-
-#if OS_WINDOWS
-#pragma warning disable CA1416
-            // Check OS version (Windows server 1803 is required)
-            object windowsInstallationType = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallationType", defaultValue: null);
-            ArgUtil.NotNull(windowsInstallationType, nameof(windowsInstallationType));
-            object windowsReleaseId = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", defaultValue: null);
-            ArgUtil.NotNull(windowsReleaseId, nameof(windowsReleaseId));
-            executionContext.Debug($"Current Windows version: '{windowsReleaseId} ({windowsInstallationType})'");
-
-            if (int.TryParse(windowsReleaseId.ToString(), out int releaseId))
-            {
-                if (!windowsInstallationType.ToString().StartsWith("Server", StringComparison.OrdinalIgnoreCase) || releaseId < 1803)
-                {
-                    throw new NotSupportedException("Container feature requires Windows Server 1803 or higher.");
-                }
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ReleaseId");
-            }
-#pragma warning restore CA1416
-#endif
-
-            // Check docker client/server version
-            executionContext.Output("##[group]Checking docker version");
-            DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
-            executionContext.Output("##[endgroup]");
-
-            ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
-            ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
-
-#if OS_WINDOWS
-            Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
-#else
-            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
-#endif
-
-            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
-            }
-            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
-            }
-
-            // Clean up containers left by previous runs
-            executionContext.Output("##[group]Clean up resources from previous jobs");
-            var staleContainers = await _dockerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManager.DockerInstanceLabel}\"");
-            foreach (var staleContainer in staleContainers)
-            {
-                int containerRemoveExitCode = await _dockerManager.DockerRemove(executionContext, staleContainer);
-                if (containerRemoveExitCode != 0)
-                {
-                    executionContext.Warning($"Delete stale containers failed, docker rm fail with exit code {containerRemoveExitCode} for container {staleContainer}");
-                }
-            }
-
-            int networkPruneExitCode = await _dockerManager.DockerNetworkPrune(executionContext);
-            if (networkPruneExitCode != 0)
-            {
-                executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
-            }
-            executionContext.Output("##[endgroup]");
-
-            // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
-            // All containers within a job join the same network
-            executionContext.Output("##[group]Create local container network");
-            var containerNetwork = $"github_network_{Guid.NewGuid().ToString("N")}";
-            await CreateContainerNetworkAsync(executionContext, containerNetwork);
-            executionContext.JobContext.Container["network"] = new StringContextData(containerNetwork);
-            executionContext.Output("##[endgroup]");
+            AssertOSVersion();
+            await _containerManager.ContainerCleanup(executionContext);
+            string containerNetwork = await _containerManager.CreateContainerNetworkAsync(executionContext);
 
             foreach (var container in containers)
             {
                 container.ContainerNetwork = containerNetwork;
-                await StartContainerAsync(executionContext, container);
+                await InitializeContainerAsync(executionContext, container);
+                await _containerManager.StartContainerAsync(executionContext, container);
+                await GatherRuntimeInformation(executionContext, container);
             }
 
             executionContext.Output("##[group]Waiting for all services to be ready");
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-                await ContainerHealthcheck(executionContext, container);
+                await _containerManager.ContainerHealthcheck(executionContext, container);
             }
             executionContext.Output("##[endgroup]");
+        }
+
+        private async Task GatherRuntimeInformation(IExecutionContext executionContext, ContainerInfo container)
+        {
+            // Gather runtime container information
+            if (!container.IsJobContainer)
+            {
+                var service = await _containerManager.GetServiceInfo(executionContext, container);
+                executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
+            }
+            else
+            {
+                await _containerManager.GetJobContainerInfo(executionContext, container);
+                executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
+            }
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
@@ -168,13 +95,13 @@ namespace GitHub.Runner.Worker
 
             foreach (var container in containers)
             {
-                await StopContainerAsync(executionContext, container);
+                await _containerManager.StopContainerAsync(executionContext, container);
             }
             // Remove the container network
-            await RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+            await _containerManager.RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
         }
 
-        private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+        private async Task InitializeContainerAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -202,40 +129,7 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            UpdateRegistryAuthForGitHubToken(executionContext, container);
-
-            // Before pulling, generate client authentication if required
-            var configLocation = await ContainerRegistryLogin(executionContext, container);
-
-            // Pull down docker image with retry up to 3 times
-            int retryCount = 0;
-            int pullExitCode = 0;
-            while (retryCount < 3)
-            {
-                pullExitCode = await _dockerManager.DockerPull(executionContext, container.ContainerImage, configLocation);
-                if (pullExitCode == 0)
-                {
-                    break;
-                }
-                else
-                {
-                    retryCount++;
-                    if (retryCount < 3)
-                    {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                        await Task.Delay(backOff);
-                    }
-                }
-            }
-
-            // Remove credentials after pulling
-            ContainerRegistryLogout(configLocation);
-
-            if (retryCount == 3 && pullExitCode != 0)
-            {
-                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
-            }
+            await _containerManager.EnsureImageExists(executionContext, container);
 
             if (container.IsJobContainer)
             {
@@ -268,95 +162,6 @@ namespace GitHub.Runner.Worker
                 container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
                 container.ContainerEntryPoint = "tail";
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
-            }
-
-            container.ContainerId = await _dockerManager.DockerCreate(executionContext, container);
-            ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
-
-            // Start container
-            int startExitCode = await _dockerManager.DockerStart(executionContext, container.ContainerId);
-            if (startExitCode != 0)
-            {
-                throw new InvalidOperationException($"Docker start fail with exit code {startExitCode}");
-            }
-
-            try
-            {
-                // Make sure container is up and running
-                var psOutputs = await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --filter status=running --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
-                if (psOutputs.FirstOrDefault(x => !string.IsNullOrEmpty(x))?.StartsWith(container.ContainerId) != true)
-                {
-                    // container is not up and running, pull docker log for this container.
-                    await _dockerManager.DockerPS(executionContext, $"--all --filter id={container.ContainerId} --no-trunc --format \"{{{{.ID}}}} {{{{.Status}}}}\"");
-                    int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
-                    if (logsExitCode != 0)
-                    {
-                        executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
-                    }
-
-                    executionContext.Warning($"Docker container {container.ContainerId} is not in running state.");
-                }
-            }
-            catch (Exception ex)
-            {
-                // pull container log is best effort.
-                Trace.Error("Catch exception when check container log and container status.");
-                Trace.Error(ex);
-            }
-
-            // Gather runtime container information
-            if (!container.IsJobContainer)
-            {
-                var service = new DictionaryContextData()
-                {
-                    ["id"] = new StringContextData(container.ContainerId),
-                    ["ports"] = new DictionaryContextData(),
-                    ["network"] = new StringContextData(container.ContainerNetwork)
-                };
-                container.AddPortMappings(await _dockerManager.DockerPort(executionContext, container.ContainerId));
-                foreach (var port in container.PortMappings)
-                {
-                    (service["ports"] as DictionaryContextData)[port.ContainerPort] = new StringContextData(port.HostPort);
-                }
-                executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
-            }
-            else
-            {
-                var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
-                var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
-                container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
-                executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
-            }
-            executionContext.Output("##[endgroup]");
-        }
-
-        private async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
-        {
-            Trace.Entering();
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(container, nameof(container));
-
-            if (!string.IsNullOrEmpty(container.ContainerId))
-            {
-                if(!container.IsJobContainer)
-                {
-                    // Print logs for service container jobs (not the "action" job itself b/c that's already logged).
-                    executionContext.Output($"Print service container logs: {container.ContainerDisplayName}");
-                    
-                    int logsExitCode = await _dockerManager.DockerLogs(executionContext, container.ContainerId);
-                    if (logsExitCode != 0)
-                    {
-                        executionContext.Warning($"Docker logs fail with exit code {logsExitCode}");
-                    }
-                }
-
-                executionContext.Output($"Stop and remove container: {container.ContainerDisplayName}");
-
-                int rmExitCode = await _dockerManager.DockerRemove(executionContext, container.ContainerId);
-                if (rmExitCode != 0)
-                {
-                    executionContext.Warning($"Docker rm fail with exit code {rmExitCode}");
-                }
             }
         }
 
@@ -407,121 +212,51 @@ namespace GitHub.Runner.Worker
             return outputs;
         }
 #endif
-
-        private async Task CreateContainerNetworkAsync(IExecutionContext executionContext, string network)
+        private static void AssertOSVersion()
         {
-            Trace.Entering();
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            int networkExitCode = await _dockerManager.DockerNetworkCreate(executionContext, network);
-            if (networkExitCode != 0)
-            {
-                throw new InvalidOperationException($"Docker network create failed with exit code {networkExitCode}");
-            }
-        }
 
-        private async Task RemoveContainerNetworkAsync(IExecutionContext executionContext, string network)
-        {
-            Trace.Entering();
-            ArgUtil.NotNull(executionContext, nameof(executionContext));
-            ArgUtil.NotNull(network, nameof(network));
-
-            executionContext.Output($"Remove container network: {network}");
-
-            int removeExitCode = await _dockerManager.DockerNetworkRemove(executionContext, network);
-            if (removeExitCode != 0)
+            // Check whether we are inside a container.
+            // Our container feature requires to map working directory from host to the container.
+            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
+#if OS_WINDOWS
+#pragma warning disable CA1416
+            // service CExecSvc is Container Execution Agent.
+            ServiceController[] scServices = ServiceController.GetServices();
+            if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
             {
-                executionContext.Warning($"Docker network rm failed with exit code {removeExitCode}");
+                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
             }
-        }
+#pragma warning restore CA1416
+#else
+            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+            }
+#endif
+#if OS_WINDOWS
+#pragma warning disable CA1416
+            // Check OS version (Windows server 1803 is required)
+            object windowsInstallationType = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallationType", defaultValue: null);
+            ArgUtil.NotNull(windowsInstallationType, nameof(windowsInstallationType));
+            object windowsReleaseId = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", defaultValue: null);
+            ArgUtil.NotNull(windowsReleaseId, nameof(windowsReleaseId));
+            executionContext.Debug($"Current Windows version: '{windowsReleaseId} ({windowsInstallationType})'");
 
-        private async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
-        {
-            string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
-            string serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
-            if (string.IsNullOrEmpty(serviceHealth))
+            if (int.TryParse(windowsReleaseId.ToString(), out int releaseId))
             {
-                // Container has no HEALTHCHECK
-                return;
-            }
-            var retryCount = 0;
-            while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
-            {
-                TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
-                executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
-                await Task.Delay(backoff, executionContext.CancellationToken);
-                serviceHealth = (await _dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
-                retryCount++;
-            }
-            if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
-            {
-                executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
+                if (!windowsInstallationType.ToString().StartsWith("Server", StringComparison.OrdinalIgnoreCase) || releaseId < 1803)
+                {
+                    throw new NotSupportedException("Container feature requires Windows Server 1803 or higher.");
+                }
             }
             else
             {
-                throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
+                throw new ArgumentOutOfRangeException(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ReleaseId");
             }
-        }
+#pragma warning restore CA1416
+#endif
 
-        private async Task<string> ContainerRegistryLogin(IExecutionContext executionContext, ContainerInfo container)
-        {
-            if (string.IsNullOrEmpty(container.RegistryAuthUsername) || string.IsNullOrEmpty(container.RegistryAuthPassword))
-            {
-                // No valid client config can be generated
-                return "";
-            }
-            var configLocation = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), $".docker_{Guid.NewGuid()}");
-            try
-            {
-                var dirInfo = Directory.CreateDirectory(configLocation);
-            }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
-            }
-            var loginExitCode = await _dockerManager.DockerLogin(
-                executionContext,
-                configLocation,
-                container.RegistryServer,
-                container.RegistryAuthUsername,
-                container.RegistryAuthPassword);
-
-            if (loginExitCode != 0)
-            {
-                throw new InvalidOperationException($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
-            }
-            return configLocation;
-        }
-
-        private void ContainerRegistryLogout(string configLocation)
-        {
-            try
-            {
-                if (!string.IsNullOrEmpty(configLocation) && Directory.Exists(configLocation))
-                {
-                    Directory.Delete(configLocation, recursive: true);
-                }
-            }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException($"Failed to remove directory containing Docker client credentials: {e.Message}");
-            }
-        }
-
-        private void UpdateRegistryAuthForGitHubToken(IExecutionContext executionContext, ContainerInfo container)
-        {
-            var registryIsTokenCompatible = container.RegistryServer.Equals("ghcr.io", StringComparison.OrdinalIgnoreCase) || container.RegistryServer.Equals("containers.pkg.github.com", StringComparison.OrdinalIgnoreCase);
-            var isFallbackTokenFromHostedGithub = HostContext.GetService<IConfigurationStore>().GetSettings().IsHostedServer;
-            if (!registryIsTokenCompatible || !isFallbackTokenFromHostedGithub)
-            {
-                return;
-            }
-
-            var registryCredentialsNotSupplied = string.IsNullOrEmpty(container.RegistryAuthUsername) && string.IsNullOrEmpty(container.RegistryAuthPassword);
-            if (registryCredentialsNotSupplied)
-            {
-                container.RegistryAuthUsername = executionContext.GetGitHubContext("actor");
-                container.RegistryAuthPassword = executionContext.GetGitHubContext("token");
-            }
         }
     }
 }

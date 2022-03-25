@@ -529,13 +529,13 @@ namespace GitHub.Runner.Worker
 
             executionContext.Output($"##[group]Pull down action image '{setupInfo.Container.Image}'");
 
-            // Pull down docker image with retry up to 3 times
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            // TODO: update log messages
+            var containerManager = HostContext.GetService<IContainerManager>();
             int retryCount = 0;
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await dockerManager.DockerPull(executionContext, setupInfo.Container.Image);
+                pullExitCode = await containerManager.EnsureImageExists(executionContext, setupInfo.Container.Image);
                 if (pullExitCode == 0)
                 {
                     break;

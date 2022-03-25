@@ -37,7 +37,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
 
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            var dockerManager = HostContext.GetService<IContainerManager>();
 
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))

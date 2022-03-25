@@ -15,28 +15,51 @@ namespace GitHub.Runner.Worker.Container
     public class DockerHookArgs
     {
         public string ContainerId { get; set; }
+        public string Network { get; set; }
     }
 
     public class DockerHookCommandManager : DockerCommandManager
     {
+        public override async Task<int> DockerNetworkCreate(IExecutionContext context, string network)
+        {
+            if (!IsDockerHookActive(nameof(DockerNetworkCreate), out var hookScriptPath))
+            {
+                return await base.DockerNetworkCreate(context, network);
+            }
+            var dockerHookArgs = new DockerHookArgs { Network = network };
+            return await ExecuteHookScript(context, hookScriptPath, dockerHookArgs);
+        }
+        public override async Task<int> DockerNetworkRemove(IExecutionContext context, string network)
+        {
+            if (!IsDockerHookActive(nameof(DockerNetworkCreate),out var hookScriptPath))
+            {
+                return await base.DockerNetworkRemove(context, network);
+            }
+            var dockerHookArgs = new DockerHookArgs { Network = network };
+            return await ExecuteHookScript(context, hookScriptPath, dockerHookArgs);
+        }
+
         public override async Task<int> DockerStart(IExecutionContext context, string containerId)
         {
-            // TODO: do we want this flag to come from the .yml as well?
-            if (!StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_ALLOW_DOCKER_OVERRIDE")))
+            if (!IsDockerHookActive(nameof(DockerNetworkCreate),out var hookScriptPath))
             {
                 return await base.DockerStart(context, containerId);
             }
 
-            var path = GetDockerHookFileName(nameof(DockerStart));
-            var scriptDirectory = Path.GetDirectoryName(path);
+            var dockerHookArgs = new DockerHookArgs { ContainerId = containerId };
+            return await ExecuteHookScript(context, hookScriptPath, dockerHookArgs);
+        }
+
+        private async Task<int> ExecuteHookScript(IExecutionContext context, string hookScriptPath, DockerHookArgs dockerHookArgs)
+        {
+            var scriptDirectory = Path.GetDirectoryName(hookScriptPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             var prependPath = string.Join(Path.PathSeparator.ToString(), context.Global.PrependPath.Reverse<string>());
-            var dockerHookArgs = new DockerHookArgs { ContainerId = containerId };
             Dictionary<string, string> inputs = new()
             {
                 ["standardInInput"] = JsonUtility.ToString(dockerHookArgs),
-                ["path"] = path,
-                ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(path, Trace, prependPath)
+                ["path"] = hookScriptPath,
+                ["shell"] = ScriptHandlerHelpers.GetDefaultShellForScript(hookScriptPath, Trace, prependPath)
             };
 
             var handlerFactory = HostContext.GetService<IHandlerFactory>();
@@ -54,8 +77,14 @@ namespace GitHub.Runner.Worker.Container
             await handler.RunAsync(ActionRunStage.Pre);
             return handler.ExecutionContext.CommandResult == TaskResult.Succeeded ? 0 : 1;
         }
-
-        private string GetDockerHookFileName(string commandName)
+        private bool IsDockerHookActive(string hookName, out string path)
+        {
+            // TODO: do we want this flag to come from the .yml as well?
+            var areDockerHooksAllowed = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_ALLOW_DOCKER_OVERRIDE"));
+            path = GetDockerHookFilePath(hookName);
+            return areDockerHooksAllowed && File.Exists(path);
+        }
+        private string GetDockerHookFilePath(string commandName)
         {
             commandName = string.Format("{0}.sh", commandName.ToLower());
             return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.DockerHooks), commandName);

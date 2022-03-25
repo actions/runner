@@ -79,6 +79,12 @@ namespace GitHub.Runner.Worker.Container
         public string ContainerId { get; set; }
         public string ContainerDisplayName { get; set; }
         public string ContainerNetwork { get; set; }
+
+        internal void AddPortMappings(object p)
+        {
+            throw new NotImplementedException();
+        }
+
         public string ContainerNetworkAlias { get; set; }
         public string ContainerImage { get; set; }
         public string ContainerName { get; set; }
