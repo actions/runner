@@ -272,7 +272,7 @@ namespace GitHub.Runner.Worker.Container
 
         public async Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag = "")
         {
-            if (string.IsNullOrEmpty(tag)) 
+            if (string.IsNullOrEmpty(tag))
             {
                 tag = this.GenerateTag();
             }
@@ -335,9 +335,9 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
+        public async Task<int> ContainerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
         {
-            throw new NotImplementedException();
+            return await dockerManager.DockerExec(context, containerId, options, command, outputs);
         }
 
         public Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)

@@ -164,14 +164,14 @@ namespace GitHub.Runner.Worker.Handlers
             // There may be more variation in which libraries are linked than just musl/glibc,
             // so determine based on known distribtutions instead
             var osReleaseIdCmd = "sh -c \"cat /etc/*release | grep ^ID\"";
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            var containerManager = HostContext.GetService<IContainerManager>();
 
-            var output = new List<string>();
-            var execExitCode = await dockerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, output);
+            var outputs = new List<string>();
+            var execExitCode = await containerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, outputs);
             string nodeExternal;
             if (execExitCode == 0)
             {
-                foreach (var line in output)
+                foreach (var line in outputs)
                 {
                     executionContext.Debug(line);
                     if (line.ToLower().Contains("alpine"))

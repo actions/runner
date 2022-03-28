@@ -92,7 +92,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
+        public Task<int> ContainerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
         {
             throw new NotImplementedException();
         }
