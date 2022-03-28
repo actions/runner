@@ -357,9 +357,9 @@ namespace GitHub.Runner.Listener
                 if(message.ContextData.TryGetValue("github", out var context))
                 {
                     var githubContext = context as Pipelines.ContextData.DictionaryContextData;
-                    if(githubContext.TryGetValue("repository", out var repository))
+                    if(githubContext?.TryGetValue("repository", out var repository) == true)
                     {
-                        repositoryName = (repository as Pipelines.ContextData.StringContextData).Value.Trim();
+                        repositoryName = (repository as Pipelines.ContextData.StringContextData)?.Value?.Trim();
                     }
                 }
                 
