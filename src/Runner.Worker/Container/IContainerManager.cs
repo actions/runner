@@ -13,7 +13,6 @@ namespace GitHub.Runner.Worker.Container
         string DockerPath { get; }
         string DockerInstanceLabel { get; }
         Task<DockerVersion> DockerVersion(IExecutionContext context);
-        Task<int> EnsureImageExists(IExecutionContext context, ContainerInfo container);
         Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory);
         Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
@@ -41,5 +40,6 @@ namespace GitHub.Runner.Worker.Container
         Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container);
         Task<DictionaryContextData> GetServiceInfo(IExecutionContext executionContext, ContainerInfo container);
         Task GetJobContainerInfo(IExecutionContext executionContext, ContainerInfo container);
+        Task<int> EnsureImageExists(IExecutionContext executionContext, string container, string configLocation = "");
     }
 }

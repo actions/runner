@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        public Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             throw new NotImplementedException();
         }
@@ -163,6 +163,16 @@ namespace GitHub.Runner.Worker.Container
         }
 
         public Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> EnsureImageExists(IExecutionContext executionContext, string container, string configLocation = "")
         {
             throw new NotImplementedException();
         }

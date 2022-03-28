@@ -12,35 +12,32 @@ namespace GitHub.Runner.Worker.Container
     public class DockerContainerManager : RunnerService, IContainerManager
     {
         private IDockerCommandManager dockerManager;
-        private IContainerRegistryManager registryManager;
 
         public string DockerPath => throw new NotImplementedException();
 
         public string DockerInstanceLabel => throw new NotImplementedException();
 
+        string IContainerManager.DockerPath => throw new NotImplementedException();
+
+        string IContainerManager.DockerInstanceLabel => throw new NotImplementedException();
+
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             dockerManager = HostContext.GetService<IDockerCommandManager>();
-            registryManager = HostContext.GetService<IContainerRegistryManager>();
         }
         public Task<DockerVersion> DockerVersion(IExecutionContext context)
         {
             throw new NotImplementedException();
         }
-        public async Task<int> EnsureImageExists(IExecutionContext executionContext, ContainerInfo container)
+        public async Task<int> EnsureImageExists(IExecutionContext executionContext, string containerImage, string configLocation = "")
         {
-            registryManager.UpdateRegistryAuthForGitHubToken(executionContext, container);
-
-            // Before pulling, generate client authentication if required
-            var configLocation = await registryManager.ContainerRegistryLogin(executionContext, container);
-
             // Pull down docker image with retry up to 3 times
             int retryCount = 0;
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await dockerManager.DockerPull(executionContext, container.ContainerImage, configLocation);
+                pullExitCode = await dockerManager.DockerPull(executionContext, containerImage, configLocation);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -56,9 +53,6 @@ namespace GitHub.Runner.Worker.Container
                     }
                 }
             }
-
-            // Remove credentials after pulling
-            registryManager.ContainerRegistryLogout(configLocation);
 
             if (retryCount == 3 && pullExitCode != 0)
             {
@@ -261,6 +255,16 @@ namespace GitHub.Runner.Worker.Container
             container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
         }
 
+        public async Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
+        {
+            string containerNetwork = await CreateContainerNetworkAsync(executionContext);
+            foreach (var container in containers)
+            {
+                container.ContainerNetwork = containerNetwork;
+                await StartContainerAsync(executionContext, container);
+            }
+        }
+
         public Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
         {
             throw new NotImplementedException();
@@ -349,16 +353,6 @@ namespace GitHub.Runner.Worker.Container
         public Task<List<string>> Container(IExecutionContext context, List<ContainerInfo> containers)
         {
             throw new NotImplementedException();
-        }
-
-        public async Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
-        {
-            string containerNetwork = await CreateContainerNetworkAsync(executionContext);
-            foreach (var container in containers)
-            {
-                container.ContainerNetwork = containerNetwork;
-                await StartContainerAsync(executionContext, container);
-            }
         }
     }
 }

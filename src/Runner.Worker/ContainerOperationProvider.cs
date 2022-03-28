@@ -25,11 +25,13 @@ namespace GitHub.Runner.Worker
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
         private IContainerManager _containerManager;
+        private IContainerRegistryManager registryManager;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _containerManager = HostContext.GetService<IContainerManager>();
+            registryManager = HostContext.GetService<IContainerRegistryManager>();
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
@@ -128,7 +130,15 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            await _containerManager.EnsureImageExists(executionContext, container);
+            registryManager.UpdateRegistryAuthForGitHubToken(executionContext, container);
+
+            // Before pulling, generate client authentication if required
+            var configLocation = await registryManager.ContainerRegistryLogin(executionContext, container);
+
+            await _containerManager.EnsureImageExists(executionContext, container.ContainerImage, configLocation);
+
+            // Remove credentials after pulling
+            registryManager.ContainerRegistryLogout(configLocation);
 
             if (container.IsJobContainer)
             {
