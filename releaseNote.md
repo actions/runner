@@ -1,11 +1,7 @@
 ## Features
 
 ## Bugs
-- Fixed a crash on runner startup (#1770)
-
-## Misc
-
-- Clarified the type of step running when running job started or completed hooks (#1769)
+- Fixed an issue where websockets failed to closed successfully when posting log lines (#1790)
 
 
 ## Windows x64
