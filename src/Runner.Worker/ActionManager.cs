@@ -574,18 +574,18 @@ namespace GitHub.Runner.Worker
             executionContext.Output($"##[group]Build container for action use: '{setupInfo.Container.Dockerfile}'.");
 
             // Build docker image with retry up to 3 times
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            var containerManager = HostContext.GetService<IContainerManager>();
             int retryCount = 0;
             int buildExitCode = 0;
-            var imageName = $"{dockerManager.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+            var tag = containerManager.GenerateTag();
             while (retryCount < 3)
             {
-                buildExitCode = await dockerManager.DockerBuild(
+                buildExitCode = await containerManager.ContainerBuild(
                     executionContext,
                     setupInfo.Container.WorkingDirectory,
                     setupInfo.Container.Dockerfile,
                     Directory.GetParent(setupInfo.Container.Dockerfile).FullName,
-                    imageName);
+                    tag);
                 if (buildExitCode == 0)
                 {
                     break;
@@ -610,8 +610,8 @@ namespace GitHub.Runner.Worker
 
             foreach (var stepId in setupInfo.StepIds)
             {
-                CachedActionContainers[stepId] = new ContainerInfo() { ContainerImage = imageName };
-                Trace.Info($"Prepared docker image '{imageName}' for action {stepId} ({setupInfo.Container.Dockerfile})");
+                CachedActionContainers[stepId] = new ContainerInfo() { ContainerImage = tag };
+                Trace.Info($"Prepared docker image '{tag}' for action {stepId} ({setupInfo.Container.Dockerfile})");
             }
         }
 

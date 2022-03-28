@@ -270,9 +270,19 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
+        public async Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag = "")
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrEmpty(tag)) 
+            {
+                tag = this.GenerateTag();
+            }
+            return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, tag);
+        }
+
+        public string GenerateTag() => $"{DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+        public async Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext)
+        {
+            return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, string.Empty);
         }
 
         public Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)

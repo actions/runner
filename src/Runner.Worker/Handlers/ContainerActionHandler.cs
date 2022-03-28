@@ -53,7 +53,7 @@ namespace GitHub.Runner.Worker.Handlers
                 ExecutionContext.Output($"##[group]Building docker image");
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
                 var imageName = $"{containerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await containerManager.DockerBuild(
+                var buildExitCode = await containerManager.ContainerBuild(
                     ExecutionContext,
                     ExecutionContext.GetGitHubContext("workspace"),
                     dockerFile,

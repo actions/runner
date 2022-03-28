@@ -37,7 +37,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
+        public Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
         {
             throw new NotImplementedException();
         }
@@ -173,6 +173,16 @@ namespace GitHub.Runner.Worker.Container
         }
 
         public Task<int> EnsureImageExists(IExecutionContext executionContext, string container, string configLocation = "")
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string GenerateTag()
         {
             throw new NotImplementedException();
         }
