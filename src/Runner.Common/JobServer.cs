@@ -2,6 +2,7 @@ using GitHub.DistributedTask.WebApi;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
@@ -169,6 +170,10 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Creating websocket client ..." + feedStreamUrl);
                     this._websocketClient = new ClientWebSocket();
                     this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
+                    var userAgent = HostContext.UserAgents;
+                    var userAgentStrings = userAgent.Select(x => x.ToString());
+                    this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentStrings));
+
                     this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }
                 else
