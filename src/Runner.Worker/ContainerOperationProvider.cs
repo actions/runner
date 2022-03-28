@@ -50,15 +50,19 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-            AssertOSVersion();
+            AssertOSContainerCompatible();
+
             await _containerManager.ContainerCleanup(executionContext);
-            string containerNetwork = await _containerManager.CreateContainerNetworkAsync(executionContext);
 
             foreach (var container in containers)
             {
-                container.ContainerNetwork = containerNetwork;
                 await InitializeContainerAsync(executionContext, container);
-                await _containerManager.StartContainerAsync(executionContext, container);
+            }
+
+            _containerManager.StartContainersAsync(executionContext, containers);
+
+            foreach (var container in containers)
+            {
                 await GatherRuntimeInformation(executionContext, container);
             }
 
@@ -212,9 +216,9 @@ namespace GitHub.Runner.Worker
             return outputs;
         }
 #endif
-        private static void AssertOSVersion()
+        private static void AssertOSContainerCompatible()
         {
-
+            // TODO: fix for kubectl
             // Check whether we are inside a container.
             // Our container feature requires to map working directory from host to the container.
             // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
