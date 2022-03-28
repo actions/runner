@@ -167,7 +167,7 @@ namespace GitHub.Runner.Worker.Handlers
             var containerManager = HostContext.GetService<IContainerManager>();
 
             var outputs = new List<string>();
-            var execExitCode = await containerManager.DockerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, outputs);
+            var execExitCode = await containerManager.ContainerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, outputs);
             string nodeExternal;
             if (execExitCode == 0)
             {
@@ -228,74 +228,22 @@ namespace GitHub.Runner.Worker.Handlers
                                             string standardInInput,
                                             CancellationToken cancellationToken)
         {
-            // make sure container exist.
-            ArgUtil.NotNull(Container, nameof(Container));
-            ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
-
-            var dockerManager = HostContext.GetService<IDockerCommandManager>();
-            string dockerClientPath = dockerManager.DockerPath;
-
-            // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
-            IList<string> dockerCommandArgs = new List<string>();
-            dockerCommandArgs.Add($"exec");
-
-            // [OPTIONS]
-            dockerCommandArgs.Add($"-i");
-            dockerCommandArgs.Add($"--workdir {workingDirectory}");
-            foreach (var env in environment)
-            {
-                // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
-                // the value directly in the command
-                dockerCommandArgs.Add($"-e {env.Key}");
-            }
-            if (!string.IsNullOrEmpty(PrependPath))
-            {
-                // Prepend tool paths to container's PATH
-                var fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
-                dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
-            }
-
-            // CONTAINER
-            dockerCommandArgs.Add($"{Container.ContainerId}");
-
-            // COMMAND
-            dockerCommandArgs.Add(fileName);
-
-            // [ARG...]
-            dockerCommandArgs.Add(arguments);
-
-            string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
-
-            // make sure all env are using container path
-            foreach (var envKey in environment.Keys.ToList())
-            {
-                environment[envKey] = this.Container.TranslateToContainerPath(environment[envKey]);
-            }
-
-            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-            {
-                processInvoker.OutputDataReceived += OutputDataReceived;
-                processInvoker.ErrorDataReceived += ErrorDataReceived;
-
-#if OS_WINDOWS
-                // It appears that node.exe outputs UTF8 when not in TTY mode.
-                outputEncoding = Encoding.UTF8;
-#else
-                // Let .NET choose the default.
-                outputEncoding = null;
-#endif
-
-                return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
-                                                         fileName: dockerClientPath,
-                                                         arguments: dockerCommandArgstring,
-                                                         environment: environment,
-                                                         requireExitCodeZero: requireExitCodeZero,
-                                                         outputEncoding: outputEncoding,
-                                                         killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: null,
-                                                         inheritConsoleHandler: inheritConsoleHandler,
-                                                         cancellationToken: cancellationToken);
-            }
+            var containerManager = HostContext.CreateService<IContainerManager>();
+            return await containerManager.ExecuteCommandInContainerAsync(
+                                                        workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                                        fileName: fileName,
+                                                        arguments: arguments,
+                                                        fullPath: PrependPath,
+                                                        environment: environment,
+                                                        container: Container,
+                                                        requireExitCodeZero: requireExitCodeZero,
+                                                        outputDataReceived: OutputDataReceived,
+                                                        errorDataReceived: ErrorDataReceived,
+                                                        outputEncoding: outputEncoding,
+                                                        killProcessOnCancel: killProcessOnCancel,
+                                                        redirectStandardIn: null,
+                                                        inheritConsoleHandler: inheritConsoleHandler,
+                                                        cancellationToken: cancellationToken);
         }
     }
 }

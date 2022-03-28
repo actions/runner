@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Channels;
@@ -31,6 +32,7 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerNetworkPrune(IExecutionContext context);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command);
         Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs);
+        Task<int> DockerExec(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken);
         Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options);
         Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId);
         Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password);
@@ -476,6 +478,78 @@ namespace GitHub.Runner.Worker.Container
                             cancellationToken: CancellationToken.None);
 
             return output;
+        }
+
+        public async Task<int> DockerExec(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
+        {
+            // make sure container exist.
+            ArgUtil.NotNull(container, nameof(container));
+            ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
+
+            var dockerManager = HostContext.GetService<IDockerCommandManager>();
+            string dockerClientPath = dockerManager.DockerPath;
+
+            // Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
+            IList<string> dockerCommandArgs = new List<string>();
+            dockerCommandArgs.Add($"exec");
+
+            // [OPTIONS]
+            dockerCommandArgs.Add($"-i");
+            dockerCommandArgs.Add($"--workdir {workingDirectory}");
+            foreach (var env in environment)
+            {
+                // e.g. -e MY_SECRET maps the value into the exec'ed process without exposing
+                // the value directly in the command
+                dockerCommandArgs.Add($"-e {env.Key}");
+            }
+            if (!string.IsNullOrEmpty(fullPath))
+            {
+                // Prepend tool paths to container's PATH
+                fullPath = !string.IsNullOrEmpty(container.ContainerRuntimePath) ? $"{fullPath}:{container.ContainerRuntimePath}" : fullPath;
+                dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
+            }
+
+            // CONTAINER
+            dockerCommandArgs.Add($"{container.ContainerId}");
+
+            // COMMAND
+            dockerCommandArgs.Add(fileName);
+
+            // [ARG...]
+            dockerCommandArgs.Add(arguments);
+
+            string dockerCommandArgstring = string.Join(" ", dockerCommandArgs);
+
+            // make sure all env are using container path
+            foreach (var envKey in environment.Keys.ToList())
+            {
+                environment[envKey] = container.TranslateToContainerPath(environment[envKey]);
+            }
+
+            using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
+            {
+                processInvoker.OutputDataReceived += outputDataReceived;
+                processInvoker.ErrorDataReceived += errorDataReceived;
+
+#if OS_WINDOWS
+                // It appears that node.exe outputs UTF8 when not in TTY mode.
+                outputEncoding = Encoding.UTF8;
+#else
+                // Let .NET choose the default.
+                outputEncoding = null;
+#endif
+
+                return await processInvoker.ExecuteAsync(workingDirectory: workingDirectory,
+                                                         fileName: dockerClientPath,
+                                                         arguments: dockerCommandArgstring,
+                                                         environment: environment,
+                                                         requireExitCodeZero: requireExitCodeZero,
+                                                         outputEncoding: outputEncoding,
+                                                         killProcessOnCancel: killProcessOnCancel,
+                                                         redirectStandardIn: null,
+                                                         inheritConsoleHandler: inheritConsoleHandler,
+                                                         cancellationToken: cancellationToken);
+            }
         }
     }
 }

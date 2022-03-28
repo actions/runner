@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
@@ -43,5 +45,6 @@ namespace GitHub.Runner.Worker.Container
         Task GetJobContainerInfo(IExecutionContext executionContext, ContainerInfo container);
         Task<int> EnsureImageExists(IExecutionContext executionContext, string container, string configLocation = "");
         string GenerateTag();
+        Task<int> ExecuteCommandInContainerAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken);
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
@@ -363,6 +365,25 @@ namespace GitHub.Runner.Worker.Container
         public Task<List<string>> Container(IExecutionContext context, List<ContainerInfo> containers)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<int> ExecuteCommandInContainerAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
+        {
+            return await dockerManager.DockerExec(
+                workingDirectory, 
+                fileName, 
+                arguments, 
+                fullPath, 
+                environment, 
+                container, 
+                requireExitCodeZero, 
+                outputDataReceived, 
+                errorDataReceived, 
+                outputEncoding, 
+                killProcessOnCancel, 
+                redirectStandardIn, 
+                inheritConsoleHandler, 
+                cancellationToken);
         }
     }
 }
