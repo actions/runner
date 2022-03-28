@@ -505,7 +505,6 @@ namespace GitHub.Runner.Worker.Container
             if (!string.IsNullOrEmpty(fullPath))
             {
                 // Prepend tool paths to container's PATH
-                fullPath = !string.IsNullOrEmpty(container.ContainerRuntimePath) ? $"{fullPath}:{container.ContainerRuntimePath}" : fullPath;
                 dockerCommandArgs.Add($"-e PATH=\"{fullPath}\"");
             }
 
@@ -539,7 +538,7 @@ namespace GitHub.Runner.Worker.Container
                 outputEncoding = null;
 #endif
 
-                return await processInvoker.ExecuteAsync(workingDirectory: workingDirectory,
+                return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: dockerClientPath,
                                                          arguments: dockerCommandArgstring,
                                                          environment: environment,

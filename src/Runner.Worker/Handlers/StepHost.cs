@@ -228,12 +228,19 @@ namespace GitHub.Runner.Worker.Handlers
                                             string standardInInput,
                                             CancellationToken cancellationToken)
         {
+            var fullPath = string.Empty;
+            if (!string.IsNullOrEmpty(PrependPath))
+            {
+                // Prepend tool paths to container's PATH
+                fullPath = !string.IsNullOrEmpty(Container.ContainerRuntimePath) ? $"{PrependPath}:{Container.ContainerRuntimePath}" : PrependPath;
+            }
+
             var containerManager = HostContext.CreateService<IContainerManager>();
             return await containerManager.ExecuteCommandInContainerAsync(
-                                                        workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
+                                                        workingDirectory: workingDirectory,
                                                         fileName: fileName,
                                                         arguments: arguments,
-                                                        fullPath: PrependPath,
+                                                        fullPath: fullPath,
                                                         environment: environment,
                                                         container: Container,
                                                         requireExitCodeZero: requireExitCodeZero,
