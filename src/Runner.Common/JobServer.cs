@@ -258,7 +258,16 @@ namespace GitHub.Runner.Common
                         if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesAttemptedByWebsocket > _minWebsocketFailurePercentageAllowed)
                         {
                             Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
-                            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", cancellationToken);
+                            try
+                            {
+                                _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", cancellationToken);
+                            }
+                            catch (Exception websocketEx)
+                            {
+                                // In some cases this might be okay since the websocket might be open yet, so just close and don't trace exceptions
+                                Trace.Info($"Failed to close websocket gracefully {websocketEx.GetType().Name}");
+                            }
+
                             // By setting it to null, we will ensure that we never try websocket path again for this job
                             _websocketClient = null;
                         }
