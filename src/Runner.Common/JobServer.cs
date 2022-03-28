@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -11,6 +12,7 @@ using System.Threading.Tasks;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
+using GitHub.Services.WebApi.Utilities.Internal;
 using Newtonsoft.Json;
 
 namespace GitHub.Runner.Common
@@ -170,9 +172,10 @@ namespace GitHub.Runner.Common
                     Trace.Info($"Creating websocket client ..." + feedStreamUrl);
                     this._websocketClient = new ClientWebSocket();
                     this._websocketClient.Options.SetRequestHeader("Authorization", $"Bearer {accessToken}");
-                    var userAgent = HostContext.UserAgents;
-                    var userAgentStrings = userAgent.Select(x => x.ToString());
-                    this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentStrings));
+                    var userAgentValues = new List<ProductInfoHeaderValue>();
+                    userAgentValues.AddRange(UserAgentUtility.GetDefaultRestUserAgent());
+                    userAgentValues.AddRange(HostContext.UserAgents);
+                    this._websocketClient.Options.SetRequestHeader("User-Agent", string.Join(" ", userAgentValues.Select(x=>x.ToString())));
 
                     this._websocketConnectTask = ConnectWebSocketClient(feedStreamUrl, delay);
                 }
