@@ -1,7 +1,7 @@
 ## Features
 
 ## Bugs
-- Fixed a crash on runner startup (#1770)
+- Handle any feedstream websocket endpoint closure failures (#1790)
 
 ## Misc
 
