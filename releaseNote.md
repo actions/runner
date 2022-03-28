@@ -1,7 +1,7 @@
 ## Features
 
 ## Bugs
-- Fixed an issue where websockets failed to closed successfully when posting log lines (#1790)
+- Fixed an issue where websockets failed to successfully close when posting log lines (#1790)
 
 
 ## Windows x64
