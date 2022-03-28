@@ -143,8 +143,18 @@ namespace GitHub.Runner.Common
 
         public ValueTask DisposeAsync()
         {
-            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
+            try
+            {
+                _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // In some cases this might be okay since the websocket might be open yet, so just close and don't trace exceptions
+                Trace.Info($"Failed to close websocket gracefully {ex.GetType().Name}");
+            }
+
             GC.SuppressFinalize(this);
+
             return ValueTask.CompletedTask;
         }
 
