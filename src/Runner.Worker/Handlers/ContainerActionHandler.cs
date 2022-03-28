@@ -37,7 +37,7 @@ namespace GitHub.Runner.Worker.Handlers
             // Update the env dictionary.
             AddInputsToEnvironment();
 
-            var dockerManager = HostContext.GetService<IContainerManager>();
+            var containerManager = HostContext.GetService<IContainerManager>();
 
             // container image haven't built/pull
             if (Data.Image.StartsWith("docker://", StringComparison.OrdinalIgnoreCase))
@@ -52,8 +52,8 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.Output($"##[group]Building docker image");
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-                var imageName = $"{dockerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
-                var buildExitCode = await dockerManager.DockerBuild(
+                var imageName = $"{containerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                var buildExitCode = await containerManager.DockerBuild(
                     ExecutionContext,
                     ExecutionContext.GetGitHubContext("workspace"),
                     dockerFile,
@@ -223,8 +223,8 @@ namespace GitHub.Runner.Worker.Handlers
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             {
-                var runExitCode = await dockerManager.DockerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
-                ExecutionContext.Debug($"Docker Action run completed with exit code {runExitCode}");
+                var runExitCode = await containerManager.ContainerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
+                ExecutionContext.Debug($"Container Action run completed with exit code {runExitCode}");
                 if (runExitCode != 0)
                 {
                     ExecutionContext.Result = TaskResult.Failed;

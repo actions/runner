@@ -17,7 +17,7 @@ namespace GitHub.Runner.Worker.Container
         Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory);
         Task<int> DockerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag);
         Task<string> DockerCreate(IExecutionContext context, ContainerInfo container);
-        Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
+        Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived);
         Task<int> DockerStart(IExecutionContext context, string containerId);
         Task<int> DockerLogs(IExecutionContext context, string containerId);
         Task<List<string>> DockerPS(IExecutionContext context, string options);
@@ -34,7 +34,7 @@ namespace GitHub.Runner.Worker.Container
         Task<List<string>> Container(IExecutionContext context, List<ContainerInfo> containers);
         Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container);
         Task<string> CreateContainerNetworkAsync(IExecutionContext executionContext);
-        void StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers);
+        Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers);
         Task RemoveContainerNetworkAsync(IExecutionContext executionContext, string network);
         Task ContainerCleanup(IExecutionContext executionContext);
         Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container);

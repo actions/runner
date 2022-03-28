@@ -47,7 +47,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        public Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             throw new NotImplementedException();
         }
@@ -162,7 +162,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public void StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
+        public Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
         {
             throw new NotImplementedException();
         }

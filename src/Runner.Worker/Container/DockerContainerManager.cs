@@ -276,9 +276,9 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> DockerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        public async Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
-            throw new NotImplementedException();
+            return await dockerManager.DockerRun(context, container, stdoutDataReceived, stderrDataReceived);
         }
 
         public Task<int> DockerStart(IExecutionContext context, string containerId)
@@ -351,7 +351,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public async Task StartBulk(IExecutionContext executionContext, List<ContainerInfo> containers)
+        public async Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
         {
             string containerNetwork = await CreateContainerNetworkAsync(executionContext);
             foreach (var container in containers)
@@ -359,11 +359,6 @@ namespace GitHub.Runner.Worker.Container
                 container.ContainerNetwork = containerNetwork;
                 await StartContainerAsync(executionContext, container);
             }
-        }
-
-        public void StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
-        {
-            throw new NotImplementedException();
         }
     }
 }

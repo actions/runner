@@ -59,11 +59,21 @@ namespace GitHub.Runner.Worker
                 await InitializeContainerAsync(executionContext, container);
             }
 
-            _containerManager.StartContainersAsync(executionContext, containers);
+            await _containerManager.StartContainersAsync(executionContext, containers);
 
             foreach (var container in containers)
             {
-                await GatherRuntimeInformation(executionContext, container);
+                // Gather runtime container information
+                if (!container.IsJobContainer)
+                {
+                    var service = await _containerManager.GetServiceInfo(executionContext, container);
+                    executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
+                }
+                else
+                {
+                    await _containerManager.GetJobContainerInfo(executionContext, container);
+                    executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
+                }
             }
 
             executionContext.Output("##[group]Waiting for all services to be ready");
@@ -72,21 +82,6 @@ namespace GitHub.Runner.Worker
                 await _containerManager.ContainerHealthcheck(executionContext, container);
             }
             executionContext.Output("##[endgroup]");
-        }
-
-        private async Task GatherRuntimeInformation(IExecutionContext executionContext, ContainerInfo container)
-        {
-            // Gather runtime container information
-            if (!container.IsJobContainer)
-            {
-                var service = await _containerManager.GetServiceInfo(executionContext, container);
-                executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
-            }
-            else
-            {
-                await _containerManager.GetJobContainerInfo(executionContext, container);
-                executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
-            }
         }
 
         public async Task StopContainersAsync(IExecutionContext executionContext, object data)
