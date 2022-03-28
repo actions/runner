@@ -7,7 +7,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Container
 {
-    public class ContainerCommandManager : RunnerService, IContainerManager
+    public class ContainerHookManager : RunnerService, IContainerManager
     {
         public string DockerPath => throw new NotImplementedException();
 
@@ -158,6 +158,11 @@ namespace GitHub.Runner.Worker.Container
         }
 
         public Task GetJobContainerInfo(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
         {
             throw new NotImplementedException();
         }
