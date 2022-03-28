@@ -17,6 +17,15 @@ namespace GitHub.Runner.Listener
         private readonly IPromptManager _promptManager;
         private readonly Tracing _trace;
 
+        // Valid flags for all commands
+        private readonly string[] genericOptions =
+        {
+            Constants.Runner.CommandLine.Flags.Help,
+            Constants.Runner.CommandLine.Flags.Version,
+            Constants.Runner.CommandLine.Flags.Commit,
+            Constants.Runner.CommandLine.Flags.Check
+        };
+
         // Valid flags and args for specific command - key: command, value: array of valid flags and args
         private readonly Dictionary<string, string[]> validOptions = new Dictionary<string, string[]>
         {
@@ -24,10 +33,6 @@ namespace GitHub.Runner.Listener
             [Constants.Runner.CommandLine.Commands.Configure] = 
                 new string[] 
                 {
-                    Constants.Runner.CommandLine.Flags.Help,
-                    Constants.Runner.CommandLine.Flags.Version,
-                    Constants.Runner.CommandLine.Flags.Commit,
-                    Constants.Runner.CommandLine.Flags.Check,
                     Constants.Runner.CommandLine.Flags.DisableUpdate,
                     Constants.Runner.CommandLine.Flags.Ephemeral,
                     Constants.Runner.CommandLine.Flags.Replace,
@@ -50,32 +55,18 @@ namespace GitHub.Runner.Listener
             [Constants.Runner.CommandLine.Commands.Remove] =
                 new string[]
                 {
-                    Constants.Runner.CommandLine.Flags.Help,
-                    Constants.Runner.CommandLine.Flags.Version,
-                    Constants.Runner.CommandLine.Flags.Commit,
-                    Constants.Runner.CommandLine.Flags.Check,
                     Constants.Runner.CommandLine.Args.Token
                 },
             // Valid run flags and args
             [Constants.Runner.CommandLine.Commands.Run] =
                 new string[]
                 {
-                    Constants.Runner.CommandLine.Flags.Help,
-                    Constants.Runner.CommandLine.Flags.Version,
-                    Constants.Runner.CommandLine.Flags.Commit,
-                    Constants.Runner.CommandLine.Flags.Check,
                     Constants.Runner.CommandLine.Flags.Once,
                     Constants.Runner.CommandLine.Args.StartupType
                 },
             // valid warmup flags and args
             [Constants.Runner.CommandLine.Commands.Warmup] =
-                new string[]
-                {
-                    Constants.Runner.CommandLine.Flags.Help,
-                    Constants.Runner.CommandLine.Flags.Version,
-                    Constants.Runner.CommandLine.Flags.Commit,
-                    Constants.Runner.CommandLine.Flags.Check
-                }
+                new string[] { }
         };
 
         // Commands.
@@ -157,7 +148,7 @@ namespace GitHub.Runner.Listener
                 {
                     if (validOptions.TryGetValue(command, out string[] options))
                     {
-                        unknowns.AddRange(_parser.Flags.Where(x => !options.Contains(x, StringComparer.OrdinalIgnoreCase)));
+                        unknowns.AddRange(_parser.Flags.Where(x => !options.Contains(x, StringComparer.OrdinalIgnoreCase) && !genericOptions.Contains(x, StringComparer.OrdinalIgnoreCase)));
                         unknowns.AddRange(_parser.Args.Keys.Where(x => !options.Contains(x, StringComparer.OrdinalIgnoreCase)));
                     }
                 }
