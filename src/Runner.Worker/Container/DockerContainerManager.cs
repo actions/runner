@@ -32,7 +32,11 @@ namespace GitHub.Runner.Worker.Container
         {
             throw new NotImplementedException();
         }
-        public async Task<int> EnsureImageExists(IExecutionContext executionContext, string containerImage, string configLocation = "")
+        public Task<int> EnsureImageExists(IExecutionContext executionContext, string container)
+        {
+            return EnsureImageExists(executionContext, container, string.Empty);
+        }
+        public async Task<int> EnsureImageExists(IExecutionContext executionContext, string containerImage, string configLocation)
         {
             // Pull down docker image with retry up to 3 times
             int retryCount = 0;
@@ -370,19 +374,19 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> ExecuteCommandInContainerAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
         {
             return await dockerManager.DockerExec(
-                workingDirectory, 
-                fileName, 
-                arguments, 
-                fullPath, 
-                environment, 
-                container, 
-                requireExitCodeZero, 
-                outputDataReceived, 
-                errorDataReceived, 
-                outputEncoding, 
-                killProcessOnCancel, 
-                redirectStandardIn, 
-                inheritConsoleHandler, 
+                workingDirectory,
+                fileName,
+                arguments,
+                fullPath,
+                environment,
+                container,
+                requireExitCodeZero,
+                outputDataReceived,
+                errorDataReceived,
+                outputEncoding,
+                killProcessOnCancel,
+                redirectStandardIn,
+                inheritConsoleHandler,
                 cancellationToken);
         }
     }

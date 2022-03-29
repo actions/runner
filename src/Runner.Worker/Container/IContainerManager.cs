@@ -43,7 +43,8 @@ namespace GitHub.Runner.Worker.Container
         Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container);
         Task<DictionaryContextData> GetServiceInfo(IExecutionContext executionContext, ContainerInfo container);
         Task GetJobContainerInfo(IExecutionContext executionContext, ContainerInfo container);
-        Task<int> EnsureImageExists(IExecutionContext executionContext, string container, string configLocation = "");
+        Task<int> EnsureImageExists(IExecutionContext executionContext, string container, string configLocation);
+        Task<int> EnsureImageExists(IExecutionContext executionContext, string container);
         string GenerateTag();
         Task<int> ExecuteCommandInContainerAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken);
     }

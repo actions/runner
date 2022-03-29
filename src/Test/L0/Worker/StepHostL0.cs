@@ -13,7 +13,7 @@ namespace GitHub.Runner.Common.Tests.Worker
     public sealed class StepHostL0
     {
         private Mock<IExecutionContext> _ec;
-        private Mock<IDockerCommandManager> _dc;
+        private Mock<IContainerManager> _cm;
         private TestHostContext CreateTestContext([CallerMemberName] String testName = "")
         {
             var hc = new TestHostContext(this, testName);
@@ -24,8 +24,8 @@ namespace GitHub.Runner.Common.Tests.Worker
             var trace = hc.GetTrace();
             _ec.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
 
-            _dc = new Mock<IDockerCommandManager>();
-            hc.SetSingleton(_dc.Object);
+            _cm = new Mock<IContainerManager>();
+            hc.SetSingleton(_cm.Object);
             return hc;
         }
 
@@ -41,7 +41,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
 
-                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                _cm.Setup(d => d.ContainerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                                .ReturnsAsync(0);
 
                 // Act.
@@ -64,7 +64,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
 
-                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                _cm.Setup(d => d.ContainerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                     .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
                     {
                         output.Add("alpine");
@@ -91,7 +91,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
 
-                _dc.Setup(d => d.DockerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                _cm.Setup(d => d.ContainerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                     .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
                     {
                         output.Add("github");
