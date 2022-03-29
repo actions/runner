@@ -236,7 +236,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             var containerManager = HostContext.CreateService<IContainerManager>();
-            return await containerManager.ExecuteCommandInContainerAsync(
+            return await containerManager.ContainerExec(
                                                         workingDirectory: workingDirectory,
                                                         fileName: fileName,
                                                         arguments: arguments,
