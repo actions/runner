@@ -9,6 +9,8 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Container
 {
+
+    // this class should execute the hooks, prepare their inputs and handle their outputs
     public class ContainerHookManager : RunnerService, IContainerManager
     {
         public Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
