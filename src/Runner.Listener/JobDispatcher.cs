@@ -348,26 +348,26 @@ namespace GitHub.Runner.Listener
                 var term = HostContext.GetService<ITerminal>();
 
                 string workflowName = string.Empty;
-                if(message.Variables.TryGetValue("system.workflowFilePath", out var workflowPath))
+                if (message.Variables.TryGetValue("system.workflowFilePath", out var workflowPath))
                 {
                     workflowName = workflowPath.Value.Split('/').LastOrDefault().Trim();
                 }
 
                 string repositoryName = string.Empty;
-                if(message.ContextData.TryGetValue("github", out var context))
+                if (message.ContextData.TryGetValue("github", out var context))
                 {
                     var githubContext = context as Pipelines.ContextData.DictionaryContextData;
-                    if(githubContext?.TryGetValue("repository", out var repository) == true)
+                    if (githubContext?.TryGetValue("repository", out var repository) == true)
                     {
                         repositoryName = (repository as Pipelines.ContextData.StringContextData)?.Value?.Trim();
                     }
                 }
                 
                 string additionalInfo = string.Empty;
-                if(!string.IsNullOrEmpty(workflowName))
+                if (!string.IsNullOrEmpty(workflowName))
                 {
                     additionalInfo += $"(workflow \"{workflowName}\"";
-                    if(!string.IsNullOrEmpty(repositoryName))
+                    if (!string.IsNullOrEmpty(repositoryName))
                     {
                         additionalInfo += $" in repository \"{repositoryName}\")";
                     }
