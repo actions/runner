@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.ObjectTemplating;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
@@ -171,7 +172,16 @@ namespace GitHub.Runner.Worker
 
             // Load the inputs.
             ExecutionContext.Debug("Loading inputs");
-            var inputs = EvaluateStepInputs(stepHost);
+            Dictionary<string, string> inputs;
+            if (ExecutionContext.Global.Variables.GetBoolean(Constants.Runner.Features.UseContainerPathForTemplate) ?? false)
+            {
+                inputs = EvaluateStepInputs(stepHost);
+            }
+            else
+            {
+                var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+                inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+            }
 
             var userInputs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> input in inputs)
@@ -324,16 +334,15 @@ namespace GitHub.Runner.Worker
         private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues, IStepHost stepHost)
         {
             var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
-            var output = dict.Clone().AssertDictionary($"expected dictionary clone in {contextName} to be dictionary");
-            foreach (var pair in dict)
+            foreach (var key in dict.Keys.ToList())
             {
-                var value = pair.Value?.ToString();
-                if (pair.Value?.Type == TokenType.String && !String.IsNullOrEmpty(value) && pair.Key != null)
+                var value = dict[key]?.ToString();
+                if (!string.IsNullOrEmpty(value))
                 {
-                    output[pair.Key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
+                    dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
                 }
             }
-            expressionValues[contextName] = output;
+            expressionValues[contextName] = dict;
         }
 
         private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)
