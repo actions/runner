@@ -52,13 +52,13 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.Output($"##[group]Building docker image");
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-                var imageName = $"{containerManager.DockerInstanceLabel}:{ExecutionContext.Id.ToString("N")}";
+                var tagName = containerManager.GenerateTag();
                 var buildExitCode = await containerManager.ContainerBuild(
                     ExecutionContext,
                     ExecutionContext.GetGitHubContext("workspace"),
                     dockerFile,
                     Directory.GetParent(dockerFile).FullName,
-                    imageName);
+                    tagName);
                 ExecutionContext.Output("##[endgroup]");
 
                 if (buildExitCode != 0)
@@ -66,7 +66,7 @@ namespace GitHub.Runner.Worker.Handlers
                     throw new InvalidOperationException($"Docker build failed with exit code {buildExitCode}");
                 }
 
-                Data.Image = imageName;
+                Data.Image = tagName;
             }
 
             string type = Action.Type == Pipelines.ActionSourceType.Repository ? "Dockerfile" : "DockerHub";

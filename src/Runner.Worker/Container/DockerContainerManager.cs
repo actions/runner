@@ -19,10 +19,6 @@ namespace GitHub.Runner.Worker.Container
 
         public string DockerInstanceLabel => throw new NotImplementedException();
 
-        string IContainerManager.DockerPath => throw new NotImplementedException();
-
-        string IContainerManager.DockerInstanceLabel => throw new NotImplementedException();
-
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
@@ -271,16 +267,11 @@ namespace GitHub.Runner.Worker.Container
             }
         }
 
-        public Task<int> DockerPull(IExecutionContext context, string image, string configFileDirectory)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag = "")
         {
             if (string.IsNullOrEmpty(tag))
             {
-                tag = this.GenerateTag();
+                tag = GenerateTag();
             }
             return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, tag);
         }
@@ -291,84 +282,14 @@ namespace GitHub.Runner.Worker.Container
             return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, string.Empty);
         }
 
-        public Task<string> DockerCreate(IExecutionContext context, ContainerInfo container)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             return await dockerManager.DockerRun(context, container, stdoutDataReceived, stderrDataReceived);
         }
 
-        public Task<int> DockerStart(IExecutionContext context, string containerId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<int> DockerLogs(IExecutionContext context, string containerId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<string>> DockerPS(IExecutionContext context, string options)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<int> DockerRemove(IExecutionContext context, string containerId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<int> DockerNetworkCreate(IExecutionContext context, string network)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<int> DockerNetworkRemove(IExecutionContext context, string network)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<int> DockerNetworkPrune(IExecutionContext context)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<int> DockerExec(IExecutionContext context, string containerId, string options, string command)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<int> ContainerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
         {
             return await dockerManager.DockerExec(context, containerId, options, command, outputs);
-        }
-
-        public Task<List<string>> DockerInspect(IExecutionContext context, string dockerObject, string options)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<PortMapping>> DockerPort(IExecutionContext context, string containerId)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<int> DockerLogin(IExecutionContext context, string configFileDirectory, string registry, string username, string password)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<string>> ContainersCreate(IExecutionContext context, List<ContainerInfo> containers)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<List<string>> Container(IExecutionContext context, List<ContainerInfo> containers)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<int> ExecuteCommandInContainerAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
