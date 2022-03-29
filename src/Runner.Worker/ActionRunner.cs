@@ -312,37 +312,12 @@ namespace GitHub.Runner.Worker
             IStepHost stepHost
         )
         {
-            DictionaryContextData expressionValues;
-            if (stepHost is ContainerStepHost)
-            {
-                expressionValues = ExecutionContext.ExpressionValues.Clone() as DictionaryContextData;
-                UpdatePathsInExpressionValues("github", expressionValues, stepHost);
-                UpdatePathsInExpressionValues("runner", expressionValues, stepHost);
-            }
-            else
-            {
-                expressionValues = ExecutionContext.ExpressionValues;
-            }
-
+            DictionaryContextData expressionValues = stepHost.GetExpressionValues(ExecutionContext);
             // expression values of github = github dictionary
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
 
             return inputs;
-        }
-
-        private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues, IStepHost stepHost)
-        {
-            var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
-            foreach (var key in dict.Keys.ToList())
-            {
-                var value = dict[key]?.ToString();
-                if (!string.IsNullOrEmpty(value))
-                {
-                    dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
-                }
-            }
-            expressionValues[contextName] = dict;
         }
 
         private string GenerateDisplayName(ActionStep action, DictionaryContextData contextData, IExecutionContext context, out bool didFullyEvaluate)
