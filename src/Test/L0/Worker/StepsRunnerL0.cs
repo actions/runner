@@ -651,7 +651,6 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 if (continueOnError)
                 {
-
                     stepContext.Object.Outcome = stepContext.Object.Result;
                     stepContext.Object.Result = TaskResult.Succeeded;
                 }
