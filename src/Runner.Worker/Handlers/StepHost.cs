@@ -29,6 +29,7 @@ namespace GitHub.Runner.Worker.Handlers
                                bool killProcessOnCancel,
                                bool inheritConsoleHandler,
                                CancellationToken cancellationToken);
+
         DictionaryContextData GetExpressionValues(IExecutionContext executionContext);
     }
 
