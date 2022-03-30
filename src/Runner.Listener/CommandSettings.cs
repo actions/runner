@@ -55,7 +55,8 @@ namespace GitHub.Runner.Listener
             [Constants.Runner.CommandLine.Commands.Remove] =
                 new string[]
                 {
-                    Constants.Runner.CommandLine.Args.Token
+                    Constants.Runner.CommandLine.Args.Token,
+                    Constants.Runner.CommandLine.Args.PAT
                 },
             // Valid run flags and args
             [Constants.Runner.CommandLine.Commands.Run] =
