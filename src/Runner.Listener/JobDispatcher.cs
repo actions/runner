@@ -395,98 +395,109 @@ namespace GitHub.Runner.Listener
                     using (var processChannel = HostContext.CreateService<IProcessChannel>())
                     using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                     {
-                        // Start the process channel.
-                        // It's OK if StartServer bubbles an execption after the worker process has already started.
-                        // The worker will shutdown after 30 seconds if it hasn't received the job message.
-                        processChannel.StartServer(
-                            // Delegate to start the child process.
-                            startProcess: (string pipeHandleOut, string pipeHandleIn) =>
-                            {
-                                // Validate args.
-                                ArgUtil.NotNullOrEmpty(pipeHandleOut, nameof(pipeHandleOut));
-                                ArgUtil.NotNullOrEmpty(pipeHandleIn, nameof(pipeHandleIn));
-
-                                // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
-                                processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
-                                    {
-                                        if (!string.IsNullOrEmpty(stdout.Data))
-                                        {
-                                            lock (_outputLock)
-                                            {
-                                                workerOutput.Add(stdout.Data);
-                                            }
-                                        }
-                                    };
-
-                                // Save STDERR from worker, worker will use STDERR on crash.
-                                processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
-                                    {
-                                        if (!string.IsNullOrEmpty(stderr.Data))
-                                        {
-                                            lock (_outputLock)
-                                            {
-                                                workerOutput.Add(stderr.Data);
-                                            }
-                                        }
-                                    };
-
-                                // Start the child process.
-                                HostContext.WritePerfCounter("StartingWorkerProcess");
-                                var assemblyDirectory = HostContext.GetDirectory(WellKnownDirectory.Bin);
-                                string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
-                                workerProcessTask = processInvoker.ExecuteAsync(
-                                    workingDirectory: assemblyDirectory,
-                                    fileName: workerFileName,
-                                    arguments: "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
-                                    environment: null,
-                                    requireExitCodeZero: false,
-                                    outputEncoding: null,
-                                    killProcessOnCancel: true,
-                                    redirectStandardIn: null,
-                                    inheritConsoleHandler: false,
-                                    keepStandardInOpen: false,
-                                    highPriorityProcess: true,
-                                    cancellationToken: workerProcessCancelTokenSource.Token);
-                            });
-
-                        // Send the job request message.
-                        // Kill the worker process if sending the job message times out. The worker
-                        // process may have successfully received the job message.
-                        try
+                        int retryCount = 0;
+                        while (retryCount < 3)
                         {
-                            Trace.Info($"Send job request message to worker for job {message.JobId}.");
-                            HostContext.WritePerfCounter($"RunnerSendingJobToWorker_{message.JobId}");
-                            using (var csSendJobRequest = new CancellationTokenSource(_channelTimeout))
-                            {
-                                await processChannel.SendAsync(
-                                    messageType: MessageType.NewJobRequest,
-                                    body: JsonUtility.ToString(message),
-                                    cancellationToken: csSendJobRequest.Token);
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            // message send been cancelled.
-                            // timeout 30 sec. kill worker.
-                            Trace.Info($"Job request message sending for job {message.JobId} been cancelled, kill running worker.");
-                            workerProcessCancelTokenSource.Cancel();
+                            // Start the process channel.
+                            // It's OK if StartServer bubbles an execption after the worker process has already started.
+                            // The worker will shutdown after 30 seconds if it hasn't received the job message.
+                            processChannel.StartServer(
+                                // Delegate to start the child process.
+                                startProcess: (string pipeHandleOut, string pipeHandleIn) =>
+                                {
+                                    // Validate args.
+                                    ArgUtil.NotNullOrEmpty(pipeHandleOut, nameof(pipeHandleOut));
+                                    ArgUtil.NotNullOrEmpty(pipeHandleIn, nameof(pipeHandleIn));
+
+                                    // Save STDOUT from worker, worker will use STDOUT report unhandle exception.
+                                    processInvoker.OutputDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stdout)
+                                        {
+                                            if (!string.IsNullOrEmpty(stdout.Data))
+                                            {
+                                                lock (_outputLock)
+                                                {
+                                                    workerOutput.Add(stdout.Data);
+                                                }
+                                            }
+                                        };
+
+                                    // Save STDERR from worker, worker will use STDERR on crash.
+                                    processInvoker.ErrorDataReceived += delegate (object sender, ProcessDataReceivedEventArgs stderr)
+                                        {
+                                            if (!string.IsNullOrEmpty(stderr.Data))
+                                            {
+                                                lock (_outputLock)
+                                                {
+                                                    workerOutput.Add(stderr.Data);
+                                                }
+                                            }
+                                        };
+
+                                    // Start the child process.
+                                    HostContext.WritePerfCounter("StartingWorkerProcess");
+                                    var assemblyDirectory = HostContext.GetDirectory(WellKnownDirectory.Bin);
+                                    string workerFileName = Path.Combine(assemblyDirectory, _workerProcessName);
+                                    workerProcessTask = processInvoker.ExecuteAsync(
+                                        workingDirectory: assemblyDirectory,
+                                        fileName: workerFileName,
+                                        arguments: "spawnclient " + pipeHandleOut + " " + pipeHandleIn,
+                                        environment: null,
+                                        requireExitCodeZero: false,
+                                        outputEncoding: null,
+                                        killProcessOnCancel: true,
+                                        redirectStandardIn: null,
+                                        inheritConsoleHandler: false,
+                                        keepStandardInOpen: false,
+                                        highPriorityProcess: true,
+                                        cancellationToken: workerProcessCancelTokenSource.Token);
+                                });
+
+                            // Send the job request message.
+                            // Kill the worker process if sending the job message times out. The worker
+                            // process may have successfully received the job message.
                             try
                             {
-                                await workerProcessTask;
+                                Trace.Info($"Send job request message to worker for job {message.JobId}.");
+                                HostContext.WritePerfCounter($"RunnerSendingJobToWorker_{message.JobId}");
+                                using (var csSendJobRequest = new CancellationTokenSource(_channelTimeout))
+                                {
+                                    await processChannel.SendAsync(
+                                        messageType: MessageType.NewJobRequest,
+                                        body: JsonUtility.ToString(message),
+                                        cancellationToken: csSendJobRequest.Token);
+                                }
                             }
                             catch (OperationCanceledException)
                             {
-                                Trace.Info("worker process has been killed.");
+                                // message send been cancelled.
+                                // timeout 30 sec. kill worker.
+                                Trace.Info($"Job request message sending for job {message.JobId} been cancelled, kill running worker.");
+                                workerProcessCancelTokenSource.Cancel();
+                                try
+                                {
+                                    await workerProcessTask;
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    Trace.Info("worker process has been killed.");
+                                }
+
+                                if (++retryCount == 3)
+                                {
+                                    Trace.Info($"Stop renew job request for job {message.JobId}.");
+                                    // stop renew lock
+                                    lockRenewalTokenSource.Cancel();
+                                    // renew job request should never blows up.
+                                    await renewJobRequest;
+
+                                    // not finish the job request since the job haven't run on worker at all, we will not going to set a result to server.
+                                    return;
+                                }
+                                else
+                                {
+                                    Trace.Info("Retrying worker invocation");
+                                }            
                             }
-
-                            Trace.Info($"Stop renew job request for job {message.JobId}.");
-                            // stop renew lock
-                            lockRenewalTokenSource.Cancel();
-                            // renew job request should never blows up.
-                            await renewJobRequest;
-
-                            // not finish the job request since the job haven't run on worker at all, we will not going to set a result to server.
-                            return;
                         }
 
                         // we get first jobrequest renew succeed and start the worker process with the job message.
