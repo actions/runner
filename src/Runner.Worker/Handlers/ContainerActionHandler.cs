@@ -52,8 +52,8 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.Output($"##[group]Building docker image");
                 ExecutionContext.Output($"Dockerfile for action: '{dockerFile}'.");
-                var tagName = containerManager.GenerateTag();
-                var buildExitCode = await containerManager.ContainerBuild(
+                var tagName = containerManager.GenerateContainerTag();
+                var buildExitCode = await containerManager.ContainerBuildAsync(
                     ExecutionContext,
                     ExecutionContext.GetGitHubContext("workspace"),
                     dockerFile,
@@ -223,7 +223,7 @@ namespace GitHub.Runner.Worker.Handlers
             using (var stdoutManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             using (var stderrManager = new OutputManager(ExecutionContext, ActionCommandManager, container))
             {
-                var runExitCode = await containerManager.ContainerRun(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
+                var runExitCode = await containerManager.ContainerRunAsync(ExecutionContext, container, stdoutManager.OnDataReceived, stderrManager.OnDataReceived);
                 ExecutionContext.Debug($"Container Action run completed with exit code {runExitCode}");
                 if (runExitCode != 0)
                 {

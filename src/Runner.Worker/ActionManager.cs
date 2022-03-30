@@ -535,7 +535,7 @@ namespace GitHub.Runner.Worker
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await containerManager.EnsureImageExists(executionContext, setupInfo.Container.Image);
+                pullExitCode = await containerManager.EnsureImageExistsAsync(executionContext, setupInfo.Container.Image);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -577,10 +577,10 @@ namespace GitHub.Runner.Worker
             var containerManager = HostContext.GetService<IContainerManager>();
             int retryCount = 0;
             int buildExitCode = 0;
-            var tag = containerManager.GenerateTag();
+            var tag = containerManager.GenerateContainerTag();
             while (retryCount < 3)
             {
-                buildExitCode = await containerManager.ContainerBuild(
+                buildExitCode = await containerManager.ContainerBuildAsync(
                     executionContext,
                     setupInfo.Container.WorkingDirectory,
                     setupInfo.Container.Dockerfile,

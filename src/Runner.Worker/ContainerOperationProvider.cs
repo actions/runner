@@ -54,7 +54,7 @@ namespace GitHub.Runner.Worker
             executionContext.RegisterPostJobStep(postJobStep);
             AssertOSContainerCompatible();
 
-            await _containerManager.ContainerCleanup(executionContext);
+            await _containerManager.ContainerCleanupAsync(executionContext);
 
             foreach (var container in containers)
             {
@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker
                 // Gather runtime container information
                 if (!container.IsJobContainer)
                 {
-                    var service = await _containerManager.GetServiceInfo(executionContext, container);
+                    var service = await _containerManager.GetServiceInfoAsync(executionContext, container);
                     executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
                 }
                 else
@@ -81,7 +81,7 @@ namespace GitHub.Runner.Worker
             executionContext.Output("##[group]Waiting for all services to be ready");
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-                await _containerManager.ContainerHealthcheck(executionContext, container);
+                await _containerManager.ContainerHealthcheckAsync(executionContext, container);
             }
             executionContext.Output("##[endgroup]");
         }
@@ -135,7 +135,7 @@ namespace GitHub.Runner.Worker
             // Before pulling, generate client authentication if required
             var configLocation = await registryManager.ContainerRegistryLogin(executionContext, container);
 
-            await _containerManager.EnsureImageExists(executionContext, container.ContainerImage, configLocation);
+            await _containerManager.EnsureImageExistsAsync(executionContext, container.ContainerImage, configLocation);
 
             // Remove credentials after pulling
             registryManager.ContainerRegistryLogout(configLocation);

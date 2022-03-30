@@ -41,7 +41,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
 
-                _cm.Setup(d => d.ContainerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                _cm.Setup(d => d.ContainerExecAsync(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                                .ReturnsAsync(0);
 
                 // Act.
@@ -64,7 +64,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
 
-                _cm.Setup(d => d.ContainerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                _cm.Setup(d => d.ContainerExecAsync(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                     .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
                     {
                         output.Add("alpine");
@@ -91,7 +91,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 sh.Initialize(hc);
                 sh.Container = new ContainerInfo() { ContainerId = "1234abcd" };
 
-                _cm.Setup(d => d.ContainerExec(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
+                _cm.Setup(d => d.ContainerExecAsync(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<List<string>>()))
                     .Callback((IExecutionContext ec, string id, string options, string command, List<string> output) =>
                     {
                         output.Add("github");

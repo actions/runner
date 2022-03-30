@@ -13,27 +13,32 @@ namespace GitHub.Runner.Worker.Container
     // this class should execute the hooks, prepare their inputs and handle their outputs
     public class ContainerHookManager : RunnerService, IContainerManager
     {
-        public Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
+        public Task<int> ContainerBuildAsync(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
         {
             throw new NotImplementedException();
         }
 
-        public Task ContainerCleanup(IExecutionContext executionContext)
+        public Task ContainerCleanupAsync(IExecutionContext executionContext)
         {
             throw new NotImplementedException();
         }
 
-        public Task<int> ContainerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
+        public Task<int> ContainerExecAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
         {
             throw new NotImplementedException();
         }
 
-        public Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
+        public Task<int> ContainerExecAsync(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
         {
             throw new NotImplementedException();
         }
 
-        public Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        public Task ContainerHealthcheckAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> ContainerRunAsync(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             throw new NotImplementedException();
         }
@@ -43,22 +48,17 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<int> EnsureImageExists(IExecutionContext executionContext, string container, string configLocation)
+        public Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string container, string configLocation)
         {
             throw new NotImplementedException();
         }
 
-        public Task<int> EnsureImageExists(IExecutionContext executionContext, string container)
+        public Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string container)
         {
             throw new NotImplementedException();
         }
 
-        public Task<int> ContainerExec(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-
-        public string GenerateTag()
+        public string GenerateContainerTag()
         {
             throw new NotImplementedException();
         }
@@ -68,7 +68,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        public Task<DictionaryContextData> GetServiceInfo(IExecutionContext executionContext, ContainerInfo container)
+        public Task<DictionaryContextData> GetServiceInfoAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             throw new NotImplementedException();
         }

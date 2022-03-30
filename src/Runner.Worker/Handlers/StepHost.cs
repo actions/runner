@@ -167,7 +167,7 @@ namespace GitHub.Runner.Worker.Handlers
             var containerManager = HostContext.GetService<IContainerManager>();
 
             var outputs = new List<string>();
-            var execExitCode = await containerManager.ContainerExec(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, outputs);
+            var execExitCode = await containerManager.ContainerExecAsync(executionContext, Container.ContainerId, string.Empty, osReleaseIdCmd, outputs);
             string nodeExternal;
             if (execExitCode == 0)
             {
@@ -236,7 +236,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             var containerManager = HostContext.CreateService<IContainerManager>();
-            return await containerManager.ContainerExec(
+            return await containerManager.ContainerExecAsync(
                                                         workingDirectory: workingDirectory,
                                                         fileName: fileName,
                                                         arguments: arguments,

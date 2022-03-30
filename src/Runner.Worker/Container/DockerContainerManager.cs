@@ -28,11 +28,11 @@ namespace GitHub.Runner.Worker.Container
         {
             throw new NotImplementedException();
         }
-        public Task<int> EnsureImageExists(IExecutionContext executionContext, string container)
+        public Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string container)
         {
-            return EnsureImageExists(executionContext, container, string.Empty);
+            return EnsureImageExistsAsync(executionContext, container, string.Empty);
         }
-        public async Task<int> EnsureImageExists(IExecutionContext executionContext, string containerImage, string configLocation)
+        public async Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string containerImage, string configLocation)
         {
             // Pull down docker image with retry up to 3 times
             int retryCount = 0;
@@ -96,7 +96,7 @@ namespace GitHub.Runner.Worker.Container
                 executionContext.Warning($"Docker network rm failed with exit code {removeExitCode}");
             }
         }
-        public async Task ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
+        public async Task ContainerHealthcheckAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
             string serviceHealth = (await dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
@@ -123,7 +123,7 @@ namespace GitHub.Runner.Worker.Container
                 throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
             }
         }
-        public async Task ContainerCleanup(IExecutionContext executionContext)
+        public async Task ContainerCleanupAsync(IExecutionContext executionContext)
         {
             // Check docker client/server version
             executionContext.Output("##[group]Checking docker version");
@@ -234,7 +234,7 @@ namespace GitHub.Runner.Worker.Container
                 }
             }
         }
-        public async Task<DictionaryContextData> GetServiceInfo(IExecutionContext executionContext, ContainerInfo container)
+        public async Task<DictionaryContextData> GetServiceInfoAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             var service = new DictionaryContextData()
             {
@@ -267,32 +267,32 @@ namespace GitHub.Runner.Worker.Container
             }
         }
 
-        public async Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag = "")
+        public async Task<int> ContainerBuildAsync(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag = "")
         {
             if (string.IsNullOrEmpty(tag))
             {
-                tag = GenerateTag();
+                tag = GenerateContainerTag();
             }
             return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, tag);
         }
 
-        public string GenerateTag() => $"{DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+        public string GenerateContainerTag() => $"{DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
         public async Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext)
         {
             return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, string.Empty);
         }
 
-        public async Task<int> ContainerRun(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        public async Task<int> ContainerRunAsync(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             return await dockerManager.DockerRun(context, container, stdoutDataReceived, stderrDataReceived);
         }
 
-        public async Task<int> ContainerExec(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
+        public async Task<int> ContainerExecAsync(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
         {
             return await dockerManager.DockerExec(context, containerId, options, command, outputs);
         }
 
-        public async Task<int> ContainerExec(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
+        public async Task<int> ContainerExecAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
         {
             return await dockerManager.DockerExec(
                 workingDirectory,

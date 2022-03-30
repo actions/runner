@@ -2151,10 +2151,10 @@ runs:
             _ec.Setup(x => x.GetGitHubContext("workspace")).Returns(Path.Combine(_workFolder, "actions", "actions"));
 
             _containerManager = new Mock<IContainerManager>();
-            _containerManager.Setup(x => x.EnsureImageExists(_ec.Object, "ubuntu:16.04")).Returns(Task.FromResult(0));
-            _containerManager.Setup(x => x.EnsureImageExists(_ec.Object, "ubuntu:100.04")).Returns(Task.FromResult(1));
+            _containerManager.Setup(x => x.EnsureImageExistsAsync(_ec.Object, "ubuntu:16.04")).Returns(Task.FromResult(0));
+            _containerManager.Setup(x => x.EnsureImageExistsAsync(_ec.Object, "ubuntu:100.04")).Returns(Task.FromResult(1));
 
-            _containerManager.Setup(x => x.ContainerBuild(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(0));
+            _containerManager.Setup(x => x.ContainerBuildAsync(_ec.Object, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(Task.FromResult(0));
 
             _jobServer = new Mock<IJobServer>();
             _jobServer.Setup(x => x.ResolveActionDownloadInfoAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<ActionReferenceList>(), It.IsAny<CancellationToken>()))
