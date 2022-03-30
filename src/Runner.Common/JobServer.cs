@@ -143,8 +143,10 @@ namespace GitHub.Runner.Common
 
         public ValueTask DisposeAsync()
         {
-            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Shutdown", CancellationToken.None);
+            CloseWebSocket(WebSocketCloseStatus.NormalClosure, CancellationToken.None);
+
             GC.SuppressFinalize(this);
+
             return ValueTask.CompletedTask;
         }
 
@@ -248,7 +250,8 @@ namespace GitHub.Runner.Common
                         if (failedAttemptsToPostBatchedLinesByWebsocket * 100 / totalBatchedLinesAttemptedByWebsocket > _minWebsocketFailurePercentageAllowed)
                         {
                             Trace.Info($"Exhausted websocket allowed retries, we will not attempt websocket connection for this job to post lines again.");
-                            _websocketClient?.CloseOutputAsync(WebSocketCloseStatus.InternalServerError, "Shutdown due to failures", cancellationToken);
+                            CloseWebSocket(WebSocketCloseStatus.InternalServerError, cancellationToken);
+
                             // By setting it to null, we will ensure that we never try websocket path again for this job
                             _websocketClient = null;
                         }
@@ -273,6 +276,19 @@ namespace GitHub.Runner.Common
                 {
                     await _taskClient.AppendTimelineRecordFeedAsync(scopeIdentifier, hubName, planId, timelineId, timelineRecordId, stepId, lines, cancellationToken: cancellationToken);
                 }
+            }
+        }
+
+        private void CloseWebSocket(WebSocketCloseStatus closeStatus, CancellationToken cancellationToken)
+        {
+            try
+            {
+                _websocketClient?.CloseOutputAsync(closeStatus, "Closing websocket", cancellationToken);
+            }
+            catch (Exception websocketEx)
+            {
+                // In some cases this might be okay since the websocket might be open yet, so just close and don't trace exceptions
+                Trace.Info($"Failed to close websocket gracefully {websocketEx.GetType().Name}");
             }
         }
 
