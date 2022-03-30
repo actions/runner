@@ -1098,11 +1098,11 @@ namespace GitHub.Runner.Worker
 
             if (continueOnError)
             {
-
                 Outcome = Result;
                 Result = TaskResult.Succeeded;
                 Trace.Info($"Updated step result (continue on error)");
             }
+
             UpdateGlobalStepsContext();
         }
     }
