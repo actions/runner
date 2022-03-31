@@ -125,7 +125,7 @@ namespace GitHub.Runner.Worker.Container
             {
                 ["standardInInput"] = JsonUtility.ToString(args),
                 ["path"] = hookScriptPath,
-                ["shell"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") // TODO: fix hardcoded node path
+                ["shell"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}" // TODO: fix hardcoded node path
             };
 
             var handlerFactory = HostContext.GetService<IHandlerFactory>();

@@ -9,7 +9,7 @@ using GitHub.Runner.Sdk;
 
 namespace GitHub.Runner.Worker.Container
 {
-    [ServiceLocator(Default = typeof(DockerContainerManager))]
+    [ServiceLocator(Default = typeof(ContainerHookManager))]
     public interface IContainerManager : IRunnerService
     {
         Task ContainerCleanupAsync(IExecutionContext executionContext);
