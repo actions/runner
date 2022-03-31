@@ -16,7 +16,7 @@ using GitHub.Services.WebApi;
 namespace GitHub.Runner.Worker.Container
 {
     // this class should execute the hooks, prepare their inputs and handle their outputs
-    public class ContainerHookManager : RunnerService, IContainerManager
+    public class ContainerHookManager : RunnerService
     {
         public string ContainerManagerName => "Container Hook";
 
