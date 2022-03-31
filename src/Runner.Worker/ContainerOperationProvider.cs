@@ -254,16 +254,9 @@ namespace GitHub.Runner.Worker
                 // No valid client config can be generated
                 return "";
             }
-            string configLocation = _containerManager.ContainerCreateRegistryConfigDirectory();
-            var loginExitCode = await _containerManager.RegistryLoginAsync(
+            var configLocation = await _containerManager.RegistryLoginAsync(
                 executionContext,
-                configLocation,
                 container);
-
-            if (loginExitCode != 0)
-            {
-                throw new InvalidOperationException($"{_containerManager.ContainerManagerName} login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
-            }
             return configLocation;
         }
 

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 
@@ -14,7 +13,7 @@ namespace GitHub.Runner.Worker.Container
     {
         Task ContainerCleanupAsync(IExecutionContext executionContext);
         Task<string> NetworkCreateAsync(IExecutionContext executionContext);
-        Task<int> RegistryLoginAsync(IExecutionContext executionContext, string configLocation, ContainerInfo container);
+        Task<string> RegistryLoginAsync(IExecutionContext executionContext, ContainerInfo container);
         Task<int> ContainerPullAsync(IExecutionContext executionContext, string container, string configLocation);
         Task<int> ContainerPullAsync(IExecutionContext executionContext, string container);
         void RegistryLogout(string configLocation);
@@ -35,7 +34,5 @@ namespace GitHub.Runner.Worker.Container
         Task ContainerRemoveAsync(IExecutionContext executionContext, ContainerInfo container);
         string GenerateContainerTag();
         string ContainerManagerName { get; }
-        string RegistryConfigFile { get; }
-        string ContainerCreateRegistryConfigDirectory();
     }
 }

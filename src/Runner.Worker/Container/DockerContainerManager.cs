@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using GitHub.DistributedTask.Pipelines.ContextData;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
-using GitHub.Services.Common;
 
 namespace GitHub.Runner.Worker.Container
 {
@@ -17,7 +16,6 @@ namespace GitHub.Runner.Worker.Container
         private IDockerCommandManager dockerManager;
 
         public string ContainerManagerName => "Docker";
-        public string RegistryConfigFile => $".docker_{Guid.NewGuid()}";
 
         public override void Initialize(IHostContext hostContext)
         {
@@ -25,9 +23,9 @@ namespace GitHub.Runner.Worker.Container
             dockerManager = HostContext.GetService<IDockerCommandManager>();
         }
 
-        public string ContainerCreateRegistryConfigDirectory()
+        public async Task<string> RegistryLoginAsync(IExecutionContext executionContext, ContainerInfo container)
         {
-            var configLocation = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), RegistryConfigFile);
+            var configLocation = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), $".docker_{Guid.NewGuid()}");
             try
             {
                 var dirInfo = Directory.CreateDirectory(configLocation);
@@ -37,17 +35,20 @@ namespace GitHub.Runner.Worker.Container
                 throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
             }
 
-            return configLocation;
-        }
-
-        public async Task<int> RegistryLoginAsync(IExecutionContext executionContext, string configLocation, ContainerInfo container)
-        {
-            return await dockerManager.DockerLogin(
+            int loginExitCode = await dockerManager.DockerLogin(
                 executionContext,
                 configLocation,
                 container.RegistryServer,
                 container.RegistryAuthUsername,
                 container.RegistryAuthPassword);
+            
+
+            if (loginExitCode != 0)
+            {
+                throw new Exception($"Docker login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
+            }
+
+            return configLocation;
         }
         public void RegistryLogout(string configLocation)
         {
@@ -158,7 +159,7 @@ namespace GitHub.Runner.Worker.Container
                     executionContext.Warning($"Delete stale containers failed, docker rm fail with exit code {containerRemoveExitCode} for container {staleContainer}");
                 }
             }
-        } 
+        }
 
         public async Task<int> ContainerStartAsync(IExecutionContext executionContext, ContainerInfo container)
         {
