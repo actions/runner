@@ -622,6 +622,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                     _stepContext.SetOutcome("", stepContext.Object.ContextName, (stepContext.Object.Outcome ?? stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
                     _stepContext.SetConclusion("", stepContext.Object.ContextName, (stepContext.Object.Result ?? TaskResult.Succeeded).ToActionResult());
                 });
+            stepContext.Setup(x => x.StepEnvironmentOverrides).Returns(new List<string>());
             var trace = hc.GetTrace();
             stepContext.Setup(x => x.Write(It.IsAny<string>(), It.IsAny<string>())).Callback((string tag, string message) => { trace.Info($"[{tag}]{message}"); });
             stepContext.Object.Result = result;
