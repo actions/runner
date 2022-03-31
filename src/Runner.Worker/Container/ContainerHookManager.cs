@@ -18,104 +18,143 @@ namespace GitHub.Runner.Worker.Container
     // this class should execute the hooks, prepare their inputs and handle their outputs
     public class ContainerHookManager : RunnerService, IContainerManager
     {
+        public string ContainerManagerName => "Container Hook";
 
-        public async Task ContainerCleanupAsync(IExecutionContext executionContext)
+        public string RegistryConfigFile => throw new NotImplementedException();
+
+        public Task<int> ContainerBuildAsync(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
         {
-            const string HookName = nameof(ContainerCleanupAsync);
-            if (!IsContainerHookActive(HookName, out var hookScriptPath))
-            {
-                throw new Exception($"{HookName} is not supported");
-            }
-            var containerHookArgs = new ContainerHookMeta
-            {
-                Command = HookName,
-                ResponseFile = "",
-                Args = new ContainerHookArgs
-                {
-                    Container = new ContainerHookContainer
-                    {
-                        ContainerId = "foo",
-                        Network = "bar"
-                    }
-                }
-            };
-            await ExecuteHookScript(executionContext, hookScriptPath, containerHookArgs);
+            throw new NotImplementedException();
         }
 
-        public async Task<string> CreateContainerNetworkAsync(IExecutionContext executionContext)
+        public Task ContainerCleanupAsync(IExecutionContext executionContext)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string container, string configLocation)
+        public Task<string> ContainerCreateAsync(IExecutionContext executionContext, ContainerInfo container)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string container)
+        public string ContainerCreateRegistryConfigDirectory()
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task<int> ContainerBuildAsync(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag)
+        public Task<int> ContainerExecAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
+        public Task<int> ContainerExecAsync(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+        public Task<string> ContainerGetRuntimePathAsync(IExecutionContext executionContext, ContainerInfo container)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task GetJobContainerInfo(IExecutionContext executionContext, ContainerInfo container)
+        public Task<string> ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task<DictionaryContextData> GetServiceInfoAsync(IExecutionContext executionContext, ContainerInfo container)
+        public Task<List<PortMapping>> ContainerPort(IExecutionContext executionContext, ContainerInfo container)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task ContainerHealthcheckAsync(IExecutionContext executionContext, ContainerInfo container)
+        public Task<int> ContainerPullAsync(IExecutionContext executionContext, string container, string configLocation)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task<int> ContainerRunAsync(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
+        public Task<int> ContainerPullAsync(IExecutionContext executionContext, string container)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task<int> ContainerExecAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
+        public Task<int> RegistryLoginAsync(IExecutionContext executionContext, string configLocation, ContainerInfo container)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task<int> ContainerExecAsync(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
+        public void RegistryLogout(string configLocation)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task RemoveContainerNetworkAsync(IExecutionContext executionContext, string network)
+        public Task<int> ContainerRunAsync(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
         }
 
-        public async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+        public Task ContainerStartAllJobDependencies(IExecutionContext executionContext, List<ContainerInfo> containers)
         {
-            await Task.FromResult(0); throw new NotImplementedException();
+            throw new NotImplementedException();
+        }
+
+        public Task<int> ContainerStartAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task ContainerPruneAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task ContainerRemoveAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
         }
 
         public string GenerateContainerTag()
         {
             throw new NotImplementedException();
         }
+
+        public Task LogContainerStartupInfo(IExecutionContext executionContext, ContainerInfo container)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<string> NetworkCreateAsync(IExecutionContext executionContext)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task NetworkRemoveAsync(IExecutionContext executionContext, string network)
+        {
+            throw new NotImplementedException();
+        }
+
+        // public async Task ContainerCleanupAsync(IExecutionContext executionContext)
+        // {
+        //     const string HookName = nameof(ContainerCleanupAsync);
+        //     if (!IsContainerHookActive(HookName, out var hookScriptPath))
+        //     {
+        //         throw new Exception($"{HookName} is not supported");
+        //     }
+        //     var containerHookArgs = new ContainerHookMeta
+        //     {
+        //         Command = HookName,
+        //         ResponseFile = "",
+        //         Args = new ContainerHookArgs
+        //         {
+        //             Container = new ContainerHookContainer
+        //             {
+        //                 ContainerId = "foo",
+        //                 Network = "bar"
+        //             }
+        //         }
+        //     };
+        //     await ExecuteHookScript(executionContext, hookScriptPath, containerHookArgs);
+        // }
+
 
         private async Task<int> ExecuteHookScript(IExecutionContext context, string hookScriptPath, ContainerHookMeta args)
         {
@@ -142,19 +181,6 @@ namespace GitHub.Runner.Worker.Container
             handler.PrepareExecution(ActionRunStage.Pre); // TODO: find out stage, we only use Start in pre, but double check
             await handler.RunAsync(ActionRunStage.Pre);
             return handler.ExecutionContext.CommandResult == TaskResult.Succeeded ? 0 : 1;
-        }
-        private bool IsContainerHookActive(string hookName, out string path)
-        {
-            // TODO: do we want this flag to come from the .yml as well?
-            var areDockerHooksAllowed = StringUtil.ConvertToBoolean(Environment.GetEnvironmentVariable("GITHUB_ACTIONS_ALLOW_DOCKER_OVERRIDE"));
-            path = GetContainerHookFilePath(hookName);
-            return areDockerHooksAllowed && File.Exists(path);
-        }
-
-        private string GetContainerHookFilePath(string commandName)
-        {
-            commandName = string.Format("{0}.js", commandName.ToLower());
-            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.DockerHooks), commandName);
         }
     }
 }

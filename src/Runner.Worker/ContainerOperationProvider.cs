@@ -19,19 +19,15 @@ namespace GitHub.Runner.Worker
     public interface IContainerOperationProvider : IRunnerService
     {
         Task StartContainersAsync(IExecutionContext executionContext, object data);
-        Task StopContainersAsync(IExecutionContext executionContext, object data);
     }
 
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
         private IContainerManager _containerManager;
-        private IContainerRegistryManager registryManager;
-
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _containerManager = HostContext.GetService<IContainerManager>();
-            registryManager = HostContext.GetService<IContainerRegistryManager>();
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
@@ -45,7 +41,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
 
-            var postJobStep = new JobExtensionRunner(runAsync: this.StopContainersAsync,
+            var postJobStep = new JobExtensionRunner(runAsync: StopContainersAsync,
                                                 condition: $"{PipelineTemplateConstants.Always}()",
                                                 displayName: "Stop containers",
                                                 data: data);
@@ -54,26 +50,43 @@ namespace GitHub.Runner.Worker
             executionContext.RegisterPostJobStep(postJobStep);
             AssertOSContainerCompatible();
 
+            executionContext.Output("##[group]Clean up resources from previous jobs");
             await _containerManager.ContainerCleanupAsync(executionContext);
+            executionContext.Output("##[endgroup]");
 
             foreach (var container in containers)
             {
                 await InitializeContainerAsync(executionContext, container);
             }
 
-            await _containerManager.StartContainersAsync(executionContext, containers);
+            var containerNetwork = await _containerManager.NetworkCreateAsync(executionContext);
+            foreach (var container in containers)
+            {
+                container.ContainerNetwork = containerNetwork;
+                await StartContainerAsync(executionContext, container); // TODO: verify Kube noop
+            }
+            await _containerManager.ContainerStartAllJobDependencies(executionContext, containers); // TODO: verify Docker noop
 
             foreach (var container in containers)
             {
-                // Gather runtime container information
                 if (!container.IsJobContainer)
                 {
-                    var service = await _containerManager.GetServiceInfoAsync(executionContext, container);
-                    executionContext.JobContext.Services[container.ContainerNetworkAlias] = service;
+                    var serviceMappings = new DictionaryContextData()
+                    {
+                        ["id"] = new StringContextData(container.ContainerId),
+                        ["ports"] = new DictionaryContextData(),
+                        ["network"] = new StringContextData(container.ContainerNetwork)
+                    };
+                    container.AddPortMappings(await _containerManager.ContainerPort(executionContext, container));
+                    foreach (var port in container.PortMappings)
+                    {
+                        (serviceMappings["ports"] as DictionaryContextData)[port.ContainerPort] = new StringContextData(port.HostPort);
+                    }
+                    executionContext.JobContext.Services[container.ContainerNetworkAlias] = serviceMappings;
                 }
                 else
                 {
-                    await _containerManager.GetJobContainerInfo(executionContext, container);
+                    container.ContainerRuntimePath = await _containerManager.ContainerGetRuntimePathAsync(executionContext, container);
                     executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
                 }
             }
@@ -81,12 +94,39 @@ namespace GitHub.Runner.Worker
             executionContext.Output("##[group]Waiting for all services to be ready");
             foreach (var container in containers.Where(c => !c.IsJobContainer))
             {
-                await _containerManager.ContainerHealthcheckAsync(executionContext, container);
+                await ContainerWaitUntilHealthy(executionContext, container);
             }
             executionContext.Output("##[endgroup]");
         }
 
-        public async Task StopContainersAsync(IExecutionContext executionContext, object data)
+        private async Task ContainerWaitUntilHealthy(IExecutionContext executionContext, ContainerInfo container)
+        {
+            var serviceHealth = await _containerManager.ContainerHealthcheck(executionContext, container);
+            if (string.IsNullOrEmpty(serviceHealth))
+            {
+                // Container has no HEALTHCHECK
+                return;
+            }
+            var retryCount = 0;
+            while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
+            {
+                TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
+                executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
+                await Task.Delay(backoff, executionContext.CancellationToken);
+                serviceHealth = await _containerManager.ContainerHealthcheck(executionContext, container);
+                retryCount++;
+            }
+            if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
+            {
+                executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
+            }
+            else
+            {
+                throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
+            }
+        }
+
+        private async Task StopContainersAsync(IExecutionContext executionContext, object data)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -96,10 +136,26 @@ namespace GitHub.Runner.Worker
 
             foreach (var container in containers)
             {
-                await _containerManager.StopContainerAsync(executionContext, container);
+                await _containerManager.ContainerRemoveAsync(executionContext, container); // TODO: noop for Kube
             }
+            await _containerManager.ContainerPruneAsync(executionContext, containers); // TODO: noop for Docker
             // Remove the container network
-            await _containerManager.RemoveContainerNetworkAsync(executionContext, containers.First().ContainerNetwork);
+            await _containerManager.NetworkRemoveAsync(executionContext, containers.First().ContainerNetwork);
+        }
+
+        private async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            var groupName = container.IsJobContainer ? "Starting job container" : $"Starting {container.ContainerNetworkAlias} service container";
+            executionContext.Output($"##[group]{groupName}");
+            container.ContainerId = await _containerManager.ContainerCreateAsync(executionContext, container);
+            int startExitCode = await _containerManager.ContainerStartAsync(executionContext, container);
+            if (startExitCode != 0)
+            {
+                throw new InvalidOperationException($"{_containerManager.ContainerManagerName} start fail with exit code {startExitCode}");
+            }
+
+            await _containerManager.LogContainerStartupInfo(executionContext, container);
+            executionContext.Output("##[endgroup]");
         }
 
         private async Task InitializeContainerAsync(IExecutionContext executionContext, ContainerInfo container)
@@ -113,7 +169,7 @@ namespace GitHub.Runner.Worker
             Trace.Info($"Container image: {container.ContainerImage}");
             Trace.Info($"Container options: {container.ContainerCreateOptions}");
 
-            var groupName = container.IsJobContainer ? "Starting job container" : $"Starting {container.ContainerNetworkAlias} service container";
+            var groupName = container.IsJobContainer ? "Initializing job container" : $"Initializing {container.ContainerNetworkAlias} service container";
             executionContext.Output($"##[group]{groupName}");
 
             foreach (var port in container.UserPortMappings)
@@ -130,15 +186,12 @@ namespace GitHub.Runner.Worker
                 }
             }
 
-            registryManager.UpdateRegistryAuthForGitHubToken(executionContext, container);
-
-            // Before pulling, generate client authentication if required
-            var configLocation = await registryManager.ContainerRegistryLogin(executionContext, container);
-
-            await _containerManager.EnsureImageExistsAsync(executionContext, container.ContainerImage, configLocation);
+            UpdateRegistryAuthForGitHubToken(executionContext, container);
+            string configLocation = await ContainerRegistryLoginAsync(executionContext, container);
+            await ContainerPullAsync(executionContext, container, configLocation);
 
             // Remove credentials after pulling
-            registryManager.ContainerRegistryLogout(configLocation);
+            _containerManager.RegistryLogout(configLocation);
 
             if (container.IsJobContainer)
             {
@@ -171,6 +224,76 @@ namespace GitHub.Runner.Worker
                 container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
                 container.ContainerEntryPoint = "tail";
                 container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+            }
+
+            executionContext.Output("##[endgroup]");
+        }
+
+        private void UpdateRegistryAuthForGitHubToken(IExecutionContext executionContext, ContainerInfo container)
+        {
+            var registryIsTokenCompatible = container.RegistryServer.Equals("ghcr.io", StringComparison.OrdinalIgnoreCase) || container.RegistryServer.Equals("containers.pkg.github.com", StringComparison.OrdinalIgnoreCase);
+            var isFallbackTokenFromHostedGithub = HostContext.GetService<IConfigurationStore>().GetSettings().IsHostedServer;
+            if (!registryIsTokenCompatible || !isFallbackTokenFromHostedGithub)
+            {
+                return;
+            }
+
+            var registryCredentialsNotSupplied = string.IsNullOrEmpty(container.RegistryAuthUsername) && string.IsNullOrEmpty(container.RegistryAuthPassword);
+            if (registryCredentialsNotSupplied)
+            {
+                container.RegistryAuthUsername = executionContext.GetGitHubContext("actor");
+                container.RegistryAuthPassword = executionContext.GetGitHubContext("token");
+            }
+        }
+
+        private async Task<string> ContainerRegistryLoginAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            // Generate client authentication if required
+            if (string.IsNullOrEmpty(container.RegistryAuthUsername) || string.IsNullOrEmpty(container.RegistryAuthPassword))
+            {
+                // No valid client config can be generated
+                return "";
+            }
+            string configLocation = _containerManager.ContainerCreateRegistryConfigDirectory();
+            var loginExitCode = await _containerManager.RegistryLoginAsync(
+                executionContext,
+                configLocation,
+                container);
+
+            if (loginExitCode != 0)
+            {
+                throw new InvalidOperationException($"{_containerManager.ContainerManagerName} login for '{container.RegistryServer}' failed with exit code {loginExitCode}");
+            }
+            return configLocation;
+        }
+
+        private async Task ContainerPullAsync(IExecutionContext executionContext, ContainerInfo container, string configLocation)
+        {
+            // Pull down docker image with retry up to 3 times
+            int retryCount = 0;
+            int pullExitCode = 0;
+            while (retryCount < 3)
+            {
+                pullExitCode = await _containerManager.ContainerPullAsync(executionContext, container.ContainerImage, configLocation);
+                if (pullExitCode == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    retryCount++;
+                    if (retryCount < 3)
+                    {
+                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
+                        executionContext.Warning($"{_containerManager.ContainerManagerName} pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        await Task.Delay(backOff);
+                    }
+                }
+            }
+
+            if (retryCount == 3 && pullExitCode != 0)
+            {
+                throw new InvalidOperationException($"{_containerManager.ContainerManagerName} pull failed with exit code {pullExitCode}");
             }
         }
 

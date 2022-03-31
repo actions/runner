@@ -535,7 +535,7 @@ namespace GitHub.Runner.Worker
             int pullExitCode = 0;
             while (retryCount < 3)
             {
-                pullExitCode = await containerManager.EnsureImageExistsAsync(executionContext, setupInfo.Container.Image);
+                pullExitCode = await containerManager.ContainerPullAsync(executionContext, setupInfo.Container.Image);
                 if (pullExitCode == 0)
                 {
                     break;
@@ -546,7 +546,7 @@ namespace GitHub.Runner.Worker
                     if (retryCount < 3)
                     {
                         var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
+                        executionContext.Warning($"{containerManager.ContainerManagerName} pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
                         await Task.Delay(backOff);
                     }
                 }
@@ -555,13 +555,13 @@ namespace GitHub.Runner.Worker
 
             if (retryCount == 3 && pullExitCode != 0)
             {
-                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
+                throw new InvalidOperationException($"{containerManager.ContainerManagerName} pull failed with exit code {pullExitCode}");
             }
 
             foreach (var stepId in setupInfo.StepIds)
             {
                 CachedActionContainers[stepId] = new ContainerInfo() { ContainerImage = setupInfo.Container.Image };
-                Trace.Info($"Prepared docker image '{setupInfo.Container.Image}' for action {stepId} ({setupInfo.Container.Image})");
+                Trace.Info($"Prepared {containerManager.ContainerManagerName} image '{setupInfo.Container.Image}' for action {stepId} ({setupInfo.Container.Image})");
             }
         }
 

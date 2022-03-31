@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -15,55 +16,62 @@ namespace GitHub.Runner.Worker.Container
     {
         private IDockerCommandManager dockerManager;
 
-        public string DockerPath => throw new NotImplementedException();
-
-        public string DockerInstanceLabel => throw new NotImplementedException();
+        public string ContainerManagerName => "Docker";
+        public string RegistryConfigFile => $".docker_{Guid.NewGuid()}";
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             dockerManager = HostContext.GetService<IDockerCommandManager>();
         }
-        public Task<DockerVersion> DockerVersion(IExecutionContext context)
+
+        public string ContainerCreateRegistryConfigDirectory()
         {
-            throw new NotImplementedException();
-        }
-        public Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string container)
-        {
-            return EnsureImageExistsAsync(executionContext, container, string.Empty);
-        }
-        public async Task<int> EnsureImageExistsAsync(IExecutionContext executionContext, string containerImage, string configLocation)
-        {
-            // Pull down docker image with retry up to 3 times
-            int retryCount = 0;
-            int pullExitCode = 0;
-            while (retryCount < 3)
+            var configLocation = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), RegistryConfigFile);
+            try
             {
-                pullExitCode = await dockerManager.DockerPull(executionContext, containerImage, configLocation);
-                if (pullExitCode == 0)
-                {
-                    break;
-                }
-                else
-                {
-                    retryCount++;
-                    if (retryCount < 3)
-                    {
-                        var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10));
-                        executionContext.Warning($"Docker pull failed with exit code {pullExitCode}, back off {backOff.TotalSeconds} seconds before retry.");
-                        await Task.Delay(backOff);
-                    }
-                }
+                var dirInfo = Directory.CreateDirectory(configLocation);
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to create directory to store registry client credentials: {e.Message}");
             }
 
-            if (retryCount == 3 && pullExitCode != 0)
-            {
-                throw new InvalidOperationException($"Docker pull failed with exit code {pullExitCode}");
-            }
-
-            return pullExitCode;
+            return configLocation;
         }
-        public async Task<string> CreateContainerNetworkAsync(IExecutionContext executionContext)
+
+        public async Task<int> RegistryLoginAsync(IExecutionContext executionContext, string configLocation, ContainerInfo container)
+        {
+            return await dockerManager.DockerLogin(
+                executionContext,
+                configLocation,
+                container.RegistryServer,
+                container.RegistryAuthUsername,
+                container.RegistryAuthPassword);
+        }
+        public void RegistryLogout(string configLocation)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(configLocation) && Directory.Exists(configLocation))
+                {
+                    Directory.Delete(configLocation, recursive: true);
+                }
+            }
+            catch (Exception e)
+            {
+                throw new InvalidOperationException($"Failed to remove directory containing Docker client credentials: {e.Message}");
+            }
+        }
+        public Task<int> ContainerPullAsync(IExecutionContext executionContext, string container)
+        {
+            return ContainerPullAsync(executionContext, container, string.Empty);
+        }
+        public async Task<int> ContainerPullAsync(IExecutionContext executionContext, string containerImage, string configLocation)
+        {
+            return await dockerManager.DockerPull(executionContext, containerImage, configLocation);
+        }
+        public async Task<string> NetworkCreateAsync(IExecutionContext executionContext)
         {
             // Create local docker network for this job to avoid port conflict when multiple runners run on same machine.
             // All containers within a job join the same network
@@ -80,9 +88,8 @@ namespace GitHub.Runner.Worker.Container
             executionContext.Output("##[endgroup]");
 
             return containerNetwork;
-
         }
-        public async Task RemoveContainerNetworkAsync(IExecutionContext executionContext, string network)
+        public async Task NetworkRemoveAsync(IExecutionContext executionContext, string network)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -96,33 +103,13 @@ namespace GitHub.Runner.Worker.Container
                 executionContext.Warning($"Docker network rm failed with exit code {removeExitCode}");
             }
         }
-        public async Task ContainerHealthcheckAsync(IExecutionContext executionContext, ContainerInfo container)
+
+        public async Task<string> ContainerHealthcheck(IExecutionContext executionContext, ContainerInfo container)
         {
-            string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
-            string serviceHealth = (await dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
-            if (string.IsNullOrEmpty(serviceHealth))
-            {
-                // Container has no HEALTHCHECK
-                return;
-            }
-            var retryCount = 0;
-            while (string.Equals(serviceHealth, "starting", StringComparison.OrdinalIgnoreCase))
-            {
-                TimeSpan backoff = BackoffTimerHelper.GetExponentialBackoff(retryCount, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(32), TimeSpan.FromSeconds(2));
-                executionContext.Output($"{container.ContainerNetworkAlias} service is starting, waiting {backoff.Seconds} seconds before checking again.");
-                await Task.Delay(backoff, executionContext.CancellationToken);
-                serviceHealth = (await dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
-                retryCount++;
-            }
-            if (string.Equals(serviceHealth, "healthy", StringComparison.OrdinalIgnoreCase))
-            {
-                executionContext.Output($"{container.ContainerNetworkAlias} service is healthy.");
-            }
-            else
-            {
-                throw new InvalidOperationException($"Failed to initialize, {container.ContainerNetworkAlias} service is {serviceHealth}.");
-            }
+            const string healthCheck = "--format=\"{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}\"";
+            return (await dockerManager.DockerInspect(context: executionContext, dockerObject: container.ContainerId, options: healthCheck)).FirstOrDefault();
         }
+
         public async Task ContainerCleanupAsync(IExecutionContext executionContext)
         {
             // Check docker client/server version
@@ -149,7 +136,19 @@ namespace GitHub.Runner.Worker.Container
             }
 
             // Clean up containers left by previous runs
-            executionContext.Output("##[group]Clean up resources from previous jobs");
+            await RemoveStaleContainersAsync(executionContext);
+            await NetworkPruneAsync(executionContext);
+        }
+        public async Task NetworkPruneAsync(IExecutionContext executionContext)
+        {
+            int networkPruneExitCode = await dockerManager.DockerNetworkPrune(executionContext);
+            if (networkPruneExitCode != 0)
+            {
+                executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
+            }
+        }
+        private async Task RemoveStaleContainersAsync(IExecutionContext executionContext)
+        {
             var staleContainers = await dockerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={dockerManager.DockerInstanceLabel}\"");
             foreach (var staleContainer in staleContainers)
             {
@@ -159,27 +158,14 @@ namespace GitHub.Runner.Worker.Container
                     executionContext.Warning($"Delete stale containers failed, docker rm fail with exit code {containerRemoveExitCode} for container {staleContainer}");
                 }
             }
+        } 
 
-            int networkPruneExitCode = await dockerManager.DockerNetworkPrune(executionContext);
-            if (networkPruneExitCode != 0)
-            {
-                executionContext.Warning($"Delete stale container networks failed, docker network prune fail with exit code {networkPruneExitCode}");
-            }
-            executionContext.Output("##[endgroup]");
-        }
-        public async Task StartContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+        public async Task<int> ContainerStartAsync(IExecutionContext executionContext, ContainerInfo container)
         {
-
-            container.ContainerId = await dockerManager.DockerCreate(executionContext, container);
-            ArgUtil.NotNullOrEmpty(container.ContainerId, nameof(container.ContainerId));
-
-            // Start container
-            int startExitCode = await dockerManager.DockerStart(executionContext, container.ContainerId);
-            if (startExitCode != 0)
-            {
-                throw new InvalidOperationException($"Docker start fail with exit code {startExitCode}");
-            }
-
+            return await dockerManager.DockerStart(executionContext, container.ContainerId);
+        }
+        public async Task LogContainerStartupInfo(IExecutionContext executionContext, ContainerInfo container)
+        {
             try
             {
                 // Make sure container is up and running
@@ -203,9 +189,16 @@ namespace GitHub.Runner.Worker.Container
                 Trace.Error("Catch exception when check container log and container status.");
                 Trace.Error(ex);
             }
-            executionContext.Output("##[endgroup]");
         }
-        public async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
+
+        public async Task<string> ContainerCreateAsync(IExecutionContext executionContext, ContainerInfo container)
+        {
+            var containerId = await dockerManager.DockerCreate(executionContext, container);
+            ArgUtil.NotNullOrEmpty(containerId, nameof(containerId));
+            return containerId;
+        }
+
+        public async Task ContainerRemoveAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             Trace.Entering();
             ArgUtil.NotNull(executionContext, nameof(executionContext));
@@ -234,39 +227,20 @@ namespace GitHub.Runner.Worker.Container
                 }
             }
         }
-        public async Task<DictionaryContextData> GetServiceInfoAsync(IExecutionContext executionContext, ContainerInfo container)
+        public async Task<List<PortMapping>> ContainerPort(IExecutionContext executionContext, ContainerInfo container)
         {
-            var service = new DictionaryContextData()
-            {
-                ["id"] = new StringContextData(container.ContainerId),
-                ["ports"] = new DictionaryContextData(),
-                ["network"] = new StringContextData(container.ContainerNetwork)
-            };
-            container.AddPortMappings(await dockerManager.DockerPort(executionContext, container.ContainerId));
-            foreach (var port in container.PortMappings)
-            {
-                (service["ports"] as DictionaryContextData)[port.ContainerPort] = new StringContextData(port.HostPort);
-            }
-
-            return service;
+            return await dockerManager.DockerPort(executionContext, container.ContainerId);
         }
-        public async Task GetJobContainerInfo(IExecutionContext executionContext, ContainerInfo container)
+        public async Task<string> ContainerGetRuntimePathAsync(IExecutionContext executionContext, ContainerInfo container)
         {
             var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
             var containerEnv = await dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
-            container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
+            return DockerUtil.ParsePathFromConfigEnv(containerEnv);
         }
-
-        public async Task StartContainersAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
+        public async Task ContainerStartAllJobDependencies(IExecutionContext executionContext, List<ContainerInfo> containers)
         {
-            string containerNetwork = await CreateContainerNetworkAsync(executionContext);
-            foreach (var container in containers)
-            {
-                container.ContainerNetwork = containerNetwork;
-                await StartContainerAsync(executionContext, container);
-            }
+            await Task.CompletedTask;
         }
-
         public async Task<int> ContainerBuildAsync(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext, string tag = "")
         {
             if (string.IsNullOrEmpty(tag))
@@ -275,23 +249,18 @@ namespace GitHub.Runner.Worker.Container
             }
             return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, tag);
         }
-
-        public string GenerateContainerTag() => $"{DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
-        public async Task<int> ContainerBuild(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext)
+        public async Task<int> ContainerBuildAsync(IExecutionContext context, string workingDirectory, string dockerFile, string dockerContext)
         {
             return await dockerManager.DockerBuild(context, workingDirectory, dockerFile, dockerContext, string.Empty);
         }
-
         public async Task<int> ContainerRunAsync(IExecutionContext context, ContainerInfo container, EventHandler<ProcessDataReceivedEventArgs> stdoutDataReceived, EventHandler<ProcessDataReceivedEventArgs> stderrDataReceived)
         {
             return await dockerManager.DockerRun(context, container, stdoutDataReceived, stderrDataReceived);
         }
-
         public async Task<int> ContainerExecAsync(IExecutionContext context, string containerId, string options, string command, List<string> outputs)
         {
             return await dockerManager.DockerExec(context, containerId, options, command, outputs);
         }
-
         public async Task<int> ContainerExecAsync(string workingDirectory, string fileName, string arguments, string fullPath, IDictionary<string, string> environment, ContainerInfo container, bool requireExitCodeZero, EventHandler<ProcessDataReceivedEventArgs> outputDataReceived, EventHandler<ProcessDataReceivedEventArgs> errorDataReceived, Encoding outputEncoding, bool killProcessOnCancel, object redirectStandardIn, bool inheritConsoleHandler, CancellationToken cancellationToken)
         {
             return await dockerManager.DockerExec(
@@ -309,6 +278,11 @@ namespace GitHub.Runner.Worker.Container
                 redirectStandardIn,
                 inheritConsoleHandler,
                 cancellationToken);
+        }
+        public string GenerateContainerTag() => $"{dockerManager.DockerInstanceLabel}:{Guid.NewGuid().ToString("N")}";
+        public async Task ContainerPruneAsync(IExecutionContext executionContext, List<ContainerInfo> containers)
+        {
+            await Task.CompletedTask;
         }
     }
 }
