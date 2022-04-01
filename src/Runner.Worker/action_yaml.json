@@ -129,6 +129,7 @@
                         "required": true
                     },
                     "env": "step-env",
+                    "continue-on-error": "boolean-steps-context",
                     "working-directory": "string-steps-context",
                     "shell": {
                         "type": "non-empty-string",
@@ -147,6 +148,7 @@
                         "type": "non-empty-string",
                         "required": true
                     },
+                    "continue-on-error": "boolean-steps-context",
                     "with": "step-with",
                     "env": "step-env"
                 }
@@ -200,6 +202,20 @@
                 "hashFiles(1,255)"
             ],
             "string": {}
+        },
+        "boolean-steps-context": {
+            "context": [
+                "github",
+                "inputs",
+                "strategy",
+                "matrix",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "boolean": {}
         },
         "step-env": {
             "context": [
