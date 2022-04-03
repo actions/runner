@@ -73,6 +73,8 @@ namespace Runner.Server.Controllers
         private Dictionary<string, string> GitHubContext { get; }
         private bool AllowPrivateActionAccess { get; }
         private int Verbosity { get; }
+        private int MaxWorkflowDepth { get; }
+        private int MaxDifferentReferencedWorkflows { get; }
         private bool DisableNoCI { get; }
         private string OnQueueJobProgram { get; }
         private string OnQueueJobArgs { get; }
@@ -114,6 +116,8 @@ namespace Runner.Server.Controllers
             DisableNoCI = configuration.GetSection("Runner.Server").GetValue<bool>("DisableNoCI");
             OnQueueJobProgram = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobProgram");
             OnQueueJobArgs = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobArgs");
+            MaxWorkflowDepth = configuration.GetSection("Runner.Server").GetValue<int>("MaxWorkflowDepth", 1);
+            MaxDifferentReferencedWorkflows = configuration.GetSection("Runner.Server").GetValue<int>("MaxDifferentReferencedWorkflows", 20);
             _cache = memoryCache;
             _context = context;
         }
@@ -727,6 +731,7 @@ namespace Runner.Server.Controllers
             public CancellationToken? ForceCancellationToken {get;set;}
             public IList<string> FileTable { get; set; }
             public string FileName { get; set; }
+            public HashSet<string> ReferencedWorkflows { get; } = new HashSet<string>();
         }
 
         private class CallingJob {
@@ -741,13 +746,14 @@ namespace Runner.Server.Controllers
             public CancellationToken? ForceCancellationToken {get;set;}
             public Action<CallingJob, WorkflowEventArgs> Workflowfinish {get;set;}
             // Set by the called workflow to indicate whether to clean cached job dependencies
-            public bool RanJob { get; set; }
+            public bool RanJob {get;set;}
             public Dictionary<string, string> Permissions { get; set; }
             public List<string> ProvidedSecrets { get; set; }
 
             public string WorkflowRef {get;set;}
             public string WorkflowRepo {get;set;}
             public string WorkflowPath {get;set;}
+            public int Depth {get;set;}
         }
 
         private static TemplateContext CreateTemplateContext(GitHub.DistributedTask.ObjectTemplating.ITraceWriter traceWriter, DictionaryContextData contextData = null, ExecutionContext exctx = null) {
@@ -1753,6 +1759,17 @@ namespace Runner.Server.Controllers
                                                 return displayname.ToString();
                                             };
                                             var usesJob = (from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "uses" select r).FirstOrDefault().Value != null;
+                                            if(usesJob) {
+                                                if((callingJob?.Depth ?? 0) >= MaxWorkflowDepth && MaxWorkflowDepth >= 0) {
+                                                    throw new Exception($"Running jobs.{jobname} exceeds max allowed workflow depth {MaxWorkflowDepth}");
+                                                }
+                                                if(MaxDifferentReferencedWorkflows >= 0) {
+                                                    workflowContext.ReferencedWorkflows.Add((from r in run where r.Key.AssertString($"jobs.{jobname} mapping key").Value == "uses" select r).First().Value.AssertString($"jobs.{jobname}.uses").Value);
+                                                    if(workflowContext.ReferencedWorkflows.Count > MaxDifferentReferencedWorkflows) {
+                                                        throw new Exception($"Running jobs.{jobname} exceeds max allowed different reusable workflows {MaxDifferentReferencedWorkflows}");
+                                                    }
+                                                }
+                                            }
                                             Func<string, Dictionary<string, TemplateToken>, Func<bool, Job>> act = (displayname, item) => {
                                                 int c = i++;
                                                 strategyctx["job-index"] = new NumberContextData((double)(c));
@@ -2683,7 +2700,7 @@ namespace Runner.Server.Controllers
                                         });
                                     }
                                     new FinishJobController(_cache, clone._context, clone.Configuration).InvokeJobCompleted(new JobCompletedEvent() { JobId = jobId, Result = e.Success ? TaskResult.Succeeded : TaskResult.Failed, RequestId = requestId, Outputs = e.Outputs ?? new Dictionary<String, VariableValue>() });
-                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo};
+                                }, Id = parentId != null ? parentId + "/" + name : name, ForceCancellationToken = workflowContext.ForceCancellationToken, CancellationToken = CancellationTokenSource.CreateLinkedTokenSource(/* Cancellable even if no pseudo job is created */ ji.Cancel.Token, /* Cancellation of pseudo job */ _job.CancelRequest.Token).Token, TimelineId = ji.TimelineId, RecordId = ji.Id, WorkflowName = workflowname, Permissions = calculatedPermissions, ProvidedSecrets = rawSecrets == null || rawSecrets.Type == TokenType.Null ? new List<string>() : (from entry in rawSecrets.AssertMapping($"jobs.{ji.name}.secrets") select entry.Key.AssertString("jobs.{ji.name}.secrets mapping key").Value).ToList(), WorkflowPath = filename, WorkflowRef = reference?.Ref ?? Ref, WorkflowRepo = reference?.Name ?? repo, Depth = (callingJob?.Depth ?? 0) + 1};
                                 var fjobs = finishedJobs?.Where(kv => kv.Key.StartsWith(name + "/"))?.ToDictionary(kv => kv.Key.Substring(name.Length + 1), kv => kv.Value);
                                 var sjob = selectedJob?.StartsWith(name + "/") == true ? selectedJob.Substring(name.Length + 1) : null;
                                 Task.Run(() => {
