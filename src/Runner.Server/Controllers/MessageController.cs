@@ -897,9 +897,10 @@ namespace Runner.Server.Controllers
                     }
                 }
             };
+            PipelineContextData inputs = null;
             Func<string, DictionaryContextData> createContext = jobname => {
                 var contextData = new GitHub.DistributedTask.Pipelines.ContextData.DictionaryContextData();
-                contextData["inputs"] = callingJob?.Inputs;
+                contextData["inputs"] = inputs;
                 var githubctx = new DictionaryContextData();
                 contextData.Add("github", githubctx);
                 githubctx.Add("server_url", new StringContextData(GitServerUrl));
@@ -1107,6 +1108,8 @@ namespace Runner.Server.Controllers
                                 throw new Exception($"This workflow doesn't define input {providedInput.Key}");
                             }
                         }
+                        // https://github.com/github/feedback/discussions/9092#discussioncomment-2453678
+                        inputs = payloadObject["inputs"].ToPipelineContextData();
                     }
                     if(e == "workflow_call") {
                         allowed.Add("inputs");
@@ -1116,9 +1119,7 @@ namespace Runner.Server.Controllers
                         var workflowInputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "inputs" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.inputs") : null;
                         workflowOutputs = mappingEvent != null ? (from r in mappingEvent where r.Key.AssertString("on.workflow_call mapping key").Value == "outputs" select r).FirstOrDefault().Value?.AssertMapping("on.workflow_call.outputs") : null;
                         List<string> validInputs = new List<string>();
-                        if(callingJob?.Inputs == null) {
-                            callingJob.Inputs = new DictionaryContextData();
-                        }
+                        inputs = callingJob?.Inputs ?? new DictionaryContextData();
                         if(workflowInputs != null) {
                             foreach(var input in workflowInputs) {
                                 var inputName = input.Key.AssertString("on.workflow_call.inputs mapping key").Value;
@@ -1160,7 +1161,7 @@ namespace Runner.Server.Controllers
                                     default:
                                         throw new Exception($"on.workflow_call.inputs.{inputName}.type assigned to invalid type: '{type}', expected 'string', 'number' or 'boolean'");
                                     }
-                                    var inputsDict = callingJob?.Inputs.AssertDictionary("dict");
+                                    var inputsDict = inputs.AssertDictionary("dict");
                                     var assertMessage = $"This workflow requires that the input: {inputName}, to have type {type}";
                                     if(inputsDict.TryGetValue(inputName, out var val)) {
                                         switch(type) {
@@ -1182,7 +1183,7 @@ namespace Runner.Server.Controllers
                                 }
                             }
                         }
-                        foreach(var providedInput in callingJob?.Inputs.AssertDictionary("")) {
+                        foreach(var providedInput in inputs.AssertDictionary("")) {
                             if(!validInputs.Contains(providedInput.Key)) {
                                 throw new Exception($"This workflow doesn't define input {providedInput.Key}");
                             }
