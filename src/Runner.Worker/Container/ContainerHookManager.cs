@@ -26,9 +26,11 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> JobPrepareAsync(IExecutionContext context)
         {
             Trace.Entering();
-            
-            var meta = new ContainerHookMeta();
-            meta.Command = GetHookCommand(nameof(JobPrepareAsync));
+
+            var meta = new ContainerHookMeta
+            {
+                Command = GetHookCommand(nameof(JobPrepareAsync))
+            };
             // TODO: figure out hook args
             return await ExecuteHookScript(context, GetHookIndexPath(), meta);
         }
@@ -39,10 +41,11 @@ namespace GitHub.Runner.Worker.Container
 
             var meta = new ContainerHookMeta
             {
+                Command = GetHookCommand(nameof(JobCleanupAsync)),
                 Args = new ContainerHookArgs 
                 {
                     Containers = containers.Select(c => new ContainerHookContainer{ ContainerId = c.ContainerId, ContainerNetwork = c.ContainerNetwork}).ToList()
-                }
+                }                
             };
             // TODO: figure out hook args
             return await ExecuteHookScript(context, GetHookIndexPath(), meta);
