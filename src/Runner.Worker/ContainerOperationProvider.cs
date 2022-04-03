@@ -25,11 +25,13 @@ namespace GitHub.Runner.Worker
     public class ContainerOperationProvider : RunnerService, IContainerOperationProvider
     {
         private IDockerCommandManager _dockerManager;
+        private IContainerHookManager _containerHookManager;
 
         public override void Initialize(IHostContext hostContext)
         {
             base.Initialize(hostContext);
             _dockerManager = HostContext.GetService<IDockerCommandManager>();
+            _containerHookManager = HostContext.GetService<IContainerHookManager>();
         }
 
         public async Task StartContainersAsync(IExecutionContext executionContext, object data)
@@ -117,6 +119,12 @@ namespace GitHub.Runner.Worker
                 throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
             }
 
+            if (FeatureFlagManager.IsHookFeatureEnabled()) 
+            {
+                await _containerHookManager.JobPrepareAsync(executionContext);
+                return;
+            }
+
             // Clean up containers left by previous runs
             executionContext.Output("##[group]Clean up resources from previous jobs");
             var staleContainers = await _dockerManager.DockerPS(executionContext, $"--all --quiet --no-trunc --filter \"label={_dockerManager.DockerInstanceLabel}\"");
@@ -165,6 +173,12 @@ namespace GitHub.Runner.Worker
 
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
+            
+            if (FeatureFlagManager.IsHookFeatureEnabled()) 
+            {
+                await _containerHookManager.JobCleanupAsync(executionContext, containers);
+                return;
+            }
 
             foreach (var container in containers)
             {
