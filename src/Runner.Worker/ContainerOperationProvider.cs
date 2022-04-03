@@ -52,78 +52,13 @@ namespace GitHub.Runner.Worker
 
             executionContext.Debug($"Register post job cleanup for stopping/deleting containers.");
             executionContext.RegisterPostJobStep(postJobStep);
-
-            // Check whether we are inside a container.
-            // Our container feature requires to map working directory from host to the container.
-            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
-#if OS_WINDOWS
-#pragma warning disable CA1416
-            // service CExecSvc is Container Execution Agent.
-            ServiceController[] scServices = ServiceController.GetServices();
-            if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
-            {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-            }
-#pragma warning restore CA1416
-#else
-            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
-            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
-            {
-                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
-            }
-#endif
-
-#if OS_WINDOWS
-#pragma warning disable CA1416
-            // Check OS version (Windows server 1803 is required)
-            object windowsInstallationType = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallationType", defaultValue: null);
-            ArgUtil.NotNull(windowsInstallationType, nameof(windowsInstallationType));
-            object windowsReleaseId = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", defaultValue: null);
-            ArgUtil.NotNull(windowsReleaseId, nameof(windowsReleaseId));
-            executionContext.Debug($"Current Windows version: '{windowsReleaseId} ({windowsInstallationType})'");
-
-            if (int.TryParse(windowsReleaseId.ToString(), out int releaseId))
-            {
-                if (!windowsInstallationType.ToString().StartsWith("Server", StringComparison.OrdinalIgnoreCase) || releaseId < 1803)
-                {
-                    throw new NotSupportedException("Container feature requires Windows Server 1803 or higher.");
-                }
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ReleaseId");
-            }
-#pragma warning restore CA1416
-#endif
-
-            // Check docker client/server version
-            executionContext.Output("##[group]Checking docker version");
-            DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
-            executionContext.Output("##[endgroup]");
-
-            ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
-            ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
-
-#if OS_WINDOWS
-            Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
-#else
-            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
-#endif
-
-            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
-            }
-            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
-            {
-                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
-            }
-
             if (FeatureFlagManager.IsHookFeatureEnabled()) 
             {
                 await _containerHookManager.JobPrepareAsync(executionContext);
                 return;
             }
+            await AssertCompatibleOS(executionContext);
+            
 
             // Clean up containers left by previous runs
             executionContext.Output("##[group]Clean up resources from previous jobs");
@@ -535,6 +470,75 @@ namespace GitHub.Runner.Worker
             {
                 container.RegistryAuthUsername = executionContext.GetGitHubContext("actor");
                 container.RegistryAuthPassword = executionContext.GetGitHubContext("token");
+            }
+        }
+
+        private async Task AssertCompatibleOS(IExecutionContext executionContext)
+        {
+                   // Check whether we are inside a container.
+            // Our container feature requires to map working directory from host to the container.
+            // If we are already inside a container, we will not able to find out the real working direcotry path on the host.
+#if OS_WINDOWS
+#pragma warning disable CA1416
+            // service CExecSvc is Container Execution Agent.
+            ServiceController[] scServices = ServiceController.GetServices();
+            if (scServices.Any(x => String.Equals(x.ServiceName, "cexecsvc", StringComparison.OrdinalIgnoreCase) && x.Status == ServiceControllerStatus.Running))
+            {
+                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+            }
+#pragma warning restore CA1416
+#else
+            var initProcessCgroup = File.ReadLines("/proc/1/cgroup");
+            if (initProcessCgroup.Any(x => x.IndexOf(":/docker/", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                throw new NotSupportedException("Container feature is not supported when runner is already running inside container.");
+            }
+#endif
+
+#if OS_WINDOWS
+#pragma warning disable CA1416
+            // Check OS version (Windows server 1803 is required)
+            object windowsInstallationType = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "InstallationType", defaultValue: null);
+            ArgUtil.NotNull(windowsInstallationType, nameof(windowsInstallationType));
+            object windowsReleaseId = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion", "ReleaseId", defaultValue: null);
+            ArgUtil.NotNull(windowsReleaseId, nameof(windowsReleaseId));
+            executionContext.Debug($"Current Windows version: '{windowsReleaseId} ({windowsInstallationType})'");
+
+            if (int.TryParse(windowsReleaseId.ToString(), out int releaseId))
+            {
+                if (!windowsInstallationType.ToString().StartsWith("Server", StringComparison.OrdinalIgnoreCase) || releaseId < 1803)
+                {
+                    throw new NotSupportedException("Container feature requires Windows Server 1803 or higher.");
+                }
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ReleaseId");
+            }
+#pragma warning restore CA1416
+#endif
+
+            // Check docker client/server version
+            executionContext.Output("##[group]Checking docker version");
+            DockerVersion dockerVersion = await _dockerManager.DockerVersion(executionContext);
+            executionContext.Output("##[endgroup]");
+
+            ArgUtil.NotNull(dockerVersion.ServerVersion, nameof(dockerVersion.ServerVersion));
+            ArgUtil.NotNull(dockerVersion.ClientVersion, nameof(dockerVersion.ClientVersion));
+
+#if OS_WINDOWS
+            Version requiredDockerEngineAPIVersion = new Version(1, 30);  // Docker-EE version 17.6
+#else
+            Version requiredDockerEngineAPIVersion = new Version(1, 35); // Docker-CE version 17.12
+#endif
+
+            if (dockerVersion.ServerVersion < requiredDockerEngineAPIVersion)
+            {
+                throw new NotSupportedException($"Min required docker engine API server version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') server version is '{dockerVersion.ServerVersion}'");
+            }
+            if (dockerVersion.ClientVersion < requiredDockerEngineAPIVersion)
+            {
+                throw new NotSupportedException($"Min required docker engine API client version is '{requiredDockerEngineAPIVersion}', your docker ('{_dockerManager.DockerPath}') client version is '{dockerVersion.ClientVersion}'");
             }
         }
     }

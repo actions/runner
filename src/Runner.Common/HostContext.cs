@@ -229,6 +229,12 @@ namespace GitHub.Runner.Common
                     path = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
                     break;
 
+                case WellKnownDirectory.ContainerHooks:
+                    path = Path.Combine(
+                        GetDirectory(WellKnownDirectory.Root),
+                        Constants.Path.ContainerHooks);
+                    break;
+
                 case WellKnownDirectory.Diag:
                     path = Path.Combine(
                         GetDirectory(WellKnownDirectory.Root),
