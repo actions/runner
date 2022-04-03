@@ -26,9 +26,11 @@ namespace GitHub.Runner.Worker.Container
         public async Task<int> JobPrepareAsync(IExecutionContext context)
         {
             Trace.Entering();
-
+            
+            var meta = new ContainerHookMeta();
+            meta.Command = GetHookCommand(nameof(JobPrepareAsync));
             // TODO: figure out hook args
-            return await ExecuteHookScript(context, GetContainerHookFilePath(nameof(JobPrepareAsync)), new ContainerHookMeta());
+            return await ExecuteHookScript(context, GetHookIndexPath(), meta);
         }
 
         public async Task<int> JobCleanupAsync(IExecutionContext context, List<ContainerInfo> containers)
@@ -43,7 +45,7 @@ namespace GitHub.Runner.Worker.Container
                 }
             };
             // TODO: figure out hook args
-            return await ExecuteHookScript(context, GetContainerHookFilePath(nameof(JobCleanupAsync)), meta);
+            return await ExecuteHookScript(context, GetHookIndexPath(), meta);
         }
 
         public async Task<int> StepContainerAsync(IExecutionContext context)
@@ -87,10 +89,14 @@ namespace GitHub.Runner.Worker.Container
             return handler.ExecutionContext.CommandResult == TaskResult.Succeeded ? 0 : 1;
         }
 
-        private string GetContainerHookFilePath(string commandName)
+        private string GetHookIndexPath()
         {
-            commandName = string.Format("{0}.js", commandName.ToLower()).Replace("async", "");
-            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ContainerHooks), commandName);
+            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ContainerHooks), "index.js");
+        }
+
+        private static string GetHookCommand(string commandName)
+        {
+            return commandName.ToLower().Replace("async", "");
         }
     }
 }
