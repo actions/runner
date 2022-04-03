@@ -68,15 +68,6 @@ namespace GitHub.Runner.Worker
 
         public TemplateToken Timeout => Action?.TimeoutInMinutes;
 
-        private static string GetHostOS() {
-            if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) {
-                return "linux";
-            } else if(System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) {
-                return "windows";
-            }
-            return null;
-        }
-
         public async Task RunAsync()
         {
             // Validate args.
