@@ -257,7 +257,6 @@
                 "loose-value-type": "string"
             }
         },
-
         "job-defaults": {
           "mapping": {
             "properties": {
@@ -265,7 +264,6 @@
             }
           }
         },
-
         "job-defaults-run": {
           "context": [
             "github",
