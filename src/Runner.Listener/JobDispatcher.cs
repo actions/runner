@@ -352,51 +352,51 @@ namespace GitHub.Runner.Listener
                 TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
                 var notification = HostContext.GetService<IJobNotification>();
 
-                // lock renew cancellation token.
-                using (var lockRenewalTokenSource = new CancellationTokenSource())
-                using (var workerProcessCancelTokenSource = new CancellationTokenSource())
+                int retryCount = 0;
+                while (retryCount < 3)
                 {
-                    long requestId = message.RequestId;
-                    Guid lockToken = Guid.Empty; // lockToken has never been used, keep this here of compat
-
-                    // start renew job request
-                    Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
-                    Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
-
-                    // wait till first renew succeed or job request is cancelled
-                    // not even start worker if the first renew fail
-                    await Task.WhenAny(firstJobRequestRenewed.Task, renewJobRequest, Task.Delay(-1, jobRequestCancellationToken));
-
-                    if (renewJobRequest.IsCompleted)
+                    // lock renew cancellation token.
+                    using (var lockRenewalTokenSource = new CancellationTokenSource())
+                    using (var workerProcessCancelTokenSource = new CancellationTokenSource())
                     {
-                        // renew job request task complete means we run out of retry for the first job request renew.
-                        Trace.Info($"Unable to renew job request for job {message.JobId} for the first time, stop dispatching job to worker.");
-                        return;
-                    }
+                        long requestId = message.RequestId;
+                        Guid lockToken = Guid.Empty; // lockToken has never been used, keep this here of compat
 
-                    if (jobRequestCancellationToken.IsCancellationRequested)
-                    {
-                        Trace.Info($"Stop renew job request for job {message.JobId}.");
-                        // stop renew lock
-                        lockRenewalTokenSource.Cancel();
-                        // renew job request should never blows up.
-                        await renewJobRequest;
+                        // start renew job request
+                        Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
+                        Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
 
-                        // complete job request with result Cancelled
-                        await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
-                        return;
-                    }
+                        // wait till first renew succeed or job request is cancelled
+                        // not even start worker if the first renew fail
+                        await Task.WhenAny(firstJobRequestRenewed.Task, renewJobRequest, Task.Delay(-1, jobRequestCancellationToken));
 
-                    HostContext.WritePerfCounter($"JobRequestRenewed_{requestId.ToString()}");
+                        if (renewJobRequest.IsCompleted)
+                        {
+                            // renew job request task complete means we run out of retry for the first job request renew.
+                            Trace.Info($"Unable to renew job request for job {message.JobId} for the first time, stop dispatching job to worker.");
+                            return;
+                        }
 
-                    Task<int> workerProcessTask = null;
-                    object _outputLock = new object();
-                    List<string> workerOutput = new List<string>();
-                    using (var processChannel = HostContext.CreateService<IProcessChannel>())
-                    using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
-                    {
-                        int retryCount = 0;
-                        while (retryCount < 3)
+                        if (jobRequestCancellationToken.IsCancellationRequested)
+                        {
+                            Trace.Info($"Stop renew job request for job {message.JobId}.");
+                            // stop renew lock
+                            lockRenewalTokenSource.Cancel();
+                            // renew job request should never blows up.
+                            await renewJobRequest;
+
+                            // complete job request with result Cancelled
+                            await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
+                            return;
+                        }
+
+                        HostContext.WritePerfCounter($"JobRequestRenewed_{requestId.ToString()}");
+
+                        Task<int> workerProcessTask = null;
+                        object _outputLock = new object();
+                        List<string> workerOutput = new List<string>();
+                        using (var processChannel = HostContext.CreateService<IProcessChannel>())
+                        using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                         {
                             // Start the process channel.
                             // It's OK if StartServer bubbles an execption after the worker process has already started.
@@ -466,6 +466,8 @@ namespace GitHub.Runner.Listener
                                         body: JsonUtility.ToString(message),
                                         cancellationToken: csSendJobRequest.Token);
                                 }
+                                // stop retrying
+                                retryCount = 3;
                             }
                             catch (OperationCanceledException)
                             {
@@ -489,60 +491,159 @@ namespace GitHub.Runner.Listener
                                     lockRenewalTokenSource.Cancel();
                                     // renew job request should never blows up.
                                     await renewJobRequest;
-
+                                    
                                     // not finish the job request since the job haven't run on worker at all, we will not going to set a result to server.
                                     return;
                                 }
                                 else
                                 {
-                                    Trace.Info("Retrying worker invocation");
+                                    var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+                                    Trace.Info($"Retrying worker invocation in {backOff} seconds");
+                                    await Task.Delay(backOff);
+                                    continue;
                                 }            
                             }
-                        }
 
-                        // we get first jobrequest renew succeed and start the worker process with the job message.
-                        // send notification to machine provisioner.
-                        var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
-                        var accessToken = systemConnection?.Authorization?.Parameters["AccessToken"];
-                        notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
+                            // we get first jobrequest renew succeed and start the worker process with the job message.
+                            // send notification to machine provisioner.
+                            var systemConnection = message.Resources.Endpoints.SingleOrDefault(x => string.Equals(x.Name, WellKnownServiceEndpointNames.SystemVssConnection, StringComparison.OrdinalIgnoreCase));
+                            var accessToken = systemConnection?.Authorization?.Parameters["AccessToken"];
+                            notification.JobStarted(message.JobId, accessToken, systemConnection.Url);
 
-                        HostContext.WritePerfCounter($"SentJobToWorker_{requestId.ToString()}");
+                            HostContext.WritePerfCounter($"SentJobToWorker_{requestId.ToString()}");
 
-                        try
-                        {
-                            TaskResult resultOnAbandonOrCancel = TaskResult.Succeeded;
-                            // wait for renewlock, worker process or cancellation token been fired.
-                            var completedTask = await Task.WhenAny(renewJobRequest, workerProcessTask, Task.Delay(-1, jobRequestCancellationToken));
-                            if (completedTask == workerProcessTask)
+                            try
                             {
-                                // worker finished successfully, complete job request with result, attach unhandled exception reported by worker, stop renew lock, job has finished.
-                                int returnCode = await workerProcessTask;
-                                Trace.Info($"Worker finished for job {message.JobId}. Code: " + returnCode);
-
-                                string detailInfo = null;
-                                if (!TaskResultUtil.IsValidReturnCode(returnCode))
+                                TaskResult resultOnAbandonOrCancel = TaskResult.Succeeded;
+                                // wait for renewlock, worker process or cancellation token been fired.
+                                var completedTask = await Task.WhenAny(renewJobRequest, workerProcessTask, Task.Delay(-1, jobRequestCancellationToken));
+                                if (completedTask == workerProcessTask)
                                 {
-                                    detailInfo = string.Join(Environment.NewLine, workerOutput);
-                                    Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
+                                    // worker finished successfully, complete job request with result, attach unhandled exception reported by worker, stop renew lock, job has finished.
+                                    int returnCode = await workerProcessTask;
+                                    Trace.Info($"Worker finished for job {message.JobId}. Code: " + returnCode);
 
-                                    var jobServer = HostContext.GetService<IJobServer>();
-                                    VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
-                                    VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
-                                    await jobServer.ConnectAsync(jobConnection);
-
-                                    await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
-
-                                    // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
-                                    if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                    string detailInfo = null;
+                                    if (!TaskResultUtil.IsValidReturnCode(returnCode))
                                     {
-                                        Trace.Info($"Finish job with result 'Failed' due to IOException.");
-                                        await ForceFailJob(jobServer, message);
+                                        detailInfo = string.Join(Environment.NewLine, workerOutput);
+                                        Trace.Info($"Return code {returnCode} indicate worker encounter an unhandled exception or app crash, attach worker stdout/stderr to JobRequest result.");
+
+                                        var jobServer = HostContext.GetService<IJobServer>();
+                                        VssCredentials jobServerCredential = VssUtil.GetVssCredential(systemConnection);
+                                        VssConnection jobConnection = VssUtil.CreateConnection(systemConnection.Url, jobServerCredential);
+                                        await jobServer.ConnectAsync(jobConnection);
+
+                                        await LogWorkerProcessUnhandledException(jobServer, message, detailInfo);
+
+                                        // Go ahead to finish the job with result 'Failed' if the STDERR from worker is System.IO.IOException, since it typically means we are running out of disk space.
+                                        if (detailInfo.Contains(typeof(System.IO.IOException).ToString(), StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            Trace.Info($"Finish job with result 'Failed' due to IOException.");
+                                            await ForceFailJob(jobServer, message);
+                                        }
+                                    }
+
+                                    TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
+                                    Trace.Info($"finish job request for job {message.JobId} with result: {result}");
+                                    term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {result}");
+
+                                    Trace.Info($"Stop renew job request for job {message.JobId}.");
+                                    // stop renew lock
+                                    lockRenewalTokenSource.Cancel();
+                                    // renew job request should never blows up.
+                                    await renewJobRequest;
+
+                                    // complete job request
+                                    await CompleteJobRequestAsync(_poolId, message, lockToken, result, detailInfo);
+
+                                    // print out unhandled exception happened in worker after we complete job request.
+                                    // when we run out of disk space, report back to server has higher priority.
+                                    if (!string.IsNullOrEmpty(detailInfo))
+                                    {
+                                        Trace.Error("Unhandled exception happened in worker:");
+                                        Trace.Error(detailInfo);
+                                    }
+
+                                    return;
+                                }
+                                else if (completedTask == renewJobRequest)
+                                {
+                                    resultOnAbandonOrCancel = TaskResult.Abandoned;
+                                }
+                                else
+                                {
+                                    resultOnAbandonOrCancel = TaskResult.Canceled;
+                                }
+
+                                // renew job request completed or job request cancellation token been fired for RunAsync(jobrequestmessage)
+                                // cancel worker gracefully first, then kill it after worker cancel timeout
+                                try
+                                {
+                                    Trace.Info($"Send job cancellation message to worker for job {message.JobId}.");
+                                    using (var csSendCancel = new CancellationTokenSource(_channelTimeout))
+                                    {
+                                        var messageType = MessageType.CancelRequest;
+                                        if (HostContext.RunnerShutdownToken.IsCancellationRequested)
+                                        {
+                                            switch (HostContext.RunnerShutdownReason)
+                                            {
+                                                case ShutdownReason.UserCancelled:
+                                                    messageType = MessageType.RunnerShutdown;
+                                                    break;
+                                                case ShutdownReason.OperatingSystemShutdown:
+                                                    messageType = MessageType.OperatingSystemShutdown;
+                                                    break;
+                                            }
+                                        }
+
+                                        await processChannel.SendAsync(
+                                            messageType: messageType,
+                                            body: string.Empty,
+                                            cancellationToken: csSendCancel.Token);
+                                    }
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    // message send been cancelled.
+                                    Trace.Info($"Job cancel message sending for job {message.JobId} been cancelled, kill running worker.");
+                                    workerProcessCancelTokenSource.Cancel();
+                                    try
+                                    {
+                                        await workerProcessTask;
+                                    }
+                                    catch (OperationCanceledException)
+                                    {
+                                        Trace.Info("worker process has been killed.");
                                     }
                                 }
 
-                                TaskResult result = TaskResultUtil.TranslateFromReturnCode(returnCode);
-                                Trace.Info($"finish job request for job {message.JobId} with result: {result}");
-                                term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {result}");
+                                // wait worker to exit 
+                                // if worker doesn't exit within timeout, then kill worker.
+                                completedTask = await Task.WhenAny(workerProcessTask, Task.Delay(-1, workerCancelTimeoutKillToken));
+
+                                // worker haven't exit within cancellation timeout.
+                                if (completedTask != workerProcessTask)
+                                {
+                                    Trace.Info($"worker process for job {message.JobId} haven't exit within cancellation timout, kill running worker.");
+                                    workerProcessCancelTokenSource.Cancel();
+                                    try
+                                    {
+                                        await workerProcessTask;
+                                    }
+                                    catch (OperationCanceledException)
+                                    {
+                                        Trace.Info("worker process has been killed.");
+                                    }
+
+                                    // When worker doesn't exit within cancel timeout, the runner will kill the worker process and worker won't finish upload job logs.
+                                    // The runner will try to upload these logs at this time.
+                                    await TryUploadUnfinishedLogs(message);
+                                }
+
+                                Trace.Info($"finish job request for job {message.JobId} with result: {resultOnAbandonOrCancel}");
+                                term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {resultOnAbandonOrCancel}");
+                                // complete job request with cancel result, stop renew lock, job has finished.
 
                                 Trace.Info($"Stop renew job request for job {message.JobId}.");
                                 // stop renew lock
@@ -551,109 +652,13 @@ namespace GitHub.Runner.Listener
                                 await renewJobRequest;
 
                                 // complete job request
-                                await CompleteJobRequestAsync(_poolId, message, lockToken, result, detailInfo);
-
-                                // print out unhandled exception happened in worker after we complete job request.
-                                // when we run out of disk space, report back to server has higher priority.
-                                if (!string.IsNullOrEmpty(detailInfo))
-                                {
-                                    Trace.Error("Unhandled exception happened in worker:");
-                                    Trace.Error(detailInfo);
-                                }
-
-                                return;
+                                await CompleteJobRequestAsync(_poolId, message, lockToken, resultOnAbandonOrCancel);
                             }
-                            else if (completedTask == renewJobRequest)
+                            finally
                             {
-                                resultOnAbandonOrCancel = TaskResult.Abandoned;
+                                // This should be the last thing to run so we don't notify external parties until actually finished
+                                await notification.JobCompleted(message.JobId);       
                             }
-                            else
-                            {
-                                resultOnAbandonOrCancel = TaskResult.Canceled;
-                            }
-
-                            // renew job request completed or job request cancellation token been fired for RunAsync(jobrequestmessage)
-                            // cancel worker gracefully first, then kill it after worker cancel timeout
-                            try
-                            {
-                                Trace.Info($"Send job cancellation message to worker for job {message.JobId}.");
-                                using (var csSendCancel = new CancellationTokenSource(_channelTimeout))
-                                {
-                                    var messageType = MessageType.CancelRequest;
-                                    if (HostContext.RunnerShutdownToken.IsCancellationRequested)
-                                    {
-                                        switch (HostContext.RunnerShutdownReason)
-                                        {
-                                            case ShutdownReason.UserCancelled:
-                                                messageType = MessageType.RunnerShutdown;
-                                                break;
-                                            case ShutdownReason.OperatingSystemShutdown:
-                                                messageType = MessageType.OperatingSystemShutdown;
-                                                break;
-                                        }
-                                    }
-
-                                    await processChannel.SendAsync(
-                                        messageType: messageType,
-                                        body: string.Empty,
-                                        cancellationToken: csSendCancel.Token);
-                                }
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                // message send been cancelled.
-                                Trace.Info($"Job cancel message sending for job {message.JobId} been cancelled, kill running worker.");
-                                workerProcessCancelTokenSource.Cancel();
-                                try
-                                {
-                                    await workerProcessTask;
-                                }
-                                catch (OperationCanceledException)
-                                {
-                                    Trace.Info("worker process has been killed.");
-                                }
-                            }
-
-                            // wait worker to exit 
-                            // if worker doesn't exit within timeout, then kill worker.
-                            completedTask = await Task.WhenAny(workerProcessTask, Task.Delay(-1, workerCancelTimeoutKillToken));
-
-                            // worker haven't exit within cancellation timeout.
-                            if (completedTask != workerProcessTask)
-                            {
-                                Trace.Info($"worker process for job {message.JobId} haven't exit within cancellation timout, kill running worker.");
-                                workerProcessCancelTokenSource.Cancel();
-                                try
-                                {
-                                    await workerProcessTask;
-                                }
-                                catch (OperationCanceledException)
-                                {
-                                    Trace.Info("worker process has been killed.");
-                                }
-
-                                // When worker doesn't exit within cancel timeout, the runner will kill the worker process and worker won't finish upload job logs.
-                                // The runner will try to upload these logs at this time.
-                                await TryUploadUnfinishedLogs(message);
-                            }
-
-                            Trace.Info($"finish job request for job {message.JobId} with result: {resultOnAbandonOrCancel}");
-                            term.WriteLine($"{DateTime.UtcNow:u}: Job {message.JobDisplayName} completed with result: {resultOnAbandonOrCancel}");
-                            // complete job request with cancel result, stop renew lock, job has finished.
-
-                            Trace.Info($"Stop renew job request for job {message.JobId}.");
-                            // stop renew lock
-                            lockRenewalTokenSource.Cancel();
-                            // renew job request should never blows up.
-                            await renewJobRequest;
-
-                            // complete job request
-                            await CompleteJobRequestAsync(_poolId, message, lockToken, resultOnAbandonOrCancel);
-                        }
-                        finally
-                        {
-                            // This should be the last thing to run so we don't notify external parties until actually finished
-                            await notification.JobCompleted(message.JobId);
                         }
                     }
                 }
