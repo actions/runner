@@ -372,6 +372,7 @@ namespace GitHub.Runner.Worker
             var postEntrypointToken = default(StringToken);
             var postIfToken = default(StringToken);
             var steps = default(List<Pipelines.Step>);
+            var defaultsToken = default(MappingToken);
 
             foreach (var run in runsMapping)
             {
@@ -422,6 +423,9 @@ namespace GitHub.Runner.Worker
                         steps = PipelineTemplateConverter.ConvertToSteps(templateContext, stepsToken);
                         templateContext.Errors.Check();
                         break;
+                    case "defaults":
+                        defaultsToken = run.Value.AssertMapping("defaults");
+                        break;
                     default:
                         Trace.Info($"Ignore run property {runsKey}.");
                         break;
@@ -451,7 +455,7 @@ namespace GitHub.Runner.Worker
                         };
                     }
                 }
-                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase)||
+                else if (string.Equals(usingToken.Value, "node12", StringComparison.OrdinalIgnoreCase) ||
                          string.Equals(usingToken.Value, "node16", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(mainToken?.Value))
@@ -486,7 +490,8 @@ namespace GitHub.Runner.Worker
                             PostSteps = new Stack<Pipelines.ActionStep>(),
                             InitCondition = "always()",
                             CleanupCondition = "always()",
-                            Outputs = outputs
+                            Outputs = outputs,
+                            JobDefaults = defaultsToken,
                         };
                     }
                 }

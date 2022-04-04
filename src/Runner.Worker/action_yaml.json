@@ -103,7 +103,11 @@
             "mapping": {
                 "properties": {
                     "using": "non-empty-string",
-                    "steps": "composite-steps"
+                    "steps": "composite-steps",
+                    "defaults": {
+                        "type": "job-defaults",
+                        "required": false
+                    }
                 }
             }
         },
@@ -132,7 +136,7 @@
                     "working-directory": "string-steps-context",
                     "shell": {
                         "type": "non-empty-string",
-                        "required": true
+                        "required": false
                     }
                 }
             }
@@ -252,6 +256,36 @@
                 "loose-key-type": "non-empty-string",
                 "loose-value-type": "string"
             }
+        },
+
+        "job-defaults": {
+          "mapping": {
+            "properties": {
+              "run": "job-defaults-run"
+            }
+          }
+        },
+
+        "job-defaults-run": {
+          "context": [
+            "github",
+            "strategy",
+            "matrix",
+            "needs",
+            "env"
+          ],
+          "mapping": {
+            "properties": {
+                "shell": {
+                    "type": "non-empty-string",
+                    "required": false
+                },
+                "working-directory": {
+                    "type": "non-empty-string",
+                    "required": false
+                }
+            }
+          }
         }
     }
 }

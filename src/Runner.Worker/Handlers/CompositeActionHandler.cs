@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.Expressions2;
@@ -13,7 +11,6 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
 using GitHub.Runner.Common.Util;
 using GitHub.Runner.Sdk;
-using GitHub.Runner.Worker;
 using GitHub.Runner.Worker.Expressions;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
@@ -86,13 +83,21 @@ namespace GitHub.Runner.Worker.Handlers
 
                 ExecutionContext.StepTelemetry.HasPreStep = Data.HasPre;
                 ExecutionContext.StepTelemetry.HasPostStep = Data.HasPost;
-                
+
                 ExecutionContext.StepTelemetry.HasRunsStep = hasRunsStep;
                 ExecutionContext.StepTelemetry.HasUsesStep = hasUsesStep;
                 ExecutionContext.StepTelemetry.StepCount = steps.Count;
             }
             ExecutionContext.StepTelemetry.Type = "composite";
 
+            // save job defaults run to be restored after the composite run
+            IDictionary<string, string> jobDefaultsRun = new Dictionary<string, string>();
+            if (ExecutionContext.Global.JobDefaults.ContainsKey("run"))
+            {
+                jobDefaultsRun = ExecutionContext.Global.JobDefaults["run"];
+            }
+
+            var isJobDefaultsRunChanged = false;
             try
             {
                 // Inputs of the composite step
@@ -163,6 +168,25 @@ namespace GitHub.Runner.Worker.Handlers
                     embeddedSteps.Add(step);
                 }
 
+                if (Data.JobDefaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
+                {
+                    isJobDefaultsRunChanged = true;
+
+                    ExecutionContext.Global.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    var defaultsRun = Data.JobDefaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
+
+                    var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
+                    var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+
+                    foreach (var pair in jobDefaults)
+                    {
+                        if (!string.IsNullOrEmpty(pair.Value))
+                        {
+                            ExecutionContext.Global.JobDefaults["run"][pair.Key] = pair.Value;
+                        }
+                    }
+                }
+
                 // Run embedded steps
                 await RunStepsAsync(embeddedSteps, stage);
 
@@ -177,6 +201,13 @@ namespace GitHub.Runner.Worker.Handlers
                 Trace.Error($"Caught exception from composite steps {nameof(CompositeActionHandler)}: {ex}");
                 ExecutionContext.Error(ex);
                 ExecutionContext.Result = TaskResult.Failed;
+            }
+            finally
+            {
+                if (isJobDefaultsRunChanged)
+                {
+                    ExecutionContext.Global.JobDefaults["run"] = jobDefaultsRun;
+                }
             }
         }
 

@@ -70,7 +70,7 @@ namespace GitHub.Runner.Worker.Handlers
             {
                 // TODO: figure out how defaults interact with template later
                 // for now, we won't check job.defaults if we are inside a template.
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     runDefaults.TryGetValue("shell", out shell);
                 }
@@ -153,7 +153,7 @@ namespace GitHub.Runner.Worker.Handlers
             string workingDirectory = null;
             if (!Inputs.TryGetValue("workingDirectory", out workingDirectory))
             {
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("working-directory", out workingDirectory))
                     {
@@ -162,12 +162,16 @@ namespace GitHub.Runner.Worker.Handlers
                 }
             }
             var workspaceDir = githubContext["workspace"] as StringContextData;
+            if (githubContext.ContainsKey("action_path"))
+            {
+                workspaceDir = githubContext["action_path"] as StringContextData;
+            }
             workingDirectory = Path.Combine(workspaceDir, workingDirectory ?? string.Empty);
 
             string shell = null;
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
-                if (string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("shell", out shell))
                     {
