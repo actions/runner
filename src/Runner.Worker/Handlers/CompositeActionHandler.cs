@@ -92,6 +92,13 @@ namespace GitHub.Runner.Worker.Handlers
             }
             ExecutionContext.StepTelemetry.Type = "composite";
 
+            // save job defaults run to be restored after the composite run
+            IDictionary<string, string> jobDefaultsRun = new Dictionary<string, string>();
+            if (ExecutionContext.Global.JobDefaults.ContainsKey("run"))
+            {
+                jobDefaultsRun = ExecutionContext.Global.JobDefaults["run"];
+            }
+
             try
             {
                 // Inputs of the composite step
