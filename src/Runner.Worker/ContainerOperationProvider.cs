@@ -54,11 +54,13 @@ namespace GitHub.Runner.Worker
             executionContext.RegisterPostJobStep(postJobStep);
             if (FeatureFlagManager.IsHookFeatureEnabled()) 
             {
-                await _containerHookManager.PrepareJobAsync(executionContext);
+                // Initialize the containers
+                containers.ForEach(container => UpdateRegistryAuthForGitHubToken(executionContext, container));
+                containers.ForEach(container => MountWellKnownDirectories(executionContext, container));
+                await _containerHookManager.PrepareJobAsync(executionContext, containers);
                 return;
             }
-            await AssertCompatibleOS(executionContext);
-            
+            await AssertCompatibleOS(executionContext);            
 
             // Clean up containers left by previous runs
             executionContext.Output("##[group]Clean up resources from previous jobs");
@@ -109,7 +111,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
             
-            if (FeatureFlagManager.IsHookFeatureEnabled()) 
+            if (!FeatureFlagManager.IsHookFeatureEnabled()) 
             {
                 await _containerHookManager.JobCleanupAsync(executionContext, containers);
                 return;
@@ -188,35 +190,7 @@ namespace GitHub.Runner.Worker
 
             if (container.IsJobContainer)
             {
-                // Configure job container - Mount workspace and tools, set up environment, and start long running process
-                var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
-                ArgUtil.NotNull(githubContext, nameof(githubContext));
-                var workingDirectory = githubContext["workspace"] as StringContextData;
-                ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
-#if OS_WINDOWS
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
-#else
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
-#endif
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
-                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
-
-                var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
-                Directory.CreateDirectory(tempHomeDirectory);
-                container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
-                container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
-                container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
-
-                var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
-                Directory.CreateDirectory(tempWorkflowDirectory);
-                container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
-                container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
-
-                container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
-                container.ContainerEntryPoint = "tail";
-                container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
+                MountWellKnownDirectories(executionContext, container);
             }
 
             container.ContainerId = await _dockerManager.DockerCreate(executionContext, container);
@@ -277,6 +251,39 @@ namespace GitHub.Runner.Worker
                 executionContext.JobContext.Container["id"] = new StringContextData(container.ContainerId);
             }
             executionContext.Output("##[endgroup]");
+        }
+
+        private void MountWellKnownDirectories(IExecutionContext executionContext, ContainerInfo container)
+        {
+            // Configure job container - Mount workspace and tools, set up environment, and start long running process
+            var githubContext = executionContext.ExpressionValues["github"] as GitHubContext;
+            ArgUtil.NotNull(githubContext, nameof(githubContext));
+            var workingDirectory = githubContext["workspace"] as StringContextData;
+            ArgUtil.NotNullOrEmpty(workingDirectory, nameof(workingDirectory));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Work), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Work))));
+#if OS_WINDOWS
+                container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals))));
+#else
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Externals), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Externals)), true));
+#endif
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Temp), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Temp))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Actions), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Actions))));
+            container.MountVolumes.Add(new MountVolume(HostContext.GetDirectory(WellKnownDirectory.Tools), container.TranslateToContainerPath(HostContext.GetDirectory(WellKnownDirectory.Tools))));
+
+            var tempHomeDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_home");
+            Directory.CreateDirectory(tempHomeDirectory);
+            container.MountVolumes.Add(new MountVolume(tempHomeDirectory, "/github/home"));
+            container.AddPathTranslateMapping(tempHomeDirectory, "/github/home");
+            container.ContainerEnvironmentVariables["HOME"] = container.TranslateToContainerPath(tempHomeDirectory);
+
+            var tempWorkflowDirectory = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), "_github_workflow");
+            Directory.CreateDirectory(tempWorkflowDirectory);
+            container.MountVolumes.Add(new MountVolume(tempWorkflowDirectory, "/github/workflow"));
+            container.AddPathTranslateMapping(tempWorkflowDirectory, "/github/workflow");
+
+            container.ContainerWorkDirectory = container.TranslateToContainerPath(workingDirectory);
+            container.ContainerEntryPoint = "tail";
+            container.ContainerEntryPointArgs = "\"-f\" \"/dev/null\"";
         }
 
         private async Task StopContainerAsync(IExecutionContext executionContext, ContainerInfo container)
