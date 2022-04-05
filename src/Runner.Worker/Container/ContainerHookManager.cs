@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
@@ -15,7 +16,7 @@ namespace GitHub.Runner.Worker.Container
     [ServiceLocator(Default = typeof(ContainerHookManager))]
     public interface IContainerHookManager : IRunnerService
     {
-        Task<int> JobPrepareAsync(IExecutionContext context);
+        Task<int> PrepareJobAsync(IExecutionContext context);
         Task<int> JobCleanupAsync(IExecutionContext context, List<ContainerInfo> containers);
         Task<int> StepContainerAsync(IExecutionContext context);
         Task<int> StepScriptAsync(IExecutionContext context);
@@ -23,13 +24,14 @@ namespace GitHub.Runner.Worker.Container
 
     public class ContainerHookManager : RunnerService, IContainerHookManager
     {
-        public async Task<int> JobPrepareAsync(IExecutionContext context)
+        public async Task<int> PrepareJobAsync(IExecutionContext context)
         {
             Trace.Entering();
 
             var meta = new ContainerHookMeta
             {
-                Command = GetHookCommand(nameof(JobPrepareAsync))
+                Command = "prepare_job", // TODO: work out   GetHookCommand(nameof(PrepareJobAsync))
+                ResponseFile = "response.json",
             };
             // TODO: figure out hook args
             return await ExecuteHookScript(context, GetHookIndexPath(), meta);
@@ -42,10 +44,11 @@ namespace GitHub.Runner.Worker.Container
             var meta = new ContainerHookMeta
             {
                 Command = GetHookCommand(nameof(JobCleanupAsync)),
-                Args = new ContainerHookArgs 
+                ResponseFile = "response.json",
+                Args = new ContainerHookArgs
                 {
-                    Containers = containers.Select(c => new ContainerHookContainer{ ContainerId = c.ContainerId, ContainerNetwork = c.ContainerNetwork}).ToList()
-                }                
+                    Containers = containers.Select(c => new ContainerHookContainer { ContainerId = c.ContainerId, ContainerNetwork = c.ContainerNetwork }).ToList()
+                }
             };
             // TODO: figure out hook args
             return await ExecuteHookScript(context, GetHookIndexPath(), meta);

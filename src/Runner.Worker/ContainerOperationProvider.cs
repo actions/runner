@@ -54,7 +54,7 @@ namespace GitHub.Runner.Worker
             executionContext.RegisterPostJobStep(postJobStep);
             if (FeatureFlagManager.IsHookFeatureEnabled()) 
             {
-                await _containerHookManager.JobPrepareAsync(executionContext);
+                await _containerHookManager.PrepareJobAsync(executionContext);
                 return;
             }
             await AssertCompatibleOS(executionContext);
