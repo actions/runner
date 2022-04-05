@@ -1,15 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using GitHub.DistributedTask.WebApi;
-using GitHub.Runner.Common.Util;
 using GitHub.Runner.Worker.Container;
-using GitHub.Services.WebApi;
-using Newtonsoft.Json;
 using GitHub.Runner.Common;
 using GitHub.Runner.Sdk;
 using System.Linq;
@@ -24,6 +19,17 @@ namespace GitHub.Runner.Worker.Handlers
         string ResolvePathForStepHost(string path);
 
         Task<string> DetermineNodeRuntimeVersion(IExecutionContext executionContext, string preferredVersion);
+
+        Task<int> ExecuteAsync(string workingDirectory,
+                               string fileName,
+                               string arguments,
+                               IDictionary<string, string> environment,
+                               bool requireExitCodeZero,
+                               Encoding outputEncoding,
+                               bool killProcessOnCancel,
+                               bool inheritConsoleHandler,
+                               string standardInInput,
+                               CancellationToken cancellationToken);
 
         Task<int> ExecuteAsync(string workingDirectory,
                                string fileName,
@@ -71,10 +77,17 @@ namespace GitHub.Runner.Worker.Handlers
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
                                             bool inheritConsoleHandler,
+                                            string standardInInput,
                                             CancellationToken cancellationToken)
         {
             using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
             {
+                Channel<string> redirectStandardIn = null;
+                if (standardInInput != null)
+                {
+                    redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
+                    redirectStandardIn.Writer.TryWrite(standardInInput);
+                }
                 processInvoker.OutputDataReceived += OutputDataReceived;
                 processInvoker.ErrorDataReceived += ErrorDataReceived;
 
@@ -85,10 +98,32 @@ namespace GitHub.Runner.Worker.Handlers
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: null,
+                                                         redirectStandardIn: redirectStandardIn,
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
+        }
+        public async Task<int> ExecuteAsync(string workingDirectory,
+                                            string fileName,
+                                            string arguments,
+                                            IDictionary<string, string> environment,
+                                            bool requireExitCodeZero,
+                                            Encoding outputEncoding,
+                                            bool killProcessOnCancel,
+                                            bool inheritConsoleHandler,
+                                            CancellationToken cancellationToken)
+        {
+            return await ExecuteAsync(workingDirectory: workingDirectory,
+                                                     fileName: fileName,
+                                                     arguments: arguments,
+                                                     environment: environment,
+                                                     requireExitCodeZero: requireExitCodeZero,
+                                                     outputEncoding: outputEncoding,
+                                                     killProcessOnCancel: killProcessOnCancel,
+                                                     inheritConsoleHandler: inheritConsoleHandler,
+                                                     standardInInput: null,
+                                                     cancellationToken: cancellationToken);
+
         }
     }
 
@@ -170,6 +205,29 @@ namespace GitHub.Runner.Worker.Handlers
                                             bool inheritConsoleHandler,
                                             CancellationToken cancellationToken)
         {
+            return await ExecuteAsync(workingDirectory,
+                         fileName,
+                          arguments,
+                          environment,
+                          requireExitCodeZero,
+                          outputEncoding,
+                          killProcessOnCancel,
+                          inheritConsoleHandler,
+                          null,
+                          cancellationToken);
+        }
+
+        public async Task<int> ExecuteAsync(string workingDirectory,
+                                            string fileName,
+                                            string arguments,
+                                            IDictionary<string, string> environment,
+                                            bool requireExitCodeZero,
+                                            Encoding outputEncoding,
+                                            bool killProcessOnCancel,
+                                            bool inheritConsoleHandler,
+                                            string standardInInput,
+                                            CancellationToken cancellationToken)
+        {
             // make sure container exist.
             ArgUtil.NotNull(Container, nameof(Container));
             ArgUtil.NotNullOrEmpty(Container.ContainerId, nameof(Container.ContainerId));
@@ -227,6 +285,12 @@ namespace GitHub.Runner.Worker.Handlers
                 outputEncoding = null;
 #endif
 
+                Channel<string> redirectStandardIn = null;
+                if (standardInInput != null)
+                {
+                    redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
+                    redirectStandardIn.Writer.TryWrite(standardInInput);
+                }
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: dockerClientPath,
                                                          arguments: dockerCommandArgstring,
@@ -234,7 +298,7 @@ namespace GitHub.Runner.Worker.Handlers
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: null,
+                                                         redirectStandardIn: redirectStandardIn,
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
