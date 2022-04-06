@@ -350,7 +350,7 @@ namespace GitHub.Runner.Listener
                 string workflowName = string.Empty;
                 if (message.Variables.TryGetValue("system.workflowFilePath", out var workflowPath))
                 {
-                    workflowName = workflowPath.Value.Split('/').LastOrDefault().Trim();
+                    workflowName = workflowPath.Value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
                 }
 
                 string repositoryName = string.Empty;
