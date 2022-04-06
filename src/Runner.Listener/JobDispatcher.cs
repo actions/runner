@@ -377,7 +377,7 @@ namespace GitHub.Runner.Listener
                     }
                 }
                 
-                term.WriteLine($"{DateTime.UtcNow:u}: Running job: \"{message.JobDisplayName}\" {additionalInfo}");
+                term.WriteLine($"{DateTime.UtcNow:u}: Running job: \"{message.JobDisplayName}\" {Pipelines.Validation.NameValidation.Sanitize(additionalInfo)}");
 
                 // first job request renew succeed.
                 TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
