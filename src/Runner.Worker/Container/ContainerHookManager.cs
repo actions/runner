@@ -17,9 +17,9 @@ namespace GitHub.Runner.Worker.Container
     public interface IContainerHookManager : IRunnerService
     {
         Task<int> PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task<int> JobCleanupAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task<int> StepContainerAsync(IExecutionContext context);
-        Task<int> StepScriptAsync(IExecutionContext context);
+        Task<int> CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
+        Task<int> ContainerStepAsync(IExecutionContext context);
+        Task<int> RunScriptStepAsync(IExecutionContext context);
     }
 
     public class ContainerHookManager : RunnerService, IContainerHookManager
@@ -63,13 +63,13 @@ namespace GitHub.Runner.Worker.Container
             return 0;
         }
 
-        public async Task<int> JobCleanupAsync(IExecutionContext context, List<ContainerInfo> containers)
+        public async Task<int> CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
         {
             Trace.Entering();
 
             var meta = new ContainerHookMeta
             {
-                Command = GetHookCommand(nameof(JobCleanupAsync)),
+                Command = GetHookCommand(nameof(CleanupJobAsync)),
                 ResponseFile = "response.json",
                 Args = new ContainerHookArgs
                 {
@@ -80,14 +80,14 @@ namespace GitHub.Runner.Worker.Container
             return await ExecuteHookScript(context, GetHookIndexPath(), meta);
         }
 
-        public async Task<int> StepContainerAsync(IExecutionContext context)
+        public async Task<int> ContainerStepAsync(IExecutionContext context)
         {
             Trace.Entering();
             await Task.FromResult(0);
             throw new NotImplementedException();
         }
 
-        public async Task<int> StepScriptAsync(IExecutionContext context)
+        public async Task<int> RunScriptStepAsync(IExecutionContext context)
         {
             Trace.Entering();
             await Task.FromResult(0);

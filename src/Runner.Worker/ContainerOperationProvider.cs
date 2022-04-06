@@ -113,7 +113,7 @@ namespace GitHub.Runner.Worker
             
             if (!FeatureFlagManager.IsHookFeatureEnabled()) 
             {
-                await _containerHookManager.JobCleanupAsync(executionContext, containers);
+                await _containerHookManager.CleanupJobAsync(executionContext, containers);
                 return;
             }
 
