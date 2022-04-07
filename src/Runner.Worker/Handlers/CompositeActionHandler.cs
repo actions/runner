@@ -90,14 +90,6 @@ namespace GitHub.Runner.Worker.Handlers
             }
             ExecutionContext.StepTelemetry.Type = "composite";
 
-            // save job defaults run to be restored after the composite run
-            IDictionary<string, string> jobDefaultsRun = new Dictionary<string, string>();
-            if (ExecutionContext.Global.JobDefaults.ContainsKey("run"))
-            {
-                jobDefaultsRun = ExecutionContext.Global.JobDefaults["run"];
-            }
-
-            var isJobDefaultsRunChanged = false;
             try
             {
                 // Inputs of the composite step
@@ -168,21 +160,23 @@ namespace GitHub.Runner.Worker.Handlers
                     embeddedSteps.Add(step);
                 }
 
-                if (Data.JobDefaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
+                ExecutionContext.Global.CompositeDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
                 {
-                    isJobDefaultsRunChanged = true;
+                    ["run"] = new Dictionary<string, string>(),
+                };
 
-                    ExecutionContext.Global.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                    var defaultsRun = Data.JobDefaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
+                if (Data.CompositeDefaults != null && Data.CompositeDefaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
+                {
 
+                    var defaultsToken = Data.CompositeDefaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
                     var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
-                    var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
+                    var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsToken.Value, ExecutionContext.ExpressionValues, ExecutionContext.ExpressionFunctions);
 
                     foreach (var pair in jobDefaults)
                     {
                         if (!string.IsNullOrEmpty(pair.Value))
                         {
-                            ExecutionContext.Global.JobDefaults["run"][pair.Key] = pair.Value;
+                            ExecutionContext.Global.CompositeDefaults["run"][pair.Key] = pair.Value;
                         }
                     }
                 }
@@ -204,10 +198,7 @@ namespace GitHub.Runner.Worker.Handlers
             }
             finally
             {
-                if (isJobDefaultsRunChanged)
-                {
-                    ExecutionContext.Global.JobDefaults["run"] = jobDefaultsRun;
-                }
+                ExecutionContext.Global.CompositeDefaults = new Dictionary<string, IDictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
             }
         }
 
@@ -438,7 +429,7 @@ namespace GitHub.Runner.Worker.Handlers
                 }
 
                 // Update context
-                SetStepsContext(step);
+                step.ExecutionContext.UpdateGlobalStepsContext();
             }
         }
 
@@ -483,6 +474,8 @@ namespace GitHub.Runner.Worker.Handlers
                 SetStepConclusion(step, Common.Util.TaskResultUtil.MergeTaskResults(step.ExecutionContext.Result, step.ExecutionContext.CommandResult.Value));
             }
 
+            step.ExecutionContext.ApplyContinueOnError(step.ContinueOnError);
+
             Trace.Info($"Step result: {step.ExecutionContext.Result}");
             step.ExecutionContext.Debug($"Finished: {step.DisplayName}");
             step.ExecutionContext.PublishStepTelemetry();
@@ -491,16 +484,7 @@ namespace GitHub.Runner.Worker.Handlers
         private void SetStepConclusion(IStep step, TaskResult result)
         {
             step.ExecutionContext.Result = result;
-            SetStepsContext(step);
-        }
-        private void SetStepsContext(IStep step)
-        {
-            if (!string.IsNullOrEmpty(step.ExecutionContext.ContextName) && !step.ExecutionContext.ContextName.StartsWith("__", StringComparison.Ordinal))
-            {
-                // TODO: when we support continue on error, we may need to do logic here to change conclusion based on the continue on error result
-                step.ExecutionContext.Global.StepsContext.SetOutcome(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
-                step.ExecutionContext.Global.StepsContext.SetConclusion(step.ExecutionContext.ScopeName, step.ExecutionContext.ContextName, (step.ExecutionContext.Result ?? TaskResult.Succeeded).ToActionResult());
-            }
+            step.ExecutionContext.UpdateGlobalStepsContext();
         }
     }
 }

@@ -105,7 +105,7 @@
                     "using": "non-empty-string",
                     "steps": "composite-steps",
                     "defaults": {
-                        "type": "job-defaults",
+                        "type": "composite-defaults",
                         "required": false
                     }
                 }
@@ -133,6 +133,7 @@
                         "required": true
                     },
                     "env": "step-env",
+                    "continue-on-error": "boolean-steps-context",
                     "working-directory": "string-steps-context",
                     "shell": {
                         "type": "non-empty-string",
@@ -151,6 +152,7 @@
                         "type": "non-empty-string",
                         "required": true
                     },
+                    "continue-on-error": "boolean-steps-context",
                     "with": "step-with",
                     "env": "step-env"
                 }
@@ -205,6 +207,20 @@
             ],
             "string": {}
         },
+        "boolean-steps-context": {
+            "context": [
+                "github",
+                "inputs",
+                "strategy",
+                "matrix",
+                "steps",
+                "job",
+                "runner",
+                "env",
+                "hashFiles(1,255)"
+            ],
+            "boolean": {}
+        },
         "step-env": {
             "context": [
                 "github",
@@ -257,15 +273,16 @@
                 "loose-value-type": "string"
             }
         },
-        "job-defaults": {
+        "composite-defaults": {
           "mapping": {
             "properties": {
-              "run": "job-defaults-run"
+              "run": "composite-defaults-run"
             }
           }
         },
-        "job-defaults-run": {
+        "composite-defaults-run": {
           "context": [
+            "inputs",
             "github",
             "strategy",
             "matrix",

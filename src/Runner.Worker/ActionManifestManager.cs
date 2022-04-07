@@ -491,7 +491,7 @@ namespace GitHub.Runner.Worker
                             InitCondition = "always()",
                             CleanupCondition = "always()",
                             Outputs = outputs,
-                            JobDefaults = defaultsToken,
+                            CompositeDefaults = defaultsToken,
                         };
                     }
                 }

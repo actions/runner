@@ -8,6 +8,7 @@ using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Worker;
 using Moq;
 using Xunit;
+using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using Pipelines = GitHub.DistributedTask.Pipelines;
 
 namespace GitHub.Runner.Common.Tests.Worker
@@ -89,6 +90,63 @@ namespace GitHub.Runner.Common.Tests.Worker
                 jobServerQueue.Verify(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.Is<TimelineRecord>(t => t.Issues.Where(i => i.Type == IssueType.Warning).Count() == 10)), Times.AtLeastOnce);
             }
         }
+
+        [Fact]
+        [Trait("Level", "L0")]
+        [Trait("Category", "Worker")]
+        public void ApplyContinueOnError_CheckResultAndOutcome()
+        {
+            using (TestHostContext hc = CreateTestContext())
+            {
+
+                // Arrange: Create a job request message.
+                TaskOrchestrationPlanReference plan = new TaskOrchestrationPlanReference();
+                TimelineReference timeline = new TimelineReference();
+                Guid jobId = Guid.NewGuid();
+                string jobName = "some job name";
+                var jobRequest = new Pipelines.AgentJobRequestMessage(plan, timeline, jobId, jobName, jobName, null, null, null, new Dictionary<string, VariableValue>(), new List<MaskHint>(), new Pipelines.JobResources(), new Pipelines.ContextData.DictionaryContextData(), new Pipelines.WorkspaceOptions(), new List<Pipelines.ActionStep>(), null, null, null, null);
+                jobRequest.Resources.Repositories.Add(new Pipelines.RepositoryResource()
+                {
+                    Alias = Pipelines.PipelineConstants.SelfAlias,
+                    Id = "github",
+                    Version = "sha1"
+                });
+                jobRequest.ContextData["github"] = new Pipelines.ContextData.DictionaryContextData();
+                jobRequest.Variables["ACTIONS_STEP_DEBUG"] = "true";
+
+                // Arrange: Setup the paging logger.
+                var pagingLogger = new Mock<IPagingLogger>();
+                var jobServerQueue = new Mock<IJobServerQueue>();
+                jobServerQueue.Setup(x => x.QueueTimelineRecordUpdate(It.IsAny<Guid>(), It.IsAny<TimelineRecord>()));
+                jobServerQueue.Setup(x => x.QueueWebConsoleLine(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<long>())).Callback((Guid id, string msg, long? lineNumber) => { hc.GetTrace().Info(msg); });
+
+                hc.EnqueueInstance(pagingLogger.Object);
+                hc.SetSingleton(jobServerQueue.Object);
+
+                var ec = new Runner.Worker.ExecutionContext();
+                ec.Initialize(hc);
+
+                // Act.
+                ec.InitializeJob(jobRequest, CancellationToken.None);
+
+                foreach (var tc in new List<(TemplateToken token, TaskResult result, TaskResult? expectedResult, TaskResult? expectedOutcome)> {
+                (token: new BooleanToken(null, null, null, true), result: TaskResult.Failed, expectedResult: TaskResult.Succeeded, expectedOutcome: TaskResult.Failed),
+                (token: new BooleanToken(null, null, null, true), result: TaskResult.Succeeded, expectedResult: TaskResult.Succeeded, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, true), result: TaskResult.Canceled, expectedResult: TaskResult.Canceled, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, false), result: TaskResult.Failed, expectedResult: TaskResult.Failed, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, false), result: TaskResult.Succeeded, expectedResult: TaskResult.Succeeded, expectedOutcome: null),
+                (token: new BooleanToken(null, null, null, false), result: TaskResult.Canceled, expectedResult: TaskResult.Canceled, expectedOutcome: null),
+            })
+                {
+                    ec.Result = tc.result;
+                    ec.Outcome = null;
+                    ec.ApplyContinueOnError(tc.token);
+                    Assert.Equal(ec.Result, tc.expectedResult);
+                    Assert.Equal(ec.Outcome, tc.expectedOutcome);
+                }
+            }
+        }
+
 
         [Fact]
         [Trait("Level", "L0")]

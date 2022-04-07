@@ -66,15 +66,25 @@ namespace GitHub.Runner.Worker.Handlers
             bool validateShellOnHost = !(StepHost is ContainerStepHost);
             string prependPath = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
             string shell = null;
+
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
-                // TODO: figure out how defaults interact with template later
-                // for now, we won't check job.defaults if we are inside a template.
-                if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
                 {
-                    runDefaults.TryGetValue("shell", out shell);
+                    if (runCompositeDefaults.TryGetValue("shell", out shell))
+                    {
+                        ExecutionContext.Debug("Overwrite 'shell' base on composite defaults.");
+                    }
+                }
+                else if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                {
+                    if (runDefaults.TryGetValue("shell", out shell))
+                    {
+                        ExecutionContext.Debug("Overwrite 'shell' base on job defaults.");
+                    }
                 }
             }
+
             if (string.IsNullOrEmpty(shell))
             {
 #if OS_WINDOWS
@@ -153,7 +163,15 @@ namespace GitHub.Runner.Worker.Handlers
             string workingDirectory = null;
             if (!Inputs.TryGetValue("workingDirectory", out workingDirectory))
             {
-                if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                // Don't use job level working directories for hooks
+                if (githubContext.ContainsKey("action_path") && ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
+                {
+                    if (runCompositeDefaults.TryGetValue("working-directory", out workingDirectory))
+                    {
+                        ExecutionContext.Debug("Overwrite 'working-directory' base on composite defaults.");
+                    }
+                }
+                else if (IsActionStep && string.IsNullOrEmpty(ExecutionContext.ScopeName) && ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("working-directory", out workingDirectory))
                     {
@@ -171,7 +189,14 @@ namespace GitHub.Runner.Worker.Handlers
             string shell = null;
             if (!Inputs.TryGetValue("shell", out shell) || string.IsNullOrEmpty(shell))
             {
-                if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
+                if (githubContext.ContainsKey("action_path") && ExecutionContext.Global.CompositeDefaults.TryGetValue("run", out var runCompositeDefaults))
+                {
+                    if (runCompositeDefaults.TryGetValue("shell", out shell))
+                    {
+                        ExecutionContext.Debug("Overwrite 'shell' base on composite defaults.");
+                    }
+                }
+                else if (ExecutionContext.Global.JobDefaults.TryGetValue("run", out var runDefaults))
                 {
                     if (runDefaults.TryGetValue("shell", out shell))
                     {
