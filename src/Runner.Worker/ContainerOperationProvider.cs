@@ -111,7 +111,7 @@ namespace GitHub.Runner.Worker
             List<ContainerInfo> containers = data as List<ContainerInfo>;
             ArgUtil.NotNull(containers, nameof(containers));
             
-            if (!FeatureFlagManager.IsHookFeatureEnabled()) 
+            if (FeatureFlagManager.IsHookFeatureEnabled()) 
             {
                 await _containerHookManager.CleanupJobAsync(executionContext, containers);
                 return;

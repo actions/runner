@@ -30,7 +30,9 @@ namespace GitHub.Runner.Worker.Container
 
             var hookIndexPath = HostContext.GetDirectory(WellKnownDirectory.ContainerHooks);
             var responsePath = $"{hookIndexPath}/response.json";
-            using (StreamWriter w = File.AppendText(responsePath)){ }
+            using (StreamWriter w = File.AppendText(responsePath)) { } // create if not file exists
+            var jobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault();
+            var serviceContainers = containers.Where(c => c.IsJobContainer == false).ToList();
 
             var meta = new ContainerHookMeta
             {
@@ -38,11 +40,10 @@ namespace GitHub.Runner.Worker.Container
                 ResponseFile = responsePath,
                 Args = new ContainerHookArgs
                 {
-                    JobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault(),
-                    ServiceContainers = containers.Where(c => c.IsJobContainer == false).ToList()
+                    JobContainer = jobContainer.GetHookContainer(),
+                    Services = serviceContainers.Select(c => c.GetHookContainer()).ToList(),
                 }
             };
-
             var exitCode = await ExecuteHookScript(context, GetHookIndexPath(), meta);
             if (exitCode != 0)
             {
@@ -51,15 +52,37 @@ namespace GitHub.Runner.Worker.Container
 
             var response = JsonUtility.FromString<ContainerHookResponse>(await File.ReadAllTextAsync(responsePath));
             File.Delete(responsePath);
-            var containerId = response.Context.Container.Id;
-            var containerNetwork = response.Context.Container.Network;
 
-            context.JobContext.Container["id"] = new StringContextData(containerId);
-            context.JobContext.Container["network"] = new StringContextData(containerNetwork);
-            var jc = containers.Where(c => c.IsJobContainer).FirstOrDefault();
-            jc.ContainerId = containerId;
-            jc.ContainerNetwork = containerNetwork;
-            // context.JobContext["state"] = new StringContextData(File.ReadAllText(responsePath));
+            context.JobContext.Container["id"] = new StringContextData(response.Context.Container.Id);
+            jobContainer.ContainerId = response.Context.Container.Id;
+            context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
+            jobContainer.ContainerNetwork = response.Context.Container.Network;
+            // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
+            // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
+            // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
+
+            for (var i = 0; i < response.Context.Services.Count; i++)
+            {
+                var container = response.Context.Services[i]; // TODO: Confirm that the order is stable
+                var containerInfo = serviceContainers[i];
+                containerInfo.ContainerId = container.Id;
+                containerInfo.ContainerNetwork = container.Network;
+                var service = new DictionaryContextData()
+                {
+                    ["id"] = new StringContextData(container.Id),
+                    ["ports"] = new DictionaryContextData(),
+                    ["network"] = new StringContextData(container.Network)
+                };
+
+                // TODO: workout port mappings + format
+                // foreach (var portMapping in containerInfo.UserPortMappings)
+                // {
+                //     // TODO: currently the format is ports["80:8080"] = "80:8080", fix this?
+                //     (service["ports"] as DictionaryContextData)[$"{portMapping.Key}:{portMapping.Value}"] = new StringContextData($"{portMapping.Key}:{portMapping.Value}");
+                // }
+                context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
+            }
+
             return 0;
         }
 
@@ -69,14 +92,15 @@ namespace GitHub.Runner.Worker.Container
 
             var meta = new ContainerHookMeta
             {
-                Command = GetHookCommand(nameof(CleanupJobAsync)),
+                Command = "cleanup_job", // GetHookCommand(nameof(CleanupJobAsync)),
                 ResponseFile = "response.json",
                 Args = new ContainerHookArgs
                 {
-                    // Containers = containers.Select(c => new ContainerHookContainer { ContainerId = c.ContainerId, ContainerNetwork = c.ContainerNetwork }).ToList()
+                    JobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault().GetHookContainer(),
+                    Services = containers.Where(c => c.IsJobContainer == false).Select(c => c.GetHookContainer()).ToList(),
+                    Network = containers.Where(c => !string.IsNullOrEmpty(c.ContainerNetwork)).FirstOrDefault()?.ContainerNetwork,
                 }
             };
-            // TODO: figure out hook args
             return await ExecuteHookScript(context, GetHookIndexPath(), meta);
         }
 

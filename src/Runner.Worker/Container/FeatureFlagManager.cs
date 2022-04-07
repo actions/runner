@@ -5,7 +5,8 @@
         public static bool IsHookFeatureEnabled() 
         {
             // Placeholder method
-            return true;
+            var x = true;
+            return x;
         }
     }
 }

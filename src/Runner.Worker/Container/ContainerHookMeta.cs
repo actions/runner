@@ -10,8 +10,9 @@ namespace GitHub.Runner.Worker.Container
     }
     public class ContainerHookArgs
     {
-        public ContainerInfo JobContainer { get; set; }
-        public List<ContainerInfo> ServiceContainers { get; set; }
+        public HookContainer JobContainer { get; set; }
+        public IList<HookContainer> Services { get; set; }
+        public string Network { get; set; }
     }
 
     public class ContainerHookResponse
@@ -22,12 +23,7 @@ namespace GitHub.Runner.Worker.Container
     public class Context
     {
         public HookContainer Container { get; set; }
-    }
-
-    public class HookContainer
-    {
-        public string Id { get; set; }
-        public string Network { get; set; }
+        public IList<HookContainer> Services { get; set; }
     }
 
     public class State : Dictionary<string, string>
@@ -35,5 +31,14 @@ namespace GitHub.Runner.Worker.Container
         public ContainerInfo JobContainer { get; set; }
         public ContainerInfo Services { get; set; }
         public Dictionary<string, string> HookCache { get; set; } // For 
+
+    }
+
+    public static class ContainerInfoExtensions
+    {
+        public static HookContainer GetHookContainer(this ContainerInfo containerInfo)
+        {
+            return new HookContainer(containerInfo);
+        }
     }
 }
