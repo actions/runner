@@ -352,49 +352,50 @@ namespace GitHub.Runner.Listener
                 TaskCompletionSource<int> firstJobRequestRenewed = new TaskCompletionSource<int>();
                 var notification = HostContext.GetService<IJobNotification>();
 
-                int retryCount = 0;
-                while (retryCount < 3)
+                // lock renew cancellation token.
+                using (var lockRenewalTokenSource = new CancellationTokenSource())
                 {
-                    // lock renew cancellation token.
-                    using (var lockRenewalTokenSource = new CancellationTokenSource())
-                    using (var workerProcessCancelTokenSource = new CancellationTokenSource())
+                    long requestId = message.RequestId;
+                    Guid lockToken = Guid.Empty; // lockToken has never been used, keep this here of compat
+
+                    // start renew job request
+                    Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
+                    Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
+
+                    // wait till first renew succeed or job request is cancelled
+                    // not even start worker if the first renew fail
+                    await Task.WhenAny(firstJobRequestRenewed.Task, renewJobRequest, Task.Delay(-1, jobRequestCancellationToken));
+
+                    if (renewJobRequest.IsCompleted)
                     {
-                        long requestId = message.RequestId;
-                        Guid lockToken = Guid.Empty; // lockToken has never been used, keep this here of compat
+                        // renew job request task complete means we run out of retry for the first job request renew.
+                        Trace.Info($"Unable to renew job request for job {message.JobId} for the first time, stop dispatching job to worker.");
+                        return;
+                    }
 
-                        // start renew job request
-                        Trace.Info($"Start renew job request {requestId} for job {message.JobId}.");
-                        Task renewJobRequest = RenewJobRequestAsync(_poolId, requestId, lockToken, orchestrationId, firstJobRequestRenewed, lockRenewalTokenSource.Token);
+                    if (jobRequestCancellationToken.IsCancellationRequested)
+                    {
+                        Trace.Info($"Stop renew job request for job {message.JobId}.");
+                        // stop renew lock
+                        lockRenewalTokenSource.Cancel();
+                        // renew job request should never blows up.
+                        await renewJobRequest;
 
-                        // wait till first renew succeed or job request is cancelled
-                        // not even start worker if the first renew fail
-                        await Task.WhenAny(firstJobRequestRenewed.Task, renewJobRequest, Task.Delay(-1, jobRequestCancellationToken));
+                        // complete job request with result Cancelled
+                        await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
+                        return;
+                    }
 
-                        if (renewJobRequest.IsCompleted)
-                        {
-                            // renew job request task complete means we run out of retry for the first job request renew.
-                            Trace.Info($"Unable to renew job request for job {message.JobId} for the first time, stop dispatching job to worker.");
-                            return;
-                        }
+                    HostContext.WritePerfCounter($"JobRequestRenewed_{requestId.ToString()}");
 
-                        if (jobRequestCancellationToken.IsCancellationRequested)
-                        {
-                            Trace.Info($"Stop renew job request for job {message.JobId}.");
-                            // stop renew lock
-                            lockRenewalTokenSource.Cancel();
-                            // renew job request should never blows up.
-                            await renewJobRequest;
+                    Task<int> workerProcessTask = null;
+                    object _outputLock = new object();
+                    List<string> workerOutput = new List<string>();
 
-                            // complete job request with result Cancelled
-                            await CompleteJobRequestAsync(_poolId, message, lockToken, TaskResult.Canceled);
-                            return;
-                        }
-
-                        HostContext.WritePerfCounter($"JobRequestRenewed_{requestId.ToString()}");
-
-                        Task<int> workerProcessTask = null;
-                        object _outputLock = new object();
-                        List<string> workerOutput = new List<string>();
+                    int retryCount = 0;
+                    while (retryCount < 3)
+                    {
+                        using (var workerProcessCancelTokenSource = new CancellationTokenSource())
                         using (var processChannel = HostContext.CreateService<IProcessChannel>())
                         using (var processInvoker = HostContext.CreateService<IProcessInvoker>())
                         {
@@ -497,6 +498,10 @@ namespace GitHub.Runner.Listener
                                 }
                                 else
                                 {
+                                    lock (_outputLock)
+                                    {
+                                        workerOutput.Clear();
+                                    }
                                     var backOff = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
                                     Trace.Info($"Retrying worker invocation in {backOff} seconds");
                                     await Task.Delay(backOff);
