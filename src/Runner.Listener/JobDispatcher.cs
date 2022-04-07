@@ -369,7 +369,7 @@ namespace GitHub.Runner.Listener
                     additionalInfo += $"(workflow \"{workflowName}\"";
                     if (!string.IsNullOrEmpty(repositoryName))
                     {
-                        additionalInfo += $" in repository \"{repositoryName}\")";
+                        additionalInfo += $" in repository \"{Pipelines.Validation.NameValidation.Sanitize(repositoryName, allowHyphens: true, allowSlashes: true)}\")";
                     }
                     else
                     {
