@@ -308,12 +308,9 @@ namespace GitHub.Runner.Worker
             return didFullyEvaluate;
         }
 
-        private Dictionary<String, String> EvaluateStepInputs(
-            IStepHost stepHost
-        )
+        private Dictionary<String, String> EvaluateStepInputs(IStepHost stepHost)
         {
-            DictionaryContextData expressionValues = stepHost.GetExpressionValues(ExecutionContext);
-            // expression values of github = github dictionary
+            DictionaryContextData expressionValues = ExecutionContext.GetExpressionValues(stepHost);
             var templateEvaluator = ExecutionContext.ToPipelineTemplateEvaluator();
             var inputs = templateEvaluator.EvaluateStepInputs(Action.Inputs, expressionValues, ExecutionContext.ExpressionFunctions);
 

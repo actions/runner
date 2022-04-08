@@ -30,7 +30,6 @@ namespace GitHub.Runner.Worker.Handlers
                                bool inheritConsoleHandler,
                                CancellationToken cancellationToken);
 
-        DictionaryContextData GetExpressionValues(IExecutionContext executionContext);
     }
 
     [ServiceLocator(Default = typeof(ContainerStepHost))]
@@ -86,11 +85,6 @@ namespace GitHub.Runner.Worker.Handlers
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
-        }
-
-        public DictionaryContextData GetExpressionValues(IExecutionContext executionContext)
-        {
-            return executionContext.ExpressionValues;
         }
     }
 
@@ -240,28 +234,6 @@ namespace GitHub.Runner.Worker.Handlers
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
-        }
-
-        public DictionaryContextData GetExpressionValues(IExecutionContext executionContext)
-        {
-            var expressionValues = executionContext.ExpressionValues.Clone() as DictionaryContextData;
-            UpdatePathsInExpressionValues("github", expressionValues);
-            UpdatePathsInExpressionValues("runner", expressionValues);
-            return expressionValues;
-        }
-
-        private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues) 
-        {
-            var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
-            foreach (var key in dict.Keys.ToList())
-            {
-                var value = dict[key]?.ToString();
-                if (!string.IsNullOrEmpty(value))
-                {
-                    dict[key] = new StringContextData(ResolvePathForStepHost(value));
-                }
-            }
-            expressionValues[contextName] = dict;
         }
     }
 }
