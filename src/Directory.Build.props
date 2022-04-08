@@ -47,6 +47,11 @@
     <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
   </PropertyGroup>
 
+  <!-- Set USE_BROKER vars -->
+  <PropertyGroup Condition="'$(USE_BROKER)' == 'true'">
+    <DefineConstants>$(DefineConstants);USE_BROKER</DefineConstants>
+  </PropertyGroup>
+
   <!-- Set Treat tarnings as errors -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
