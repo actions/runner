@@ -5,45 +5,39 @@ using Newtonsoft.Json.Converters;
 
 namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
-    public class ContainerHookInput
+    public class HookInput
     {
-        public ContainerHookCommand Command { get; set; }
+        public HookCommand Command { get; set; }
         public string ResponseFile { get; set; }
-        public ContainerHookArgs Args { get; set; }
+        public HookArgs Args { get; set; }
+        public dynamic State { get; set; }
     }
 
     [JsonConverter(typeof(StringEnumConverter))]
-    public enum ContainerHookCommand
+    public enum HookCommand
     {
         [EnumMember(Value = "prepare_job")]
         PrepareJob,
         [EnumMember(Value = "cleanup_job")]
         CleanupJob,
     }
-    public class ContainerHookArgs
+    public class HookArgs
     {
         public HookContainer JobContainer { get; set; }
         public IList<HookContainer> Services { get; set; }
         public string Network { get; set; }
     }
 
-    public class ContainerHookResponse
+    public class HookResponse
     {
-        public Context Context { get; set; }
+        public ResponseContext Context { get; set; }
+        public dynamic State { get; set; }
     }
 
-    public class Context
+    public class ResponseContext
     {
         public HookContainer Container { get; set; }
         public IList<HookContainer> Services { get; set; }
-    }
-
-    public class State : Dictionary<string, string>
-    {
-        public ContainerInfo JobContainer { get; set; }
-        public ContainerInfo Services { get; set; }
-        public Dictionary<string, string> HookCache { get; set; } // For 
-
     }
 
     public static class ContainerInfoExtensions

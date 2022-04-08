@@ -24,7 +24,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
 
     public class ContainerHookManager : RunnerService, IContainerHookManager
     {
-        private const string ResponseFolderName = "hook_responses";
+        private const string ResponseFolderName = "_hook_responses";
         private string HookIndexPath;
         public override void Initialize(IHostContext hostContext)
         {
@@ -39,11 +39,11 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             var jobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault();
             var serviceContainers = containers.Where(c => c.IsJobContainer == false).ToList();
 
-            var input = new ContainerHookInput
+            var input = new HookInput
             {
-                Command = ContainerHookCommand.PrepareJob,
+                Command = HookCommand.PrepareJob,
                 ResponseFile = responsePath,
-                Args = new ContainerHookArgs
+                Args = new HookArgs
                 {
                     JobContainer = jobContainer.GetHookContainer(),
                     Services = serviceContainers.Select(c => c.GetHookContainer()).ToList(),
@@ -55,6 +55,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             jobContainer.ContainerId = response.Context.Container.Id;
             context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
             jobContainer.ContainerNetwork = response.Context.Container.Network;
+            context.JobContext["hook_state"] = new StringContextData(JsonUtility.ToString(response.State));
             // var configEnvFormat = "--format \"{{range .Config.Env}}{{println .}}{{end}}\"";
             // var containerEnv = await _dockerManager.DockerInspect(executionContext, container.ContainerId, configEnvFormat);
             // container.ContainerRuntimePath = DockerUtil.ParsePathFromConfigEnv(containerEnv);
@@ -87,16 +88,17 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             Trace.Entering();
 
             var responsePath = GenerateResponsePath();
-            var input = new ContainerHookInput
+            var input = new HookInput
             {
-                Command = ContainerHookCommand.CleanupJob,
+                Command = HookCommand.CleanupJob,
                 ResponseFile = responsePath,
-                Args = new ContainerHookArgs
+                Args = new HookArgs
                 {
                     JobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault().GetHookContainer(),
                     Services = containers.Where(c => c.IsJobContainer == false).Select(c => c.GetHookContainer()).ToList(),
                     Network = containers.Where(c => !string.IsNullOrEmpty(c.ContainerNetwork)).FirstOrDefault()?.ContainerNetwork,
-                }
+                },
+                State = JsonUtility.FromString<dynamic>(context.JobContext["hook_state"].ToString())                
             };
             var response = await ExecuteHookScript(context, input);
         }
@@ -115,7 +117,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
             throw new NotImplementedException();
         }
 
-        private async Task<ContainerHookResponse> ExecuteHookScript(IExecutionContext context, ContainerHookInput input)
+        private async Task<HookResponse> ExecuteHookScript(IExecutionContext context, HookInput input)
         {
             var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
@@ -146,7 +148,7 @@ namespace GitHub.Runner.Worker.Container.ContainerHooks
                 throw new Exception("Hook failed"); // TODO: better exception
             }
             
-            var response = IOUtil.LoadObject<ContainerHookResponse>(input.ResponseFile);
+            var response = IOUtil.LoadObject<HookResponse>(input.ResponseFile);
             IOUtil.DeleteFile(input.ResponseFile);
             return response;
         }
