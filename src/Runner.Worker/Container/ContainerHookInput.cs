@@ -1,12 +1,24 @@
 using System.Collections.Generic;
+using System.Runtime.Serialization;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace GitHub.Runner.Worker.Container
 {
-    public class ContainerHookMeta
+    public class ContainerHookInput
     {
-        public string Command { get; set; }
+        public ContainerHookCommand Command { get; set; }
         public string ResponseFile { get; set; }
         public ContainerHookArgs Args { get; set; }
+    }
+
+    [JsonConverter(typeof(StringEnumConverter))]
+    public enum ContainerHookCommand
+    {
+        [EnumMember(Value = "prepare_job")]
+        PrepareJob,
+        [EnumMember(Value = "cleanup_job")]
+        CleanupJob,
     }
     public class ContainerHookArgs
     {

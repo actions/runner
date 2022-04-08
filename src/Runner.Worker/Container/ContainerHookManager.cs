@@ -34,9 +34,9 @@ namespace GitHub.Runner.Worker.Container
             var jobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault();
             var serviceContainers = containers.Where(c => c.IsJobContainer == false).ToList();
 
-            var meta = new ContainerHookMeta
+            var meta = new ContainerHookInput
             {
-                Command = "prepare_job", // TODO: work out   GetHookCommand(nameof(PrepareJobAsync))
+                Command = ContainerHookCommand.PrepareJob,
                 ResponseFile = responsePath,
                 Args = new ContainerHookArgs
                 {
@@ -90,9 +90,9 @@ namespace GitHub.Runner.Worker.Container
         {
             Trace.Entering();
 
-            var meta = new ContainerHookMeta
+            var meta = new ContainerHookInput
             {
-                Command = "cleanup_job", // GetHookCommand(nameof(CleanupJobAsync)),
+                Command = ContainerHookCommand.CleanupJob,
                 ResponseFile = "response.json",
                 Args = new ContainerHookArgs
                 {
@@ -118,7 +118,7 @@ namespace GitHub.Runner.Worker.Container
             throw new NotImplementedException();
         }
 
-        private async Task<int> ExecuteHookScript(IExecutionContext context, string hookScriptPath, ContainerHookMeta args)
+        private async Task<int> ExecuteHookScript(IExecutionContext context, string hookScriptPath, ContainerHookInput args)
         {
             var scriptDirectory = Path.GetDirectoryName(hookScriptPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
