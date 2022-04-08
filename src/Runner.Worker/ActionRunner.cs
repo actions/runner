@@ -165,7 +165,6 @@ namespace GitHub.Runner.Worker
                 stepHost = containerStepHost;
             }
 
-
             // Setup File Command Manager
             var fileCommandManager = HostContext.CreateService<IFileCommandManager>();
             fileCommandManager.InitializeFiles(ExecutionContext, null);

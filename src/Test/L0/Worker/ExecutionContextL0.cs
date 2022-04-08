@@ -745,7 +745,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 containerInfo.AddPathTranslateMapping($"{source}/_work/_temp/_github_home", "/github/home");
                 containerInfo.AddPathTranslateMapping($"{source}/_work/_temp/_github_workflow", "/github/workflow");
 
-
                 foreach (var v in new List<string>() {
                     $"{source}/_work",
                     $"{source}/externals",
@@ -756,7 +755,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 {
                     containerInfo.MountVolumes.Add(new MountVolume(v, containerInfo.TranslateToContainerPath(v)));
                 };
-
 
                 var stepHost = new ContainerStepHost();
                 stepHost.Container = containerInfo;
@@ -794,7 +792,6 @@ namespace GitHub.Runner.Common.Tests.Worker
                 ec.ExpressionValues["github"] = inputGithubContext;
                 ec.ExpressionValues["runner"] = inputeRunnerContext;
 
-
                 var ecExpect = new Runner.Worker.ExecutionContext();
                 ecExpect.Initialize(hc);
                 var expectedGithubContext = new GitHubContext();
@@ -813,10 +810,8 @@ namespace GitHub.Runner.Common.Tests.Worker
                 expectedRunnerContext["temp"] = new StringContextData("/__w/_temp");
                 expectedRunnerContext["tool_cache"] = new StringContextData("/__w/_tool");
 
-
                 ecExpect.ExpressionValues["github"] = expectedGithubContext;
                 ecExpect.ExpressionValues["runner"] = expectedRunnerContext;
-
 
                 var translatedExpressionValues = ec.GetExpressionValues(stepHost);
 

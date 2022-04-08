@@ -29,7 +29,6 @@ namespace GitHub.Runner.Worker.Handlers
                                bool killProcessOnCancel,
                                bool inheritConsoleHandler,
                                CancellationToken cancellationToken);
-
     }
 
     [ServiceLocator(Default = typeof(ContainerStepHost))]
