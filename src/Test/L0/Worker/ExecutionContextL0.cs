@@ -794,6 +794,13 @@ namespace GitHub.Runner.Common.Tests.Worker
 
                 var ecExpect = new Runner.Worker.ExecutionContext();
                 ecExpect.Initialize(hc);
+
+                var expectedGithubEvent = new DictionaryContextData();
+                expectedGithubEvent["inputs"] = null;
+                expectedGithubEvent["ref"] = new StringContextData("refs/heads/main");
+                expectedGithubEvent["repository"] = new DictionaryContextData();
+                expectedGithubEvent["sender"] = new DictionaryContextData();
+                expectedGithubEvent["workflow"] = new StringContextData(".github/workflows/composite_step_host_translate.yaml");
                 var expectedGithubContext = new GitHubContext();
                 var expectedRunnerContext = new RunnerContext();
                 expectedGithubContext["action_path"] = new StringContextData("/__w/_actions/owner/composite/main");
@@ -806,7 +813,7 @@ namespace GitHub.Runner.Common.Tests.Worker
                 expectedGithubContext["run_id"] = new StringContextData("2033211332");
                 expectedGithubContext["workflow"] = new StringContextData("Name of Workflow");
                 expectedGithubContext["workspace"] = new StringContextData("/__w/step-order/step-order");
-                expectedGithubContext["event"] = githubEvent;
+                expectedGithubContext["event"] = expectedGithubEvent;
                 expectedRunnerContext["temp"] = new StringContextData("/__w/_temp");
                 expectedRunnerContext["tool_cache"] = new StringContextData("/__w/_tool");
 

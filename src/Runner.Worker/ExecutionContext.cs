@@ -110,8 +110,6 @@ namespace GitHub.Runner.Worker
         void UpdateGlobalStepsContext();
 
         void WriteWebhookPayload();
-
-        DictionaryContextData GetExpressionValues(IStepHost stepHost);
     }
 
     public sealed class ExecutionContext : RunnerService, IExecutionContext
@@ -1072,66 +1070,6 @@ namespace GitHub.Runner.Worker
             return CreateChild(newGuid, displayName, newGuid.ToString("N"), null, null, ActionRunStage.Post, intraActionState, _childTimelineRecordOrder - Root.PostJobSteps.Count, siblingScopeName: siblingScopeName);
         }
 
-        public DictionaryContextData GetExpressionValues(IStepHost stepHost)
-        {
-            if (stepHost is ContainerStepHost)
-            {
-
-                var expressionValues = ExpressionValues.Clone() as DictionaryContextData;
-                UpdatePathsInExpressionValues("github", expressionValues, stepHost);
-                UpdatePathsInExpressionValues("runner", expressionValues, stepHost);
-                return expressionValues;
-            }
-            else
-            {
-                return ExpressionValues.Clone() as DictionaryContextData;
-            }
-        }
-
-        private void UpdatePathsInExpressionValues(string contextName, DictionaryContextData expressionValues, IStepHost stepHost)
-        {
-            var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
-            ResolvePathsInExpressionValuesDictionary(dict, stepHost);
-            expressionValues[contextName] = dict;
-        }
-
-        private void ResolvePathsInExpressionValuesDictionary(DictionaryContextData dict, IStepHost stepHost)
-        {
-            foreach (var key in dict.Keys.ToList())
-            {
-                if (dict[key] is StringContextData)
-                {
-                    var value = dict[key].ToString();
-                    if (!string.IsNullOrEmpty(value))
-                    {
-                        dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
-                    }
-                }
-                else if (dict[key] is DictionaryContextData)
-                {
-                    var innerDict = dict[key].AssertDictionary("expected dictionary");
-                    ResolvePathsInExpressionValuesDictionary(innerDict, stepHost);
-                    var updatedDict = new DictionaryContextData();
-                    foreach (var k in innerDict.Keys.ToList())
-                    {
-                        updatedDict[k] = innerDict[k];
-                    }
-                    dict[key] = updatedDict;
-                }
-                else if (dict[key] is CaseSensitiveDictionaryContextData)
-                {
-                    var innerDict = dict[key].AssertDictionary("expected dictionary");
-                    ResolvePathsInExpressionValuesDictionary(innerDict, stepHost);
-                    var updatedDict = new DictionaryContextData();
-                    foreach (var k in innerDict.Keys.ToList())
-                    {
-                        updatedDict[k] = innerDict[k];
-                    }
-                    dict[key] = updatedDict;
-                }
-            }
-        }
-        
         public void ApplyContinueOnError(TemplateToken continueOnErrorToken)
         {
             if (Result != TaskResult.Failed)
@@ -1254,6 +1192,66 @@ namespace GitHub.Runner.Worker
         public static ObjectTemplating.ITraceWriter ToTemplateTraceWriter(this IExecutionContext context)
         {
             return new TemplateTraceWriter(context);
+        }
+
+        public static DictionaryContextData GetExpressionValues(this IExecutionContext context, IStepHost stepHost)
+        {
+            if (stepHost is ContainerStepHost)
+            {
+
+                var expressionValues = context.ExpressionValues.Clone() as DictionaryContextData;
+                context.UpdatePathsInExpressionValues("github", expressionValues, stepHost);
+                context.UpdatePathsInExpressionValues("runner", expressionValues, stepHost);
+                return expressionValues;
+            }
+            else
+            {
+                return context.ExpressionValues.Clone() as DictionaryContextData;
+            }
+        }
+
+        private static void UpdatePathsInExpressionValues(this IExecutionContext context, string contextName, DictionaryContextData expressionValues, IStepHost stepHost)
+        {
+            var dict = expressionValues[contextName].AssertDictionary($"expected context {contextName} to be a dictionary");
+            context.ResolvePathsInExpressionValuesDictionary(dict, stepHost);
+            expressionValues[contextName] = dict;
+        }
+
+        private static void ResolvePathsInExpressionValuesDictionary(this IExecutionContext context, DictionaryContextData dict, IStepHost stepHost)
+        {
+            foreach (var key in dict.Keys.ToList())
+            {
+                if (dict[key] is StringContextData)
+                {
+                    var value = dict[key].ToString();
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        dict[key] = new StringContextData(stepHost.ResolvePathForStepHost(value));
+                    }
+                }
+                else if (dict[key] is DictionaryContextData)
+                {
+                    var innerDict = dict[key].AssertDictionary("expected dictionary");
+                    context.ResolvePathsInExpressionValuesDictionary(innerDict, stepHost);
+                    var updatedDict = new DictionaryContextData();
+                    foreach (var k in innerDict.Keys.ToList())
+                    {
+                        updatedDict[k] = innerDict[k];
+                    }
+                    dict[key] = updatedDict;
+                }
+                else if (dict[key] is CaseSensitiveDictionaryContextData)
+                {
+                    var innerDict = dict[key].AssertDictionary("expected dictionary");
+                    context.ResolvePathsInExpressionValuesDictionary(innerDict, stepHost);
+                    var updatedDict = new CaseSensitiveDictionaryContextData();
+                    foreach (var k in innerDict.Keys.ToList())
+                    {
+                        updatedDict[k] = innerDict[k];
+                    }
+                    dict[key] = updatedDict;
+                }
+            }
         }
     }
 
