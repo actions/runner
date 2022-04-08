@@ -147,12 +147,7 @@ namespace GitHub.Runner.Worker.Container
 
         private string GetHookIndexPath()
         {
-            return Path.Combine(HostContext.GetDirectory(WellKnownDirectory.ContainerHooks), "index.js");
-        }
-
-        private static string GetHookCommand(string commandName)
-        {
-            return commandName.ToLower().Replace("async", "");
+            return Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath);
         }
     }
 }
