@@ -11,7 +11,7 @@ using GitHub.Runner.Sdk;
 using GitHub.Runner.Worker.Handlers;
 using GitHub.Services.WebApi;
 
-namespace GitHub.Runner.Worker.Container
+namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
     [ServiceLocator(Default = typeof(ContainerHookManager))]
     public interface IContainerHookManager : IRunnerService

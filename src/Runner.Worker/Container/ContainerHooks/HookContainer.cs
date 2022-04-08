@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GitHub.Runner.Worker.Container
+namespace GitHub.Runner.Worker.Container.ContainerHooks
 {
     public class HookContainer
     {
