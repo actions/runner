@@ -203,8 +203,10 @@ namespace GitHub.Runner.Worker.Handlers
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
                                             bool inheritConsoleHandler,
+                                            string standardInInput,
                                             CancellationToken cancellationToken)
         {
+            // Streaming into stdin is currently not supported on containers, fallback to execute without stdin
             return await ExecuteAsync(workingDirectory,
                          fileName,
                           arguments,
@@ -213,7 +215,6 @@ namespace GitHub.Runner.Worker.Handlers
                           outputEncoding,
                           killProcessOnCancel,
                           inheritConsoleHandler,
-                          null,
                           cancellationToken);
         }
 
@@ -225,7 +226,6 @@ namespace GitHub.Runner.Worker.Handlers
                                             Encoding outputEncoding,
                                             bool killProcessOnCancel,
                                             bool inheritConsoleHandler,
-                                            string standardInInput,
                                             CancellationToken cancellationToken)
         {
             // make sure container exist.
@@ -284,13 +284,6 @@ namespace GitHub.Runner.Worker.Handlers
                 // Let .NET choose the default.
                 outputEncoding = null;
 #endif
-
-                Channel<string> redirectStandardIn = null;
-                if (standardInInput != null)
-                {
-                    redirectStandardIn = Channel.CreateUnbounded<string>(new UnboundedChannelOptions() { SingleReader = true, SingleWriter = true });
-                    redirectStandardIn.Writer.TryWrite(standardInInput);
-                }
                 return await processInvoker.ExecuteAsync(workingDirectory: HostContext.GetDirectory(WellKnownDirectory.Work),
                                                          fileName: dockerClientPath,
                                                          arguments: dockerCommandArgstring,
@@ -298,7 +291,7 @@ namespace GitHub.Runner.Worker.Handlers
                                                          requireExitCodeZero: requireExitCodeZero,
                                                          outputEncoding: outputEncoding,
                                                          killProcessOnCancel: killProcessOnCancel,
-                                                         redirectStandardIn: redirectStandardIn,
+                                                         redirectStandardIn: null,
                                                          inheritConsoleHandler: inheritConsoleHandler,
                                                          cancellationToken: cancellationToken);
             }
