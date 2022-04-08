@@ -424,6 +424,12 @@ namespace GitHub.Runner.Sdk
             throw new NotSupportedException($"Unable to validate execute permissions for directory '{directory}'. Exceeded maximum iterations.");
         }
 
+        public static void CreateEmptyFile(string path)
+        {
+            DeleteFile(path);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.Create(path).Dispose();
+        }
         /// <summary>
         /// Recursively enumerates a directory without following directory reparse points.
         /// </summary>

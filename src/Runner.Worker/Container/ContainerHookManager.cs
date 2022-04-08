@@ -16,25 +16,30 @@ namespace GitHub.Runner.Worker.Container
     [ServiceLocator(Default = typeof(ContainerHookManager))]
     public interface IContainerHookManager : IRunnerService
     {
-        Task<int> PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task<int> CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
-        Task<int> ContainerStepAsync(IExecutionContext context);
-        Task<int> RunScriptStepAsync(IExecutionContext context);
+        Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers);
+        Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers);
+        Task ContainerStepAsync(IExecutionContext context);
+        Task RunScriptStepAsync(IExecutionContext context);
     }
 
     public class ContainerHookManager : RunnerService, IContainerHookManager
     {
-        public async Task<int> PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
+        private const string ResponseFolderName = "hook_responses";
+        private string HookIndexPath;
+        public override void Initialize(IHostContext hostContext)
+        {
+            base.Initialize(hostContext);
+            HookIndexPath = $"{Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath)}";
+        }
+        
+        public async Task PrepareJobAsync(IExecutionContext context, List<ContainerInfo> containers)
         {
             Trace.Entering();
-
-            var hookIndexPath = HostContext.GetDirectory(WellKnownDirectory.ContainerHooks);
-            var responsePath = $"{hookIndexPath}/response.json";
-            using (StreamWriter w = File.AppendText(responsePath)) { } // create if not file exists
+            var responsePath = GenerateResponsePath();
             var jobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault();
             var serviceContainers = containers.Where(c => c.IsJobContainer == false).ToList();
 
-            var meta = new ContainerHookInput
+            var input = new ContainerHookInput
             {
                 Command = ContainerHookCommand.PrepareJob,
                 ResponseFile = responsePath,
@@ -43,16 +48,9 @@ namespace GitHub.Runner.Worker.Container
                     JobContainer = jobContainer.GetHookContainer(),
                     Services = serviceContainers.Select(c => c.GetHookContainer()).ToList(),
                 }
-            };
-            var exitCode = await ExecuteHookScript(context, GetHookIndexPath(), meta);
-            if (exitCode != 0)
-            {
-                throw new Exception("Hook failed"); // TODO: fail or fallback?
-            }
+            };            
 
-            var response = JsonUtility.FromString<ContainerHookResponse>(await File.ReadAllTextAsync(responsePath));
-            File.Delete(responsePath);
-
+            var response = await ExecuteHookScript(context, input);
             context.JobContext.Container["id"] = new StringContextData(response.Context.Container.Id);
             jobContainer.ContainerId = response.Context.Container.Id;
             context.JobContext.Container["network"] = new StringContextData(response.Context.Container.Network);
@@ -63,7 +61,7 @@ namespace GitHub.Runner.Worker.Container
 
             for (var i = 0; i < response.Context.Services.Count; i++)
             {
-                var container = response.Context.Services[i]; // TODO: Confirm that the order is stable
+                var container = response.Context.Services[i]; // TODO: Confirm that the order response.Context.Services is the same as serviceContainers
                 var containerInfo = serviceContainers[i];
                 containerInfo.ContainerId = container.Id;
                 containerInfo.ContainerNetwork = container.Network;
@@ -82,18 +80,17 @@ namespace GitHub.Runner.Worker.Container
                 // }
                 context.JobContext.Services[containerInfo.ContainerNetworkAlias] = service;
             }
-
-            return 0;
         }
 
-        public async Task<int> CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
+        public async Task CleanupJobAsync(IExecutionContext context, List<ContainerInfo> containers)
         {
             Trace.Entering();
 
-            var meta = new ContainerHookInput
+            var responsePath = GenerateResponsePath();
+            var input = new ContainerHookInput
             {
                 Command = ContainerHookCommand.CleanupJob,
-                ResponseFile = "response.json",
+                ResponseFile = responsePath,
                 Args = new ContainerHookArgs
                 {
                     JobContainer = containers.Where(c => c.IsJobContainer).FirstOrDefault().GetHookContainer(),
@@ -101,31 +98,31 @@ namespace GitHub.Runner.Worker.Container
                     Network = containers.Where(c => !string.IsNullOrEmpty(c.ContainerNetwork)).FirstOrDefault()?.ContainerNetwork,
                 }
             };
-            return await ExecuteHookScript(context, GetHookIndexPath(), meta);
+            var response = await ExecuteHookScript(context, input);
         }
 
-        public async Task<int> ContainerStepAsync(IExecutionContext context)
+        public async Task ContainerStepAsync(IExecutionContext context)
         {
             Trace.Entering();
             await Task.FromResult(0);
             throw new NotImplementedException();
         }
 
-        public async Task<int> RunScriptStepAsync(IExecutionContext context)
+        public async Task RunScriptStepAsync(IExecutionContext context)
         {
             Trace.Entering();
             await Task.FromResult(0);
             throw new NotImplementedException();
         }
 
-        private async Task<int> ExecuteHookScript(IExecutionContext context, string hookScriptPath, ContainerHookInput args)
+        private async Task<ContainerHookResponse> ExecuteHookScript(IExecutionContext context, ContainerHookInput input)
         {
-            var scriptDirectory = Path.GetDirectoryName(hookScriptPath);
+            var scriptDirectory = Path.GetDirectoryName(HookIndexPath);
             var stepHost = HostContext.CreateService<IDefaultStepHost>();
             Dictionary<string, string> inputs = new()
             {
-                ["standardInInput"] = JsonUtility.ToString(args),
-                ["path"] = hookScriptPath,
+                ["standardInInput"] = JsonUtility.ToString(input),
+                ["path"] = HookIndexPath,
                 ["shell"] = Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Externals), NodeUtil.GetInternalNodeVersion(), "bin", $"node{IOUtil.ExeExtension}") + " {0}" // TODO: fix hardcoded node path
             };
 
@@ -141,13 +138,22 @@ namespace GitHub.Runner.Worker.Container
                             actionDirectory: scriptDirectory,
                             localActionContainerSetupSteps: null) as ScriptHandler;
             handler.PrepareExecution(ActionRunStage.Pre); // TODO: find out stage, we only use Start in pre, but double check
+
+            IOUtil.CreateEmptyFile(input.ResponseFile);
             await handler.RunAsync(ActionRunStage.Pre);
-            return handler.ExecutionContext.Result == TaskResult.Failed || handler.ExecutionContext.Result == TaskResult.Canceled ? 1 : 0;
+            if (handler.ExecutionContext.Result == TaskResult.Failed)
+            {
+                throw new Exception("Hook failed"); // TODO: better exception
+            }
+            
+            var response = IOUtil.LoadObject<ContainerHookResponse>(input.ResponseFile);
+            IOUtil.DeleteFile(input.ResponseFile);
+            return response;
         }
 
-        private string GetHookIndexPath()
+        private string GenerateResponsePath()
         {
-            return Environment.GetEnvironmentVariable(Constants.Hooks.ContainerHooksPath);
+            return $"{Path.Combine(HostContext.GetDirectory(WellKnownDirectory.Temp), ResponseFolderName)}/{Guid.NewGuid()}.json";
         }
     }
 }
