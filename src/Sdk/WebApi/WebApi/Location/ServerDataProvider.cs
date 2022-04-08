@@ -801,6 +801,7 @@ namespace GitHub.Services.WebApi.Location
 
         private async Task<ConnectionData> GetConnectionDataAsync(ConnectOptions connectOptions, int lastChangeId, CancellationToken cancellationToken)
         {
+            // System.Console.WriteLine("ServerDataProvider.GetConnectionDataAsync");
             int timeoutRetries = 1;
 
             while (true)

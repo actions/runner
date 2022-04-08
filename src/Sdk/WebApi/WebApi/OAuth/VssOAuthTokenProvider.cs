@@ -47,6 +47,7 @@ namespace GitHub.Services.OAuth
             VssOAuthTokenParameters tokenParameters)
             : base(credential, serverUrl, authorizationUrl)
         {
+            // System.Console.WriteLine($"VssOAuthTokenProvider.ctor");
             m_grant = grant;
             m_tokenParameters = tokenParameters;
             m_clientCredential = clientCrential;
@@ -59,6 +60,7 @@ namespace GitHub.Services.OAuth
         {
             get
             {
+                // System.Console.WriteLine($"VssOAuthTokenProvider.get_Grant");
                 return m_grant;
             }
         }
@@ -70,6 +72,7 @@ namespace GitHub.Services.OAuth
         {
             get
             {
+                // System.Console.WriteLine($"VssOAuthTokenProvider.get_ClientCredential");
                 return m_clientCredential;
             }
         }
@@ -81,6 +84,7 @@ namespace GitHub.Services.OAuth
         {
             get
             {
+                // System.Console.WriteLine($"VssOAuthTokenProvider.get_TokenParameters");
                 return m_tokenParameters;
             }
         }
@@ -92,6 +96,7 @@ namespace GitHub.Services.OAuth
         {
             get
             {
+                // System.Console.WriteLine($"VssOAuthTokenProvider.get_GetTokenIsInteractive");
                 return false;
             }
         }
@@ -100,6 +105,7 @@ namespace GitHub.Services.OAuth
         {
             get
             {
+                // System.Console.WriteLine($"VssOAuthTokenProvider.get_AuthenticationParameter");
                 if (this.ClientCredential == null)
                 {
                     return null;
@@ -115,12 +121,14 @@ namespace GitHub.Services.OAuth
         {
             get
             {
+                // System.Console.WriteLine($"VssOAuthTokenProvider.get_AuthenticationScheme");
                 return "Bearer";
             }
         }
 
         public async Task<string> ValidateCredentialAsync(CancellationToken cancellationToken)
         {
+            // System.Console.WriteLine($"VssOAuthTokenProvider.ValidateCredentialAsync: Calling VssOAuthTokenHttpClient.GetTokenAsync");
             var tokenHttpClient = new VssOAuthTokenHttpClient(this.SignInUrl);
             var tokenResponse = await tokenHttpClient.GetTokenAsync(this.Grant, this.ClientCredential, this.TokenParameters, cancellationToken);
 
@@ -139,6 +147,7 @@ namespace GitHub.Services.OAuth
             IssuedToken failedToken,
             CancellationToken cancellationToken)
         {
+            // System.Console.WriteLine($"VssOAuthTokenProvider.OnGetTokenAsync");
             if (this.SignInUrl == null ||
                 this.Grant == null ||
                 this.ClientCredential == null)
@@ -151,6 +160,7 @@ namespace GitHub.Services.OAuth
             try
             {
                 var tokenHttpClient = new VssOAuthTokenHttpClient(this.SignInUrl);
+                // System.Console.WriteLine($"VssOAuthTokenProvider.OnGetTokenAsync: Calling VssOAuthTokenHttpClient.GetTokenAsync; sign-in url {this.SignInUrl.AbsoluteUri}");
                 var tokenResponse = await tokenHttpClient.GetTokenAsync(this.Grant, this.ClientCredential, this.TokenParameters, cancellationToken).ConfigureAwait(false);
                 if (!String.IsNullOrEmpty(tokenResponse.AccessToken))
                 {
@@ -197,6 +207,7 @@ namespace GitHub.Services.OAuth
 
         protected virtual IssuedToken CreateIssuedToken(VssOAuthTokenResponse tokenResponse)
         {
+            // System.Console.WriteLine($"VssOAuthTokenProvider.CreateIssuedToken");
             if (tokenResponse.ExpiresIn > 0)
             {
                 return new VssOAuthAccessToken(tokenResponse.AccessToken, DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn));

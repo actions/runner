@@ -27,6 +27,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Formatting;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines;
 using GitHub.Services.Common;
 using GitHub.Services.WebApi;
 
@@ -378,6 +379,7 @@ namespace GitHub.DistributedTask.WebApi
         /// <param name="requestId"></param>
         /// <param name="lockToken"></param>
         /// <param name="request"></param>
+        /// <param name="targetHostId"></param>
         /// <param name="userState"></param>
         /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -386,6 +388,7 @@ namespace GitHub.DistributedTask.WebApi
             long requestId,
             Guid lockToken,
             TaskAgentJobRequest request,
+            Guid targetHostId,
             object userState = null,
             CancellationToken cancellationToken = default)
         {
@@ -396,6 +399,7 @@ namespace GitHub.DistributedTask.WebApi
 
             List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
             queryParams.Add("lockToken", lockToken.ToString());
+            queryParams.Add("targetHostId", targetHostId.ToString());
 
             return SendAsync<TaskAgentJobRequest>(
                 httpMethod,
@@ -706,6 +710,47 @@ namespace GitHub.DistributedTask.WebApi
         /// <summary>
         /// [Preview API]
         /// </summary>
+        /// <param name="scopeId"></param>
+        /// <param name="planType"></param>
+        /// <param name="planGroup"></param>
+        /// <param name="planId"></param>
+        /// <param name="instanceRefsJson"></param>
+        /// <param name="userState"></param>
+        /// <param name="cancellationToken">The cancellation token to cancel operation.</param>
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public virtual Task<Pipelines.AgentJobRequestMessage> GetJobMessageAsync(
+            Guid scopeId,
+            Guid hostId,
+            string planType,
+            string planGroup,
+            Guid planId,
+            string instanceRefsJson,
+            object userState = null,
+            CancellationToken cancellationToken = default)
+        {
+            HttpMethod httpMethod = new HttpMethod("GET");
+            Guid locationId = new Guid("25adab70-1379-4186-be8e-b643061ebe3a");
+
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+            queryParams.Add("scopeId", scopeId.ToString());
+            queryParams.Add("hostId", hostId.ToString());
+            queryParams.Add("planType", planType);
+            queryParams.Add("planGroup", planGroup);
+            queryParams.Add("planId", planId.ToString());
+            queryParams.Add("instanceRefsJson", instanceRefsJson);
+
+            return SendAsync<Pipelines.AgentJobRequestMessage>(
+                httpMethod,
+                locationId,
+                version: new ApiResourceVersion(6.0, 1),
+                queryParameters: queryParams,
+                userState: userState,
+                cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// [Preview API]
+        /// </summary>
         /// <param name="poolId"></param>
         /// <param name="session"></param>
         /// <param name="userState"></param>
@@ -717,6 +762,7 @@ namespace GitHub.DistributedTask.WebApi
             object userState = null,
             CancellationToken cancellationToken = default)
         {
+            // System.Console.WriteLine("TaskAgentHttpClientBase.CreateAgentSessionAsync");
             HttpMethod httpMethod = new HttpMethod("POST");
             Guid locationId = new Guid("134e239e-2df3-4794-a6f6-24f1f19ec8dc");
             object routeValues = new { poolId = poolId };

@@ -2,7 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -27,10 +31,13 @@ namespace GitHub.Runner.Listener
 
     public sealed class MessageListener : RunnerService, IMessageListener
     {
+#if !USE_BROKER
         private long? _lastMessageId;
+#endif
         private RunnerSettings _settings;
         private ITerminal _term;
         private IRunnerServer _runnerServer;
+        private IBrokerServer _brokerServer;
         private TaskAgentSession _session;
         private TimeSpan _getNextMessageRetryInterval;
         private bool _accessTokenRevoked = false;
@@ -45,8 +52,44 @@ namespace GitHub.Runner.Listener
 
             _term = HostContext.GetService<ITerminal>();
             _runnerServer = HostContext.GetService<IRunnerServer>();
+            _brokerServer = HostContext.GetService<IBrokerServer>();
         }
 
+#if USE_BROKER
+        public async Task<Boolean> CreateSessionAsync(CancellationToken token)
+        {
+            Trace.Entering();
+
+            // Settings
+            var configManager = HostContext.GetService<IConfigurationManager>();
+            _settings = configManager.LoadSettings();
+            var serverUrl = _settings.ServerUrl;
+            Trace.Info(_settings);
+
+            // Connect
+            token.ThrowIfCancellationRequested();
+            Trace.Info($"Attempt to create session.");
+            Trace.Info("Connecting to the Runner Server...");
+            _term.WriteLine($"Connecting to {new Uri(serverUrl)}");
+            await _brokerServer.ConnectAsync(new Uri(serverUrl), token);
+            _term.WriteLine();
+            _term.WriteSuccessMessage("Connected to GitHub");
+            _term.WriteLine();
+
+            // Session info
+            var agent = new TaskAgentReference
+            {
+                Id = _settings.AgentId,
+                Name = _settings.AgentName,
+                Version = BuildConstants.RunnerPackage.Version,
+                OSDescription = RuntimeInformation.OSDescription,
+            };
+            string sessionName = $"{Environment.MachineName ?? "RUNNER"}";
+            _session = new TaskAgentSession(sessionName, agent);
+
+            return true;
+        }
+#else
         public async Task<Boolean> CreateSessionAsync(CancellationToken token)
         {
             Trace.Entering();
@@ -81,6 +124,7 @@ namespace GitHub.Runner.Listener
                 Trace.Info($"Attempt to create session.");
                 try
                 {
+                    Trace.Info("Connecting to the Runner Server...");
                     Trace.Info("Connecting to the Runner Server...");
                     await _runnerServer.ConnectAsync(new Uri(serverUrl), creds);
                     Trace.Info("VssConnection created");
@@ -151,6 +195,7 @@ namespace GitHub.Runner.Listener
                 }
             }
         }
+#endif
 
         public async Task DeleteSessionAsync()
         {
@@ -170,6 +215,167 @@ namespace GitHub.Runner.Listener
             }
         }
 
+#if USE_BROKER
+        [DataContract]
+        public sealed class MessageRef
+        {
+            [DataMember(Name = "url")]
+            public string Url { get; set; }
+            [DataMember(Name = "token")]
+            public string Token { get; set; }
+            [DataMember(Name = "scopeId")]
+            public string ScopeId { get; set; }
+            [DataMember(Name = "planType")]
+            public string PlanType { get; set; }
+            [DataMember(Name = "planGroup")]
+            public string PlanGroup { get; set; }
+            [DataMember(Name = "instanceRefs")]
+            public InstanceRef[] InstanceRefs { get; set; }
+            [DataMember(Name = "labels")]
+            public string[] Labels { get; set; }
+        }
+
+        [DataContract]
+        public sealed class InstanceRef
+        {
+            [DataMember(Name = "name")]
+            public string Name { get; set; }
+            [DataMember(Name = "instanceType")]
+            public string InstanceType { get; set; }
+            [DataMember(Name = "attempt")]
+            public int Attempt { get; set; }
+        }
+
+        public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
+        {
+            Trace.Entering();
+            ArgUtil.NotNull(_session, nameof(_session));
+            ArgUtil.NotNull(_settings, nameof(_settings));
+            bool encounteringError = false;
+            int continuousError = 0;
+            string errorMessage = string.Empty;
+            Stopwatch heartbeat = new Stopwatch();
+            heartbeat.Restart();
+            while (true)
+            {
+                token.ThrowIfCancellationRequested();
+                string message = null;
+                try
+                {
+                    message = await _brokerServer.GetMessageAsync(_session, _settings, null/*_lastMessageId*/, token);
+                    _term.WriteLine($"{DateTime.UtcNow:u}: {message}");
+                    if (!string.IsNullOrEmpty(message))
+                    {
+                        var messageRef = StringUtil.ConvertFromJson<MessageRef>(message);
+                        var client = new HttpClient();
+                        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", messageRef.Token);
+                        var response = await client.GetAsync(messageRef.Url, token);
+                        if (!response.IsSuccessStatusCode)
+                        {
+                            var content = default(string);
+                            try
+                            {
+                                content = await response.Content.ReadAsStringAsync();
+                            }
+                            catch
+                            {
+                            }
+
+                            var error = $"HTTP {(int)response.StatusCode} {Enum.GetName(typeof(HttpStatusCode), response.StatusCode)}";
+                            if (!string.IsNullOrEmpty(content))
+                            {
+                                error = $"{error}: {content}";
+                            }
+                            throw new Exception(error);
+                        }
+
+                        var fullMessage = await response.Content.ReadAsStringAsync();
+                        return StringUtil.ConvertFromJson<TaskAgentMessage>(fullMessage);
+                    }
+
+                    if (encounteringError) //print the message once only if there was an error
+                    {
+                        _term.WriteLine($"{DateTime.UtcNow:u}: Runner reconnected.");
+                        encounteringError = false;
+                        continuousError = 0;
+                    }
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    Trace.Info("Get next message has been cancelled.");
+                    throw;
+                }
+                catch (TaskAgentAccessTokenExpiredException)
+                {
+                    Trace.Info("Runner OAuth token has been revoked. Unable to pull message.");
+                    _accessTokenRevoked = true;
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Trace.Error("Catch exception during get next message.");
+                    Trace.Error(ex);
+
+                    // don't retry if SkipSessionRecover = true, DT service will delete agent session to stop agent from taking more jobs.
+                    if (ex is TaskAgentSessionExpiredException && !_settings.SkipSessionRecover && await CreateSessionAsync(token))
+                    {
+                        Trace.Info($"{nameof(TaskAgentSessionExpiredException)} received, recovered by recreate session.");
+                    }
+                    else if (!IsGetNextMessageExceptionRetriable(ex))
+                    {
+                        throw;
+                    }
+                    else
+                    {
+                        continuousError++;
+                        //retry after a random backoff to avoid service throttling
+                        //in case of there is a service error happened and all agents get kicked off of the long poll and all agent try to reconnect back at the same time.
+                        if (continuousError <= 5)
+                        {
+                            // random backoff [15, 30]
+                            _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), _getNextMessageRetryInterval);
+                        }
+                        else
+                        {
+                            // more aggressive backoff [30, 60]
+                            _getNextMessageRetryInterval = BackoffTimerHelper.GetRandomBackoff(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), _getNextMessageRetryInterval);
+                        }
+
+                        if (!encounteringError)
+                        {
+                            //print error only on the first consecutive error
+                            _term.WriteError($"{DateTime.UtcNow:u}: Runner connect error: {ex.Message}. Retrying until reconnected.");
+                            encounteringError = true;
+                        }
+
+                        // re-create VssConnection before next retry
+                        await _runnerServer.RefreshConnectionAsync(RunnerConnectionType.MessageQueue, TimeSpan.FromSeconds(60));
+
+                        Trace.Info("Sleeping for {0} seconds before retrying.", _getNextMessageRetryInterval.TotalSeconds);
+                        await HostContext.Delay(_getNextMessageRetryInterval, token);
+                    }
+                }
+
+                // if (message == null)
+                // {
+                //     if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
+                //     {
+                //         Trace.Info($"No message retrieved from session '{_session.SessionId}' within last 30 minutes.");
+                //         heartbeat.Restart();
+                //     }
+                //     else
+                //     {
+                //         Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
+                //     }
+
+                //     continue;
+                // }
+
+                // Trace.Info($"Message '{message.MessageId}' received from session '{_session.SessionId}'.");
+                // return message;
+            }
+        }
+#else
         public async Task<TaskAgentMessage> GetNextMessageAsync(CancellationToken token)
         {
             Trace.Entering();
@@ -281,6 +487,7 @@ namespace GitHub.Runner.Listener
                 return message;
             }
         }
+#endif
 
         public async Task DeleteMessageAsync(TaskAgentMessage message)
         {

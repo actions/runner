@@ -88,6 +88,7 @@ namespace GitHub.Services.Common
             IHttpResponse response,
             IssuedToken failedToken)
         {
+            // System.Console.WriteLine("IssuedTokenCredential.CreateTokenProvider");
             if (response != null && !IsAuthenticationChallenge(response))
             {
                 throw new InvalidOperationException();
@@ -99,12 +100,14 @@ namespace GitHub.Services.Common
                 {
                     throw new InvalidOperationException($"The {nameof(TokenStorageUrl)} property must have a value if the {nameof(Storage)} property is set on this instance of {GetType().Name}.");
                 }
+                // System.Console.WriteLine($"IssuedTokenCredential.CreateTokenProvider: TokenStorageUrl: {TokenStorageUrl}");
                 InitialToken = Storage.RetrieveToken(TokenStorageUrl, CredentialType);
             }
 
             IssuedTokenProvider provider = OnCreateTokenProvider(serverUrl, response);
             if (provider != null)
             {
+                // System.Console.WriteLine($"IssuedTokenCredential.CreateTokenProvider: provider: {provider}");
                 provider.TokenStorageUrl = TokenStorageUrl;
             }
 
@@ -123,6 +126,7 @@ namespace GitHub.Services.Common
 
         internal virtual string GetAuthenticationChallenge(IHttpResponse webResponse)
         {
+            // System.Console.WriteLine($"IssuedTokenCredential.GetAuthenticationChallenge");
             IEnumerable<String> values;
             if (!webResponse.Headers.TryGetValues(Internal.HttpHeaders.WwwAuthenticate, out values))
             {
