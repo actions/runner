@@ -75,6 +75,8 @@ namespace Runner.Server.Controllers
         private int Verbosity { get; }
         private int MaxWorkflowDepth { get; }
         private int MaxDifferentReferencedWorkflows { get; }
+        private int MaxWorkflowFileSize { get; }
+        private int MaxConcurrencyGroupNameLength { get; }
         private bool DisableNoCI { get; }
         private string OnQueueJobProgram { get; }
         private string OnQueueJobArgs { get; }
@@ -118,6 +120,8 @@ namespace Runner.Server.Controllers
             OnQueueJobArgs = configuration.GetSection("Runner.Server").GetValue<string>("OnQueueJobArgs");
             MaxWorkflowDepth = configuration.GetSection("Runner.Server").GetValue<int>("MaxWorkflowDepth", 1);
             MaxDifferentReferencedWorkflows = configuration.GetSection("Runner.Server").GetValue<int>("MaxDifferentReferencedWorkflows", 20);
+            MaxWorkflowFileSize = configuration.GetSection("Runner.Server").GetValue<int>("MaxWorkflowFileSize", 512 * 1024);
+            MaxConcurrencyGroupNameLength = configuration.GetSection("Runner.Server").GetValue<int>("MaxConcurrencyGroupNameLength", 400);
             _cache = memoryCache;
             _context = context;
         }
@@ -942,6 +946,10 @@ namespace Runner.Server.Controllers
                 return contextData;
             };
             try {
+                var workflowBytelen = System.Text.Encoding.UTF8.GetByteCount(content);
+                if(workflowBytelen > MaxWorkflowFileSize) {
+                    throw new Exception("Workflow size too large {workflowBytelen} exceeds {MaxWorkflowFileSize} bytes");
+                }
                 var workflowContext = new WorkflowContext() { FileName = fileRelativePath };
                 List<JobItem> jobgroup = new List<JobItem>();
                 List<JobItem> dependentjobgroup = new List<JobItem>();
@@ -2333,6 +2341,10 @@ namespace Runner.Server.Controllers
                             group = (from r in cmapping where r.Key.AssertString("concurrency mapping key").Value == "group" select r).FirstOrDefault().Value?.AssertString("concurrency.group")?.Value;
                             cancelInprogress = (from r in cmapping where r.Key.AssertString("concurrency mapping key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean("concurrency.cancel-in-progress")?.Value ?? cancelInprogress;
                         }
+                        var concurrencyGroupNameLength = System.Text.Encoding.UTF8.GetByteCount(group ?? "");
+                        if(MaxConcurrencyGroupNameLength >= 0 && concurrencyGroupNameLength > MaxConcurrencyGroupNameLength) {
+                            throw new Exception($"The specified concurrency group name with length {concurrencyGroupNameLength} exceeds the maximum allowed length of {MaxConcurrencyGroupNameLength}");
+                        }
                     }
                     if(string.IsNullOrEmpty(group)) {
                         runWorkflow();
@@ -3092,6 +3104,10 @@ namespace Runner.Server.Controllers
                         var cmapping = jobConcurrency.AssertMapping($"jobs.{name}.concurrency must be a string or mapping");
                         group = (from r in cmapping where r.Key.AssertString($"jobs.{name}.concurrency mapping key").Value == "group" select r).FirstOrDefault().Value?.AssertString($"jobs.{name}.concurrency.group")?.Value;
                         cancelInprogress = (from r in cmapping where r.Key.AssertString($"jobs.{name}.concurrency mapping key").Value == "cancel-in-progress" select r).FirstOrDefault().Value?.AssertBoolean($"jobs.{name}.concurrency.cancel-in-progress")?.Value ?? cancelInprogress;
+                    }
+                    var concurrencyGroupNameLength = System.Text.Encoding.UTF8.GetByteCount(group ?? "");
+                    if(MaxConcurrencyGroupNameLength >= 0 && concurrencyGroupNameLength > MaxConcurrencyGroupNameLength) {
+                        throw new Exception($"jobs.{name}.concurrency: The specified concurrency group name with length {concurrencyGroupNameLength} exceeds the maximum allowed length of {MaxConcurrencyGroupNameLength}");
                     }
                 }
                 return cancel => {
