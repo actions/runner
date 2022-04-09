@@ -7,10 +7,14 @@ namespace GitHub.Runner.Common.Util
 {
     public static class VarUtil
     {
+        private static StringComparer envcomp = null;
         public static StringComparer EnvironmentVariableKeyComparer
         {
             get
             {
+                if(envcomp != null) {
+                    return envcomp;
+                }
                 switch (Constants.Runner.Platform)
                 {
                     case Constants.OSPlatform.Linux:
@@ -22,6 +26,7 @@ namespace GitHub.Runner.Common.Util
                         throw new NotSupportedException(); // Should never reach here.
                 }
             }
+            set => envcomp = value;
         }
 
         public static string OS

@@ -191,18 +191,7 @@ namespace GitHub.Runner.Worker
                         context.SetGitHubContext("graphql_url", $"{url.Scheme}://{url.Host}{portInfo}/api/graphql");
                     }
 
-                    // Evaluate the job-level environment variables
-                    context.Debug("Evaluating job-level environment variables");
                     var templateEvaluator = context.ToPipelineTemplateEvaluator();
-                    foreach (var token in message.EnvironmentVariables)
-                    {
-                        var environmentVariables = templateEvaluator.EvaluateStepEnvironment(token, jobContext.ExpressionValues, jobContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
-                        foreach (var pair in environmentVariables)
-                        {
-                            context.Global.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
-                            context.SetEnvContext(pair.Key, pair.Value ?? string.Empty);
-                        }
-                    }
 
                     // Evaluate the job container
                     context.Debug("Evaluating job container");
@@ -225,26 +214,6 @@ namespace GitHub.Runner.Worker
                             var networkAlias = pair.Key;
                             var serviceContainer = pair.Value;
                             jobContext.Global.ServiceContainers.Add(new Container.ContainerInfo(HostContext, serviceContainer, false, networkAlias));
-                        }
-                    }
-
-                    // Evaluate the job defaults
-                    context.Debug("Evaluating job defaults");
-                    foreach (var token in message.Defaults)
-                    {
-                        var defaults = token.AssertMapping("defaults");
-                        if (defaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            context.Global.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                            var defaultsRun = defaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
-                            var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
-                            foreach (var pair in jobDefaults)
-                            {
-                                if (!string.IsNullOrEmpty(pair.Value))
-                                {
-                                    context.Global.JobDefaults["run"][pair.Key] = pair.Value;
-                                }
-                            }
                         }
                     }
 
@@ -279,10 +248,15 @@ namespace GitHub.Runner.Worker
                         }
                         containers.AddRange(jobContext.Global.ServiceContainers);
 
-                        preJobSteps.Add(new JobExtensionRunner(runAsync: containerProvider.StartContainersAsync,
+                        preJobSteps.Add(new JobExtensionRunner(runAsync: async (IExecutionContext executionContext, object data) => {
+                                await containerProvider.StartContainersAsync(executionContext, data);
+                                InitializeEnvAndDefaults(jobContext, executionContext, message);
+                            },
                                                                           condition: $"{PipelineTemplateConstants.Success}()",
                                                                           displayName: "Initialize containers",
                                                                           data: (object)containers));
+                    } else {
+                        InitializeEnvAndDefaults(jobContext, context, message);
                     }
 
                     // Add action steps
@@ -424,6 +398,45 @@ namespace GitHub.Runner.Worker
                 {
                     context.Debug("Finishing: Set up job");
                     context.Complete();
+                }
+            }
+        }
+
+        private void InitializeEnvAndDefaults(IExecutionContext jobContext, IExecutionContext context, Pipelines.AgentJobRequestMessage message) {
+            // Evaluate the job-level environment variables
+            Trace.Info("Initialize Env context");
+            VarUtil.EnvironmentVariableKeyComparer = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && (jobContext.Global.Container?.Os ?? "windows") == "windows" ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+            context.Global.EnvironmentVariables = new Dictionary<string, string>(VarUtil.EnvironmentVariableKeyComparer);
+            context.ExpressionValues["env"] = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && (jobContext.Global.Container?.Os ?? "windows") == "windows" ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
+            context.Debug("Evaluating job-level environment variables");
+            var templateEvaluator = context.ToPipelineTemplateEvaluator();
+            foreach (var token in message.EnvironmentVariables)
+            {
+                var environmentVariables = templateEvaluator.EvaluateStepEnvironment(token, jobContext.ExpressionValues, jobContext.ExpressionFunctions, VarUtil.EnvironmentVariableKeyComparer);
+                foreach (var pair in environmentVariables)
+                {
+                    context.Global.EnvironmentVariables[pair.Key] = pair.Value ?? string.Empty;
+                    context.SetEnvContext(pair.Key, pair.Value ?? string.Empty);
+                }
+            }
+
+            // Evaluate the job defaults
+            context.Debug("Evaluating job defaults");
+            foreach (var token in message.Defaults)
+            {
+                var defaults = token.AssertMapping("defaults");
+                if (defaults.Any(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase)))
+                {
+                    context.Global.JobDefaults["run"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    var defaultsRun = defaults.First(x => string.Equals(x.Key.AssertString("defaults key").Value, "run", StringComparison.OrdinalIgnoreCase));
+                    var jobDefaults = templateEvaluator.EvaluateJobDefaultsRun(defaultsRun.Value, jobContext.ExpressionValues, jobContext.ExpressionFunctions);
+                    foreach (var pair in jobDefaults)
+                    {
+                        if (!string.IsNullOrEmpty(pair.Value))
+                        {
+                            context.Global.JobDefaults["run"][pair.Key] = pair.Value;
+                        }
+                    }
                 }
             }
         }

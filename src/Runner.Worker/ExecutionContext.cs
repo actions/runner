@@ -738,9 +738,6 @@ namespace GitHub.Runner.Worker
             }
             ExpressionValues["github"] = githubContext;
 
-            Trace.Info("Initialize Env context");
-            ExpressionValues["env"] = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && (Global.Container?.Os ?? "windows") == "windows" ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
-
             // Prepend Path
             Global.PrependPath = new List<string>();
 
