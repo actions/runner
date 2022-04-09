@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64</RuntimeIdentifiers>
     <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
@@ -18,9 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="5.0.*" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="5.0.*" />
-    <PackageReference Include="System.Threading.Channels" Version="5.0.*" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="6.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="6.0.0" />
+    <PackageReference Include="System.Threading.Channels" Version="6.0.0" />
     <PackageReference Include="YamlDotNet" Version="11.2.1" />
   </ItemGroup>
 

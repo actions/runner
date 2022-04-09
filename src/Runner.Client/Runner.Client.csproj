@@ -8,7 +8,7 @@
     <ToolCommandName>gharun</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64</RuntimeIdentifiers>
     <NoWarn>NU5118;NU5123;NU5119;NU1701;NU1603;CS4014</NoWarn>
     <Authors>Christopher Homberger</Authors>
@@ -22,15 +22,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.2.0" />
-    <PackageReference Include="System.Commandline" Version="2.0.0-beta2.21617.1" />
+    <PackageReference Include="System.Commandline" Version="2.0.0-beta3.22114.1" />
     <PackageReference Include="Mono.Posix.NETStandard" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="..\Misc\layoutbin\**" PackagePath="tools\net5.0\any" >
+    <Content Include="..\Misc\layoutbin\**" PackagePath="tools\net6.0\any" >
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\Runner.Server\$(OutDir)\Runner.Server.deps.json" PackagePath="tools\net5.0\any" >
+    <Content Include="..\Runner.Server\$(OutDir)\Runner.Server.deps.json" PackagePath="tools\net6.0\any" >
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     

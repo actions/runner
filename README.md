@@ -21,8 +21,8 @@ This fork adds two executables to this Project, `Runner.Server` as a runner back
 
 ### Dotnet Tool (gharun)
 The new nuget package [can be found here](https://www.nuget.org/packages/io.github.christopherhx.gharun)
-- Install the [dotnet sdk 5.0.0 or newer](https://dotnet.microsoft.com/en-us/download/dotnet)
-  - dotnet sdk 5.0.x and 6.0.201 are known to work and tested via CI
+- Install the [dotnet sdk 6.0.0 or newer](https://dotnet.microsoft.com/en-us/download/dotnet)
+  - dotnet sdk 6.0.100 and 6.0.x are known to work and tested via CI
 - `dotnet tool install --global io.github.christopherhx.gharun`
 - Run `gharun` like `Runner.Client`
 
@@ -97,7 +97,7 @@ This builds `Runner.Client`, `Runner.Server` and a modifed github actions runner
 ### Building a framework dependent and os independent executable
 ```
 dotnet msbuild src/dir.proj -t:GenerateConstant
-dotnet publish src/Runner.Client -c Release --no-self-contained -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=5.0.0
+dotnet publish src/Runner.Client -c Release --no-self-contained -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0
 ```
 
 #### To run the package on a different Operating System
@@ -130,7 +130,7 @@ dotnet publish src/Runner.Client -c Release -r win-x64
 ### Building a dotnet tool
 ```
 dotnet msbuild src/dir.proj -t:GenerateConstant
-dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=5.0.0
+dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0
 ```
 #### To install the package
 ```
@@ -502,7 +502,7 @@ othername2=value3
 ```
 dotnet build ./src/Runner.Server/ /p:EFMigration=ON
 dotnet ef migrations add --project ./src/Runner.Server/ --no-build PersistentJobs
-dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=5.0.0 -p:Version=3.4.0.3
+dotnet pack src/Runner.Client -c Release -p:BUILD_OS=Any -p:RuntimeFrameworkVersion=6.0.0 -p:Version=3.4.0.3
 dotnet tool update -g io.github.christopherhx.gharun --add-source src/Runner.Client/nupkg
 ```
 
