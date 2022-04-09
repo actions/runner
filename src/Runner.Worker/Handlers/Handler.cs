@@ -211,14 +211,15 @@ namespace GitHub.Runner.Worker.Handlers
             }
 
             // Prepend path.
-            string prepend = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
             var containerStepHost = StepHost as ContainerStepHost;
             if (containerStepHost != null)
             {
+                string prepend = string.Join(containerStepHost.Container.Os == "linux" ? ":" : Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
                 containerStepHost.PrependPath = prepend;
             }
             else
             {
+                string prepend = string.Join(Path.PathSeparator.ToString(), ExecutionContext.Global.PrependPath.Reverse<string>());
                 string taskEnvPATH;
                 Environment.TryGetValue(Constants.PathVariable, out taskEnvPATH);
                 string originalPath = RuntimeVariables.Get(Constants.PathVariable) ?? // Prefer a job variable.
