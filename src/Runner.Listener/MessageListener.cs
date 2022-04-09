@@ -225,7 +225,7 @@ namespace GitHub.Runner.Listener
                 string message = null;
                 try
                 {
-                    message = await _brokerServer.GetMessageAsync(_settings.PoolId, _session.SessionId, null/*_lastMessageId*/, token);
+                    message = await _brokerServer.GetMessageAsync(_session, _settings, null/*_lastMessageId*/, token);
 
                     _term.WriteLine($"{DateTime.UtcNow:u}: {message}");
                     if (message != null)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using GitHub.DistributedTask.WebApi;
 using System.Threading;
 using System.Threading.Tasks;
 using GitHub.Runner.Common.Util;
@@ -15,7 +16,7 @@ namespace GitHub.Runner.Common
     public interface IBrokerServer : IRunnerService
     {
         Task ConnectAsync(Uri serverUrl, CancellationToken cancellationToken);
-        Task<string> GetMessageAsync(int poolId, Guid sessionId, long? lastMessageId, CancellationToken cancellationToken);
+        Task<string> GetMessageAsync(TaskAgentSession session, RunnerSettings settings, long? lastMessageId, CancellationToken cancellationToken);
     }
 
     public sealed class BrokerServer : RunnerService, IBrokerServer
@@ -30,9 +31,9 @@ namespace GitHub.Runner.Common
             await _httpClient.GetAsync("health", cancellationToken);
         }
 
-        public async Task<string> GetMessageAsync(int poolId, Guid sessionId, long? lastMessageId, CancellationToken cancellationToken)
+        public async Task<string> GetMessageAsync(TaskAgentSession session, RunnerSettings settings, long? lastMessageId, CancellationToken cancellationToken)
         {
-            var response = await _httpClient.GetAsync("message", cancellationToken);
+            var response = await _httpClient.GetAsync($"message?tenant=org:github&root_tenant=org:github&group_id={settings.PoolId}&group_name={settings.PoolName}&runner_id={settings.AgentId}&runner_name={settings.AgentName}&labels=self-hosted,linux", cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 var content = default(string);
