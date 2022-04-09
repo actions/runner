@@ -27,7 +27,7 @@ namespace GitHub.Runner.Listener
 
     public sealed class MessageListener : RunnerService, IMessageListener
     {
-        private long? _lastMessageId;
+        // private long? _lastMessageId;
         private RunnerSettings _settings;
         private ITerminal _term;
         private IRunnerServer _runnerServer;
@@ -222,17 +222,15 @@ namespace GitHub.Runner.Listener
             while (true)
             {
                 token.ThrowIfCancellationRequested();
-                TaskAgentMessage message = null;
+                string message = null;
                 try
                 {
-                    message = await _brokerServer.GetMessageAsync(_settings.PoolId, _session.SessionId, _lastMessageId, token);
+                    message = await _brokerServer.GetMessageAsync(_settings.PoolId, _session.SessionId, null/*_lastMessageId*/, token);
 
-                    // Decrypt the message body if the session is using encryption
-                    message = DecryptMessage(message);
-
+                    _term.WriteLine($"{DateTime.UtcNow:u}: {message}");
                     if (message != null)
                     {
-                        _lastMessageId = message.MessageId;
+                        // todo: _lastMessageId = message.MessageId;
                     }
 
                     if (encounteringError) //print the message once only if there was an error
@@ -298,23 +296,23 @@ namespace GitHub.Runner.Listener
                     }
                 }
 
-                if (message == null)
-                {
-                    if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
-                    {
-                        Trace.Info($"No message retrieved from session '{_session.SessionId}' within last 30 minutes.");
-                        heartbeat.Restart();
-                    }
-                    else
-                    {
-                        Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
-                    }
+                // if (message == null)
+                // {
+                //     if (heartbeat.Elapsed > TimeSpan.FromMinutes(30))
+                //     {
+                //         Trace.Info($"No message retrieved from session '{_session.SessionId}' within last 30 minutes.");
+                //         heartbeat.Restart();
+                //     }
+                //     else
+                //     {
+                //         Trace.Verbose($"No message retrieved from session '{_session.SessionId}'.");
+                //     }
 
-                    continue;
-                }
+                //     continue;
+                // }
 
-                Trace.Info($"Message '{message.MessageId}' received from session '{_session.SessionId}'.");
-                return message;
+                // Trace.Info($"Message '{message.MessageId}' received from session '{_session.SessionId}'.");
+                // return message;
             }
         }
 #else
