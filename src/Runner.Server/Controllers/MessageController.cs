@@ -2830,23 +2830,6 @@ namespace Runner.Server.Controllers
                     }
                 }
 
-                if(localcheckout) {
-                    // Rewrite checkout step to copy repo via custom protocol
-                    for (int i = 0; i < steps.Count; i++) {
-                        if(steps[i] is ActionStep astep && astep.Reference is RepositoryPathReference p && String.Compare(p.Name, "actions/checkout", true) == 0 && (p.Path == null || p.Path == "")) {
-                            var _localcheckout = astep.Clone() as ActionStep;
-                            _localcheckout.Reference = new RepositoryPathReference { Name = "localcheckout", Ref = "V1", RepositoryType = RepositoryTypes.GitHub, Path = "" };
-                            _localcheckout.ContextName = "_" + Guid.NewGuid().ToString();
-                            var inmap = _localcheckout.Inputs?.AssertMapping("inputs");
-                            if(inmap != null) {
-                                inmap.Add(new StringToken(null, null, null, "checkoutref"), new StringToken(null, null, null, p.Ref));
-                            }
-                            astep.Condition = $"({astep.Condition}) && !fromJSON(steps.{_localcheckout.ContextName}.outputs.skip)";
-                            steps.Insert(i++, _localcheckout);
-                        }
-                    }
-                }
-
                 foreach (var step in steps)
                 {
                     step.Id = Guid.NewGuid();
@@ -2986,6 +2969,7 @@ namespace Runner.Server.Controllers
                                 new Claim("ref", Ref),
                                 new Claim("defaultRef", "refs/heads/" + (ghook?.repository?.default_branch ?? "main")),
                                 new Claim("attempt", attempt.Attempt.ToString()),
+                                new Claim("localcheckout", localcheckout ? "actions/checkout" : ""),
                             }),
                             Expires = DateTime.UtcNow.AddMinutes(timeoutMinutes + 10),
                             Issuer = myIssuer,

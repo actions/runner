@@ -32,4 +32,10 @@
     <ProjectReference Include="..\Runner.Sdk\Runner.Sdk.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="localcheckout_template.yml">
+      <LogicalName>Runner.Server.localcheckout_template.yml</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

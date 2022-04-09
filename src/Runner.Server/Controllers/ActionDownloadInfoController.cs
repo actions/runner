@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
+using GitHub.Runner.Sdk;
 using GitHub.Services.Location;
 using GitHub.Services.WebApi;
 using Microsoft.AspNetCore.Authorization;
@@ -83,17 +87,64 @@ namespace Runner.Server.Controllers
             await appClient2.Connection.Delete(new Uri("installation/token", UriKind.Relative));
         }
 
+        [HttpGet("localcheckout")]
+        [AllowAnonymous]
+        public IActionResult GetLocalCheckout([FromQuery] string format, [FromQuery] string version, [FromQuery] string name) {
+            var assembly = Assembly.GetExecutingAssembly();
+            var localcheckout_template = default(string);
+            using (var stream = assembly.GetManifestResourceStream("Runner.Server.localcheckout_template.yml"))
+            using (var streamReader = new StreamReader(stream))
+            {
+                localcheckout_template = streamReader.ReadToEnd();
+            }
+            localcheckout_template = localcheckout_template.Replace("_____SHA_____", BuildConstants.Source.CommitHash).Replace("_____REF_____", version).Replace("_____checkout_____", name);
+            if(format == "tarball") {
+                string tar = WhichUtil.Which("tar", require: true);
+                var tempFolder = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString());
+                HttpContext.Response.OnCompleted(() => {
+                    System.IO.Directory.Delete(tempFolder, true);
+                    return Task.CompletedTask;
+                });
+                var archiveDir = Path.Join(tempFolder, "archive");
+                System.IO.Directory.CreateDirectory(archiveDir);
+                System.IO.File.WriteAllText(Path.Join(archiveDir, "action.yml"), localcheckout_template);
+                var archiveFile = Path.Join(tempFolder, "archive.tar.gz");
+                var proc = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = tar, Arguments = $"-czf \"{archiveFile}\" archive", WorkingDirectory = tempFolder });
+                proc.WaitForExit();
+                return new FileStreamResult(System.IO.File.OpenRead(archiveFile), "application/octet-stream");
+            } else {
+                var tempFolder = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString());
+                HttpContext.Response.OnCompleted(() => {
+                    System.IO.Directory.Delete(tempFolder, true);
+                    return Task.CompletedTask;
+                });
+                var archiveDir = Path.Join(tempFolder, "archive");
+                System.IO.Directory.CreateDirectory(archiveDir);
+                System.IO.File.WriteAllText(Path.Join(archiveDir, "action.yml"), localcheckout_template);
+                var archiveFile = Path.Join(tempFolder, "archive.zip");
+                ZipFile.CreateFromDirectory(archiveDir, archiveFile, CompressionLevel.NoCompression, includeBaseDirectory: true);
+                return new FileStreamResult(System.IO.File.OpenRead(archiveFile), "application/octet-stream");
+            }
+        }
+
         [HttpPost("{scopeIdentifier}/{hubName}/{planId}")]
         public async Task<IActionResult> Get(Guid scopeIdentifier, string hubName, Guid planId)
         {
+            var localcheckout = User.FindFirst("localcheckout")?.Value ?? "";
             ActionReferenceList reflist = await FromBody<ActionReferenceList>();
             var actions = new Dictionary<string, ActionDownloadInfo>();
             foreach (var item in reflist.Actions) {
                 foreach(var downloadUrl in downloadUrls) {
-                    if(item.NameWithOwner == "localcheckout") {
-                        actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), "localcheckout.tar.gz").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), "localcheckout.zip").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };
+                    var islocalcheckout = string.Equals(item.NameWithOwner, localcheckout, StringComparison.OrdinalIgnoreCase);
+                    if(islocalcheckout && (item.Ref == BuildConstants.Source.CommitHash || !item.Ref.StartsWith(BuildConstants.Source.CommitHash)) ) {
+                        actions[$"{item.NameWithOwner}@{item.Ref}"] = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.tar.gz" : $"_apis/v1/ActionDownloadInfo/localcheckout?format=tarball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ZipballUrl = new Uri(new Uri(ServerUrl), item.Ref == BuildConstants.Source.CommitHash ? "localcheckout.zip"  : $"_apis/v1/ActionDownloadInfo/localcheckout?format=zipball&version={Uri.EscapeDataString(item.Ref)}&name={Uri.EscapeDataString(localcheckout)}").ToString(), ResolvedSha = GitHub.Runner.Sdk.BuildConstants.Source.CommitHash };                    
                     } else {
                         var downloadinfo = new ActionDownloadInfo() {NameWithOwner = item.NameWithOwner, Ref = item.Ref, TarballUrl = String.Format(downloadUrl.TarballUrl, item.NameWithOwner, item.Ref), ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, item.Ref) };
+                        actions[$"{item.NameWithOwner}@{item.Ref}"] = downloadinfo;
+                        // Allow access to the original action
+                        if(islocalcheckout && item.NameWithOwner == localcheckout && item.Ref.StartsWith(BuildConstants.Source.CommitHash)) {
+                            item.Ref = item.Ref.Substring(BuildConstants.Source.CommitHash.Length);
+                        }
                         // TODO: How to check on github if url is valid?, maybe use GITHUB_TOKEN?
                         // var client = new HttpClient();
                         // if((await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.TarballUrl))).IsSuccessStatusCode && (await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, downloadinfo.ZipballUrl))).IsSuccessStatusCode) {
@@ -126,7 +177,6 @@ namespace Runner.Server.Controllers
                                     downloadinfo.ZipballUrl = String.Format(downloadUrl.ZipballUrl, item.NameWithOwner, o.Sha);
                                 }
                             }
-                            actions[$"{item.NameWithOwner}@{item.Ref}"] = downloadinfo;
                             break;
                         // }
                     }
