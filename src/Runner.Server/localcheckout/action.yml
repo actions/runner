@@ -64,5 +64,5 @@ outputs:
   skipped:
     description: "Wether to invoke the official actions/checkout or not"
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'index.js'
