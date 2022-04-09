@@ -159,14 +159,14 @@ jobs:
         cd gharun
         unzip ../src/Runner.Client/nupkg/io.github.christopherhx.gharun.${{needs.package.outputs.version}}.nupkg
         chmod -R +rw tools/
-        dotnet tools/net5.0/any/Runner.Server.dll --urls http://*:5000 "--ConnectionStrings:sqlite=Data Source=Agents.db;" &
+        dotnet tools/net6.0/any/Runner.Server.dll --urls http://*:5000 "--ConnectionStrings:sqlite=Data Source=Agents.db;" &
         sleep 2
         echo "Check for creation of sqlite db"
         stat Agents.db
         echo "Configure Runner"
-        dotnet tools/net5.0/any/Runner.Listener.dll configure --url http://localhost:5000 --token nothing
+        dotnet tools/net6.0/any/Runner.Listener.dll configure --url http://localhost:5000 --token nothing
         echo "Start Runner"
-        dotnet tools/net5.0/any/Runner.Listener.dll run&
+        dotnet tools/net6.0/any/Runner.Listener.dll run&
         sleep 2
         echo "Send job"
         cd ..
