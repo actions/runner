@@ -87,7 +87,7 @@ namespace GitHub.Runner.Worker
 
                 // Expression values
                 step.ExecutionContext.ExpressionValues["steps"] = step.ExecutionContext.Global.StepsContext.GetScope(step.ExecutionContext.ScopeName);
-                IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
+                IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && (jobContext.Global.Container?.Os ?? "windows") == "windows" ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
                 step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
 
                 // Merge global env

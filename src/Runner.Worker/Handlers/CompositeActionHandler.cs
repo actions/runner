@@ -244,7 +244,7 @@ namespace GitHub.Runner.Worker.Handlers
 
                 // Initialize env context
                 Trace.Info("Initialize Env context for embedded step");
-                IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
+                IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && (step.ExecutionContext.Global.Container?.Os ?? "windows") == "windows" ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
                 step.ExecutionContext.ExpressionValues["env"] = envContext as PipelineContextData;
 
                 // Merge global env

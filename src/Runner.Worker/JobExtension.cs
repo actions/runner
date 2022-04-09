@@ -445,7 +445,7 @@ namespace GitHub.Runner.Worker
                     context.Debug("Starting: Complete job");
 
                     Trace.Info("Initialize Env context");
-                    IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
+                    IDictionaryContextData envContext = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) && (context.Global.Container?.Os ?? "windows") == "windows" ? new DictionaryContextData() : new CaseSensitiveDictionaryContextData();
                     context.ExpressionValues["env"] = envContext as PipelineContextData;
                     foreach (var pair in context.Global.EnvironmentVariables)
                     {
