@@ -38,6 +38,7 @@
       <LogicalName>Runner.Server.localcheckout_template.yml</LogicalName>
     </EmbeddedResource>
     <None Include="wwwroot\**" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" Link="wwwroot\%(RecursiveDir)\%(Filename)%(Extension)" />
+    <None Include="appsettings*.json" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
 </Project>
