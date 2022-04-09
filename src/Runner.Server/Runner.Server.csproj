@@ -5,6 +5,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <NoWarn>NU1701;NU1603;NU1605;CS4014</NoWarn>
     <RuntimeIdentifiers>win-x64;win-x86;linux-x64;linux-arm64;linux-arm;osx-x64</RuntimeIdentifiers>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(EFMigration)' != ''">
@@ -36,6 +37,7 @@
     <EmbeddedResource Include="localcheckout_template.yml">
       <LogicalName>Runner.Server.localcheckout_template.yml</LogicalName>
     </EmbeddedResource>
+    <None Include="wwwroot\**" CopyToPublishDirectory="Always" CopyToOutputDirectory="Always" Link="wwwroot\%(RecursiveDir)\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>
